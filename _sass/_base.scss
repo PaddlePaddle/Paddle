@@ -1,7 +1,3 @@
-@import "variables.less";
-@import "mixins.less";
-
-// Global Components
 html,
 body {
     height: 100%;
@@ -9,11 +5,11 @@ body {
 }
 
 body {
-    .serif-font;
+    @include serif-font;
 }
 
 hr {
-    border-color: @theme-primary;
+    border-color: $theme-primary;
     border-width: 3px;
     max-width: 50px;
 }
@@ -23,11 +19,11 @@ hr.light {
 }
 
 a {
-    .transition-all;
-    color: @theme-primary;
+    @include transition-all;
+    color: $theme-primary;
     &:hover,
     &:focus {
-        color: darken(@theme-primary, 10%);
+        color: darken($theme-primary, 10%);
     }
 }
 
@@ -37,7 +33,7 @@ h3,
 h4,
 h5,
 h6 {
-    .sans-serif-font;
+    @include sans-serif-font;
 }
 
 p {
@@ -47,11 +43,11 @@ p {
 }
 
 .bg-primary {
-    background-color: @theme-primary;
+    background-color: $theme-primary;
 }
 
 .bg-dark {
-    background-color: @theme-dark;
+    background-color: $theme-dark;
     color: white;
 }
 
@@ -75,17 +71,17 @@ aside {
 
 .navbar-default {
     background-color: white;
-    border-color: fade(@theme-dark, 5%);
-    .sans-serif-font;
-    .transition-all;
+    border-color: fade($theme-dark, 5%);
+    @include sans-serif-font;
+    @include transition-all;
     .navbar-header .navbar-brand {
-        color: @theme-primary;
-        .sans-serif-font;
+        color: $theme-primary;
+        @include sans-serif-font;
         font-weight: 700;
         text-transform: uppercase;
         &:hover,
         &:focus {
-            color: darken(@theme-primary, 10%);
+            color: darken($theme-primary, 10%);
         }
     }
     .nav {
@@ -95,15 +91,15 @@ aside {
                 text-transform: uppercase;
                 font-weight: 700;
                 font-size: 13px;
-                color: @theme-dark;
+                color: $theme-dark;
                 &:hover {
-                    color: @theme-primary;
+                    color: $theme-primary;
                 }
             }
             &.active {
                 > a,
                 > a:focus {
-                    color: @theme-primary !important;
+                    color: $theme-primary !important;
                     background-color: transparent;
                     &:hover {
                         background-color: transparent;
@@ -131,20 +127,20 @@ aside {
         }
         &.affix {
             background-color: white;
-            border-color: fade(@theme-dark, 5%);
+            border-color: fade($theme-dark, 5%);
             .navbar-header .navbar-brand {
-                color: @theme-primary;
+                color: $theme-primary;
                 font-size: 14px;
                 &:hover,
                 &:focus {
-                    color: darken(@theme-primary, 10%);
+                    color: darken($theme-primary, 10%);
                 }
             }
             .nav > li > a,
             .nav > li > a:focus {
-                color: @theme-dark;
+                color: $theme-dark;
                 &:hover {
-                    color: @theme-primary;
+                    color: $theme-primary;
                 }
             }
         }
@@ -157,7 +153,7 @@ header {
     position: relative;
     width: 100%;
     min-height: auto;
-    .background-cover;
+    @include background-cover;
     background-position: center;
     background-image: url('../img/header.jpg');
     text-align: center;
@@ -235,13 +231,13 @@ header {
         color: white;
         opacity: 0;
         display: block;
-        background: fade(@theme-primary, 90%);
+        background: fade($theme-primary, 90%);
         position: absolute;
         bottom: 0;
         text-align: center;
         width: 100%;
         height: 100%;
-        .transition-all;
+        @include transition-all;
         .portfolio-box-caption-content {
             width: 100%;
             text-align: center;
@@ -250,7 +246,7 @@ header {
             transform: translateY(-50%);
             .project-category,
             .project-name {
-                .sans-serif-font;
+                @include sans-serif-font;
                 padding: 0 15px;
             }
             .project-category {
@@ -290,7 +286,7 @@ header {
 
 // Bootstrap Overrides
 .text-primary {
-    color: @theme-primary;
+    color: $theme-primary;
 }
 
 .no-gutter > [class*='col-'] {
@@ -300,15 +296,15 @@ header {
 
 // Button Styles
 .btn-default {
-    .button-variant(@theme-dark;white;white);
+    @include button-variant($theme-dark, white, white);
 }
 
 .btn-primary {
-    .button-variant(white;@theme-primary;@theme-primary);
+    @include button-variant(white, $theme-primary, $theme-primary);
 }
 
 .btn {
-    .sans-serif-font;
+    @include sans-serif-font;
     border: none;
     border-radius: 300px;
     font-weight: 700;
@@ -324,13 +320,13 @@ header {
 ::-moz-selection {
     color: white;
     text-shadow: none;
-    background: @theme-dark;
+    background: $theme-dark;
 }
 
 ::selection {
     color: white;
     text-shadow: none;
-    background: @theme-dark;
+    background: $theme-dark;
 }
 
 img::selection {
@@ -344,5 +340,5 @@ img::-moz-selection {
 }
 
 body {
-    webkit-tap-highlight-color: @theme-dark;
+    -webkit-tap-highlight-color: $theme-dark;
 }
