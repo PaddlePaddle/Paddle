@@ -1,0 +1,63 @@
+// Mixins
+
+.transition-all() {
+    -webkit-transition: all 0.35s;
+    -moz-transition: all 0.35s;
+    transition: all 0.35s;
+}
+
+.background-cover() {
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    background-size: cover;
+    -o-background-size: cover;
+}
+
+.button-variant(@color; @background; @border) {
+	color: @color;
+	background-color: @background;
+	border-color: @border;
+	.transition-all;
+
+	&:hover,
+	&:focus,
+	&.focus,
+	&:active,
+	&.active,
+	.open > .dropdown-toggle& {
+		color: @color;
+		background-color: darken(@background, 5%);
+	    border-color: darken(@border, 7%);
+	}
+	&:active,
+	&.active,
+	.open > .dropdown-toggle& {
+		background-image: none;
+	}
+	&.disabled,
+	&[disabled],
+	fieldset[disabled] & {
+		&,
+		&:hover,
+		&:focus,
+		&.focus,
+		&:active,
+		&.active {
+			background-color: @background;
+			border-color: @border;
+		}
+	}
+
+	.badge {
+		color: @background;
+		background-color: @color;
+	}
+}
+
+.sans-serif-font() {
+	font-family: 'Open Sans', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.serif-font() {
+	font-family: 'Merriweather', 'Helvetica Neue', Arial, sans-serif;
+}
