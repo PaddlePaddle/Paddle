@@ -52,7 +52,7 @@ p {
 }
 
 .text-faded {
-    color: fade(white, 70%);
+    color: rgba(white, .7);
 }
 
 section {
@@ -71,7 +71,7 @@ aside {
 
 .navbar-default {
     background-color: white;
-    border-color: fade($theme-dark, 5%);
+    border-color: rgba($theme-dark, .5);
     @include sans-serif-font;
     @include transition-all;
     .navbar-header .navbar-brand {
@@ -110,9 +110,9 @@ aside {
     }
     @media (min-width: 768px) {
         background-color: transparent;
-        border-color: fade(white, 30%);
+        border-color: rgba(white, .3);
         .navbar-header .navbar-brand {
-            color: fade(white, 70%);
+            color: rgba(white, .7);
             &:hover,
             &:focus {
                 color: white;
@@ -120,14 +120,14 @@ aside {
         }
         .nav > li > a,
         .nav > li > a:focus {
-            color: fade(white, 70%);
+            color: rgba(white, .7);
             &:hover {
                 color: white;
             }
         }
         &.affix {
             background-color: white;
-            border-color: fade($theme-dark, 5%);
+            border-color: rgba($theme-dark, .5);
             .navbar-header .navbar-brand {
                 color: $theme-primary;
                 font-size: 14px;
@@ -175,7 +175,7 @@ header {
             }
             p {
                 font-weight: 300;
-                color: fade(white, 70%);
+                color: rgba(white, .7);
                 font-size: 16px;
                 margin-bottom: 50px;
             }
@@ -231,7 +231,7 @@ header {
         color: white;
         opacity: 0;
         display: block;
-        background: fade($theme-primary, 90%);
+        background: rgba( $theme-primary, .9 );
         position: absolute;
         bottom: 0;
         text-align: center;
