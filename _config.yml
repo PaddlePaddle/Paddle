@@ -1,15 +1,12 @@
 # Site settings
-title: Creative Theme
-email: theme@viennalabs.com
+title:
+email:
 description: > # this means to ignore newlines until "baseurl:"
- Creative is a one page Bootstrap theme for creatives, small businesses, and other multipurpose uses.
- The theme includes a number of rich features and plugins that you can use as a great boilerplate for your next Jekyll project!
-
 baseurl: "" # the subpath of your site, e.g. /blog/
 url: "" # the base hostname & protocol for your site
 
-twitter_username: volnyio
-github_username:  volny
+twitter_username:
+github_username:
 
 # Build settings
 markdown: kramdown
