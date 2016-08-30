@@ -3,7 +3,8 @@ Writing New Layers
 This tutorial will guide you to write customized layers in PaddlePaddle. We will utilize fully connected layer as an example to guide you through the following steps for writing a new layer.
 - Derive equations for the forward and backward part of the layer.
 - Implement C++ class for the layer.
-- Implement Python Wrapper for the layer.
+- Write gradient check unit test to make sure the gradients are correctly computed.
+- Implement Python wrapper for the layer.
 
 ## Derive Equations
 First we need to derive equations of the *forward* and *backward* part of the layer. The forward part computes the output given an input. The backward part computes the gradients of the input and the parameters given the the gradients of the output.
@@ -236,7 +237,76 @@ REGISTER_LAYER(fc, FullyConnectedLayer);
 }
 ```
 
-If the `cpp` file is put into `paddle/gserver/layers`, it will be automatically compiled.
+If the `cpp` file is put into `paddle/gserver/layers`, it will be automatically added to the compilation list.
+
+
+## Write Gradient Check Unit Test
+An easy way to verify the correctness of new layer's implementation is to write a gradient check unit test. Gradient check unit test utilizes finite difference method to verify the gradient of a layer. It modifies the input with a small perturbation $\Delta x$ and observes the changes of output $\Delta y$, the gradient can be computed as $\frac{\Delta y}{\Delta x }$. This gradient can be compared with the gradient computed by the `backward` function of the layer to ensure the correctness of the gradient computation. Notice that the gradient check only tests the correctness of the gradient computation, it does not necessarily guarantee the correctness of the implementation of the `forward` and `backward` function. You need to write more sophisticated unit tests to make sure your layer is implemented correctly.
+
+
+All the gradient check unit tests are located in `paddle/gserver/tests/test_LayerGrad.cpp`. You are recommended to put your test into a new test file if you are planning to write a new layer. The gradient test of the gradient check unit test of the fully connected layer is listed below. It has the following steps.
+
++ Create layer configuration. A layer configuration can include the following attributes:
+    - size of the bias parameter. (4096 in our example)
+    - type of the layer. (fc in our example)
+    - size of the layer. (4096 in our example)
+    - activation type. (softmax in our example)
+    - dropout rate. (0.1 in our example)
++ configure the input of the layer. In our example, we have only one input.
+    - type of the input (`INPUT_DATA`) in our example. It can be one of the following types
+       - `INPUT_DATA`: dense vector.
+       - `INPUT_LABEL`: integer.
+       - `INPUT_DATA_TARGET`: dense vector, but it does not used to compute gradient.
+       - `INPUT_SEQUENCE_DATA`: dense vector with sequence information.
+       - `INPUT_HASSUB_SEQUENCE_DATA`: dense vector with both sequence and sub-sequence information.
+       - `INPUT_SEQUENCE_LABEL`: integer with sequence information.
+       - `INPUT_SPARSE_NON_VALUE_DATA`: 0-1 sparse data.
+       - `INPUT_SPARSE_FLOAT_VALUE_DATA`: float sparse data.
+   - name of the input. (`layer_0` in our example)
+   - size of the input. (8192 in our example)
+   - number of non-zeros, only useful for sparse inputs.
+   - format of sparse data, only useful for sparse inputs.
++ each inputs needs to call `config.layerConfig.add_inputs();` once.
++ call `testLayerGrad` to perform gradient checks. It has the following arguments.
+   - layer and input configurations. (`config` in our example)
+   - type of the input. (`fc` in our example)
+   - batch size of the gradient check. (100 in our example)
+   - whether the input is transpose. Most layers need to set it to `false`. (`false` in our example)
+   - whether to use weights. Some layers or activations perform normalization so that the sum of their output is a constant. For example, the sum of output of a softmax activation is one. In this case, we cannot correctly compute the gradients using regular gradient check techniques. A weighted sum of the output, which is not a constant, is utilized to compute the gradients. (`true` in our example, because the activation of a fully connected layer can be softmax)
+
+```C
+void testFcLayer(string format, size_t nnz) {
+  // Create layer configuration.
+  TestConfig config;
+  config.biasSize = 4096;
+  config.layerConfig.set_type("fc");
+  config.layerConfig.set_size(4096);
+  config.layerConfig.set_active_type("sigmoid");
+  config.layerConfig.set_drop_rate(0.1);
+  // Setup inputs.
+  config.inputDefs.push_back(
+      {INPUT_DATA, "layer_0", 8192, nnz, ParaSparse(format)});
+	  config.layerConfig.add_inputs();
+  LOG(INFO) << config.inputDefs[0].sparse.sparse << " "
+            << config.inputDefs[0].sparse.format;
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "fc", 100, /* trans */ false, useGpu,
+                  /* weight */ true);
+  }
+}
+```
+If you are creating a new file for the test, such as `paddle/gserver/tests/testFCGrad.cpp`, you need to add the file to `paddle/gserver/tests/CMakeLists.txt`. An example is given below. All the unit tests will run when you execute the command `make tests`. Notice that some layers might need high accuracy for the gradient check unit tests to work well. You need to configure `WITH_DOUBLE` to `ON` when configuring cmake.
+
+```
+add_unittest_without_exec(test_FCGrad
+    test_FCGrad.cpp
+    LayerGradUtil.cpp
+    TestUtil.cpp)
+
+add_test(NAME test_FCGrad
+    COMMAND test_FCGrad)
+```
+
 
 ## Implement Python Wrapper
 Implementing Python wrapper allows us to use the added layer in configuration files. All the Python wrappers are in file `python/paddle/trainer/config_parser.py`. An example of the Python wrapper for fully connected layer is listed below. It has the following steps:
@@ -262,10 +332,8 @@ class FCLayer(LayerBase):
             dims = [input_layer.size, self.config.size]
             format = self.inputs[input_index].format
             sparse = format == "csr" or format == "csc"
-
             if sparse:
                 psize = self.inputs[input_index].nnz
-
             self.create_input_parameter(input_index, psize, dims, sparse, format)
         self.create_bias_parameter(bias, self.config.size)
 ```

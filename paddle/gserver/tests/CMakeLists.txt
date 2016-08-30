@@ -18,7 +18,7 @@ add_unittest_without_exec(test_LayerGrad
     LayerGradUtil.cpp
     TestUtil.cpp)
 add_test(NAME test_LayerGrad
-    COMMAND test_LayerGrad --need_high_accuracy=true)
+    COMMAND test_LayerGrad)
 
 ################## test_Evaluator #######################
 add_unittest(test_Evaluator

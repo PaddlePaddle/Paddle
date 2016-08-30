@@ -29,8 +29,6 @@ P_DECLARE_bool(use_gpu);
 P_DECLARE_int32(gpu_id);
 P_DECLARE_double(checkgrad_eps);
 P_DECLARE_bool(thread_local_rand_use_global_seed);
-P_DEFINE_bool(need_high_accuracy, false,
-              "whether need to run in double accuracy");
 P_DECLARE_bool(prev_batch_state);
 
 TEST(Operator, dot_mul) {
