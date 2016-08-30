@@ -1,4 +1,4 @@
-FROM ubuntu/ubuntu:14.04
+FROM ubuntu:14.04
 MAINTAINER PaddlePaddle Dev Team <paddle-dev@baidu.com>
 COPY build.sh /root/
 ENV WITH_GPU=OFF
