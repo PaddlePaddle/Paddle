@@ -92,7 +92,7 @@ pip install sphinx_rtd_theme breathe recommonmark
 sudo apt-get install python-sphinx doxygen 
 ```
 
-### Build an Install
+### Build and Install
 
 CMake will find dependent libraries in system default paths first. After installing some optional libraries, corresponding build option will automatically be on(such as glog, gtest and gflags). And if libraries are not found, you have to set following variables manually in cmake command(CUDNN_ROOT, ATLAS_ROOT, MKL_ROOT, OPENBLAS_ROOT).
 

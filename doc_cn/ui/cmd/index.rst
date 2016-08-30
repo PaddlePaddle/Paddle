@@ -14,7 +14,8 @@
 更详细的介绍请参考各个命令的命令行参数文档。
 
 ..  toctree::
-    
+    :glob:
+
     paddle_train.rst
     paddle_pserver.rst
     paddle_version.rst
