@@ -1,8 +1,8 @@
 PyDataProvider2的使用
 =====================
 
-PyDataProvider是Paddle使用Python提供数据的推荐接口。使用该接口用户可以只关注如何
-从文件中读取每一条数据，而不用关心数据如何传输给Paddle，数据如何存储等等。该数据
+PyDataProvider是PaddlePaddle使用Python提供数据的推荐接口。使用该接口用户可以只关注如何
+从文件中读取每一条数据，而不用关心数据如何传输给PaddlePaddle，数据如何存储等等。该数据
 接口使用多线程读取数据，并提供了简单的Cache功能。
 
 
@@ -26,9 +26,9 @@ train.list即为
 ..  literalinclude:: mnist_provider.py
     :linenos:
 
-其中第一行是引入Paddle的PyDataProvider2包。主要函数是process函数。process函数
+其中第一行是引入PaddlePaddle的PyDataProvider2包。主要函数是process函数。process函数
 具有两个参数，第一个参数是 settings 。这个参数在这个样例里没有使用，具
-体可以参考 settings 。第二个参数是filename，这个参数被Paddle进程传入，为
+体可以参考 settings 。第二个参数是filename，这个参数被PaddlePaddle进程传入，为
 train.list中的一行(即train.list若干数据文件路径的某一个路径)。
 
 :code:`@provider` 是一个Python的 `Decorator <http://www.learnpython.org/en/Decorators>`_
@@ -41,10 +41,10 @@ train.list中的一行(即train.list若干数据文件路径的某一个路径)�
 式，请参考 `input_types`_ 的文档。
 
 process函数是实现数据输入的主函数，在这个函数中，实现了打开文本文件，从文本文件中读取
-每一行，并将每行转换成和 `input_types`_ 一致的特征，并在23行返回给Paddle进程。需要注意
+每一行，并将每行转换成和 `input_types`_ 一致的特征，并在23行返回给PaddlePaddle进程。需要注意
 的是， 返回的顺序需要和 `input_types`_ 中定义的顺序一致。
 
-同时，返回数据在Paddle中是仅仅返回一条完整的训练样本，并且使用关键词 :code:`yield` 。
+同时，返回数据在PaddlePaddle中是仅仅返回一条完整的训练样本，并且使用关键词 :code:`yield` 。
 在PyDataProvider中，可以为一个数据文件返回多条训练样本(就像这个样例一样)，只需要在
 process函数调用多次 :code:`yield` 即可。 :code:`yield` 是Python的一个关键词，相关的概
 念是 :code:`generator` 。使用这个关键词，可以在一个函数里，多次返回变量。
@@ -56,8 +56,8 @@ process函数调用多次 :code:`yield` 即可。 :code:`yield` 是Python的一�
 这里说明了训练数据是 'train.list'，而没有测试数据。引用的DataProvider是 'mnist_provider' 
 这个模块中的 'process' 函数。
 
-至此，简单的PyDataProvider样例就说明完毕了。对于用户来说，讲数据发送给Paddle，仅仅需要
-知道如何从 **一个文件** 里面读取 **一条** 样本。而Paddle进程帮助用户做了
+至此，简单的PyDataProvider样例就说明完毕了。对于用户来说，讲数据发送给PaddlePaddle，仅仅需要
+知道如何从 **一个文件** 里面读取 **一条** 样本。而PaddlePaddle进程帮助用户做了
 
 * 将数据组合成Batch训练
 * Shuffle训练数据
@@ -140,7 +140,7 @@ DataProvider创建的时候执行。这个初始化函数具有如下参数:
 input_types
 +++++++++++
 
-Paddle的数据包括四种主要类型，和三种序列模式。其中，四种数据类型是
+PaddlePaddle的数据包括四种主要类型，和三种序列模式。其中，四种数据类型是
 
 * dense_vector 表示稠密的浮点数向量。
 * sparse_binary_vector 表示稀疏的零一向量，即大部分值为0，有值的位置只能取1
@@ -189,7 +189,7 @@ init_hook可以传入一个函数。这个函数在初始化的时候会被调�
         * file_list 所有文件列表。
     * 用户定义的参数使用args在训练配置中设置。
 
-注意，paddle保留添加参数的权力，所以init_hook尽量使用 :code:`**kwargs` , 来接受不使用的
+注意，PaddlePaddle保留添加参数的权力，所以init_hook尽量使用 :code:`**kwargs` , 来接受不使用的
 函数来保证兼容性。
 
 ..  _cache::

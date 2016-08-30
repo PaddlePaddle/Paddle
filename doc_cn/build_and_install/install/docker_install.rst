@@ -25,7 +25,7 @@ PaddlePaddle提供的Docker镜像版本
 
 同时，不同的稳定版本，会将latest替换成稳定版本的版本号。
 
-Paddle提供的镜像并不包含任何命令运行，想要运行Paddle，您需要进入镜像运行paddle
+PaddlePaddle提供的镜像并不包含任何命令运行，想要运行PaddlePaddle，您需要进入镜像运行paddlePaddle
 程序或者自定义一个含有启动脚本的image。具体请参考注意事项中的 
 `使用ssh访问paddle镜像`
 

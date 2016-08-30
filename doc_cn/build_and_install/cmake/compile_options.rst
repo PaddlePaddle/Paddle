@@ -23,7 +23,7 @@ bool型的编译选项
 blas相关的编译选项
 ++++++++++++++++++
 
-Paddle可以使用 `MKL <https://software.intel.com/en-us/intel-mkl>`_ ，
+PaddlePaddle可以使用 `MKL <https://software.intel.com/en-us/intel-mkl>`_ ，
 `Atlas <http://math-atlas.sourceforge.net/>`_ ,
 `OpenBlas <http://www.openblas.net/>`_ 和 
 `refference Blas <http://www.netlib.org/blas/>`_ ，任意一种cblas实现。
@@ -52,7 +52,7 @@ cmake编译时会首先在系统路径(/usr/lib\:/usr/local/lib)中寻找这些b
 cuda/cudnn相关的编译选项
 ++++++++++++++++++++++++
 
-Paddle可以使用 cudnn v2之后的任何一个cudnn版本来编译运行。但需要注意的是编译和
+PaddlePaddle可以使用 cudnn v2之后的任何一个cudnn版本来编译运行。但需要注意的是编译和
 运行使用的cudnn尽量是同一个版本。推荐使用最新版本的cudnn v5.1。
 
 在cmake配置时可以使用 :code:`CUDNN_ROOT` 来配置CUDNN的安装路径。使用的命令也是 
