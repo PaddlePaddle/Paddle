@@ -14,6 +14,7 @@ limitations under the License. */
 
 
 #include "Argument.h"
+#include "paddle/math/SparseMatrix.h"
 
 #include <algorithm>
 
@@ -68,7 +69,15 @@ static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src,
       dest->resize(height, width);
     }
     MatrixPtr submat = src->subMatrix(startRow, copySize);
-    dest->copyFrom(*submat, stream);
+    if (dynamic_cast<GpuSparseMatrix*>(dest.get())) {
+      // copy a subMatrix of CpuSparseMatrix to GpuSparseMatrix.
+      // First copy it to CPU, and then copy it to the GPU.
+      MatrixPtr tmp = src->clone(height, width, false);
+      tmp->copyFrom(*submat, stream);
+      dest->copyFrom(*tmp, stream);
+    } else {
+      dest->copyFrom(*submat, stream);
+    }
   } else {
     dest.reset();
   }
