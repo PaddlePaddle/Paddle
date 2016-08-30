@@ -207,17 +207,16 @@ classification_cost(input=output, label=label)
 
 ### 词向量模型(Word Vector)
 
-embeding模型需要稍微改变数据提供的脚本，即`dataprovider_emb.py`，词向量模型、
-卷积模型、时序模型均使用该脚
-- 文本输入类型定义为整数类型integer_value
-- 设置文本输入类型seq_type为SequenceType.SEQUENCE
+embedding模型需要稍微改变数据提供的脚本，即`dataprovider_emb.py`，词向量模型、
+卷积模型、时序模型均使用该脚本。其中文本输入类型定义为整数时序类型integer_value_sequence。
 
 ```
 def initializer(settings, dictionary, **kwargs):
     settings.word_dict = dictionary
     settings.input_types = [
         # Define the type of the first input as sequence of integer.
-        integer_value(len(dictionary), seq_type=SequenceType.SEQUENCE),
+        # The value of the integers range from 0 to len(dictrionary)-1
+        integer_value_sequence(len(dictionary)),
         # Define the second input for label id
         integer_value(2)]
 
@@ -479,12 +478,12 @@ else:
 ## 附录(Appendix)
 ### 命令行参数(Command Line Argument)
 
-* --config：网络配置
-* --save_dir：模型存储路径
-* --log_period：每隔多少batch打印一次日志
-* --num_passes：训练轮次，一个pass表示过一遍所有训练样本
-* --config_args：命令指定的参数会传入网络配置中。
-* --init_model_path：指定初始化模型路径，可用在测试或训练时指定初始化模型。
+* \--config：网络配置
+* \--save_dir：模型存储路径
+* \--log_period：每隔多少batch打印一次日志
+* \--num_passes：训练轮次，一个pass表示过一遍所有训练样本
+* \--config_args：命令指定的参数会传入网络配置中。
+* \--init_model_path：指定初始化模型路径，可用在测试或训练时指定初始化模型。
 
 默认一个pass保存一次模型，也可以通过saving_period_by_batches设置每隔多少batch保存一次模型。
 可以通过show_parameter_stats_period设置打印参数信息等。

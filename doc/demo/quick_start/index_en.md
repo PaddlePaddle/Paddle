@@ -225,7 +225,7 @@ Performance summary: You can refer to the training and testing scripts later. In
 <br>
 
 ### Word Embedding Model
-In order to use the word embedding model, you need to change the data provider a little bit to make the input words as a sequence of word IDs. The revised data provider is listed below. You only need to change initializer() for the type of the first input. It is changed from sparse_binary_vector to sequence of intergers.  process() remains the same. This data provider can also be used for later sequence models.
+In order to use the word embedding model, you need to change the data provider a little bit to make the input words as a sequence of word IDs. The revised data provider `dataprovider_emb.py` is listed below. You only need to change initializer() for the type of the first input. It is changed from sparse_binary_vector to sequence of intergers.  process() remains the same. This data provider can also be used for later sequence models.
 
 ```python
 def initializer(settings, dictionary, **kwargs):
@@ -260,7 +260,7 @@ avg = pooling_layer(input=emb, pooling_type=AvgPooling())
 
 The other parts of the model are the same as logistic regression network.
 
-The performance is summarized in the following table:：
+The performance is summarized in the following table:
 
 <html>
 <center>
@@ -400,7 +400,7 @@ If you want to install the remote training platform, which enables distributed t
 You can use the trained model to perform prediction on the dataset with no labels. You can also evaluate the model on dataset with labels to obtain its test accuracy.
 <center> ![](./PipelineTest_en.png) </center>
 
-The test script (test.sh) is listed below. PaddlePaddle can evaluate a model on the data with labels specified in `test.list`.
+The test script is listed below. PaddlePaddle can evaluate a model on the data with labels specified in `test.list`.
 
 ```bash
 paddle train \
@@ -497,11 +497,12 @@ The scripts of data downloading, network configurations, and training scrips are
 ## Appendix
 ### Command Line Argument
 
-* --config：network architecture path.
-* --save_dir：model save directory.
-* --log_period：the logging period per batch.
-* --num_passes：number of training passes. One pass means the training would go over the whole training dataset once.* --config_args：Other configuration arguments.
-* --init_model_path：The path of the initial model parameter.
+* \--config：network architecture path.
+* \--save_dir：model save directory.
+* \--log_period：the logging period per batch.
+* \--num_passes：number of training passes. One pass means the training would go over the whole training dataset once.
+* \--config_args：Other configuration arguments.
+* \--init_model_path：The path of the initial model parameter.
 
 By default, the trainer will save model every pass. You can also specify `saving_period_by_batches` to set the frequency of batch saving. You can use `show_parameter_stats_period` to print the statistics of the parameters, which are very useful for tuning parameters. Other command line arguments can be found in <a href = "../../ui/index.html#command-line-argument">command line argument documentation</a>。
 

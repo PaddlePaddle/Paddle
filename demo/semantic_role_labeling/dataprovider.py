@@ -22,13 +22,13 @@ def hook(settings, word_dict, label_dict, **kwargs):
     settings.label_dict = label_dict
     #all inputs are integral and sequential type
     settings.slots = [
-        integer_value(len(word_dict), seq_type=SequenceType.SEQUENCE),
-        integer_value(len(word_dict), seq_type=SequenceType.SEQUENCE),
-        integer_value(len(word_dict), seq_type=SequenceType.SEQUENCE),
-        integer_value(len(word_dict), seq_type=SequenceType.SEQUENCE),
-        integer_value(len(word_dict), seq_type=SequenceType.SEQUENCE),
-        integer_value(2, seq_type=SequenceType.SEQUENCE),
-        integer_value(len(label_dict), seq_type=SequenceType.SEQUENCE)]
+        integer_value_sequence(len(word_dict)),
+        integer_value_sequence(len(word_dict)),
+        integer_value_sequence(len(word_dict)),
+        integer_value_sequence(len(word_dict)),
+        integer_value_sequence(len(word_dict)),
+        integer_value_sequence(2),
+        integer_value_sequence(len(label_dict))]
 
 
 @provider(init_hook=hook)

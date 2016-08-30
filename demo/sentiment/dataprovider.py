@@ -17,7 +17,7 @@ from paddle.trainer.PyDataProvider2 import *
 def hook(settings, dictionary, **kwargs):
     settings.word_dict = dictionary
     settings.input_types = [
-        integer_value(len(settings.word_dict), seq_type=SequenceType.SEQUENCE),
+        integer_value_sequence(len(settings.word_dict)),
         integer_value(2)]
     settings.logger.info('dict len : %d' % (len(settings.word_dict)))
 
