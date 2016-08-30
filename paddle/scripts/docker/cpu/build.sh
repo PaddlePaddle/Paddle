@@ -31,8 +31,11 @@ if [ ${WITH_GPU} == "ON" ]; then  # install cuda
   md5sum -c cuda_7.5.18_linux.run.md5
   chmod +x cuda_7.5.18_linux.run
   ./cuda_7.5.18_linux.run --extract=$PWD
-  ./cuda-linux64-rel-7.5.18-19867135.run -noprompt
+  mv cuda-linux64-rel-7.5.18-*.run tmp
   rm *.run *.run.md5
+  mv tmp cuda-linux64.run
+  ./cuda-linux64.run -noprompt
+  rm *.run
 
   echo "Downloading cudnn v5.1"
   set +e
