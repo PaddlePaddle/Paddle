@@ -24,11 +24,6 @@ limitations under the License. */
 
 namespace paddle {
 
-/**
- * this module call ParameterClient to exchange parameters among all
- * parameters servers.
- */
-
 // TODO(yanfei):
 // I think that the biggest feature of rdma is packet lossless control
 // feature instead of high bandwiths, zero copy and gpu-direct rdma in
@@ -41,21 +36,21 @@ namespace paddle {
 //
 
 /**
- * normal remote parameter updater for dense parameters.
+ * Normal remote parameter updater for dense parameters.
  *
- * it first packs all parameters for all pservers using ParameterClient
- * module, then wait for return merged parameters data from all pservers.
- * the synchronization pattern specified by sync-sgd or async-sgd is
+ * It first packs all parameters for all pservers using ParameterClient
+ * module, then wait for merged parameters data from all pservers.
+ * The synchronization pattern specified by sync-sgd or async-sgd is
  * achieved by all pservers with the help of the controller within this
  * remote parameter updater.
- * this module indeedly bridges the gradient machines and parameter servers.
- * it help to transfer the parameters from acceleration device to cpu end
- * for network. it contains additional parameters copy buffers for
+ * This module indeedly bridges the gradient machines and parameter servers.
+ * It helps to transfer the parameters from acceleration device to cpu end
+ * for network. It contains additional parameters copy buffers for
  * acceleration devices at cpu end, such as gpu, otherwise it will
- * directly use original parameters data to launching.
+ * directly use original parameters data to update pservers.
  *
- * this remote parameter updater do not use pipeline mechanism to hide
- * copy latency from gpu to cpu buffer, as well as the overlapped between
+ * This remote parameter updater does not use pipeline mechanism to hide
+ * copy latency from gpu to cpu buffer. In addition the overlapped between
  * backward and communication is not supported.
  */
 class RemoteParameterUpdater : public ParameterUpdater {
@@ -74,9 +69,10 @@ public:
    */
   virtual void init(std::vector<ParameterPtr>& parameters);
   /**
-   * start batch
-   * one batch training exhibits stateful feature to help
-   * to do performance tuning, sgd optimization if necessary.
+   * @brief start batch
+   *
+   * @note  one batch training exhibits stateful feature to help
+   *        to do performance tuning, sgd optimization if necessary.
    */
   virtual PassType startBatch(int64_t batchSize) {
     if (localUpdater_) {
@@ -170,16 +166,16 @@ protected:
 // to really hide pserver latency in backward computation.
 //
 /**
- * this updater add additional optimization for overlapping synchronization
+ * This updater add additional optimization for overlapping synchronization
  * from pservers with backward computation.
  *
- * parameter can be sent to pservers when related backward stage is finished.
- * this concurrent udpater does data copy from acceleration device to host
+ * Parameter can be sent to pservers when related backward stage is finished.
+ * This concurrent udpater does data copy from acceleration device to host
  * memory aynchronously. In addition internal parameter client reads data in
  * host memory and send them to all pservers in next stage. So this class
  * help to pipeline device-to-host copy and host-to-network to hide network
  * latency in backward stage.
- * it contains separate send and recv thread for pipeline usage.
+ * It contains separate send and recv thread for pipeline usage.
  */
 class ConcurrentRemoteParameterUpdater : public RemoteParameterUpdater {
 public:
@@ -246,15 +242,15 @@ private:
 // the synchronization between sparse and dense udpater. it could also
 // reduce the threads for managing all connections.
 /**
- * this class is specified for updating sparse parameters.
+ * This class is specified for updating sparse parameters.
  *
- * it allows part of parameter to be exchanged with all pservers.
- * if sparse input assigned, part gradients of first hidden layer
+ * It allows part of parameter to be exchanged with all pservers.
+ * If sparse input assigned, part gradients of first hidden layer
  * could remained zero which can not need to be exchanged within
- * all pservers. this is the key optimization point for this updater
+ * all pservers. This is the key optimization point for this updater
  *
- * for updating sparse parameters, all latest parameters are stored
- * in pservers instead of keeping full copy at train end, so need
+ * For updating sparse parameters, all latest parameters are stored
+ * in pservers instead of keeping full copy at train end, so need to
  * prefetch parameters weight value which can be changed in next-batch
  * before doing next forwardbackward. Also, with above fact that the
  * parameters can be stored in pserver instead of trainer, we can
@@ -329,10 +325,10 @@ protected:
 };
 
 /**
- * class for supporting normal updater and sparse updater
+ * Class for supporting normal updater and sparse updater
  *
- * not all parts of one model are sparse, so it exists dense updater
- * for normal layers which sparse updater is for sparse layers.
+ * Not all parts of one model are sparse, so it exists dense updater
+ * for normal layers while sparse updater is for sparse layers.
  *
  * it directly call internal dense and sparse udpater individually.
  */
