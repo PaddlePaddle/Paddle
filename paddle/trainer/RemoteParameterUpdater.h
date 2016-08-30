@@ -29,7 +29,7 @@ namespace paddle {
  * parameters servers.
  */
 
-// TODO:(yanfei)
+// TODO(yanfei):
 // I think that the biggest feature of rdma is packet lossless control
 // feature instead of high bandwiths, zero copy and gpu-direct rdma in
 // theroy.
@@ -164,7 +164,7 @@ protected:
   static const std::string kElasticAverage;
 };
 
-// TODO:(yanfei)
+// TODO(yanfei):
 // do parameters level synchronization Optimization at pserver end with
 // ConcurrentRemoteParameterUpdater to get more parallelization, at last
 // to really hide pserver latency in backward computation.
@@ -241,7 +241,7 @@ private:
   bool oneBatchFinished_;
 };
 
-// TODO:(yanfei)
+// TODO(yanfei):
 // merge sparse updater with dense updater, and could help to reduce
 // the synchronization between sparse and dense udpater. it could also
 // reduce the threads for managing all connections.

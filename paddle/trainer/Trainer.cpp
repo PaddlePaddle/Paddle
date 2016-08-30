@@ -188,7 +188,7 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
 
 
   bool gpuData = FLAGS_use_gpu && (!FLAGS_parallel_nn) &&
-                 (!IGradientMachineMode::dataMustInCpu(mode_, 
+                 (!IGradientMachineMode::dataMustInCpu(mode_,
                                                        FLAGS_trainer_count));
 
   dataProvider_ = dataProvider;

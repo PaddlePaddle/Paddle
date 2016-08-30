@@ -178,14 +178,15 @@ int g_cuda_lib_version = 0;
 #define  HPPL_GPU_MEMORY_SIZE                (256*4)
 
 /**
- * Check build-in cuda function using glog and it also
+ * Check build-in cuda function using glog and it **does not**
  * support << operator for more details error info.
  */
-cudaError_t cudaStat;
-#define CHECK_CUDA(cuda_func)                                 \
-  cudaStat = cuda_func;                                     \
-  CHECK_EQ(cudaSuccess, cudaStat) << "Cuda Error: "         \
-      << dynload::cudaGetErrorString(cudaStat) << ". "      \
+#define CHECK_CUDA(cudaFunc)                               \
+  do {                                                     \
+    cudaError_t cudaStat = cudaFunc;                       \
+    CHECK_EQ(cudaSuccess, cudaStat) << "Cuda Error: "      \
+        << dynload::cudaGetErrorString(cudaStat);          \
+  } while (0)
 
 /**
  * @brief   thread resource.

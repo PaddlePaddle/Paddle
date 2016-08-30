@@ -175,15 +175,16 @@ CUDNN_DNN_ROUTINE_EACH_R5(DYNAMIC_LOAD_CUDNN_WRAP)
 } /* namespace dynload */
 
 /**
- * Check build-in cudnn function using glog and it also
+ * Check build-in cudnn function using glog and it **does not**
  * support << operator for more details error info.
  */
-cudnnStatus_t g_cudnnStat;
-#define CHECK_CUDNN(cudnn_func)                                \
-  g_cudnnStat = cudnn_func;                                    \
-  CHECK_EQ(CUDNN_STATUS_SUCCESS, g_cudnnStat)                  \
-      << "Cudnn Error: "                                       \
-      << dynload::cudnnGetErrorString(g_cudnnStat) << ". "     \
+#define CHECK_CUDNN(cudnnFunc)                               \
+  do {                                                       \
+    cudnnStatus_t cudnnStat = cudnnFunc;                     \
+    CHECK_EQ(CUDNN_STATUS_SUCCESS, cudnnStat)                \
+        << "Cudnn Error: "                                   \
+        << dynload::cudnnGetErrorString(cudnnStat);          \
+  } while (0)
 
 bool g_is_libcudnn_init = false;
 int g_cudnn_lib_version = 0;
