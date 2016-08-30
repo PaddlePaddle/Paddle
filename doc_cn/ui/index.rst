@@ -13,7 +13,7 @@ TBD
 API参考
 =======
 
-TBD
+`Trainer Config Helper <http://paddlepaddle.org/doc/ui/api/trainer_config_helpers/index.html>`_
 
 命令行参数
 ==========

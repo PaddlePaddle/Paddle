@@ -18,7 +18,6 @@ If you want to hack and contribute PaddlePaddle source code, following guides ca
     :glob:
 
     build_from_source.md
-    internal/contribute_code.md
     contribute_to_paddle.md
 
 Build Docker Images
