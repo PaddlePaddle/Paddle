@@ -40,14 +40,11 @@ configure_file(
 
 generate_python_api(python_swig_sources)
 
-set(PY_PADDLE_WHEEL_NAME
-${PROJ_ROOT}/paddle/py_paddle-0.1.1a10-cp27-none-linux_x86_64.whl)
-
 # TODO(yuyang18) : make wheel name calculated by cmake
-add_custom_command(OUTPUT ${PY_PADDLE_WHEEL_NAME}
-    COMMAND ${PYTHON_EXECUTABLE} setup.py  bdist_wheel &&
-            cp dist/*.whl . &&
-            rm -rf dist py_paddle.egg-info build
+add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/dist/.timestamp
+    COMMAND ${PYTHON_EXECUTABLE} setup.py  bdist_wheel
+    COMMAND ${CMAKE_COMMAND} -E touch dist/.timestamp
+    COMMAND rm -rf py_paddle.egg-info build
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle
     DEPENDS python_swig_sources
             paddle_parameter
@@ -60,11 +57,12 @@ add_custom_command(OUTPUT ${PY_PADDLE_WHEEL_NAME}
             paddle_cuda
 )
 
-install(FILES ${PY_PADDLE_WHEEL_NAME}
-    DESTINATION opt/paddle/share/wheels)
+install(DIRECTORY ${PROJ_ROOT}/paddle/dist/
+    DESTINATION opt/paddle/share/wheels
+)
 
 add_custom_target(python_api_wheel ALL DEPENDS
-  ${PY_PADDLE_WHEEL_NAME})
+  ${PROJ_ROOT}/paddle/dist/.timestamp)
 
 if(WITH_TESTING)
     add_subdirectory(test)
