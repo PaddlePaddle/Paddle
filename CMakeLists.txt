@@ -27,8 +27,8 @@ find_program(M4_EXECUTABLE m4)
 option(WITH_DSO "Compile PaddlePaddle with dynamic linked libraries" ON)
 option(WITH_GPU "Compile PaddlePaddle with gpu" ${CUDA_FOUND})
 option(WITH_DOUBLE "Compile PaddlePaddle with double precision, otherwise use single precision" OFF)
-option(WITH_AVX "Compile PaddlePaddle with avx instructs" ON) # TODO(yuyang18): Check AVX is supported or not as default value
-option(WITH_PYTHON "Compile PaddlePaddle with python interpretor" ON)
+option(WITH_AVX "Compile PaddlePaddle with avx intrinsics" ON) # TODO(yuyang18): Check AVX is supported or not as default value
+option(WITH_PYTHON "Compile PaddlePaddle with python interpreter" ON)
 option(WITH_STYLE_CHECK "Style Check for PaddlePaddle" ${PYTHONINTERP_FOUND})
 option(WITH_RDMA "Compile PaddlePaddle with rdma support" OFF)
 option(WITH_GLOG "Compile PaddlePaddle use glog, otherwise use a log implement internally" ${LIBGLOG_FOUND})
@@ -36,7 +36,7 @@ option(WITH_GFLAGS "Compile PaddlePaddle use gflags, otherwise use a flag implem
 option(WITH_TIMER "Compile PaddlePaddle use timer" OFF)
 option(WITH_TESTING "Compile and run unittest for PaddlePaddle" ${GTEST_FOUND})
 option(WITH_DOC "Compile PaddlePaddle with documentation" OFF)
-option(WITH_SWIG_PY "Compile PaddlePaddle with py PaddlePaddle predict api" ${SWIG_FOUND})
+option(WITH_SWIG_PY "Compile PaddlePaddle with py PaddlePaddle prediction api" ${SWIG_FOUND})
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING 
         "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
