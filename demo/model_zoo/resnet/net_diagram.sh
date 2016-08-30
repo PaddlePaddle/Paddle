@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-set -e
 
 :'
 Visual deep residual network
@@ -22,6 +21,8 @@ Visual deep residual network
 Usage:
 ./net_diagram.sh
 '
+
+set -e
 
 DIR="$( cd "$(dirname "$0")" ; pwd -P )"
 cd $DIR

@@ -223,6 +223,7 @@ extract_fea_py.sh:
 python classify.py \
      --job=extract \
      --conf=resnet.py\
+     --use_gpu=1 \
      --mean=model/mean_meta_224/mean.meta \
      --model=model/resnet_50 \
      --data=./example/test.list \
@@ -230,12 +231,15 @@ python classify.py \
      --output_dir=features
 
 ```
-* --job=extract:              specify job mode to extract feature.
-* --conf=resnet.py:           network configure.
-* --model=model/resnet_5:     model path.
-* --data=./example/test.list: data list.
-* --output_layer="xxx,xxx":   specify layers to extract features.
-* --output_dir=features:      output diretcoty.
+* \--job=extract:              specify job mode to extract feature.
+* \--conf=resnet.py:           network configure.
+* \--use_gpu=1:             speficy GPU mode.
+* \--model=model/resnet_5:     model path.
+* \--data=./example/test.list: data list.
+* \--output_layer="xxx,xxx":   specify layers to extract features.
+* \--output_dir=features:      output diretcoty.
+
+Note, since the convolution layer in these ResNet models is suitable for the cudnn implementation which only support GPU. It not support CPU mode because of compatibility issue and we will fix later.
 
 If run successfully, you will see features saved in `features/batch_0`, this file is produced with cPickle. You can use `load_feature_py` interface in `load_feature.py` to open the file, and it returns a dictionary as follows:
 
@@ -265,13 +269,15 @@ python classify.py \
      --conf=resnet.py\
      --multi_crop \
      --model=model/resnet_50 \
+     --use_gpu=1 \
      --data=./example/test.list
 ```
-* --job=extract:              speficy job mode to predict.
-* --conf=resnet.py:           network configure.
-* --multi_crop:               use 10 crops and average predicting probability.
-* --model=model/resnet_50:    model path.
-* --data=./example/test.list: data list.
+* \--job=extract:              speficy job mode to predict.
+* \--conf=resnet.py:           network configure.
+* \--multi_crop:               use 10 crops and average predicting probability.
+* \--use_gpu=1:             speficy GPU mode.
+* \--model=model/resnet_50:    model path.
+* \--data=./example/test.list: data list.
 
 If run successfully, you will see following results, where 156 and 285 are labels of the images.
 

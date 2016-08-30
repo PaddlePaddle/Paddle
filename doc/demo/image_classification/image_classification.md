@@ -11,7 +11,7 @@ First, download CIFAR-10 dataset. CIFAR-10 dataset can be downloaded from its of
 <https://www.cs.toronto.edu/~kriz/cifar.html>
 
 We have prepared a script to download and process CIFAR-10 dataset. The script will download CIFAR-10 dataset from the official dataset.
-It will convert it to jpeg images and organize them into a directory with the required structure for the tutorial. Make sure that you have installed the python dependency (PIL).
+It will convert it to jpeg images and organize them into a directory with the required structure for the tutorial. Make sure that you have installed the python dependency (PIL). If not, you can install it by `pip install PIL` and if you have installed `pip` package.
 
 ```bash
 cd demo/image_classification/data/

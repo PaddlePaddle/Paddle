@@ -204,15 +204,15 @@ paddle train --config=$config \
              2>&1 | tee 'train.log'
 ```
 
-* --config=$config: set network config.
-* --save\_dir=$output: set output path to save models.
-* --job=train: set job mode to train.
-* --use\_gpu=false: use CPU to train, set true, if you install GPU version of PaddlePaddle and want to use GPU to train.
-* --trainer\_count=4: set thread number (or GPU count).
-* --num\_passes=15: set pass number, one pass in PaddlePaddle means training all samples in dataset one time.
-* --log\_period=20: print log every 20 batches.
-* --show\_parameter\_stats\_period=100: show parameter statistic every 100 batches.
-* --test\_all_data\_in\_one\_period=1: test all data every testing.
+* \--config=$config: set network config.
+* \--save\_dir=$output: set output path to save models.
+* \--job=train: set job mode to train.
+* \--use\_gpu=false: use CPU to train, set true, if you install GPU version of PaddlePaddle and want to use GPU to train.
+* \--trainer\_count=4: set thread number (or GPU count).
+* \--num\_passes=15: set pass number, one pass in PaddlePaddle means training all samples in dataset one time.
+* \--log\_period=20: print log every 20 batches.
+* \--show\_parameter\_stats\_period=100: show parameter statistic every 100 batches.
+* \--test\_all_data\_in\_one\_period=1: test all data every testing.
 
 If the run succeeds, the output log is saved in path of `demo/sentiment/train.log` and model is saved in path of `demo/sentiment/model_output/`. The output log is explained as follows.
 
@@ -286,8 +286,10 @@ cd demo/sentiment
 predict.sh:
 
 ```
-config=trainer_config.py
+#Note the default model is pass-00002, you shold make sure the model path
+#exists or change the mode path.
 model=model_output/pass-00002/
+config=trainer_config.py
 label=data/pre-imdb/labels.list
 python predict.py \
      -n $config\
@@ -303,6 +305,9 @@ python predict.py \
 *  -b $label: set dictionary about corresponding relation between integer label and string label.
 *  -d data/pre-imdb/dict.txt: set dictionary.
 *  -i data/aclImdb/test/pos/10014_7.txt: set one example file to predict.
+
+Note you should make sure the default model path `model_output/pass-00002`
+exists or change the model path.
 
 Predicting result of this example:
 

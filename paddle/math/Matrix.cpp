@@ -1157,7 +1157,8 @@ void CpuMatrix::copyFrom(const Matrix& src) {
     CHECK(elementCnt_ == src.getElementCnt());
     hl_memcpy_device2host(data_, const_cast<real*>(src.getData()),
                           sizeof(real) * elementCnt_);
-  } else if (typeid(src) == typeid(CpuMatrix)) {
+  } else if (typeid(src) == typeid(CpuMatrix) ||
+             typeid(src) == typeid(SharedCpuMatrix)) {
     CHECK(src.isContiguous());
     CHECK(elementCnt_ == src.getElementCnt());
     memcpy(data_, src.getData(), sizeof(real) * elementCnt_);

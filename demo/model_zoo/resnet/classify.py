@@ -33,6 +33,7 @@ logging.getLogger().setLevel(logging.INFO)
 class ImageClassifier():
     def __init__(self, train_conf, model_dir=None,
                  resize_dim=256, crop_dim=224,
+                 use_gpu=True,
                  mean_file=None,
                  output_layer=None,
                  oversample=False, is_color=True):
@@ -76,9 +77,9 @@ class ImageClassifier():
             # this three mean value is calculated from ImageNet.
             self.transformer.set_mean(np.array([103.939,116.779,123.68]))
 
-        conf_args = "is_test=1,use_gpu=1,is_predict=1"
+        conf_args = "is_test=1,use_gpu=%d,is_predict=1" % (int(use_gpu))
         conf = parse_config(train_conf, conf_args)
-        swig_paddle.initPaddle("--use_gpu=1")
+        swig_paddle.initPaddle("--use_gpu=%d" % (int(use_gpu)))
         self.network = swig_paddle.GradientMachine.createFromConfigProto(conf.model_config)
         assert isinstance(self.network, swig_paddle.GradientMachine)
         self.network.loadParameters(self.model_dir)
@@ -236,6 +237,9 @@ def option_parser():
     parser.add_option("-w", "--model",
                       action="store", dest="model_path",
                       default=None, help="model path")
+    parser.add_option("-g", "--use_gpu", action="store",
+                      dest="use_gpu", default=True,
+                      help="Whether to use gpu mode.")
     parser.add_option("-o", "--output_dir",
                       action="store", dest="output_dir",
                       default="output", help="output path")
@@ -259,10 +263,11 @@ def main():
     """
     options, args = option_parser()
     obj = ImageClassifier(options.train_conf,
-                        options.model_path,
-                        mean_file=options.mean,
-                        output_layer=options.output_layer,
-                        oversample=options.multi_crop)
+                          options.model_path,
+                          use_gpu=options.use_gpu,
+                          mean_file=options.mean,
+                          output_layer=options.output_layer,
+                          oversample=options.multi_crop)
     if options.job_type == "predict":
         obj.predict(options.data_file)
 
