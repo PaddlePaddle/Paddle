@@ -51,7 +51,7 @@ SequenceSoftmaxActivation
 =========================
 
 ..  automodule:: paddle.trainer_config_helpers.activations
-    :members: SequenceSoftmax
+    :members: SequenceSoftmaxActivation
     :noindex:
     
 ReluActivation

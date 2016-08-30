@@ -440,20 +440,20 @@ def simple_lstm(input, size, name=None, reverse=False, mat_param_attr=None,
     """
     Simple LSTM Cell.
 
-    It just combine a mix_layer with fully_matrix_projection and a lstmemory
+    It just combine a mixed layer with fully_matrix_projection and a lstmemory
     layer. The simple lstm cell was implemented as follow equations.
 
     ..  math::
 
-        i_t = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
+        i_t & = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
 
-        f_t = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
+        f_t & = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
 
-        c_t = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
+        c_t & = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
 
-        o_t = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
+        o_t & = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
 
-        h_t = o_t tanh(c_t)
+        h_t & = o_t tanh(c_t)
 
     Please refer **Generating Sequences With Recurrent Neural Networks** if you
     want to know what lstm is. Link_ is here.
@@ -502,28 +502,42 @@ def simple_lstm(input, size, name=None, reverse=False, mat_param_attr=None,
 
 
 @wrap_name_default('lstm_unit')
-def lstmemory_unit(input, name=None, size=None,
-                   mixed_bias_attr=None, mixed_layer_attr=None,
-                   param_attr=None, lstm_bias_attr=None,
-                   act=None, gate_act=None,
-                   state_act=None, lstm_layer_attr=None,
+def lstmemory_unit(input, name=None, size=None, param_attr=None,
+                   act=None, gate_act=None, state_act=None, 
+                   mixed_bias_attr=None, lstm_bias_attr=None,
+                   mixed_layer_attr=None,lstm_layer_attr=None,
                    get_output_layer_attr=None):
     """
     TODO(yuyang18): complete docs
 
-    @param input:
-    @param name:
-    @param size:
-    @param mixed_bias_attr:
-    @param mixed_layer_attr:
-    @param param_attr:
-    @param lstm_bias_attr:
-    @param act:
-    @param gate_act:
-    @param state_act:
-    @param lstm_layer_attr:
-    @param get_output_layer_attr:
-    @return:
+    :param input: input layer name.
+    :type input: LayerOutput
+    :param name: lstmemory unit name.
+    :type name: basestring
+    :param size: lstmemory unit size.
+    :type size: int
+    :param param_attr: Parameter config, None if use default.
+    :type param_attr: ParameterAttribute
+    :param act: lstm final activate type
+    :type act: BaseActivation
+    :param gate_act: lstm gate activate type
+    :type gate_act: BaseActivation
+    :param state_act: lstm state activate type.
+    :type state_act: BaseActivation
+    :param mixed_bias_attr: bias parameter attribute of mixed layer. 
+                            False means no bias, None means default bias.
+    :type mixed_bias_attr: ParameterAttribute|False
+    :param lstm_bias_attr: bias parameter attribute of lstm layer.
+                           False means no bias, None means default bias.
+    :type lstm_bias_attr: ParameterAttribute|False
+    :param mixed_layer_attr: mixed layer's extra attribute.
+    :type mixed_layer_attr: ExtraLayerAttribute
+    :param lstm_layer_attr: lstm layer's extra attribute.
+    :type lstm_layer_attr: ExtraLayerAttribute
+    :param get_output_layer_attr: get output layer's extra attribute.
+    :type get_output_layer_attr: ExtraLayerAttribute
+    :return: lstmemory unit name.
+    :rtype: LayerOutput
     """
     if size is None:
         assert input.size % 4 == 0
@@ -560,32 +574,48 @@ def lstmemory_unit(input, name=None, size=None,
 @wrap_name_default('lstm_group')
 def lstmemory_group(input, size=None, name=None,
                     reverse=False, param_attr=None,
-                    mix_bias_attr=None, lstm_bias_attr=None,
                     act=None, gate_act=None, state_act=None,
+                    mixed_bias_attr=None, lstm_bias_attr=None,
                     mixed_layer_attr=None, lstm_layer_attr=None,
                     get_output_layer_attr=None):
     """
     TODO(yuyang18): complete docs
 
-    @param input:
-    @param size:
-    @param name:
-    @param reverse:
-    @param param_attr:
-    @param mix_bias_attr:
-    @param lstm_bias_attr:
-    @param act:
-    @param gate_act:
-    @param state_act:
-    @param mixed_layer_attr:
-    @param lstm_layer_attr:
-    @param get_output_layer_attr:
-    @return:
+    :param input: input layer name.
+    :type input: LayerOutput
+    :param name: lstmemory group name.
+    :type name: basestring
+    :param size: lstmemory group size.
+    :type size: int
+    :param reverse: is lstm reversed
+    :type reverse: bool
+    :param param_attr: Parameter config, None if use default.
+    :type param_attr: ParameterAttribute
+    :param act: lstm final activate type
+    :type act: BaseActivation
+    :param gate_act: lstm gate activate type
+    :type gate_act: BaseActivation
+    :param state_act: lstm state activate type.
+    :type state_act: BaseActivation
+    :param mixed_bias_attr: bias parameter attribute of mixed layer. 
+                            False means no bias, None means default bias.
+    :type mixed_bias_attr: ParameterAttribute|False
+    :param lstm_bias_attr: bias parameter attribute of lstm layer.
+                           False means no bias, None means default bias.
+    :type lstm_bias_attr: ParameterAttribute|False
+    :param mixed_layer_attr: mixed layer's extra attribute.
+    :type mixed_layer_attr: ExtraLayerAttribute
+    :param lstm_layer_attr: lstm layer's extra attribute.
+    :type lstm_layer_attr: ExtraLayerAttribute
+    :param get_output_layer_attr: get output layer's extra attribute.
+    :type get_output_layer_attr: ExtraLayerAttribute
+    :return: lstmemory group name.
+    :rtype: LayerOutput
     """
 
     def __lstm_step__(ipt):
         return lstmemory_unit(input=ipt, name=name,
-                              size=size, mixed_bias_attr=mix_bias_attr,
+                              size=size, mixed_bias_attr=mixed_bias_attr,
                               mixed_layer_attr=mixed_layer_attr,
                               param_attr=param_attr,
                               lstm_bias_attr=lstm_bias_attr,
@@ -760,13 +790,14 @@ def simple_attention(encoded_sequence,
     Size of the context vector equals to size of encoded_sequence.
 
     ..  math::
-        a(s_{i-1},h_{j}) = v_{a}f(W_{a}s_{t-1} + U_{a}h_{j})
-    ..  math::
-        e_{i,j} = a(s_{i-1}, h_{j})
-    ..  math::
-        a_{i,j} = \\frac{exp(e_{i,i})}{\\sum_{k=1}^{T_{x}{exp(e_{i,k})}}}
-    ..  math::
-        c_{i} = \\sum_{j=1}^{T_{x}}a_{i,j}h_{j}
+
+        a(s_{i-1},h_{j}) & = v_{a}f(W_{a}s_{t-1} + U_{a}h_{j})
+
+        e_{i,j} & = a(s_{i-1}, h_{j})
+
+        a_{i,j} & = \\frac{exp(e_{i,i})}{\\sum_{k=1}^{T_{x}{exp(e_{i,k})}}}
+
+        c_{i} & = \\sum_{j=1}^{T_{x}}a_{i,j}h_{j}
 
     where :math:`h_{j}` is the jth element of encoded_sequence,
     :math:`U_{a}h_{j}` is the jth element of encoded_proj
@@ -778,6 +809,7 @@ def simple_attention(encoded_sequence,
     https://arxiv.org/abs/1409.0473.
 
     The example usage is:
+
     ..  code-block:: python
 
         context = simple_attention(encoded_sequence=enc_seq,

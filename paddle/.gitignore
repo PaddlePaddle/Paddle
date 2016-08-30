@@ -28,9 +28,8 @@ ld-linux-x86-64.so.2
 x86_64-scm-linux-gnu/
 .lint.*.md5
 
-examples/crf/*.bin
-
 .idea/
+.test_env
 Paddle_wrap.cxx
 Paddle_wrap.h
 paddle.py

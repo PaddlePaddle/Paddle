@@ -136,6 +136,18 @@ gru_step_layer
 Recurrent Layer Group
 =====================
 
+recurrent_group
+---------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: recurrent_group
+    :noindex:
+    
+beam_search
+------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: beam_search
+    :noindex:
+    
 get_output_layer
 -----------------
 ..  automodule:: paddle.trainer_config_helpers.layers

@@ -669,7 +669,7 @@ def fc_layer(input, size, act=None, name=None,
                      act=LinearActivation(),
                      bias_attr=False)
 
-   which is equal to:
+    which is equal to:
 
     .. code-block:: python
 
@@ -795,15 +795,15 @@ def lstmemory(input, name=None, reverse=False, act=None,
 
     ..  math::
 
-        i_t = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
+        i_t & = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
 
-        f_t = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
+        f_t & = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
 
-        c_t = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
+        c_t & = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
 
-        o_t = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
+        o_t & = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
 
-        h_t = o_t tanh(c_t)
+        h_t & = o_t tanh(c_t)
 
 
     NOTE: In paddle's implementation, the multiply operation
@@ -1294,8 +1294,6 @@ def hsigmoid(input, label, num_classes, name=None, bias_attr=None, layer_attr=No
                         label=data_layer,
                         num_classes=3)
 
-    :param name: layer name
-    :type name: basestring
     :param input: Input layers. It could be a LayerOutput or list/tuple of
                  LayerOutput.
     :type input: LayerOutput|list|tuple
@@ -1303,6 +1301,8 @@ def hsigmoid(input, label, num_classes, name=None, bias_attr=None, layer_attr=No
     :type label: LayerOutput
     :param num_classes: number of classes.
     :type num_classes: int
+    :param name: layer name
+    :type name: basestring
     :param bias_attr: Bias attribute. None means default bias.
                       False means no bias.
     :type bias_attr: ParameterAttribute|False
@@ -1943,18 +1943,18 @@ def lstm_step_layer(input, state, size, act=None,
 
     ..  math::
 
-        i_t = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
+        i_t & = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
 
-        f_t = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
+        f_t & = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
 
-        c_t = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
+        c_t & = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
 
-        o_t = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
+        o_t & = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
 
-        h_t = o_t tanh(c_t)
+        h_t & = o_t tanh(c_t)
 
 
-    The input\_ of lstm step is :math:`Wx_t + Wh_{t-1}`, and user should use
+    The input of lstm step is :math:`Wx_t + Wh_{t-1}`, and user should use
     :code:`mixed_layer` and :code:`full_matrix_projection` to calculate these
     input vector.
 
@@ -2347,12 +2347,12 @@ def eos_layer(input, eos_id, name=None, layer_attr=None):
 
        eos = eos_layer(input=layer, eos_id=id)
 
+    :param name: Layer name.
+    :type name: basestring
     :param input: Input layer name.
     :type input: LayerOutput
     :param eos_id: end id of sequence
     :type eos_id: int
-    :param name: Layer name.
-    :type name: basestring
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
     :return: layer name.
@@ -2529,11 +2529,11 @@ def conv_operator(input, filter_size, num_filters,
     :param num_filter: channel of output data.
     :type num_filter: int
     :param num_channel: channel of input data.
-    :rtype num_channel: int
+    :type num_channel: int
     :param stride: The x dimension of the stride.
-    :rtype stride: int
+    :type stride: int
     :param stride_y: The y dimension of the stride.
-    :rtype stride_y: int
+    :type stride_y: int
     :param padding: The x dimension of padding.
     :type padding: int
     :param padding_y: The y dimension of padding.
@@ -2632,7 +2632,7 @@ def tensor_layer(input, size, act=None, name=None,
     :param input: Input layer.
     :type input: LayerOutput|list|tuple.
     :param size: the layer dimension.
-    :rtype: int.
+    :type size: int.
     :param act: Activation Type. Default is tanh.
     :type act: BaseActivation
     :param param_attr: The Parameter Attribute.
@@ -2840,7 +2840,7 @@ def convex_comb_layer(input, size, name=None):
     """
     A layer for convex weighted average of vectors takes two inputs.
       - Input: a vector containing the convex weights (batchSize x weightdim),
-             and a matrix in a vector form (batchSize x (weightdim*datadim)).
+               and a matrix in a vector form (batchSize x (weightdim * datadim)).
       - Output: a vector (batchSize * datadim).
 
     .. math::
@@ -2893,8 +2893,8 @@ def block_expand_layer(input,
                        name=None):
     """
     Expand feature map to minibatch matrix.
-      - matrix width is: block_y * block_x * channel
-      - matirx height is: outputH * outputW
+       - matrix width is: block_y * block_x * channel
+       - matirx height is: outputH * outputW
 
     .. math::
 
@@ -3100,11 +3100,11 @@ def rank_cost(left, right, lable, weight=None, name=None, coeff=1.0):
 
     .. math::
 
-       C_{i,j} = -\\tilde{P_{ij}} * o_{i,j} + log(1 + e^{o_{i,j}})
+       C_{i,j} & = -\\tilde{P_{ij}} * o_{i,j} + log(1 + e^{o_{i,j}})
 
-       o_{i,j} =  o_i - o_j
+       o_{i,j} & =  o_i - o_j
 
-       \\tilde{P_{i,j}} = \\{0, 0.5, 1\\} \ or \ \\{0, 1\\}
+       \\tilde{P_{i,j}} & = \\{0, 0.5, 1\\} \ or \ \\{0, 1\\}
 
     In this formula:
       - :math:`C_{i,j}` is the cross entropy cost.

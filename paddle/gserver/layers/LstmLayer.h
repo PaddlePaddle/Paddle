@@ -97,13 +97,13 @@ protected:
    * @param starts Each start position of each samples.
    * @param inputValue The input values.
    */
-  void forwardSequence(int batchSize, size_t numSequences,
-                       const int *starts, MatrixPtr inputValue);
+  void forwardSequence(int batchSize, size_t numSequences, const int *starts,
+                       MatrixPtr inputValue);
   /**
    * Compute lstm backward one sequence by one sequence.
    */
-  void backwardSequence(int batchSize, size_t numSequences,
-                        const int *starts, MatrixPtr inputGrad);
+  void backwardSequence(int batchSize, size_t numSequences, const int *starts,
+                        MatrixPtr inputGrad);
 
   /**
    * Compute lstm forward one batch by one batch. The batch value is
@@ -121,21 +121,21 @@ protected:
    * }
    * @endcode
    */
-  void forwardBatch(int batchSize, size_t numSequences,
-                    const int *starts, MatrixPtr inputValue);
+  void forwardBatch(int batchSize, size_t numSequences, const int *starts,
+                    MatrixPtr inputValue);
   /**
    * Compute lstm backward one batch by one batch.
    */
-  void backwardBatch(int batchSize, size_t numSequences,
-                     const int *starts, MatrixPtr inputGrad);
+  void backwardBatch(int batchSize, size_t numSequences, const int *starts,
+                     MatrixPtr inputGrad);
 
   /**
    * This function only supports GPU. It not need to reorganize input into
    * batch value. It will launch one kernel to parallelly compute forward
    * propagation in sequence level.
    */
-  void forwardSeqParallel(int batchSize, size_t numSequences,
-                          const int *starts, MatrixPtr inputValue);
+  void forwardSeqParallel(int batchSize, size_t numSequences, const int *starts,
+                          MatrixPtr inputValue);
   /**
    * Backward propagation corresponding to forwardSeqParallel.
    */
@@ -157,7 +157,8 @@ protected:
   /// The weight ([size, 4*size]) contains \f$W_{hi}, W_{hf}, W_{hc}, W_{ho}\f$.
   std::unique_ptr<Weight> weight_;
   /// Learned bias parameter, shape: (1, 7 * size).
-  /// The bias contains \f$b_i, b_f, b_c, b_o\f$ and \f$W_{ci}, W_{cf}, W_{co}\f$.
+  /// The bias contains \f$b_i, b_f, b_c, b_o\f$ and \f$W_{ci}, W_{cf},
+  /// W_{co}\f$.
   std::unique_ptr<Weight> bias_;
   /// The reeal bias, point to \f$b_i, b_f, b_c, b_o\f$.
   MatrixPtr localBias_;

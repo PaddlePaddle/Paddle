@@ -61,7 +61,7 @@ class BaseSGDOptimizer(Optimizer):
 
     ..  math::
 
-        w:= w - \\eta \\nabla Q(w) = w - \\eta \\sum_{i}^{n} \\nabla Q_i(w)
+        w = w - \\eta \\nabla Q(w) = w - \\eta \\sum_{i}^{n} \\nabla Q_i(w)
 
     where :math:`\\eta` is learning rate. And :math:`n` is batch size.
 
@@ -99,9 +99,9 @@ class AdamOptimizer(BaseSGDOptimizer):
 
     ..  math::
 
-        m(w, t) &:= \\beta_1 m(w, t-1) + (1 - \\beta_1) \\nabla Q_i(w) \\\\
-        v(w, t) &:= \\beta_2 v(w, t-1) + (1 - \\beta_2)(\\nabla Q_i(w)) ^2 \\\\
-        w &:= w - \\frac{\\eta}{\\sqrt{v(w,t) + \\epsilon}}
+        m(w, t) & = \\beta_1 m(w, t-1) + (1 - \\beta_1) \\nabla Q_i(w) \\\\
+        v(w, t) & = \\beta_2 v(w, t-1) + (1 - \\beta_2)(\\nabla Q_i(w)) ^2 \\\\
+        w & = w - \\frac{\\eta}{\\sqrt{v(w,t) + \\epsilon}}
 
     :param beta1: the :math:`\\beta_1` in equation.
     :type beta1: float
@@ -136,11 +136,12 @@ class AdamaxOptimizer(BaseSGDOptimizer):
 
     The details of please refer this `Adam: A Method for Stochastic Optimization
     <https://arxiv.org/abs/1412.6980>`_
+
     ..  math::
 
-        m_t &:= \\beta_1 * m_{t-1} + (1-\\beta_1)* \\nabla Q_i(w) \\\\
-        u_t &:= max(\\beta_2*u_{t-1}, abs(\\nabla Q_i(w))) \\\\
-        w_t &:= w_{t-1} - (\\eta/(1-\\beta_1^t))*m_t/u_t
+        m_t & = \\beta_1 * m_{t-1} + (1-\\beta_1)* \\nabla Q_i(w) \\\\
+        u_t & = max(\\beta_2*u_{t-1}, abs(\\nabla Q_i(w))) \\\\
+        w_t & = w_{t-1} - (\\eta/(1-\\beta_1^t))*m_t/u_t
 
     :param beta1: the :math:`\\beta_1` in the equation.
     :type beta1: float
@@ -175,7 +176,7 @@ class AdaGradOptimizer(BaseSGDOptimizer):
     ..  math::
 
         G &= \\sum_{\\tau=1}^{t} g_{\\tau} g_{\\tau}^T \\\\
-        w &:= w - \\eta diag(G)^{-\\frac{1}{2}} \\circ g
+        w & = w - \\eta diag(G)^{-\\frac{1}{2}} \\circ g
     """
 
     def to_setting_kwargs(self):
@@ -197,8 +198,8 @@ class RMSPropOptimizer(BaseSGDOptimizer):
 
     ..  math::
 
-        v(w, t) &:= \\rho v(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
-        w &:= w - \\frac{\\eta} {\\sqrt{v(w,t) + \\epsilon}} \\nabla Q_{i}(w)
+        v(w, t) & = \\rho v(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
+        w & = w - \\frac{\\eta} {\\sqrt{v(w,t) + \\epsilon}} \\nabla Q_{i}(w)
 
     :param rho: the :math:`\\rho` in the equation. The forgetting factor.
     :type rho: float
