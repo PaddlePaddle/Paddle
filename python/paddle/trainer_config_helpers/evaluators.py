@@ -12,35 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Evaluator will evaluate the network status while training/testing.
-
-User can use evaluator by classify/regression job. For example.
-
-..  code-block:: python
-
-    classify(prediction, output, evaluator=classification_error_evaluator)
-
-And user could define evaluator separately as follow.
-
-..  code-block:: python
-
-    classification_error_evaluator("ErrorRate", prediction, label)
-
-The evaluator often contains a name parameter. It will also be printed when
-evaluating network. The printed information may look like the following.
-
-..  code-block:: text
-
-     Batch=200 samples=20000 AvgCost=0.679655 CurrentCost=0.662179 Eval:
-     classification_error_evaluator=0.4486
-     CurrentEval: ErrorRate=0.3964
-
-"""
 from paddle.trainer.config_parser import *
 from default_decorators import *
 
-__all__ = ["classification_error_evaluator", "auc_evaluator",
+__all__ = ["evaluator_base","classification_error_evaluator", "auc_evaluator",
            "pnpair_evaluator", "precision_recall_evaluator",
            "ctc_error_evaluator", "chunk_evaluator", "sum_evaluator",
            "column_sum_evaluator", "value_printer_evaluator",
@@ -97,6 +72,29 @@ def evaluator_base(
         num_results=1,
         delimited=True):
     """
+    Evaluator will evaluate the network status while training/testing.
+
+    User can use evaluator by classify/regression job. For example.
+
+    ..  code-block:: python
+
+        classify(prediction, output, evaluator=classification_error_evaluator)
+
+    And user could define evaluator separately as follow.
+
+    ..  code-block:: python
+
+        classification_error_evaluator("ErrorRate", prediction, label)
+
+    The evaluator often contains a name parameter. It will also be printed when
+    evaluating network. The printed information may look like the following.
+
+    ..  code-block:: text
+
+         Batch=200 samples=20000 AvgCost=0.679655 CurrentCost=0.662179 Eval:
+         classification_error_evaluator=0.4486
+         CurrentEval: ErrorRate=0.3964
+         
     :param input: Input layers, a object of LayerOutput or a list of
                   LayerOutput.
     :type input: list|LayerOutput

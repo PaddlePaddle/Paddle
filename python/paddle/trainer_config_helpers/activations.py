@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Paddle Supported Activations.
-
-Each activation inherit BaseActivation, which has two attributes.
-
-- name: activation name in paddle config.
-- support_hppl: True if supported by hppl. lstm layer can only use activations
-                supported by hppl (the name hppl will be revised later).
-"""
-
 __all__ = ["TanhActivation", "SigmoidActivation",
            "SoftmaxActivation", "IdentityActivation", "LinearActivation",
            'SequenceSoftmaxActivation',
@@ -31,7 +21,15 @@ __all__ = ["TanhActivation", "SigmoidActivation",
 
 class BaseActivation(object):
     """
-    A mark for activation class.
+    A mark for activation class. 
+    Each activation inherit BaseActivation, which has two parameters.
+     
+    :param name: activation name in paddle config.
+    :type name: basestring
+    :param support_hppl: True if supported by hppl. HPPL is a library used by paddle
+                         internally. Currently, lstm layer can only use activations
+                         supported by hppl.
+    :type support_hppl: bool
     """
 
     def __init__(self, name, support_hppl):

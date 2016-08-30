@@ -13,12 +13,6 @@
 # limitations under the License.
 
 """
-Pooling type that paddle supported. Note these pooling types are used for
-sequence input, not for images.
-
-Each PoolingType contains.
-
-- name: pooling layer type name used by paddle.
 """
 
 __all__ = [
@@ -32,7 +26,13 @@ __all__ = [
 
 class BasePoolingType(object):
     """
-    Base Pooling Type.
+    Base Pooling Type. 
+    Note these pooling types are used for sequence input, not for images.
+    Each PoolingType contains one parameter:
+
+    :param name: pooling layer type name used by paddle.
+    :type name: basestring
+
     """
     def __init__(self, name):
         self.name = name

@@ -9,5 +9,6 @@ User Guide
 * [User Interface](ui/index.md)
 * [Source Code Documents](source/index.md)
 * [Layer Documents](layer.md)
+* [Trainer Config Helpers](ui/api/trainer_config_helpers/index.md)
 * [Example and Demo](demo/index.md)
 * [Cluster Train](cluster/index.md)

@@ -13,27 +13,6 @@
 # limitations under the License.
 
 """
-The networks module contains pieces of neural network that combine multiple
-layers.
-
-The pieces are:
-
-- NLP
-
-  * Text Convolution component
-
-- Images
-
-  * Conv_Pool
-  * Conv_BatchNorm_Pool
-
-- Recurrent
-
-  * simple_lstm
-
-- Miscs
-
-  * dropout_layer
 
 """
 # from activations import *
