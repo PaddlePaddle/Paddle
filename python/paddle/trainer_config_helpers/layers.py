@@ -2617,7 +2617,6 @@ def tensor_layer(input, size, act=None, name=None,
     In this formular:
       - :math:`x_{1}`: the first input contains M elements.
       - :math:`x_{2}`: the second input contains N elements.
-      - y[out]: contains K elements.
       - :math:`y_{i}`: the i-th element of y.
       - :math:`W_{i}`: the i-th learned weight, shape if [M, N]
       - :math:`{x_{2}}^\mathrm{T}`: the transpose of :math:`x_{2}`.
@@ -2908,6 +2907,17 @@ def block_expand_layer(input,
     The number of time steps are outputH * outputW and the dimension of each
     time step is block_y * block_x * channel. This layer can be used after
     convolution neural network, and before recurrent neural network.
+
+    The simple usage is:
+
+    .. code-block:: python
+
+       block_expand = block_expand_layer(input,
+                                         channel=128,
+                                         stride_x=1,
+                                         stride_y=1,
+                                         block_x=1,
+                                         block_x=3)
 
     :param input: The input layer.
     :type input: LayerOutput

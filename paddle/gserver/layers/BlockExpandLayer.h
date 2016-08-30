@@ -24,13 +24,15 @@ namespace paddle {
  * @brief Expand feature map to minibatch matrix.
  * - matrix width is: blockH_ * blockW_ * channels_
  * - matirx height is: outputH_ * outputW_
+ *
  * \f[
- * outputH_ = 1 + (2 * paddingH_ + imgSizeH_ - blockH_ + strideH_ - 1) /
- *            strideH_;
- * outputW_ = 1 + (2 * paddingW_ + imgSizeW_ - blockW_ + strideW_ - 1) /
- *            strideW_;
+ * outputH\_ = 1 + (2 * paddingH\_ + imgSizeH\_ - blockH\_ + strideH\_ - 1) /
+ *             strideH\_ \\
+ * outputW\_ = 1 + (2 * paddingW\_ + imgSizeW\_ - blockW\_ + strideW\_ - 1) /
+ *             strideW\_
  * \f]
- * The expand method is same with ExpandConvLayer, but saved the transposed
+ *
+ * The expand method is the same with ExpandConvLayer, but saved the transposed
  * value. After expanding, output_.sequenceStartPositions will store timeline.
  * The number of time steps are outputH_ * outputW_ and the dimension of each
  * time step is blockH_ * blockW_ * channels_. This layer can be used after

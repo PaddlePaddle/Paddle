@@ -195,7 +195,6 @@ GruCompute
 ``````````
 ..  doxygenclass:: paddle::GruCompute
     :members:
-    
 
 Recurrent Layer Group
 =====================
