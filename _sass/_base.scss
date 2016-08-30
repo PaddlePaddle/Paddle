@@ -68,6 +68,10 @@ aside {
 }
 
 // Navigation
+.navbar {
+    min-height: 60px;
+}
+
 
 .navbar-default {
     background-color: white;
@@ -88,9 +92,8 @@ aside {
         > li {
             > a,
             > a:focus {
-                text-transform: uppercase;
                 font-weight: 700;
-                font-size: 13px;
+                font-size: 15px;
                 color: $theme-dark;
                 &:hover {
                     color: $theme-primary;
@@ -166,7 +169,6 @@ header {
         .header-content-inner {
             h1 {
                 font-weight: 700;
-                text-transform: uppercase;
                 margin-top: 0;
                 margin-bottom: 0;
             }
