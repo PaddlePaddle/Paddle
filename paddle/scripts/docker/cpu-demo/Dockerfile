@@ -1,11 +1,9 @@
-FROM ubuntu:14.04
+FROM ubuntu/ubuntu:14.04
 MAINTAINER PaddlePaddle Dev Team <paddle-dev@baidu.com>
 COPY build.sh /root/
-ENV LOWEST_DL_SPEED=0
 ENV WITH_GPU=OFF
 ENV IS_DEVEL=ON
 ENV WITH_DEMO=ON
 ENV PIP_INSTALL_ARGS ""
 ENV PIP_GENERAL_ARGS ""
-ENV CUDNN_DOWNLOAD_SUM 40d506d0a8a00a3faccce1433346806b8cd2535683b6f08a63683ce6e474419f
 RUN cd /root/ && bash build.sh
