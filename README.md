@@ -77,7 +77,7 @@ See [Installation Guide](http://paddlepaddle.org/doc/build/) to install from pre
 
 If you want to ask questions and discuss about methods and models, welcome
 to send email to paddle-dev@baidu.com. Framework development discussions and
-bug reports are collected on [Issues](https://github.com/paddle/paddle/issues).
+bug reports are collected on [Issues](https://github.com/baidu/paddle/issues).
 
 ## Copyright and License
 PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).
