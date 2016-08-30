@@ -80,7 +80,7 @@ protected:
    */
   inline bool iidData() const { return sequenceStartPositions_.empty(); }
 
-  // check that sample is consistent with header_
+  /// check that sample is consistent with header_
   void checkSample(const DataSample& sample);
 
   template <class Op>
@@ -129,14 +129,15 @@ protected:
 
   int64_t currentSequenceIndex_;
 
-  // The size should be the number of sequences.
+  /// The size should be the number of sequences.
   std::vector<size_t> shuffledSequenceIds_;
 
   ThreadLocalD<DataBatch> cpuBatch_;
   ThreadLocalD<DataBatch> gpuBatch_;
 
   RWLock lock_;
-  std::vector<StatPtr> nnzStats_;  // stats for number of none-zeros entries
+  // stats for number of none-zeros entries
+  std::vector<StatPtr> nnzStats_;
 };
 
 /**

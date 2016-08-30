@@ -1,20 +1,40 @@
-Gradient machines
-===================
-
-Networks
-------------
-.. doxygenfile:: paddle/gserver/gradientmachines/MultiNetwork.h
-.. doxygenfile:: paddle/gserver/gradientmachines/ParallelNeuralNetwork.h
-
 Gradient Machines
+================
+
+GradientMachine
+---------------------
+..  doxygenclass:: paddle::GradientMachine
+    :members:
+
+GradientMachineModel
 --------------------
-.. doxygenfile:: paddle/gserver/gradientmachines/GradientMachine.h
-.. doxygenfile:: paddle/gserver/gradientmachines/MultiGradientMachine.h
+..  doxygenclass:: paddle::IGradientMachineMode
+    :members:
+
+MultiGradientMachine
+---------------------
+..  doxygenclass:: paddle::MultiGradientMachine
+    :members:
+
+TrainerThread
+`````````````
+..  doxygenclass:: paddle::TrainerThread
+    :members:
 
 Recurrent Gradient Machines
------------------------------
-.. doxygenfile:: paddle/gserver/gradientmachines/RecurrentGradientMachine.h
-.. doxygenfile:: paddle/gserver/gradientmachines/RecurrentGradientMachine.cpp
+---------------------------
+..  doxygenclass:: paddle::RecurrentGradientMachine
+    :members:
 
+Networks
+========
 
+NeuralNetwork
+-------------
+..  doxygenclass:: paddle::NeuralNetwork
+    :members:
 
+ParallelNeuralNetwork
+---------------------
+..  doxygenclass:: paddle::ParallelNeuralNetwork
+    :members:

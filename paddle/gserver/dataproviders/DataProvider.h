@@ -118,10 +118,10 @@ public:
     data_.push_back(argu);
   }
 
-  /*
-   * argus: DataBatch.getStreams()
-   * size: DataBatch.getSize()
-   * dataId: sub dataprovider id (in MultiDataProvider)
+  /**
+   * @param argus: DataBatch.getStreams()
+   * @param size: DataBatch.getSize()
+   * @param dataId: sub dataprovider id (in MultiDataProvider)
    */
   void appendArguments(const std::vector<Argument>& argus, int size,
                        int dataId) {
@@ -312,22 +312,28 @@ public:
   }
 };
 
-// Data provider for one input and one integer label
+/**
+ * Data provider for one input and one integer label.
+ */
 class SimpleDataProviderBase : public DataProvider {
 protected:
-  int64_t sampleDim_;       // sample feature dimension
-  int64_t bufferCapacity_;  // the number of samples
+  /// sample feature dimension
+  int64_t sampleDim_;
+  /// the number of samples
+  int64_t bufferCapacity_;
   int64_t sampleNumInBuf_;
-  int64_t nextItemIndex_;  // next item to read in buffer
-  bool withInfo_;          // some user defined info for validation
+  /// next item to read in buffer
+  int64_t nextItemIndex_;
+  /// some user defined info for validation
+  bool withInfo_;
 
-  // data buffer: bufferCapacity_ * nDataDim_
+  /// data buffer: bufferCapacity_ * nDataDim_
   CpuMatrixPtr hInputDataBuf_;
 
-  // label buffer:bufferCapacity_ * 1
+  /// label buffer:bufferCapacity_ * 1
   CpuIVectorPtr hInputLabelBuf_;
 
-  // info buffer:bufferCapacity_ * 1
+  /// info buffer:bufferCapacity_ * 1
   CpuIVectorPtr hInputInfoBuf_;
 
   ThreadLocal<MatrixPtr> dataBatch_;
@@ -348,7 +354,7 @@ public:
 
   virtual int64_t getNextBatchInternal(int64_t size, DataBatch* batch);
 
-  // return the number of samples in the buffer
+  /// return the number of samples in the buffer
   int64_t fillBuffer();
 
 protected:

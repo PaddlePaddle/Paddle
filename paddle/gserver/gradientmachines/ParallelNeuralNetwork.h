@@ -67,7 +67,8 @@ public:
 
 protected:
   bool useGpu_;
-  int numDevices_; /* number of gpu devices */
+  /// number of gpu devices
+  int numDevices_;
   std::vector<std::unique_ptr<ParallelThread>> threads_;
 };
 
@@ -97,11 +98,14 @@ public:
   JobQueue queue_;
 
 protected:
-  int threadId_;  // from 0 to #threads-1
-  int deviceId_;  // the GPU device Id which the computeThread_ used
+  /// from 0 to threads-1
+  int threadId_;
+  /// the GPU device Id which the computeThread_ used
+  int deviceId_;
   bool useGpu_;
   std::unique_ptr<std::thread> computeThread_;
-  bool stopping_;  // whether the thread should stop
+  /// whether the thread should stop
+  bool stopping_;
   UpdateCallback backwardCallback_;
   PassType passType_;
 };

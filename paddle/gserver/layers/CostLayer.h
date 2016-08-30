@@ -53,8 +53,13 @@ protected:
   real coeff_;
 };
 
-/*
- * MultiClassCrossEntropy
+/**
+ * The cross-entropy loss for multi-class classification task.
+ * The loss function is:
+ *
+ * \f[
+ * L = - \sum_{i}{t_{k} * log(P(y=k))}
+ * \f]
  */
 class MultiClassCrossEntropy : public CostLayer {
 public:
@@ -68,9 +73,20 @@ public:
   void backwardImp(Matrix& outputValue, Argument& label, Matrix& outputGrad);
 };
 
-/*
- * MultiClassCrossEntropyWithSelfNorm
- * \sum_i (-log(x_label(i)) + alpha * log(Z(i)^2)
+/**
+ * The cross-entropy with self-normalization for multi-class classification.
+ *
+ * The loss function is:
+ * \f[
+ * L = \sum_{i}[-log(P(x_{i})) + alpha * log(Z(x_{i})^2)]
+ * \f]
+ *
+ * The \f$Z(x)\f$ is the softmax normalizer.
+ *
+ * [1] Jacob Devlin, Rabih Zbib, Zhongqiang Huang, Thomas Lamar,
+ *     Richard Schwartz, and John Makhoul. Fast and robust neural
+ *     network joint models for statistical machine translation.
+ *     In Proceedings of the ACL 2014 Conference.
  */
 class MultiClassCrossEntropyWithSelfNorm : public CostLayer {
 public:
@@ -88,9 +104,11 @@ protected:
   MatrixPtr sumInv_;
 };
 
-/*
- * SoftBinaryClassCrossEntropy
- *  \sum_i (\sum_j -y_j(i)*log(x_j(i))-(1-y_j(i))*log(1-x_j(i)))
+/**
+ * The cross-entropy for soft binary class.
+ * \f[
+ * L = \sum_i (\sum_j -y_j(i)*log(x_j(i))-(1-y_j(i))*log(1-x_j(i)))
+ * \f]
  */
 class SoftBinaryClassCrossEntropy : public CostLayer {
 public:
@@ -107,6 +125,13 @@ protected:
   MatrixPtr targetPerDim_;
 };
 
+/**
+ * This cost layer compute Euclidean (L2) loss for real-valued regression
+ * tasks.
+ * \f[
+ * L = \frac{1}{2N} \sum_{i=1}^N {|| \hat{y}_i - y_i||_2^2}
+ * \f]
+ */
 class SumOfSquaresCostLayer : public CostLayer {
 public:
   explicit SumOfSquaresCostLayer(const LayerConfig& config)
@@ -119,8 +144,17 @@ public:
   void backwardImp(Matrix& outputValue, Argument& label, Matrix& outputGrad);
 };
 
-/*
- * RankingCost
+/**
+ * A cost layer for learning to rank (LTR) task. This layer contains at leat
+ * three inputs.
+ * \f[
+ *  C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + log(1 + e^{o_{i,j}}) \\
+ *  o_{i,j} =  o_i - o_j  \\
+ *  \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
+ * \f]
+ *
+ * [1]. Chris Burges, Tal Shaked, Erin Renshaw, et al. Learning to
+ *      Rank useing Gradient Descent.
  */
 class RankingCost : public Layer {
 public:
@@ -155,12 +189,25 @@ private:
   double negPairCount_;
   MatrixPtr margin_;
   MatrixPtr marginGrad_;
-  // if input label is put in ids (not value), copy to this buffer.
+  /// if input label is put in ids (not value), copy to this buffer.
   MatrixPtr labelBuf_;
   LayerPtr weightLayer_;
 };
 
-/* lambdaRank listwise LTR approach */
+/**
+ * LambdaRank os a method for learning arbitrary information retrieval
+ * measures. It can be applied to any algorithm that learns through gradient
+ * descent. LambdaRank is a listwise method, in that the cost depends on the
+ * sorted order of the documents. LambdaRank gives the gradient of cost
+ * function:
+ *
+ * \f[
+ * \lambda_{ij} = \frac{1}{1 + e^{o_i - o_j}} \left| \Delta_{NDCG} \right|
+ * \f]
+ *
+ * [1] Christopher J.C. Burges, Robert Ragno, Quoc Viet Le. Learning to Rank
+ *     with Nonsmooth Cost Functions.
+ */
 class LambdaCost : public Layer {
 public:
   explicit LambdaCost(const LayerConfig& config) : Layer(config) {}
@@ -191,9 +238,11 @@ private:
 };
 
 /**
- * Cross entropy for multi binary labels
- * cost[i] = -sum(label[i][j]*log(output[i][j])
- *                + (1-label[i][j])*log(1-output[i][j]))
+ * Cross entropy for multi binary labels.
+ * \f[
+ * cost[i] = -sum(label[i][j]*log(output[i][j]) +
+ *            (1-label[i][j])*log(1-output[i][j]))
+ * \f]
  */
 class MultiBinaryLabelCrossEntropy : public CostLayer {
 protected:
@@ -210,13 +259,18 @@ public:
   void backwardImp(Matrix& outputValue, Argument& label, Matrix& outputGrad);
 };
 
-/*
- * Huber loss for robust 2-classes classification
+/**
+ * Huber loss for robust 2-classes classification.
  *
  * For label={0, 1}, let y=2*label-1. Given output f, the loss is:
- * -4*y*f, if y*f < -1
- * (1-y*f)^2, if -1 < y*f < 1,
- * 0, otherwise
+ * \f[
+ * Loss =
+ * \left\{\begin{matrix}
+ *  4 * y * f     &   \textit{if}  \ \  y* f < -1 \\
+ *  (1 - y * f)^2 &  \textit{if}   \ \  -1 < y * f < 1  \\
+ *  0             &                    \textit{otherwise}
+ * \end{matrix}\right.
+ * \f]
  */
 class HuberTwoClass : public CostLayer {
   std::vector<Argument> tmpCpuInput_;

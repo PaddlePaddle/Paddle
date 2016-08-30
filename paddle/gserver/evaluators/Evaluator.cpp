@@ -1000,20 +1000,34 @@ REGISTER_EVALUATOR(max_frame_printer, MaxFramePrinter);
 /**
  * Sequence text printer will print text according to index matrix and a
  * dictionary. There can be multiple input to this layer:
+ *
  *   1) If there is only one input, the input must be a matrix containing
  *      the sequence of indices;
+ *
  *   2) If there are more than one input, the first input should be ids,
  *      and are interpreted as sample ids.
  *
  * The output format will be:
+ *
  *   1) sequence without sub-sequence, and there is probability.
+ *
+ *     @code
  *      id \t prob space_seperated_tokens_from_dictionary_according_to_seq
+ *     @endcode
+ *
  *   2) sequence without sub-sequence, and there is not probability.
+ *
+ *     @code
  *      id \t space_seperated_tokens_from_dictionary_according_to_seq
+ *     @endcode
+ *
  *   3) sequence with sub-sequence, and there is not probability.
+ *
+ *     @code
  *      id \t space_seperated_tokens_from_dictionary_according_to_sub_seq
  *      \t \t space_seperated_tokens_from_dictionary_according_to_sub_seq
  *      ...
+ *     @endcode
  *
  * Typically SequenceTextPrinter layer takes output of maxid or RecurrentGroup
  * with maxid (when generating) as an input.

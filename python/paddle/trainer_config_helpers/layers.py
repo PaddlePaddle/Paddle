@@ -3083,7 +3083,7 @@ following are cost Layers.
 @wrap_name_default()
 def rank_cost(left, right, lable, weight=None, name=None, coeff=1.0):
     """
-    A cost Layer for leanrning to rank using gradient descent. Details can refer
+    A cost Layer for learning to rank using gradient descent. Details can refer
     to `papers <http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf>`_.
     This layer contains at least three inputs. The weight is an optional
     argument, which affects the cost.

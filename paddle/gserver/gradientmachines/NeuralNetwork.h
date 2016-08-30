@@ -66,12 +66,15 @@ public:
                                                       PARAMETER_MOMENTUM},
       bool useGpu = FLAGS_use_gpu);
 
-  // connect two submodels
-  // down-submodel's output become up-submodel's input
-  // *realLayer* is down-submodel's output layer
-  // *agentLayer* is up-submodel's input agent layer
-  // by default, connection is one by one,
-  // if the agent height is smaller than real layer, *height* has to be filled
+  /**
+   * Connect two submodels and
+   * down-submodel's output become up-submodel's input.
+   * By default, connection is one by one,
+   * If the agent height is smaller than real layer, *height* has to be filled.
+   *
+   * @param realLayer  The down-submodel's output layer.
+   * @param agentLayer The up-submodel's input agent layer.
+   */
   static void connect(LayerPtr agentLayer, LayerPtr realLayer, int height = 0);
   void connect(std::string agentLayerName, NeuralNetwork* srcNN,
                std::string realLayerName);
@@ -98,10 +101,10 @@ public:
   virtual void resetState();
   virtual void setOutputGrad(const std::vector<Argument>& args);
 
-  // set machine state
+  /// set machine state
   virtual void setState(const MachineState& machineState);
 
-  // get machine state
+  /// get machine state
   virtual void getState(MachineState& machineState);
 
   static NeuralNetwork* create(const ModelConfig& config);
@@ -126,8 +129,14 @@ public:
                                         NeuralNetwork* rootNetwork = nullptr);
 
 protected:
-  // rootNetwork: used in MultiNetwork
-  // sub networks can get parameters_ and parameterMap_ from base NeuralNetwork
+  /**
+   * The constructor of NeuralNetwork.
+   * The sub networks can get parameters_ and parameterMap_
+   * from base NeuralNetwork.
+   *
+   * @param subModelName The name of sub-model.
+   * @param rootNetwork  It used in MultiNetwork.
+   */
   NeuralNetwork(std::string subModelName = "",
                 NeuralNetwork* rootNetwork = nullptr)
       : subModelName_(subModelName),
@@ -146,8 +155,8 @@ protected:
 
   NeuralNetwork* rootNetwork_;
 
-  // Whether parameter of this NN is initialized by its own
-  // (i.e., not by callback supplied with the caller)
+  /// Whether parameter of this NN is initialized by its own
+  /// (i.e., not by callback supplied with the caller)
   bool paramSelfInited_;
 };
 

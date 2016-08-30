@@ -68,7 +68,7 @@ public:
     numSamples_ += arguments[0].getBatchSize();
   }
 
-  // finish() should be called before distributeEval
+  /// finish() should be called before distributeEval
   virtual void distributeEval(ParameterClient2* client) {
     LOG(FATAL) << "Not implemeted";
   }
@@ -85,7 +85,7 @@ public:
    */
   virtual void finish() {}
 
-  // finish() should be called before printStats
+  /// finish() should be called before printStats
   virtual void printStats(std::ostream& os) {
     os << config_.name() << "="
        << (numSamples_ ? totalScore_ / numSamples_ : 0);
@@ -130,9 +130,9 @@ public:
   /**
    * @brief evaluate AUC using colIdx-th column as prediction.
    *
-   * colIdx = 0: the 0-th column.
-   * colIdx > 0: the colIdx-th column.
-   * colIdx < 0: the last colIdx-th column.
+   * - colIdx = 0: the 0-th column.
+   * - colIdx > 0: the colIdx-th column.
+   * - colIdx < 0: the last colIdx-th column.
    *
    */
   AucEvaluator(int32_t colIdx)
@@ -223,10 +223,14 @@ public:
   virtual void distributeEval(ParameterClient2* client);
 
   struct StatsInfo {
-    double TP;  // numbers of true positives
-    double TN;  // numbers of true negatives
-    double FP;  // numbers of false positives
-    double FN;  // numbers of false negatives
+    /// numbers of true positives
+    double TP;
+    /// numbers of true negatives
+    double TN;
+    /// numbers of false positives
+    double FP;
+    /// numbers of false negatives
+    double FN;
 
     StatsInfo() : TP(0.0), TN(0.0), FP(0.0), FN(0.0) {}
   };

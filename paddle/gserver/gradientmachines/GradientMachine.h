@@ -247,7 +247,7 @@ public:
   virtual void restart() {}
 
 
-  // Set the gradient of the output from outside.
+  /// Set the gradient of the output from outside.
   virtual void setOutputGrad(const std::vector<Argument>& args) {
     LOG(FATAL) << "Not implemented!";
   }
