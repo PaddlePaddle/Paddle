@@ -70,7 +70,7 @@ sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
 Then you need to set LD\_LIBRARY\_PATH, CUDA\_HOME and PATH environment variables in ~/.bashrc.
 
 ```bash
-export LD_LIBARAY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export CUDA_HOME=/usr/local/cuda
 export PATH=/usr/local/cuda/bin:$PATH
 ```
