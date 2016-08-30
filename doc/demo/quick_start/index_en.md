@@ -395,7 +395,7 @@ paddle train \
 --use_gpu=false
 ```
 
-If you want to install the remote training platform, which enables distributed training on clusters, follow the instructions here: <a href = "../../platform/index.html">Platform</a> documentation. We do not provide examples on how to train on clusters. Please refer to other demos or platform training documentation for mode details on training on clusters.
+If you want to install the remote training platform, which enables distributed training on clusters, follow the instructions here: <a href = "../../cluster/index.html">Platform</a> documentation. We do not provide examples on how to train on clusters. Please refer to other demos or platform training documentation for mode details on training on clusters.
 ## Inference
 You can use the trained model to perform prediction on the dataset with no labels. You can also evaluate the model on dataset with labels to obtain its test accuracy.
 <center> ![](./PipelineTest_en.png) </center>
@@ -410,7 +410,7 @@ paddle train \
 --init_model_path=./output/pass-0000x
 ```
 
-We will give an example of performing prediction using Recurrent model on a dataset with no labels. You can refer to: <a href = "../../ui/predict/swig_py_paddle.html">Python Prediction API</a> tutorial，or other <a href = "../../demo/index.html">demo</a> for the prediction process using Python. You can also use the following script for inference or evaluation.
+We will give an example of performing prediction using Recurrent model on a dataset with no labels. You can refer to: <a href = "../../ui/predict/swig_py_paddle_en.html">Python Prediction API</a> tutorial，or other <a href = "../../demo/index.html">demo</a> for the prediction process using Python. You can also use the following script for inference or evaluation.
 
 inference script (predict.sh)：
 

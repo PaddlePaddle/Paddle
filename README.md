@@ -49,7 +49,7 @@ See [Installation Guide](http://paddlepaddle.org/doc/build/) to install from pre
 ## Documentation
 - [Chinese Documentation](http://paddlepaddle.org/doc_cn/) <br>
 
-- [Quick Start](http://paddlepaddle.org/doc/demo/quick_start/) <br>
+- [Quick Start](http://paddlepaddle.org/doc/demo/quick_start/index_en) <br>
    You can follow the quick start tutorial to learn how use PaddlePaddle
    step-by-step.
     
