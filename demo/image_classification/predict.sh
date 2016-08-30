@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright (c) 2016 Baidu, Inc. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,17 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+set -e
 
-import os
-import numpy as np
-from optparse import OptionParser
-
-from py_paddle import swig_paddle, util, DataProviderWrapperConverter
-from paddle.trainer.PyDataProviderWrapper import DenseSlot
-from paddle.trainer.config_parser import parse_config
-
-
-
-"""
-Will merge predictor from Qingqing.
-"""
+model=cifar_vgg_model/pass-00299/
+image=data/cifar-out/test/airplane/seaplane_s_000978.png
+use_gpu=1
+python prediction.py $model $image $use_gpu

@@ -170,8 +170,19 @@ After training finishes, the training and testing error curve will be saved to `
 ## Prediction
 After we train the model, the model file as well as the model parameters are stored in path `./cifar_vgg_model/pass-%05d`. For example, the model of the 300-th pass is stored at `./cifar_vgg_model/pass-00299`.
 
-To make a prediction for an image, such as `test.jpg`,  one can run `sh classify.sh ./cifar_vgg_model/pass-00299 test.jpg`. The script will output the label of the classfiication.
+To make a prediction for an image, one can run `predict.sh` as follows. The script will output the label of the classfiication.
 
+```
+sh predict.sh
+```
+
+predict.sh:
+```
+model=cifar_vgg_model/pass-00299/
+image=data/cifar-out/test/airplane/seaplane_s_000978.png
+use_gpu=1
+python prediction.py $model $image $use_gpu
+```
 
 ## Exercise
 Train a image classification of birds using VGG model and CUB-200 dataset. The birds dataset can be downloaded here. It contains an image dataset with photos of 200 bird species (mostly North American).
