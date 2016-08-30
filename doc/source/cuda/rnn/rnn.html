@@ -1,0 +1,986 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Neural Networks &mdash; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="RNN" href="index.html" />
+    <link rel="next" title="Utils" href="../utils/index.html" />
+    <link rel="prev" title="RNN" href="index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../utils/index.html" title="Utils"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="RNN"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">RNN</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="neural-networks">
+<h1>Neural Networks<a class="headerlink" href="#neural-networks" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="base">
+<h2>Base<a class="headerlink" href="#base" title="Permalink to this headline">¶</a></h2>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv221hl_shrink_col2featurePK4real6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_tP4real4real4real">
+<span id="hl_shrink_col2feature__realCP.s.s.s.s.s.s.s.s.s.s.s.realP.real.real"></span><span class="target" id="paddlehl__cnn_8h_1a0c203a19e471a162989ce8798d398e5c"></span>void <code class="descname">hl_shrink_col2feature</code><span class="sig-paren">(</span><em class="property">const</em> real *<em>dataCol</em>, size_t <em>channels</em>, size_t <em>height</em>, size_t <em>width</em>, size_t <em>blockH</em>, size_t <em>blockW</em>, size_t <em>strideH</em>, size_t <em>strideW</em>, size_t <em>paddingH</em>, size_t <em>paddingW</em>, size_t <em>outputH</em>, size_t <em>outputW</em>, real *<em>dataIm</em>, real <em>alpha</em> = 1.0f, real <em>beta</em> = 0.0f<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv221hl_shrink_col2featurePK4real6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_tP4real4real4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shrink column to feature. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">dataCol</span></code> - <p>expand data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">channels</span></code> - <p>number of channel. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">blockH</span></code> - <p>filter height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">blockW</span></code> - <p>filter width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">strideH</span></code> - <p>stride height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">strideW</span></code> - <p>stride width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingH</span></code> - <p>padding height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingW</span></code> - <p>padding width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outputH</span></code> - <p>output height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outputW</span></code> - <p>output width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">dataIm</span></code> - <p>output image data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p></p>
+</li>
+<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p></p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv221hl_expand_feature2colPK4real6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_tP4real">
+<span id="hl_expand_feature2col__realCP.s.s.s.s.s.s.s.s.s.s.s.realP"></span><span class="target" id="paddlehl__cnn_8h_1a1e99cd0e40ae75f98ea606428c8bbc79"></span>void <code class="descname">hl_expand_feature2col</code><span class="sig-paren">(</span><em class="property">const</em> real *<em>dataIm</em>, size_t <em>channels</em>, size_t <em>height</em>, size_t <em>width</em>, size_t <em>blockH</em>, size_t <em>blockW</em>, size_t <em>strideH</em>, size_t <em>strideW</em>, size_t <em>paddingH</em>, size_t <em>paddingW</em>, size_t <em>outputH</em>, size_t <em>outputW</em>, real *<em>dataCol</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv221hl_expand_feature2colPK4real6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_t6size_tP4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Expand feature to column. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">dataIm</span></code> - <p>input image data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">channels</span></code> - <p>number of channel. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">blockH</span></code> - <p>filter height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">blockW</span></code> - <p>filter width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">strideH</span></code> - <p>stride height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">strideW</span></code> - <p>stride width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingH</span></code> - <p>padding height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingW</span></code> - <p>padding width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outputH</span></code> - <p>output height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outputW</span></code> - <p>output width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">dataCol</span></code> - <p>expand data. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv218hl_maxpool_forwardiPK4realiiiiiiiiP4real">
+<span id="hl_maxpool_forward__i.realCP.i.i.i.i.i.i.i.i.realP"></span><span class="target" id="paddlehl__cnn_8h_1a61a9d289929ea007f91afe838044f38d"></span>void <code class="descname">hl_maxpool_forward</code><span class="sig-paren">(</span>int <em>frameCnt</em>, <em class="property">const</em> real *<em>inputData</em>, int <em>channels</em>, int <em>height</em>, int <em>width</em>, int <em>pooledH</em>, int <em>pooledW</em>, int <em>sizeX</em>, int <em>stride</em>, int <em>start</em>, real *<em>tgtData</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_maxpool_forwardiPK4realiiiiiiiiP4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum pool forward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">frameCnt</span></code> - <p>batch size of input image. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">inputData</span></code> - <p>input data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">channels</span></code> - <p>number of channel. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">pooledH</span></code> - <p>output image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">pooledW</span></code> - <p>output image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>size of pooling window. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">stride</span></code> - <p>pooling stride. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">start</span></code> - <p>pooling start. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">tgtData</span></code> - <p>output data. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv219hl_maxpool_backwardiPK4realPK4realPK4realiiiiiiiiP4real4real4real">
+<span id="hl_maxpool_backward__i.realCP.realCP.realCP.i.i.i.i.i.i.i.i.realP.real.real"></span><span class="target" id="paddlehl__cnn_8h_1a7642be21b22025cfeebaad3d54b89b65"></span>void <code class="descname">hl_maxpool_backward</code><span class="sig-paren">(</span>int <em>frameCnt</em>, <em class="property">const</em> real *<em>inputData</em>, <em class="property">const</em> real *<em>outData</em>, <em class="property">const</em> real *<em>outGrad</em>, int <em>channels</em>, int <em>height</em>, int <em>width</em>, int <em>pooledH</em>, int <em>pooledW</em>, int <em>sizeX</em>, int <em>stride</em>, int <em>start</em>, real *<em>targetGrad</em>, real <em>scaleA</em>, real <em>scaleB</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_maxpool_backwardiPK4realPK4realPK4realiiiiiiiiP4real4real4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum pool backward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">frameCnt</span></code> - <p>batch size of input image. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">inputData</span></code> - <p>input data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outData</span></code> - <p>output data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outGrad</span></code> - <p>output grad data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">channels</span></code> - <p>number of channel. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">pooledH</span></code> - <p>output image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">pooledW</span></code> - <p>output image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>size of pooling window. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">stride</span></code> - <p>pooling stride. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">start</span></code> - <p>pooling start. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">targetGrad</span></code> - <p>output grad. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">scaleA</span></code> - <p>scale. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">scaleB</span></code> - <p>scale. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv218hl_avgpool_forwardiPK4realiiiiiiiiP4real">
+<span id="hl_avgpool_forward__i.realCP.i.i.i.i.i.i.i.i.realP"></span><span class="target" id="paddlehl__cnn_8h_1a54bb6d607410b752ab0119e534652a24"></span>void <code class="descname">hl_avgpool_forward</code><span class="sig-paren">(</span>int <em>frameCnt</em>, <em class="property">const</em> real *<em>inputData</em>, int <em>channels</em>, int <em>height</em>, int <em>width</em>, int <em>pooledH</em>, int <em>pooledW</em>, int <em>sizeX</em>, int <em>stride</em>, int <em>start</em>, real *<em>tgtData</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_avgpool_forwardiPK4realiiiiiiiiP4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Averge pool forward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">frameCnt</span></code> - <p>batch size of input image. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">inputData</span></code> - <p>input data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">channels</span></code> - <p>number of channel. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">pooledH</span></code> - <p>output image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">pooledW</span></code> - <p>output image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>size of pooling window. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">stride</span></code> - <p>pooling stride. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">start</span></code> - <p>pooling start. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">tgtData</span></code> - <p>output data. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv219hl_avgpool_backwardiPK4realiiiiiiiiP4real4real4real">
+<span id="hl_avgpool_backward__i.realCP.i.i.i.i.i.i.i.i.realP.real.real"></span><span class="target" id="paddlehl__cnn_8h_1a43773146d2f15b0c321e712394efcd75"></span>void <code class="descname">hl_avgpool_backward</code><span class="sig-paren">(</span>int <em>frameCnt</em>, <em class="property">const</em> real *<em>outGrad</em>, int <em>channels</em>, int <em>height</em>, int <em>width</em>, int <em>pooledH</em>, int <em>pooledW</em>, int <em>sizeX</em>, int <em>stride</em>, int <em>start</em>, real *<em>backGrad</em>, real <em>scaleA</em>, real <em>scaleB</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_avgpool_backwardiPK4realiiiiiiiiP4real4real4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum pool backward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">frameCnt</span></code> - <p>batch size of input image. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outGrad</span></code> - <p>input data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">channels</span></code> - <p>number of channel. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">pooledH</span></code> - <p>output image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">pooledW</span></code> - <p>output image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>size of pooling window. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">stride</span></code> - <p>pooling stride. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">start</span></code> - <p>pooling start. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">backGrad</span></code> - <p>output grad. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">scaleA</span></code> - <p>scale. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">scaleB</span></code> - <p>scale. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv218hl_CMRNorm_forward6size_tPK4realP4realP4real6size_t6size_t6size_t6size_t4real4real">
+<span id="hl_CMRNorm_forward__s.realCP.realP.realP.s.s.s.s.real.real"></span><span class="target" id="paddlehl__cnn_8h_1afd9a2bc745c54a20ca7b4cc9e5988f90"></span>void <code class="descname">hl_CMRNorm_forward</code><span class="sig-paren">(</span>size_t <em>frameCnt</em>, <em class="property">const</em> real *<em>in</em>, real *<em>scale</em>, real *<em>out</em>, size_t <em>channels</em>, size_t <em>height</em>, size_t <em>width</em>, size_t <em>sizeX</em>, real <em>alpha</em>, real <em>beta</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_CMRNorm_forward6size_tPK4realP4realP4real6size_t6size_t6size_t6size_t4real4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cross-map-respose normalize forward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">frameCnt</span></code> - <p>batch size of input image. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">in</span></code> - <p>input data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">scale</span></code> - <p>buffer. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">out</span></code> - <p>output data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">channels</span></code> - <p>number of channel. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>size. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scale. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scale. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv219hl_CMRNorm_backward6size_tPK4realPK4realPK4realPK4realP4real6size_t6size_t6size_t6size_t4real4real">
+<span id="hl_CMRNorm_backward__s.realCP.realCP.realCP.realCP.realP.s.s.s.s.real.real"></span><span class="target" id="paddlehl__cnn_8h_1ad19e0cb99876c92726144f707032ea46"></span>void <code class="descname">hl_CMRNorm_backward</code><span class="sig-paren">(</span>size_t <em>frameCnt</em>, <em class="property">const</em> real *<em>inV</em>, <em class="property">const</em> real *<em>scale</em>, <em class="property">const</em> real *<em>outV</em>, <em class="property">const</em> real *<em>outDiff</em>, real *<em>inDiff</em>, size_t <em>channels</em>, size_t <em>height</em>, size_t <em>width</em>, size_t <em>sizeX</em>, real <em>alpha</em>, real <em>beta</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_CMRNorm_backward6size_tPK4realPK4realPK4realPK4realP4real6size_t6size_t6size_t6size_t4real4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cross-map-respose normalize backward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">frameCnt</span></code> - <p>batch size of input image. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">inV</span></code> - <p>input data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">scale</span></code> - <p>buffer. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outV</span></code> - <p>output value. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outDiff</span></code> - <p>output grad. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">inDiff</span></code> - <p>input grad. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">channels</span></code> - <p>number of channel. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>image height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>size. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scale. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scale. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Defines</p>
+<dl class="macro">
+<dt id="c.SIGMOID_THRESHOLD_MIN">
+<span class="target" id="paddlehl__functions_8h_1a8d1f4d3c4fc806e1ef3c9626ecdaf0e5"></span><code class="descname">SIGMOID_THRESHOLD_MIN</code><a class="headerlink" href="#c.SIGMOID_THRESHOLD_MIN" title="Permalink to this definition">¶</a></dt>
+<dd><p>sigmoid threshold maximum </p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.SIGMOID_THRESHOLD_MAX">
+<span class="target" id="paddlehl__functions_8h_1a7159c42ec9c6c55dd04a04e90a230d10"></span><code class="descname">SIGMOID_THRESHOLD_MAX</code><a class="headerlink" href="#c.SIGMOID_THRESHOLD_MAX" title="Permalink to this definition">¶</a></dt>
+<dd><p>sigmoid threshold minimum </p>
+</dd></dl>
+
+</div>
+<dl class="type">
+<dt id="_CPPv24hppl">
+<span id="hppl"></span><span class="target" id="paddlenamespacehppl"></span><em class="property">namespace </em><code class="descname">hppl</code><a class="headerlink" href="#_CPPv24hppl" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv2N4hppl4reluEK4real">
+<span id="hppl::relu__realC"></span><span class="target" id="paddlenamespacehppl_1ab484790b12dd8438fc5aa4ecf53e4cb8"></span>real <code class="descname">relu</code><span class="sig-paren">(</span><em class="property">const</em> real <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl4reluEK4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl7sigmoidEK4real">
+<span id="hppl::sigmoid__realC"></span><span class="target" id="paddlenamespacehppl_1ae0e45815e071558f9c7f4ca28a1e51fe"></span>real <code class="descname">sigmoid</code><span class="sig-paren">(</span><em class="property">const</em> real <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl7sigmoidEK4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl4tanhEK4real">
+<span id="hppl::tanh__realC"></span><span class="target" id="paddlenamespacehppl_1a65bbdf55e34ecc758ecc02deee1b0a08"></span>real <code class="descname">tanh</code><span class="sig-paren">(</span><em class="property">const</em> real <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl4tanhEK4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl6linearEK4real">
+<span id="hppl::linear__realC"></span><span class="target" id="paddlenamespacehppl_1a958b779479dbab8594fd637d1ca095d2"></span>real <code class="descname">linear</code><span class="sig-paren">(</span><em class="property">const</em> real <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl6linearEK4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl4reluEK4realK4real">
+<span id="hppl::relu__realC.realC"></span><span class="target" id="paddlenamespacehppl_1a5c4661516a4faaf830e5c696a0f8ce01"></span>real <code class="descname">relu</code><span class="sig-paren">(</span><em class="property">const</em> real <em>a</em>, <em class="property">const</em> real <em>b</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl4reluEK4realK4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl7sigmoidEK4realK4real">
+<span id="hppl::sigmoid__realC.realC"></span><span class="target" id="paddlenamespacehppl_1a59190951a29364efa072a73f1d5eecbc"></span>real <code class="descname">sigmoid</code><span class="sig-paren">(</span><em class="property">const</em> real <em>a</em>, <em class="property">const</em> real <em>b</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl7sigmoidEK4realK4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl4tanhEK4realK4real">
+<span id="hppl::tanh__realC.realC"></span><span class="target" id="paddlenamespacehppl_1a24b2c91476924b04f9004be255c18f20"></span>real <code class="descname">tanh</code><span class="sig-paren">(</span><em class="property">const</em> real <em>a</em>, <em class="property">const</em> real <em>b</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl4tanhEK4realK4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl6linearEK4realK4real">
+<span id="hppl::linear__realC.realC"></span><span class="target" id="paddlenamespacehppl_1a0e4a56b4983b6b28ce07fcf95ec34048"></span>real <code class="descname">linear</code><span class="sig-paren">(</span><em class="property">const</em> real <em>a</em>, <em class="property">const</em> real <em>b</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl6linearEK4realK4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv24hppl">
+<span id="hppl"></span><span class="target" id="paddlenamespacehppl"></span><em class="property">namespace </em><code class="descname">hppl</code><a class="headerlink" href="#_CPPv24hppl" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv2N4hppl4reluEK6__m256">
+<span id="hppl::relu____m256C"></span><span class="target" id="paddlenamespacehppl_1a83da095c31370cac641a5be6d9c6bf69"></span>__m256 <code class="descname">relu</code><span class="sig-paren">(</span><em class="property">const</em> __m256 <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl4reluEK6__m256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl7sigmoidEK6__m256">
+<span id="hppl::sigmoid____m256C"></span><span class="target" id="paddlenamespacehppl_1a1b1b2a0b499e70d617a61cd67295f348"></span>__m256 <code class="descname">sigmoid</code><span class="sig-paren">(</span><em class="property">const</em> __m256 <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl7sigmoidEK6__m256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl4tanhEK6__m256">
+<span id="hppl::tanh____m256C"></span><span class="target" id="paddlenamespacehppl_1a923ccde586dccaaad5bf00d17ca82dc7"></span>__m256 <code class="descname">tanh</code><span class="sig-paren">(</span><em class="property">const</em> __m256 <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl4tanhEK6__m256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl6linearEK6__m256">
+<span id="hppl::linear____m256C"></span><span class="target" id="paddlenamespacehppl_1a6d682d3d73a248ca67845c9b69e0b5dc"></span>__m256 <code class="descname">linear</code><span class="sig-paren">(</span><em class="property">const</em> __m256 <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl6linearEK6__m256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl4reluEK6__m256K6__m256">
+<span id="hppl::relu____m256C.__m256C"></span><span class="target" id="paddlenamespacehppl_1a658b2205ad6fd2ee2127f5d439727323"></span>__m256 <code class="descname">relu</code><span class="sig-paren">(</span><em class="property">const</em> __m256 <em>a</em>, <em class="property">const</em> __m256 <em>b</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl4reluEK6__m256K6__m256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl7sigmoidEK6__m256K6__m256">
+<span id="hppl::sigmoid____m256C.__m256C"></span><span class="target" id="paddlenamespacehppl_1a73a594c90d9c2fe736a974a7d0fe6794"></span>__m256 <code class="descname">sigmoid</code><span class="sig-paren">(</span><em class="property">const</em> __m256 <em>a</em>, <em class="property">const</em> __m256 <em>b</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl7sigmoidEK6__m256K6__m256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl4tanhEK6__m256K6__m256">
+<span id="hppl::tanh____m256C.__m256C"></span><span class="target" id="paddlenamespacehppl_1a892d83522dee2b35ee753c316f267712"></span>__m256 <code class="descname">tanh</code><span class="sig-paren">(</span><em class="property">const</em> __m256 <em>a</em>, <em class="property">const</em> __m256 <em>b</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl4tanhEK6__m256K6__m256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N4hppl6linearEK6__m256K6__m256">
+<span id="hppl::linear____m256C.__m256C"></span><span class="target" id="paddlenamespacehppl_1adf41f0378e87a43f4f3c04ad813de75e"></span>__m256 <code class="descname">linear</code><span class="sig-paren">(</span><em class="property">const</em> __m256 <em>a</em>, <em class="property">const</em> __m256 <em>b</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl6linearEK6__m256K6__m256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="activation-functions">
+<h2>Activation Functions<a class="headerlink" href="#activation-functions" title="Permalink to this headline">¶</a></h2>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Defines</p>
+<dl class="macro">
+<dt id="c.HPPL_ACTIVE_FUNCTION">
+<span class="target" id="paddlehl__activation__functions_8h_1a45d2908a6b0fcfd894767fa2f360e4be"></span><code class="descname">HPPL_ACTIVE_FUNCTION</code><a class="headerlink" href="#c.HPPL_ACTIVE_FUNCTION" title="Permalink to this definition">¶</a></dt>
+<dd><p>Active functions: sigmoid, relu, tanh and linear. </p>
+</dd></dl>
+
+</div>
+<dl class="type">
+<dt id="_CPPv24hppl">
+<span id="hppl"></span><span class="target" id="paddlenamespacehppl"></span><em class="property">namespace </em><code class="descname">hppl</code><a class="headerlink" href="#_CPPv24hppl" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt>
+<span class="target" id="paddleclasshppl_1_1Active"></span><em class="property">template </em>&lt;<em class="property">class</em> T&gt;</dt>
+<dt id="_CPPv2N4hppl6ActiveE">
+<span id="hppl::Active"></span><em class="property">class </em><code class="descname">Active</code><a class="headerlink" href="#_CPPv2N4hppl6ActiveE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;hl_activation_functions.h&gt;</em><p>Hppl supports sigmoid, relu, tanh, linear active functions for neural networks&#8217; forward and backward activation. </p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Types</p>
+<dl class="type">
+<dt id="_CPPv2N4hppl6ActiveI1TE7forwardE">
+<span id="hppl::Active:T:::forward"></span><span class="target" id="paddleclasshppl_1_1Active_1ac5759334973f3ef131c15ab74bbcf049"></span><em class="property">typedef </em>T (*<code class="descname">forward</code>)<span class="sig-paren">(</span>T<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl6ActiveI1TE7forwardE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N4hppl6ActiveI1TE8backwardE">
+<span id="hppl::Active:T:::backward"></span><span class="target" id="paddleclasshppl_1_1Active_1aa0836383ee3476c8bd69f6dc47cdf4c0"></span><em class="property">typedef </em>T (*<code class="descname">backward</code>)<span class="sig-paren">(</span>T, T<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N4hppl6ActiveI1TE8backwardE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N4hppl3cpuE">
+<span id="hppl::cpu"></span><span class="target" id="paddlenamespacehppl_1_1cpu"></span><em class="property">namespace </em><code class="descname">cpu</code><a class="headerlink" href="#_CPPv2N4hppl3cpuE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Variables</p>
+<dl class="member">
+<dt id="_CPPv2N4hppl3cpu7forwardE">
+<span id="hppl::cpu::forward__Active:real:::forwardA"></span><span class="target" id="paddlenamespacehppl_1_1cpu_1a81ef3d73cd23d67665534da2184d1089"></span><a class="reference internal" href="#_CPPv2N4hppl6ActiveE" title="hppl::Active">Active</a>&lt;real&gt;::forward <code class="descname">forward</code>[]<a class="headerlink" href="#_CPPv2N4hppl3cpu7forwardE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N4hppl3cpu8backwardE">
+<span id="hppl::cpu::backward__Active:real:::backwardA"></span><span class="target" id="paddlenamespacehppl_1_1cpu_1a243f812fd1c042994dbefd14071cd679"></span><a class="reference internal" href="#_CPPv2N4hppl6ActiveE" title="hppl::Active">Active</a>&lt;real&gt;::backward <code class="descname">backward</code>[]<a class="headerlink" href="#_CPPv2N4hppl3cpu8backwardE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="rnn-related-apis">
+<h2>RNN Related APIs<a class="headerlink" href="#rnn-related-apis" title="Permalink to this headline">¶</a></h2>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv223hl_max_sequence_forwardP4realPKiP4realPiii">
+<span id="hl_max_sequence_forward__realP.iCP.realP.iP.i.i"></span><span class="target" id="paddlehl__sequence_8h_1aaa754c2356daba3189c9b7a8b03b5797"></span>void <code class="descname">hl_max_sequence_forward</code><span class="sig-paren">(</span>real *<em>input</em>, <em class="property">const</em> int *<em>sequence</em>, real *<em>output</em>, int *<em>index</em>, int <em>numSequences</em>, int <em>dim</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv223hl_max_sequence_forwardP4realPKiP4realPiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum sequence forward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>each sequence contains some instances. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sequence</span></code> - <p>sequence index.. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>max instance in this sequence. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">index</span></code> - <p>index of max instance. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>size of sequence[in]. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">dim</span></code> - <p>input dimension. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv224hl_max_sequence_backwardP4realPiP4realii">
+<span id="hl_max_sequence_backward__realP.iP.realP.i.i"></span><span class="target" id="paddlehl__sequence_8h_1a5cd9a546e03a733ba4933434cbd1623b"></span>void <code class="descname">hl_max_sequence_backward</code><span class="sig-paren">(</span>real *<em>outputGrad</em>, int *<em>index</em>, real *<em>inputGrad</em>, int <em>numSequences</em>, int <em>dim</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv224hl_max_sequence_backwardP4realPiP4realii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum sequence backward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">outputGrad</span></code> - <p>output gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">index</span></code> - <p>index of max instance. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">inputGrad</span></code> - <p>input gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>size of sequence[in]. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">dim</span></code> - <p>input dimension. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv229hl_context_projection_forwardP4realPKiP4realP4realiiiiib">
+<span id="hl_context_projection_forward__realP.iCP.realP.realP.i.i.i.i.i.b"></span><span class="target" id="paddlehl__sequence_8h_1a7cdbb69d99c04287e8d192aba7e41a54"></span>void <code class="descname">hl_context_projection_forward</code><span class="sig-paren">(</span>real *<em>input</em>, <em class="property">const</em> int *<em>sequence</em>, real *<em>weightData</em>, real *<em>output</em>, int <em>numSequences</em>, int <em>inputDim</em>, int <em>contextLength</em>, int <em>contextStart</em>, int <em>beginPad</em>, bool <em>isPadding</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv229hl_context_projection_forwardP4realPKiP4realP4realiiiiib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Context projection forward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input sequence. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sequence</span></code> - <p>sequence index. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">weightData</span></code> - <p>padding data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output sequence. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>number of sequences. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">inputDim</span></code> - <p>input sequence dimension. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">contextLength</span></code> - <p>context length. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">contextStart</span></code> - <p>context start. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">beginPad</span></code> - <p>number of extra timesteps added at the beginning. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">isPadding</span></code> - <p>trainable padding. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv235hl_context_projection_backward_dataP4realPKiP4realiiii">
+<span id="hl_context_projection_backward_data__realP.iCP.realP.i.i.i.i"></span><span class="target" id="paddlehl__sequence_8h_1a493ef41808a8c1eec90379673fdaef73"></span>void <code class="descname">hl_context_projection_backward_data</code><span class="sig-paren">(</span>real *<em>outputGrad</em>, <em class="property">const</em> int *<em>sequence</em>, real *<em>inputGrad</em>, int <em>numSequences</em>, int <em>inputDim</em>, int <em>contextLength</em>, int <em>contextStart</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv235hl_context_projection_backward_dataP4realPKiP4realiiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Context projection backward data. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">outputGrad</span></code> - <p>output gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sequence</span></code> - <p>sequence index. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">inputGrad</span></code> - <p>input gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>number of sequences. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">inputDim</span></code> - <p>input sequence dimension. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">contextLength</span></code> - <p>context length. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">contextStart</span></code> - <p>context start. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv237hl_context_projection_backward_weightP4realPKiP4realiiiiii">
+<span id="hl_context_projection_backward_weight__realP.iCP.realP.i.i.i.i.i.i"></span><span class="target" id="paddlehl__sequence_8h_1aec24cab2dee1023f7ed7286f85edd3ca"></span>void <code class="descname">hl_context_projection_backward_weight</code><span class="sig-paren">(</span>real *<em>outputGrad</em>, <em class="property">const</em> int *<em>sequence</em>, real *<em>weightGrad</em>, int <em>numSequences</em>, int <em>weightDim</em>, int <em>totalPad</em>, int <em>contextLength</em>, int <em>contextStart</em>, int <em>beginPad</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv237hl_context_projection_backward_weightP4realPKiP4realiiiiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Context projection backward weight. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">outputGrad</span></code> - <p>output gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sequence</span></code> - <p>sequence index. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">weightGrad</span></code> - <p>weight gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>number of sequences. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">weightDim</span></code> - <p>input sequence dimension. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">totalPad</span></code> - <p>number of extra timesteps. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">contextLength</span></code> - <p>context length. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">contextStart</span></code> - <p>context start. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">beginPad</span></code> - <p>number of extra timesteps added at the beginning. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv222hl_sequence2batch_copyP4realP4realPiiib">
+<span id="hl_sequence2batch_copy__realP.realP.iP.i.i.b"></span><span class="target" id="paddlehl__sequence_8h_1a6e0b30bd2703b8232ac1d70022306a6a"></span>void <code class="descname">hl_sequence2batch_copy</code><span class="sig-paren">(</span>real *<em>batch</em>, real *<em>sequence</em>, int *<em>batchIndex</em>, int <em>seqWidth</em>, int <em>batchCount</em>, bool <em>seq2batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv222hl_sequence2batch_copyP4realP4realPiiib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Memory copy from sequence to batch. </p>
+<p>if seq2batch == true</p>
+<p>copy from sequence to batch: batch[i] = sequence[batchIndex[i]].</p>
+<p>if seq2batch == false</p>
+<p>copy from batch to sequence: sequence[batchIndex[i]] = batch[i].</p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">batch</span></code> - <p>batch matrix. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sequence</span></code> - <p>equence matrix. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">batchIndex</span></code> - <p>index vector. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">seqWidth</span></code> - <p>width of sequence. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">batchCount</span></code> - <p>number of batchIndex. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">seq2batch</span></code> - <p>copy direction. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv221hl_sequence2batch_addP4realP4realPiiib">
+<span id="hl_sequence2batch_add__realP.realP.iP.i.i.b"></span><span class="target" id="paddlehl__sequence_8h_1aa64a666f1fc82119a0d2cb2a83b1e971"></span>void <code class="descname">hl_sequence2batch_add</code><span class="sig-paren">(</span>real *<em>batch</em>, real *<em>sequence</em>, int *<em>batchIndex</em>, int <em>seqWidth</em>, int <em>batchCount</em>, bool <em>seq2batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv221hl_sequence2batch_addP4realP4realPiiib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add sequence to batch. </p>
+<p>if seq2batch == true</p>
+<p>add sequence to batch: batch[i] = sequence[batchIndex[i]].</p>
+<p>if seq2batch == false</p>
+<p>add batch to sequence: sequence[batchIndex[i]] = batch[i].</p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">batch</span></code> - <p>batch matrix. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sequence</span></code> - <p>equence matrix. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">batchIndex</span></code> - <p>index vector. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">seqWidth</span></code> - <p>width of sequence. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">batchCount</span></code> - <p>number of batchIndex. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">seq2batch</span></code> - <p>copy direction. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv223hl_sequence_avg_forwardP4realP4realPKiiiKi">
+<span id="hl_sequence_avg_forward__realP.realP.iCP.i.i.iC"></span><span class="target" id="paddlehl__sequence_8h_1aa229c82778eb772a4da54ddc8aa51f7d"></span>void <code class="descname">hl_sequence_avg_forward</code><span class="sig-paren">(</span>real *<em>dst</em>, real *<em>src</em>, <em class="property">const</em> int *<em>starts</em>, int <em>height</em>, int <em>width</em>, <em class="property">const</em> int <em>mode</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv223hl_sequence_avg_forwardP4realP4realPKiiiKi" title="Permalink to this definition">¶</a></dt>
+<dd><p>dst = Op(src), src is sequence. </p>
+<p>mode = 0, Op is average.</p>
+<p>mode = 1, Op is sum.</p>
+<p>mode = 2, Op is sum(src)/sqrt(N), N is sequence length.</p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>destination data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">src</span></code> - <p>source data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">starts</span></code> - <p>sequence start positions. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>height of dst data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>width of dst data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">mode</span></code> - <p>0: avreage, 1: sum, 2: divide by square root of sequenceLength </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="section" id="lstm-model">
+<h3>LSTM Model<a class="headerlink" href="#lstm-model" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv224hl_lstm_parallel_forwardP4realP4realP4realP4realP4realP4realP4realP4realPKiiib20hl_activation_mode_t20hl_activation_mode_t20hl_activation_mode_t">
+<span id="hl_lstm_parallel_forward__realP.realP.realP.realP.realP.realP.realP.realP.iCP.i.i.b.hl_activation_mode_t.hl_activation_mode_t.hl_activation_mode_t"></span><span class="target" id="paddlehl__lstm_8h_1af546c831207320e47f77a3cff8230202"></span>void <code class="descname">hl_lstm_parallel_forward</code><span class="sig-paren">(</span>real *<em>gateValue</em>, real *<em>stateValue</em>, real *<em>preOutputValue</em>, real *<em>outputValue</em>, real *<em>checkIg</em>, real *<em>checkFg</em>, real *<em>checkOg</em>, real *<em>weight</em>, <em class="property">const</em> int *<em>sequence</em>, int <em>frameSize</em>, int <em>numSequences</em>, bool <em>reversed</em>, <a class="reference internal" href="../utils/utils.html#_CPPv220hl_activation_mode_t" title="hl_activation_mode_t">hl_activation_mode_t</a> <em>active_node</em>, <a class="reference internal" href="../utils/utils.html#_CPPv220hl_activation_mode_t" title="hl_activation_mode_t">hl_activation_mode_t</a> <em>active_gate</em>, <a class="reference internal" href="../utils/utils.html#_CPPv220hl_activation_mode_t" title="hl_activation_mode_t">hl_activation_mode_t</a> <em>active_state</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv224hl_lstm_parallel_forwardP4realP4realP4realP4realP4realP4realP4realP4realPKiiib20hl_activation_mode_t20hl_activation_mode_t20hl_activation_mode_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Lstm sequence parallel forward. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>Only support frameSize = 32 or 64. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">gateValue</span></code> - <p>input value. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">stateValue</span></code> - <p>state value. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">preOutputValue</span></code> - <p>prev output value. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outputValue</span></code> - <p>output value. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">checkIg</span></code> - <p>bias. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">checkFg</span></code> - <p>bias. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">checkOg</span></code> - <p>bias. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">weight</span></code> - <p>weight. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sequence</span></code> - <p>sequence index. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">frameSize</span></code> - <p>frame size. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>number of sequences. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">reversed</span></code> - <p>reverse. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">active_node</span></code> - <p>active input type. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">active_gate</span></code> - <p>active state type. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">active_state</span></code> - <p>actvie gate type.</p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv230hl_lstm_parallel_backward_dataP4realP4realP4realP4realP4realP4realP4realP4realP4realP4realP4realP4realP4realP4realPKiiib20hl_activation_mode_t20hl_activation_mode_t20hl_activation_mode_t">
+<span id="hl_lstm_parallel_backward_data__realP.realP.realP.realP.realP.realP.realP.realP.realP.realP.realP.realP.realP.realP.iCP.i.i.b.hl_activation_mode_t.hl_activation_mode_t.hl_activation_mode_t"></span><span class="target" id="paddlehl__lstm_8h_1a47ce31f143dce64d07ec263150b9ab5c"></span>void <code class="descname">hl_lstm_parallel_backward_data</code><span class="sig-paren">(</span>real *<em>gateValue</em>, real *<em>gateGrad</em>, real *<em>stateValue</em>, real *<em>stateGrad</em>, real *<em>preOutputValue</em>, real *<em>preOutputGrad</em>, real *<em>outputGrad</em>, real *<em>checkIg</em>, real *<em>checkIgGrad</em>, real *<em>checkFg</em>, real *<em>checkFgGrad</em>, real *<em>checkOg</em>, real *<em>checkOgGrad</em>, real *<em>weight</em>, <em class="property">const</em> int *<em>sequence</em>, int <em>frameSize</em>, int <em>numSequences</em>, bool <em>reversed</em>, <a class="reference internal" href="../utils/utils.html#_CPPv220hl_activation_mode_t" title="hl_activation_mode_t">hl_activation_mode_t</a> <em>active_node</em>, <a class="reference internal" href="../utils/utils.html#_CPPv220hl_activation_mode_t" title="hl_activation_mode_t">hl_activation_mode_t</a> <em>active_gate</em>, <a class="reference internal" href="../utils/utils.html#_CPPv220hl_activation_mode_t" title="hl_activation_mode_t">hl_activation_mode_t</a> <em>active_state</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv230hl_lstm_parallel_backward_dataP4realP4realP4realP4realP4realP4realP4realP4realP4realP4realP4realP4realP4realP4realPKiiib20hl_activation_mode_t20hl_activation_mode_t20hl_activation_mode_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Lstm sequence parallel backward data. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>Only support frameSize = 32 or 64. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">gateValue</span></code> - <p>input value. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">gateGrad</span></code> - <p>input gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">stateValue</span></code> - <p>state value. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">stateGrad</span></code> - <p>state gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">preOutputValue</span></code> - <p>prev output value. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">preOutputGrad</span></code> - <p>prev output gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outputGrad</span></code> - <p>output gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">checkIg</span></code> - <p>bias. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">checkIgGrad</span></code> - <p>bias gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">checkFg</span></code> - <p>bias. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">checkFgGrad</span></code> - <p>bias gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">checkOg</span></code> - <p>bias. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">checkOgGrad</span></code> - <p>bias gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">weight</span></code> - <p>weight. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sequence</span></code> - <p>sequence index. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">frameSize</span></code> - <p>frame size. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>number of sequences. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">reversed</span></code> - <p>reverse. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">active_node</span></code> - <p>active input type. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">active_gate</span></code> - <p>active state type. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">active_state</span></code> - <p>actvie gate type.</p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv232hl_lstm_parallel_backward_weightP4realP4realP4realPKiiiib">
+<span id="hl_lstm_parallel_backward_weight__realP.realP.realP.iCP.i.i.i.b"></span><span class="target" id="paddlehl__lstm_8h_1a753967b0dc0d6cf76ae3f1c4cfb13a7e"></span>void <code class="descname">hl_lstm_parallel_backward_weight</code><span class="sig-paren">(</span>real *<em>weightGrad</em>, real *<em>outputValue</em>, real *<em>gateGrad</em>, <em class="property">const</em> int *<em>sequence</em>, int <em>frameSize</em>, int <em>batchSize</em>, int <em>numSequences</em>, bool <em>reversed</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv232hl_lstm_parallel_backward_weightP4realP4realP4realPKiiiib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Lstm sequence parallel backward weight. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">weightGrad</span></code> - <p>weight gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outputValue</span></code> - <p>output value. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">gateGrad</span></code> - <p>gate gradient. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">sequence</span></code> - <p>sequence index. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">frameSize</span></code> - <p>frame size. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">batchSize</span></code> - <p>batch size. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>number of sequences. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">reversed</span></code> - <p>reverse. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="gru-model">
+<h3>GRU Model<a class="headerlink" href="#gru-model" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Neural Networks</a><ul>
+<li><a class="reference internal" href="#base">Base</a></li>
+<li><a class="reference internal" href="#activation-functions">Activation Functions</a></li>
+<li><a class="reference internal" href="#rnn-related-apis">RNN Related APIs</a><ul>
+<li><a class="reference internal" href="#lstm-model">LSTM Model</a></li>
+<li><a class="reference internal" href="#gru-model">GRU Model</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">RNN</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../utils/index.html"
+                        title="next chapter">Utils</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/cuda/rnn/rnn.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../utils/index.html" title="Utils"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="RNN"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >RNN</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+    </div>
+  </body>
+</html>

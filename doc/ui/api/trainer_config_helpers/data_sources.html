@@ -1,0 +1,179 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>DataSources &mdash; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Trainer Config Helpers" href="index.html" />
+    <link rel="next" title="Layers" href="layers_index.html" />
+    <link rel="prev" title="Optimizers" href="optimizers.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="layers_index.html" title="Layers"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="optimizers.html" title="Optimizers"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Trainer Config Helpers</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-paddle.trainer_config_helpers.data_sources">
+<span id="datasources"></span><h1>DataSources<a class="headerlink" href="#module-paddle.trainer_config_helpers.data_sources" title="Permalink to this headline">¶</a></h1>
+<p>Data Sources are helpers to define paddle training data or testing data.
+There are several data attributes will be used by paddle:</p>
+<ul class="simple">
+<li>Data ProviderType: such as Python, Protobuf</li>
+<li>Data File list: a single file that contains all data file paths</li>
+</ul>
+<dl class="function">
+<dt id="paddle.trainer_config_helpers.data_sources.define_py_data_sources">
+<code class="descclassname">paddle.trainer_config_helpers.data_sources.</code><code class="descname">define_py_data_sources</code><span class="sig-paren">(</span><em>train_list</em>, <em>test_list</em>, <em>module</em>, <em>obj</em>, <em>args=None</em>, <em>train_async=False</em>, <em>data_cls=&lt;function PyData&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.data_sources.define_py_data_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define python Train/Test data sources in one method. If train/test use
+the same Data Provider configuration, module/obj/args contain one argument,
+otherwise contain a list or tuple of arguments. For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">define_py_data_sources</span><span class="p">(</span><span class="s2">&quot;train.list&quot;</span><span class="p">,</span> <span class="s2">&quot;test.list&quot;</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;data_provider&quot;</span>
+                       <span class="n">obj</span><span class="o">=</span><span class="s2">&quot;process&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;dictionary&quot;</span><span class="p">:</span> <span class="n">dict_name</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>Or.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">define_py_data_sources</span><span class="p">(</span><span class="s2">&quot;train.list&quot;</span><span class="p">,</span> <span class="s2">&quot;test.list&quot;</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;data_provider&quot;</span>
+                       <span class="n">obj</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;process_train&quot;</span><span class="p">,</span> <span class="s2">&quot;process_test&quot;</span><span class="p">],</span>
+                       <span class="n">args</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;dictionary&quot;</span><span class="p">:</span> <span class="n">dict_train</span><span class="p">},</span> <span class="p">{</span><span class="s2">&quot;dictionary&quot;</span><span class="p">:</span> <span class="n">dict_test</span><span class="p">}])</span>
+</pre></div>
+</div>
+<p>The related data provider can refer to
+<a class="reference external" href="data_provider/python_case.html#sequence-example">here</a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data_cls</strong> &#8211; </li>
+<li><strong>train_list</strong> (<em>basestring</em>) &#8211; Train list name.</li>
+<li><strong>test_list</strong> (<em>basestring</em>) &#8211; Test list name.</li>
+<li><strong>module</strong> (<em>basestring or tuple or list</em>) &#8211; python module name. If train and test is different, then
+pass a tuple or list to this argument.</li>
+<li><strong>obj</strong> (<em>basestring or tuple or list</em>) &#8211; python object name. May be a function name if using
+PyDataProviderWrapper. If train and test is different, then pass
+a tuple or list to this argument.</li>
+<li><strong>args</strong> (<em>string or picklable object or list or tuple.</em>) &#8211; The best practice is using dict() to pass arguments into
+DataProvider, and use <code class="code docutils literal"><span class="pre">&#64;init_hook_wrapper</span></code> to receive
+arguments. If train and test is different, then pass a tuple
+or list to this argument.</li>
+<li><strong>train_async</strong> (<em>bool</em>) &#8211; Is training data load asynchronously or not.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="optimizers.html"
+                        title="previous chapter">Optimizers</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="layers_index.html"
+                        title="next chapter">Layers</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/ui/api/trainer_config_helpers/data_sources.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="layers_index.html" title="Layers"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="optimizers.html" title="Optimizers"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Trainer Config Helpers</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+    </div>
+  </body>
+</html>

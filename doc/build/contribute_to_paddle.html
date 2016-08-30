@@ -1,0 +1,212 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Contribute to PaddlePaddle &mdash; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="PaddlePaddle  documentation" href="../index.html" />
+    <link rel="up" title="Build And Install PaddlePaddle" href="index.html" />
+    <link rel="next" title="User Interface" href="../ui/index.html" />
+    <link rel="prev" title="Build and Install" href="build_from_source.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../ui/index.html" title="User Interface"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="build_from_source.html" title="Build and Install"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Build And Install PaddlePaddle</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="contribute-to-paddlepaddle">
+<span id="contribute-to-paddlepaddle"></span><h1>Contribute to PaddlePaddle<a class="headerlink" href="#contribute-to-paddlepaddle" title="Permalink to this headline">¶</a></h1>
+<p>We sincerely appreciate your contributions. You can use fork and pull request
+workflow to merge your code.</p>
+<div class="section" id="code-requirements">
+<span id="code-requirements"></span><h2>Code Requirements<a class="headerlink" href="#code-requirements" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Your code mush be fully documented by
+<a class="reference external" href="http://www.stack.nl/~dimitri/doxygen/">doxygen</a> style.</li>
+<li>Make sure the compiler option WITH_STYLE_CHECK is on and the compiler
+passes the code style check.</li>
+<li>All code must have unit test.</li>
+<li>Pass all unit tests.</li>
+</ul>
+<p>The following tutorial guides you into submitting your contibution.</p>
+</div>
+<div class="section" id="creating-a-fork">
+<span id="creating-a-fork"></span><h2><a class="reference external" href="https://help.github.com/articles/fork-a-repo/">Creating a Fork</a><a class="headerlink" href="#creating-a-fork" title="Permalink to this headline">¶</a></h2>
+<p>Just head over to the GitHub page and click the &#8220;Fork&#8221; button.
+It&#8217;s just that simple.</p>
+</div>
+<div class="section" id="clone">
+<span id="clone"></span><h2>Clone<a class="headerlink" href="#clone" title="Permalink to this headline">¶</a></h2>
+<p>Once you&#8217;ve created a fork, you can use your favorite git client to clone your
+repo or just head straight to the command line:</p>
+<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># Clone your fork to your local machine</span>
+git clone git@github.com:USERNAME/paddle.git
+</pre></div>
+</div>
+<p>Then you can start to develop.</p>
+</div>
+<div class="section" id="commit">
+<span id="commit"></span><h2>Commit<a class="headerlink" href="#commit" title="Permalink to this headline">¶</a></h2>
+<p>Commit your changes by following command lines:</p>
+<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># show the working tree status</span>
+git status
+<span class="c1"># add modified files</span>
+git add xx
+git commit -m <span class="s2">&quot;commit info&quot;</span>
+</pre></div>
+</div>
+<p>The first line of commit infomation is the title. The second and later lines
+are the details if any.</p>
+</div>
+<div class="section" id="keeping-fork-up-to-date">
+<span id="keeping-fork-up-to-date"></span><h2>Keeping Fork Up to Date<a class="headerlink" href="#keeping-fork-up-to-date" title="Permalink to this headline">¶</a></h2>
+<p>Before pull your request, you shold sync you code from the latest Paddle.
+To do this, you&#8217;ll need to add a remote at first:</p>
+<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># see the current configured remote repository</span>
+git remote -v
+<span class="c1"># add upstream repository</span>
+git remote add upstream https://github.com/paddle/paddle.git
+<span class="c1"># verify the new upstream</span>
+git remote -v
+</pre></div>
+</div>
+<p>Update your fork with the latest upstream changes:</p>
+<div class="highlight-shell"><div class="highlight"><pre><span></span>git fetch upstream
+git pull upstream master
+</pre></div>
+</div>
+<p>If there are no unique commits locally, git will simply perform a fast-forward.
+However, if you have been making changes (in the vast majority of cases you
+probably shouldn&#8217;t be), you may have to deal with conflicts.</p>
+<p>Now, your local master branch is up-to-date with everything modified upstream.</p>
+</div>
+<div class="section" id="push-to-github">
+<span id="push-to-github"></span><h2>Push to GitHub<a class="headerlink" href="#push-to-github" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># push to your repository in Github</span>
+git push origin master
+</pre></div>
+</div>
+</div>
+<div class="section" id="pull-request">
+<span id="pull-request"></span><h2>Pull Request<a class="headerlink" href="#pull-request" title="Permalink to this headline">¶</a></h2>
+<p>Go to the page for your fork on GitHub, select your development branch,
+and click the <strong>pull request button</strong>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Contribute to PaddlePaddle</a><ul>
+<li><a class="reference internal" href="#code-requirements">Code Requirements</a></li>
+<li><a class="reference internal" href="#creating-a-fork">Creating a Fork</a></li>
+<li><a class="reference internal" href="#clone">Clone</a></li>
+<li><a class="reference internal" href="#commit">Commit</a></li>
+<li><a class="reference internal" href="#keeping-fork-up-to-date">Keeping Fork Up to Date</a></li>
+<li><a class="reference internal" href="#push-to-github">Push to GitHub</a></li>
+<li><a class="reference internal" href="#pull-request">Pull Request</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="build_from_source.html"
+                        title="previous chapter">Build and Install</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../ui/index.html"
+                        title="next chapter">User Interface</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/build/contribute_to_paddle.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../ui/index.html" title="User Interface"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="build_from_source.html" title="Build and Install"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Build And Install PaddlePaddle</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+    </div>
+  </body>
+</html>

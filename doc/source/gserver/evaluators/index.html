@@ -1,0 +1,1051 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Evaluators &mdash; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Source Code Documents" href="../../index.html" />
+    <link rel="next" title="Gradient Machines Documents" href="../gradientmachines/index.html" />
+    <link rel="prev" title="Data Providers" href="../dataprovider/dataproviders.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../gradientmachines/index.html" title="Gradient Machines Documents"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../dataprovider/dataproviders.html" title="Data Providers"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Source Code Documents</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="evaluators">
+<h1>Evaluators<a class="headerlink" href="#evaluators" title="Permalink to this headline">¶</a></h1>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Defines</p>
+<dl class="macro">
+<dt id="c.REGISTER_EVALUATOR">
+<span class="target" id="paddleEvaluator_8h_1a1e4a8502389d14012f53c018c4c28315"></span><code class="descname">REGISTER_EVALUATOR</code><span class="sig-paren">(</span>__type_name, __class_name<span class="sig-paren">)</span><a class="headerlink" href="#c.REGISTER_EVALUATOR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="type">
+<dt id="_CPPv26paddle">
+<span id="paddle"></span><span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt id="_CPPv2N6paddle12AucEvaluatorE">
+<span id="paddle::AucEvaluator"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator"></span><em class="property">class </em><code class="descname">AucEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span>paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator12AucEvaluatorE7int32_t">
+<span id="paddle::AucEvaluator::AucEvaluator__int32_t"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a1bb229576ded30e4b9115515d039d544"></span><code class="descname">AucEvaluator</code><span class="sig-paren">(</span>int32_t <em>colIdx</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator12AucEvaluatorE7int32_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>evaluate AUC using colIdx-th column as prediction. </p>
+<p>colIdx = 0: the 0-th column. colIdx &gt; 0: the colIdx-th column. colIdx &lt; 0: the last colIdx-th column. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator5startEv">
+<span id="paddle::AucEvaluator::start"></span>virtual <span class="target" id="paddleclasspaddle_1_1AucEvaluator_1af6f433aad217acd2efc46b9b1e372e57"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::AucEvaluator::evalImp__std::vector:Argument:R"></span>virtual <span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a5b37ff6965823e69ad01af2dfa0f0c41"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. return the score for the batch if it make sense to sum the score across batches. Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span>finish()</span></a> and printStats() to do the right calculation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::AucEvaluator::printStats__osR"></span>virtual <span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a54b9e88b80840df5faaf303f35421d55"></span>void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::AucEvaluator::distributeEval__ParameterClient2P"></span>virtual <span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a0c20088c250d96d18cb2b5eb15b21764"></span>void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator12AucEvaluatorEv">
+<span id="paddle::AucEvaluator::AucEvaluator"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1aadf67fc11d037f8933ffc9d23f71c26e"></span><code class="descname">AucEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator12AucEvaluatorEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator7calcAucEv">
+<span id="paddle::AucEvaluator::calcAuc"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1afa5f02c777b3a82edb1288fcc5bd3013"></span>double <code class="descname">calcAuc</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator7calcAucEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle12AucEvaluator8statPos_E">
+<span id="paddle::AucEvaluator::statPos___doubleA"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a9b9e3927ece631eac56f6aba1bbc596d"></span>double <code class="descname">statPos_</code>[kBinNum_+1]<a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator8statPos_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12AucEvaluator8statNeg_E">
+<span id="paddle::AucEvaluator::statNeg___doubleA"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a4e634e26abf4d19c04f27e8d1fe85b06"></span>double <code class="descname">statNeg_</code>[kBinNum_+1]<a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator8statNeg_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12AucEvaluator7colIdx_E">
+<span id="paddle::AucEvaluator::colIdx___int32_t"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a2caab2866ba822d658685c3cc6db1d66"></span>int32_t <code class="descname">colIdx_</code><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator7colIdx_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12AucEvaluator14realColumnIdx_E">
+<span id="paddle::AucEvaluator::realColumnIdx___uint32_t"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1ac4b5f8db52db93ca1060d0655b41980c"></span>uint32_t <code class="descname">realColumnIdx_</code><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator14realColumnIdx_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12AucEvaluator10cpuOutput_E">
+<span id="paddle::AucEvaluator::cpuOutput___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a564211e1bd6598b19d68ae424c896c56"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">cpuOutput_</code><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator10cpuOutput_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12AucEvaluator9cpuLabel_E">
+<span id="paddle::AucEvaluator::cpuLabel___IVectorPtr"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1aedb606abc710121a8f3c89b4dfe80efb"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">cpuLabel_</code><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator9cpuLabel_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12AucEvaluator10cpuWeight_E">
+<span id="paddle::AucEvaluator::cpuWeight___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1aad478bb97f05f4be5b3813574bad57bb"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">cpuWeight_</code><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator10cpuWeight_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator13trapezoidAreaEdddd">
+<span id="paddle::AucEvaluator::trapezoidArea__double.double.double.double"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1abbe1b116a34b38f446d8c39d2950715f"></span><em class="property">static</em> double <code class="descname">trapezoidArea</code><span class="sig-paren">(</span>double <em>X1</em>, double <em>X2</em>, double <em>Y1</em>, double <em>Y2</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator13trapezoidAreaEdddd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Static Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle12AucEvaluator8kBinNum_E">
+<span id="paddle::AucEvaluator::kBinNum___uint32_tC"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1afaf7e68e735420457e68ab05ad3416fc"></span><em class="property">const</em> uint32_t <code class="descname">kBinNum_</code><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator8kBinNum_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12AucEvaluator15kNegativeLabel_E">
+<span id="paddle::AucEvaluator::kNegativeLabel___iC"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a602690dac05d2fe77e6091ddd9a6e02e"></span><em class="property">const</em> int <code class="descname">kNegativeLabel_</code><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator15kNegativeLabel_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle14DummyEvaluatorE">
+<span id="paddle::DummyEvaluator"></span><span class="target" id="paddleclasspaddle_1_1DummyEvaluator"></span><em class="property">class </em><code class="descname">DummyEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle14DummyEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span>paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle14DummyEvaluator14DummyEvaluatorEv">
+<span id="paddle::DummyEvaluator::DummyEvaluator"></span><span class="target" id="paddleclasspaddle_1_1DummyEvaluator_1a226efa087e7afe69fc1c4eeebc381faf"></span><code class="descname">DummyEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14DummyEvaluator14DummyEvaluatorEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14DummyEvaluator4initERK15EvaluatorConfig">
+<span id="paddle::DummyEvaluator::init__EvaluatorConfigCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1DummyEvaluator_1a27be49d9bf3dd032c9e77d22d3a4e4bc"></span>void <code class="descname">init</code><span class="sig-paren">(</span><em class="property">const</em> EvaluatorConfig&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14DummyEvaluator4initERK15EvaluatorConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14DummyEvaluator5startEv">
+<span id="paddle::DummyEvaluator::start"></span>virtual <span class="target" id="paddleclasspaddle_1_1DummyEvaluator_1a9738f7670f2ea382930576a6a9d2df28"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14DummyEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14DummyEvaluator4evalERK13NeuralNetwork">
+<span id="paddle::DummyEvaluator::eval__NeuralNetworkCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1DummyEvaluator_1a71dad79b97dd0221206e265d890b0cd4"></span>void <code class="descname">eval</code><span class="sig-paren">(</span><em class="property">const</em> NeuralNetwork &amp;<em>nn</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14DummyEvaluator4evalERK13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14DummyEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::DummyEvaluator::evalImp__std::vector:Argument:R"></span>virtual <span class="target" id="paddleclasspaddle_1_1DummyEvaluator_1a9ac76207f6469b7279e3f0d1402e6853"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14DummyEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. return the score for the batch if it make sense to sum the score across batches. Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1DummyEvaluator_1a9c2aeedbe790ecfdeffbe2b6d602c6c2"><span>finish()</span></a> and printStats() to do the right calculation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14DummyEvaluator6finishEv">
+<span id="paddle::DummyEvaluator::finish"></span>virtual <span class="target" id="paddleclasspaddle_1_1DummyEvaluator_1a9c2aeedbe790ecfdeffbe2b6d602c6c2"></span>void <code class="descname">finish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14DummyEvaluator6finishEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>finish the evaluation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14DummyEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::DummyEvaluator::printStats__osR"></span>virtual <span class="target" id="paddleclasspaddle_1_1DummyEvaluator_1aed51dafb0d8ca7159d3952ce9246c7a1"></span>void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14DummyEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle9EvaluatorE">
+<span id="paddle::Evaluator"></span><span class="target" id="paddleclasspaddle_1_1Evaluator"></span><em class="property">class </em><code class="descname">Evaluator</code><a class="headerlink" href="#_CPPv2N6paddle9EvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AucEvaluator"><span>paddle::AucEvaluator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ChunkEvaluator"><span>paddle::ChunkEvaluator</span></a>, paddle::ClassificationErrorEvaluator, paddle::ColumnSumEvaluator, paddle::CombinedEvaluator, <a class="reference internal" href="#paddleclasspaddle_1_1CTCErrorEvaluator"><span>paddle::CTCErrorEvaluator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DummyEvaluator"><span>paddle::DummyEvaluator</span></a>, paddle::GradientPrinter, paddle::MaxFramePrinter, paddle::MaxIdPrinter, paddle::MultiCombinedEvaluator, <a class="reference internal" href="#paddleclasspaddle_1_1PnpairEvaluator"><span>paddle::PnpairEvaluator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PrecisionRecallEvaluator"><span>paddle::PrecisionRecallEvaluator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RankAucEvaluator"><span>paddle::RankAucEvaluator</span></a>, paddle::SequenceTextPrinter, paddle::SumEvaluator, paddle::ValuePrinter</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator9EvaluatorEv">
+<span id="paddle::Evaluator::Evaluator"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a38e96c535931ff0b08bd6ee8a2a5cdf9"></span><code class="descname">Evaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator9EvaluatorEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9EvaluatorD0Ev">
+<span id="paddle::Evaluator::~Evaluator"></span>virtual <span class="target" id="paddleclasspaddle_1_1Evaluator_1a3132e86a6304deb8db389466c789b5ba"></span><code class="descname">~Evaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9EvaluatorD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator4initERK15EvaluatorConfig">
+<span id="paddle::Evaluator::init__EvaluatorConfigCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1Evaluator_1afdac57770713b8cb2283171f6d5ebb37"></span>void <code class="descname">init</code><span class="sig-paren">(</span><em class="property">const</em> EvaluatorConfig &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator4initERK15EvaluatorConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator5startEv">
+<span id="paddle::Evaluator::start"></span>virtual <span class="target" id="paddleclasspaddle_1_1Evaluator_1a2bb0d4d737d4043794168c4a212df9de"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator4evalERK13NeuralNetwork">
+<span id="paddle::Evaluator::eval__NeuralNetworkCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1Evaluator_1aae419a0aed4a6f01fe5328461f5300fe"></span>void <code class="descname">eval</code><span class="sig-paren">(</span><em class="property">const</em> NeuralNetwork &amp;<em>nn</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator4evalERK13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::Evaluator::evalImp__std::vector:Argument:R"></span>virtual <span class="target" id="paddleclasspaddle_1_1Evaluator_1aa613595015dad5bde526d9bcd846c9f7"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle9Evaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. return the score for the batch if it make sense to sum the score across batches. Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span>finish()</span></a> and printStats() to do the right calculation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::Evaluator::updateSamplesNum__std::vector:Argument:CR"></span>virtual <span class="target" id="paddleclasspaddle_1_1Evaluator_1a5777491a0cd1c0116f49f618b92a56dc"></span>void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::Evaluator::distributeEval__ParameterClient2P"></span>virtual <span class="target" id="paddleclasspaddle_1_1Evaluator_1a25e80ac4650e6ee48b56cb558d9d1d6f"></span>void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator24mergeResultsOfAllClientsEP16ParameterClient2">
+<span id="paddle::Evaluator::mergeResultsOfAllClients__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a1b7aed5961cf3a3699b319b52b05b670"></span>void <code class="descname">mergeResultsOfAllClients</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator24mergeResultsOfAllClientsEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator6finishEv">
+<span id="paddle::Evaluator::finish"></span>virtual <span class="target" id="paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"></span>void <code class="descname">finish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator6finishEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>finish the evaluation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator10printStatsERNSt7ostreamE">
+<span id="paddle::Evaluator::printStats__osR"></span>virtual <span class="target" id="paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"></span>void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator6createERK15EvaluatorConfig">
+<span id="paddle::Evaluator::create__EvaluatorConfigCR"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a04f60af8fb4d38bef17d7f91d65806a4"></span><a class="reference internal" href="#_CPPv2N6paddle9Evaluator9EvaluatorEv" title="paddle::Evaluator::Evaluator">Evaluator</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> EvaluatorConfig &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator6createERK15EvaluatorConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle9Evaluator10registrar_E">
+<span id="paddle::Evaluator::registrar___ClassRegistrar:Evaluator:"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a16488b015a18b48063708e34c6b61070"></span>ClassRegistrar&lt;<a class="reference internal" href="#_CPPv2N6paddle9Evaluator9EvaluatorEv" title="paddle::Evaluator::Evaluator">Evaluator</a>&gt; <code class="descname">registrar_</code><a class="headerlink" href="#_CPPv2N6paddle9Evaluator10registrar_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle9Evaluator7config_E">
+<span id="paddle::Evaluator::config___EvaluatorConfig"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a4445124389402ae18567be1ea6c6c865"></span>EvaluatorConfig <code class="descname">config_</code><a class="headerlink" href="#_CPPv2N6paddle9Evaluator7config_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Evaluator11numSamples_E">
+<span id="paddle::Evaluator::numSamples___double"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a6d43ed113a9c2fdbf1bbd418a82248b8"></span>double <code class="descname">numSamples_</code><a class="headerlink" href="#_CPPv2N6paddle9Evaluator11numSamples_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Evaluator11totalScore_E">
+<span id="paddle::Evaluator::totalScore___double"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a63947ae377e14bacfd59789663c27683"></span>double <code class="descname">totalScore_</code><a class="headerlink" href="#_CPPv2N6paddle9Evaluator11totalScore_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Friends</p>
+<dl class="function">
+<dt id="_CPPv2lsRNSt7ostreamER9Evaluator">
+<span id="lshift-operator__osR.EvaluatorR"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a7db86ba78a524b074ae7171ebdce1236"></span>std::ostream &amp;<code class="descname">operator&lt;&lt;</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em>, Evaluator &amp;<em>evaluator</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2lsRNSt7ostreamER9Evaluator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2lsRRNSt7ostreamER9Evaluator">
+<span id="lshift-operator__osRR.EvaluatorR"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1afd28d9a77ddc1ba083b94b03390f6249"></span>std::ostream &amp;&amp;<code class="descname">operator&lt;&lt;</code><span class="sig-paren">(</span>std::ostream &amp;&amp;<em>os</em>, Evaluator &amp;<em>evaluator</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2lsRRNSt7ostreamER9Evaluator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle15PnpairEvaluatorE">
+<span id="paddle::PnpairEvaluator"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator"></span><em class="property">class </em><code class="descname">PnpairEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;Evaluator.h&gt;</em><p>Positive-negative pair rate <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span>Evaluator</span></a> </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span>paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator15PnpairEvaluatorEv">
+<span id="paddle::PnpairEvaluator::PnpairEvaluator"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a87bf19d236814eb1ba60b781b9a3f388"></span><code class="descname">PnpairEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator15PnpairEvaluatorEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator5startEv">
+<span id="paddle::PnpairEvaluator::start"></span>virtual <span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a91efe284c2ae0197f4fa1e707fd51c1f"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::PnpairEvaluator::evalImp__std::vector:Argument:R"></span>virtual <span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a45d83a648c0cfc968aee16b7be49aa8e"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. return the score for the batch if it make sense to sum the score across batches. Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1PnpairEvaluator_1aef0306a1ebe38fda20c957739ad7421c"><span>finish()</span></a> and printStats() to do the right calculation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator19printPredictResultsEv">
+<span id="paddle::PnpairEvaluator::printPredictResults"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a421ca13cd716ac3b48cce42a70dae5ee"></span>void <code class="descname">printPredictResults</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator19printPredictResultsEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator4statE6size_t6size_tP16PredictionResultRdRdRd">
+<span id="paddle::PnpairEvaluator::stat__s.s.PredictionResultP.doubleR.doubleR.doubleR"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a71fb1eee36bb786cd846c57bd79141a2"></span>void <code class="descname">stat</code><span class="sig-paren">(</span>size_t <em>start</em>, size_t <em>end</em>, <a class="reference internal" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResultE" title="paddle::PnpairEvaluator::PredictionResult">PredictionResult</a> *<em>answers</em>, double &amp;<em>pos</em>, double &amp;<em>neg</em>, double &amp;<em>spe</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator4statE6size_t6size_tP16PredictionResultRdRdRd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator4calcERNSt6vectorI16PredictionResultEE">
+<span id="paddle::PnpairEvaluator::calc__std::vector:PredictionResult:R"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1ab38ca9781fedb0790a235d09899f531a"></span>void <code class="descname">calc</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResultE" title="paddle::PnpairEvaluator::PredictionResult">PredictionResult</a>&gt; &amp;<em>predictArray</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator4calcERNSt6vectorI16PredictionResultEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator6finishEv">
+<span id="paddle::PnpairEvaluator::finish"></span>virtual <span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1aef0306a1ebe38fda20c957739ad7421c"></span>void <code class="descname">finish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator6finishEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>finish the evaluation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::PnpairEvaluator::printStats__osR"></span>virtual <span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1aa7a33b09976d73374416b383884f2a34"></span>void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::PnpairEvaluator::distributeEval__ParameterClient2P"></span>virtual <span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a81b1e216e2a60db438c0de0f1ba6662b"></span>void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator13predictArray_E">
+<span id="paddle::PnpairEvaluator::predictArray___std::vector:PredictionResult:"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a25335255b22c334fd906013c2d94e432"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResultE" title="paddle::PnpairEvaluator::PredictionResult">PredictionResult</a>&gt; <code class="descname">predictArray_</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator13predictArray_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator10pairArray_E">
+<span id="paddle::PnpairEvaluator::pairArray___doubleA"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1af5a46b22b177a054f6aca7d0784cae3b"></span>double <code class="descname">pairArray_</code>[kPairArrayNum_]<a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator10pairArray_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator10cpuOutput_E">
+<span id="paddle::PnpairEvaluator::cpuOutput___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1ada0712d4b50e06473e83ee678c3afb66"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">cpuOutput_</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator10cpuOutput_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator9cpuLabel_E">
+<span id="paddle::PnpairEvaluator::cpuLabel___IVectorPtr"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a8ea5a9e71e73e9f134cb9026483849e2"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">cpuLabel_</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator9cpuLabel_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator8cpuInfo_E">
+<span id="paddle::PnpairEvaluator::cpuInfo___IVectorPtr"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a6ed728afc4c4500f80531cd52ea87b23"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">cpuInfo_</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator8cpuInfo_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator10cpuWeight_E">
+<span id="paddle::PnpairEvaluator::cpuWeight___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a4184cf9d4d6140820d4764d4ae08bc60"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">cpuWeight_</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator10cpuWeight_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Static Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator14kPairArrayNum_E">
+<span id="paddle::PnpairEvaluator::kPairArrayNum___uint32_tC"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a285aefff1272d7d51bf38e42c18c9307"></span><em class="property">const</em> uint32_t <code class="descname">kPairArrayNum_</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator14kPairArrayNum_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResultE">
+<span id="paddle::PnpairEvaluator::PredictionResult"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult"></span><em class="property">struct </em><code class="descname">PredictionResult</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResultE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResult16PredictionResultE4realii4real">
+<span id="paddle::PnpairEvaluator::PredictionResult::PredictionResult__real.i.i.real"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult_1a6249c9a4d2358a506ecad83331587205"></span><code class="descname">PredictionResult</code><span class="sig-paren">(</span>real <em>__out</em>, int <em>__label</em>, int <em>__queryid</em>, real <em>__weight</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResult16PredictionResultE4realii4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResult3outE">
+<span id="paddle::PnpairEvaluator::PredictionResult::out__real"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult_1a1612672f26ceaa3571cf31ac9dfb2b00"></span>real <code class="descname">out</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResult3outE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResult5labelE">
+<span id="paddle::PnpairEvaluator::PredictionResult::label__i"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult_1ad008a8283690aea270c82378b6dc00b4"></span>int <code class="descname">label</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResult5labelE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResult7queryidE">
+<span id="paddle::PnpairEvaluator::PredictionResult::queryid__i"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult_1a2b664c0253de15b21f4d2b60727cd9ce"></span>int <code class="descname">queryid</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResult7queryidE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResult6weightE">
+<span id="paddle::PnpairEvaluator::PredictionResult::weight__real"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult_1a5adef314d9c2b77378279d671168373f"></span>real <code class="descname">weight</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResult6weightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluatorE">
+<span id="paddle::PrecisionRecallEvaluator"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator"></span><em class="property">class </em><code class="descname">PrecisionRecallEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span>paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator24PrecisionRecallEvaluatorEv">
+<span id="paddle::PrecisionRecallEvaluator::PrecisionRecallEvaluator"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a9df3903010183d49fab2642d7ba282ce"></span><code class="descname">PrecisionRecallEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator24PrecisionRecallEvaluatorEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator5startEv">
+<span id="paddle::PrecisionRecallEvaluator::start"></span>virtual <span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1adf943c1c59217b7735d7eb2f520c9b7f"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::PrecisionRecallEvaluator::evalImp__std::vector:Argument:R"></span>virtual <span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a8d1e2696c7a9509b434b219b73d5802b"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. return the score for the batch if it make sense to sum the score across batches. Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span>finish()</span></a> and printStats() to do the right calculation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::PrecisionRecallEvaluator::printStats__osR"></span>virtual <span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1aa2ccfcc5be6819469305316de5b8ad1a"></span>void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::PrecisionRecallEvaluator::distributeEval__ParameterClient2P"></span>virtual <span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1ab40d25db69b2f58567cc2dfca4f1adb0"></span>void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator13calcStatsInfoERK9MatrixPtrRK10IVectorPtrRK9MatrixPtr">
+<span id="paddle::PrecisionRecallEvaluator::calcStatsInfo__MatrixPtrCR.IVectorPtrCR.MatrixPtrCR"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a2c4ddc5152eea46f2e0c2b19c8fff22d"></span>void <code class="descname">calcStatsInfo</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> &amp;<em>output</em>, <em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> &amp;<em>label</em>, <em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> &amp;<em>weight</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator13calcStatsInfoERK9MatrixPtrRK10IVectorPtrRK9MatrixPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator18calcStatsInfoMultiERK9MatrixPtrRK9MatrixPtrRK9MatrixPtr">
+<span id="paddle::PrecisionRecallEvaluator::calcStatsInfoMulti__MatrixPtrCR.MatrixPtrCR.MatrixPtrCR"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a506d1d0639416e8282475bc913326ade"></span>void <code class="descname">calcStatsInfoMulti</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> &amp;<em>output</em>, <em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> &amp;<em>label</em>, <em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> &amp;<em>weight</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator18calcStatsInfoMultiERK9MatrixPtrRK9MatrixPtrRK9MatrixPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator19isMultiBinaryLabel_E">
+<span id="paddle::PrecisionRecallEvaluator::isMultiBinaryLabel___b"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a304274263d544a08ba8721bd6d37c4fb"></span>bool <code class="descname">isMultiBinaryLabel_</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator19isMultiBinaryLabel_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator10statsInfo_E">
+<span id="paddle::PrecisionRecallEvaluator::statsInfo___std::vector:StatsInfo:"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a29aa5f4bdeca996cd05e31764830f86a"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfoE" title="paddle::PrecisionRecallEvaluator::StatsInfo">StatsInfo</a>&gt; <code class="descname">statsInfo_</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator10statsInfo_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator10cpuOutput_E">
+<span id="paddle::PrecisionRecallEvaluator::cpuOutput___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a9ba8c9a74931e31bec7c1ce77476c7bd"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">cpuOutput_</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator10cpuOutput_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9cpuLabel_E">
+<span id="paddle::PrecisionRecallEvaluator::cpuLabel___IVectorPtr"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1af9277c729160676f72e7e486e48955ca"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">cpuLabel_</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9cpuLabel_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator10cpuWeight_E">
+<span id="paddle::PrecisionRecallEvaluator::cpuWeight___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1aa974ef2ec885523525875dc7b0b80e70"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">cpuWeight_</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator10cpuWeight_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator13calcPrecisionEdd">
+<span id="paddle::PrecisionRecallEvaluator::calcPrecision__double.double"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a9a2102c75a05982cafe4463fb4ef1748"></span><em class="property">static</em> double <code class="descname">calcPrecision</code><span class="sig-paren">(</span>double <em>TP</em>, double <em>FP</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator13calcPrecisionEdd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator10calcRecallEdd">
+<span id="paddle::PrecisionRecallEvaluator::calcRecall__double.double"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a7733fc2377109f67556a21f83d2955cb"></span><em class="property">static</em> double <code class="descname">calcRecall</code><span class="sig-paren">(</span>double <em>TP</em>, double <em>FN</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator10calcRecallEdd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator11calcF1ScoreEdd">
+<span id="paddle::PrecisionRecallEvaluator::calcF1Score__double.double"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a7b7598d585c5e49810416a8957c121fb"></span><em class="property">static</em> double <code class="descname">calcF1Score</code><span class="sig-paren">(</span>double <em>precision</em>, double <em>recall</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator11calcF1ScoreEdd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfoE">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo"></span><em class="property">struct </em><code class="descname">StatsInfo</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfoE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo9StatsInfoEv">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo::StatsInfo"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo_1a46e7b0312a0458c7162bfc946aa1c107"></span><code class="descname">StatsInfo</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo9StatsInfoEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2TPE">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo::TP__double"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo_1a16b8130698c2355713bc82304f6cae3d"></span>double <code class="descname">TP</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2TPE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2TNE">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo::TN__double"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo_1a0fb9e4960932d6766d538ce971fae22c"></span>double <code class="descname">TN</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2TNE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2FPE">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo::FP__double"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo_1a52c894fe813facaee23192c07d8b5754"></span>double <code class="descname">FP</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2FPE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2FNE">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo::FN__double"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo_1a06127b35daf5837f9c2218f7bcd05120"></span>double <code class="descname">FN</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2FNE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle16RankAucEvaluatorE">
+<span id="paddle::RankAucEvaluator"></span><span class="target" id="paddleclasspaddle_1_1RankAucEvaluator"></span><em class="property">class </em><code class="descname">RankAucEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;Evaluator.h&gt;</em><p><a class="reference internal" href="#paddleclasspaddle_1_1RankAucEvaluator"><span>RankAucEvaluator</span></a> calculates the AUC of each list (i.e., titles under the same query), and averages them. </p>
+<p>Each list should be organized as a sequence. The inputs of this evaluator is [output, click, pv]. If pv is not provided, it will be set to 1. The types of click and pv are dense value. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span>paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16RankAucEvaluator5startEv">
+<span id="paddle::RankAucEvaluator::start"></span>virtual <span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1a924658aaa8f52b175c338316bd0c8bd4"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16RankAucEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::RankAucEvaluator::updateSamplesNum__std::vector:Argument:CR"></span>virtual <span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1a42076eda6e5e67ad7761cd968908e842"></span>void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16RankAucEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::RankAucEvaluator::evalImp__std::vector:Argument:R"></span>virtual <span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1aea1f1db5dfa1aaab3b9f7313ff6ea0f3"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. return the score for the batch if it make sense to sum the score across batches. Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span>finish()</span></a> and printStats() to do the right calculation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16RankAucEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::RankAucEvaluator::distributeEval__ParameterClient2P"></span>virtual <span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1acb6848680b165f8db95c0cac0b9cb1f2"></span>void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16RankAucEvaluator11calcRankAucEP4realP4realP4real6size_t">
+<span id="paddle::RankAucEvaluator::calcRankAuc__realP.realP.realP.s"></span><span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1abe05c8ee46cb11932646c433c3e2fd05"></span>double <code class="descname">calcRankAuc</code><span class="sig-paren">(</span>real *<em>outputData</em>, real *<em>clickData</em>, real *<em>pvData</em>, size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator11calcRankAucEP4realP4realP4real6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle16RankAucEvaluator7output_E">
+<span id="paddle::RankAucEvaluator::output___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1a0c6c4fd23a5cc89bcfcfbeb85e86c71c"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">output_</code><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator7output_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16RankAucEvaluator6click_E">
+<span id="paddle::RankAucEvaluator::click___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1a46ab06bf5cedcaaba09ff366b67e9b3f"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">click_</code><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator6click_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16RankAucEvaluator3pv_E">
+<span id="paddle::RankAucEvaluator::pv___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1af3badb304e414a6faeae4352e87cbfc6"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">pv_</code><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator3pv_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16RankAucEvaluator11outputPair_E">
+<span id="paddle::RankAucEvaluator::outputPair___std::vector:std::pair:real.i::"></span><span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1af867746afb97b9af0ecb60e34335c4c8"></span>std::vector&lt;std::pair&lt;real, int&gt;&gt; <code class="descname">outputPair_</code><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator11outputPair_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv26paddle">
+<span id="paddle"></span><span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle18REGISTER_EVALUATORE5chunk14ChunkEvaluator">
+<span id="paddle::REGISTER_EVALUATOR__chunk.ChunkEvaluator"></span><span class="target" id="paddlenamespacepaddle_1a21afdd21a3b3b2c088644dba3a7a1e2c"></span><code class="descname">REGISTER_EVALUATOR</code><span class="sig-paren">(</span>chunk, <a class="reference internal" href="#_CPPv2N6paddle14ChunkEvaluatorE" title="paddle::ChunkEvaluator">ChunkEvaluator</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18REGISTER_EVALUATORE5chunk14ChunkEvaluator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle14ChunkEvaluatorE">
+<span id="paddle::ChunkEvaluator"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator"></span><em class="property">class </em><code class="descname">ChunkEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Chunk evaluator is used to evaluate segment labelling accuracy for a sequence. It calculates the chunk detection F1 score.</p>
+<p>A chunk is correctly detected if its beginning, end and type are correct. Other chunk type is ignored. For each label in the label sequence, we have</p>
+<p><div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">tagType</span> <span class="o">=</span> <span class="n">label</span> <span class="o">%</span> <span class="n">numTagType</span>
+<span class="n">chunkType</span> <span class="o">=</span> <span class="n">label</span> <span class="o">/</span> <span class="n">numTagType</span>
+<span class="n">otherChunkType</span> <span class="o">=</span> <span class="n">numChunkTypes</span>
+</pre></div>
+</div>
+</p>
+<p>The total number of different labels is numTagType*numChunkTypes+1 We support 4 labelling scheme The tag type for each of the scheme is shown as follows:</p>
+<p><div class="highlight-python"><div class="highlight"><pre><span></span>Scheme Begin Inside End   Single
+ plain  0     -      -     -
+ IOB    0     1      -     -
+ IOE    -     0      1     -
+ IOBES  0     1      2     3
+</pre></div>
+</div>
+</p>
+<p>&#8216;plain&#8217; means the whole chunk must contain exactly the same chunk label. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span>paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator4initERK15EvaluatorConfig">
+<span id="paddle::ChunkEvaluator::init__EvaluatorConfigCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a1d8eaeb9201d863f4dad7d9f3a7db4fb"></span>void <code class="descname">init</code><span class="sig-paren">(</span><em class="property">const</em> EvaluatorConfig &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator4initERK15EvaluatorConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator5startEv">
+<span id="paddle::ChunkEvaluator::start"></span>virtual <span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1ae48510968c7bc797d2f73beedf516bf8"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::ChunkEvaluator::printStats__osR"></span>virtual <span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1ad3a8d8f7ea6bd3dd61a67f5fa90aa21b"></span>void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::ChunkEvaluator::distributeEval__ParameterClient2P"></span>virtual <span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1ab88592ba9b37fd1b6bc961f6d2acd2cc"></span>void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::ChunkEvaluator::evalImp__std::vector:Argument:R"></span>virtual <span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1af2a844ded3ef3e87ee36e32dcd74272e"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. return the score for the batch if it make sense to sum the score across batches. Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span>finish()</span></a> and printStats() to do the right calculation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator5eval1EPiPii">
+<span id="paddle::ChunkEvaluator::eval1__iP.iP.i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a1ee37205d78d012118a6734df1d4861c"></span>void <code class="descname">eval1</code><span class="sig-paren">(</span>int *<em>output</em>, int *<em>label</em>, int <em>length</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator5eval1EPiPii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator11getSegmentsEPiiRNSt6vectorI7SegmentEE">
+<span id="paddle::ChunkEvaluator::getSegments__iP.i.std::vector:Segment:R"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a0832d881f10eeff30d852a0c62a3c07e"></span>void <code class="descname">getSegments</code><span class="sig-paren">(</span>int *<em>label</em>, int <em>length</em>, std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle14ChunkEvaluator7SegmentE" title="paddle::ChunkEvaluator::Segment">Segment</a>&gt; &amp;<em>segments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator11getSegmentsEPiiRNSt6vectorI7SegmentEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator10isChunkEndEiiii">
+<span id="paddle::ChunkEvaluator::isChunkEnd__i.i.i.i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a73f1b81d3697640fbf27a45069e19b83"></span>bool <code class="descname">isChunkEnd</code><span class="sig-paren">(</span>int <em>prevTag</em>, int <em>prevType</em>, int <em>tag</em>, int <em>type</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator10isChunkEndEiiii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator12isChunkBeginEiiii">
+<span id="paddle::ChunkEvaluator::isChunkBegin__i.i.i.i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a425bc6dd488821c85497ddad43fce8c6"></span>bool <code class="descname">isChunkBegin</code><span class="sig-paren">(</span>int <em>prevTag</em>, int <em>prevType</em>, int <em>tag</em>, int <em>type</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator12isChunkBeginEiiii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator15otherChunkType_E">
+<span id="paddle::ChunkEvaluator::otherChunkType___i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1ad1d126c75374cf555c6b2c572d63b392"></span>int <code class="descname">otherChunkType_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator15otherChunkType_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator14numChunkTypes_E">
+<span id="paddle::ChunkEvaluator::numChunkTypes___i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1ac9541536632c150658b6dbbe8a55a5b4"></span>int <code class="descname">numChunkTypes_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator14numChunkTypes_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator12numTagTypes_E">
+<span id="paddle::ChunkEvaluator::numTagTypes___i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a939876f2aab0a34b7d57abba392ef455"></span>int <code class="descname">numTagTypes_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator12numTagTypes_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator9tagBegin_E">
+<span id="paddle::ChunkEvaluator::tagBegin___i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a1b9a4c425b526576f61e2c3af15e85e7"></span>int <code class="descname">tagBegin_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator9tagBegin_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator10tagInside_E">
+<span id="paddle::ChunkEvaluator::tagInside___i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a5d5077d424352cd2828c7162ad6cb940"></span>int <code class="descname">tagInside_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator10tagInside_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator7tagEnd_E">
+<span id="paddle::ChunkEvaluator::tagEnd___i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a8ef8b4db98afec22eba577755bf940f1"></span>int <code class="descname">tagEnd_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator7tagEnd_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator10tagSingle_E">
+<span id="paddle::ChunkEvaluator::tagSingle___i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a3e34ac149a57b97ec76948178a46ba64"></span>int <code class="descname">tagSingle_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator10tagSingle_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator17numLabelSegments_E">
+<span id="paddle::ChunkEvaluator::numLabelSegments___int64_t"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a980212ccd6bcc35e5ec51385c960c997"></span>int64_t <code class="descname">numLabelSegments_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator17numLabelSegments_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator18numOutputSegments_E">
+<span id="paddle::ChunkEvaluator::numOutputSegments___int64_t"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1ab53273bcb719a040b465b0521c5dd86e"></span>int64_t <code class="descname">numOutputSegments_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator18numOutputSegments_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator11numCorrect_E">
+<span id="paddle::ChunkEvaluator::numCorrect___int64_t"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a5631ee1afaa6d5c51ad3f63ce5cb2e00"></span>int64_t <code class="descname">numCorrect_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator11numCorrect_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator14labelSegments_E">
+<span id="paddle::ChunkEvaluator::labelSegments___std::vector:Segment:"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1adb6d99af2c96f5a053458cf1510724ff"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle14ChunkEvaluator7SegmentE" title="paddle::ChunkEvaluator::Segment">Segment</a>&gt; <code class="descname">labelSegments_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator14labelSegments_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator15outputSegments_E">
+<span id="paddle::ChunkEvaluator::outputSegments___std::vector:Segment:"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1ac126de4913a8dc37ddb2b8c68421aa18"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle14ChunkEvaluator7SegmentE" title="paddle::ChunkEvaluator::Segment">Segment</a>&gt; <code class="descname">outputSegments_</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator15outputSegments_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle14ChunkEvaluator7SegmentE">
+<span id="paddle::ChunkEvaluator::Segment"></span><span class="target" id="paddlestructpaddle_1_1ChunkEvaluator_1_1Segment"></span><em class="property">struct </em><code class="descname">Segment</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator7SegmentE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator7SegmenteqERK7Segment">
+<span id="paddle::ChunkEvaluator::Segment::eq-operator__SegmentCR"></span><span class="target" id="paddlestructpaddle_1_1ChunkEvaluator_1_1Segment_1a36f0adf3f5ca8d0c640b17b680de8eda"></span>bool <code class="descname">operator==</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle14ChunkEvaluator7SegmentE" title="paddle::ChunkEvaluator::Segment">Segment</a> &amp;<em>y</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator7SegmenteqERK7Segment" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator7Segment5beginE">
+<span id="paddle::ChunkEvaluator::Segment::begin__i"></span><span class="target" id="paddlestructpaddle_1_1ChunkEvaluator_1_1Segment_1a72631c8b8ff439dcf3ffb9420caa749a"></span>int <code class="descname">begin</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator7Segment5beginE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator7Segment3endE">
+<span id="paddle::ChunkEvaluator::Segment::end__i"></span><span class="target" id="paddlestructpaddle_1_1ChunkEvaluator_1_1Segment_1a026364e76471d99739fdb81d42e030b4"></span>int <code class="descname">end</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator7Segment3endE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14ChunkEvaluator7Segment4typeE">
+<span id="paddle::ChunkEvaluator::Segment::type__i"></span><span class="target" id="paddlestructpaddle_1_1ChunkEvaluator_1_1Segment_1a7159608f11f0e6e9691baa624f48f6e0"></span>int <code class="descname">type</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator7Segment4typeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv26paddle">
+<span id="paddle"></span><span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle18REGISTER_EVALUATORE17ctc_edit_distance17CTCErrorEvaluator">
+<span id="paddle::REGISTER_EVALUATOR__ctc_edit_distance.CTCErrorEvaluator"></span><span class="target" id="paddlenamespacepaddle_1a8433aef1f2ea9c4a95279d843a7d2b6e"></span><code class="descname">REGISTER_EVALUATOR</code><span class="sig-paren">(</span>ctc_edit_distance, <a class="reference internal" href="#_CPPv2N6paddle17CTCErrorEvaluatorE" title="paddle::CTCErrorEvaluator">CTCErrorEvaluator</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18REGISTER_EVALUATORE17ctc_edit_distance17CTCErrorEvaluator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluatorE">
+<span id="paddle::CTCErrorEvaluator"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator"></span><em class="property">class </em><code class="descname">CTCErrorEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculate sequence-to-sequence edit distance </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span>paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator17CTCErrorEvaluatorEv">
+<span id="paddle::CTCErrorEvaluator::CTCErrorEvaluator"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a933336d77ed52f17e6a03b16ee8f24e4"></span><code class="descname">CTCErrorEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator17CTCErrorEvaluatorEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::CTCErrorEvaluator::evalImp__std::vector:Argument:R"></span>virtual <span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1af3f25a9a048f9ce5568414191b969750"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. return the score for the batch if it make sense to sum the score across batches. Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span>finish()</span></a> and printStats() to do the right calculation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator4evalERK13NeuralNetwork">
+<span id="paddle::CTCErrorEvaluator::eval__NeuralNetworkCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a4dbf548aff97caa2fc412322ac6d491b"></span>void <code class="descname">eval</code><span class="sig-paren">(</span><em class="property">const</em> NeuralNetwork &amp;<em>nn</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator4evalERK13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator5startEv">
+<span id="paddle::CTCErrorEvaluator::start"></span>virtual <span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1aa2dd2ffde1a382794b4d166a8417454e"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::CTCErrorEvaluator::printStats__osR"></span>virtual <span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1ae7309eba9ec5e8e3cdea1e41520c79f0"></span>void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::CTCErrorEvaluator::distributeEval__ParameterClient2P"></span>virtual <span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a4f0051c87cd3081725c2f9c3f2be429d"></span>void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator11path2StringERKNSt6vectorIiEE">
+<span id="paddle::CTCErrorEvaluator::path2String__std::vector:i:CR"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a5e0a070fae7568305dc82f27247d5c6d"></span>std::vector&lt;int&gt; <code class="descname">path2String</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;int&gt; &amp;<em>path</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator11path2StringERKNSt6vectorIiEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator12bestLabelSeqEv">
+<span id="paddle::CTCErrorEvaluator::bestLabelSeq"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a73920bfe0dd880cb2d26dfc3ef95e13d"></span>std::vector&lt;int&gt; <code class="descname">bestLabelSeq</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator12bestLabelSeqEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator15stringAlignmentERNSt6vectorIiEERNSt6vectorIiEEb4real4real4real">
+<span id="paddle::CTCErrorEvaluator::stringAlignment__std::vector:i:R.std::vector:i:R.b.real.real.real"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a0c2d2607084305f42378923e3cb9569d"></span>real <code class="descname">stringAlignment</code><span class="sig-paren">(</span>std::vector&lt;int&gt; &amp;<em>gtStr</em>, std::vector&lt;int&gt; &amp;<em>recogStr</em>, bool <em>backtrace</em> = true, real <em>sp</em> = 1.0, real <em>dp</em> = 1.0, real <em>ip</em> = 1.0<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator15stringAlignmentERNSt6vectorIiEERNSt6vectorIiEEb4real4real4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator12editDistanceEP4realiiPii">
+<span id="paddle::CTCErrorEvaluator::editDistance__realP.i.i.iP.i"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a50c867aeec9fa5ab656f84c61d369cb2"></span>real <code class="descname">editDistance</code><span class="sig-paren">(</span>real *<em>output</em>, int <em>numTimes</em>, int <em>numClasses</em>, int *<em>labels</em>, int <em>labelsLen</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator12editDistanceEP4realiiPii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator15outActivations_E">
+<span id="paddle::CTCErrorEvaluator::outActivations___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a707975d6b0b981722735c193e148a690"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">outActivations_</code><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator15outActivations_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator9numTimes_E">
+<span id="paddle::CTCErrorEvaluator::numTimes___i"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a9d809d2b5f4bea51e0e076b99011c1da"></span>int <code class="descname">numTimes_</code><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator9numTimes_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator11numClasses_E">
+<span id="paddle::CTCErrorEvaluator::numClasses___i"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a917ad87878c7d7a07a8b7def3f1a85e0"></span>int <code class="descname">numClasses_</code><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator11numClasses_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator13numSequences_E">
+<span id="paddle::CTCErrorEvaluator::numSequences___i"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a3c56fcf374903e326d0ea813ed00aee8"></span>int <code class="descname">numSequences_</code><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator13numSequences_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator6blank_E">
+<span id="paddle::CTCErrorEvaluator::blank___i"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1aeecec685970bb38eabea7eeb7b3b804c"></span>int <code class="descname">blank_</code><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator6blank_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator10deletions_E">
+<span id="paddle::CTCErrorEvaluator::deletions___real"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1ae81d4759dc6b67cd6f17faee04754984"></span>real <code class="descname">deletions_</code><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator10deletions_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator11insertions_E">
+<span id="paddle::CTCErrorEvaluator::insertions___real"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1ac754a60f50f770c4f1fc410e1b71c349"></span>real <code class="descname">insertions_</code><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator11insertions_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator14substitutions_E">
+<span id="paddle::CTCErrorEvaluator::substitutions___real"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a075dc36c73cede2225e45cd7591aad8a"></span>real <code class="descname">substitutions_</code><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator14substitutions_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator22seqClassficationError_E">
+<span id="paddle::CTCErrorEvaluator::seqClassficationError___i"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a8150bb35c79da90803f98a2e650286d7"></span>int <code class="descname">seqClassficationError_</code><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator22seqClassficationError_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../dataprovider/dataproviders.html"
+                        title="previous chapter">Data Providers</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../gradientmachines/index.html"
+                        title="next chapter">Gradient Machines Documents</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/gserver/evaluators/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../gradientmachines/index.html" title="Gradient Machines Documents"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../dataprovider/dataproviders.html" title="Data Providers"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Activations &mdash; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Trainer Config Helpers" href="index.html" />
+    <link rel="next" title="Poolings" href="poolings.html" />
+    <link rel="prev" title="Base" href="layers.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="poolings.html" title="Poolings"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="layers.html" title="Base"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Trainer Config Helpers</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-paddle.trainer_config_helpers.activations">
+<span id="activations"></span><h1>Activations<a class="headerlink" href="#module-paddle.trainer_config_helpers.activations" title="Permalink to this headline">¶</a></h1>
+<p>Paddle Supported Activations.</p>
+<p>Each activation inherit BaseActivation, which has two attributes.</p>
+<ul>
+<li><p class="first">name: activation name in paddle config.</p>
+</li>
+<li><dl class="first docutils">
+<dt>support_hppl: True if supported by hppl. lstm layer can only use activations</dt>
+<dd><p class="first last">supported by hppl (the name hppl will be revised later).</p>
+</dd>
+</dl>
+</li>
+</ul>
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.BaseActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">BaseActivation</code><span class="sig-paren">(</span><em>name</em>, <em>support_hppl</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.activations.BaseActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>A mark for activation class.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.TanhActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">TanhActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.TanhActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tanh activation.</p>
+<div class="math">
+\[f(z)=tanh(z)=\frac{e^z-e^{-z}}{e^z+e^{-z}}\]</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.SigmoidActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">SigmoidActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.SigmoidActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sigmoid activation.</p>
+<div class="math">
+\[f(z) = \frac{1}{1+exp(-z)}\]</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.SoftmaxActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">SoftmaxActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.SoftmaxActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Softmax activation for simple input</p>
+<div class="math">
+\[P(y=j|x) = \frac{e^{x_j}} {\sum^K_{k=1} e^{x_j} }\]</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.SequenceSoftmaxActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">SequenceSoftmaxActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.SequenceSoftmaxActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Softmax activation for one sequence. The dimension of input feature must be
+1 and a sequence.</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span></span>result = softmax(for each_feature_vector[0] in input_feature)
+for i, each_time_step_output in enumerate(output):
+    each_time_step_output = result[i]
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.IdentityActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">IdentityActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.IdentityActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Identity Activation.</p>
+<p>Just do nothing for output both forward/backward.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="paddle.trainer_config_helpers.activations.LinearActivation">
+<code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">LinearActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.LinearActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <a class="reference internal" href="#paddle.trainer_config_helpers.activations.IdentityActivation" title="paddle.trainer_config_helpers.activations.IdentityActivation"><code class="xref py py-class docutils literal"><span class="pre">IdentityActivation</span></code></a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.ReluActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">ReluActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.ReluActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Relu activation.</p>
+<p>forward. <span class="math">\(y = max(0, z)\)</span></p>
+<p>derivative:</p>
+<div class="math">
+\[\begin{split}1  &amp;\quad if z &gt; 0 \\
+0  &amp;\quad\mathrm{otherwize}\end{split}\]</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.BReluActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">BReluActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.BReluActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>BRelu Activation.</p>
+<p>forward.  <span class="math">\(y = min(24, max(0, z))\)</span></p>
+<p>derivative:</p>
+<div class="math">
+\[\begin{split}1  &amp;\quad if 0 &lt; z &lt; 24 \\
+0  &amp;\quad \mathrm{otherwise}\end{split}\]</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.SoftReluActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">SoftReluActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.SoftReluActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>SoftRelu Activation.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.STanhActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">STanhActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.STanhActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scaled Tanh Activation.</p>
+<div class="math">
+\[f(z) = 1.7159 * tanh(2/3*z)\]</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.AbsActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">AbsActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.AbsActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abs Activation.</p>
+<p>Forward:    <span class="math">\(f(z) = abs(z)\)</span></p>
+<p>Derivative:</p>
+<div class="math">
+\[\begin{split}1 &amp;\quad if \quad z &gt; 0 \\
+-1 &amp;\quad if \quad z &lt; 0 \\
+0 &amp;\quad if \quad z = 0\end{split}\]</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="paddle.trainer_config_helpers.activations.SquareActivation">
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">SquareActivation</code><a class="headerlink" href="#paddle.trainer_config_helpers.activations.SquareActivation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Square Activation.</p>
+<div class="math">
+\[f(z) = z^2.\]</div>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="layers.html"
+                        title="previous chapter">Base</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="poolings.html"
+                        title="next chapter">Poolings</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/ui/api/trainer_config_helpers/activations.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="poolings.html" title="Poolings"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="layers.html" title="Base"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Trainer Config Helpers</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+    </div>
+  </body>
+</html>
