@@ -288,7 +288,7 @@ header {
 
 // Bootstrap Overrides
 .text-primary {
-    color: $theme-primary;
+   color: #1DBB9C;
 }
 
 .no-gutter > [class*='col-'] {
@@ -302,7 +302,7 @@ header {
 }
 
 .btn-primary {
-    @include button-variant(white, $theme-primary, $theme-primary);
+    @include button-variant(white, #1DBB9C, #1DBB9C);
 }
 
 .btn {
@@ -350,4 +350,43 @@ img::-moz-selection {
 body {
     -webkit-tap-highlight-color: $theme-dark;
 }
+
+.service-box h3 {
+    color: #6483A6;
+}
+
+.service-box .text-muted {
+    color: #8ea4be;
+}
+
+#contact h2 {
+    color: #6483A6;
+}
+
+#contact p {
+    color: #8ea4be;
+}
+
+.affix .pp_logo {
+  background-image: url('../img/PP_b.png');
+  background-repeat: no-repeat;
+  width: 136px;
+  height: 35px;
+  margin-left: 10px;
+  margin-top: 12px;
+  float: left;
+  padding: 15px 15px;
+}
+
+.affix-top .pp_logo {
+  background-image: url('../img/PP_w.png');
+  background-repeat: no-repeat;
+  width: 177px;
+  height: 45px;
+  margin-left: 10px;
+  margin-top: 5px;
+  float: left;
+  padding: 15px 15px;
+}
+
 
