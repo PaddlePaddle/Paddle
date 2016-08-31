@@ -1,4 +1,4 @@
-FROM paddledev/paddlepaddle
+FROM paddledev/paddle:cpu-latest
 
 MAINTAINER PaddlePaddle dev team <paddle-dev@baidu.com>
 
