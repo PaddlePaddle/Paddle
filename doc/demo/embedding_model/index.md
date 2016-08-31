@@ -54,11 +54,11 @@ The general command of extracting desired parameters from the pretrained embeddi
 Here, you can simply run the command:
 
     cd $PADDLE_ROOT/demo/seqToseq/data/
-    ./paraphase_model.sh
+    ./paraphrase_model.sh
 
 And you will see following embedding model structure:
 
-    paraphase_model
+    paraphrase_model
     |--- _source_language_embedding
     |--- _target_language_embedding
 
@@ -90,7 +90,7 @@ Then, train the model by running the command:
 
 where `train.sh` is almost the same as `demo/seqToseq/translation/train.sh`, the only difference is following two command arguments:
 
-- `--init_model_path`: path of the initialization model, here is `data/paraphase_model`
+- `--init_model_path`: path of the initialization model, here is `data/paraphrase_model`
 - `--load_missing_parameter_strategy`: operations when model file is missing, here use a normal distibution to initialize the other parameters except for the embedding layer
 
 For users who want to understand the dataset format, model architecture and training procedure in detail, please refer to [Text generation Tutorial](text_generation.md).
