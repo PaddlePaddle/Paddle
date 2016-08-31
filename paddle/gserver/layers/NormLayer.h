@@ -23,8 +23,9 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * @brief basic parent layer of normalization
- * Normalize the input in local region
+ * @brief Basic parent layer of normalization
+ *
+ * @note Normalize the input in local region
  */
 class NormLayer : public Layer {
 public:
@@ -35,7 +36,9 @@ public:
     return true;
   }
 
-  // create norm layer by norm_type
+  /**
+   * @brief create norm layer by norm_type
+   */
   static Layer* create(const LayerConfig& config);
 };
 

@@ -28,8 +28,17 @@ limitations under the License. */
 namespace paddle {
 
 static ClassRegistrar<ActivationFunction> gActivationRegistrar;
+/**
+ * @def ACTIVATION_CLASS_NAME
+ * @brief Macro for getting derived activation class name
+ * @note ACTIVATION_CLASS_NAME(softmax) softmax_;
+ * means softmaxActivation softmax_;
+ */
 #define ACTIVATION_CLASS_NAME(ACTIVATION_NAME) ACTIVATION_NAME##Activation
-
+/**
+ * @def BEGIN_DEFINE_ACTIVATION
+ * @brief Macro for defining a devried activation class
+ */
 #define BEGIN_DEFINE_ACTIVATION(ACTIVATION_NAME)                             \
   class ACTIVATION_CLASS_NAME(ACTIVATION_NAME) : public ActivationFunction { \
   private:                                                                   \
@@ -37,7 +46,10 @@ static ClassRegistrar<ActivationFunction> gActivationRegistrar;
                                                                              \
   public:                                                                    \
     const std::string& getName() const { return name; }
-
+/**
+ * @def END_DEFINE_ACTIVATION
+ * @brief Macro for registering a derived activation class
+ */
 #define END_DEFINE_ACTIVATION(ACTIVATION_NAME)                     \
   };                                                               \
   const std::string ACTIVATION_CLASS_NAME(ACTIVATION_NAME)::name = \
@@ -66,9 +78,10 @@ static InitFunction __reg_activation__identity([] {
 });
 
 /**
- * SigmoidActivation
- *
+ * @brief Sigmoid Activation
+ * \f[
  * f(z) = \frac{1}{1+exp(-z)}
+ * \f]
  */
 BEGIN_DEFINE_ACTIVATION(sigmoid)
 void forward(Argument& act) { act.value->sigmoid(*act.value); }
@@ -76,8 +89,10 @@ void backward(Argument& act) { act.grad->sigmoidDerivative(*act.value); }
 END_DEFINE_ACTIVATION(sigmoid)
 
 /**
- * Do Softmax activation for all sample.
+ * @brief Softmax Activation
+ * \f[
  * P(y=j|x) = \frac{e^{x^Tw_j}}{\sum^K_{k=1}e^{x^Tw_k}}
+ * \f]
  */
 BEGIN_DEFINE_ACTIVATION(softmax)
 private:
@@ -115,8 +130,12 @@ void backward(Argument& act) {
 }
 END_DEFINE_ACTIVATION(softmax)
 
-/// Softmax on all frames of one sequence.
-/// Width of frame must be one.
+
+/**
+ * @brief Sequence_softmax Activation
+ * @note Softmax on all frames of one sequence.
+ * Width of frame must be one.
+ */
 BEGIN_DEFINE_ACTIVATION(sequence_softmax)
 private:
 ACTIVATION_CLASS_NAME(softmax) softmax_;
@@ -156,8 +175,7 @@ void backward(Argument& act) {
 END_DEFINE_ACTIVATION(sequence_softmax)
 
 /**
- * Relu Activation.
- *
+ * @brief Relu Activation.
  * forward. y = max(0, z)
  *
  * derivative of relu is:
@@ -173,7 +191,7 @@ void backward(Argument& act) { act.grad->reluDerivative(*act.value); }
 END_DEFINE_ACTIVATION(relu)
 
 /**
- * BRelu Activation.
+ * @brief BRelu Activation.
  *
  * forward. y = min(24, max(0, z))
  *
@@ -192,9 +210,10 @@ void backward(Argument& act) { act.grad->breluDerivative(*act.value); }
 END_DEFINE_ACTIVATION(brelu)
 
 /**
- * tanh activation.
- *
+ * @brief Tanh Activation.
+ * \f[
  * f(z) = tanh(z)=\frac{e^z-e^{-z}}{e^z+e^{-z}}
+ * \f]
  */
 BEGIN_DEFINE_ACTIVATION(tanh)
 void forward(Argument& act) { act.value->tanh(*act.value); }
@@ -203,9 +222,10 @@ void backward(Argument& act) { act.grad->tanhDerivative(*act.value); }
 END_DEFINE_ACTIVATION(tanh)
 
 /**
- * Scaled Tanh Activation
- *
+ * @brief Scaled Tanh Activation
+ * \f[
  * f(z) = 1.7159 * tanh(2/3*z)
+ * \f]
  */
 BEGIN_DEFINE_ACTIVATION(stanh)
 private:
@@ -221,9 +241,10 @@ void backward(Argument& act) {
 END_DEFINE_ACTIVATION(stanh)
 
 /**
- * Soft relu activation.
- *
+ * @brief Soft Relu Activation.
+ * \f[
  * f(z) = ln(1+e^z)
+ * \f]
  */
 BEGIN_DEFINE_ACTIVATION(softrelu)
 void forward(Argument& act) { act.value->softrelu(*act.value); }
@@ -232,8 +253,7 @@ void backward(Argument& act) { act.grad->softreluDerivative(*act.value); }
 END_DEFINE_ACTIVATION(softrelu)
 
 /**
- * Abs Activation.
- *
+ * @brief Abs Activation.
  * Forward: f(z) = abs(z)
  *
  * Derivative:
@@ -258,9 +278,10 @@ void backward(Argument& act) { act.grad->absDerivative(*act.in); }
 END_DEFINE_ACTIVATION(abs)
 
 /**
- * Square Activation.
- *
+ * @brief Square Activation.
+ * \f[
  * f(z) = z^2.
+ * \f]
  */
 BEGIN_DEFINE_ACTIVATION(square)
 void forward(Argument& act) {
@@ -274,7 +295,12 @@ void forward(Argument& act) {
 
 void backward(Argument& act) { act.grad->squareDerivative(*act.in); }
 END_DEFINE_ACTIVATION(square)
-
+/**
+ * @brief Exponential Activation.
+ * \f[
+ * f(z) = e^z
+ * \f]
+ */
 BEGIN_DEFINE_ACTIVATION(exponential)
 void forward(Argument& act) { act.value->exp(*act.value); }
 

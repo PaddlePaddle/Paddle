@@ -33,7 +33,11 @@ void Evaluator::eval(const NeuralNetwork& nn) {
   totalScore_ += score;
   updateSamplesNum(arguments);
 }
-
+/**
+ * @brief classification error Evaluator
+ *
+ * The config file api is classification_error_evaluator.
+ */
 class ClassificationErrorEvaluator : public Evaluator {
 public:
   virtual void updateSamplesNum(const std::vector<Argument>& arguments) {
@@ -99,8 +103,11 @@ public:
   }
 };
 
-// sequence level classification error stats:
-//   if any frame in one sequence has error, the sequence is error
+/**
+ * @brief sequence classification error Evaluator
+ * @note sequence level classification error stats,
+ * if any frame in one sequence has error, the sequence is error
+ */
 class SequenceClassificationErrorEvaluator
     : public ClassificationErrorEvaluator {
 public:
@@ -135,7 +142,12 @@ public:
 };
 REGISTER_EVALUATOR(seq_classification_error,
                    SequenceClassificationErrorEvaluator);
-
+/**
+ * @brief sum Evaluator
+ * Calculate the sum of output or label
+ *
+ * The config file api is sum_evaluator.
+ */
 class SumEvaluator : public Evaluator {
 public:
   SumEvaluator() : cpuLabel_(nullptr), cpuWeight_(nullptr) {}
@@ -218,13 +230,18 @@ private:
   IVectorPtr cpuLabel_;
   MatrixPtr cpuWeight_;
 };
-
+/**
+ * @brief column sum Evaluator
+ * @note column sum for the colIdx-th column *
+ * - colIdx = 0: the 0-th column.
+ * - colIdx > 0: the colIdx-th column.
+ * - colIdx < 0: the last colIdx-th column.
+ *
+ * The config file api is column_sum_evaluator.
+ *
+ */
 class ColumnSumEvaluator : public Evaluator {
 public:
-  // column sum for the colIdx-th column
-  // colIdx = 0: the 0-th column
-  //         > 0: the colIdx-th column
-  //         < 0: the last colIdx-th column
   explicit ColumnSumEvaluator(int32_t colIdx)
       : colIdx_(colIdx), colNum_(0), sum_(nullptr) {}
 
@@ -845,7 +862,11 @@ Evaluator* Evaluator::create(const EvaluatorConfig& config) {
   evaluator->init(config);
   return evaluator;
 }
-
+/**
+ * @brief print value of each layer.
+ *
+ * The config file api is value_printer_evaluator.
+ */
 class ValuePrinter : public Evaluator {
 public:
   ValuePrinter() {}
@@ -882,7 +903,11 @@ public:
   virtual real evalImp(std::vector<Argument>& arguments) { return 0; }
 };
 REGISTER_EVALUATOR(value_printer, ValuePrinter);
-
+/**
+ * @brief print gradient of each layer.
+ *
+ * The config file api is gradient_printer_evaluator.
+ */
 class GradientPrinter : public Evaluator {
 public:
   GradientPrinter() {}
@@ -908,7 +933,11 @@ public:
   virtual real evalImp(std::vector<Argument>& arguments) { return 0; }
 };
 REGISTER_EVALUATOR(gradient_printer, GradientPrinter);
-
+/**
+ * @brief print row max id vctor of each layer
+ *
+ * The config file api is maxid_printer_evaluator.
+ */
 class MaxIdPrinter : public Evaluator {
 private:
   IVectorPtr maxIds_;
@@ -946,7 +975,11 @@ public:
   virtual real evalImp(std::vector<Argument>& arguments) { return 0; }
 };
 REGISTER_EVALUATOR(max_id_printer, MaxIdPrinter);
-
+/**
+ * @brief print sequence max frames of each layer
+ *
+ * The config file api is maxframe_printer_evaluator.
+ */
 class MaxFramePrinter : public Evaluator {
 private:
   IVectorPtr maxIds_;
@@ -998,30 +1031,29 @@ public:
 REGISTER_EVALUATOR(max_frame_printer, MaxFramePrinter);
 
 /**
- * Sequence text printer will print text according to index matrix and a
- * dictionary. There can be multiple input to this layer:
+ * @brief print text according to index matrix and a dictionary.
  *
- *   1) If there is only one input, the input must be a matrix containing
+ * There can be multiple input to this layer:
+ * - If there is only one input, the input must be a matrix containing
  *      the sequence of indices;
- *
- *   2) If there are more than one input, the first input should be ids,
+ * - If there are more than one input, the first input should be ids,
  *      and are interpreted as sample ids.
  *
  * The output format will be:
  *
- *   1) sequence without sub-sequence, and there is probability.
+ * - sequence without sub-sequence, and there is probability.
  *
  *     @code
  *      id \t prob space_seperated_tokens_from_dictionary_according_to_seq
  *     @endcode
  *
- *   2) sequence without sub-sequence, and there is not probability.
+ * - sequence without sub-sequence, and there is not probability.
  *
  *     @code
  *      id \t space_seperated_tokens_from_dictionary_according_to_seq
  *     @endcode
  *
- *   3) sequence with sub-sequence, and there is not probability.
+ * - sequence with sub-sequence, and there is not probability.
  *
  *     @code
  *      id \t space_seperated_tokens_from_dictionary_according_to_sub_seq
@@ -1031,6 +1063,8 @@ REGISTER_EVALUATOR(max_frame_printer, MaxFramePrinter);
  *
  * Typically SequenceTextPrinter layer takes output of maxid or RecurrentGroup
  * with maxid (when generating) as an input.
+ *
+ * The config file api is seqtext_printer_evaluator.
  *
  */
 class SequenceTextPrinter : public Evaluator {
@@ -1172,7 +1206,11 @@ public:
   }
 };
 REGISTER_EVALUATOR(seq_text_printer, SequenceTextPrinter);
-
+/**
+ * @brief print classification error.
+ *
+ * The config file api is classification_error_printer_evaluator.
+ */
 class ClassificationErrorPrinter : public ClassificationErrorEvaluator {
 public:
   virtual void updateSamplesNum(const std::vector<Argument>& arguments) {}
