@@ -2,6 +2,7 @@
 ========================
 
 ..  toctree::
+    :maxdepth: 1
     
     install/index.rst
     cmake/index.rst
