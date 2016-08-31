@@ -4,10 +4,8 @@
 PaddlePaddle目前支持ubuntu 14.04版本使用deb包安装。更多的安装包PaddlePaddle会在近期提供。
 欢迎大家贡献各个发行版的安装包(例如，ubuntu，centos，debian，gentoo)。
 
-PaddlePaddle的ubuntu安装包分为两个版本，即CPU版本，和GPU版本，他们的下载地址是:
-
-* CPU版本的PaddlePaddle安装包:  TBD
-* GPU版本的PaddlePaddle安装包:  TBD
+PaddlePaddle的ubuntu安装包分为两个版本，即CPU版本，和GPU版本，他们的下载地址是\:
+https://github.com/baidu/Paddle/releases/tag/V0.8.0b0
 
 需要注意的是，目前PaddlePaddle的安装包只支持 
 `AVX <https://en.wikipedia.org/wiki/Advanced_Vector_Extensions>`_
@@ -21,8 +19,10 @@ PaddlePaddle的ubuntu安装包分为两个版本，即CPU版本，和GPU版本�
     dpkg -i paddle-0.8.0b-cpu.deb
     apt-get install -f
 
-需要注意的是，如果使用GPU版本的PaddlePaddle，请安装CUDA 7.5 和CUDNN 5到本地环境中，并
-设置好对应的环境变量(LD_LIBRARY_PATH等等)。
+在 :code:`dpkg -i` 的时候如果报一些依赖未找到的错误是正常的，
+在 :code:`apt-get install -f` 里会继续安装 PaddlePaddle。
+需要注意的是，如果使用GPU版本的PaddlePaddle，请安装CUDA 7.5 和CUDNN 5到本地环境中，
+并设置好对应的环境变量(LD_LIBRARY_PATH等等)。
 
 可能遇到的问题
 --------------
