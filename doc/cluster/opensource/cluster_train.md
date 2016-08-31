@@ -1,8 +1,8 @@
 # Cluster Training
 
-We provide this simple scripts to help you to launch cluster training Job to harness PaddlePaddle's distributed trainning. For MPI and other cluster scheduler refer this naive script to implement more robust cluster training platform by yourself.
+We provide some simple scripts ```paddle/scripts/cluster_train``` to help you to launch cluster training Job to harness PaddlePaddle's distributed trainning. For MPI and other cluster scheduler refer this naive script to implement more robust cluster training platform by yourself.
 
-The following cluster demo is based on RECOMMENDATION local training demo in PaddlePaddle ```demo/recommendation``` directory.  Assuming you enter the cluster_scripts/ directory.
+The following cluster demo is based on RECOMMENDATION local training demo in PaddlePaddle ```demo/recommendation``` directory.  Assuming you enter the ```paddle/scripts/cluster_train/``` directory.
 
 ## Pre-requirements
 
@@ -12,9 +12,9 @@ Firstly,
 pip install fabric
 ```
 
-Secondly, go through installing scripts to install PaddlePaddle at all nodes to make sure demo can run as local mode.
+Secondly, go through installing scripts to install PaddlePaddle at all nodes to make sure demo can run as local mode. For CUDA enabled training, we assume that CUDA is installed in ```/usr/local/cuda```, otherwise missed cuda runtime libraries error could be reported at cluster runtime. In one word, the local training environment should be well prepared for the simple scripts.
 
-Then you should prepare same ROOT_DIR directory in all nodes. ROOT_DIR is from in cluster_scripts/conf.py. Assuming that the ROOT_DIR = /home/paddle, you can create ```paddle``` user account as well, at last ```paddle.py``` can ssh connections to all nodes with ```paddle``` user automatically.
+Then you should prepare same ROOT_DIR directory in all nodes. ROOT_DIR is from in cluster_train/conf.py. Assuming that the ROOT_DIR = /home/paddle, you can create ```paddle``` user account as well, at last ```paddle.py``` can ssh connections to all nodes with ```paddle``` user automatically.
 
 At last you can create ssh mutual trust relationship between all nodes for easy ssh login, otherwise ```password``` should be provided at runtime from ```paddle.py```.
 
@@ -28,35 +28,51 @@ Generally, you can use same model file from local training for cluster training.
 
 Following steps are based on demo/recommendation demo in demo directory.
 
-You just go through demo/recommendation tutorial doc until ```Train``` section, and at last you will get train/test data and model configuration file. Besides, you can place paddle binaries and related dependencies files in this demo/recommendation directory as well. Finaly, just use demo/recommendation as workspace for cluster training.
+You just go through demo/recommendation tutorial doc until ```Train``` section, and at last you will get train/test data and model configuration file. Finaly, just use demo/recommendation as workspace for cluster training.
 
 At last your workspace should look like as follow:
 ```
 .
-|-- conf
-|   `-- trainer_config.conf
-|-- test
-|   |-- dnn_instance_000000
-|-- test.list
-|-- train
-|   |-- dnn_instance_000000
-|   |-- dnn_instance_000001
-`-- train.list
+|-- common_utils.py
+|-- data
+|   |-- config.json
+|   |-- config_generator.py
+|   |-- meta.bin
+|   |-- meta_config.json
+|   |-- meta_generator.py
+|   |-- ml-1m
+|   |-- ml_data.sh
+|   |-- ratings.dat.test
+|   |-- ratings.dat.train
+|   |-- split.py
+|   |-- test.list
+|   `-- train.list
+|-- dataprovider.py
+|-- evaluate.sh
+|-- prediction.py
+|-- preprocess.sh
+|-- requirements.txt
+|-- run.sh
+`-- trainer_config.py
 ```
-```conf/trainer_config.conf```
-Indicates the model config file.
+Not all of these files are needed for cluster training, but it's not necessary to remove useless files.
 
-```test``` and ```train```
-Train/test data. Different node should owns different parts of all Train data. This simple script did not do this job, so you should prepare it at last. All test data should be placed at node 0 only.
+```trainer_config.py```
+Indicates the model config file.
 
 ```train.list``` and ```test.list```
 File index. It stores all relative or absolute file paths of all train/test data at current node.
 
+```dataprovider.py```
+used to read train/test samples. It's same as local training.
+
+```data```
+all files in data directory are refered by train.list/test.list which are refered by data provider.
 
 
 ## Prepare Cluster Job Configuration
 
-Set serveral options must be carefully set in cluster_scripts/conf.py
+The options below must be carefully set in cluster_train/conf.py
 
 ```HOSTS```  all nodes hostname or ip that will run cluster job. You can also append user and ssh port with hostname, such as root@192.168.100.17:9090.
 
@@ -69,6 +85,8 @@ Set serveral options must be carefully set in cluster_scripts/conf.py
 ```PADDLE_PORTS_NUM``` the number of port used for cluster communication channle. if the number of cluster nodes is small(less than 5~6nodes), recommend you set it to larger, such as 2 ~ 8, for better network performance.
 
 ```PADDLE_PORTS_NUM_FOR_SPARSE``` the number of port used for sparse updater cluster commnunication channel. if sparse remote update is used, set it like ```PADDLE_PORTS_NUM```
+
+```LD_LIBRARY_PATH``` set addtional LD_LIBRARY_PATH for cluster job. You can use it to set CUDA libraries path.
 
 Default Configuration as follow:
 
@@ -96,6 +114,9 @@ PADDLE_PORT = 7164
 PADDLE_PORTS_NUM = 2
 #pserver sparse ports num
 PADDLE_PORTS_NUM_FOR_SPARSE = 2
+
+#environments setting for all processes in cluster job
+LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib64"
 ```
 
 ### Launching Cluster Job
@@ -107,7 +128,7 @@ PADDLE_PORTS_NUM_FOR_SPARSE = 2
 ```job_workspace```  set it with already deployed workspace directory, ```paddle.py``` will skip dispatch stage to directly launch cluster job with all nodes. It could help to reduce heavy
 dispatch latency.
 
-```cluster_scripts/run.sh``` provides command line sample to run ```demo/recommendation``` cluster job, just modify ```job_dispatch_package``` and ```job_workspace``` with your defined directory, then:
+```cluster_train/run.sh``` provides command line sample to run ```demo/recommendation``` cluster job, just modify ```job_dispatch_package``` and ```job_workspace``` with your defined directory, then:
 ```
 sh run.sh
 ```
@@ -115,7 +136,7 @@ sh run.sh
 The cluster Job will start in several seconds.
 
 ### Kill Cluster Job
-```paddle.py``` can capture ```Ctrl + C``` SIGINT signal to automatically kill all processes launched by it. So just stop ```paddle.py``` to kill cluster job.
+```paddle.py``` can capture ```Ctrl + C``` SIGINT signal to automatically kill all processes launched by it. So just stop ```paddle.py``` to kill cluster job. You should mannally kill job if program crashed.
 
 ### Check Cluster Training Result
 Check log in $workspace/log for details, each node owns same log structure.

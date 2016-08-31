@@ -24,7 +24,7 @@ import time
 import signal
 
 
-from fabric.api import run, put, settings, env
+from fabric.api import run, put, settings, env, prefix
 from fabric.tasks import execute
 
 #configuration for cluster
@@ -112,12 +112,15 @@ def job_pserver(jobdir, pids=None):
         '''
         start pserver process with fabric executor
         '''
-        program = 'paddle pserver'
-        run('cd ' + jobdir + '; '  + \
-            'GLOG_logtostderr=0 GLOG_log_dir="./log" ' + \
-            'nohup ' + \
-            program + " " + pargs + ' > ./log/server.log 2>&1 < /dev/null & ',
-            pty=False)
+        with prefix('export LD_LIBRARY_PATH=' + \
+                conf.LD_LIBRARY_PATH + \
+                ':$LD_LIBRARY_PATH'):
+            program = 'paddle pserver'
+            run('cd ' + jobdir + '; '  + \
+                'GLOG_logtostderr=0 GLOG_log_dir="./log" ' + \
+                'nohup ' + \
+                program + " " + pargs + ' > ./log/server.log 2>&1 < /dev/null & ',
+                pty=False)
 
     execute(start_pserver, jobdir, pargs, hosts=conf.HOSTS)
 
@@ -152,13 +155,16 @@ def job_trainer(jobdir,
         '''
         start trainer process with fabric executor
         '''
-        program = 'paddle train'
-        run('cd ' + jobdir + '; '  + \
-            'GLOG_logtostderr=0 '
-            'GLOG_log_dir="./log" '
-            'nohup ' + \
-            program + " " + args + " > ./log/train.log 2>&1 < /dev/null & ",
-            pty=False)
+        with prefix('export LD_LIBRARY_PATH=' + \
+                conf.LD_LIBRARY_PATH + \
+                ':$LD_LIBRARY_PATH'):
+            program = 'paddle train'
+            run('cd ' + jobdir + '; '  + \
+                'GLOG_logtostderr=0 '
+                'GLOG_log_dir="./log" '
+                'nohup ' + \
+                program + " " + args + " > ./log/train.log 2>&1 < /dev/null & ",
+                pty=False)
 
     for i in xrange(len(conf.HOSTS)):
         train_args = copy.deepcopy(args)
@@ -230,3 +236,5 @@ if __name__ == '__main__':
         job_all(args.job_dispatch_package,
                 None,
                 train_args_dict)
+    else:
+        print "--job_workspace or --job_dispatch_package should be set"
