@@ -209,6 +209,7 @@ def __monkeypatch_gradient_machine__():
 
     swig_paddle.GradientMachine.getLayerOutputs = getLayerOutputs
 
+
 def loadGradientMachine(config_filename, model_dir=None):
     """
     Load a gradient machine from config file name/path.
@@ -228,6 +229,7 @@ def loadGradientMachine(config_filename, model_dir=None):
         model_dir = os.path.dirname(config_filename)
     network.loadParameters(model_dir)
     return network
+
 
 def loadParameterFile(fn):
     """
@@ -257,6 +259,7 @@ def loadParameterFile(fn):
     else:
         raise swig_paddle.UnsupportError()
 
+
 class DataProviderWrapperConverter(object):
     """
     A class convert DataFormat from PyDataProvider Wrapper to
@@ -278,8 +281,8 @@ class DataProviderWrapperConverter(object):
 
         def __call__(self, slot_idx, arg):
             mat = swig_paddle.Matrix.createDense(self.buf,
-                                            len(self.buf) / self.__dim__,
-                                            self.__dim__)
+                                                 len(self.buf) / self.__dim__,
+                                                 self.__dim__)
             arg.setSlotValue(slot_idx, mat)
 
     class IdValueConverter(object):
@@ -312,8 +315,9 @@ class DataProviderWrapperConverter(object):
             self.cols += other
 
         def __call__(self, slot_idx, arg):
-            mat = swig_paddle.Matrix.createSparse(len(self.indices) - 1, self.dim,
-                                             len(self.cols), True)
+            mat = swig_paddle.Matrix.createSparse(len(self.indices) - 1,
+                                                  self.dim,
+                                                  len(self.cols), True)
             assert isinstance(mat, swig_paddle.Matrix)
             mat.sparseCopyFrom(self.indices, self.cols)
             self.putIntoArg(slot_idx, arg, mat)
@@ -337,8 +341,9 @@ class DataProviderWrapperConverter(object):
             self.values += map(lambda x: x[1], other)
 
         def __call__(self, slot_idx, arg):
-            mat = swig_paddle.Matrix.createSparse(len(self.indices) - 1, self.dim,
-                                             len(self.cols), False)
+            mat = swig_paddle.Matrix.createSparse(len(self.indices) - 1,
+                                                  self.dim,
+                                                  len(self.cols), False)
             assert isinstance(mat, swig_paddle.Matrix)
             mat.sparseCopyFrom(self.indices, self.cols, self.values)
             self.putIntoArg(slot_idx, arg, mat)
@@ -373,7 +378,7 @@ class DataProviderWrapperConverter(object):
         """
         if argument is None:
             argument = swig_paddle.Arguments.createArguments(0)
-        assert isinstance(argument,swig_paddle.Arguments)
+        assert isinstance(argument, swig_paddle.Arguments)
         argument.resize(len(self.__header__))
 
         values = map(lambda x:
@@ -394,10 +399,12 @@ class DataProviderWrapperConverter(object):
                     seq_dim[slot_idx].append(len(sequence))
 
             for slot_idx in xrange(len(self.__header__)):
-                argument.setSlotSequenceDim(slot_idx, swig_paddle.IVector.create(
-                    seq_dim[slot_idx]))
+                argument.setSlotSequenceDim(slot_idx,
+                                            swig_paddle.IVector.create(
+                                                seq_dim[slot_idx]))
                 argument.setSlotSequenceStartPositions(
-                    slot_idx, swig_paddle.IVector.create(seq_start_pos[slot_idx]))
+                    slot_idx,
+                    swig_paddle.IVector.create(seq_start_pos[slot_idx]))
         else:
             for each_sample in wrapper_data:
                 for raw_data, value in zip(each_sample, values):
@@ -413,6 +420,7 @@ class DataProviderWrapperConverter(object):
         Invoke self.convert. See documents in self.convert.
         """
         return self.convert(wrapper_data, argument)
+
 
 
 def __monkey_patch_protobuf_objects__():
@@ -451,7 +459,8 @@ def __monkey_patch_protobuf_objects__():
         :return: paddle.OptimizationConfig
         """
 
-        assert isinstance(protoObj, paddle.proto.TrainerConfig_pb2.OptimizationConfig)
+        assert isinstance(protoObj,
+                          paddle.proto.TrainerConfig_pb2.OptimizationConfig)
         return swig_paddle.OptimizationConfig.createFromProtoString(
             protoObj.SerializeToString())
 

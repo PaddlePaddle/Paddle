@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import swig_paddle
-import util
 from util import DataProviderWrapperConverter
+from dataprovider_converter import DataProviderConverter
 
-__all__ = ['paddle', 'DataProviderWrapperConverter', 'loadParameterFile']
-
+__all__ = ['paddle',
+           'DataProviderConverter',
+           'DataProviderWrapperConverter',  # for deprecated usage.
+           'loadParameterFile']
 util.monkeypatches()
+

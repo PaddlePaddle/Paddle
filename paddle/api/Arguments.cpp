@@ -102,8 +102,23 @@ static inline void doCopyFromSafely(std::shared_ptr<T1>& dest,
 IVector* Arguments::getSlotSequenceStartPositions(size_t idx) const
     throw(RangeError) {
   auto& a = m->getArg(idx);
-  return IVector::createByPaddleVectorPtr(
-    &a.sequenceStartPositions->getMutableVector(false));
+  if (a.sequenceStartPositions) {
+    return IVector::createByPaddleVectorPtr(
+        &a.sequenceStartPositions->getMutableVector(false));
+  } else {
+    return nullptr;
+  }
+}
+
+IVector*Arguments::getSlotSubSequenceStartPositions(size_t idx) const
+    throw (RangeError){
+  auto& a = m->getArg(idx);
+  if (a.subSequenceStartPositions) {
+    return IVector::createByPaddleVectorPtr(
+        &a.subSequenceStartPositions->getMutableVector(false));
+  } else {
+    return nullptr;
+  }
 }
 
 void Arguments::setSlotSequenceStartPositions(size_t idx,
@@ -111,6 +126,13 @@ void Arguments::setSlotSequenceStartPositions(size_t idx,
   auto& a = m->getArg(idx);
   auto& v = m->cast<paddle::IVector>(vec->getSharedPtr());
   a.sequenceStartPositions = std::make_shared<paddle::ICpuGpuVector>(v);
+}
+
+void Arguments::setSlotSubSequenceStartPositions(
+    size_t idx, IVector *vec) throw (RangeError) {
+  auto& a = m->getArg(idx);
+  auto& v = m->cast<paddle::IVector>(vec->getSharedPtr());
+  a.subSequenceStartPositions = std::make_shared<paddle::ICpuGpuVector>(v);
 }
 
 IVector* Arguments::getSlotSequenceDim(size_t idx) const throw(RangeError) {
