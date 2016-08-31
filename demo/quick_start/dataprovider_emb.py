@@ -43,7 +43,7 @@ def predict_initializer(settings, dictionary, **kwargs):
     ]
 
 
-@provider(init_hook=predict_initializer)
+@provider(init_hook=predict_initializer, should_shuffle=False)
 def process_predict(settings, file_name):
     with open(file_name, 'r') as f:
         for line in f:

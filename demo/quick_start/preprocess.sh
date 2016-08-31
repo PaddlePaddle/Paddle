@@ -18,11 +18,13 @@
 # 3. distinct train set and test set.
 # 4. build dict
 
+set -e
 
-mkdir data/tmp
+mkdir -p data/tmp
 python preprocess.py -i data/reviews_Electronics_5.json.gz
 # uniq and shuffle
 cd data/tmp
+echo 'uniq and shuffle...'
 cat pos_*|sort|uniq|shuf> pos.shuffed
 cat neg_*|sort|uniq|shuf> neg.shuffed
 

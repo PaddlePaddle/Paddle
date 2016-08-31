@@ -59,12 +59,11 @@ To build your text classification system, your code will need to perform five st
 ## Preprocess data into standardized format
 In this example, you are going to use [Amazon electronic product review dataset](http://jmcauley.ucsd.edu/data/amazon/) to build a bunch of deep neural network models for text classification. Each text in this dataset is a product review. This dataset has two categories: “positive” and “negative”. Positive means the reviewer likes the product, while negative means the reviewer does not like the product.
 
-`demo/quick_start` provides scripts for downloading data and preprocessing data, as shown below:
+`demo/quick_start` provides scripts for downloading data and preprocessing data as shown below. The data process takes several minutes (about 3 minutes in our machine).
 
 ```bash
 cd demo/quick_start
 ./data/get_data.sh
-pip install -r requirements.txt
 ./preprocess.sh
 ```
 
@@ -431,6 +430,14 @@ There are several differences between training and inference network configurati
 - Outputs need to be specified to the classification probability layer (the output of softmax layer), or the id of maximum probability (`max_id` layer). An example to output the id and probability is given in the code snippet.
 - batch_size = 1.
 - You need to specify the location of `test_list` in the test data.
+
+The results in `result.txt` is as follows, each line is one sample.
+
+```
+predicted_label_id;probability_of_label_0 probability_of_label_1  # the first sample
+predicted_label_id;probability_of_label_0 probability_of_label_1  # the second sample
+```
+
 
 ```python
 is_predict = get_config_arg('is_predict', bool, False)

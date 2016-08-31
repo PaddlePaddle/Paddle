@@ -38,7 +38,6 @@
 ```bash
 cd demo/quick_start
 ./data/get_data.sh
-pip install -r requirements.txt
 ./preprocess.sh
 ```
 
@@ -410,6 +409,13 @@ mv rank-00000 result.txt
 ```
 与训练网络配置不同的是：无需label相关的层，指定outputs输出概率层(softmax输出)，
 指定batch_size=1，数据传输无需label数据，预测数据指定test_list的位置。
+
+预测结果以文本的形式保存在`result.txt`中，一行为一个样本，格式如下：
+
+```
+预测ID;ID为0的概率 ID为1的概率
+预测ID;ID为0的概率 ID为1的概率
+```
 
 ```
 is_predict = get_config_arg('is_predict', bool, False)
