@@ -1,4 +1,4 @@
-Paddle文档
+PaddlePaddle文档
 ===================
 
 * [快速入门](demo/quick_start/index.md)

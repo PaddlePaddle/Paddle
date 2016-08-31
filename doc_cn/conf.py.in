@@ -26,7 +26,7 @@ sys.path.insert(0, '@PROJ_ROOT@/python')
 # -- General configuration ------------------------------------------------
 
 # General information about the project.
-project = u'PADDLE'
+project = u'PaddlePaddle'
 author = u'%s developers' % project
 copyright = u'2016, %s' % author
 github_doc_root = ''
