@@ -55,7 +55,7 @@ See [Installation Guide](http://paddlepaddle.org/doc/build/) to install from pre
     
 - [Example and Demo](http://paddlepaddle.org/doc/demo/) <br>
    We provide five demos, including: image classification, sentiment analysis,
-   sequence to sequence model, recommendation, semantic role labelling. 
+   sequence to sequence model, recommendation, semantic role labeling. 
    
 - [Distributed Training](http://paddlepaddle.org/doc/cluster) <br>
   This system supports training deep learning models on multiple machines

@@ -1,5 +1,5 @@
 PaddlePaddle Documentation
-===================
+==========================
 
 User Guide
 ----------
