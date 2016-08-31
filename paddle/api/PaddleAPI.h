@@ -392,7 +392,7 @@ public:
   void setSlotSequenceStartPositions(size_t idx,
                                      IVector* vec) throw(RangeError);
   void setSlotSubSequenceStartPositions(size_t idx,
-                                        IVector* vec) throw (RangeError);
+                                        IVector* vec) throw(RangeError);
   void setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError);
 
 private:
