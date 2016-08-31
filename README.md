@@ -44,7 +44,7 @@ learning to many products at Baidu.
   the capability of PaddlePaddle to make a huge impact for your product.
 
 ## Installation
-See [Installation Guide](http://paddlepaddle.org/doc/build/) to install from pre-built package or build from the source code.
+See [Installation Guide](http://paddlepaddle.org/doc/build/) to install from pre-built package or build from the source code. (Note: The intallation packages are still in pre-release state and your experience of installation may not be smooth.).
 
 ## Documentation
 - [Chinese Documentation](http://paddlepaddle.org/doc_cn/) <br>
