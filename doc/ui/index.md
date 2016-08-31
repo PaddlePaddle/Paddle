@@ -2,12 +2,11 @@
 
 ## Data Provider
 
-* [Introduction](data_provider/index.md)
-* [Python Use Case](data_provider/python_case.md)
+* [Introduction](data_provider/index.rst)
+* [PyDataProvider2](data_provider/pydataprovider2.rst)
 
 ## API Reference
 
-* [PyDataProviderWrapper](api/py_data_provider_wrapper.rst)
 * [Trainer Config Helpers](api/trainer_config_helpers/index.md)
 
 ## Command Line Argument
