@@ -58,7 +58,7 @@ def seq_to_seq_data(data_dir,
                            args = {"src_dict": src_dict,
                                    "trg_dict": trg_dict})
 
-    return {"src_dict_path": src_lang_dict, "trg_dict_path": trg_lang_dict, 
+    return {"src_dict_path": src_lang_dict, "trg_dict_path": trg_lang_dict,
             "gen_result": gen_result}
 
 
@@ -88,11 +88,11 @@ def gru_encoder_decoder(data_conf,
     src_embedding = embedding_layer(
         input=src_word_id,
         size=word_vector_dim,
-        param_attr=ParamAttr(name='_source_language_embedding'), )
-    src_forward = simple_gru(input=src_embedding, size=encoder_size, )
+        param_attr=ParamAttr(name='_source_language_embedding'))
+    src_forward = simple_gru(input=src_embedding, size=encoder_size)
     src_backward = simple_gru(input=src_embedding,
                               size=encoder_size,
-                              reverse=True, )
+                              reverse=True)
     encoded_vector = concat_layer(input=[src_forward, src_backward])
 
     with mixed_layer(size=decoder_size) as encoded_proj:
@@ -147,7 +147,7 @@ def gru_encoder_decoder(data_conf,
                                                   is_seq=True),
                                       StaticInput(input=encoded_proj,
                                                   is_seq=True), trg_embedding
-                                  ], )
+                                  ])
 
         lbl = data_layer(name='target_language_next_word',
                          size=target_dict_dim)

@@ -21,4 +21,4 @@ There are serveral examples and demos here.
 * [Embedding: Chinese Word](embedding_model/index.md)
 
 ## Customization
-* [Writing New Layers](new_layer/index.md)
+* [Writing New Layers](new_layer/index.rst)

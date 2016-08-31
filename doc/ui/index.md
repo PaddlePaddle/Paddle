@@ -9,12 +9,13 @@
 
 * [PyDataProviderWrapper](api/py_data_provider_wrapper.rst)
 * [Trainer Config Helpers](api/trainer_config_helpers/index.md)
+* [Recurrent Neural Network Configuration](api/rnn/index.rst)
 
 ## Command Line Argument
 
 * [Use Case](cmd_argument/use_case.md)
 * [Argument Outline](cmd_argument/argument_outline.md)
-* [Detail Description](cmd_argument/detail_introduction.md)
+* [Detailed Descriptions of All Command Line Arguments](cmd_argument/detail_introduction.md)
 
 ## Predict
 
