@@ -1,0 +1,50 @@
+/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+
+#pragma once
+
+#include <memory>
+
+#include "Layer.h"
+#include "LinearChainCRF.h"
+
+namespace paddle {
+
+/**
+ * A layer for calculating the cost of sequential conditional random field
+ * model.
+ * See LinearChainCRF.h for the detail of the CRF formulation.
+ */
+class CRFLayer : public Layer {
+public:
+  explicit CRFLayer(const LayerConfig& config) : Layer(config) {}
+  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  virtual void forward(PassType passType);
+  void forwardImp(const Argument&output, const Argument& label,
+                  VectorPtr parameterValue, VectorPtr parameterGradient);
+  virtual void backward(const UpdateCallback& callback);
+  void backwardImp(const UpdateCallback& callback, const Argument&output,
+                   const Argument& label);
+
+protected:
+  size_t numClasses_;
+  ParameterPtr parameter_;
+  std::vector<LinearChainCRF> crfs_;
+  LayerPtr weightLayer_;  // weight for each sequence
+  real coeff_;  // weight for the layer
+  std::vector<Argument> tmpCpuInput_;
+};
+
+}  // namespace paddle

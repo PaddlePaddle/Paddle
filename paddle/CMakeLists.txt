@@ -1,0 +1,18 @@
+add_subdirectory(cuda)
+add_subdirectory(utils)
+add_subdirectory(math)
+add_subdirectory(parameter)
+add_subdirectory(gserver)
+add_subdirectory(pserver)
+add_subdirectory(trainer)
+add_subdirectory(scripts)
+
+if(WITH_PREDICT_SDK)
+    add_subdirectory(predict)
+endif()
+
+if(WITH_SWIG_PY)
+  add_subdirectory(api)
+endif()
+
+

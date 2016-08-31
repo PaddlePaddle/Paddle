@@ -1,0 +1,71 @@
+#!/bin/bash
+
+function usage(){
+        echo "usage: paddle [--help] [<args>]"
+        echo "These are common paddle commands used in various situations:"
+        echo "    train             Start a paddle_trainer"
+        echo "    merge_model       Start a paddle_merge_model"
+        echo "    pserver           Start a paddle_pserver_main"
+        echo "    version           Print paddle version"
+        echo "    dump_config       Dump the trainer config as proto string"
+        echo "    make_diagram      Make Diagram using Graphviz"
+        echo ""
+        echo "'paddle train --help' 'paddle merge_model --help', 'paddle pserver --help', list more detailed usage of each command"
+}
+
+
+function version(){
+        echo "PaddlePaddle @PADDLE_VERSION@, compiled with"
+        echo "    with_avx: @WITH_AVX@"
+        echo "    with_gpu: @WITH_GPU@"
+        echo "    with_double: @WITH_DOUBLE@"
+        echo "    with_python: @WITH_PYTHON@"
+        echo "    with_rdma: @WITH_RDMA@"
+        echo "    with_glog: @WITH_GLOG@"
+        echo "    with_gflags: @WITH_GFLAGS@"
+        echo "    with_metric_learning: @WITH_METRIC@"
+        echo "    with_timer: @WITH_TIMER@"
+        echo "    with_predict_sdk: @WITH_PREDICT_SDK@"
+}
+
+
+MYDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+if [ ! -z "${DEBUGGER}" ]; then
+    echo "Using debug command ${DEBUGGER}"
+fi
+
+CUDNN_LIB_PATH="@CUDNN_LIB_PATH@"
+
+if [ ! -z "${CUDNN_LIB_PATH}" ]; then
+    export LD_LIBRARY_PATH=${CUDNN_LIB_PATH}:${LD_LIBRARY_PATH}
+fi
+
+export PYTHONPATH=${PWD}:${PYTHONPATH}
+
+case "$1" in
+    "train")
+        ${DEBUGGER} $MYDIR/../opt/paddle/bin/paddle_trainer ${@:2}
+        ;;
+    "merge_model")
+        ${DEBUGGER} $MYDIR/../opt/paddle/bin/paddle_merge_model ${@:2}
+        ;;
+    "pserver")
+        ${DEBUGGER} $MYDIR/../opt/paddle/bin/paddle_pserver_main ${@:2}
+        ;;
+    "dump_config")
+        python -m paddle.utils.dump_config ${@:2}
+        ;;
+    "make_diagram")
+        python -m paddle.utils.make_model_diagram ${@:2}
+        ;;
+    "version")
+        version
+        ;;
+    "--help")
+        usage
+        ;;
+    *)
+        usage
+        ;;
+ esac

@@ -1,0 +1,7 @@
+*pyc
+build
+dist
+paddle.egg-info
+.idea
+paddle/proto/*.py
+paddle/proto/*.pyc

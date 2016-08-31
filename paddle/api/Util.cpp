@@ -1,0 +1,52 @@
+/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#include "PaddleAPI.h"
+
+#include "paddle/utils/Util.h"
+#include "paddle/utils/PythonUtil.h"
+#include "paddle/utils/Flags.h"
+#include "paddle/parameter/Parameter.h"
+
+#include <fenv.h>
+#include <iostream>
+#include <iterator>
+#include <algorithm>
+
+void initPaddle(int argc, char** argv) {
+  paddle::initMain(argc, argv);
+  paddle::initPython(argc, argv);
+  feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW);
+}
+
+FloatArray::FloatArray(const float* b, const size_t l)
+    : buf(b), length(l), needFree(false) {}
+
+IntArray::IntArray(const int* b, const size_t l, bool f)
+    : buf(b), length(l), needFree(f) {}
+
+IntWithFloatArray::IntWithFloatArray(const float* v, const int* i, size_t l,
+                                     bool f)
+    : valBuf(v), idxBuf(i), length(l), needFree(f) {}
+
+bool isGpuVersion() {
+#ifdef PADDLE_ONLY_CPU
+  return false;
+#else
+  return true;
+#endif
+}
+
+static_assert(NUM_PARAMETER_TYPES == paddle::NUM_PARAMETER_TYPES,
+              "The Parameter Type should be same in core/api and core/common");
