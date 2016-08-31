@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>PaddlePaddle Quick Start Tutorial &mdash; PaddlePaddle  documentation</title>
+    <title>Quick Start Tutorial &mdash; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -53,8 +53,8 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="paddlepaddle-quick-start-tutorial">
-<span id="paddlepaddle-quick-start-tutorial"></span><h1>PaddlePaddle Quick Start Tutorial<a class="headerlink" href="#paddlepaddle-quick-start-tutorial" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="quick-start-tutorial">
+<span id="quick-start-tutorial"></span><h1>Quick Start Tutorial<a class="headerlink" href="#quick-start-tutorial" title="Permalink to this headline">¶</a></h1>
 <p>This tutorial will teach the basics of deep learning (DL), including how to implement many different models in PaddlePaddle. You will learn how to:</p>
 <ul class="simple">
 <li>Prepare data into the standardized format that PaddlePaddle accepts.</li>
@@ -114,10 +114,9 @@
 <div class="section" id="preprocess-data-into-standardized-format">
 <span id="preprocess-data-into-standardized-format"></span><h2>Preprocess data into standardized format<a class="headerlink" href="#preprocess-data-into-standardized-format" title="Permalink to this headline">¶</a></h2>
 <p>In this example, you are going to use <a class="reference external" href="http://jmcauley.ucsd.edu/data/amazon/">Amazon electronic product review dataset</a> to build a bunch of deep neural network models for text classification. Each text in this dataset is a product review. This dataset has two categories: “positive” and “negative”. Positive means the reviewer likes the product, while negative means the reviewer does not like the product.</p>
-<p><code class="docutils literal"><span class="pre">demo/quick_start</span></code> provides scripts for downloading data and preprocessing data, as shown below:</p>
+<p><code class="docutils literal"><span class="pre">demo/quick_start</span></code> provides scripts for downloading data and preprocessing data as shown below. The data process takes several minutes (about 3 minutes in our machine).</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/quick_start
 ./data/get_data.sh
-pip install -r requirements.txt
 ./preprocess.sh
 </pre></div>
 </div>
@@ -277,7 +276,7 @@ For more detailed documentation, you could refer to: <a href = "../../ui/api/tra
 <br></div>
 <div class="section" id="word-embedding-model">
 <span id="word-embedding-model"></span><h3>Word Embedding Model<a class="headerlink" href="#word-embedding-model" title="Permalink to this headline">¶</a></h3>
-<p>In order to use the word embedding model, you need to change the data provider a little bit to make the input words as a sequence of word IDs. The revised data provider is listed below. You only need to change initializer() for the type of the first input. It is changed from sparse_binary_vector to sequence of intergers.  process() remains the same. This data provider can also be used for later sequence models.</p>
+<p>In order to use the word embedding model, you need to change the data provider a little bit to make the input words as a sequence of word IDs. The revised data provider <code class="docutils literal"><span class="pre">dataprovider_emb.py</span></code> is listed below. You only need to change initializer() for the type of the first input. It is changed from sparse_binary_vector to sequence of intergers.  process() remains the same. This data provider can also be used for later sequence models.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">initializer</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="c1"># Put the word dictionary into settings</span>
     <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span> <span class="o">=</span> <span class="n">dictionary</span>
@@ -308,7 +307,7 @@ For more detailed documentation, you could refer to: <a href = "../../ui/api/tra
 </pre></div>
 </div>
 <p>The other parts of the model are the same as logistic regression network.</p>
-<p>The performance is summarized in the following table:：</p>
+<p>The performance is summarized in the following table:</p>
 <p><html>
 <center></p>
 <table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
@@ -416,13 +415,13 @@ For more detailed documentation, you could refer to: <a href = "../../ui/api/tra
 --use_gpu<span class="o">=</span><span class="nb">false</span>
 </pre></div>
 </div>
-<p>If you want to install the remote training platform, which enables distributed training on clusters, follow the instructions here: <a href = "../../platform/index.html">Platform</a> documentation. We do not provide examples on how to train on clusters. Please refer to other demos or platform training documentation for mode details on training on clusters.</p>
+<p>If you want to install the remote training platform, which enables distributed training on clusters, follow the instructions here: <a href = "../../cluster/index.html">Platform</a> documentation. We do not provide examples on how to train on clusters. Please refer to other demos or platform training documentation for mode details on training on clusters.</p>
 </div>
 <div class="section" id="inference">
 <span id="inference"></span><h2>Inference<a class="headerlink" href="#inference" title="Permalink to this headline">¶</a></h2>
 <p>You can use the trained model to perform prediction on the dataset with no labels. You can also evaluate the model on dataset with labels to obtain its test accuracy.
 <center> <img alt="" src="../../_images/PipelineTest_en.png" /> </center></p>
-<p>The test script (test.sh) is listed below. PaddlePaddle can evaluate a model on the data with labels specified in <code class="docutils literal"><span class="pre">test.list</span></code>.</p>
+<p>The test script is listed below. PaddlePaddle can evaluate a model on the data with labels specified in <code class="docutils literal"><span class="pre">test.list</span></code>.</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train <span class="se">\</span>
 --config<span class="o">=</span>trainer_config.lstm.py <span class="se">\</span>
 --use_gpu<span class="o">=</span><span class="nb">false</span> <span class="se">\</span>
@@ -430,7 +429,7 @@ For more detailed documentation, you could refer to: <a href = "../../ui/api/tra
 --init_model_path<span class="o">=</span>./output/pass-0000x
 </pre></div>
 </div>
-<p>We will give an example of performing prediction using Recurrent model on a dataset with no labels. You can refer to: <a href = "../../ui/predict/swig_py_paddle.html">Python Prediction API</a> tutorial，or other <a href = "../../demo/index.html">demo</a> for the prediction process using Python. You can also use the following script for inference or evaluation.</p>
+<p>We will give an example of performing prediction using Recurrent model on a dataset with no labels. You can refer to: <a href = "../../ui/predict/swig_py_paddle_en.html">Python Prediction API</a> tutorial，or other <a href = "../../demo/index.html">demo</a> for the prediction process using Python. You can also use the following script for inference or evaluation.</p>
 <p>inference script (predict.sh)：</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">model</span><span class="o">=</span><span class="s2">&quot;output/pass-00003&quot;</span>
 paddle train <span class="se">\</span>
@@ -451,6 +450,11 @@ mv rank-00000 result.txt
 <li>batch_size = 1.</li>
 <li>You need to specify the location of <code class="docutils literal"><span class="pre">test_list</span></code> in the test data.</li>
 </ul>
+<p>The results in <code class="docutils literal"><span class="pre">result.txt</span></code> is as follows, each line is one sample.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>predicted_label_id;probability_of_label_0 probability_of_label_1  # the first sample
+predicted_label_id;probability_of_label_0 probability_of_label_1  # the second sample
+</pre></div>
+</div>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">is_predict</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;is_predict&#39;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
 <span class="n">trn</span> <span class="o">=</span> <span class="s1">&#39;data/train.list&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="bp">None</span>
 <span class="n">tst</span> <span class="o">=</span> <span class="s1">&#39;data/test.list&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="s1">&#39;data/pred.list&#39;</span>
@@ -505,11 +509,12 @@ mv rank-00000 result.txt
 <div class="section" id="command-line-argument">
 <span id="command-line-argument"></span><h3>Command Line Argument<a class="headerlink" href="#command-line-argument" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li>&#8211;config：network architecture path.</li>
-<li>&#8211;save_dir：model save directory.</li>
-<li>&#8211;log_period：the logging period per batch.</li>
-<li>&#8211;num_passes：number of training passes. One pass means the training would go over the whole training dataset once.* &#8211;config_args：Other configuration arguments.</li>
-<li>&#8211;init_model_path：The path of the initial model parameter.</li>
+<li>--config：network architecture path.</li>
+<li>--save_dir：model save directory.</li>
+<li>--log_period：the logging period per batch.</li>
+<li>--num_passes：number of training passes. One pass means the training would go over the whole training dataset once.</li>
+<li>--config_args：Other configuration arguments.</li>
+<li>--init_model_path：The path of the initial model parameter.</li>
 </ul>
 <p>By default, the trainer will save model every pass. You can also specify <code class="docutils literal"><span class="pre">saving_period_by_batches</span></code> to set the frequency of batch saving. You can use <code class="docutils literal"><span class="pre">show_parameter_stats_period</span></code> to print the statistics of the parameters, which are very useful for tuning parameters. Other command line arguments can be found in <a href = "../../ui/index.html#command-line-argument">command line argument documentation</a>。</p>
 </div>
@@ -557,7 +562,7 @@ mv rank-00000 result.txt
         <div class="sphinxsidebarwrapper">
   <h3><a href="../../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">PaddlePaddle Quick Start Tutorial</a><ul>
+<li><a class="reference internal" href="#">Quick Start Tutorial</a><ul>
 <li><a class="reference internal" href="#install">Install</a></li>
 <li><a class="reference internal" href="#overview">Overview</a></li>
 <li><a class="reference internal" href="#preprocess-data-into-standardized-format">Preprocess data into standardized format</a></li>

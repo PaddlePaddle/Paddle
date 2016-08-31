@@ -253,6 +253,7 @@ shape: <code class="docutils literal"><span class="pre">(Co,</span> <span class=
 <div class="highlight-python"><div class="highlight"><pre><span></span>python classify.py \
      --job=extract \
      --conf=resnet.py\
+     --use_gpu=1 \
      --mean=model/mean_meta_224/mean.meta \
      --model=model/resnet_50 \
      --data=./example/test.list \
@@ -261,13 +262,15 @@ shape: <code class="docutils literal"><span class="pre">(Co,</span> <span class=
 </pre></div>
 </div>
 <ul class="simple">
-<li>&#8211;job=extract:              specify job mode to extract feature.</li>
-<li>&#8211;conf=resnet.py:           network configure.</li>
-<li>&#8211;model=model/resnet_5:     model path.</li>
-<li>&#8211;data=./example/test.list: data list.</li>
-<li>&#8211;output_layer=&#8221;xxx,xxx&#8221;:   specify layers to extract features.</li>
-<li>&#8211;output_dir=features:      output diretcoty.</li>
+<li>--job=extract:              specify job mode to extract feature.</li>
+<li>--conf=resnet.py:           network configure.</li>
+<li>--use_gpu=1:             speficy GPU mode.</li>
+<li>--model=model/resnet_5:     model path.</li>
+<li>--data=./example/test.list: data list.</li>
+<li>--output_layer=&#8221;xxx,xxx&#8221;:   specify layers to extract features.</li>
+<li>--output_dir=features:      output diretcoty.</li>
 </ul>
+<p>Note, since the convolution layer in these ResNet models is suitable for the cudnn implementation which only support GPU. It not support CPU mode because of compatibility issue and we will fix later.</p>
 <p>If run successfully, you will see features saved in <code class="docutils literal"><span class="pre">features/batch_0</span></code>, this file is produced with cPickle. You can use <code class="docutils literal"><span class="pre">load_feature_py</span></code> interface in <code class="docutils literal"><span class="pre">load_feature.py</span></code> to open the file, and it returns a dictionary as follows:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
 <span class="s1">&#39;cat.jpg&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;res5_3_branch2c_conv&#39;</span><span class="p">:</span> <span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">0.12638293</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.116248</span>  <span class="p">,</span> <span class="o">-</span><span class="mf">0.11883899</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.00895038</span><span class="p">,</span> <span class="mf">0.01994277</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.00534909</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">),</span> <span class="s1">&#39;res5_3_branch2c_bn&#39;</span><span class="p">:</span> <span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">1.42593431</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.28918779</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.32414699</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.45933616</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.04501402</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.40769434</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">float32</span><span class="p">)},</span>
@@ -291,15 +294,17 @@ shape: <code class="docutils literal"><span class="pre">(Co,</span> <span class=
      --conf=resnet.py\
      --multi_crop \
      --model=model/resnet_50 \
+     --use_gpu=1 \
      --data=./example/test.list
 </pre></div>
 </div>
 <ul class="simple">
-<li>&#8211;job=extract:              speficy job mode to predict.</li>
-<li>&#8211;conf=resnet.py:           network configure.</li>
-<li>&#8211;multi_crop:               use 10 crops and average predicting probability.</li>
-<li>&#8211;model=model/resnet_50:    model path.</li>
-<li>&#8211;data=./example/test.list: data list.</li>
+<li>--job=extract:              speficy job mode to predict.</li>
+<li>--conf=resnet.py:           network configure.</li>
+<li>--multi_crop:               use 10 crops and average predicting probability.</li>
+<li>--use_gpu=1:             speficy GPU mode.</li>
+<li>--model=model/resnet_50:    model path.</li>
+<li>--data=./example/test.list: data list.</li>
 </ul>
 <p>If run successfully, you will see following results, where 156 and 285 are labels of the images.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span>Label of example/dog.jpg is: 156

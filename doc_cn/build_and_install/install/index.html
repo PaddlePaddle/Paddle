@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>安装Paddle &mdash; PADDLE  documentation</title>
+    <title>安装PaddlePaddle &mdash; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="PADDLE  documentation" href="../../index.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
     <link rel="up" title="编译与安装" href="../index.html" />
     <link rel="next" title="安装PaddlePaddle的Docker镜像" href="docker_install.html" />
     <link rel="prev" title="编译与安装" href="../index.html" /> 
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="../index.html" title="编译与安装"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PADDLE  documentation</a> &raquo;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">编译与安装</a> &raquo;</li> 
       </ul>
     </div>  
@@ -52,23 +52,35 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="paddle">
-<h1>安装Paddle<a class="headerlink" href="#paddle" title="Permalink to this headline">¶</a></h1>
-<p>Paddle提供数个预编译的二进制来进行安装。他们包括Docker镜像，ubuntu的deb安装包等
-。欢迎贡献更多的安装包。我们更推荐使用Docker镜像来部署Paddle环境。</p>
+  <div class="section" id="paddlepaddle">
+<h1>安装PaddlePaddle<a class="headerlink" href="#paddlepaddle" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle提供数个预编译的二进制来进行安装。他们包括Docker镜像，ubuntu的deb安装包等
+。欢迎贡献更多的安装包。我们更推荐使用Docker镜像来部署PaddlePaddle环境。</p>
+<p>Note: The intallation packages are still in pre-release
+state and your experience of installation may not be smooth.</p>
+<p>注意!目前PaddlePaddle的安装包还处在pre-release的状态，
+使用起来或许会不是很顺畅。</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="docker_install.html">安装PaddlePaddle的Docker镜像</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="docker_install.html#id1">PaddlePaddle提供的Docker镜像版本</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docker_install.html#docker">下载和运行Docker镜像</a></li>
-<li class="toctree-l2"><a class="reference internal" href="docker_install.html#id19">注意事项</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="docker_install.html#id20">性能问题</a></li>
-<li class="toctree-l3"><a class="reference internal" href="docker_install.html#id21">远程访问问题和二次开发</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docker_install.html#id3">注意事项</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="docker_install.html#id4">性能问题</a></li>
+<li class="toctree-l3"><a class="reference internal" href="docker_install.html#id5">远程访问问题和二次开发</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="ubuntu_install.html">使用deb包在Ubuntu上安装paddle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ubuntu_install.html">使用deb包在Ubuntu上安装PaddlePaddle</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ubuntu_install.html#id2">可能遇到的问题</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ubuntu_install.html#libcudart-so-libcudnn-so">libcudart.so/libcudnn.so找不到</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ubuntu_install.html#cuda-driver">CUDA Driver找不到</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ubuntu_install.html#config">config文件找不到</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -121,12 +133,12 @@
         <li class="right" >
           <a href="../index.html" title="编译与安装"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PADDLE  documentation</a> &raquo;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" >编译与安装</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PADDLE developers.
+        &copy; Copyright 2016, PaddlePaddle developers.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
     </div>
   </body>

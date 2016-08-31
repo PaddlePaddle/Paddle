@@ -204,9 +204,9 @@ stat += {batchSize, cost};
 <dl class="class">
 <dt id="_CPPv2N6paddle22RemoteParameterUpdaterE">
 <span id="paddle::RemoteParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">RemoteParameterUpdater</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdaterE" title="Permalink to this definition">¶</a></dt>
-<dd><p>this module call ParameterClient to exchange parameters among all parameters servers. normal remote parameter updater for dense parameters.</p>
-<p>it first packs all parameters for all pservers using ParameterClient module, then wait for return merged parameters data from all pservers. the synchronization pattern specified by sync-sgd or async-sgd is achieved by all pservers with the help of the controller within this remote parameter updater. this module indeedly bridges the gradient machines and parameter servers. it help to transfer the parameters from acceleration device to cpu end for network. it contains additional parameters copy buffers for acceleration devices at cpu end, such as gpu, otherwise it will directly use original parameters data to launching.</p>
-<p>this remote parameter updater do not use pipeline mechanism to hide copy latency from gpu to cpu buffer, as well as the overlapped between backward and communication is not supported. </p>
+<dd><p>Normal remote parameter updater for dense parameters.</p>
+<p>It first packs all parameters for all pservers using ParameterClient module, then wait for merged parameters data from all pservers. The synchronization pattern specified by sync-sgd or async-sgd is achieved by all pservers with the help of the controller within this remote parameter updater. This module indeedly bridges the gradient machines and parameter servers. It helps to transfer the parameters from acceleration device to cpu end for network. It contains additional parameters copy buffers for acceleration devices at cpu end, such as gpu, otherwise it will directly use original parameters data to update pservers.</p>
+<p>This remote parameter updater does not use pipeline mechanism to hide copy latency from gpu to cpu buffer. In addition the overlapped between backward and communication is not supported. </p>
 <p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdater"><span>paddle::ParameterUpdater</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater"><span>paddle::ConcurrentRemoteParameterUpdater</span></a></p>
 <div class="breathe-sectiondef container">
@@ -230,7 +230,12 @@ stat += {batchSize, cost};
 <dl class="function">
 <dt id="_CPPv2N6paddle22RemoteParameterUpdater10startBatchE7int64_t">
 <span id="paddle::RemoteParameterUpdater::startBatch__int64_t"></span>virtual <span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1ac5f3b0297c3e8363a2fb56b94654bd75"></span>PassType <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>batchSize</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
-<dd><p>start batch one batch training exhibits stateful feature to help to do performance tuning, sgd optimization if necessary. </p>
+<dd><p>start batch </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>one batch training exhibits stateful feature to help to do performance tuning, sgd optimization if necessary. </dd>
+</dl>
+</p>
 </dd></dl>
 
 <dl class="function">
@@ -408,8 +413,8 @@ stat += {batchSize, cost};
 <dl class="class">
 <dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdaterE">
 <span id="paddle::ConcurrentRemoteParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ConcurrentRemoteParameterUpdater</code><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdaterE" title="Permalink to this definition">¶</a></dt>
-<dd><p>this updater add additional optimization for overlapping synchronization from pservers with backward computation.</p>
-<p>parameter can be sent to pservers when related backward stage is finished. this concurrent udpater does data copy from acceleration device to host memory aynchronously. In addition internal parameter client reads data in host memory and send them to all pservers in next stage. So this class help to pipeline device-to-host copy and host-to-network to hide network latency in backward stage. it contains separate send and recv thread for pipeline usage. </p>
+<dd><p>This updater add additional optimization for overlapping synchronization from pservers with backward computation.</p>
+<p><a class="reference internal" href="../parameter/parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span>Parameter</span></a> can be sent to pservers when related backward stage is finished. This concurrent udpater does data copy from acceleration device to host memory aynchronously. In addition internal parameter client reads data in host memory and send them to all pservers in next stage. So this class help to pipeline device-to-host copy and host-to-network to hide network latency in backward stage. It contains separate send and recv thread for pipeline usage. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1RemoteParameterUpdater"><span>paddle::RemoteParameterUpdater</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
@@ -503,9 +508,9 @@ stat += {batchSize, cost};
 <dl class="class">
 <dt id="_CPPv2N6paddle28SparseRemoteParameterUpdaterE">
 <span id="paddle::SparseRemoteParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SparseRemoteParameterUpdater</code><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdaterE" title="Permalink to this definition">¶</a></dt>
-<dd><p>this class is specified for updating sparse parameters.</p>
-<p>it allows part of parameter to be exchanged with all pservers. if sparse input assigned, part gradients of first hidden layer could remained zero which can not need to be exchanged within all pservers. this is the key optimization point for this updater</p>
-<p>for updating sparse parameters, all latest parameters are stored in pservers instead of keeping full copy at train end, so need prefetch parameters weight value which can be changed in next-batch before doing next forwardbackward. Also, with above fact that the parameters can be stored in pserver instead of trainer, we can fetch specified parmeters if necessary, and can support huge parameters which is larger enough than the RAM size in single node.</p>
+<dd><p>This class is specified for updating sparse parameters.</p>
+<p>It allows part of parameter to be exchanged with all pservers. If sparse input assigned, part gradients of first hidden layer could remained zero which can not need to be exchanged within all pservers. This is the key optimization point for this updater</p>
+<p>For updating sparse parameters, all latest parameters are stored in pservers instead of keeping full copy at train end, so need to prefetch parameters weight value which can be changed in next-batch before doing next forwardbackward. Also, with above fact that the parameters can be stored in pserver instead of trainer, we can fetch specified parmeters if necessary, and can support huge parameters which is larger enough than the RAM size in single node.</p>
 <p>Internally, this updater will direct internal parameter client to encapsulate sparse specified message for all pservers. </p>
 <p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdater"><span>paddle::ParameterUpdater</span></a></p>
 <div class="breathe-sectiondef container">
@@ -666,8 +671,8 @@ stat += {batchSize, cost};
 <dl class="class">
 <dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterCompositeE">
 <span id="paddle::SparseRemoteParameterUpdaterComposite"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SparseRemoteParameterUpdaterComposite</code><a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterCompositeE" title="Permalink to this definition">¶</a></dt>
-<dd><p>class for supporting normal updater and sparse updater</p>
-<p>not all parts of one model are sparse, so it exists dense updater for normal layers which sparse updater is for sparse layers.</p>
+<dd><p>Class for supporting normal updater and sparse updater</p>
+<p>Not all parts of one model are sparse, so it exists dense updater for normal layers while sparse updater is for sparse layers.</p>
 <p>it directly call internal dense and sparse udpater individually. </p>
 <p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdaterComposite"><span>paddle::ParameterUpdaterComposite</span></a></p>
 <div class="breathe-sectiondef container">

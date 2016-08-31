@@ -47,7 +47,3 @@
 - [Lock](utils/lock.rst)
 - [Queue](utils/queue.rst)
 - [Thread](utils/thread.rst)
-
-## proto
-
-TBD

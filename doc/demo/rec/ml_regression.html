@@ -444,9 +444,7 @@ cp ml-1m/ratings.dat.test .
             <span class="n">slot_dim</span> <span class="o">=</span> <span class="n">each_meta</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">]</span>
             <span class="n">embedding</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">slot_name</span><span class="p">,</span>
                                                           <span class="n">size</span><span class="o">=</span><span class="n">slot_dim</span><span class="p">),</span>
-                                        <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
-                                        <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span>
-                                            <span class="n">sparse_update</span><span class="o">=</span><span class="bp">True</span><span class="p">))</span>
+                                        <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
             <span class="n">fusion</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">embedding</span><span class="p">,</span>
                                    <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">))</span>
         <span class="k">elif</span> <span class="n">type_name</span> <span class="o">==</span> <span class="s1">&#39;embedding&#39;</span><span class="p">:</span>
@@ -686,8 +684,8 @@ I0601 08:09:46.233541 10549 ParamUtil.cpp:147] fileName trainer_config.py
 </div>
 <div class="section" id="evaluate-and-predict">
 <h2>Evaluate and Predict<a class="headerlink" href="#evaluate-and-predict" title="Permalink to this headline">¶</a></h2>
-<p>After training several passes, you can evalute them and get the best pass. Just run</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>./evalute.sh
+<p>After training several passes, you can evaluate them and get the best pass. Just run</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>./evaluate.sh
 </pre></div>
 </div>
 <p>You will see messages like this:</p>

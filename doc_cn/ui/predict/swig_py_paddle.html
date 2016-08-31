@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Paddle的Python预测接口 &mdash; PADDLE  documentation</title>
+    <title>PaddlePaddle的Python预测接口 &mdash; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -24,10 +24,10 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="PADDLE  documentation" href="../../index.html" />
-    <link rel="up" title="配置" href="../index.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="用户接口" href="../index.html" />
     <link rel="next" title="使用示例" href="../../demo/index.html" />
-    <link rel="prev" title="&lt;no title&gt;" href="../cmd/make_diagram.html" /> 
+    <link rel="prev" title="自定义一个DataProvider" href="../data_provider/write_new_dataprovider.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -40,10 +40,10 @@
           <a href="../../demo/index.html" title="使用示例"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../cmd/make_diagram.html" title="&lt;no title&gt;"
+          <a href="../data_provider/write_new_dataprovider.html" title="自定义一个DataProvider"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PADDLE  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">配置</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">用户接口</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -52,9 +52,9 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="paddlepython">
-<h1>Paddle的Python预测接口<a class="headerlink" href="#paddlepython" title="Permalink to this headline">¶</a></h1>
-<p>Paddle目前使用Swig对其常用的预测接口进行了封装，使在Python环境下的预测接口更加简单。
+  <div class="section" id="paddlepaddlepython">
+<h1>PaddlePaddle的Python预测接口<a class="headerlink" href="#paddlepaddlepython" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle目前使用Swig对其常用的预测接口进行了封装，使在Python环境下的预测接口更加简单。
 在Python环境下预测结果，主要分为以下几个步骤。</p>
 <ul class="simple">
 <li>读入解析训练配置</li>
@@ -274,9 +274,9 @@
 </td></tr></table></div>
 <p>主要的软件包为py_paddle.swig_paddle，这个软件包文档相对完善。可以使用python的 <code class="code docutils literal"><span class="pre">help()</span></code> 函数查询文档。主要步骤为:</p>
 <ul>
-<li><p class="first">在程序开始阶段，使用命令行参数初始化paddle</p>
+<li><p class="first">在程序开始阶段，使用命令行参数初始化PaddlePaddle</p>
 </li>
-<li><p class="first">在98行载入paddle的训练文件。读取config</p>
+<li><p class="first">在98行载入PaddlePaddle的训练文件。读取config</p>
 </li>
 <li><p class="first">在100行创建神经网络，并在83行载入参数。</p>
 </li>
@@ -313,8 +313,8 @@
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
-  <p class="topless"><a href="../cmd/make_diagram.html"
-                        title="previous chapter">&lt;no title&gt;</a></p>
+  <p class="topless"><a href="../data_provider/write_new_dataprovider.html"
+                        title="previous chapter">自定义一个DataProvider</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="../../demo/index.html"
                         title="next chapter">使用示例</a></p>
@@ -352,14 +352,14 @@
           <a href="../../demo/index.html" title="使用示例"
              >next</a> |</li>
         <li class="right" >
-          <a href="../cmd/make_diagram.html" title="&lt;no title&gt;"
+          <a href="../data_provider/write_new_dataprovider.html" title="自定义一个DataProvider"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PADDLE  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >配置</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >用户接口</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PADDLE developers.
+        &copy; Copyright 2016, PaddlePaddle developers.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
     </div>
   </body>

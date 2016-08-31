@@ -26,7 +26,7 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
     <link rel="up" title="Layers Documents" href="index.html" />
-    <link rel="next" title="Matrix Documents" href="../../math/matrix/index.html" />
+    <link rel="next" title="Writing New Layers" href="../../../dev/new_layer/index.html" />
     <link rel="prev" title="Layers Documents" href="index.html" /> 
   </head>
   <body role="document">
@@ -40,13 +40,13 @@
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../../math/matrix/index.html" title="Matrix Documents"
+          <a href="../../../dev/new_layer/index.html" title="Writing New Layers"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="index.html" title="Layers Documents"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../../layer.html" >Layer Documents</a> &raquo;</li>
           <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Layers Documents</a> &raquo;</li> 
       </ul>
     </div>  
@@ -64,7 +64,7 @@
 <dt id="_CPPv2N6paddle5LayerE">
 <span id="paddle::Layer"></span><span class="target" id="paddleclasspaddle_1_1Layer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Layer</code><a class="headerlink" href="#_CPPv2N6paddle5LayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base class for layer. Define necessary variables and functions for every layer. </p>
-<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AddtoLayer"><span>paddle::AddtoLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AgentLayer"><span>paddle::AgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AverageLayer"><span>paddle::AverageLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1BatchNormBaseLayer"><span>paddle::BatchNormBaseLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1BlockExpandLayer"><span>paddle::BlockExpandLayer</span></a>, <a class="reference internal" href="../gradientmachines/gradientmachines.html#paddleclasspaddle_1_1BootBiasLayer"><span>paddle::BootBiasLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConcatenateLayer"><span>paddle::ConcatenateLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConcatenateLayer2"><span>paddle::ConcatenateLayer2</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvBaseLayer"><span>paddle::ConvBaseLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvexCombinationLayer"><span>paddle::ConvexCombinationLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvShiftLayer"><span>paddle::ConvShiftLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CosSimLayer"><span>paddle::CosSimLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CosSimVecMatLayer"><span>paddle::CosSimVecMatLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CRFLayer"><span>paddle::CRFLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CTCLayer"><span>paddle::CTCLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DataLayer"><span>paddle::DataLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DataNormLayer"><span>paddle::DataNormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1EosIdCheckLayer"><span>paddle::EosIdCheckLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ExpandLayer"><span>paddle::ExpandLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1FeatureMapExpandLayer"><span>paddle::FeatureMapExpandLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1FullyConnectedLayer"><span>paddle::FullyConnectedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GatedRecurrentLayer"><span>paddle::GatedRecurrentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GatherAgentLayer"><span>paddle::GatherAgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GetOutputLayer"><span>paddle::GetOutputLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GruStepLayer"><span>paddle::GruStepLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1HierarchicalSigmoidLayer"><span>paddle::HierarchicalSigmoidLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1InterpolationLayer"><span>paddle::InterpolationLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LambdaCost"><span>paddle::LambdaCost</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmLayer"><span>paddle::LstmLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmStepLayer"><span>paddle::LstmStepLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MaxIdLayer"><span>paddle::MaxIdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MaxLayer"><span>paddle::MaxLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MixedLayer"><span>paddle::MixedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiplexLayer"><span>paddle::MultiplexLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NCELayer"><span>paddle::NCELayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NormLayer"><span>paddle::NormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OuterProdLayer"><span>paddle::OuterProdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ParameterReluLayer"><span>paddle::ParameterReluLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PoolLayer"><span>paddle::PoolLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PowerLayer"><span>paddle::PowerLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RankingCost"><span>paddle::RankingCost</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentLayer"><span>paddle::RecurrentLayer</span></a>, paddle::RecurrentLayerGroup, <a class="reference internal" href="#paddleclasspaddle_1_1ResizeLayer"><span>paddle::ResizeLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SamplingIdLayer"><span>paddle::SamplingIdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ScalingLayer"><span>paddle::ScalingLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ScatterAgentLayer"><span>paddle::ScatterAgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SelectiveFullyConnectedLayer"><span>paddle::SelectiveFullyConnectedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceConcatLayer"><span>paddle::SequenceConcatLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceLastInstanceLayer"><span>paddle::SequenceLastInstanceLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceReshapeLayer"><span>paddle::SequenceReshapeLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SlopeInterceptLayer"><span>paddle::SlopeInterceptLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SubSequenceLayer"><span>paddle::SubSequenceLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SumToOneNormLayer"><span>paddle::SumToOneNormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1TensorLayer"><span>paddle::TensorLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1TransLayer"><span>paddle::TransLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ValidationLayer"><span>paddle::ValidationLayer</span></a></p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AddtoLayer"><span>paddle::AddtoLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AgentLayer"><span>paddle::AgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AverageLayer"><span>paddle::AverageLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1BatchNormBaseLayer"><span>paddle::BatchNormBaseLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1BlockExpandLayer"><span>paddle::BlockExpandLayer</span></a>, paddle::BootBiasLayer, <a class="reference internal" href="#paddleclasspaddle_1_1ConcatenateLayer"><span>paddle::ConcatenateLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConcatenateLayer2"><span>paddle::ConcatenateLayer2</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvBaseLayer"><span>paddle::ConvBaseLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvexCombinationLayer"><span>paddle::ConvexCombinationLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvShiftLayer"><span>paddle::ConvShiftLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CosSimLayer"><span>paddle::CosSimLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CosSimVecMatLayer"><span>paddle::CosSimVecMatLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CRFLayer"><span>paddle::CRFLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CTCLayer"><span>paddle::CTCLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DataLayer"><span>paddle::DataLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DataNormLayer"><span>paddle::DataNormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1EosIdCheckLayer"><span>paddle::EosIdCheckLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ExpandLayer"><span>paddle::ExpandLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1FeatureMapExpandLayer"><span>paddle::FeatureMapExpandLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1FullyConnectedLayer"><span>paddle::FullyConnectedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GatedRecurrentLayer"><span>paddle::GatedRecurrentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GatherAgentLayer"><span>paddle::GatherAgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GetOutputLayer"><span>paddle::GetOutputLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GruStepLayer"><span>paddle::GruStepLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1HierarchicalSigmoidLayer"><span>paddle::HierarchicalSigmoidLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1InterpolationLayer"><span>paddle::InterpolationLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LambdaCost"><span>paddle::LambdaCost</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmLayer"><span>paddle::LstmLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmStepLayer"><span>paddle::LstmStepLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MaxIdLayer"><span>paddle::MaxIdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MaxLayer"><span>paddle::MaxLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MixedLayer"><span>paddle::MixedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiplexLayer"><span>paddle::MultiplexLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NCELayer"><span>paddle::NCELayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NormLayer"><span>paddle::NormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OuterProdLayer"><span>paddle::OuterProdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ParameterReluLayer"><span>paddle::ParameterReluLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PoolLayer"><span>paddle::PoolLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PowerLayer"><span>paddle::PowerLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RankingCost"><span>paddle::RankingCost</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentLayer"><span>paddle::RecurrentLayer</span></a>, paddle::RecurrentLayerGroup, <a class="reference internal" href="#paddleclasspaddle_1_1ResizeLayer"><span>paddle::ResizeLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SamplingIdLayer"><span>paddle::SamplingIdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ScalingLayer"><span>paddle::ScalingLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ScatterAgentLayer"><span>paddle::ScatterAgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SelectiveFullyConnectedLayer"><span>paddle::SelectiveFullyConnectedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceConcatLayer"><span>paddle::SequenceConcatLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceLastInstanceLayer"><span>paddle::SequenceLastInstanceLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceReshapeLayer"><span>paddle::SequenceReshapeLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SlopeInterceptLayer"><span>paddle::SlopeInterceptLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SubSequenceLayer"><span>paddle::SubSequenceLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SumToOneNormLayer"><span>paddle::SumToOneNormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1TensorLayer"><span>paddle::TensorLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1TransLayer"><span>paddle::TransLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ValidationLayer"><span>paddle::ValidationLayer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -235,7 +235,7 @@
 
 <dl class="function">
 <dt id="_CPPv2N6paddle5Layer14initSubNetworkEP13NeuralNetworkRK11ModelConfigRKNSt6vectorI13ParameterTypeEEb">
-<span id="paddle::Layer::initSubNetwork__NeuralNetworkP.ModelConfigCR.std::vector:ParameterType:CR.b"></span>virtual <span class="target" id="paddleclasspaddle_1_1Layer_1aa28cdc78c4ae7bdc41d20e5d96fec9f1"></span>void <code class="descname">initSubNetwork</code><span class="sig-paren">(</span>NeuralNetwork *<em>rootNetwork</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> &amp;<em>config</em>, <em class="property">const</em> std::vector&lt;ParameterType&gt; &amp;<em>parameterTypes</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Layer14initSubNetworkEP13NeuralNetworkRK11ModelConfigRKNSt6vectorI13ParameterTypeEEb" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::Layer::initSubNetwork__NeuralNetworkP.ModelConfigCR.std::vector:ParameterType:CR.b"></span>virtual <span class="target" id="paddleclasspaddle_1_1Layer_1aa28cdc78c4ae7bdc41d20e5d96fec9f1"></span>void <code class="descname">initSubNetwork</code><span class="sig-paren">(</span><a class="reference internal" href="../gradientmachines/gradientmachines.html#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> *<em>rootNetwork</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> &amp;<em>config</em>, <em class="property">const</em> std::vector&lt;ParameterType&gt; &amp;<em>parameterTypes</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Layer14initSubNetworkEP13NeuralNetworkRK11ModelConfigRKNSt6vectorI13ParameterTypeEEb" title="Permalink to this definition">¶</a></dt>
 <dd><p>Intialization for sub network if there has sub network. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last">
@@ -255,7 +255,7 @@
 
 <dl class="function">
 <dt id="_CPPv2N6paddle5Layer16accessSubNetworkERKNSt8functionIFvR13NeuralNetworkEEE">
-virtual <span class="target" id="paddleclasspaddle_1_1Layer_1a80e1752698b61409984b7f789aec1c44"></span>void <code class="descname">accessSubNetwork</code><span class="sig-paren">(</span><em class="property">const</em> std::function&lt;void<span class="sig-paren">(</span>NeuralNetwork&amp;<span class="sig-paren">)</span>&gt; &amp;<em>callback</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Layer16accessSubNetworkERKNSt8functionIFvR13NeuralNetworkEEE" title="Permalink to this definition">¶</a></dt>
+virtual <span class="target" id="paddleclasspaddle_1_1Layer_1a80e1752698b61409984b7f789aec1c44"></span>void <code class="descname">accessSubNetwork</code><span class="sig-paren">(</span><em class="property">const</em> std::function&lt;void<span class="sig-paren">(</span><a class="reference internal" href="../gradientmachines/gradientmachines.html#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a>&amp;<span class="sig-paren">)</span>&gt; &amp;<em>callback</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Layer16accessSubNetworkERKNSt8functionIFvR13NeuralNetworkEEE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Access SubNetwork Object. If subnetwork exists, then invoke callback with subnetwrk. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
@@ -1758,7 +1758,7 @@ y = [0,  0,  a1, a2, b1, b2;
 <dl class="class">
 <dt id="_CPPv2N6paddle9PoolLayerE">
 <span id="paddle::PoolLayer"></span><span class="target" id="paddleclasspaddle_1_1PoolLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">PoolLayer</code><a class="headerlink" href="#_CPPv2N6paddle9PoolLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>basic parent layer of pooling Pools the input within regions </p>
+<dd><p>Basic parent layer of pooling Pools the input within regions. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1CudnnPoolLayer"><span>paddle::CudnnPoolLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PoolProjectionLayer"><span>paddle::PoolProjectionLayer</span></a></p>
 <div class="breathe-sectiondef container">
@@ -1780,7 +1780,8 @@ y = [0,  0,  a1, a2, b1, b2;
 <dl class="function">
 <dt id="_CPPv2N6paddle9PoolLayer6createERK11LayerConfig">
 <span id="paddle::PoolLayer::create__LayerConfigCR"></span><span class="target" id="paddleclasspaddle_1_1PoolLayer_1ad69afd6a709d60fde8a7ef8e75ea83a1"></span><a class="reference internal" href="#_CPPv2N6paddle5LayerE" title="paddle::Layer">Layer</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> LayerConfig &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9PoolLayer6createERK11LayerConfig" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>create pooling layer by pool_type </p>
+</dd></dl>
 
 </div>
 <div class="breathe-sectiondef container">
@@ -1859,7 +1860,8 @@ y = [0,  0,  a1, a2, b1, b2;
 <dl class="class">
 <dt id="_CPPv2N6paddle19PoolProjectionLayerE">
 <span id="paddle::PoolProjectionLayer"></span><span class="target" id="paddleclasspaddle_1_1PoolProjectionLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">PoolProjectionLayer</code><a class="headerlink" href="#_CPPv2N6paddle19PoolProjectionLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1PoolLayer"><span>paddle::PoolLayer</span></a></p>
+<dd><p>Basic parent layer of different kinds of pooling. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1PoolLayer"><span>paddle::PoolLayer</span></a></p>
 <p>Subclassed by paddle::AvgPoolProjectionLayer, paddle::MaxPoolProjectionLayer</p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
@@ -2047,7 +2049,12 @@ y = [0,  0,  a1, a2, b1, b2;
 <dl class="class">
 <dt id="_CPPv2N6paddle9NormLayerE">
 <span id="paddle::NormLayer"></span><span class="target" id="paddleclasspaddle_1_1NormLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">NormLayer</code><a class="headerlink" href="#_CPPv2N6paddle9NormLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>basic parent layer of normalization Normalize the input in local region </p>
+<dd><p>Basic parent layer of normalization. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>Normalize the input in local region </dd>
+</dl>
+</p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ResponseNormLayer"><span>paddle::ResponseNormLayer</span></a></p>
 <div class="breathe-sectiondef container">
@@ -2069,7 +2076,8 @@ y = [0,  0,  a1, a2, b1, b2;
 <dl class="function">
 <dt id="_CPPv2N6paddle9NormLayer6createERK11LayerConfig">
 <span id="paddle::NormLayer::create__LayerConfigCR"></span><span class="target" id="paddleclasspaddle_1_1NormLayer_1a9f2c69926802b77b0ffa66d2c076210e"></span><a class="reference internal" href="#_CPPv2N6paddle5LayerE" title="paddle::Layer">Layer</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> LayerConfig &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9NormLayer6createERK11LayerConfig" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>create norm layer by norm_type </p>
+</dd></dl>
 
 </div>
 </dd></dl>
@@ -2134,9 +2142,19 @@ y = [0,  0,  a1, a2, b1, b2;
 <dl class="class">
 <dt id="_CPPv2N6paddle13DataNormLayerE">
 <span id="paddle::DataNormLayer"></span><span class="target" id="paddleclasspaddle_1_1DataNormLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">DataNormLayer</code><a class="headerlink" href="#_CPPv2N6paddle13DataNormLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A layer for data normalization Input: One and only one input layer is accepted. The input layer must be <a class="reference internal" href="#paddleclasspaddle_1_1DataLayer"><span>DataLayer</span></a> with dense data type. Output: The normalization of the input data</p>
+<dd><p>A layer for data normalization. </p>
+<p><ul class="simple">
+<li>Input: One and only one input layer is accepted. The input layer must be <a class="reference internal" href="#paddleclasspaddle_1_1DataLayer"><span>DataLayer</span></a> with dense data type.</li>
+<li>Output: The normalization of the input data</li>
+</ul>
+</p>
 <p>Reference: LA Shalabi, Z Shaaban, B Kasasbeh. Data mining: A preprocessing engine</p>
-<p>Three data normalization methoeds are considered z-score: y = (x-mean)/std min-max: y = (x-min)/(max-min) decimal-scaling: y = x/10^j, where j is the smallest integer such that max(|y|)&lt;1 </p>
+<p>Three data normalization methoeds are considered<ul class="simple">
+<li>z-score: y = (x-mean)/std</li>
+<li>min-max: y = (x-min)/(max-min)</li>
+<li>decimal-scaling: y = x/10^j, where j is the smallest integer such that max(|y|)&lt;1 </li>
+</ul>
+</p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
@@ -2805,7 +2823,12 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dl class="class">
 <dt id="_CPPv2N6paddle14RecurrentLayerE">
 <span id="paddle::RecurrentLayer"></span><span class="target" id="paddleclasspaddle_1_1RecurrentLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">RecurrentLayer</code><a class="headerlink" href="#_CPPv2N6paddle14RecurrentLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1RecurrentLayer"><span>RecurrentLayer</span></a> takes 1 input layer. The output size is the same with input layer. For each sequence [start, end] it performs the following computation: <div class="math">
+\[\begin{split} out_{i} = act(in_{i}) \ \ \text{for} \ i = start \\ out_{i} = act(in_{i} + out_{i-1} * W) \ \ \text{for} \ start &lt; i &lt;= end \end{split}\]</div>
+ If reversed is true, the order is reversed: <div class="math">
+\[\begin{split} out_{i} = act(in_{i}) \ \ \text{for} \ i = end \\ out_{i} = act(in_{i} + out_{i+1} * W) \ \ \text{for} \ start &lt;= i &lt; end \end{split}\]</div>
+ There are two methods to calculate rnn. One way is to compute rnn one sequence by one sequence. The other way is to reorganize the input into batches, then compute rnn one batch by one batch. Users can select them by rnn_use_batch flag. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -2860,32 +2883,112 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dl class="function">
 <dt id="_CPPv2N6paddle14RecurrentLayer15forwardSequenceEi6size_tPKi">
 <span id="paddle::RecurrentLayer::forwardSequence__i.s.iCP"></span><span class="target" id="paddleclasspaddle_1_1RecurrentLayer_1a90c7839371bfd614ebc123783d404c6e"></span>void <code class="descname">forwardSequence</code><span class="sig-paren">(</span>int <em>batchSize</em>, size_t <em>numSequences</em>, <em class="property">const</em> int *<em>starts</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14RecurrentLayer15forwardSequenceEi6size_tPKi" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>If user do not set rnn_use_batch=true, it will compute rnn forward one sequence by one sequence in default. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">batchSize</span></code> - <p>Total words number of all samples in this batch. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>The sample number. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">starts</span></code> - <p>Each start position of each samples. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle14RecurrentLayer18forwardOneSequenceEii">
 <span id="paddle::RecurrentLayer::forwardOneSequence__i.i"></span><span class="target" id="paddleclasspaddle_1_1RecurrentLayer_1a30cd10d03d577a2525d540499a9cdd9e"></span>void <code class="descname">forwardOneSequence</code><span class="sig-paren">(</span>int <em>start</em>, int <em>length</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14RecurrentLayer18forwardOneSequenceEii" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Compute rnn forward by one sequence. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">start</span></code> - <p>The start position of this sequence (or sample). </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">length</span></code> - <p>The length of this sequence (or sample), namely the words number of this sequence. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle14RecurrentLayer16backwardSequenceEi6size_tPKi">
 <span id="paddle::RecurrentLayer::backwardSequence__i.s.iCP"></span><span class="target" id="paddleclasspaddle_1_1RecurrentLayer_1adcbb881ce7785dc4afe080a4dfb33543"></span>void <code class="descname">backwardSequence</code><span class="sig-paren">(</span>int <em>batchSize</em>, size_t <em>numSequences</em>, <em class="property">const</em> int *<em>starts</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14RecurrentLayer16backwardSequenceEi6size_tPKi" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Compute rnn backward one sequence by onesequence. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">batchSize</span></code> - <p>Total words number of all samples in this batch. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>The sample number. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">starts</span></code> - <p>Each start position of each samples. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle14RecurrentLayer19backwardOneSequenceEii">
 <span id="paddle::RecurrentLayer::backwardOneSequence__i.i"></span><span class="target" id="paddleclasspaddle_1_1RecurrentLayer_1a257c8ff72854f1897e07683b5d3c3c55"></span>void <code class="descname">backwardOneSequence</code><span class="sig-paren">(</span>int <em>start</em>, int <em>length</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14RecurrentLayer19backwardOneSequenceEii" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Compute rnn backward by one sequence. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">start</span></code> - <p>The start position of this sequence (or sample). </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">length</span></code> - <p>The length of this sequence (or sample), namely the words number of this sequence. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle14RecurrentLayer12forwardBatchEi6size_tPKi">
 <span id="paddle::RecurrentLayer::forwardBatch__i.s.iCP"></span><span class="target" id="paddleclasspaddle_1_1RecurrentLayer_1a5918b8a5a9da4654652f899ea0710ef8"></span>void <code class="descname">forwardBatch</code><span class="sig-paren">(</span>int <em>batchSize</em>, size_t <em>numSequences</em>, <em class="property">const</em> int *<em>starts</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14RecurrentLayer12forwardBatchEi6size_tPKi" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Reorganize input into batches and compute rnn forward batch by batch. It will convert batch shape to sequence after finishing forward. The batch info can refer to <a class="reference internal" href="#paddleclasspaddle_1_1SequenceToBatch"><span>SequenceToBatch</span></a> class. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">batchSize</span></code> - <p>Total words number of all samples in this batch. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>The sample number. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">starts</span></code> - <p>Each start position of each samples. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle14RecurrentLayer13backwardBatchEi6size_tPKi">
 <span id="paddle::RecurrentLayer::backwardBatch__i.s.iCP"></span><span class="target" id="paddleclasspaddle_1_1RecurrentLayer_1afe122c89654299ea0a68b626d1741c28"></span>void <code class="descname">backwardBatch</code><span class="sig-paren">(</span>int <em>batchSize</em>, size_t <em>numSequences</em>, <em class="property">const</em> int *<em>starts</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14RecurrentLayer13backwardBatchEi6size_tPKi" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Reorganize input into batches and compute rnn forward batch by batch. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">batchSize</span></code> - <p>Total words number of all samples in this batch. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>The sample number. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">starts</span></code> - <p>Each start position of each samples. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
 
 </div>
 <div class="breathe-sectiondef container">
@@ -2903,7 +3006,8 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dl class="member">
 <dt id="_CPPv2N6paddle14RecurrentLayer12frameOutput_E">
 <span id="paddle::RecurrentLayer::frameOutput___std::vector:Argument:"></span><span class="target" id="paddleclasspaddle_1_1RecurrentLayer_1ae16040832362bdfc73cff510b377dd49"></span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; <code class="descname">frameOutput_</code><a class="headerlink" href="#_CPPv2N6paddle14RecurrentLayer12frameOutput_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>frameOutput_[i] is used to hold the i-th sample of output_ </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle14RecurrentLayer11prevOutput_E">
@@ -2913,17 +3017,20 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dl class="member">
 <dt id="_CPPv2N6paddle14RecurrentLayer9reversed_E">
 <span id="paddle::RecurrentLayer::reversed___b"></span><span class="target" id="paddleclasspaddle_1_1RecurrentLayer_1a27891ca7f195310e2fb5168fa02b6af1"></span>bool <code class="descname">reversed_</code><a class="headerlink" href="#_CPPv2N6paddle14RecurrentLayer9reversed_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Whether compute rnn by reverse. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle14RecurrentLayer11batchValue_E">
 <span id="paddle::RecurrentLayer::batchValue___std::unique_ptr:SequenceToBatch:"></span><span class="target" id="paddleclasspaddle_1_1RecurrentLayer_1a04665ba8307238a216b2c44c50da2926"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle15SequenceToBatchE" title="paddle::SequenceToBatch">SequenceToBatch</a>&gt; <code class="descname">batchValue_</code><a class="headerlink" href="#_CPPv2N6paddle14RecurrentLayer11batchValue_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>If compute batch by batch, batchValue_ will be used to save the reorganized input value. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle14RecurrentLayer10batchGrad_E">
 <span id="paddle::RecurrentLayer::batchGrad___std::unique_ptr:SequenceToBatch:"></span><span class="target" id="paddleclasspaddle_1_1RecurrentLayer_1a8a82c9e0f3c6269de017b5ea22dae0ed"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle15SequenceToBatchE" title="paddle::SequenceToBatch">SequenceToBatch</a>&gt; <code class="descname">batchGrad_</code><a class="headerlink" href="#_CPPv2N6paddle14RecurrentLayer10batchGrad_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>If compute batch by batch, batchGrad_ will be used to save the gradient with respect to reorganized input value. </p>
+</dd></dl>
 
 </div>
 </dd></dl>
@@ -3083,7 +3190,39 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dl class="class">
 <dt id="_CPPv2N6paddle9LstmLayerE">
 <span id="paddle::LstmLayer"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">LstmLayer</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmCompute"><span>paddle::LstmCompute</span></a></p>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1LstmLayer"><span>LstmLayer</span></a> takes 1 input layer with size * 4. Input layer is diveded into 4 equal parts: (input_s, input_ig, input_fg, input_og) </p>
+<p>For each sequence [start, end] it performs the following computation: <div class="highlight-python"><div class="highlight"><pre><span></span>output_{i} = actState(state_{i}) * actGate(outputGate_{i})
+state_{i} = actInput(input_s_{i} + bias_s +
+            output_{i-1} * recurrIW) * actGate(inputGate_{i}) +
+            actGate(forgetGate_{i}) * state_{i-1}
+inputGate = input_ig_{i} + bias_ig + output_{i-1} * recurrIGW +
+            state_{i-1} * inputCheck
+ouputGate = input_og_{i} + bias_og + output_{i-1} * recurrOGW +
+            state_{i} * outputCheck
+forgetGate = input_fg_{i} + bias_fg + output_{i-1} * recurrFGW +
+             state_{i-1} * forgetCheck
+</pre></div>
+</div>
+</p>
+<p><ul class="simple">
+<li>parameter[0] consists of (recurrIW, recurrIGW, recurrFGW, recurrOGW)</li>
+<li>baisParameter consists of (bias_s, bias_ig, bias_og, bias_fg, inputCheck, forgetCheck, outputCheck)</li>
+<li>actInput is defined by config active_type.</li>
+<li>actState is defined by config active_state_type.</li>
+<li>actGate is defined by config actvie_gate_type.</li>
+</ul>
+</p>
+<p>There are two ways to compute, namely one sequence by one sequence or one batch by one batch. By default and no setting pre_batch_state true, it will compute batch by batch.</p>
+<p>The formula in the paper is as follows: <div class="math">
+\[\begin{split} i_t = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i) \\ f_t = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f) \\ \tilde{c_t} = tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c) \\ o_t = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o) \\ c_t = f_t * c_{t-1} + i_t * \tilde{c_t} \\ h_t = o_t tanh(c_t) \end{split}\]</div>
+</p>
+<p>
+The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}, W_{ho}\)</span>. The bias contains <span class="math">\(b_i, b_f, b_c, b_o\)</span> and <span class="math">\(W_{ci}, W_{cf}, W_{co}\)</span>. <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>These <span class="math">\(W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}\)</span> operations on the input sequence were NOT included in <a class="reference internal" href="#paddleclasspaddle_1_1LstmLayer"><span>LstmLayer</span></a>. So users should use fc_layer or mixed_layer before lstm_later.</dd>
+</dl>
+</p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmCompute"><span>paddle::LstmCompute</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1MDLstmLayer"><span>paddle::MDLstmLayer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
@@ -3139,42 +3278,71 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dl class="function">
 <dt id="_CPPv2N6paddle9LstmLayer15forwardSequenceEi6size_tPKi9MatrixPtr">
 <span id="paddle::LstmLayer::forwardSequence__i.s.iCP.MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1addf28182ae53fa0165a39cf1edbbab99"></span>void <code class="descname">forwardSequence</code><span class="sig-paren">(</span>int <em>batchSize</em>, size_t <em>numSequences</em>, <em class="property">const</em> int *<em>starts</em>, <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <em>inputValue</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer15forwardSequenceEi6size_tPKi9MatrixPtr" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Compute lstm forward one sequence by one sequence. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">batchSize</span></code> - <p>The batchSize is not equal to the batch_size in the config file. It is the total words number of all samples in this forward batch. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">numSequences</span></code> - <p>The sample number. It is equal to the batch_size in the config file. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">starts</span></code> - <p>Each start position of each samples. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">inputValue</span></code> - <p>The input values. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle9LstmLayer16backwardSequenceEi6size_tPKi9MatrixPtr">
 <span id="paddle::LstmLayer::backwardSequence__i.s.iCP.MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a061ea3b73bb124323d7ad98b66c54599"></span>void <code class="descname">backwardSequence</code><span class="sig-paren">(</span>int <em>batchSize</em>, size_t <em>numSequences</em>, <em class="property">const</em> int *<em>starts</em>, <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <em>inputGrad</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer16backwardSequenceEi6size_tPKi9MatrixPtr" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Compute lstm backward one sequence by one sequence. </p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle9LstmLayer12forwardBatchEi6size_tPKi9MatrixPtr">
 <span id="paddle::LstmLayer::forwardBatch__i.s.iCP.MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a624184a9640f140295e245ea6f2a0512"></span>void <code class="descname">forwardBatch</code><span class="sig-paren">(</span>int <em>batchSize</em>, size_t <em>numSequences</em>, <em class="property">const</em> int *<em>starts</em>, <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <em>inputValue</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer12forwardBatchEi6size_tPKi9MatrixPtr" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Compute lstm forward one batch by one batch. The batch value is reorganized by <a class="reference internal" href="#paddleclasspaddle_1_1SequenceToBatch"><span>SequenceToBatch</span></a> class. The batch output value will be convert into sequence value after finishing forward. Here, one batch contains one word of each sample. If the length of each sample is not equality, the batch will not pads zero and contains less words. The total batch numbers are the max length of the sequence. The details can refer to <a class="reference internal" href="#paddleclasspaddle_1_1SequenceToBatch"><span>SequenceToBatch</span></a> class. On GPU mode, it will launch GPU kernel for loop.</p>
+<p> <div class="highlight-python"><div class="highlight"><pre><span></span>for (int i = 0; i &lt; numBatch(max_sequence_length); ++i) {
+  compute one batch.
+}
+</pre></div>
+</div>
+</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle9LstmLayer13backwardBatchEi6size_tPKi9MatrixPtr">
 <span id="paddle::LstmLayer::backwardBatch__i.s.iCP.MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a6b1a32de1475fddfe16e62ebe0fabe86"></span>void <code class="descname">backwardBatch</code><span class="sig-paren">(</span>int <em>batchSize</em>, size_t <em>numSequences</em>, <em class="property">const</em> int *<em>starts</em>, <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <em>inputGrad</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer13backwardBatchEi6size_tPKi9MatrixPtr" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Compute lstm backward one batch by one batch. </p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle9LstmLayer18forwardSeqParallelEi6size_tPKi9MatrixPtr">
 <span id="paddle::LstmLayer::forwardSeqParallel__i.s.iCP.MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a0a66e7f6daff5af7dadde2b33963f397"></span>void <code class="descname">forwardSeqParallel</code><span class="sig-paren">(</span>int <em>batchSize</em>, size_t <em>numSequences</em>, <em class="property">const</em> int *<em>starts</em>, <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <em>inputValue</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer18forwardSeqParallelEi6size_tPKi9MatrixPtr" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>This function only supports GPU. It not need to reorganize input into batch value. It will launch one kernel to parallelly compute forward propagation in sequence level. </p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle9LstmLayer19backwardSeqParallelEi6size_tPKi9MatrixPtr">
 <span id="paddle::LstmLayer::backwardSeqParallel__i.s.iCP.MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1aace09a289970336e21f9be501f1bc481"></span>void <code class="descname">backwardSeqParallel</code><span class="sig-paren">(</span>int <em>batchSize</em>, size_t <em>numSequences</em>, <em class="property">const</em> int *<em>starts</em>, <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <em>inputGrad</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer19backwardSeqParallelEi6size_tPKi9MatrixPtr" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Backward propagation corresponding to forwardSeqParallel. </p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle9LstmLayer18getPrevBatchOutputE6size_t">
 <span id="paddle::LstmLayer::getPrevBatchOutput__s"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a7e4c94173d17f8820a81a8e268bb6964"></span>void <code class="descname">getPrevBatchOutput</code><span class="sig-paren">(</span>size_t <em>numSequences</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer18getPrevBatchOutputE6size_t" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>This function is used for sequence generation and get output after forwardBatch. </p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle9LstmLayer17getPrevBatchStateE6size_t">
 <span id="paddle::LstmLayer::getPrevBatchState__s"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1ac122a861de83424fb20a9c6213ed24e2"></span>void <code class="descname">getPrevBatchState</code><span class="sig-paren">(</span>size_t <em>numSequences</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer17getPrevBatchStateE6size_t" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>This function is used for sequence generation and get state after forwardBatch. </p>
+</dd></dl>
 
 </div>
 <div class="breathe-sectiondef container">
@@ -3182,102 +3350,122 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer7weight_E">
 <span id="paddle::LstmLayer::weight___std::unique_ptr:Weight:"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a92459d3e28d0f40fae23a7a9b81a8b85"></span>std::unique_ptr&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle6WeightE" title="paddle::Weight">Weight</a>&gt; <code class="descname">weight_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer7weight_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Learned parameters, shape: (size, 4*size). The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}, W_{ho}\)</span>. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer5bias_E">
 <span id="paddle::LstmLayer::bias___std::unique_ptr:Weight:"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1ac4bec6e74d8c5b1059fd97e87c244e15"></span>std::unique_ptr&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle6WeightE" title="paddle::Weight">Weight</a>&gt; <code class="descname">bias_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer5bias_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Learned bias parameter, shape: (1, 7 * size). The bias contains <span class="math">\(b_i, b_f, b_c, b_o\)</span> and <span class="math">\(W_{ci}, W_{cf}, W_{co}\)</span>. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer10localBias_E">
 <span id="paddle::LstmLayer::localBias___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a2776041d687f5386e5a06b4ca66e6c68"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">localBias_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer10localBias_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The reeal bias, point to <span class="math">\(b_i, b_f, b_c, b_o\)</span>. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer8checkIg_E">
 <span id="paddle::LstmLayer::checkIg___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1aa5457444a9d9badfa9402a511fc26d43"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">checkIg_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer8checkIg_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The peephole connection for input gate. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer8checkFg_E">
 <span id="paddle::LstmLayer::checkFg___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1aad87b56f463f7b0460e227e2d819dd9d"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">checkFg_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer8checkFg_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The peephole connection for forget gate. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer8checkOg_E">
 <span id="paddle::LstmLayer::checkOg___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a9ed73496e458c389c3257559721de078"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">checkOg_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer8checkOg_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The peephole connection for output gate. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer14localBiasGrad_E">
 <span id="paddle::LstmLayer::localBiasGrad___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a9ea1fed33a8f44d2907712d4959d4e68"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">localBiasGrad_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer14localBiasGrad_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The gradient of real bias. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer12checkIgGrad_E">
 <span id="paddle::LstmLayer::checkIgGrad___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a7356cbc10b129b84cc4dee666e18e2ae"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">checkIgGrad_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer12checkIgGrad_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The gradient of peephole connection for input gates. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer12checkFgGrad_E">
 <span id="paddle::LstmLayer::checkFgGrad___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1ac69563893568b98eb3f9e1d67724a5ca"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">checkFgGrad_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer12checkFgGrad_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The gradient of peephole connection for forget gates. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer12checkOgGrad_E">
 <span id="paddle::LstmLayer::checkOgGrad___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1af0c44e0bc913f4f49c291d0a566a6368"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">checkOgGrad_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer12checkOgGrad_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The gradient of peephole connection for output gates. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer6state_E">
 <span id="paddle::LstmLayer::state___Argument"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a578ea77a3a2937f4c11d5e85abb540d9"></span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> <code class="descname">state_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer6state_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Stores the cell state of previous time step, namely <span class="math">\(c_{t-1}\)</span>. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer10preOutput_E">
 <span id="paddle::LstmLayer::preOutput___Argument"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a30848b02cc2723995620b7a57d50d7a2"></span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> <code class="descname">preOutput_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer10preOutput_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Stores the hidden of previous time step, namely <span class="math">\(h_{t-1}\)</span>. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer5gate_E">
 <span id="paddle::LstmLayer::gate___Argument"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a3b11e8c505af58c777a097a9a3640360"></span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> <code class="descname">gate_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer5gate_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Stores the value and gradient of four gates, namely <span class="math">\(i_t, f_t, o_t, c_t\)</span>. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer9reversed_E">
 <span id="paddle::LstmLayer::reversed___b"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1aefb72d6398ca27883185f26e6b568e48"></span>bool <code class="descname">reversed_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer9reversed_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Whether it is reversed lstm. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer9useBatch_E">
 <span id="paddle::LstmLayer::useBatch___b"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1ab367f4c61fd5a3e03d8be8b1f1c922b3"></span>bool <code class="descname">useBatch_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer9useBatch_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Whether to use batch method to compute. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer15useSeqParallel_E">
 <span id="paddle::LstmLayer::useSeqParallel___b"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a031e723b62ade9fc6b2cc6a1aee01b55"></span>bool <code class="descname">useSeqParallel_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer15useSeqParallel_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Whether to use sequence parallell method to compute. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer11batchValue_E">
 <span id="paddle::LstmLayer::batchValue___std::unique_ptr:SequenceToBatch:"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a74ae42b89d0634d05cf7d7eb823879c7"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle15SequenceToBatchE" title="paddle::SequenceToBatch">SequenceToBatch</a>&gt; <code class="descname">batchValue_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer11batchValue_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>batchValue_ is used in method of batch calculation. It stores the batch value after reorganized input. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer10batchGrad_E">
 <span id="paddle::LstmLayer::batchGrad___std::unique_ptr:SequenceToBatch:"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1afab99330c37418be2aca740408b7fe85"></span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle15SequenceToBatchE" title="paddle::SequenceToBatch">SequenceToBatch</a>&gt; <code class="descname">batchGrad_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer10batchGrad_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The gradient of batchValue_. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer10prevState_E">
 <span id="paddle::LstmLayer::prevState___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a30bd80ec9bbb342f69cc429b4a1db7bf"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">prevState_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer10prevState_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Used in generation and stores the state of previous time step. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer11prevOutput_E">
 <span id="paddle::LstmLayer::prevOutput___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a05637ccdbbbc6224bdb2e214a1c21e14"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">prevOutput_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer11prevOutput_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Used in generation and stores the output of previous time step. </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer17prevBatchOutput2_E">
@@ -3287,7 +3475,8 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer11totalState_E">
 <span id="paddle::LstmLayer::totalState___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1LstmLayer_1a6b5837563860f057c8289518f782832b"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">totalState_</code><a class="headerlink" href="#_CPPv2N6paddle9LstmLayer11totalState_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The total state. </p>
+</dd></dl>
 
 </div>
 </dd></dl>
@@ -5298,13 +5487,17 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dt id="_CPPv2N6paddle16BlockExpandLayerE">
 <span id="paddle::BlockExpandLayer"></span><span class="target" id="paddleclasspaddle_1_1BlockExpandLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">BlockExpandLayer</code><a class="headerlink" href="#_CPPv2N6paddle16BlockExpandLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Expand feature map to minibatch matrix. </p>
-<p><ul class="simple">
-<li>matrix width is: blockH_ * blockW_ * channels_</li>
-<li>matirx height is: outputH_ * outputW_ <div class="math">
-\[ outputH_ = 1 + (2 * paddingH_ + imgSizeH_ - blockH_ + strideH_ - 1) / strideH_; outputW_ = 1 + (2 * paddingW_ + imgSizeW_ - blockW_ + strideW_ - 1) / strideW_; \]</div>
- The expand method is same with <a class="reference internal" href="#paddleclasspaddle_1_1ExpandConvLayer"><span>ExpandConvLayer</span></a>, but saved the transposed value. After expanding, output_.sequenceStartPositions will store timeline. The number of time steps are outputH_ * outputW_ and the dimension of each time step is blockH_ * blockW_ * channels_. This layer can be used after convolution neural network, and before recurrent neural network.</li>
+<p><ul>
+<li><p class="first">matrix width is: blockH_ * blockW_ * channels_</p>
+</li>
+<li><p class="first">matirx height is: outputH_ * outputW_</p>
+<p><div class="math">
+\[\begin{split} outputH\_ = 1 + (2 * paddingH\_ + imgSizeH\_ - blockH\_ + strideH\_ - 1) / strideH\_ \\ outputW\_ = 1 + (2 * paddingW\_ + imgSizeW\_ - blockW\_ + strideW\_ - 1) / strideW\_ \end{split}\]</div>
+</p>
+</li>
 </ul>
 </p>
+<p>The expand method is the same with <a class="reference internal" href="#paddleclasspaddle_1_1ExpandConvLayer"><span>ExpandConvLayer</span></a>, but saved the transposed value. After expanding, output_.sequenceStartPositions will store timeline. The number of time steps are outputH_ * outputW_ and the dimension of each time step is blockH_ * blockW_ * channels_. This layer can be used after convolution neural network, and before recurrent neural network.</p>
 <p>The config file api is block_expand_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
@@ -5580,7 +5773,13 @@ y = [a1, a2, a1, a2, a1, a2, a1, a2;
 <dl class="class">
 <dt id="_CPPv2N6paddle11ResizeLayerE">
 <span id="paddle::ResizeLayer"></span><span class="target" id="paddleclasspaddle_1_1ResizeLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ResizeLayer</code><a class="headerlink" href="#_CPPv2N6paddle11ResizeLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
+<dd><p>A layer for resizing a minibatch matrix h*w to h&#8217;*w&#8217;. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>origin matrix height * witdth) resize matrix: (height * width / size) * size </dd>
+</dl>
+</p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -5962,7 +6161,12 @@ y = [a1, a2, a1, a2, a1, a2, a1, a2;
 <dl class="class">
 <dt id="_CPPv2N6paddle14OuterProdLayerE">
 <span id="paddle::OuterProdLayer"></span><span class="target" id="paddleclasspaddle_1_1OuterProdLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">OuterProdLayer</code><a class="headerlink" href="#_CPPv2N6paddle14OuterProdLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A layer for computing the outer product of two vectors, which is used in NEURAL TURING MACHINE Input: two vectors: batchSize x dim1, batchSize x dim2 Output: a matrix: (batchSize x (dim1*dim2)) </p>
+<dd><p>A layer for computing the outer product of two vectors. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>used in NEURAL TURING MACHINE Input1: vector (batchSize * dim1) Input2: vector (batchSize * dim2) Output: a matrix: (batchSize * (dim1*dim2)) </dd>
+</dl>
+</p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
@@ -6527,7 +6731,11 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dl class="class">
 <dt id="_CPPv2N6paddle13HuberTwoClassE">
 <span id="paddle::HuberTwoClass"></span><span class="target" id="paddleclasspaddle_1_1HuberTwoClass"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">HuberTwoClass</code><a class="headerlink" href="#_CPPv2N6paddle13HuberTwoClassE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a></p>
+<dd><p>Huber loss for robust 2-classes classification.</p>
+<p>For label={0, 1}, let y=2*label-1. Given output f, the loss is: <div class="math">
+\[\begin{split} Loss = \left\{\begin{matrix} 4 * y * f &amp; \textit{if} \ \ y* f &lt; -1 \\ (1 - y * f)^2 &amp; \textit{if} \ \ -1 &lt; y * f &lt; 1 \\ 0 &amp; \textit{otherwise} \end{matrix}\right. \end{split}\]</div>
+ </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -6570,7 +6778,12 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dl class="class">
 <dt id="_CPPv2N6paddle10LambdaCostE">
 <span id="paddle::LambdaCost"></span><span class="target" id="paddleclasspaddle_1_1LambdaCost"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">LambdaCost</code><a class="headerlink" href="#_CPPv2N6paddle10LambdaCostE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
+<dd><p>LambdaRank os a method for learning arbitrary information retrieval measures. It can be applied to any algorithm that learns through gradient descent. LambdaRank is a listwise method, in that the cost depends on the sorted order of the documents. LambdaRank gives the gradient of cost function:</p>
+<p><div class="math">
+\[ \lambda_{ij} = \frac{1}{1 + e^{o_i - o_j}} \left| \Delta_{NDCG} \right| \]</div>
+</p>
+<p>[1] Christopher J.C. Burges, Robert Ragno, Quoc Viet Le. Learning to Rank with Nonsmooth Cost Functions. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -6631,10 +6844,9 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dl class="class">
 <dt id="_CPPv2N6paddle28MultiBinaryLabelCrossEntropyE">
 <span id="paddle::MultiBinaryLabelCrossEntropy"></span><span class="target" id="paddleclasspaddle_1_1MultiBinaryLabelCrossEntropy"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MultiBinaryLabelCrossEntropy</code><a class="headerlink" href="#_CPPv2N6paddle28MultiBinaryLabelCrossEntropyE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Cross entropy for multi binary labels cost[i] = -sum(label[i][j]*log(output[i][j])<ul class="simple">
-<li>(1-label[i][j])*log(1-output[i][j])) </li>
-</ul>
-</p>
+<dd><p>Cross entropy for multi binary labels. <div class="math">
+\[ cost[i] = -sum(label[i][j]*log(output[i][j]) + (1-label[i][j])*log(1-output[i][j])) \]</div>
+ </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
@@ -6676,7 +6888,11 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dl class="class">
 <dt id="_CPPv2N6paddle22MultiClassCrossEntropyE">
 <span id="paddle::MultiClassCrossEntropy"></span><span class="target" id="paddleclasspaddle_1_1MultiClassCrossEntropy"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MultiClassCrossEntropy</code><a class="headerlink" href="#_CPPv2N6paddle22MultiClassCrossEntropyE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a></p>
+<dd><p>The cross-entropy loss for multi-class classification task. The loss function is:</p>
+<p><div class="math">
+\[ L = - \sum_{i}{t_{k} * log(P(y=k))} \]</div>
+ </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -6709,7 +6925,13 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dl class="class">
 <dt id="_CPPv2N6paddle34MultiClassCrossEntropyWithSelfNormE">
 <span id="paddle::MultiClassCrossEntropyWithSelfNorm"></span><span class="target" id="paddleclasspaddle_1_1MultiClassCrossEntropyWithSelfNorm"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MultiClassCrossEntropyWithSelfNorm</code><a class="headerlink" href="#_CPPv2N6paddle34MultiClassCrossEntropyWithSelfNormE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a></p>
+<dd><p>The cross-entropy with self-normalization for multi-class classification.</p>
+<p>The loss function is: <div class="math">
+\[ L = \sum_{i}[-log(P(x_{i})) + alpha * log(Z(x_{i})^2)] \]</div>
+</p>
+<p>The <span class="math">\(Z(x)\)</span> is the softmax normalizer.</p>
+<p>[1] Jacob Devlin, Rabih Zbib, Zhongqiang Huang, Thomas Lamar, Richard Schwartz, and John Makhoul. Fast and robust neural network joint models for statistical machine translation. In Proceedings of the ACL 2014 Conference. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -6755,7 +6977,11 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dl class="class">
 <dt id="_CPPv2N6paddle11RankingCostE">
 <span id="paddle::RankingCost"></span><span class="target" id="paddleclasspaddle_1_1RankingCost"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">RankingCost</code><a class="headerlink" href="#_CPPv2N6paddle11RankingCostE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
+<dd><p>A cost layer for learning to rank (LTR) task. This layer contains at leat three inputs. <div class="math">
+\[\begin{split} C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + log(1 + e^{o_{i,j}}) \\ o_{i,j} = o_i - o_j \\ \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \} \end{split}\]</div>
+</p>
+<p>[1]. Chris Burges, Tal Shaked, Erin Renshaw, et al. Learning to Rank useing Gradient Descent. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -6816,7 +7042,10 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dl class="class">
 <dt id="_CPPv2N6paddle27SoftBinaryClassCrossEntropyE">
 <span id="paddle::SoftBinaryClassCrossEntropy"></span><span class="target" id="paddleclasspaddle_1_1SoftBinaryClassCrossEntropy"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SoftBinaryClassCrossEntropy</code><a class="headerlink" href="#_CPPv2N6paddle27SoftBinaryClassCrossEntropyE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a></p>
+<dd><p>The cross-entropy for soft binary class. <div class="math">
+\[ L = \sum_i (\sum_j -y_j(i)*log(x_j(i))-(1-y_j(i))*log(1-x_j(i))) \]</div>
+ </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -6857,7 +7086,10 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dl class="class">
 <dt id="_CPPv2N6paddle21SumOfSquaresCostLayerE">
 <span id="paddle::SumOfSquaresCostLayer"></span><span class="target" id="paddleclasspaddle_1_1SumOfSquaresCostLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SumOfSquaresCostLayer</code><a class="headerlink" href="#_CPPv2N6paddle21SumOfSquaresCostLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a></p>
+<dd><p>This cost layer compute Euclidean (L2) loss for real-valued regression tasks. <div class="math">
+\[ L = \frac{1}{2N} \sum_{i=1}^N {|| \hat{y}_i - y_i||_2^2} \]</div>
+ </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span>paddle::CostLayer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -6891,7 +7123,17 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dl class="class">
 <dt id="_CPPv2N6paddle11CosSimLayerE">
 <span id="paddle::CosSimLayer"></span><span class="target" id="paddleclasspaddle_1_1CosSimLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CosSimLayer</code><a class="headerlink" href="#_CPPv2N6paddle11CosSimLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
+<dd><p>A layer for calculating cosine similarity between two vector <div class="math">
+\[ f(x,y)=scale\frac{x_1y_1+x_2y_2+...+x_ny_n}{\sqrt{x_1^2+x_2^2+... +x_n^2}\sqrt{y_1^2+y_2^2+...+y_n^2}} \]</div>
+. </p>
+<p><ul class="simple">
+<li>Input1: A vector (batchSize * dataDim) *</li>
+<li>Input2: A vector (batchSize * dataDim) or (1 * dataDim) *</li>
+<li>Output: A vector (dataDim * 1)</li>
+</ul>
+</p>
+<p>The config file api is cos_sim. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -6939,7 +7181,15 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dl class="class">
 <dt id="_CPPv2N6paddle17CosSimVecMatLayerE">
 <span id="paddle::CosSimVecMatLayer"></span><span class="target" id="paddleclasspaddle_1_1CosSimVecMatLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CosSimVecMatLayer</code><a class="headerlink" href="#_CPPv2N6paddle17CosSimVecMatLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A layer for computing cosine similarity between a vector an each row of a matrix, out[i] = cos_scale * cos(in1, in2(i,:)); which is used in NEURAL TURING MACHINE Input: a vector (batchSize x dataDim) and a matrix in vec form (batchSize x (weightDim*dataDim)) Output: a vector (batchSize x weightDim) </p>
+<dd><p>A layer for computing cosine similarity between a vector and each row of a matrix out[i] = cos_scale * cos(in1, in2(i,:));. </p>
+<p>
+Input1: a vector (batchSize * dataDim)<dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>used in NEURAL TURING MACHINE</dd>
+</dl>
+</p>
+<p>Input2: a matrix in vector form (batchSize * (weightDim*dataDim))</p>
+<p>Output: a vector (batchSize * weightDim) </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
@@ -7581,13 +7831,15 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 </dd></dl>
 
 </div>
+<div class="section" id="validation-layers">
+<h2>Validation Layers<a class="headerlink" href="#validation-layers" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="validationlayer">
-<h2>ValidationLayer<a class="headerlink" href="#validationlayer" title="Permalink to this headline">¶</a></h2>
+<h3>ValidationLayer<a class="headerlink" href="#validationlayer" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="_CPPv2N6paddle15ValidationLayerE">
 <span id="paddle::ValidationLayer"></span><span class="target" id="paddleclasspaddle_1_1ValidationLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ValidationLayer</code><a class="headerlink" href="#_CPPv2N6paddle15ValidationLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span>paddle::Layer</span></a></p>
-<p>Subclassed by paddle::AucValidation, paddle::PnpairValidation</p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AucValidation"><span>paddle::AucValidation</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PnpairValidation"><span>paddle::PnpairValidation</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -7642,6 +7894,109 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 </div>
 </dd></dl>
 
+</div>
+<div class="section" id="aucvalidation">
+<h3>AucValidation<a class="headerlink" href="#aucvalidation" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="_CPPv2N6paddle13AucValidationE">
+<span id="paddle::AucValidation"></span><span class="target" id="paddleclasspaddle_1_1AucValidation"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">AucValidation</code><a class="headerlink" href="#_CPPv2N6paddle13AucValidationE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ValidationLayer"><span>paddle::ValidationLayer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle13AucValidation13AucValidationERK11LayerConfig">
+<span id="paddle::AucValidation::AucValidation__LayerConfigCR"></span><span class="target" id="paddleclasspaddle_1_1AucValidation_1afc8ee436b2906dc3bec4950197a40e79"></span><code class="descname">AucValidation</code><span class="sig-paren">(</span><em class="property">const</em> LayerConfig &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13AucValidation13AucValidationERK11LayerConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13AucValidation4initERK8LayerMapRK12ParameterMap">
+<span id="paddle::AucValidation::init__LayerMapCR.ParameterMapCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1AucValidation_1a8d1985b739e28ee3b4e3a905243fcf61"></span>bool <code class="descname">init</code><span class="sig-paren">(</span><em class="property">const</em> LayerMap &amp;<em>layerMap</em>, <em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle12ParameterMapE" title="paddle::ParameterMap">ParameterMap</a> &amp;<em>parameterMap</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13AucValidation4initERK8LayerMapRK12ParameterMap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Intialization. For example, adding input layers from layerMap and parameterMap. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13AucValidation13validationImpE9MatrixPtr10IVectorPtr">
+<span id="paddle::AucValidation::validationImp__MatrixPtr.IVectorPtr"></span>virtual <span class="target" id="paddleclasspaddle_1_1AucValidation_1a3b7ed03093fd82f7418fb36175709a56"></span>void <code class="descname">validationImp</code><span class="sig-paren">(</span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <em>outputValue</em>, <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <em>label</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13AucValidation13validationImpE9MatrixPtr10IVectorPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13AucValidation9onPassEndEv">
+<span id="paddle::AucValidation::onPassEnd"></span>virtual <span class="target" id="paddleclasspaddle_1_1AucValidation_1ab5c33c98be49d4593618c7876d51fe97"></span>void <code class="descname">onPassEnd</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13AucValidation9onPassEndEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>One pass is finished. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle13AucValidation13predictArray_E">
+<span id="paddle::AucValidation::predictArray___std::vector:PredictionResult:"></span><span class="target" id="paddleclasspaddle_1_1AucValidation_1a34c92bca07cb73f2691b79bd7c938004"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle13AucValidation16PredictionResultE" title="paddle::AucValidation::PredictionResult">PredictionResult</a>&gt; <code class="descname">predictArray_</code><a class="headerlink" href="#_CPPv2N6paddle13AucValidation13predictArray_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle13AucValidation16PredictionResultE">
+<span id="paddle::AucValidation::PredictionResult"></span><span class="target" id="paddlestructpaddle_1_1AucValidation_1_1PredictionResult"></span><em class="property">struct </em><code class="descname">PredictionResult</code><a class="headerlink" href="#_CPPv2N6paddle13AucValidation16PredictionResultE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle13AucValidation16PredictionResult16PredictionResultE4reali">
+<span id="paddle::AucValidation::PredictionResult::PredictionResult__real.i"></span><span class="target" id="paddlestructpaddle_1_1AucValidation_1_1PredictionResult_1ae27289cfc875cf96c89ae25823281942"></span><code class="descname">PredictionResult</code><span class="sig-paren">(</span>real <em>__out</em>, int <em>__label</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13AucValidation16PredictionResult16PredictionResultE4reali" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle13AucValidation16PredictionResult3outE">
+<span id="paddle::AucValidation::PredictionResult::out__real"></span><span class="target" id="paddlestructpaddle_1_1AucValidation_1_1PredictionResult_1a2f138da3c004dd5d647ec5efc2b913a4"></span>real <code class="descname">out</code><a class="headerlink" href="#_CPPv2N6paddle13AucValidation16PredictionResult3outE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle13AucValidation16PredictionResult5labelE">
+<span id="paddle::AucValidation::PredictionResult::label__i"></span><span class="target" id="paddlestructpaddle_1_1AucValidation_1_1PredictionResult_1af72ed4c24e02153e632fc20aca97c0e7"></span>int <code class="descname">label</code><a class="headerlink" href="#_CPPv2N6paddle13AucValidation16PredictionResult5labelE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="pnpairvalidation">
+<h3>PnpairValidation<a class="headerlink" href="#pnpairvalidation" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="_CPPv2N6paddle16PnpairValidationE">
+<span id="paddle::PnpairValidation"></span><span class="target" id="paddleclasspaddle_1_1PnpairValidation"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">PnpairValidation</code><a class="headerlink" href="#_CPPv2N6paddle16PnpairValidationE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ValidationLayer"><span>paddle::ValidationLayer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16PnpairValidation16PnpairValidationERK11LayerConfig">
+<span id="paddle::PnpairValidation::PnpairValidation__LayerConfigCR"></span><span class="target" id="paddleclasspaddle_1_1PnpairValidation_1a59e70ed9fcf8576cabf3c9567ed3ec4b"></span><code class="descname">PnpairValidation</code><span class="sig-paren">(</span><em class="property">const</em> LayerConfig &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16PnpairValidation16PnpairValidationERK11LayerConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16PnpairValidation4initERK8LayerMapRK12ParameterMap">
+<span id="paddle::PnpairValidation::init__LayerMapCR.ParameterMapCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1PnpairValidation_1a22a5060a3195cab77d10935bb947c23c"></span>bool <code class="descname">init</code><span class="sig-paren">(</span><em class="property">const</em> LayerMap &amp;<em>layerMap</em>, <em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle12ParameterMapE" title="paddle::ParameterMap">ParameterMap</a> &amp;<em>parameterMap</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16PnpairValidation4initERK8LayerMapRK12ParameterMap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Intialization. For example, adding input layers from layerMap and parameterMap. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16PnpairValidation13validationImpE9MatrixPtr10IVectorPtr">
+<span id="paddle::PnpairValidation::validationImp__MatrixPtr.IVectorPtr"></span>virtual <span class="target" id="paddleclasspaddle_1_1PnpairValidation_1a5188effac9380869ce4fa4255201f2e0"></span>void <code class="descname">validationImp</code><span class="sig-paren">(</span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <em>outputValue</em>, <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <em>label</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16PnpairValidation13validationImpE9MatrixPtr10IVectorPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16PnpairValidation9onPassEndEv">
+<span id="paddle::PnpairValidation::onPassEnd"></span>virtual <span class="target" id="paddleclasspaddle_1_1PnpairValidation_1ab31aac8c054509be90377232ffe1321e"></span>void <code class="descname">onPassEnd</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16PnpairValidation9onPassEndEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>One pass is finished. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
 </div>
 </div>
 <div class="section" id="check-layers">
@@ -7847,7 +8202,12 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <li><a class="reference internal" href="#linearchaincrf">LinearChainCRF</a></li>
 <li><a class="reference internal" href="#linearchainctc">LinearChainCTC</a></li>
 <li><a class="reference internal" href="#ncelayer">NCELayer</a></li>
+<li><a class="reference internal" href="#validation-layers">Validation Layers</a><ul>
 <li><a class="reference internal" href="#validationlayer">ValidationLayer</a></li>
+<li><a class="reference internal" href="#aucvalidation">AucValidation</a></li>
+<li><a class="reference internal" href="#pnpairvalidation">PnpairValidation</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#check-layers">Check Layers</a><ul>
@@ -7860,8 +8220,8 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
   <p class="topless"><a href="index.html"
                         title="previous chapter">Layers Documents</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="../../math/matrix/index.html"
-                        title="next chapter">Matrix Documents</a></p>
+  <p class="topless"><a href="../../../dev/new_layer/index.html"
+                        title="next chapter">Writing New Layers</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -7896,13 +8256,13 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../../math/matrix/index.html" title="Matrix Documents"
+          <a href="../../../dev/new_layer/index.html" title="Writing New Layers"
              >next</a> |</li>
         <li class="right" >
           <a href="index.html" title="Layers Documents"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../../layer.html" >Layer Documents</a> &raquo;</li>
           <li class="nav-item nav-item-2"><a href="index.html" >Layers Documents</a> &raquo;</li> 
       </ul>
     </div>

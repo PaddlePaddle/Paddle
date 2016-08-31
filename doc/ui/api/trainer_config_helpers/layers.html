@@ -26,7 +26,7 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
     <link rel="up" title="Layers" href="layers_index.html" />
-    <link rel="next" title="Activations" href="activations.html" />
+    <link rel="next" title="Activations" href="activations_index.html" />
     <link rel="prev" title="Layers" href="layers_index.html" /> 
   </head>
   <body role="document">
@@ -40,14 +40,14 @@
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="activations.html" title="Activations"
+          <a href="activations_index.html" title="Activations"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="layers_index.html" title="Layers"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Trainer Config Helpers</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
           <li class="nav-item nav-item-3"><a href="layers_index.html" accesskey="U">Layers</a> &raquo;</li> 
       </ul>
     </div>  
@@ -180,8 +180,7 @@ reasons.</p>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">fc_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><blockquote>
-<div><p>Helper for declare fully connected layer.</p>
+<dd><p>Helper for declare fully connected layer.</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">fc</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
               <span class="n">size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
@@ -189,10 +188,8 @@ reasons.</p>
               <span class="n">bias_attr</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 </pre></div>
 </div>
-</div></blockquote>
 <p>which is equal to:</p>
-<blockquote>
-<div><div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span> <span class="k">as</span> <span class="n">fc</span><span class="p">:</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span> <span class="k">as</span> <span class="n">fc</span><span class="p">:</span>
     <span class="n">fc</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -200,48 +197,27 @@ reasons.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">param name:</th><td class="field-body">The Layer Name.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">type name:</th><td class="field-body">basestring</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">param input:</th><td class="field-body">The input layer. Could be a list/tuple of input layer.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">type input:</th><td class="field-body">LayerOutput|list|tuple</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">param size:</th><td class="field-body">The layer dimension.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">type size:</th><td class="field-body">int</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">param act:</th><td class="field-body">Activation Type. Default is tanh.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">type act:</th><td class="field-body">BaseActivation</td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">param param_attr:</th></tr>
-<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">The Parameter Attribute|list.</td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">type param_attr:</th></tr>
-<tr class="field-even field"><td>&nbsp;</td><td class="field-body">ParameterAttribute</td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">param bias_attr:</th></tr>
-<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">The Bias Attribute. If no bias, then pass False or
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
+<li><strong>input</strong> (<em>LayerOutput|list|tuple</em>) &#8211; The input layer. Could be a list/tuple of input layer.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; The layer dimension.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type. Default is tanh.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; The Parameter Attribute|list.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|None|Any</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of ParameterAttribute. None will get a
-default Bias.</td>
+default Bias.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">type bias_attr:</th><td class="field-body">ParameterAttribute|None|Any</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Layer Name.</p>
+</td>
 </tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">param layer_attr:</th></tr>
-<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">Extra Layer config.</td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">type layer_attr:</th></tr>
-<tr class="field-even field"><td>&nbsp;</td><td class="field-body">ExtraLayerAttribute|None</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">return:</th><td class="field-body">Layer Name.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">rtype:</th><td class="field-body">LayerOutput</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
 </dd></dl>
 
 </div>
@@ -266,7 +242,7 @@ specified, selective_fc_layer acts exactly like fc_layer.</p>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
 <li><strong>input</strong> (<em>LayerOutput|list|tuple</em>) &#8211; The input layer.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; The layer dimension.</li>
-<li><strong>act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; Activation Type. Default is tanh.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type. Default is tanh.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; The Parameter Attribute.</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|None|Any</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of ParameterAttribute. None will get a
@@ -316,28 +292,18 @@ support GPU mode.</p>
 support rectangular filters, the filter&#8217;s shape
 will be (filter_size, filter_size_y).</li>
 <li><strong>num_filter</strong> (<em>int</em>) &#8211; channel of output data.</li>
-<li><strong>num_channel</strong> &#8211; channel of input data.</li>
-<li><strong>stride</strong> &#8211; The x dimension of the stride.</li>
-<li><strong>stride_y</strong> &#8211; The y dimension of the stride.</li>
+<li><strong>num_channel</strong> (<em>int</em>) &#8211; channel of input data.</li>
+<li><strong>stride</strong> (<em>int</em>) &#8211; The x dimension of the stride.</li>
+<li><strong>stride_y</strong> (<em>int</em>) &#8211; The y dimension of the stride.</li>
 <li><strong>padding</strong> (<em>int</em>) &#8211; The x dimension of padding.</li>
 <li><strong>padding_y</strong> (<em>int</em>) &#8211; The y dimension of padding.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name" colspan="2">Rtype num_channel:</th></tr>
-<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first">int</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A ConvOperator Object.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Rtype stride:</th><td class="field-body"><p class="first">int</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Rtype stride_y:</th><td class="field-body"><p class="first">int</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A ConvOperator Object.</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">ConvOperator</p>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">ConvOperator</p>
 </td>
 </tr>
 </tbody>
@@ -423,7 +389,7 @@ channels will be processed by rest group of filters.</p>
 support rectangular filters, the filter&#8217;s shape
 will be (filter_size, filter_size_y).</li>
 <li><strong>num_filters</strong> &#8211; Each filter group&#8217;s number of filter</li>
-<li><strong>act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; Activation type. Default is tanh</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type. Default is tanh</li>
 <li><strong>groups</strong> (<em>int</em>) &#8211; Group size of filters.</li>
 <li><strong>stride</strong> (<em>int</em>) &#8211; The x dimension of the stride.</li>
 <li><strong>stride_y</strong> (<em>int</em>) &#8211; The y dimension of the stride.</li>
@@ -510,7 +476,7 @@ parameter attribute is set by this parameter.</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; layer&#8217;s input</li>
 <li><strong>pool_size</strong> (<em>int</em>) &#8211; pooling size</li>
 <li><strong>num_channels</strong> (<em>int</em>) &#8211; number of input channel.</li>
-<li><strong>pool_type</strong> (<a class="reference internal" href="poolings.html#paddle.trainer_config_helpers.poolings.BasePoolingType" title="paddle.trainer_config_helpers.poolings.BasePoolingType"><em>BasePoolingType</em></a>) &#8211; pooling type. MaxPooling or AveragePooling. Default is
+<li><strong>pool_type</strong> (<em>BasePoolingType</em>) &#8211; pooling type. MaxPooling or AveragePooling. Default is
 MaxPooling.</li>
 <li><strong>stride</strong> (<em>int</em>) &#8211; stride of pooling.</li>
 <li><strong>start</strong> (<em>int</em>) &#8211; start position of pooling operation.</li>
@@ -628,7 +594,7 @@ automaticly select cudnn_batch_norm for GPU and
 batch_norm for CPU. Otherwise, select batch norm
 type based on the specified type. If you use cudnn_batch_norm,
 we suggested you use latest version, such as v5.1.</li>
-<li><strong>act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; Activation Type. Better be relu. Because batch
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type. Better be relu. Because batch
 normalization will normalize input near zero.</li>
 <li><strong>num_channels</strong> (<em>int</em>) &#8211; num of image channels or previous layer&#8217;s number of
 filters. None will automatically get from layer&#8217;s
@@ -739,7 +705,7 @@ and <span class="math">\(out\)</span> is a (batchSize x dataDim) output vector.<
 <dd><p>Long Short-term Memory Cell.</p>
 <p>The memory cell was implemented as follow equations.</p>
 <div class="math">
-\[i_t = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\]\[f_t = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\]\[c_t = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\]\[o_t = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\]\[h_t = o_t tanh(c_t)\]</div>
+\[\begin{split}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\end{split}\]\[\begin{split}f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\end{split}\]\[\begin{split}c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\end{split}\]\[\begin{split}o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\end{split}\]\[\begin{split}h_t &amp; = o_t tanh(c_t)\end{split}\]</div>
 <p>NOTE: In paddle&#8217;s implementation, the multiply operation
 <span class="math">\(W_{xi}x_{t}\)</span> , <span class="math">\(W_{xf}x_{t}\)</span>,
 <span class="math">\(W_{xc}x_t\)</span>, <span class="math">\(W_{xo}x_{t}\)</span> is not done by
@@ -758,9 +724,9 @@ want to know what lstm is. <a class="reference external" href="http://arxiv.org/
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The lstmemory layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer name.</li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; is sequence process reversed or not.</li>
-<li><strong>act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; activation type, TanhActivation by default. <span class="math">\(h_t\)</span></li>
-<li><strong>gate_act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; gate activation type, SigmoidActivation by default.</li>
-<li><strong>state_act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; state activation type, TanhActivation by default.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; activation type, TanhActivation by default. <span class="math">\(h_t\)</span></li>
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; gate activation type, SigmoidActivation by default.</li>
+<li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; state activation type, TanhActivation by default.</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Bias attribute. None means default bias. False means no
 bias.</li>
 <li><strong>param_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Parameter Attribute.</li>
@@ -787,8 +753,8 @@ bias.</li>
 <dd><p>LSTM Step Layer. It used in recurrent_group. The lstm equations are shown
 as follow.</p>
 <div class="math">
-\[i_t = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\]\[f_t = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\]\[c_t = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\]\[o_t = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\]\[h_t = o_t tanh(c_t)\]</div>
-<p>The input_ of lstm step is <span class="math">\(Wx_t + Wh_{t-1}\)</span>, and user should use
+\[\begin{split}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\end{split}\]\[\begin{split}f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\end{split}\]\[\begin{split}c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\end{split}\]\[\begin{split}o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\end{split}\]\[\begin{split}h_t &amp; = o_t tanh(c_t)\end{split}\]</div>
+<p>The input of lstm step is <span class="math">\(Wx_t + Wh_{t-1}\)</span>, and user should use
 <code class="code docutils literal"><span class="pre">mixed_layer</span></code> and <code class="code docutils literal"><span class="pre">full_matrix_projection</span></code> to calculate these
 input vector.</p>
 <p>The state of lstm step is <span class="math">\(c_{t-1}\)</span>. And lstm step layer will do</p>
@@ -808,10 +774,10 @@ output is <span class="math">\(o_t\)</span>, which name is &#8216;state&#8217; a
 <code class="code docutils literal"><span class="pre">state.size</span></code>.</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer. <span class="math">\(Wx_t + Wh_{t-1}\)</span></li>
 <li><strong>state</strong> (<em>LayerOutput</em>) &#8211; State Layer. <span class="math">\(c_{t-1}\)</span></li>
-<li><strong>act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; Activation type. Default is tanh</li>
-<li><strong>gate_act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; Gate Activation Type. Default is sigmoid, and should
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type. Default is tanh</li>
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; Gate Activation Type. Default is sigmoid, and should
 be sigmoid only.</li>
-<li><strong>state_act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; State Activation Type. Default is sigmoid, and should
+<li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; State Activation Type. Default is sigmoid, and should
 be sigmoid only.</li>
 <li><strong>bias_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Bias Attribute.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; layer&#8217;s extra attribute.</li>
@@ -872,9 +838,9 @@ Neural Networks on Sequence Modeling.</a></p>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The gru layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; input layer.</li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; Wether sequence process is reversed or not.</li>
-<li><strong>act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; activation type, TanhActivation by default. This activation
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; activation type, TanhActivation by default. This activation
 affects the <span class="math">\({\tilde{h_t}}\)</span>.</li>
-<li><strong>gate_act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; gate activation type, SigmoidActivation by default.
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; gate activation type, SigmoidActivation by default.
 This activation affects the <span class="math">\(z_t\)</span> and <span class="math">\(r_t\)</span>. It is the
 <span class="math">\(\sigma\)</span> in the above formula.</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Bias attribute. None means default bias. False means no
@@ -930,6 +896,148 @@ bias.</li>
 </div>
 <div class="section" id="recurrent-layer-group">
 <h1>Recurrent Layer Group<a class="headerlink" href="#recurrent-layer-group" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="recurrent-group">
+<h2>recurrent_group<a class="headerlink" href="#recurrent-group" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">recurrent_group</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Recurrent Group. It supports time steps and sequence steps mechanisms.</p>
+<p>The basic usage (time steps) is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                      <span class="n">size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+                      <span class="n">act</span><span class="o">=</span><span class="n">LinearActivation</span><span class="p">(),</span>
+                      <span class="n">bias_attr</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">output</span>
+
+<span class="n">group</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                        <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can see following configs for further usages:</p>
+<ul class="simple">
+<li>time steps: lstmemory_group, paddle/gserver/tests/sequence_layer_group.conf,                   demo/seqToseq/seqToseq_net.py</li>
+<li>sequence steps: paddle/gserver/tests/sequence_nest_layer_group.conf</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>step</strong> (<em>callable</em>) &#8211; <p>recurrent one time step function.The input of this function is
+input of the group. The return of this function will be
+recurrent group&#8217;s return value.</p>
+<p>The recurrent group scatter a sequence into time steps. And
+for each time step, will invoke step function, and return
+a time step result. Then gather each time step of output into
+layer group&#8217;s output.</p>
+</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; recurrent_group&#8217;s name.</li>
+<li><strong>input</strong> (<em>LayerOutput|StaticInput|SubsequenceInput|list|tuple</em>) &#8211; <p>Input links array.</p>
+<p>LayerOutput will be scattered into time steps.
+SubsequenceInput will be scattered into sequence steps.
+StaticInput will be imported to each time step, and doesn&#8217;t change
+through time. It&#8217;s a mechanism to access layer outside step function.</p>
+</li>
+<li><strong>reverse</strong> (<em>bool</em>) &#8211; If reverse is set true, the recurrent unit will process the
+input sequence in a reverse order.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Layer output object</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="beam-search">
+<h2>beam_search<a class="headerlink" href="#beam-search" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">beam_search</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Beam search is a heuristic search algorithm used in sequence generation.
+It explores a graph by expanding the most promising nodes in a limited set
+to maintain tractability.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">rnn_step</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="n">last_time_step_output</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;rnn&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span> <span class="k">as</span> <span class="n">simple_rnn</span><span class="p">:</span>
+        <span class="n">simple_rnn</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+        <span class="n">simple_rnn</span> <span class="o">+=</span> <span class="n">last_time_step_output</span>
+    <span class="k">return</span> <span class="n">simple_rnn</span>
+
+<span class="n">beam_gen</span> <span class="o">=</span> <span class="n">beam_search</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;decoder&quot;</span><span class="p">,</span>
+                       <span class="n">step</span><span class="o">=</span><span class="n">rnn_step</span><span class="p">,</span>
+                       <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="s2">&quot;encoder_last&quot;</span><span class="p">)],</span>
+                       <span class="n">bos_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                       <span class="n">eos_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                       <span class="n">beam_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                       <span class="n">result_file</span><span class="o">=</span><span class="s2">&quot;./generated_sequences.txt&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Please see the following demo for more details:</p>
+<ul class="simple">
+<li>machine translation : demo/seqToseq/translation/gen.conf                             demo/seqToseq/seqToseq_net.py</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>base string</em>) &#8211; Name of the recurrent unit that generates sequences.</li>
+<li><strong>step</strong> (<em>callable</em>) &#8211; <p>A callable function that defines the calculation in a time
+step, and it is appled to sequences with arbitrary length by
+sharing a same set of weights.</p>
+<p>You can refer to the first parameter of recurrent_group, or
+demo/seqToseq/seqToseq_net.py for more details.</p>
+</li>
+<li><strong>input</strong> (<em>StaticInput|GeneratedInput</em>) &#8211; Input data for the recurrent unit</li>
+<li><strong>bos_id</strong> (<em>int</em>) &#8211; Index of the start symbol in the dictionary. The start symbol
+is a special token for NLP task, which indicates the
+beginning of a sequence. In the generation task, the start
+symbol is ensential, since it is used to initialize the RNN
+internal state.</li>
+<li><strong>eos_id</strong> (<em>int</em>) &#8211; Index of the end symbol in the dictionary. The end symbol is
+a special token for NLP task, which indicates the end of a
+sequence. The generation process will stop once the end
+symbol is generated, or a pre-defined max iteration number
+is exceeded.</li>
+<li><strong>beam_size</strong> (<em>int</em>) &#8211; Beam search for sequence generation is an iterative search
+algorithm. To maintain tractability, every iteration only
+only stores a predetermined number, called the beam_size,
+of the most promising next words. The greater the beam
+size, the fewer candidate words are pruned.</li>
+<li><strong>result_file</strong> (<em>basestring</em>) &#8211; Path of the file to store the generated results.</li>
+<li><strong>dict_file</strong> (<em>basestring</em>) &#8211; Path of dictionary. This is an optional parameter.
+Every line is a word in the dictionary with
+(line number - 1) as the word index.
+If this parameter is set to None, or to an empty string,
+only word index are printed in the generated results.</li>
+<li><strong>num_results_per_sample</strong> (<em>int</em>) &#8211; Number of the generated results per input
+sequence. This number must always be less than
+beam size.</li>
+<li><strong>id_input</strong> (<em>LayerOutput</em>) &#8211; Index of the input sequence, and the specified index will
+be prited in the gereated results. This an optional
+parameter.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The seq_text_printer that prints the generated sequence to a file.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">evaluator</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 <div class="section" id="get-output-layer">
 <h2>get_output_layer<a class="headerlink" href="#get-output-layer" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
@@ -998,7 +1106,7 @@ Each inputs is a projection or operator.</p>
 <li><strong>size</strong> (<em>int</em>) &#8211; layer size.</li>
 <li><strong>input</strong> &#8211; inputs layer. It is an optional parameter. If set,
 then this function will just return layer&#8217;s name.</li>
-<li><strong>act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; Activation Type.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type.</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute or None or bool</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of ParameterAttribute. None will get a
 default Bias.</li>
@@ -1390,7 +1498,7 @@ Inputs can be list of LayerOutput or list of projection.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
 <li><strong>input</strong> (<em>list|tuple</em>) &#8211; input layers or projections</li>
-<li><strong>act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; Activation type.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
@@ -1429,6 +1537,15 @@ value. After expanding, output.sequenceStartPositions will store timeline.
 The number of time steps are outputH * outputW and the dimension of each
 time step is block_y * block_x * channel. This layer can be used after
 convolution neural network, and before recurrent neural network.</p>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">block_expand</span> <span class="o">=</span> <span class="n">block_expand_layer</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span>
+                                  <span class="n">channel</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+                                  <span class="n">stride_x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                                  <span class="n">stride_y</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                                  <span class="n">block_x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                                  <span class="n">block_x</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1531,7 +1648,7 @@ Please refer to dropout_layer for details.</p>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput|list|tuple</em>) &#8211; Input layers. It could be a LayerOutput or list/tuple of
 LayerOutput.</li>
-<li><strong>act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; Activation Type, default is tanh.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type, default is tanh.</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|bool</em>) &#8211; Bias attribute. If False, means no bias. None is default
 bias.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
@@ -1559,7 +1676,7 @@ bias.</li>
 <dd><ul class="first last">
 <li><dl class="first docutils">
 <dt>Input: a vector containing the convex weights (batchSize x weightdim),</dt>
-<dd><p class="first last">and a matrix in a vector form (batchSize x (weightdim*datadim)).</p>
+<dd><p class="first last">and a matrix in a vector form (batchSize x (weightdim * datadim)).</p>
 </dd>
 </dl>
 </li>
@@ -1770,7 +1887,6 @@ For example, each sample:</p>
 <dd><ul class="first last simple">
 <li><span class="math">\(x_{1}\)</span>: the first input contains M elements.</li>
 <li><span class="math">\(x_{2}\)</span>: the second input contains N elements.</li>
-<li>y[out]: contains K elements.</li>
 <li><span class="math">\(y_{i}\)</span>: the i-th element of y.</li>
 <li><span class="math">\(W_{i}\)</span>: the i-th learned weight, shape if [M, N]</li>
 <li><span class="math">\({x_{2}}^\mathrm{T}\)</span>: the transpose of <span class="math">\(x_{2}\)</span>.</li>
@@ -1788,8 +1904,8 @@ For example, each sample:</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
 <li><strong>input</strong> (<em>LayerOutput|list|tuple.</em>) &#8211; Input layer.</li>
-<li><strong>size</strong> &#8211; the layer dimension.</li>
-<li><strong>act</strong> (<a class="reference internal" href="activations.html#paddle.trainer_config_helpers.activations.BaseActivation" title="paddle.trainer_config_helpers.activations.BaseActivation"><em>BaseActivation</em></a>) &#8211; Activation Type. Default is tanh.</li>
+<li><strong>size</strong> (<em>int.</em>) &#8211; the layer dimension.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type. Default is tanh.</li>
 <li><strong>param_attr</strong> (<em>ParameterAttribute|list</em>) &#8211; The Parameter Attribute.</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|None|Any</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of ParameterAttribute. None will get a
@@ -1798,13 +1914,10 @@ default Bias.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">int.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a object of LayerOutput.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a object of LayerOutput.</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
 </td>
 </tr>
 </tbody>
@@ -2104,12 +2217,12 @@ list of get gradient.</li>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">rank_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>A cost Layer for leanrning to rank using gradient descent. Details can refer
+<dd><p>A cost Layer for learning to rank using gradient descent. Details can refer
 to <a class="reference external" href="http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf">papers</a>.
 This layer contains at least three inputs. The weight is an optional
 argument, which affects the cost.</p>
 <div class="math">
-\[C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + log(1 + e^{o_{i,j}})\]\[o_{i,j} =  o_i - o_j\]\[\tilde{P_{i,j}} = \{0, 0.5, 1\} \ or \ \{0, 1\}\]</div>
+\[\begin{split}C_{i,j} &amp; = -\tilde{P_{ij}} * o_{i,j} + log(1 + e^{o_{i,j}})\end{split}\]\[\begin{split}o_{i,j} &amp; =  o_i - o_j\end{split}\]\[\begin{split}\tilde{P_{i,j}} &amp; = \{0, 0.5, 1\} \ or \ \{0, 1\}\end{split}\]</div>
 <dl class="docutils">
 <dt>In this formula:</dt>
 <dd><ul class="first last simple">
@@ -2322,11 +2435,11 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
 <li><strong>input</strong> (<em>LayerOutput|list|tuple</em>) &#8211; Input layers. It could be a LayerOutput or list/tuple of
 LayerOutput.</li>
 <li><strong>label</strong> (<em>LayerOutput</em>) &#8211; Label layer.</li>
 <li><strong>num_classes</strong> (<em>int</em>) &#8211; number of classes.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; Bias attribute. None means default bias.
 False means no bias.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
@@ -2365,9 +2478,9 @@ It is used by recurrent layer group.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer name.</li>
 <li><strong>eos_id</strong> (<em>int</em>) &#8211; end id of sequence</li>
-<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
 <li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
 </ul>
 </td>
@@ -2434,6 +2547,8 @@ It is used by recurrent layer group.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#recurrent-layer-group">Recurrent Layer Group</a><ul>
+<li><a class="reference internal" href="#recurrent-group">recurrent_group</a></li>
+<li><a class="reference internal" href="#beam-search">beam_search</a></li>
 <li><a class="reference internal" href="#get-output-layer">get_output_layer</a></li>
 </ul>
 </li>
@@ -2499,7 +2614,7 @@ It is used by recurrent layer group.</p>
   <p class="topless"><a href="layers_index.html"
                         title="previous chapter">Layers</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="activations.html"
+  <p class="topless"><a href="activations_index.html"
                         title="next chapter">Activations</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
@@ -2535,14 +2650,14 @@ It is used by recurrent layer group.</p>
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="activations.html" title="Activations"
+          <a href="activations_index.html" title="Activations"
              >next</a> |</li>
         <li class="right" >
           <a href="layers_index.html" title="Layers"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Trainer Config Helpers</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
           <li class="nav-item nav-item-3"><a href="layers_index.html" >Layers</a> &raquo;</li> 
       </ul>
     </div>

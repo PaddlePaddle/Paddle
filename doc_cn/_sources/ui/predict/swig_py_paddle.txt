@@ -1,7 +1,7 @@
-Paddle的Python预测接口
+PaddlePaddle的Python预测接口
 ==================================
 
-Paddle目前使用Swig对其常用的预测接口进行了封装，使在Python环境下的预测接口更加简单。
+PaddlePaddle目前使用Swig对其常用的预测接口进行了封装，使在Python环境下的预测接口更加简单。
 在Python环境下预测结果，主要分为以下几个步骤。
 
 * 读入解析训练配置
@@ -17,8 +17,8 @@ Paddle目前使用Swig对其常用的预测接口进行了封装，使在Python�
 
 主要的软件包为py_paddle.swig_paddle，这个软件包文档相对完善。可以使用python的 :code:`help()` 函数查询文档。主要步骤为:
 
-* 在程序开始阶段，使用命令行参数初始化paddle
-* 在98行载入paddle的训练文件。读取config
+* 在程序开始阶段，使用命令行参数初始化PaddlePaddle
+* 在98行载入PaddlePaddle的训练文件。读取config
 * 在100行创建神经网络，并在83行载入参数。
 * 103行创建一个从工具类，用来转换数据。
     - swig_paddle接受的原始数据是C++的Matrix，也就是直接写内存的float数组。

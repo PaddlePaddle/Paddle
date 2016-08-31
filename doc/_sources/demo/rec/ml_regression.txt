@@ -330,11 +330,11 @@ The model is saved in :code:`output/` directory. You can use :code:`Ctrl-C` to s
 Evaluate and Predict
 ````````````````````
 
-After training several passes, you can evalute them and get the best pass. Just run
+After training several passes, you can evaluate them and get the best pass. Just run
 
 .. code-block:: bash
 
-    ./evalute.sh 
+    ./evaluate.sh 
 
 You will see messages like this:
 

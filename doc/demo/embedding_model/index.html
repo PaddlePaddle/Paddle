@@ -26,7 +26,7 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
     <link rel="up" title="Examples and demos" href="../index.html" />
-    <link rel="next" title="Writing New Layers" href="../new_layer/index.html" />
+    <link rel="next" title="Cluster Train" href="../../cluster/index.html" />
     <link rel="prev" title="Model Zoo - ImageNet" href="../imagenet_model/resnet_model.html" /> 
   </head>
   <body role="document">
@@ -40,7 +40,7 @@
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../new_layer/index.html" title="Writing New Layers"
+          <a href="../../cluster/index.html" title="Cluster Train"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="../imagenet_model/resnet_model.html" title="Model Zoo - ImageNet"
@@ -121,11 +121,11 @@ python extract_para.py --preModel PREMODEL --preDict PREDICT --usrModel USRMODEL
 </ul>
 <p>Here, you can simply run the command:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/seqToseq/data/
-./paraphase_model.sh
+./paraphrase_model.sh
 </pre></div>
 </div>
 <p>And you will see following embedding model structure:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>paraphase_model
+<div class="highlight-python"><div class="highlight"><pre><span></span>paraphrase_model
 |--- _source_language_embedding
 |--- _target_language_embedding
 </pre></div>
@@ -159,7 +159,7 @@ python extract_para.py --preModel PREMODEL --preDict PREDICT --usrModel USRMODEL
 </div>
 <p>where <code class="docutils literal"><span class="pre">train.sh</span></code> is almost the same as <code class="docutils literal"><span class="pre">demo/seqToseq/translation/train.sh</span></code>, the only difference is following two command arguments:</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">--init_model_path</span></code>: path of the initialization model, here is <code class="docutils literal"><span class="pre">data/paraphase_model</span></code></li>
+<li><code class="docutils literal"><span class="pre">--init_model_path</span></code>: path of the initialization model, here is <code class="docutils literal"><span class="pre">data/paraphrase_model</span></code></li>
 <li><code class="docutils literal"><span class="pre">--load_missing_parameter_strategy</span></code>: operations when model file is missing, here use a normal distibution to initialize the other parameters except for the embedding layer</li>
 </ul>
 <p>For users who want to understand the dataset format, model architecture and training procedure in detail, please refer to <a class="reference external" href="demo/embedding_model/text_generation.md">Text generation Tutorial</a>.</p>
@@ -259,8 +259,8 @@ python paraconvert.py --t2b -i INPUT -o OUTPUT
   <p class="topless"><a href="../imagenet_model/resnet_model.html"
                         title="previous chapter">Model Zoo - ImageNet</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="../new_layer/index.html"
-                        title="next chapter">Writing New Layers</a></p>
+  <p class="topless"><a href="../../cluster/index.html"
+                        title="next chapter">Cluster Train</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -295,7 +295,7 @@ python paraconvert.py --t2b -i INPUT -o OUTPUT
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../new_layer/index.html" title="Writing New Layers"
+          <a href="../../cluster/index.html" title="Cluster Train"
              >next</a> |</li>
         <li class="right" >
           <a href="../imagenet_model/resnet_model.html" title="Model Zoo - ImageNet"

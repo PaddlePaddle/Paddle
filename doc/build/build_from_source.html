@@ -126,7 +126,7 @@ sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
 </pre></div>
 </div>
 <p>Then you need to set LD_LIBRARY_PATH, CUDA_HOME and PATH environment variables in ~/.bashrc.</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">LD_LIBARAY_PATH</span><span class="o">=</span>/usr/local/cuda/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/usr/local/cuda/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
 <span class="nb">export</span> <span class="nv">CUDA_HOME</span><span class="o">=</span>/usr/local/cuda
 <span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>/usr/local/cuda/bin:<span class="nv">$PATH</span>
 </pre></div>
@@ -142,14 +142,14 @@ sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
 <li><strong>Doc Dependencies(optional)</strong></li>
 </ul>
 <p>If you want to compile PaddlePaddle with doc, you need to add -DWITH_DOC=ON in cmake command and install these first:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install sphinx
+<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install <span class="s1">&#39;sphinx&gt;=1.4.0&#39;</span>
 pip install sphinx_rtd_theme breathe recommonmark
-sudo apt-get install python-sphinx doxygen 
+sudo apt-get install doxygen 
 </pre></div>
 </div>
 </div>
-<div class="section" id="build-an-install">
-<span id="build-an-install"></span><h3>Build an Install<a class="headerlink" href="#build-an-install" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="build-and-install">
+<span id="id1"></span><h3>Build and Install<a class="headerlink" href="#build-and-install" title="Permalink to this headline">¶</a></h3>
 <p>CMake will find dependent libraries in system default paths first. After installing some optional libraries, corresponding build option will automatically be on(such as glog, gtest and gflags). And if libraries are not found, you have to set following variables manually in cmake command(CUDNN_ROOT, ATLAS_ROOT, MKL_ROOT, OPENBLAS_ROOT).</p>
 <p>Here are some examples of cmake command with different options:</p>
 <p><strong>only cpu</strong></p>
@@ -172,6 +172,8 @@ mkdir build
 <span class="c1"># you can add build option here, such as:    </span>
 cmake -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>OFF -DCMAKE_INSTALL_PREFIX<span class="o">=</span>&lt;path to install&gt; ..
 make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">&amp;&amp;</span> make install
+<span class="c1"># PaddlePaddle installation path</span>
+<span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>&lt;path to install&gt;/bin:<span class="nv">$PATH</span>
 </pre></div>
 </div>
 <p><strong>Note</strong></p>
@@ -199,7 +201,7 @@ make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">
 </li>
 <li><a class="reference internal" href="#building-on-ubuntu14-04">Building on Ubuntu14.04</a><ul>
 <li><a class="reference internal" href="#install-dependencies">Install Dependencies</a></li>
-<li><a class="reference internal" href="#build-an-install">Build an Install</a></li>
+<li><a class="reference internal" href="#build-and-install">Build and Install</a></li>
 </ul>
 </li>
 </ul>

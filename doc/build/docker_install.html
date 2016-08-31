@@ -1,0 +1,219 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Docker installation guide &mdash; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="PaddlePaddle  documentation" href="../index.html" />
+    <link rel="up" title="Build And Install PaddlePaddle" href="index.html" />
+    <link rel="next" title="Debian Package installation guide" href="ubuntu_install.html" />
+    <link rel="prev" title="Contribute to PaddlePaddle" href="contribute_to_paddle.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ubuntu_install.html" title="Debian Package installation guide"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="contribute_to_paddle.html" title="Contribute to PaddlePaddle"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Build And Install PaddlePaddle</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="docker-installation-guide">
+<span id="docker-installation-guide"></span><h1>Docker installation guide<a class="headerlink" href="#docker-installation-guide" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle provides some pre-compiled binary, including Docker images, ubuntu deb packages. It is welcomed to contributed more installation package of different linux distribution (such as ubuntu, centos, debian, gentoo and so on). We recommend to use Docker images to deploy PaddlePaddle.</p>
+<div class="section" id="docker-installation">
+<span id="docker-installation"></span><h2>Docker installation<a class="headerlink" href="#docker-installation" title="Permalink to this headline">¶</a></h2>
+<p>Docker is a tool designed to make it easier to create, deploy, and run applications by using containers.</p>
+<div class="section" id="paddlepaddle-docker-images">
+<span id="paddlepaddle-docker-images"></span><h3>PaddlePaddle Docker images<a class="headerlink" href="#paddlepaddle-docker-images" title="Permalink to this headline">¶</a></h3>
+<p>There are six Docker images:</p>
+<ul class="simple">
+<li>paddledev/paddle:latest-cpu: PaddlePaddle CPU binary image.</li>
+<li>paddledev/paddle:latest-gpu: PaddlePaddle GPU binary image.</li>
+<li>paddledev/paddle:latest-cpu-devel: PaddlePaddle CPU binary image plus source code.</li>
+<li>paddledev/paddle:latest-gpu-devel: PaddlePaddle GPU binary image plus source code.</li>
+<li>paddledev/paddle:latest-cpu-demo: PaddlePaddle CPU binary image plus source code and demo</li>
+<li>paddledev/paddle:latest-gpu-demo: PaddlePaddle GPU binary image plus source code and demo</li>
+</ul>
+<p>Tags with latest will be replaced by a released version.</p>
+</div>
+<div class="section" id="download-and-run-docker-images">
+<span id="download-and-run-docker-images"></span><h3>Download and Run Docker images<a class="headerlink" href="#download-and-run-docker-images" title="Permalink to this headline">¶</a></h3>
+<p>You have to install Docker in your machine which has linux kernel version 3.10+ first. You can refer to the official guide https://docs.docker.com/engine/installation/ for further information.</p>
+<p>You can use <code class="docutils literal"><span class="pre">docker</span> <span class="pre">pull</span></code>to download images first, or just launch a container with <code class="docutils literal"><span class="pre">docker</span> <span class="pre">run</span></code>:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it paddledev/paddle:lastest-cpu
+</pre></div>
+</div>
+<p>If you want to launch container with GPU support, you need to set some environment variables at the same time:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>export CUDA_SO=&quot;$(\ls /usr/lib64/libcuda* | xargs -I{} echo &#39;-v {}:{}&#39;) $(\ls /usr/lib64/libnvidia* | xargs -I{} echo &#39;-v {}:{}&quot;
+export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo &#39;--device {}:{}&#39;)
+docker run -it paddledev/paddle:latest-gpu
+</pre></div>
+</div>
+</div>
+<div class="section" id="notice">
+<span id="notice"></span><h3>Notice<a class="headerlink" href="#notice" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="performance">
+<span id="performance"></span><h4>Performance<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h4>
+<p>Since Docker is based on the lightweight virtual containers, the CPU computing performance maintains well. And GPU driver and equipments are all mapped to the container, so the GPU computing performance would not be seriously affected.</p>
+<p>If you use high performance nic, such as RDMA(RoCE 40GbE or IB 56GbE), Ethernet(10GbE), it is recommended to use config &#8220;-net = host&#8221;.</p>
+</div>
+<div class="section" id="remote-access">
+<span id="remote-access"></span><h4>Remote access<a class="headerlink" href="#remote-access" title="Permalink to this headline">¶</a></h4>
+<p>If you want to enable ssh access background, you need to build an image by yourself. Please refer to official guide https://docs.docker.com/engine/reference/builder/ for further information.</p>
+<p>Following is a simple Dockerfile with ssh:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>FROM paddledev/paddle
+
+MAINTAINER PaddlePaddle dev team &lt;paddle-dev@baidu.com&gt;
+
+RUN apt-get update
+RUN apt-get install -y openssh-server
+RUN mkdir /var/run/sshd
+RUN <span class="nb">echo</span> <span class="s1">&#39;root:root&#39;</span> <span class="p">|</span> chpasswd
+
+RUN sed -ri <span class="s1">&#39;s/^PermitRootLogin\s+.*/PermitRootLogin yes/&#39;</span> /etc/ssh/sshd_config
+RUN sed -ri <span class="s1">&#39;s/UsePAM yes/#UsePAM yes/g&#39;</span> /etc/ssh/sshd_config
+
+EXPOSE 22
+
+CMD    <span class="o">[</span><span class="s2">&quot;/usr/sbin/sshd&quot;</span>, <span class="s2">&quot;-D&quot;</span><span class="o">]</span>
+</pre></div>
+</div>
+<p>Then you can build an image with Dockerfile and launch a container:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># cd into Dockerfile directory</span>
+docker build . -t paddle_ssh
+<span class="c1"># run container, and map host machine port 8022 to container port 22</span>
+docker run -d -p 8022:22 --name paddle_ssh_machine paddle_ssh
+</pre></div>
+</div>
+<p>Now, you can ssh on port 8022 to access the container, username is root, password is also root:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>ssh -p <span class="m">8022</span> root@YOUR_HOST_MACHINE
+</pre></div>
+</div>
+<p>You can stop and delete the container as following:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># stop</span>
+docker stop paddle_ssh_machine
+<span class="c1"># delete</span>
+docker rm paddle_ssh_machine
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Docker installation guide</a><ul>
+<li><a class="reference internal" href="#docker-installation">Docker installation</a><ul>
+<li><a class="reference internal" href="#paddlepaddle-docker-images">PaddlePaddle Docker images</a></li>
+<li><a class="reference internal" href="#download-and-run-docker-images">Download and Run Docker images</a></li>
+<li><a class="reference internal" href="#notice">Notice</a><ul>
+<li><a class="reference internal" href="#performance">Performance</a></li>
+<li><a class="reference internal" href="#remote-access">Remote access</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="contribute_to_paddle.html"
+                        title="previous chapter">Contribute to PaddlePaddle</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ubuntu_install.html"
+                        title="next chapter">Debian Package installation guide</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/build/docker_install.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ubuntu_install.html" title="Debian Package installation guide"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="contribute_to_paddle.html" title="Contribute to PaddlePaddle"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Build And Install PaddlePaddle</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+    </div>
+  </body>
+</html>

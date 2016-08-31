@@ -287,6 +287,7 @@ paddle train \
 2>&1 | tee 'translation/gen.log'
 ```
 - job: set job mode to test
+- save_dir: the path of saved models
 - num_passes and test_pass: loading model parameters from test_pass to (num_passes - 1), here only loads `data/wmt14_model/pass-00012`
 
 You will see messages like this:

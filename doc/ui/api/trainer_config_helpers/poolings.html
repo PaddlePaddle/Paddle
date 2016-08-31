@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Poolings &mdash; PaddlePaddle  documentation</title>
+    <title>BasePoolingType &mdash; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -25,9 +25,9 @@
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
-    <link rel="up" title="Trainer Config Helpers" href="index.html" />
-    <link rel="next" title="Networks" href="networks.html" />
-    <link rel="prev" title="Activations" href="activations.html" /> 
+    <link rel="up" title="Poolings" href="poolings_index.html" />
+    <link rel="next" title="Networks" href="networks_index.html" />
+    <link rel="prev" title="Poolings" href="poolings_index.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -40,14 +40,15 @@
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="networks.html" title="Networks"
+          <a href="networks_index.html" title="Networks"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="activations.html" title="Activations"
+          <a href="poolings_index.html" title="Poolings"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Trainer Config Helpers</a> &raquo;</li> 
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-3"><a href="poolings_index.html" accesskey="U">Poolings</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -56,50 +57,66 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="module-paddle.trainer_config_helpers.poolings">
-<span id="poolings"></span><h1>Poolings<a class="headerlink" href="#module-paddle.trainer_config_helpers.poolings" title="Permalink to this headline">¶</a></h1>
-<p>Pooling type that paddle supported. Note these pooling types are used for
-sequence input, not for images.</p>
-<p>Each PoolingType contains.</p>
-<ul class="simple">
-<li>name: pooling layer type name used by paddle.</li>
-</ul>
+  <div class="section" id="basepoolingtype">
+<h1>BasePoolingType<a class="headerlink" href="#basepoolingtype" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="paddle.trainer_config_helpers.poolings.BasePoolingType">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">BasePoolingType</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.poolings.BasePoolingType" title="Permalink to this definition">¶</a></dt>
-<dd><p>Base Pooling Type.</p>
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">BasePoolingType</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span></dt>
+<dd><p>Base Pooling Type.
+Note these pooling types are used for sequence input, not for images.
+Each PoolingType contains one parameter:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>basestring</em>) &#8211; pooling layer type name used by paddle.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
+</div>
+<div class="section" id="avgpooling">
+<h1>AvgPooling<a class="headerlink" href="#avgpooling" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="paddle.trainer_config_helpers.poolings.MaxPooling">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">MaxPooling</code><a class="headerlink" href="#paddle.trainer_config_helpers.poolings.MaxPooling" title="Permalink to this definition">¶</a></dt>
-<dd><p>Max pooling.</p>
-<p>Return the very large values for each dimension in sequence or time steps.</p>
-<div class="math">
-\[max(samples\_of\_a\_sequence)\]</div>
-</dd></dl>
-
-<dl class="class">
-<dt id="paddle.trainer_config_helpers.poolings.AvgPooling">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">AvgPooling</code><span class="sig-paren">(</span><em>strategy='average'</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.poolings.AvgPooling" title="Permalink to this definition">¶</a></dt>
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">AvgPooling</code><span class="sig-paren">(</span><em>strategy='average'</em><span class="sig-paren">)</span></dt>
 <dd><p>Average pooling.</p>
 <p>Return the average values for each dimension in sequence or time steps.</p>
 <div class="math">
 \[sum(samples\_of\_a\_sequence)/sample\_num\]</div>
 </dd></dl>
 
+</div>
+<div class="section" id="maxpooling">
+<h1>MaxPooling<a class="headerlink" href="#maxpooling" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="paddle.trainer_config_helpers.poolings.SumPooling">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SumPooling</code><a class="headerlink" href="#paddle.trainer_config_helpers.poolings.SumPooling" title="Permalink to this definition">¶</a></dt>
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">MaxPooling</code></dt>
+<dd><p>Max pooling.</p>
+<p>Return the very large values for each dimension in sequence or time steps.</p>
+<div class="math">
+\[max(samples\_of\_a\_sequence)\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sumpooling">
+<h1>SumPooling<a class="headerlink" href="#sumpooling" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SumPooling</code></dt>
 <dd><p>Sum pooling.</p>
 <p>Return the sum values of each dimension in sequence or time steps.</p>
 <div class="math">
 \[sum(samples\_of\_a\_sequence)\]</div>
 </dd></dl>
 
+</div>
+<div class="section" id="squarerootnpooling">
+<h1>SquareRootNPooling<a class="headerlink" href="#squarerootnpooling" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="paddle.trainer_config_helpers.poolings.SquareRootNPooling">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SquareRootNPooling</code><a class="headerlink" href="#paddle.trainer_config_helpers.poolings.SquareRootNPooling" title="Permalink to this definition">¶</a></dt>
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SquareRootNPooling</code></dt>
 <dd><p>Square Root Pooling.</p>
 <p>Return the square root values of each dimension in sequence or time steps.</p>
 <div class="math">
@@ -114,11 +131,20 @@ sequence input, not for images.</p>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">BasePoolingType</a></li>
+<li><a class="reference internal" href="#avgpooling">AvgPooling</a></li>
+<li><a class="reference internal" href="#maxpooling">MaxPooling</a></li>
+<li><a class="reference internal" href="#sumpooling">SumPooling</a></li>
+<li><a class="reference internal" href="#squarerootnpooling">SquareRootNPooling</a></li>
+</ul>
+
   <h4>Previous topic</h4>
-  <p class="topless"><a href="activations.html"
-                        title="previous chapter">Activations</a></p>
+  <p class="topless"><a href="poolings_index.html"
+                        title="previous chapter">Poolings</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="networks.html"
+  <p class="topless"><a href="networks_index.html"
                         title="next chapter">Networks</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
@@ -154,14 +180,15 @@ sequence input, not for images.</p>
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="networks.html" title="Networks"
+          <a href="networks_index.html" title="Networks"
              >next</a> |</li>
         <li class="right" >
-          <a href="activations.html" title="Activations"
+          <a href="poolings_index.html" title="Poolings"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Trainer Config Helpers</a> &raquo;</li> 
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-3"><a href="poolings_index.html" >Poolings</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

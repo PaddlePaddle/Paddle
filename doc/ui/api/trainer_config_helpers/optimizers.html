@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Optimizers &mdash; PaddlePaddle  documentation</title>
+    <title>BaseSGDOptimizer &mdash; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -25,9 +25,9 @@
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
-    <link rel="up" title="Trainer Config Helpers" href="index.html" />
+    <link rel="up" title="Optimizers" href="optimizers_index.html" />
     <link rel="next" title="DataSources" href="data_sources.html" />
-    <link rel="prev" title="Trainer Config Helpers" href="index.html" /> 
+    <link rel="prev" title="Optimizers" href="optimizers_index.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -43,11 +43,12 @@
           <a href="data_sources.html" title="DataSources"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Trainer Config Helpers"
+          <a href="optimizers_index.html" title="Optimizers"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Trainer Config Helpers</a> &raquo;</li> 
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-3"><a href="optimizers_index.html" accesskey="U">Optimizers</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -56,11 +57,11 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="module-paddle.trainer_config_helpers.optimizers">
-<span id="optimizers"></span><h1>Optimizers<a class="headerlink" href="#module-paddle.trainer_config_helpers.optimizers" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="basesgdoptimizer">
+<h1>BaseSGDOptimizer<a class="headerlink" href="#basesgdoptimizer" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="paddle.trainer_config_helpers.optimizers.BaseSGDOptimizer">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">BaseSGDOptimizer</code><a class="headerlink" href="#paddle.trainer_config_helpers.optimizers.BaseSGDOptimizer" title="Permalink to this definition">¶</a></dt>
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">BaseSGDOptimizer</code></dt>
 <dd><p>SGD Optimizer.</p>
 <p>SGD is an optimization method, trying to find a neural network that
 minimize the &#8220;cost/error&#8221; of it by iteration. In paddle&#8217;s implementation
@@ -76,7 +77,7 @@ parametrised by w, the weight/bias of neural network. And weights is what to
 be learned. The i is the i-th observation in (trainning) data.</p>
 <p>So, the SGD method will optimize the weight by</p>
 <div class="math">
-\[w:= w - \eta \nabla Q(w) = w - \eta \sum_{i}^{n} \nabla Q_i(w)\]</div>
+\[w = w - \eta \nabla Q(w) = w - \eta \sum_{i}^{n} \nabla Q_i(w)\]</div>
 <p>where <span class="math">\(\eta\)</span> is learning rate. And <span class="math">\(n\)</span> is batch size.</p>
 <p>The SGD method is implemented by paddle with multiple extensions. Such as
 momentum, adagrad, rmsprop, adam. Please use method &#8216;use_xxx&#8217;, such as
@@ -86,15 +87,18 @@ PROCESS(NODE). IF YOU USE MULTIPLE MACHINE TO TRAIN YOUR NETWORK, THE GLOBAL
 BATCH SIZE WILL BE (BATCH_SIZE * MACHINE_COUNT).</p>
 </dd></dl>
 
+</div>
+<div class="section" id="adamoptimizer">
+<h1>AdamOptimizer<a class="headerlink" href="#adamoptimizer" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="paddle.trainer_config_helpers.optimizers.AdamOptimizer">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdamOptimizer</code><span class="sig-paren">(</span><em>beta1=0.9</em>, <em>beta2=0.999</em>, <em>epsilon=1e-08</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.optimizers.AdamOptimizer" title="Permalink to this definition">¶</a></dt>
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdamOptimizer</code><span class="sig-paren">(</span><em>beta1=0.9</em>, <em>beta2=0.999</em>, <em>epsilon=1e-08</em><span class="sig-paren">)</span></dt>
 <dd><p>Adam optimizer.
 The details of please refer <a class="reference external" href="https://arxiv.org/abs/1412.6980">Adam: A Method for Stochastic Optimization</a></p>
 <div class="math">
-\[\begin{split}m(w, t) &amp;:= \beta_1 m(w, t-1) + (1 - \beta_1) \nabla Q_i(w) \\
-v(w, t) &amp;:= \beta_2 v(w, t-1) + (1 - \beta_2)(\nabla Q_i(w)) ^2 \\
-w &amp;:= w - \frac{\eta}{\sqrt{v(w,t) + \epsilon}}\end{split}\]</div>
+\[\begin{split}m(w, t) &amp; = \beta_1 m(w, t-1) + (1 - \beta_1) \nabla Q_i(w) \\
+v(w, t) &amp; = \beta_2 v(w, t-1) + (1 - \beta_2)(\nabla Q_i(w)) ^2 \\
+w &amp; = w - \frac{\eta}{\sqrt{v(w,t) + \epsilon}}\end{split}\]</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -111,17 +115,18 @@ divided by zero.</li>
 </table>
 </dd></dl>
 
-<dl class="class">
-<dt id="paddle.trainer_config_helpers.optimizers.AdamaxOptimizer">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdamaxOptimizer</code><span class="sig-paren">(</span><em>beta1</em>, <em>beta2</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.optimizers.AdamaxOptimizer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Adamax optimizer.</p>
-<p>The details of please refer this <a class="reference external" href="https://arxiv.org/abs/1412.6980">Adam: A Method for Stochastic Optimization</a>
-..  math:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>m_t &amp;:= \beta_1 * m_{t-1} + (1-\beta_1)* \nabla Q_i(w) \\
-u_t &amp;:= max(\beta_2*u_{t-1}, abs(\nabla Q_i(w))) \\
-w_t &amp;:= w_{t-1} - (\eta/(1-\beta_1^t))*m_t/u_t
-</pre></div>
 </div>
+<div class="section" id="adamaxoptimizer">
+<h1>AdamaxOptimizer<a class="headerlink" href="#adamaxoptimizer" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdamaxOptimizer</code><span class="sig-paren">(</span><em>beta1</em>, <em>beta2</em><span class="sig-paren">)</span></dt>
+<dd><p>Adamax optimizer.</p>
+<p>The details of please refer this <a class="reference external" href="https://arxiv.org/abs/1412.6980">Adam: A Method for Stochastic Optimization</a></p>
+<div class="math">
+\[\begin{split}m_t &amp; = \beta_1 * m_{t-1} + (1-\beta_1)* \nabla Q_i(w) \\
+u_t &amp; = max(\beta_2*u_{t-1}, abs(\nabla Q_i(w))) \\
+w_t &amp; = w_{t-1} - (\eta/(1-\beta_1^t))*m_t/u_t\end{split}\]</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -136,43 +141,26 @@ w_t &amp;:= w_{t-1} - (\eta/(1-\beta_1^t))*m_t/u_t
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="adagradoptimizer">
+<h1>AdaGradOptimizer<a class="headerlink" href="#adagradoptimizer" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="paddle.trainer_config_helpers.optimizers.AdaGradOptimizer">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdaGradOptimizer</code><a class="headerlink" href="#paddle.trainer_config_helpers.optimizers.AdaGradOptimizer" title="Permalink to this definition">¶</a></dt>
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdaGradOptimizer</code></dt>
 <dd><p>Adagrad(for ADAptive GRAdient algorithm) optimizer.</p>
 <p>For details please refer this <a class="reference external" href="http://www.magicbroom.info/Papers/DuchiHaSi10.pdf">Adaptive Subgradient Methods for
 Online Learning and Stochastic Optimization</a>.</p>
 <div class="math">
 \[\begin{split}G &amp;= \sum_{\tau=1}^{t} g_{\tau} g_{\tau}^T \\
-w &amp;:= w - \eta diag(G)^{-\frac{1}{2}} \circ g\end{split}\]</div>
+w &amp; = w - \eta diag(G)^{-\frac{1}{2}} \circ g\end{split}\]</div>
 </dd></dl>
 
+</div>
+<div class="section" id="decayedadagradoptimizer">
+<h1>DecayedAdaGradOptimizer<a class="headerlink" href="#decayedadagradoptimizer" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="paddle.trainer_config_helpers.optimizers.RMSPropOptimizer">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">RMSPropOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.optimizers.RMSPropOptimizer" title="Permalink to this definition">¶</a></dt>
-<dd><p>RMSProp(for Root Mean Square Propagation) optimizer. For details please
-refer this <a class="reference external" href="http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf">slide</a>.</p>
-<p>The equations of this method as follows:</p>
-<div class="math">
-\[\begin{split}v(w, t) &amp;:= \rho v(w, t-1) + (1 - \rho)(\nabla Q_{i}(w))^2 \\
-w &amp;:= w - \frac{\eta} {\sqrt{v(w,t) + \epsilon}} \nabla Q_{i}(w)\end{split}\]</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>rho</strong> (<em>float</em>) &#8211; the <span class="math">\(\rho\)</span> in the equation. The forgetting factor.</li>
-<li><strong>epsilon</strong> (<em>float</em>) &#8211; the <span class="math">\(\epsilon\)</span> in the equation.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="class">
-<dt id="paddle.trainer_config_helpers.optimizers.DecayedAdaGradOptimizer">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">DecayedAdaGradOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.optimizers.DecayedAdaGradOptimizer" title="Permalink to this definition">¶</a></dt>
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">DecayedAdaGradOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span></dt>
 <dd><p>AdaGrad method with decayed sum gradients. The equations of this method
 show as follow.</p>
 <div class="math">
@@ -192,9 +180,12 @@ learning\_rate &amp;= 1/sqrt( ( E(g_t^2) + \epsilon )\end{split}\]</div>
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="adadeltaoptimizer">
+<h1>AdaDeltaOptimizer<a class="headerlink" href="#adadeltaoptimizer" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="paddle.trainer_config_helpers.optimizers.AdaDeltaOptimizer">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdaDeltaOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.optimizers.AdaDeltaOptimizer" title="Permalink to this definition">¶</a></dt>
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdaDeltaOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span></dt>
 <dd><p>AdaDelta method. The details of adadelta please refer to this
 <a class="reference external" href="http://www.matthewzeiler.com/pubs/googleTR2012/googleTR2012.pdf">ADADELTA: AN ADAPTIVE LEARNING RATE METHOD</a>.</p>
 <div class="math">
@@ -216,9 +207,38 @@ E(dx_t^2) &amp;= \rho * E(dx_{t-1}^2) + (1-\rho) * (-g*learning\_rate)^2\end{spl
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="rmspropoptimizer">
+<h1>RMSPropOptimizer<a class="headerlink" href="#rmspropoptimizer" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">RMSPropOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span></dt>
+<dd><p>RMSProp(for Root Mean Square Propagation) optimizer. For details please
+refer this <a class="reference external" href="http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf">slide</a>.</p>
+<p>The equations of this method as follows:</p>
+<div class="math">
+\[\begin{split}v(w, t) &amp; = \rho v(w, t-1) + (1 - \rho)(\nabla Q_{i}(w))^2 \\
+w &amp; = w - \frac{\eta} {\sqrt{v(w,t) + \epsilon}} \nabla Q_{i}(w)\end{split}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>rho</strong> (<em>float</em>) &#8211; the <span class="math">\(\rho\)</span> in the equation. The forgetting factor.</li>
+<li><strong>epsilon</strong> (<em>float</em>) &#8211; the <span class="math">\(\epsilon\)</span> in the equation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="settings">
+<h1>settings<a class="headerlink" href="#settings" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.optimizers.settings">
-<code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">settings</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.optimizers.settings" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">settings</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>TODO(yuyang18): Complete docs.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -250,9 +270,21 @@ E(dx_t^2) &amp;= \rho * E(dx_{t-1}^2) + (1-\rho) * (-g*learning\_rate)^2\end{spl
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">BaseSGDOptimizer</a></li>
+<li><a class="reference internal" href="#adamoptimizer">AdamOptimizer</a></li>
+<li><a class="reference internal" href="#adamaxoptimizer">AdamaxOptimizer</a></li>
+<li><a class="reference internal" href="#adagradoptimizer">AdaGradOptimizer</a></li>
+<li><a class="reference internal" href="#decayedadagradoptimizer">DecayedAdaGradOptimizer</a></li>
+<li><a class="reference internal" href="#adadeltaoptimizer">AdaDeltaOptimizer</a></li>
+<li><a class="reference internal" href="#rmspropoptimizer">RMSPropOptimizer</a></li>
+<li><a class="reference internal" href="#settings">settings</a></li>
+</ul>
+
   <h4>Previous topic</h4>
-  <p class="topless"><a href="index.html"
-                        title="previous chapter">Trainer Config Helpers</a></p>
+  <p class="topless"><a href="optimizers_index.html"
+                        title="previous chapter">Optimizers</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="data_sources.html"
                         title="next chapter">DataSources</a></p>
@@ -293,11 +325,12 @@ E(dx_t^2) &amp;= \rho * E(dx_{t-1}^2) + (1-\rho) * (-g*learning\_rate)^2\end{spl
           <a href="data_sources.html" title="DataSources"
              >next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Trainer Config Helpers"
+          <a href="optimizers_index.html" title="Optimizers"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Trainer Config Helpers</a> &raquo;</li> 
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-3"><a href="optimizers_index.html" >Optimizers</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

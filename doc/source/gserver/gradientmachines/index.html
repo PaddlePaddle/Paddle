@@ -26,8 +26,8 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
     <link rel="up" title="Source Code Documents" href="../../index.html" />
-    <link rel="next" title="Gradient machines" href="gradientmachines.html" />
-    <link rel="prev" title="Evaluators" href="../evaluators/index.html" /> 
+    <link rel="next" title="Gradient Machines" href="gradientmachines.html" />
+    <link rel="prev" title="Base Evaluator" href="../evaluators/evaluators.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -40,10 +40,10 @@
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="gradientmachines.html" title="Gradient machines"
+          <a href="gradientmachines.html" title="Gradient Machines"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../evaluators/index.html" title="Evaluators"
+          <a href="../evaluators/evaluators.html" title="Base Evaluator"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Source Code Documents</a> &raquo;</li> 
@@ -59,10 +59,19 @@
 <h1>Gradient Machines Documents<a class="headerlink" href="#gradient-machines-documents" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="gradientmachines.html">Gradient machines</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="gradientmachines.html#networks">Networks</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gradientmachines.html#id1">Gradient Machines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gradientmachines.html">Gradient Machines</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="gradientmachines.html#gradientmachine">GradientMachine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gradientmachines.html#gradientmachinemodel">GradientMachineModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gradientmachines.html#multigradientmachine">MultiGradientMachine</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="gradientmachines.html#trainerthread">TrainerThread</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="gradientmachines.html#recurrent-gradient-machines">Recurrent Gradient Machines</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gradientmachines.html#networks">Networks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="gradientmachines.html#neuralnetwork">NeuralNetwork</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gradientmachines.html#parallelneuralnetwork">ParallelNeuralNetwork</a></li>
 </ul>
 </li>
 </ul>
@@ -76,11 +85,11 @@
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
-  <p class="topless"><a href="../evaluators/index.html"
-                        title="previous chapter">Evaluators</a></p>
+  <p class="topless"><a href="../evaluators/evaluators.html"
+                        title="previous chapter">Base Evaluator</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="gradientmachines.html"
-                        title="next chapter">Gradient machines</a></p>
+                        title="next chapter">Gradient Machines</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -115,10 +124,10 @@
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="gradientmachines.html" title="Gradient machines"
+          <a href="gradientmachines.html" title="Gradient Machines"
              >next</a> |</li>
         <li class="right" >
-          <a href="../evaluators/index.html" title="Evaluators"
+          <a href="../evaluators/evaluators.html" title="Base Evaluator"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li> 

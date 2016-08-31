@@ -195,7 +195,6 @@ GruCompute
 ``````````
 ..  doxygenclass:: paddle::GruCompute
     :members:
-    
 
 Recurrent Layer Group
 =====================
@@ -511,9 +510,22 @@ NCELayer
 ..  doxygenclass:: paddle::NCELayer
     :members:
 
+Validation Layers
+-----------------
+
 ValidationLayer
----------------
+```````````````
 ..  doxygenclass:: paddle::ValidationLayer
+    :members:
+
+AucValidation
+`````````````
+..  doxygenclass:: paddle::AucValidation
+    :members:
+
+PnpairValidation
+````````````````
+..  doxygenclass:: paddle::PnpairValidation
     :members:
 
 Check Layers

@@ -26,7 +26,7 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
     <link rel="up" title="Text Generation Tutorial" href="index.html" />
-    <link rel="next" title="Semantic Role Labelling Tutorial" href="../semantic_role_labeling/index.html" />
+    <link rel="next" title="MovieLens Dataset" href="../rec/ml_dataset.html" />
     <link rel="prev" title="Text Generation Tutorial" href="index.html" /> 
   </head>
   <body role="document">
@@ -40,7 +40,7 @@
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../semantic_role_labeling/index.html" title="Semantic Role Labelling Tutorial"
+          <a href="../rec/ml_dataset.html" title="MovieLens Dataset"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="index.html" title="Text Generation Tutorial"
@@ -210,7 +210,7 @@ dictionary size is XXX
 <p>Neural machine translation (NMT) aims at building a single neural network that can be jointly tuned to maximize translation performance. Recently proposed NMT models often belong to a family of encoder–decoder models. Encoder-Decoder models encode a source sentence into a fixed-length vector from which a decoder generates a target sentence.</p>
 <p>In this task, we use an extension to the encoder–decoder model which learns to align and translate jointly. Each time the model generates a word in a translation, it searches for a set of positions in the source sentence for the most relevant information.  The decoder predicts a target word based on the context vectors associated with these source positions and all the previous generated target words. For more detailed explanation, readers can refer to paper <a class="reference external" href="http://arxiv.org/abs/1409.0473">Neural Machine Translation by Jointly Learning to Align and Translate</a>.</p>
 <p>The most distinguishing feature of this model is that it doesn&#8217;t encode an input sentence into a single ﬁxed-length vector. Instead, it encodes the input sentence into a sequence of vectors, where one vector corresponds to an input element. A subset of these vectors is chosen adaptively while decoding the translated sentence. This frees a NMT model from having to squash all the information of a source sentence, regardless of its length, into a ﬁxed-length vector. The improvement of this model is more apparent for longer sentences, but the improvement can be observed for sentences of any length.
-<center><img alt="" src="../../_images/encoder-decoder-attention-model.png" /></center>
+<center><img alt="" src="../../_images/encoder-decoder-attention-model1.png" /></center>
 <center>Figure 1. Encoder-Decoder-Attention-Model</center></p>
 </div>
 <div class="section" id="training-model-in-paddlepaddle">
@@ -356,6 +356,7 @@ I0719 19:17:56.707319 15563 TrainerInternal.cpp:160]  Batch=20 samples=1000 AvgC
 </div>
 <ul class="simple">
 <li>job: set job mode to test</li>
+<li>save_dir: the path of saved models</li>
 <li>num_passes and test_pass: loading model parameters from test_pass to (num_passes - 1), here only loads <code class="docutils literal"><span class="pre">data/wmt14_model/pass-00012</span></code></li>
 </ul>
 <p>You will see messages like this:</p>
@@ -454,8 +455,8 @@ I0706 14:48:48.898632 31441 Tester.cpp:125]  Batch=200 samples=200 AvgCost=0
   <p class="topless"><a href="index.html"
                         title="previous chapter">Text Generation Tutorial</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="../semantic_role_labeling/index.html"
-                        title="next chapter">Semantic Role Labelling Tutorial</a></p>
+  <p class="topless"><a href="../rec/ml_dataset.html"
+                        title="next chapter">MovieLens Dataset</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -490,7 +491,7 @@ I0706 14:48:48.898632 31441 Tester.cpp:125]  Batch=200 samples=200 AvgCost=0
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../semantic_role_labeling/index.html" title="Semantic Role Labelling Tutorial"
+          <a href="../rec/ml_dataset.html" title="MovieLens Dataset"
              >next</a> |</li>
         <li class="right" >
           <a href="index.html" title="Text Generation Tutorial"

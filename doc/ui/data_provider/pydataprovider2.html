@@ -1,0 +1,455 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>How to use PyDataProvider2 &mdash; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="PaddlePaddle DataProvider Introduction" href="index.html" />
+    <link rel="next" title="Model Config Interface" href="../api/trainer_config_helpers/index.html" />
+    <link rel="prev" title="PaddlePaddle DataProvider Introduction" href="index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../api/trainer_config_helpers/index.html" title="Model Config Interface"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="PaddlePaddle DataProvider Introduction"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >User Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">PaddlePaddle DataProvider Introduction</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="how-to-use-pydataprovider2">
+<h1>How to use PyDataProvider2<a class="headerlink" href="#how-to-use-pydataprovider2" title="Permalink to this headline">¶</a></h1>
+<p>We highly recommand users to use PyDataProvider2 to provide training or testing
+data to PaddlePaddle. The user only needs to focus on how to read a single
+sample from the original data file by using PyDataProvider2, leaving all of the
+trivial work, including, transfering data into cpu/gpu memory, shuffle, binary
+serialization to PyDataProvider2. PyDataProvider2 uses multithreading and a
+fanscinating but simple cache strategy to optimize the efficiency of the data
+providing process.</p>
+<div class="section" id="dataprovider-for-the-non-sequential-model">
+<h2>DataProvider for the non-sequential model<a class="headerlink" href="#dataprovider-for-the-non-sequential-model" title="Permalink to this headline">¶</a></h2>
+<p>Here we use the MNIST handwriting recognition data as an example to illustrate
+how to write a simple PyDataProvider.</p>
+<p>MNIST is a handwriting classification data set. It contains 70,000 digital
+grayscale images. Labels of the training sample range from 0 to 9. All the
+images have been size-normalized and centered into images with a same size
+of 28 x 28 pixels.</p>
+<p>A small part of the original data as an example can be found in the path below:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>5;0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.215686 0.533333 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.67451 0.992157 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.070588 0.886275 0.992157 0 0 0 0 0 0 0 0 0 0 0.192157 0.070588 0 0 0 0 0 0 0 0 0 0 0 0 0 0.670588 0.992157 0.992157 0 0 0 0 0 0 0 0 0 0.117647 0.933333 0.858824 0.313725 0 0 0 0 0 0 0 0 0 0 0 0.090196 0.858824 0.992157 0.831373 0 0 0 0 0 0 0 0 0 0.141176 0.992157 0.992157 0.611765 0.054902 0 0 0 0 0 0 0 0 0 0 0.258824 0.992157 0.992157 0.529412 0 0 0 0 0 0 0 0 0 0.368627 0.992157 0.992157 0.419608 0.003922 0 0 0 0 0 0 0 0 0 0.094118 0.835294 0.992157 0.992157 0.517647 0 0 0 0 0 0 0 0 0 0.603922 0.992157 0.992157 0.992157 0.603922 0.545098 0.043137 0 0 0 0 0 0 0 0.447059 0.992157 0.992157 0.956863 0.062745 0 0 0 0 0 0 0 0 0.011765 0.666667 0.992157 0.992157 0.992157 0.992157 0.992157 0.745098 0.137255 0 0 0 0 0 0.152941 0.866667 0.992157 0.992157 0.521569 0 0 0 0 0 0 0 0 0 0.070588 0.992157 0.992157 0.992157 0.803922 0.352941 0.745098 0.992157 0.945098 0.317647 0 0 0 0 0.580392 0.992157 0.992157 0.764706 0.043137 0 0 0 0 0 0 0 0 0 0.070588 0.992157 0.992157 0.776471 0.043137 0 0.007843 0.27451 0.882353 0.941176 0.176471 0 0 0.180392 0.898039 0.992157 0.992157 0.313725 0 0 0 0 0 0 0 0 0 0 0.070588 0.992157 0.992157 0.713725 0 0 0 0 0.627451 0.992157 0.729412 0.062745 0 0.509804 0.992157 0.992157 0.776471 0.035294 0 0 0 0 0 0 0 0 0 0 0.494118 0.992157 0.992157 0.968627 0.168627 0 0 0 0.423529 0.992157 0.992157 0.364706 0 0.717647 0.992157 0.992157 0.317647 0 0 0 0 0 0 0 0 0 0 0 0.533333 0.992157 0.984314 0.945098 0.603922 0 0 0 0.003922 0.466667 0.992157 0.988235 0.976471 0.992157 0.992157 0.788235 0.007843 0 0 0 0 0 0 0 0 0 0 0 0.686275 0.882353 0.364706 0 0 0 0 0 0 0.098039 0.588235 0.992157 0.992157 0.992157 0.980392 0.305882 0 0 0 0 0 0 0 0 0 0 0 0 0.101961 0.67451 0.321569 0 0 0 0 0 0 0 0.105882 0.733333 0.976471 0.811765 0.713725 0 0 0 0 0 0 0 0 0 0 0 0 0 0.65098 0.992157 0.321569 0 0 0 0 0 0 0 0 0 0.25098 0.007843 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0.94902 0.219608 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.968627 0.764706 0.152941 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.498039 0.25098 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;
+0;0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.298039 0.333333 0.333333 0.333333 0.337255 0.333333 0.333333 0.109804 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.027451 0.223529 0.776471 0.964706 0.988235 0.988235 0.988235 0.992157 0.988235 0.988235 0.780392 0.098039 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.14902 0.698039 0.988235 0.992157 0.988235 0.901961 0.87451 0.568627 0.882353 0.976471 0.988235 0.988235 0.501961 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.188235 0.647059 0.988235 0.988235 0.745098 0.439216 0.098039 0 0 0 0.572549 0.988235 0.988235 0.988235 0 0 0 0 0 0 0 0 0 0 0 0 0 0.2 0.933333 0.992157 0.941176 0.247059 0 0 0 0 0 0 0.188235 0.898039 0.992157 0.992157 0 0 0 0 0 0 0 0 0 0 0 0.039216 0.639216 0.933333 0.988235 0.913725 0.278431 0 0 0 0 0 0 0 0.113725 0.843137 0.988235 0.988235 0 0 0 0 0 0 0 0 0 0 0 0.235294 0.988235 0.992157 0.988235 0.815686 0.07451 0 0 0 0 0 0 0 0.333333 0.988235 0.988235 0.552941 0 0 0 0 0 0 0 0 0 0 0.211765 0.878431 0.988235 0.992157 0.701961 0.329412 0.109804 0 0 0 0 0 0 0 0.698039 0.988235 0.913725 0.145098 0 0 0 0 0 0 0 0 0 0.188235 0.890196 0.988235 0.988235 0.745098 0.047059 0 0 0 0 0 0 0 0 0 0.882353 0.988235 0.568627 0 0 0 0 0 0 0 0 0 0.2 0.933333 0.992157 0.992157 0.992157 0.447059 0.294118 0 0 0 0 0 0 0 0 0.447059 0.992157 0.768627 0 0 0 0 0 0 0 0 0 0 0.623529 0.988235 0.988235 0.988235 0.988235 0.992157 0.47451 0 0 0 0 0 0 0 0.188235 0.933333 0.87451 0.509804 0 0 0 0 0 0 0 0 0 0 0.992157 0.988235 0.937255 0.792157 0.988235 0.894118 0.082353 0 0 0 0 0 0 0.027451 0.647059 0.992157 0.654902 0 0 0 0 0 0 0 0 0 0 0 0.623529 0.988235 0.913725 0.329412 0.376471 0.184314 0 0 0 0 0 0 0.027451 0.513725 0.988235 0.635294 0.219608 0 0 0 0 0 0 0 0 0 0 0 0.196078 0.929412 0.988235 0.988235 0.741176 0.309804 0 0 0 0 0 0 0.529412 0.988235 0.678431 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.223529 0.992157 0.992157 1 0.992157 0.992157 0.992157 0.992157 1 0.992157 0.992157 0.882353 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.023529 0.478431 0.654902 0.658824 0.952941 0.988235 0.988235 0.988235 0.992157 0.988235 0.729412 0.278431 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.196078 0.647059 0.764706 0.764706 0.768627 0.580392 0.047059 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;
+4;0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.180392 0.470588 0.623529 0.623529 0.623529 0.588235 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.243137 0.494118 0.862745 0.870588 0.960784 0.996078 0.996078 0.996078 0.996078 0.992157 0.466667 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.317647 0.639216 0.639216 0.639216 0.639216 0.639216 0.470588 0.262745 0.333333 0.929412 0.694118 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.811765 0.694118 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.811765 0.694118 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.811765 0.694118 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.184314 0.992157 0.694118 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.192157 0.996078 0.384314 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.454902 0.980392 0.219608 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.564706 0.941176 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.588235 0.776471 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.945098 0.560784 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.054902 0.952941 0.356863 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.337255 0.917647 0.109804 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.698039 0.701961 0.019608 0.4 0.662745 0.662745 0.662745 0.662745 0.662745 0.662745 0.662745 0.376471 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.090196 0.639216 0.972549 0.945098 0.913725 0.996078 0.996078 0.996078 0.996078 1 0.996078 0.996078 1 0.996078 0 0 0 0 0 0 0 0 0 0 0.007843 0.105882 0.717647 0.776471 0.905882 0.996078 0.996078 0.988235 0.980392 0.862745 0.537255 0.223529 0.223529 0.368627 0.376471 0.6 0.6 0.6 0 0 0 0 0 0 0 0 0.262745 0.470588 0.6 0.996078 0.996078 0.996078 0.996078 0.847059 0.356863 0.156863 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.909804 0.705882 0.823529 0.635294 0.490196 0.219608 0.113725 0.062745 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.152941 0.152941 0.156863 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;
+</pre></div>
+</div>
+<p>Each line of the data contains two parts, separated by &#8216;;&#8217;. The first part is
+label of an image. The second part contains 28x28 pixel float values.</p>
+<p>Just write path of the above data into train.list. It looks like this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">mnist_train</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p>The corresponding dataprovider can be found in the path below:</p>
+<p>The first line imports PyDataProvider2 package.
+The main function is the process function, that has two parameters.
+The first parameter is the settings, which is not used in this example.
+The second parameter is the filename, that is exactly each line of train.list.
+This parameter is passed to the process function by PaddlePaddle.</p>
+<p><code class="code docutils literal"><span class="pre">&#64;provider</span></code> is a Python
+<a class="reference external" href="http://www.learnpython.org/en/Decorators">Decorator</a> .
+It sets some properties to DataProvider, and constructs a real PaddlePaddle
+DataProvider from a very sample user implemented python function. It does not
+matter if you are not familiar with <a class="reference external" href="http://www.learnpython.org/en/Decorators">Decorator</a>. You can keep it sample by
+just taking <code class="code docutils literal"><span class="pre">&#64;provider</span></code> as a fixed mark above the provider function you
+implemented.</p>
+<p><a class="reference internal" href="#input-types">input_types</a> defines the data format that a DataProvider returns.
+In this example, it is set to a 28x28-dimensional dense vector and an integer
+scalar, whose value ranges from 0 to 9.
+<a class="reference internal" href="#input-types">input_types</a> can be set to several kinds of input formats, please refer to the
+document of <a class="reference internal" href="#input-types">input_types</a> for more details.</p>
+<p>The process method is the core part to construct a real DataProvider in
+PaddlePaddle. It implements how to open the text file, how to read one sample
+from the original text file, converted them into <a class="reference internal" href="#input-types">input_types</a>, and give them
+back to PaddlePaddle process at line 23.
+Note that data yields by the process function must follow a same order that
+<a class="reference internal" href="#input-types">input_types</a> are defined.</p>
+<p>With the help of PyDataProvider2, user can focus on how to generate ONE traning
+sample by using keywords <code class="code docutils literal"><span class="pre">yield</span></code>.
+<code class="code docutils literal"><span class="pre">yield</span></code> is a python keyword, and a concept related to it includes
+<code class="code docutils literal"><span class="pre">generator</span></code>.</p>
+<p>Only a few lines of codes need to be added into the training configuration file,
+you can take this as an example.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="o">=</span><span class="s1">&#39;train.list&#39;</span><span class="p">,</span>
+                        <span class="n">test_list</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                        <span class="n">module</span><span class="o">=</span><span class="s1">&#39;mnist_provider&#39;</span><span class="p">,</span>
+                        <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Here we specify training data by &#8216;train.list&#8217;, and no testing data is specified.</p>
+<p>Now, this simple example of using PyDataProvider is finished.
+The only thing that the user should know is how to generte <strong>one sample</strong> from
+<strong>one data file</strong>.
+And PaddlePadle will do all of the rest things:</p>
+<ul class="simple">
+<li>Form a training batch</li>
+<li>Shuffle the training data</li>
+<li>Read data with multithreading</li>
+<li>Cache the training data (Optional)</li>
+<li>CPU-&gt; GPU double buffering.</li>
+</ul>
+<p>Is this cool?</p>
+</div>
+<div class="section" id="dataprovider-for-the-sequential-model">
+<h2>DataProvider for the sequential model<a class="headerlink" href="#dataprovider-for-the-sequential-model" title="Permalink to this headline">¶</a></h2>
+<p>A sequence model takes sequences as its input. A sequence is made up of several
+timesteps. The so-called timestep, is not necessary to have something to do
+with &#8216;time&#8217;. It can also be explained to that the order of data are taken into
+consideration into model design and training.
+For example, the sentence can be interpreted as a kind of sequence data in NLP
+tasks.</p>
+<p>Here is an example on data proivider for English sentiment classification data.
+The original input data are simple English text, labeled into positive or
+negative sentiment (marked by 0 and 1 respectively).</p>
+<p>A small part of the original data as an example can be found in the path below:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>0       I saw this movie at the AFI Dallas festival . It all takes place at a lake house and it looks wonderful .
+1       This documentary makes you travel all around the globe . It contains rare and stunning sequels from the wilderness .
+...
+</pre></div>
+</div>
+<p>The corresponding data provider can be found in the path below:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="kn">import</span> <span class="o">*</span>
+
+
+<span class="k">def</span> <span class="nf">on_init</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="c1"># on_init will invoke when data provider is initialized. The dictionary</span>
+    <span class="c1"># is passed from trainer_config, and is a dict object with type</span>
+    <span class="c1"># (word string =&gt; word id).</span>
+
+    <span class="c1"># set input types in runtime. It will do the same thing as</span>
+    <span class="c1"># @provider(input_types) will do, but it is set dynamically during runtime.</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># The text is a sequence of integer values, and each value is a word id.</span>
+        <span class="c1"># The whole sequence is the sentences that we want to predict its</span>
+        <span class="c1"># sentimental.</span>
+        <span class="n">integer_value</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dictionary</span><span class="p">),</span> <span class="n">seq_type</span><span class="o">=</span><span class="n">SequenceType</span><span class="p">),</span>  <span class="c1"># text input</span>
+
+        <span class="c1"># label positive/negative</span>
+        <span class="n">integer_value</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="c1"># save dictionary as settings.dictionary. It will be used in process</span>
+    <span class="c1"># method.</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">dictionary</span> <span class="o">=</span> <span class="n">dictionary</span>
+
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">init_hook</span><span class="o">=</span><span class="n">on_init</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>  <span class="c1"># read each line of file</span>
+        <span class="n">label</span><span class="p">,</span> <span class="n">sentence</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>  <span class="c1"># get label and sentence</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="n">sentence</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>  <span class="c1"># get words</span>
+
+        <span class="c1"># convert word string to word id</span>
+        <span class="c1"># the word not in dictionary will be ignored.</span>
+        <span class="n">word_ids</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">each_word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">each_word</span> <span class="ow">in</span> <span class="n">settings</span><span class="o">.</span><span class="n">dictionary</span><span class="p">:</span>
+                <span class="n">word_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">dictionary</span><span class="p">[</span><span class="n">each_word</span><span class="p">])</span>
+
+        <span class="c1"># give data to paddle.</span>
+        <span class="k">yield</span> <span class="n">word_ids</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This data provider for sequential model is a little bit complex than that
+for MINST dataset.
+A new initialization method is introduced here.
+The method <code class="code docutils literal"><span class="pre">on_init</span></code> is configured to DataProvider by <code class="code docutils literal"><span class="pre">&#64;provider</span></code>&#8216;s
+<code class="code docutils literal"><span class="pre">init_hook</span></code> parameter, and it will be invoked once DataProvider is
+initialized. The <code class="code docutils literal"><span class="pre">on_init</span></code> function has the following parameters:</p>
+<ul class="simple">
+<li>The first parameter is the settings object.</li>
+<li>The rest parameters are passed by key word arguments. Some of them are passed
+by PaddlePaddle, see reference for <a class="reference internal" href="#init-hook">init_hook</a>.
+The <code class="code docutils literal"><span class="pre">dictionary</span></code> object is a python dict object passed from the trainer
+configuration file, and it maps word string to word id.</li>
+</ul>
+<p>To pass these parameters into DataProvider, the following lines should be added
+into trainer configuration file.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">dictionary</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="o">...</span>  <span class="c1">#  read dictionary from outside</span>
+
+<span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="o">=</span><span class="s1">&#39;train.list&#39;</span><span class="p">,</span> <span class="n">test_list</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                        <span class="n">module</span><span class="o">=</span><span class="s1">&#39;sentimental_provider&#39;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">,</span>
+                        <span class="c1"># above codes same as mnist sample.</span>
+                        <span class="n">args</span><span class="o">=</span><span class="p">{</span>  <span class="c1"># pass to provider.</span>
+                            <span class="s1">&#39;dictionary&#39;</span><span class="p">:</span> <span class="n">dictionary</span>
+                        <span class="p">})</span>
+</pre></div>
+</div>
+<p>The definition is basically same as MNIST example, except:
+* Load dictionary in this configuration
+* Pass it as a parameter to the DataProvider</p>
+<p>The <cite>input_types</cite> is configured in method <code class="code docutils literal"><span class="pre">on_init</span></code>. It has the same
+effect to configure them by <code class="code docutils literal"><span class="pre">&#64;provider</span></code>&#8216;s <code class="code docutils literal"><span class="pre">input_types</span></code> parameter.
+However, the <code class="code docutils literal"><span class="pre">input_types</span></code> is set at runtime, so we can set it to
+different types according to the input data. Input of the neural network is a
+sequence of word id, so set <code class="code docutils literal"><span class="pre">seq_type</span></code> to <code class="code docutils literal"><span class="pre">integer_value_sequence</span></code>.</p>
+<p>Durning <code class="code docutils literal"><span class="pre">on_init</span></code>, we save <code class="code docutils literal"><span class="pre">dictionary</span></code> variable to
+<code class="code docutils literal"><span class="pre">settings</span></code>, and it will be used in <code class="code docutils literal"><span class="pre">process</span></code>. Note the settings
+parameter for the process function and for the on_init&#8217;s function are a same
+object.</p>
+<p>The basic processing logic is the same as MNIST&#8217;s <code class="code docutils literal"><span class="pre">process</span></code> method. Each
+sample in the data file is given back to PaddlePaddle process.</p>
+<p>Thus, the basic usage of PyDataProvider is here.
+Please refer to the following section reference for details.</p>
+</div>
+<div class="section" id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="provider">
+<h3>&#64;provider<a class="headerlink" href="#provider" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference external" href="mailto:'&#37;&#52;&#48;provider">'<span>&#64;</span>provider</a>&#8216; is a Python <a class="reference external" href="http://www.learnpython.org/en/Decorators">Decorator</a>, it can construct a PyDataProvider in
+PaddlePaddle from a user defined function. Its parameters are:</p>
+<ul class="simple">
+<li><a class="reference internal" href="#input-types">input_types</a> defines format of the data input.</li>
+<li>should_shuffle defines whether to shuffle data or not. By default, it is set
+true during training, and false during testing.</li>
+<li>pool_size is the memory pool size (in sample number) in DataProvider.
+-1 means no limit.</li>
+<li>can_over_batch_size defines whether PaddlePaddle can store little more
+samples than pool_size. It is better to set True to avoid some deadlocks.</li>
+<li>calc_batch_size is a function define how to calculate batch size. This is
+usefull in sequential model, that defines batch size is counted upon sequence
+or token. By default, each sample or sequence counts to 1 when calculating
+batch size.</li>
+<li>cache is a data cache strategy, see <a class="reference internal" href="#cache">cache</a></li>
+<li>Init_hook function is invoked once the data provider is initialized,
+see <a class="reference internal" href="#init-hook">init_hook</a></li>
+</ul>
+</div>
+<div class="section" id="input-types">
+<h3>input_types<a class="headerlink" href="#input-types" title="Permalink to this headline">¶</a></h3>
+<p>PaddlePaddle has four data types, and three sequence types.
+The four data types are:</p>
+<ul class="simple">
+<li>dense_vector represents dense float vector.</li>
+<li>sparse_binary_vector sparse binary vector, most of the value is 0, and
+the non zero elements are fixed to 1.</li>
+<li>sparse_float_vector sparse float vector, most of the value is 0, and some
+non zero elements that can be any float value. They are given by the user.</li>
+<li>integer represents an integer scalar, that is especially used for label or
+word index.</li>
+</ul>
+<p>The three sequence types are</p>
+<ul class="simple">
+<li>SequenceType.NO_SEQUENCE means the sample is not a sequence</li>
+<li>SequenceType.SEQUENCE means the sample is a sequence</li>
+<li>SequenceType.SUB_SEQUENCE means it is a nested sequence, that each timestep of
+the input sequence is also a sequence.</li>
+</ul>
+<p>Different input type has a defferenct input format. Their formats are shown
+in the above table.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="17%" />
+<col width="17%" />
+<col width="28%" />
+<col width="38%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">&nbsp;</th>
+<th class="head">NO_SEQUENCE</th>
+<th class="head">SEQUENCE</th>
+<th class="head">SUB_SEQUENCE</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>dense_vector</td>
+<td>[f, f, ...]</td>
+<td>[[f, ...], [f, ...], ...]</td>
+<td>[[[f, ...], ...], [[f, ...], ...],...]</td>
+</tr>
+<tr class="row-odd"><td>sparse_binary_vector</td>
+<td>[i, i, ...]</td>
+<td>[[i, ...], [i, ...], ...]</td>
+<td>[[[i, ...], ...], [[i, ...], ...],...]</td>
+</tr>
+<tr class="row-even"><td>sparse_float_vector</td>
+<td>[(i,f), (i,f), ...]</td>
+<td>[[(i,f), ...], [(i,f), ...], ...]</td>
+<td>[[[(i,f), ...], ...], [[(i,f), ...], ...],...]</td>
+</tr>
+<tr class="row-odd"><td>integer_value</td>
+<td>i</td>
+<td>[i, i, ...]</td>
+<td>[[i, ...], [i, ...], ...]</td>
+</tr>
+</tbody>
+</table>
+<p>where f represents a float value, i represents an integer value.</p>
+</div>
+<div class="section" id="init-hook">
+<h3>init_hook<a class="headerlink" href="#init-hook" title="Permalink to this headline">¶</a></h3>
+<p>init_hook is a function that is invoked once the data provoder is initialized.
+Its parameters lists as follows:</p>
+<ul>
+<li><p class="first">The first parameter is a settings object, which is the same to :code:&#8217;settings&#8217;
+in <code class="code docutils literal"><span class="pre">process</span></code> method.  The object contains several attributes, including:
+* settings.input_types the input types. Reference <a class="reference internal" href="#input-types">input_types</a>
+* settings.logger a logging object</p>
+</li>
+<li><p class="first">The rest parameters are the key word arguments. It is made up of PaddpePaddle
+pre-defined parameters and user defined parameters.
+* PaddlePaddle defines parameters including:</p>
+<blockquote>
+<div><ul class="simple">
+<li>is_train is a bool parameter that indicates the DataProvider is used in
+training or testing</li>
+<li>file_list is the list of all files.</li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li>User-defined parameters args can be set in training configuration.</li>
+</ul>
+</li>
+</ul>
+<p>Note, PaddlePaddle reserves the right to add pre-defined parameter, so please
+use <code class="code docutils literal"><span class="pre">**kwargs</span></code> in init_hook to ensure compatibility by accepting the
+parameters which your init_hook does not use.</p>
+</div>
+<div class="section" id="cache">
+<h3>cache<a class="headerlink" href="#cache" title="Permalink to this headline">¶</a></h3>
+<p>DataProvider provides two simple cache strategy. They are
+* CacheType.NO_CACHE means do not cache any data, then data is read runtime by</p>
+<blockquote>
+<div>the user implemented python module every pass.</div></blockquote>
+<ul class="simple">
+<li>CacheType.CACHE_PASS_IN_MEM means the first pass reads data by the user
+implemented python module, and the rest passes will directly read data from
+memory.</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">How to use PyDataProvider2</a><ul>
+<li><a class="reference internal" href="#dataprovider-for-the-non-sequential-model">DataProvider for the non-sequential model</a></li>
+<li><a class="reference internal" href="#dataprovider-for-the-sequential-model">DataProvider for the sequential model</a></li>
+<li><a class="reference internal" href="#reference">Reference</a><ul>
+<li><a class="reference internal" href="#provider">&#64;provider</a></li>
+<li><a class="reference internal" href="#input-types">input_types</a></li>
+<li><a class="reference internal" href="#init-hook">init_hook</a></li>
+<li><a class="reference internal" href="#cache">cache</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">PaddlePaddle DataProvider Introduction</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../api/trainer_config_helpers/index.html"
+                        title="next chapter">Model Config Interface</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/ui/data_provider/pydataprovider2.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../api/trainer_config_helpers/index.html" title="Model Config Interface"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="PaddlePaddle DataProvider Introduction"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >User Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >PaddlePaddle DataProvider Introduction</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+    </div>
+  </body>
+</html>

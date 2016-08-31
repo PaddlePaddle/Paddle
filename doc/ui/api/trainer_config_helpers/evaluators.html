@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Evaluators &mdash; PaddlePaddle  documentation</title>
+    <title>Base &mdash; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -25,9 +25,9 @@
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
-    <link rel="up" title="Trainer Config Helpers" href="index.html" />
+    <link rel="up" title="Evaluators" href="evaluators_index.html" />
     <link rel="next" title="Parameter and Extra Layer Attribute" href="attrs.html" />
-    <link rel="prev" title="Networks" href="networks.html" /> 
+    <link rel="prev" title="Evaluators" href="evaluators_index.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -43,11 +43,12 @@
           <a href="attrs.html" title="Parameter and Extra Layer Attribute"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="networks.html" title="Networks"
+          <a href="evaluators_index.html" title="Evaluators"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Trainer Config Helpers</a> &raquo;</li> 
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-3"><a href="evaluators_index.html" accesskey="U">Evaluators</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -56,9 +57,12 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="module-paddle.trainer_config_helpers.evaluators">
-<span id="evaluators"></span><h1>Evaluators<a class="headerlink" href="#module-paddle.trainer_config_helpers.evaluators" title="Permalink to this headline">¶</a></h1>
-<p>Evaluator will evaluate the network status while training/testing.</p>
+  <div class="section" id="base">
+<h1>Base<a class="headerlink" href="#base" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">evaluator_base</code><span class="sig-paren">(</span><em>input</em>, <em>type</em>, <em>label=None</em>, <em>weight=None</em>, <em>name=None</em>, <em>chunk_scheme=None</em>, <em>num_chunk_types=None</em>, <em>classification_threshold=0.5</em>, <em>positive_label=-1</em>, <em>dict_file=''</em>, <em>result_file=''</em>, <em>num_results=1</em>, <em>delimited=True</em><span class="sig-paren">)</span></dt>
+<dd><p>Evaluator will evaluate the network status while training/testing.</p>
 <p>User can use evaluator by classify/regression job. For example.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">classify</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">evaluator</span><span class="o">=</span><span class="n">classification_error_evaluator</span><span class="p">)</span>
 </pre></div>
@@ -74,9 +78,31 @@ classification_error_evaluator=0.4486
 CurrentEval: ErrorRate=0.3964
 </pre></div>
 </div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>input</strong> (<em>list|LayerOutput</em>) &#8211; Input layers, a object of LayerOutput or a list of
+LayerOutput.</li>
+<li><strong>label</strong> (<em>LayerOutput|None</em>) &#8211; An input layer containing the ground truth label.</li>
+<li><strong>weight</strong> (<em>LayerOutput.</em>) &#8211; An input layer which is a weight for each sample.
+Each evaluator may calculate differently to use this weight.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="classification">
+<h1>Classification<a class="headerlink" href="#classification" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="classification-error-evaluator">
+<h2>classification_error_evaluator<a class="headerlink" href="#classification-error-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.classification_error_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">classification_error_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.classification_error_evaluator" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">classification_error_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Classification Error Evaluator. It will print error rate for classification.</p>
 <p>The classification error is:</p>
 <div class="math">
@@ -109,9 +135,12 @@ important this sample is.</li>
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="auc-evaluator">
+<h2>auc_evaluator<a class="headerlink" href="#auc-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.auc_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">auc_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.auc_evaluator" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">auc_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Auc Evaluator which adapts to binary classification.</p>
 <p>The simple usage:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">auc_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
@@ -134,69 +163,12 @@ important this sample is.</li>
 </table>
 </dd></dl>
 
-<dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.pnpair_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">pnpair_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.pnpair_evaluator" title="Permalink to this definition">¶</a></dt>
-<dd><p>Positive-negative pair rate Evaluator which adapts to rank task like
-learning to rank. This evaluator must contain at least three layers.</p>
-<p>The simple usage:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">pnpair_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
-</pre></div>
 </div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>name</strong> (<em>None|basestring</em>) &#8211; Evaluator name.</li>
-<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input Layer name. The output prediction of network.</li>
-<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; Label layer name.</li>
-<li><strong>info</strong> (<em>LayerOutput</em>) &#8211; Label layer name. (TODO, explaination)</li>
-<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; Weight Layer name. It should be a matrix with size
-[sample_num, 1]. (TODO, explaination)</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
+<div class="section" id="ctc-error-evaluator">
+<h2>ctc_error_evaluator<a class="headerlink" href="#ctc-error-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.precision_recall_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">precision_recall_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.precision_recall_evaluator" title="Permalink to this definition">¶</a></dt>
-<dd><p>An Evaluator to calculate precision and recall, F1-score.
-It is adapt to the task with multiple labels.</p>
-<ul class="simple">
-<li>If positive_label=-1, it will print the average precision, recall,
-F1-score of all labels.</li>
-<li>If use specify positive_label, it will print the precision, recall,
-F1-score of this label.</li>
-</ul>
-<p>The simple usage:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">precision_recall_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
-</pre></div>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>name</strong> (<em>None|basestring</em>) &#8211; Evaluator name.</li>
-<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input Layer name. The output prediction of network.</li>
-<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; Label layer name.</li>
-<li><strong>positive_label</strong> (<em>LayerOutput.</em>) &#8211; The input label layer.</li>
-<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; Weight Layer name. It should be a matrix with size
-[sample_num, 1]. (TODO, explaination)</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.ctc_error_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">ctc_error_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.ctc_error_evaluator" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">ctc_error_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This evaluator is to calculate sequence-to-sequence edit distance.</p>
 <p>The simple usage is :</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">ctc_error_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
@@ -216,9 +188,12 @@ F1-score of this label.</li>
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="chunk-evaluator">
+<h2>chunk_evaluator<a class="headerlink" href="#chunk-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.chunk_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">chunk_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.chunk_evaluator" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">chunk_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Chunk evaluator is used to evaluate segment labelling accuracy for a
 sequence. It calculates the chunk detection F1 score.</p>
 <p>A chunk is correctly detected if its beginning, end and type are correct.
@@ -262,9 +237,84 @@ contain this chunk_scheme.</li>
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="precision-recall-evaluator">
+<h2>precision_recall_evaluator<a class="headerlink" href="#precision-recall-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.sum_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">sum_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.sum_evaluator" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">precision_recall_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>An Evaluator to calculate precision and recall, F1-score.
+It is adapt to the task with multiple labels.</p>
+<ul class="simple">
+<li>If positive_label=-1, it will print the average precision, recall,
+F1-score of all labels.</li>
+<li>If use specify positive_label, it will print the precision, recall,
+F1-score of this label.</li>
+</ul>
+<p>The simple usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">precision_recall_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; Evaluator name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input Layer name. The output prediction of network.</li>
+<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; Label layer name.</li>
+<li><strong>positive_label</strong> (<em>LayerOutput.</em>) &#8211; The input label layer.</li>
+<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; Weight Layer name. It should be a matrix with size
+[sample_num, 1]. (TODO, explaination)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="rank">
+<h1>Rank<a class="headerlink" href="#rank" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="pnpair-evaluator">
+<h2>pnpair_evaluator<a class="headerlink" href="#pnpair-evaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">pnpair_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Positive-negative pair rate Evaluator which adapts to rank task like
+learning to rank. This evaluator must contain at least three layers.</p>
+<p>The simple usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">pnpair_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; Evaluator name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input Layer name. The output prediction of network.</li>
+<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; Label layer name.</li>
+<li><strong>info</strong> (<em>LayerOutput</em>) &#8211; Label layer name. (TODO, explaination)</li>
+<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; Weight Layer name. It should be a matrix with size
+[sample_num, 1]. (TODO, explaination)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="utils">
+<h1>Utils<a class="headerlink" href="#utils" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="sum-evaluator">
+<h2>sum_evaluator<a class="headerlink" href="#sum-evaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">sum_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>An Evaluator to sum the result of input.</p>
 <p>The simple usage:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">sum_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
@@ -286,9 +336,12 @@ contain this chunk_scheme.</li>
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="column-sum-evaluator">
+<h2>column_sum_evaluator<a class="headerlink" href="#column-sum-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.column_sum_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">column_sum_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.column_sum_evaluator" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">column_sum_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This Evaluator is used to sum the last column of input.</p>
 <p>The simple usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">column_sum_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
@@ -308,13 +361,18 @@ contain this chunk_scheme.</li>
 </table>
 </dd></dl>
 
+</div>
+</div>
+<div class="section" id="print">
+<h1>Print<a class="headerlink" href="#print" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="classification-error-printer-evaluator">
+<h2>classification_error_printer_evaluator<a class="headerlink" href="#classification-error-printer-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.value_printer_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">value_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.value_printer_evaluator" title="Permalink to this definition">¶</a></dt>
-<dd><p>This Evaluator is used to print the values of input layers. It contains
-one or more input layers.</p>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">classification_error_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>This Evaluator is used to print the classification error of each sample.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">value_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">classification_error_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -322,7 +380,8 @@ one or more input layers.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>input</strong> (<em>LayerOutput|list</em>) &#8211; One or more input layers.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer.</li>
+<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; Input label layer.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; Evaluator name.</li>
 </ul>
 </td>
@@ -331,9 +390,12 @@ one or more input layers.</p>
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="gradient-printer-evaluator">
+<h2>gradient_printer_evaluator<a class="headerlink" href="#gradient-printer-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.gradient_printer_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">gradient_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.gradient_printer_evaluator" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">gradient_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This Evaluator is used to print the gradient of input layers. It contains
 one or more input layers.</p>
 <p>The simple usage is:</p>
@@ -354,9 +416,12 @@ one or more input layers.</p>
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="maxid-printer-evaluator">
+<h2>maxid_printer_evaluator<a class="headerlink" href="#maxid-printer-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.maxid_printer_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">maxid_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.maxid_printer_evaluator" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">maxid_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This Evaluator is used to print maximum top k values and their indexes
 of each row of input layers. It contains one or more input layers.
 k is specified by num_results.</p>
@@ -380,9 +445,12 @@ It is 1 by default.</li>
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="maxframe-printer-evaluator">
+<h2>maxframe_printer_evaluator<a class="headerlink" href="#maxframe-printer-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.maxframe_printer_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">maxframe_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.maxframe_printer_evaluator" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">maxframe_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>This Evaluator is used to print the top k frames of each input layers.
 The input layers should contain sequences info or sequences type.
 k is specified by num_results.
@@ -409,9 +477,12 @@ It contains one or more input layers.</p>
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="seqtext-printer-evaluator">
+<h2>seqtext_printer_evaluator<a class="headerlink" href="#seqtext-printer-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.seqtext_printer_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">seqtext_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.seqtext_printer_evaluator" title="Permalink to this definition">¶</a></dt>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">seqtext_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Sequence text printer will print text according to index matrix and a
 dictionary. There can be multiple input to this layer:</p>
 <p>1. If there is only one input, the input must be a matrix containing
@@ -465,12 +536,16 @@ Default is True. No space is added if set to False.</li>
 </table>
 </dd></dl>
 
+</div>
+<div class="section" id="value-printer-evaluator">
+<h2>value_printer_evaluator<a class="headerlink" href="#value-printer-evaluator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="paddle.trainer_config_helpers.evaluators.classification_error_printer_evaluator">
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">classification_error_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.evaluators.classification_error_printer_evaluator" title="Permalink to this definition">¶</a></dt>
-<dd><p>This Evaluator is used to print the classification error of each sample.</p>
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">value_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>This Evaluator is used to print the values of input layers. It contains
+one or more input layers.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">classification_error_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">value_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -478,8 +553,7 @@ Default is True. No space is added if set to False.</li>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer.</li>
-<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; Input label layer.</li>
+<li><strong>input</strong> (<em>LayerOutput|list</em>) &#8211; One or more input layers.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; Evaluator name.</li>
 </ul>
 </td>
@@ -489,6 +563,7 @@ Default is True. No space is added if set to False.</li>
 </dd></dl>
 
 </div>
+</div>
 
 
           </div>
@@ -496,9 +571,40 @@ Default is True. No space is added if set to False.</li>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Base</a></li>
+<li><a class="reference internal" href="#classification">Classification</a><ul>
+<li><a class="reference internal" href="#classification-error-evaluator">classification_error_evaluator</a></li>
+<li><a class="reference internal" href="#auc-evaluator">auc_evaluator</a></li>
+<li><a class="reference internal" href="#ctc-error-evaluator">ctc_error_evaluator</a></li>
+<li><a class="reference internal" href="#chunk-evaluator">chunk_evaluator</a></li>
+<li><a class="reference internal" href="#precision-recall-evaluator">precision_recall_evaluator</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#rank">Rank</a><ul>
+<li><a class="reference internal" href="#pnpair-evaluator">pnpair_evaluator</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#utils">Utils</a><ul>
+<li><a class="reference internal" href="#sum-evaluator">sum_evaluator</a></li>
+<li><a class="reference internal" href="#column-sum-evaluator">column_sum_evaluator</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#print">Print</a><ul>
+<li><a class="reference internal" href="#classification-error-printer-evaluator">classification_error_printer_evaluator</a></li>
+<li><a class="reference internal" href="#gradient-printer-evaluator">gradient_printer_evaluator</a></li>
+<li><a class="reference internal" href="#maxid-printer-evaluator">maxid_printer_evaluator</a></li>
+<li><a class="reference internal" href="#maxframe-printer-evaluator">maxframe_printer_evaluator</a></li>
+<li><a class="reference internal" href="#seqtext-printer-evaluator">seqtext_printer_evaluator</a></li>
+<li><a class="reference internal" href="#value-printer-evaluator">value_printer_evaluator</a></li>
+</ul>
+</li>
+</ul>
+
   <h4>Previous topic</h4>
-  <p class="topless"><a href="networks.html"
-                        title="previous chapter">Networks</a></p>
+  <p class="topless"><a href="evaluators_index.html"
+                        title="previous chapter">Evaluators</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="attrs.html"
                         title="next chapter">Parameter and Extra Layer Attribute</a></p>
@@ -539,11 +645,12 @@ Default is True. No space is added if set to False.</li>
           <a href="attrs.html" title="Parameter and Extra Layer Attribute"
              >next</a> |</li>
         <li class="right" >
-          <a href="networks.html" title="Networks"
+          <a href="evaluators_index.html" title="Evaluators"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Trainer Config Helpers</a> &raquo;</li> 
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
+          <li class="nav-item nav-item-3"><a href="evaluators_index.html" >Evaluators</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

@@ -70,7 +70,7 @@ sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
 Then you need to set LD\_LIBRARY\_PATH, CUDA\_HOME and PATH environment variables in ~/.bashrc.
 
 ```bash
-export LD_LIBARAY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export CUDA_HOME=/usr/local/cuda
 export PATH=/usr/local/cuda/bin:$PATH
 ```
@@ -87,12 +87,12 @@ sudo apt-get install swig
 If you want to compile PaddlePaddle with doc, you need to add -DWITH_DOC=ON in cmake command and install these first:
 
 ```bash
-pip install sphinx
+pip install 'sphinx>=1.4.0'
 pip install sphinx_rtd_theme breathe recommonmark
-sudo apt-get install python-sphinx doxygen 
+sudo apt-get install doxygen 
 ```
 
-### Build an Install
+### Build and Install
 
 CMake will find dependent libraries in system default paths first. After installing some optional libraries, corresponding build option will automatically be on(such as glog, gtest and gflags). And if libraries are not found, you have to set following variables manually in cmake command(CUDNN_ROOT, ATLAS_ROOT, MKL_ROOT, OPENBLAS_ROOT).
 
@@ -126,6 +126,8 @@ cd build
 # you can add build option here, such as:    
 cmake -DWITH_GPU=ON -DWITH_DOC=OFF -DCMAKE_INSTALL_PREFIX=<path to install> ..
 make -j `nproc` && make install
+# PaddlePaddle installation path
+export PATH=<path to install>/bin:$PATH
 ```
 **Note**
 

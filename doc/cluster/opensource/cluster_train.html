@@ -26,6 +26,7 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
     <link rel="up" title="Cluster Train" href="../index.html" />
+    <link rel="next" title="Layer Documents" href="../../layer.html" />
     <link rel="prev" title="Cluster Train" href="../index.html" /> 
   </head>
   <body role="document">
@@ -38,6 +39,9 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
+        <li class="right" >
+          <a href="../../layer.html" title="Layer Documents"
+             accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="../index.html" title="Cluster Train"
              accesskey="P">previous</a> |</li>
@@ -53,16 +57,16 @@
             
   <div class="section" id="cluster-training">
 <span id="cluster-training"></span><h1>Cluster Training<a class="headerlink" href="#cluster-training" title="Permalink to this headline">¶</a></h1>
-<p>We provide this simple scripts to help you to launch cluster training Job to harness PaddlePaddle&#8217;s distributed trainning. For MPI and other cluster scheduler refer this naive script to implement more robust cluster training platform by yourself.</p>
-<p>The following cluster demo is based on RECOMMENDATION local training demo in PaddlePaddle <code class="docutils literal"><span class="pre">demo/recommendation</span></code> directory.  Assuming you enter the cluster_scripts/ directory.</p>
+<p>We provide some simple scripts <code class="docutils literal"><span class="pre">paddle/scripts/cluster_train</span></code> to help you to launch cluster training Job to harness PaddlePaddle&#8217;s distributed trainning. For MPI and other cluster scheduler refer this naive script to implement more robust cluster training platform by yourself.</p>
+<p>The following cluster demo is based on RECOMMENDATION local training demo in PaddlePaddle <code class="docutils literal"><span class="pre">demo/recommendation</span></code> directory.  Assuming you enter the <code class="docutils literal"><span class="pre">paddle/scripts/cluster_train/</span></code> directory.</p>
 <div class="section" id="pre-requirements">
 <span id="pre-requirements"></span><h2>Pre-requirements<a class="headerlink" href="#pre-requirements" title="Permalink to this headline">¶</a></h2>
 <p>Firstly,</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>pip install fabric
 </pre></div>
 </div>
-<p>Secondly, go through installing scripts to install PaddlePaddle at all nodes to make sure demo can run as local mode.</p>
-<p>Then you should prepare same ROOT_DIR directory in all nodes. ROOT_DIR is from in cluster_scripts/conf.py. Assuming that the ROOT_DIR = /home/paddle, you can create <code class="docutils literal"><span class="pre">paddle</span></code> user account as well, at last <code class="docutils literal"><span class="pre">paddle.py</span></code> can ssh connections to all nodes with <code class="docutils literal"><span class="pre">paddle</span></code> user automatically.</p>
+<p>Secondly, go through installing scripts to install PaddlePaddle at all nodes to make sure demo can run as local mode. For CUDA enabled training, we assume that CUDA is installed in <code class="docutils literal"><span class="pre">/usr/local/cuda</span></code>, otherwise missed cuda runtime libraries error could be reported at cluster runtime. In one word, the local training environment should be well prepared for the simple scripts.</p>
+<p>Then you should prepare same ROOT_DIR directory in all nodes. ROOT_DIR is from in cluster_train/conf.py. Assuming that the ROOT_DIR = /home/paddle, you can create <code class="docutils literal"><span class="pre">paddle</span></code> user account as well, at last <code class="docutils literal"><span class="pre">paddle.py</span></code> can ssh connections to all nodes with <code class="docutils literal"><span class="pre">paddle</span></code> user automatically.</p>
 <p>At last you can create ssh mutual trust relationship between all nodes for easy ssh login, otherwise <code class="docutils literal"><span class="pre">password</span></code> should be provided at runtime from <code class="docutils literal"><span class="pre">paddle.py</span></code>.</p>
 </div>
 <div class="section" id="prepare-job-workspace">
@@ -71,36 +75,52 @@
 <p>These <code class="docutils literal"><span class="pre">train/test</span></code> data should be prepared before launching cluster job. To  satisfy the requirement that train/test data are placed in different directory from workspace, PADDLE refers train/test data according to index file named as <code class="docutils literal"><span class="pre">train.list/test.list</span></code> which are used in model config file. So the train/test data also contains train.list/test.list two list file. All local training demo already provides scripts to help you create these two files,  and all nodes in cluster job will handle files with same logical code in normal condition.</p>
 <p>Generally, you can use same model file from local training for cluster training. What you should have in mind that, the <code class="docutils literal"><span class="pre">batch_size</span></code> set in <code class="docutils literal"><span class="pre">setting</span></code> function in model file means batch size in <code class="docutils literal"><span class="pre">each</span></code> node of cluster job instead of total batch size if synchronization SGD was used.</p>
 <p>Following steps are based on demo/recommendation demo in demo directory.</p>
-<p>You just go through demo/recommendation tutorial doc until <code class="docutils literal"><span class="pre">Train</span></code> section, and at last you will get train/test data and model configuration file. Besides, you can place paddle binaries and related dependencies files in this demo/recommendation directory as well. Finaly, just use demo/recommendation as workspace for cluster training.</p>
+<p>You just go through demo/recommendation tutorial doc until <code class="docutils literal"><span class="pre">Train</span></code> section, and at last you will get train/test data and model configuration file. Finaly, just use demo/recommendation as workspace for cluster training.</p>
 <p>At last your workspace should look like as follow:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span>.
-|-- conf
-|   `-- trainer_config.conf
-|-- test
-|   |-- dnn_instance_000000
-|-- test.list
-|-- train
-|   |-- dnn_instance_000000
-|   |-- dnn_instance_000001
-`-- train.list
+|-- common_utils.py
+|-- data
+|   |-- config.json
+|   |-- config_generator.py
+|   |-- meta.bin
+|   |-- meta_config.json
+|   |-- meta_generator.py
+|   |-- ml-1m
+|   |-- ml_data.sh
+|   |-- ratings.dat.test
+|   |-- ratings.dat.train
+|   |-- split.py
+|   |-- test.list
+|   `-- train.list
+|-- dataprovider.py
+|-- evaluate.sh
+|-- prediction.py
+|-- preprocess.sh
+|-- requirements.txt
+|-- run.sh
+`-- trainer_config.py
 </pre></div>
 </div>
-<p><code class="docutils literal"><span class="pre">conf/trainer_config.conf</span></code>
+<p>Not all of these files are needed for cluster training, but it&#8217;s not necessary to remove useless files.</p>
+<p><code class="docutils literal"><span class="pre">trainer_config.py</span></code>
 Indicates the model config file.</p>
-<p><code class="docutils literal"><span class="pre">test</span></code> and <code class="docutils literal"><span class="pre">train</span></code>
-Train/test data. Different node should owns different parts of all Train data. This simple script did not do this job, so you should prepare it at last. All test data should be placed at node 0 only.</p>
 <p><code class="docutils literal"><span class="pre">train.list</span></code> and <code class="docutils literal"><span class="pre">test.list</span></code>
 File index. It stores all relative or absolute file paths of all train/test data at current node.</p>
+<p><code class="docutils literal"><span class="pre">dataprovider.py</span></code>
+used to read train/test samples. It&#8217;s same as local training.</p>
+<p><code class="docutils literal"><span class="pre">data</span></code>
+all files in data directory are refered by train.list/test.list which are refered by data provider.</p>
 </div>
 <div class="section" id="prepare-cluster-job-configuration">
 <span id="prepare-cluster-job-configuration"></span><h2>Prepare Cluster Job Configuration<a class="headerlink" href="#prepare-cluster-job-configuration" title="Permalink to this headline">¶</a></h2>
-<p>Set serveral options must be carefully set in cluster_scripts/conf.py</p>
+<p>The options below must be carefully set in cluster_train/conf.py</p>
 <p><code class="docutils literal"><span class="pre">HOSTS</span></code>  all nodes hostname or ip that will run cluster job. You can also append user and ssh port with hostname, such as root&#64;192.168.100.17:9090.</p>
 <p><code class="docutils literal"><span class="pre">ROOT_DIR</span></code> workspace ROOT directory for placing JOB workspace directory</p>
 <p><code class="docutils literal"><span class="pre">PADDLE_NIC</span></code> the NIC(Network Interface Card) interface name for cluster communication channel, such as eth0 for ethternet, ib0 for infiniband.</p>
 <p><code class="docutils literal"><span class="pre">PADDLE_PORT</span></code> port number for cluster commnunication channel</p>
 <p><code class="docutils literal"><span class="pre">PADDLE_PORTS_NUM</span></code> the number of port used for cluster communication channle. if the number of cluster nodes is small(less than 5~6nodes), recommend you set it to larger, such as 2 ~ 8, for better network performance.</p>
 <p><code class="docutils literal"><span class="pre">PADDLE_PORTS_NUM_FOR_SPARSE</span></code> the number of port used for sparse updater cluster commnunication channel. if sparse remote update is used, set it like <code class="docutils literal"><span class="pre">PADDLE_PORTS_NUM</span></code></p>
+<p><code class="docutils literal"><span class="pre">LD_LIBRARY_PATH</span></code> set addtional LD_LIBRARY_PATH for cluster job. You can use it to set CUDA libraries path.</p>
 <p>Default Configuration as follow:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">HOSTS</span> <span class="o">=</span> <span class="p">[</span>
         <span class="s2">&quot;root@192.168.100.17&quot;</span><span class="p">,</span>
@@ -125,6 +145,9 @@ File index. It stores all relative or absolute file paths of all train/test data
 <span class="n">PADDLE_PORTS_NUM</span> <span class="o">=</span> <span class="mi">2</span>
 <span class="c1">#pserver sparse ports num</span>
 <span class="n">PADDLE_PORTS_NUM_FOR_SPARSE</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="c1">#environments setting for all processes in cluster job</span>
+<span class="n">LD_LIBRARY_PATH</span><span class="o">=</span><span class="s2">&quot;/usr/local/cuda/lib64:/usr/lib64&quot;</span>
 </pre></div>
 </div>
 <div class="section" id="launching-cluster-job">
@@ -134,7 +157,7 @@ File index. It stores all relative or absolute file paths of all train/test data
 <p><code class="docutils literal"><span class="pre">job_dispatch_package</span></code>  set it with local <code class="docutils literal"><span class="pre">workspace</span></code>directory, it will be dispatched to all nodes set in conf.py. It could be helpful for frequent hacking workspace files, otherwise frequent mulit-nodes workspace deployment could make your crazy.
 <code class="docutils literal"><span class="pre">job_workspace</span></code>  set it with already deployed workspace directory, <code class="docutils literal"><span class="pre">paddle.py</span></code> will skip dispatch stage to directly launch cluster job with all nodes. It could help to reduce heavy
 dispatch latency.</p>
-<p><code class="docutils literal"><span class="pre">cluster_scripts/run.sh</span></code> provides command line sample to run <code class="docutils literal"><span class="pre">demo/recommendation</span></code> cluster job, just modify <code class="docutils literal"><span class="pre">job_dispatch_package</span></code> and <code class="docutils literal"><span class="pre">job_workspace</span></code> with your defined directory, then:</p>
+<p><code class="docutils literal"><span class="pre">cluster_train/run.sh</span></code> provides command line sample to run <code class="docutils literal"><span class="pre">demo/recommendation</span></code> cluster job, just modify <code class="docutils literal"><span class="pre">job_dispatch_package</span></code> and <code class="docutils literal"><span class="pre">job_workspace</span></code> with your defined directory, then:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span>sh run.sh
 </pre></div>
 </div>
@@ -142,7 +165,7 @@ dispatch latency.</p>
 </div>
 <div class="section" id="kill-cluster-job">
 <span id="kill-cluster-job"></span><h3>Kill Cluster Job<a class="headerlink" href="#kill-cluster-job" title="Permalink to this headline">¶</a></h3>
-<p><code class="docutils literal"><span class="pre">paddle.py</span></code> can capture <code class="docutils literal"><span class="pre">Ctrl</span> <span class="pre">+</span> <span class="pre">C</span></code> SIGINT signal to automatically kill all processes launched by it. So just stop <code class="docutils literal"><span class="pre">paddle.py</span></code> to kill cluster job.</p>
+<p><code class="docutils literal"><span class="pre">paddle.py</span></code> can capture <code class="docutils literal"><span class="pre">Ctrl</span> <span class="pre">+</span> <span class="pre">C</span></code> SIGINT signal to automatically kill all processes launched by it. So just stop <code class="docutils literal"><span class="pre">paddle.py</span></code> to kill cluster job. You should mannally kill job if program crashed.</p>
 </div>
 <div class="section" id="check-cluster-training-result">
 <span id="check-cluster-training-result"></span><h3>Check Cluster Training Result<a class="headerlink" href="#check-cluster-training-result" title="Permalink to this headline">¶</a></h3>
@@ -189,6 +212,9 @@ It provides stderr and stdout of trainer process. Check error log if training cr
   <h4>Previous topic</h4>
   <p class="topless"><a href="../index.html"
                         title="previous chapter">Cluster Train</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../../layer.html"
+                        title="next chapter">Layer Documents</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -222,6 +248,9 @@ It provides stderr and stdout of trainer process. Check error log if training cr
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
+        <li class="right" >
+          <a href="../../layer.html" title="Layer Documents"
+             >next</a> |</li>
         <li class="right" >
           <a href="../index.html" title="Cluster Train"
              >previous</a> |</li>
