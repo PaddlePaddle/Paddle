@@ -46,7 +46,7 @@ setup(name="py_paddle",
   packages=['py_paddle'],
   include_dirs = [np.get_include(), "../"],   # include numpy and paddle.
   install_requires = [
-    'numpy>=1.10.1',      # The numpy is required.
+    'numpy>=1.8.0',      # The numpy is required.
     'protobuf>=2.4.1' # The paddle protobuf version
   ],
 )

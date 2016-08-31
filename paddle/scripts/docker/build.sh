@@ -7,7 +7,10 @@ function abort(){
 
 trap 'abort' 0
 set -e
-sed -i 's#http://archive\.ubuntu\.com/ubuntu/#mirror://mirrors\.ubuntu\.com/mirrors\.txt#g' /etc/apt/sources.list
+if [ ${USE_UBUNTU_MIRROR} == "ON" ]; then
+    sed -i 's#http://archive\.ubuntu\.com/ubuntu/#mirror://mirrors\.ubuntu\.com/mirrors\.txt#g'\
+      /etc/apt/sources.list
+fi
 apt-get update
 apt-get install -y cmake libprotobuf-dev protobuf-compiler git \
     libgoogle-glog-dev libgflags-dev libatlas-dev libatlas3-base g++ m4 python-pip\
@@ -22,7 +25,8 @@ git clone https://github.com/baidu/Paddle.git paddle
 cd paddle
 mkdir build
 cd build
-cmake .. -DWITH_DOC=OFF -DWITH_GPU=${WITH_GPU} -DWITH_SWIG_PY=ON -DCUDNN_ROOT=/usr/
+cmake .. -DWITH_DOC=OFF -DWITH_GPU=${WITH_GPU} -DWITH_SWIG_PY=ON\
+   -DCUDNN_ROOT=/usr/ -DWITH_STYLE_CHECK=OFF
 make -j `nproc`
 # because durning make install, there are several warning, so set +e, do not cause abort
 make install
@@ -32,8 +36,9 @@ paddle version  # print version after build
 
 if [ ${WITH_DEMO} == "ON" ]; then
   apt-get install -y wget unzip perl python-matplotlib tar xz-utils bzip2 gzip coreutils\
-	          sed grep graphviz 
-  pip ${PIP_GENERAL_ARGS} install ${PIP_INSTALL_ARGS}  BeautifulSoup docopt PyYAML
+	          sed grep graphviz libjpeg-dev zlib1g-dev
+  pip ${PIP_GENERAL_ARGS} install ${PIP_INSTALL_ARGS}  BeautifulSoup docopt \
+    PyYAML pillow
 fi
 if [ ${IS_DEVEL} == "OFF" ]; then  # clean build packages.
   cd ~
