@@ -18,7 +18,7 @@ PaddlePaddle的ubuntu安装包分为两个版本，即CPU版本，和GPU版本�
 
 ..  code-block:: shell
 
-    dpkg -i paddle-1.0.0-cpu.deb
+    dpkg -i paddle-0.8.0b-cpu.deb
     apt-get install -f
 
 需要注意的是，如果使用GPU版本的PaddlePaddle，请安装CUDA 7.5 和CUDNN 5到本地环境中，并

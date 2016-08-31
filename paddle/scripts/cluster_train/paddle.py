@@ -64,8 +64,8 @@ def job_prepare(jobdir, data=None):
     '''
     prepare job related workspace data
 
-    Assuming you already installed Paddle in all nodes which means
-    Paddle related bins and dependencies libraries.
+    Assuming you already installed PaddlePaddle in all nodes which means
+    PaddlePaddle related bins and dependencies libraries.
     Assuming the train/test data have already been installed.
     This function just prepare all related model and other resources
     needed at runtime.

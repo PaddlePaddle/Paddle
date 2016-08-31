@@ -21,7 +21,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/utils/GlobalConstants.h"
 
-/// Import Paddle's enumeration into global namespace.
+/// Import PaddlePaddle's enumeration into global namespace.
 using namespace paddle::enumeration_wrapper;  // NOLINT
 
 #define DISABLE_COPY_AND_ASSIGN(classname) \
