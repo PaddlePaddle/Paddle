@@ -1,4 +1,5 @@
-#Image Classification Tutorial
+Image Classification Tutorial
+==============================
 
 This tutorial will guide you through training a convolutional neural network to classify objects using the CIFAR-10 image classification dataset.
 As shown in the following figure, the convolutional neural network can recognize the main object in images, and output the classification result.
