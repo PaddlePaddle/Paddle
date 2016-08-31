@@ -123,7 +123,7 @@ aside {
         }
         .nav > li > a,
         .nav > li > a:focus {
-            color: rgba(white, .7);
+            color: white; //rgba(white, .7);
             &:hover {
                 color: white;
             }
