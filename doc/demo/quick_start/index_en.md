@@ -1,4 +1,4 @@
-# PaddlePaddle Quick Start Tutorial
+# Quick Start Tutorial
 
 This tutorial will teach the basics of deep learning (DL), including how to implement many different models in PaddlePaddle. You will learn how to:
   - Prepare data into the standardized format that PaddlePaddle accepts.
