@@ -29,11 +29,11 @@ cat pos_*|sort|uniq|shuf> pos.shuffed
 cat neg_*|sort|uniq|shuf> neg.shuffed
 
 min_len=`sed -n '$=' neg.shuffed`
-((test_num=$min_len/10))
+test_num=$((min_len/10))
 if [ $test_num -gt 12500 ];then
  test_num=12500
 fi
-((train_num=$min_len-$test_num))
+train_num=((min_len-test_num))
 
 head -n$train_num pos.shuffed >train.pos
 head -n$train_num neg.shuffed >train.neg
