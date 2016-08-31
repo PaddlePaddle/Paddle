@@ -1,0 +1,265 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Build and Install &mdash; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="PaddlePaddle  documentation" href="../index.html" />
+    <link rel="up" title="Build And Install PaddlePaddle" href="index.html" />
+    <link rel="next" title="Contribute to PaddlePaddle" href="contribute_to_paddle.html" />
+    <link rel="prev" title="Build And Install PaddlePaddle" href="index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="contribute_to_paddle.html" title="Contribute to PaddlePaddle"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Build And Install PaddlePaddle"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Build And Install PaddlePaddle</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="build-and-install">
+<span id="build-and-install"></span><h1>Build and Install<a class="headerlink" href="#build-and-install" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="requirement">
+<span id="requirement"></span><h2>Requirement<a class="headerlink" href="#requirement" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="dependents">
+<span id="dependents"></span><h3>Dependents<a class="headerlink" href="#dependents" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><strong>CMake</strong>: required for 2.8+ version</li>
+<li><strong>g++</strong>: a recent c++ compiler supporting c++11, &gt;= 4.6, &lt; 5</li>
+<li><strong>BLAS library</strong>: such as openBLAS, MKL, ATLAS</li>
+<li><strong>protobuf</strong>: required for 2.4+ version, 3.x is not supported</li>
+<li><strong>python</strong>: currently only 2.7 version is supported</li>
+</ul>
+</div>
+<div class="section" id="optional">
+<span id="optional"></span><h3>Optional<a class="headerlink" href="#optional" title="Permalink to this headline">¶</a></h3>
+<p>PaddlePaddle also support some build options, you have to install related libraries.</p>
+<ul class="simple">
+<li><strong>WITH_GPU</strong>: Compile with gpu mode<ul>
+<li>The GPU version works best with Cuda Toolkit 7.5 and cuDNN v5</li>
+<li>Other versions Cuda Toolkit 6.5, 7.0 and cuDNN v2, v3, v4 are also supported</li>
+<li>Note: to utilize cuDNN v5, Cuda Toolkit 7.5 is prerequisite and vice versa</li>
+</ul>
+</li>
+<li><strong>WITH_DOUBLE</strong>: Compile with double precision, otherwise use single precision</li>
+<li><strong>WITH_GLOG</strong>: Compile with glog, otherwise use a log implement internally</li>
+<li><strong>WITH_GFLAGS</strong>: Compile with gflags, otherwise use a flag implement internally</li>
+<li><strong>WITH_TESTING</strong>: Compile with gtest and run unittest for PaddlePaddle</li>
+<li><strong>WITH_DOC</strong>: Compile with documentation</li>
+<li><strong>WITH_SWIG_PY</strong>: Compile with python predict api</li>
+<li><strong>WITH_STYLE_CHECK</strong>: Style check for source code</li>
+</ul>
+</div>
+</div>
+<div class="section" id="building-on-ubuntu14-04">
+<span id="building-on-ubuntu14-04"></span><h2>Building on Ubuntu14.04<a class="headerlink" href="#building-on-ubuntu14-04" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="install-dependencies">
+<span id="install-dependencies"></span><h3>Install Dependencies<a class="headerlink" href="#install-dependencies" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><strong>CPU Dependencies</strong></li>
+</ul>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># necessary</span>
+sudo apt-get update
+sudo apt-get install -y g++ make cmake build-essential libatlas-base-dev python python-pip libpython-dev m4 libprotobuf-dev protobuf-compiler python-protobuf python-numpy git 
+<span class="c1"># optional</span>
+sudo apt-get install libgoogle-glog-dev
+sudo apt-get install libgflags-dev
+sudo apt-get install libgtest-dev
+<span class="nb">pushd</span> /usr/src/gtest
+cmake .
+make
+sudo cp *.a /usr/lib
+<span class="nb">popd</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><strong>GPU Dependencies(optional)</strong></li>
+</ul>
+<p>If you need to build GPU version, the first thing you need is a machine that has GPU and CUDA installed.
+And you also need to install cuDNN.</p>
+<p>You can download CUDA toolkit and cuDNN from nvidia website:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>https://developer.nvidia.com/cuda-downloads
+https://developer.nvidia.com/cudnn
+</pre></div>
+</div>
+<p>You can copy cuDNN files into the CUDA toolkit directory, such as:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>sudo tar -xzf cudnn-7.5-linux-x64-v5.1.tgz -C /usr/local
+sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
+</pre></div>
+</div>
+<p>Then you need to set LD_LIBRARY_PATH, CUDA_HOME and PATH environment variables in ~/.bashrc.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/usr/local/cuda/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span> <span class="nv">CUDA_HOME</span><span class="o">=</span>/usr/local/cuda
+<span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>/usr/local/cuda/bin:<span class="nv">$PATH</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><strong>Python Dependencies(optional)</strong></li>
+</ul>
+<p>If you want to compile PaddlePaddle with python predict api, you need to add -DWITH_SWIG_PY=ON in cmake command and install these first:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>sudo apt-get install swig
+</pre></div>
+</div>
+<ul class="simple">
+<li><strong>Doc Dependencies(optional)</strong></li>
+</ul>
+<p>If you want to compile PaddlePaddle with doc, you need to add -DWITH_DOC=ON in cmake command and install these first:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install sphinx
+pip install sphinx_rtd_theme breathe recommonmark
+sudo apt-get install python-sphinx doxygen 
+</pre></div>
+</div>
+</div>
+<div class="section" id="build-and-install">
+<span id="id1"></span><h3>Build and Install<a class="headerlink" href="#build-and-install" title="Permalink to this headline">¶</a></h3>
+<p>CMake will find dependent libraries in system default paths first. After installing some optional libraries, corresponding build option will automatically be on(such as glog, gtest and gflags). And if libraries are not found, you have to set following variables manually in cmake command(CUDNN_ROOT, ATLAS_ROOT, MKL_ROOT, OPENBLAS_ROOT).</p>
+<p>Here are some examples of cmake command with different options:</p>
+<p><strong>only cpu</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake -DWITH_GPU<span class="o">=</span>OFF -DWITH_DOC<span class="o">=</span>OFF
+</pre></div>
+</div>
+<p><strong>gpu</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>OFF
+</pre></div>
+</div>
+<p><strong>gpu with doc and swig</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>ON -DWITH_SWIG_PY<span class="o">=</span>ON
+</pre></div>
+</div>
+<p>Finally, you can download source code and build:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/baidu/Paddle paddle
+<span class="nb">cd</span> paddle
+mkdir build
+<span class="nb">cd</span> build
+<span class="c1"># you can add build option here, such as:    </span>
+cmake -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>OFF -DCMAKE_INSTALL_PREFIX<span class="o">=</span>&lt;path to install&gt; ..
+make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">&amp;&amp;</span> make install
+<span class="c1"># PaddlePaddle installation path</span>
+<span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>&lt;path to install&gt;/bin:<span class="nv">$PATH</span>
+</pre></div>
+</div>
+<p><strong>Note</strong></p>
+<p>And if you set WITH_SWIG_PY=ON, you have to install related python predict api at the same time:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install &lt;path to install&gt;/opt/paddle/share/wheels/*.whl
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Build and Install</a><ul>
+<li><a class="reference internal" href="#requirement">Requirement</a><ul>
+<li><a class="reference internal" href="#dependents">Dependents</a></li>
+<li><a class="reference internal" href="#optional">Optional</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#building-on-ubuntu14-04">Building on Ubuntu14.04</a><ul>
+<li><a class="reference internal" href="#install-dependencies">Install Dependencies</a></li>
+<li><a class="reference internal" href="#build-and-install">Build and Install</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Build And Install PaddlePaddle</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="contribute_to_paddle.html"
+                        title="next chapter">Contribute to PaddlePaddle</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/build/build_from_source.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="contribute_to_paddle.html" title="Contribute to PaddlePaddle"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Build And Install PaddlePaddle"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Build And Install PaddlePaddle</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+    </div>
+  </body>
+</html>

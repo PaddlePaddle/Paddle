@@ -1,0 +1,180 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>DataProvider Tutorial &mdash; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="User Interface" href="../index.html" />
+    <link rel="next" title="Python Use Case" href="python_case.html" />
+    <link rel="prev" title="User Interface" href="../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="python_case.html" title="Python Use Case"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="User Interface"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">User Interface</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="dataprovider-tutorial">
+<span id="dataprovider-tutorial"></span><h1>DataProvider Tutorial<a class="headerlink" href="#dataprovider-tutorial" title="Permalink to this headline">¶</a></h1>
+<p>DataProvider is responsible for data management in PaddlePaddle, corresponding to <a href = "../trainer_config_helpers_api.html#trainer_config_helpers.layers.data_layer">Data Layer</a>.</p>
+<div class="section" id="input-data-format">
+<span id="input-data-format"></span><h2>Input Data Format<a class="headerlink" href="#input-data-format" title="Permalink to this headline">¶</a></h2>
+<p>PaddlePaddle uses <strong>Slot</strong> to describe the data layer of neural network. One slot describes one data layer. Each slot stores a series of samples, and each sample contains a set of features. There are three attributes of a slot:</p>
+<ul class="simple">
+<li><strong>Dimension</strong>: dimenstion of features</li>
+<li><strong>SlotType</strong>: there are 5 different slot types in PaddlePaddle, following table compares the four commonly used ones.</li>
+</ul>
+<table border="2" frame="border">
+<thead>
+<tr>
+<th scope="col" class="left">SlotType</th>
+<th scope="col" class="left">Feature Description</th>
+<th scope="col" class="left">Vector Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left"><b>DenseSlot</b></td>
+<td class="left">Continuous Features</td>
+<td class="left">Dense Vector</td>
+</tr><tr>
+<td class="left"><b>SparseNonValueSlot<b></td>
+<td class="left">Discrete Features without weights</td>
+<td class="left">Sparse Vector with all non-zero elements equaled to 1</td>
+</tr><tr>
+<td class="left"><b>SparseValueSlot</b></td>
+<td class="left">Discrete Features with weights</td>
+<td class="left">Sparse Vector</td>
+</tr><tr>
+<td class="left"><b>IndexSlot</b></td>
+<td class="left">mostly the same as SparseNonValueSlot, but especially for a single label</td>
+<td class="left">Sparse Vector with only one value in each time step</td>
+</tr>
+</tbody>
+</table>
+</br><p>And the remained one is <strong>StringSlot</strong>. It stores Character String, and can be used for debug or to describe data Id for prediction, etc.</p>
+<ul class="simple">
+<li><strong>SeqType</strong>: a <strong>sequence</strong> is a sample whose features are expanded in time scale. And a <strong>sub-sequence</strong> is a continous ordered subset of a sequence. For example, (a1, a2) and (a3, a4, a5) are two sub-sequences of one sequence (a1, a2, a3, a4, a5). Following are 3 different sequence types in PaddlePaddle:<ul>
+<li><strong>NonSeq</strong>: input sample is not sequence</li>
+<li><strong>Seq</strong>: input sample is a sequence without sub-sequence</li>
+<li><strong>SubSeq</strong>: input sample is a sequence with sub-sequence</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="python-dataprovider">
+<span id="python-dataprovider"></span><h2>Python DataProvider<a class="headerlink" href="#python-dataprovider" title="Permalink to this headline">¶</a></h2>
+<p>PyDataProviderWrapper is a python decorator in PaddlePaddle, used to read custom python DataProvider class. It currently supports all SlotTypes and SeqTypes of input data. User should only concern how to read samples from file. Feel easy with its <a class="reference internal" href="python_case.html"><em>Use Case</em></a> and <a href = "../py_data_provider_wrapper_api.html">API Reference</a>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">DataProvider Tutorial</a><ul>
+<li><a class="reference internal" href="#input-data-format">Input Data Format</a></li>
+<li><a class="reference internal" href="#python-dataprovider">Python DataProvider</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../index.html"
+                        title="previous chapter">User Interface</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="python_case.html"
+                        title="next chapter">Python Use Case</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/ui/data_provider/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="python_case.html" title="Python Use Case"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="User Interface"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >User Interface</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+    </div>
+  </body>
+</html>
