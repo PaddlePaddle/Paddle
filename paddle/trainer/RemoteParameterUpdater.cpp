@@ -467,7 +467,7 @@ void ConcurrentRemoteParameterUpdater::recv(Parameter* para) {
 }
 
 void ConcurrentRemoteParameterUpdater::recv() {
-  hl_set_device(FLAGS_gpu_id);
+  if (FLAGS_use_gpu) hl_set_device(FLAGS_gpu_id);
   StatPtr stat = getStat("recv");
   FOR_TIMING(Timer timer);
   while (true) {
@@ -496,7 +496,7 @@ void ConcurrentRemoteParameterUpdater::recv() {
 }
 
 void ConcurrentRemoteParameterUpdater::send() {
-  hl_set_device(FLAGS_gpu_id);
+  if (FLAGS_use_gpu) hl_set_device(FLAGS_gpu_id);
   StatPtr stat = getStat("send");
   FOR_TIMING(Timer timer);
   while (true) {
