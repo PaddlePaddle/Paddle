@@ -74,12 +74,12 @@ aside {
 
 
 .navbar-default {
-    background-color: white;
+    background-color: $theme-primary;
     border-color: rgba($theme-dark, .5);
     @include sans-serif-font;
     @include transition-all;
     .navbar-header .navbar-brand {
-        color: $theme-primary;
+        color: black;
         @include sans-serif-font;
         font-weight: 700;
         text-transform: uppercase;
@@ -102,7 +102,7 @@ aside {
             &.active {
                 > a,
                 > a:focus {
-                    color: $theme-primary !important;
+                    color: #1DBB9C !important;
                     background-color: transparent;
                     &:hover {
                         background-color: transparent;
@@ -141,9 +141,9 @@ aside {
             }
             .nav > li > a,
             .nav > li > a:focus {
-                color: $theme-dark;
+                color: $theme-primary;
                 &:hover {
-                    color: $theme-primary;
+                    color: #1DBB9C;
                 }
             }
         }
@@ -356,15 +356,11 @@ body {
 }
 
 .service-box .text-muted {
-    color: #8ea4be;
-}
-
-#contact h2 {
     color: #6483A6;
 }
 
-#contact p {
-    color: #8ea4be;
+#feature .section-heading {
+    color: #6483A6;
 }
 
 .affix .pp_logo {
