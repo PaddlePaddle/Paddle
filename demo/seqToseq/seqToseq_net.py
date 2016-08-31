@@ -158,12 +158,15 @@ def gru_encoder_decoder(data_conf,
                                   is_seq=True),
                       StaticInput(input=encoded_proj,
                                   is_seq=True), ]
-        # In generation, decoder predicts a next target word based on
+        # In generation, the decoder predicts a next target word based on
         # the encoded source sequence and the last generated target word.
+
         # The encoded source sequence (encoder's output) must be specified by
-        # StaticInput which is a read-only memory.
-        # Here, GeneratedInputs automatically fetchs the last generated word,
-        # which is initialized by a start mark, such as <s>.
+        # StaticInput, which is a read-only memory.
+        # Embedding of the last generated word is automatically gotten by
+        # GeneratedInputs, which is initialized by a start mark, such as <s>,
+        # and must be included in generation.
+
         trg_embedding = GeneratedInput(
             size=target_dict_dim,
             embedding_name='_target_language_embedding',

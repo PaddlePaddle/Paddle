@@ -2198,7 +2198,8 @@ def recurrent_group(step, input, reverse=False, name=None):
 
     :type input: LayerOutput|StaticInput|SubsequenceInput|list|tuple
 
-    :param reverse: Reverse is true, rnn will process sequence reversely.
+    :param reverse: If reverse is set true, the recurrent unit will process the
+                    input sequence in a reverse order.
     :type reverse: bool
     :return: Layer output object
     :rtype: LayerOutput
@@ -2372,6 +2373,84 @@ def beam_search(step, input, bos_id, eos_id, beam_size,
                 result_file, dict_file="", id_input=None,
                 max_length=500, name=None,
                 num_results_per_sample=None):
+    """
+    Beam search is a heuristic search algorithm used in sequence generation.
+    It explores a graph by expanding the most promising nodes in a limited set
+    to maintain tractability.
+
+    The example usage is:
+
+    .. code-block:: python
+
+        def rnn_step(input):
+            last_time_step_output = memory(name='rnn', size=512)
+            with mixed_layer(size=512) as simple_rnn:
+                simple_rnn += full_matrix_projection(input)
+                simple_rnn += last_time_step_output
+            return simple_rnn
+
+        beam_gen = beam_search(name="decoder",
+                               step=rnn_step,
+                               input=[StaticInput("encoder_last")],
+                               bos_id=0,
+                               eos_id=1,
+                               beam_size=5,
+                               result_file="./generated_sequences.txt")
+
+    Please see the following demo for more details:
+
+    - machine translation : demo/seqToseq/translation/gen.conf \
+                            demo/seqToseq/seqToseq_net.py
+
+    :param name: Name of the recurrent unit that generates sequences.
+    :type name: base string
+    :param step: A callable function that defines the calculation in a time
+                 step, and it is appled to sequences with arbitrary length by
+                 sharing a same set of weights.
+
+                 You can refer to the first parameter of recurrent_group, or
+                 demo/seqToseq/seqToseq_net.py for more details.
+    :type step: callable
+    :param input: Input data for the recurrent unit
+    :type input: StaticInput|GeneratedInput
+    :param bos_id: Index of the start symbol in the dictionary. The start symbol
+                   is a special token for NLP task, which indicates the
+                   beginning of a sequence. In the generation task, the start
+                   symbol is ensential, since it is used to initialize the RNN
+                   internal state.
+    :type bos_id: int
+    :param eos_id: Index of the end symbol in the dictionary. The end symbol is
+                   a special token for NLP task, which indicates the end of a
+                   sequence. The generation process will stop once the end
+                   symbol is generated, or a pre-defined max iteration number
+                   is exceeded.
+    :type eos_id: int
+    :param beam_size: Beam search for sequence generation is an iterative search
+                      algorithm. To maintain tractability, every iteration only
+                      only stores a predetermined number, called the beam_size,
+                      of the most promising next words. The greater the beam
+                      size, the fewer candidate words are pruned.
+    :type beam_size: int
+    :param result_file: Path of the file to store the generated results.
+    :type result_file: basestring
+    :param dict_file: Path of dictionary. This is an optional parameter.
+                      Every line is a word in the dictionary with
+                      (line number - 1) as the word index.
+                      If this parameter is set to None, or to an empty string,
+                      only word index are printed in the generated results.
+    :type dict_file: basestring
+    :param num_results_per_sample: Number of the generated results per input
+                                  sequence. This number must always be less than
+                                  beam size.
+    :type num_results_per_sample: int
+    :param id_input: Index of the input sequence, and the specified index will
+                     be prited in the gereated results. This an optional
+                     parameter.
+    :type id_input: LayerOutput
+    :return: The seq_text_printer that prints the generated sequence to a file.
+    :rtype: evaluator
+    """
+
     if num_results_per_sample is None:
         num_results_per_sample = beam_size
     if num_results_per_sample > beam_size:

@@ -787,7 +787,7 @@ def simple_attention(encoded_sequence,
                      name=None):
     """
     Calculate and then return a context vector by attention machanism.
-    Size of the context vector equals to size of encoded_sequence.
+    Size of the context vector equals to size of the encoded_sequence.
 
     ..  math::
 
@@ -795,7 +795,7 @@ def simple_attention(encoded_sequence,
 
         e_{i,j} & = a(s_{i-1}, h_{j})
 
-        a_{i,j} & = \\frac{exp(e_{i,i})}{\\sum_{k=1}^{T_{x}{exp(e_{i,k})}}}
+        a_{i,j} & = \\frac{exp(e_{i,j})}{\\sum_{k=1}^{T_x}{exp(e_{i,k})}}
 
         c_{i} & = \\sum_{j=1}^{T_{x}}a_{i,j}h_{j}
 
