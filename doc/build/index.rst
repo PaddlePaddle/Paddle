@@ -20,10 +20,10 @@ If you want to hack and contribute PaddlePaddle source code, following guides ca
     build_from_source.md
     contribute_to_paddle.md
 
-Build Docker Images
--------------------
+Docker and Debian Package installation
+--------------------------------------
 
-Note: The intallation packages are still in pre-release 
+Note: The installation packages are still in pre-release 
 state and your experience of installation may not be smooth.
 
 If you want to pack docker image, the following guide can help you\:
@@ -31,4 +31,6 @@ If you want to pack docker image, the following guide can help you\:
 ..  toctree::
     :glob:
 
-    docker/*
+    docker_install.md
+    ubuntu_install.md
+

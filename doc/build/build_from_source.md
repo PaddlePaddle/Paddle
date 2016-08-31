@@ -87,9 +87,9 @@ sudo apt-get install swig
 If you want to compile PaddlePaddle with doc, you need to add -DWITH_DOC=ON in cmake command and install these first:
 
 ```bash
-pip install sphinx
+pip install 'sphinx>=1.4.0'
 pip install sphinx_rtd_theme breathe recommonmark
-sudo apt-get install python-sphinx doxygen 
+sudo apt-get install doxygen 
 ```
 
 ### Build and Install
