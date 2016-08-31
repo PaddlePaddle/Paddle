@@ -23,6 +23,9 @@ If you want to hack and contribute PaddlePaddle source code, following guides ca
 Build Docker Images
 -------------------
 
+Note: The intallation packages are still in pre-release 
+state and your experience of installation may not be smooth.
+
 If you want to pack docker image, the following guide can help you\:
 
 ..  toctree::
