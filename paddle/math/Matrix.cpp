@@ -943,7 +943,7 @@ void GpuMatrix::avgPoolBackward(Matrix& outGrad, size_t imgSizeH,
 void GpuMatrix::crossMapNormalFwd(Matrix& input, size_t imgSizeH,
                                   size_t imgSizeW, Matrix& denoms,
                                   size_t channels, size_t sizeX, float scale,
-                                  float pow, bool blocked) {
+                                  float pow) {
   size_t num = input.getHeight();
   size_t height = imgSizeH;
   size_t width = imgSizeW;
@@ -960,7 +960,7 @@ void GpuMatrix::crossMapNormalBwd(Matrix& localGrad, Matrix& denoms,
                                   Matrix& preOutV, Matrix& localOutV,
                                   size_t channels, size_t imgSizeH,
                                   size_t imgSizeW, size_t sizeX, float scale,
-                                  float pow, bool blocked) {
+                                  float pow) {
   size_t num = preOutV.getHeight();
   size_t height = imgSizeH;
   size_t width = imgSizeW;
@@ -1602,7 +1602,7 @@ void CpuMatrix::avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
 void CpuMatrix::crossMapNormalFwd(Matrix& input, size_t imgSizeH,
                                   size_t imgSizeW, Matrix& denoms,
                                   size_t channels, size_t sizeX, float scale,
-                                  float pow, bool blocked) {
+                                  float pow) {
   size_t num = input.getHeight();
   size_t height = imgSizeH;
   size_t width = imgSizeW;
@@ -1655,7 +1655,7 @@ void CpuMatrix::crossMapNormalBwd(Matrix& localGrad, Matrix& denoms,
                                   Matrix& preOutV, Matrix& localOutV,
                                   size_t channels, size_t imgSizeH,
                                   size_t imgSizeW, size_t size, float scale,
-                                  float pow, bool blocked) {
+                                  float pow) {
   LOG(FATAL) << "Not implemented";
 
   CHECK(imgSizeH * imgSizeW * channels == preOutV.getWidth());

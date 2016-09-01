@@ -1500,7 +1500,7 @@ def img_pool_layer(input, pool_size, name=None,
 
 
 def __img_norm_layer__(name, input, size, norm_type, scale, power,
-                       num_channels, blocked, layer_attr):
+                       num_channels, blocked=0, layer_attr):
     if num_channels is None:
         assert input.num_filters is not None
         num_channels = input.num_filters
@@ -1522,9 +1522,9 @@ def __img_norm_layer__(name, input, size, norm_type, scale, power,
 @layer_support()
 def img_cmrnorm_layer(input, size, scale=0.0128, power=0.75,
                       name=None, num_channels=None,
-                      blocked=0, layer_attr=None):
+                      layer_attr=None):
     """
-    Convolution cross-map-response-normalize layer.
+    Response normalization across feature maps.
     The details please refer to
     `Alex's paper <http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf>`_.
 
@@ -1532,7 +1532,7 @@ def img_cmrnorm_layer(input, size, scale=0.0128, power=0.75,
     :type name: None|basestring
     :param input: layer's input.
     :type input: LayerOutput
-    :param size: cross map response size.
+    :param size: Normalize in number of :math:`size` feature maps.
     :type size: int
     :param scale: The hyper-parameter.
     :type scale: float
@@ -1547,30 +1547,7 @@ def img_cmrnorm_layer(input, size, scale=0.0128, power=0.75,
     :rtype: LayerOutput
     """
     return __img_norm_layer__(name, input, size, "cmrnorm-projection", scale,
-                              power, num_channels, blocked, layer_attr)
-
-
-@wrap_name_default("rnorm")
-@layer_support()
-def img_rnorm_layer(input, size, scale, power, name=None, num_channels=None,
-                    layer_attr=None):
-    """
-    Normalize the input in local region, namely response normalization
-    across feature maps.
-
-    :param name: The name of this layer.
-    :rtype name: None|basestring
-    :param input: The input of this layer.
-    :param size:
-    :param scale:
-    :param power:
-    :param num_channels:
-    :param layer_attr:
-    :return: LayerOutput object.
-    :rtype: LayerOutput
-    """
-    return __img_norm_layer__(name, input, size, 'rnorm', scale, power,
-                              num_channels, 0, layer_attr)
+                              power, num_channels, 0, layer_attr)
 
 
 @wrap_bias_attr_default()

@@ -82,12 +82,6 @@ img_cmrnorm_layer
     :members: img_cmrnorm_layer
     :noindex:
 
-img_rnorm_layer
------------------
-..  automodule:: paddle.trainer_config_helpers.layers
-    :members: img_rnorm_layer
-    :noindex:
-
 batch_norm_layer
 ---------------------
 ..  automodule:: paddle.trainer_config_helpers.layers
