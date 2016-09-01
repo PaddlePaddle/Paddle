@@ -64,14 +64,6 @@ class BaseSGDOptimizer(Optimizer):
         w = w - \\eta \\nabla Q(w) = w - \\eta \\sum_{i}^{n} \\nabla Q_i(w)
 
     where :math:`\\eta` is learning rate. And :math:`n` is batch size.
-
-    The SGD method is implemented by paddle with multiple extensions. Such as
-    momentum, adagrad, rmsprop, adam. Please use method 'use_xxx', such as
-    use_adam, to enhance the SGD method.
-
-    WARNING: IN PADDLE'S IMPLEMENTATION, BATCH_SIZE IS SET FOR ONE COMPUTE
-    PROCESS(NODE). IF YOU USE MULTIPLE MACHINE TO TRAIN YOUR NETWORK, THE GLOBAL
-    BATCH SIZE WILL BE (BATCH_SIZE * MACHINE_COUNT).
     """
 
     def to_setting_kwargs(self):
@@ -352,17 +344,35 @@ def settings(batch_size,
              gradient_clipping_threshold=None
              ):
     """
-    TODO(yuyang18): Complete docs.
+    Set the optimization method, learning rate, batch size, and other training
+    settings. The currently supported algorithms are SGD and Async-SGD.
 
+    ..  warning::
 
-    :param batch_size:
-    :param learning_rate:
-    :param learning_method:
-    :param regularization:
-    :param is_async:
-    :param model_average:
-    :param gradient_clipping_threshold:
-    :return:
+        Note that the 'batch_size' in PaddlePaddle is not equal to global
+        training batch size. It represents the single training process's batch
+        size. If you use N processes to train one model, for example use three
+        GPU machines, the global batch size is N*'batch_size'.
+
+    :param batch_size: batch size for one training process.
+    :type batch_size: int
+    :param learning_rate: learning rate for SGD
+    :type learning_rate: float
+    :param learning_method: The extension optimization algorithms of gradient
+                            descent, such as momentum, adagrad, rmsprop, etc.
+                            Note that it should be instance with base type
+                            BaseSGDOptimizer.
+    :type learning_method: BaseSGDOptimizer
+    :param regularization: The regularization method.
+    :type regularization: BaseRegularization
+    :param is_async: Is Async-SGD or not. Default value is False.
+    :type is_async: bool
+    :param model_average: Model Average Settings.
+    :type model_average: ModelAverage
+    :param gradient_clipping_threshold: gradient clipping threshold. If gradient
+                                        value larger than some value, will be
+                                        clipped.
+    :type gradient_clipping_threshold: float
     """
     if isinstance(regularization, BaseRegularization):
         regularization = [regularization]
