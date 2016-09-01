@@ -1,6 +1,3 @@
-
-
-
 if(NOT DEFINED SPHINX_THEME)
     set(SPHINX_THEME default)
 endif()
@@ -45,5 +42,5 @@ sphinx_add_target(paddle_docs
                   ${SPHINX_HTML_DIR})
 
 add_dependencies(paddle_docs 
-  gen_proto_py)
-  #paddle_doxygen_docs)
+  gen_proto_py
+  paddle_doxygen_docs)

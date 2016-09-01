@@ -824,8 +824,6 @@ def lstmemory(input, name=None, reverse=False, act=None,
 
     .. _Link: http://arxiv.org/abs/1308.0850
 
-    TODO(yuyang18): Check lstm can take multiple input values or not?
-
     :param name: The lstmemory layer name.
     :type name: basestring
     :param input: input layer name.
