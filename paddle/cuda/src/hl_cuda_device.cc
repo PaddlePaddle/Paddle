@@ -751,11 +751,12 @@ void hl_set_device_flags_block() {
              cudaDeviceScheduleBlockingSync));
 }
 
-void hl_cuda_event_query(hl_event_t event, bool& isNotReady) {
+bool hl_cuda_event_is_ready(hl_event_t event) {
   cudaError_t err = dynload::cudaEventQuery(event->cu_event);
   CHECK(cudaSuccess == err || cudaErrorNotReady == err);
 
   if (cudaErrorNotReady == err) {
-    isNotReady = true;
+    return false;
   }
+  return true;
 }
