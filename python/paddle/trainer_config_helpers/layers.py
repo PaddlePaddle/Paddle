@@ -613,7 +613,7 @@ def data_layer(name, size, layer_attr=None):
     :type size: int
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute.
-    :return: Layer Output Object.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(type=LayerType.DATA, name=name, size=size,
@@ -640,7 +640,7 @@ def embedding_layer(input, size, name=None, param_attr=None, layer_attr=None):
     :type param_attr: ParameterAttribute|None
     :param layer_attr: Extra layer Config. Default is None.
     :type layer_attr: ExtraLayerAttribute|None
-    :return: Embedding Layer output
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     with mixed_layer(name=name, size=size, act=LinearActivation(),
@@ -692,7 +692,7 @@ def fc_layer(input, size, act=None, name=None,
     :type bias_attr: ParameterAttribute|None|Any
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute|None
-    :return: Layer Name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     if isinstance(input, LayerOutput):
@@ -756,7 +756,7 @@ def pooling_layer(input, pooling_type=None, name=None, bias_attr=None,
     :type bias_attr: ParameterAttribute|None|False
     :param layer_attr: The Extra Attributes for layer, such as dropout.
     :type layer_attr: ExtraLayerAttribute|None
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerType
     """
     extra_dict = dict()
@@ -842,7 +842,7 @@ def lstmemory(input, name=None, reverse=False, act=None,
     :type param_attr: ParameterAttribute|None|False
     :param layer_attr: Extra Layer attribute
     :type layer_attr: ExtraLayerAttribute|None
-    :return: Layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
 
@@ -943,7 +943,7 @@ def grumemory(input, name=None, reverse=False, act=None,
     :type param_attr: ParameterAttribute|None|False
     :param layer_attr: Extra Layer attribute
     :type layer_attr: ExtraLayerAttribute|None
-    :return: Layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
 
@@ -977,7 +977,7 @@ def last_seq(input, name=None, agg_level=AggregateLevel.EACH_TIMESTEP,
     :type input: LayerOutput
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(
@@ -1005,7 +1005,7 @@ def first_seq(input, name=None, agg_level=AggregateLevel.EACH_TIMESTEP,
     :type input: LayerOutput
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(
@@ -1055,7 +1055,7 @@ def expand_layer(input, expand_as,
     :type expand_level: ExpandLevel
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
-    :return: layer name
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
 
@@ -1102,7 +1102,7 @@ def interpolation_layer(input, weight, name=None, layer_attr=None):
     :type name: basestring
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     assert isinstance(input, list) or isinstance(input, tuple)
@@ -1147,7 +1147,7 @@ def power_layer(input, weight, name=None, layer_attr=None):
     :type name: basestring
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     assert weight.size == 1
@@ -1187,7 +1187,7 @@ def scaling_layer(input, weight, name=None, layer_attr=None):
     :type name: basestring
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     assert weight.size == 1
@@ -1224,7 +1224,7 @@ def trans_layer(input, name=None, layer_attr=None):
     :type name: basestring
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(
@@ -1244,8 +1244,8 @@ def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
     Cosine Similarity Layer. The cosine similarity equation is here.
 
     ..  math::
-        similarity = cos(\\theta) = {\\mathbf{A} \\cdot \\mathbf{B}
-        \\over \\|\\mathbf{A}\\| \\|\\mathbf{B}\\|}
+        similarity = cos(\\theta) = {\\mathbf{a} \\cdot \\mathbf{b}
+        \\over \\|\\mathbf{b}\\| \\|\\mathbf{b}\\|}
 
     And the input dimension is :math:`a \in R^M`, :math:`b \in R^{MN}`. The
     similarity will be calculated N times by step M. The output dimension is
@@ -1263,7 +1263,7 @@ def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
     :type size: int
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(
@@ -1308,7 +1308,7 @@ def hsigmoid(input, label, num_classes, name=None, bias_attr=None, layer_attr=No
     :type bias_attr: ParameterAttribute|False
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     if isinstance(input, LayerOutput):
@@ -1400,7 +1400,7 @@ def img_conv_layer(input, filter_size, num_filters,
     :type shared_biases: bool
     :param layer_attr: Layer Extra Attribute.
     :type layer_attr: ExtraLayerAttribute
-    :return: Layer output.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     if num_channels is None:
@@ -1464,7 +1464,8 @@ def img_pool_layer(input, pool_size, name=None,
     :type start: int
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     if num_channels is None:
         assert input.num_filters is not None
@@ -1514,29 +1515,30 @@ def __img_norm_layer__(name, input, size, norm_type, scale, power,
 
 @wrap_name_default("crmnorm")
 @layer_support()
-def img_cmrnorm_layer(input, size, scale, power, name=None, num_channels=None,
+def img_cmrnorm_layer(input, size, scale=0.0128, power=0.75,
+                      name=None, num_channels=None,
                       blocked=0, layer_attr=None):
     """
     Convolution cross-map-response-normalize layer.
-
-    TODO(yuyang18): Add reference and equations, to explain why cmr is work?
+    The details please refer to
+    `Alex's paper <http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf>`_.
 
     :param name: layer name.
-    :type name: basestring
+    :type name: None|basestring
     :param input: layer's input.
     :type input: LayerOutput
     :param size: cross map response size.
     :type size: int
-    :param scale: TODO(yuyang18)
+    :param scale: The hyper-parameter.
     :type scale: float
-    :param power: TODO(yuyang18)
+    :param power: The hyper-parameter.
     :type power: float
     :param num_channels: input layer's filers number or channels. If
                          num_channels is None, it will be set automatically.
-    :param blocked: TODO(yuyang18)
+    :param blocked: namely normalize in number of blocked feature maps.
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
-    :return: Layer's output
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     return __img_norm_layer__(name, input, size, "cmrnorm-projection", scale,
@@ -1548,19 +1550,19 @@ def img_cmrnorm_layer(input, size, scale, power, name=None, num_channels=None,
 def img_rnorm_layer(input, size, scale, power, name=None, num_channels=None,
                     layer_attr=None):
     """
-    TODO(yuyang18): add comments
+    Normalize the input in local region, namely response normalization
+    across feature maps.
 
-    TODO(yuyang18): Why it is always not implemented whenever use_gpu or not?
-
-
-    :param name:
-    :param input:
+    :param name: The name of this layer.
+    :rtype name: None|basestring
+    :param input: The input of this layer.
     :param size:
     :param scale:
     :param power:
     :param num_channels:
     :param layer_attr:
-    :return:
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     return __img_norm_layer__(name, input, size, 'rnorm', scale, power,
                               num_channels, 0, layer_attr)
@@ -1637,7 +1639,7 @@ def batch_norm_layer(input, act=None, name=None, num_channels=None,
                                    :math:`runningMean = newMean*(1-factor)
                                    + runningMean*factor`
     :type moving_average_fraction: float.
-    :return: Layer's output
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     if not isinstance(act, ReluActivation):
@@ -1701,7 +1703,7 @@ def sum_to_one_norm_layer(input, name=None, layer_attr=None):
     :type name: basestring
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(
@@ -1761,7 +1763,7 @@ def addto_layer(input, act=None, name=None, bias_attr=None,
     :type bias_attr: ParameterAttribute|bool
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
-    :return: layer's output
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     num_filters = None
@@ -1803,7 +1805,7 @@ def concat_layer(input, act=None, name=None, layer_attr=None):
     :type act: BaseActivation
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
-    :return: layer's output
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
 
@@ -1901,7 +1903,7 @@ def memory(name, size, is_seq=False, boot_layer=None,
     :type boot_bias_active_type: BaseActivation
     :param boot_with_const_id: boot layer's id.
     :type boot_with_const_id: int
-    :return: Memory layer's output
+    :return: LayerOutput object which is a memory.
     :rtype: LayerOutput
     """
     if boot_bias_active_type is None:
@@ -1993,7 +1995,7 @@ def lstm_step_layer(input, state, size, act=None,
     :type bias_attr: ParameterAttribute
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
-    :return: lstm step's layer output
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(
@@ -2032,7 +2034,7 @@ def gru_step_layer(input, output_mem, size=None, act=None,
     :param gate_act:
     :param bias_attr:
     :param layer_attr:
-    :return:
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     assert input.size % 3 == 0
@@ -2073,7 +2075,7 @@ def get_output_layer(input, arg_name, name=None, layer_attr=None):
     :param arg_name: Output name from input.
     :type arg_name: basestring
     :param layer_attr: Layer's extra attribute.
-    :return: Layer's output
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     # GetOutputLayer
@@ -2107,7 +2109,7 @@ def recurrent_layer(input, act=None, bias_attr=None,
     :param param_attr:
     :param name:
     :param layer_attr:
-    :return:
+    :return: LayerOutput object.
     """
     Layer(name=name,
           type=LayerType.RECURRENT_LAYER,
@@ -2201,7 +2203,7 @@ def recurrent_group(step, input, reverse=False, name=None):
     :param reverse: If reverse is set true, the recurrent unit will process the
                     input sequence in a reverse order.
     :type reverse: bool
-    :return: Layer output object
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     model_type('recurrent_nn')
@@ -2319,7 +2321,7 @@ def maxid_layer(input, name=None, layer_attr=None):
     :type name: basestring
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
 
@@ -2356,7 +2358,7 @@ def eos_layer(input, eos_id, name=None, layer_attr=None):
     :type eos_id: int
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(name=name,
@@ -2528,7 +2530,7 @@ def regression_cost(input, label, cost='square_error', name=None):
     :param input: Network prediction.
     :param label: Data label.
     :param cost: Cost method.
-    :return: layer name.
+    :return: LayerOutput object.
     """
     Layer(inputs=[Input(input.name), Input(label.name)], type=cost, name=name)
     return LayerOutput(
@@ -2552,7 +2554,7 @@ def classification_cost(input, label, name=None,
     :param cost: cost method.
     :type cost: basestring
     :param evaluator: Evaluator method.
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     assert input.layer_type != LayerType.DATA
@@ -2667,7 +2669,7 @@ def conv_shift_layer(input, name=None):
     :type name: basestring
     :param input: Input layer.
     :type input: LayerOutput|list|tuple.
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     assert isinstance(input, list) or isinstance(input, tuple)
@@ -2722,7 +2724,7 @@ def tensor_layer(input, size, act=None, name=None,
     :type bias_attr: ParameterAttribute|None|Any
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute|None
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     assert isinstance(input, list) or isinstance(input, tuple)
@@ -2816,7 +2818,7 @@ def selective_fc_layer(input, size, act=None, name=None,
     :type bias_attr: ParameterAttribute|None|Any
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute|None
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     if isinstance(input, LayerOutput):
@@ -2867,7 +2869,7 @@ def sampling_id_layer(input, name=None):
     :type input: LayerOutput
     :param name: The Layer Name.
     :type name: basestring
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(
@@ -2901,7 +2903,7 @@ def slope_intercept_layer(input, name=None, slope=1.0, intercept=0.0):
     :type slope: float.
     :param intercept: the offset.
     :type intercept: float.
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(
@@ -2946,7 +2948,7 @@ def convex_comb_layer(input, size, name=None):
     :type size: int
     :param name: The Layer Name.
     :type name: basestring
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
 
@@ -3016,7 +3018,7 @@ def block_expand_layer(input,
     :type padding_y: int
     :param name: The name of this layer, which can not specify.
     :type name: None|basestring.
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(name=name,
@@ -3061,7 +3063,7 @@ def ctc_layer(input, label, size, name=None, norm_by_times=False):
     :type name: string|None
     :param norm_by_times: Whether to normalization by times. False by default.
     :type norm_by_times: bool
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     assert isinstance(input, LayerOutput)
@@ -3102,7 +3104,7 @@ def crf_layer(input, label, size, weight=None, param_attr=None, name=None):
     :type param_attr: ParameterAttribute
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     assert isinstance(input, LayerOutput)
@@ -3144,7 +3146,7 @@ def crf_decoding_layer(input, size, label=None, param_attr=None, name=None):
     :type param_attr: ParameterAttribute
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
 
@@ -3213,7 +3215,7 @@ def rank_cost(left, right, lable, weight=None, name=None, coeff=1.0):
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     assert left.size == 1
@@ -3270,7 +3272,7 @@ def lambda_cost(input, score, NDCG_num=5, max_sort_size=-1, coeff=1.0):
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     Layer(name=name,
@@ -3302,7 +3304,7 @@ def cross_entropy(input, label, name=None, coeff=1.0):
     :type name: None|basestring.
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float.
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput.
     """
 
@@ -3335,7 +3337,7 @@ def cross_entropy_with_selfnorm(input, label, name=None, coeff=1.0,
     :type coeff: float.
     :param softmax_selfnorm_alpha: The scale factor affects the cost.
     :type softmax_selfnorm_alpha: float.
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput.
     """
     Layer(name=name,
@@ -3368,7 +3370,7 @@ def huber_cost(input, label, name=None, coeff=1.0):
     :type name: None|basestring.
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float.
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput.
     """
 
@@ -3398,7 +3400,7 @@ def multi_binary_label_cross_entropy(input, label, name=None, coeff=1.0):
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
-    :return: a object of LayerOutput.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
 
