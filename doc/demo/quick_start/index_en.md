@@ -157,9 +157,7 @@ define_py_data_sources2(train_list='data/train.list',
                         obj="process",
                         args={"dictionary": word_dict})
 ```
-
-You can refer to the following link for more detailed examples
-: <a href = "../../ui/data_provider/python_case.html">Python Use Case</a>，The detailed documentation on data format is: <a href = "../../ui/api/py_data_provider_wrapper.html"> PyDataProviderWrapper</a>。
+You can refer to the following link for more detailed examples and data formats: <a href = "../../ui/data_provider/pydataprovider2.html">PyDataProvider2</a>.
 
 ## Network Architecture
 You will describe four kinds of network architectures in this section.

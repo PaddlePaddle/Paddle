@@ -28,7 +28,7 @@ python's :code:`help()` function. Let's walk through the above python script:
     - Note: As swig_paddle can only accept C++ matrices, we offer a utility
       class DataProviderWraaperConverter that can accept the same input data with
       PyDataProviderWrapper, for more information please refer to document
-      of `PyDataProviderWrapper <../py_data_provider_wrapper_api.html>`_.
+      of `PyDataProvider2 <../data_provider/pydataprovider2.html>`_.
 * Do the prediction and output the result at line 100, forwardTest is another
   utility class that directly takes the activations of the output layer.
 

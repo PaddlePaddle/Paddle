@@ -1500,7 +1500,7 @@ def img_pool_layer(input, pool_size, name=None,
 
 
 def __img_norm_layer__(name, input, size, norm_type, scale, power,
-                       num_channels, blocked=0, layer_attr):
+                       num_channels, blocked, layer_attr):
     if num_channels is None:
         assert input.num_filters is not None
         num_channels = input.num_filters
