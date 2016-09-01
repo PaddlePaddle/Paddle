@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Data Preparation &mdash; PaddlePaddle  documentation</title>
+    <title>Image Classification Tutorial &mdash; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -56,12 +56,13 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <p>#Image Classification Tutorial</p>
+  <div class="section" id="image-classification-tutorial">
+<span id="image-classification-tutorial"></span><h1>Image Classification Tutorial<a class="headerlink" href="#image-classification-tutorial" title="Permalink to this headline">¶</a></h1>
 <p>This tutorial will guide you through training a convolutional neural network to classify objects using the CIFAR-10 image classification dataset.
 As shown in the following figure, the convolutional neural network can recognize the main object in images, and output the classification result.</p>
 <p><center><img alt="Image Classification" src="../../_images/image_classification.png" /></center></p>
 <div class="section" id="data-preparation">
-<span id="data-preparation"></span><h1>Data Preparation<a class="headerlink" href="#data-preparation" title="Permalink to this headline">¶</a></h1>
+<span id="data-preparation"></span><h2>Data Preparation<a class="headerlink" href="#data-preparation" title="Permalink to this headline">¶</a></h2>
 <p>First, download CIFAR-10 dataset. CIFAR-10 dataset can be downloaded from its official website.</p>
 <p><a class="reference external" href="https://www.cs.toronto.edu/~kriz/cifar.html">https://www.cs.toronto.edu/~kriz/cifar.html</a></p>
 <p>We have prepared a script to download and process CIFAR-10 dataset. The script will download CIFAR-10 dataset from the official dataset.
@@ -112,7 +113,7 @@ sh download_cifar.sh
 <p>It has two directories:<code class="docutils literal"><span class="pre">train</span></code> and <code class="docutils literal"><span class="pre">test</span></code>. These two directories contain training data and testing data of CIFAR-10, respectively. Each of these two folders contains 10 sub-folders, ranging from <code class="docutils literal"><span class="pre">airplane</span></code> to <code class="docutils literal"><span class="pre">truck</span></code>. Each sub-folder contains images with the corresponding label. After the images are organized into this structure, we are ready to train an image classification model.</p>
 </div>
 <div class="section" id="preprocess">
-<span id="preprocess"></span><h1>Preprocess<a class="headerlink" href="#preprocess" title="Permalink to this headline">¶</a></h1>
+<span id="preprocess"></span><h2>Preprocess<a class="headerlink" href="#preprocess" title="Permalink to this headline">¶</a></h2>
 <p>After the data has been downloaded, it needs to be pre-processed into the Paddle format. We can run the following command for preprocessing.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span>cd demo/image_classification/
 sh preprocess.sh
@@ -132,7 +133,7 @@ python preprocess.py -i <span class="nv">$data_dir</span> -s <span class="m">32<
 </ul>
 </div>
 <div class="section" id="model-training">
-<span id="model-training"></span><h1>Model Training<a class="headerlink" href="#model-training" title="Permalink to this headline">¶</a></h1>
+<span id="model-training"></span><h2>Model Training<a class="headerlink" href="#model-training" title="Permalink to this headline">¶</a></h2>
 <p>We need to create a model config file before training the model. An example of the config file (vgg_16_cifar.py) is listed below. <strong>Note</strong>, it is slightly different from the <code class="docutils literal"><span class="pre">vgg_16_cifar.py</span></code> which also applies to the prediction.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="n">data_dir</span><span class="o">=</span><span class="s1">&#39;data/cifar-out/batches/&#39;</span>
@@ -212,11 +213,11 @@ python -m paddle.utils.plotcurve -i <span class="nv">$log</span> &gt; plot.png
 <li><code class="docutils literal"><span class="pre">./demo/image_classification/vgg_16_cifar.py</span></code> is the network and data configuration file. The meaning of the other flags can be found in the documentation of the command line flags.</li>
 <li>The script <code class="docutils literal"><span class="pre">plotcurve.py</span></code> requires the python module of <code class="docutils literal"><span class="pre">matplotlib</span></code>, so if it fails, maybe you need to install <code class="docutils literal"><span class="pre">matplotlib</span></code>.</li>
 </ul>
-<p>After training finishes, the training and testing error curve will be saved to <code class="docutils literal"><span class="pre">plot.png</span></code> using <code class="docutils literal"><span class="pre">plotcurve.py</span></code> script. An example of the plot is shown below:</p>
+<p>After training finishes, the training and testing error curves will be saved to <code class="docutils literal"><span class="pre">plot.png</span></code> using <code class="docutils literal"><span class="pre">plotcurve.py</span></code> script. An example of the plot is shown below:</p>
 <p><center><img alt="Training and testing curves." src="../../_images/plot.png" /></center></p>
 </div>
 <div class="section" id="prediction">
-<span id="prediction"></span><h1>Prediction<a class="headerlink" href="#prediction" title="Permalink to this headline">¶</a></h1>
+<span id="prediction"></span><h2>Prediction<a class="headerlink" href="#prediction" title="Permalink to this headline">¶</a></h2>
 <p>After we train the model, the model file as well as the model parameters are stored in path <code class="docutils literal"><span class="pre">./cifar_vgg_model/pass-%05d</span></code>. For example, the model of the 300-th pass is stored at <code class="docutils literal"><span class="pre">./cifar_vgg_model/pass-00299</span></code>.</p>
 <p>To make a prediction for an image, one can run <code class="docutils literal"><span class="pre">predict.sh</span></code> as follows. The script will output the label of the classfiication.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span>sh predict.sh
@@ -231,14 +232,14 @@ python prediction.py $model $image $use_gpu
 </div>
 </div>
 <div class="section" id="exercise">
-<span id="exercise"></span><h1>Exercise<a class="headerlink" href="#exercise" title="Permalink to this headline">¶</a></h1>
+<span id="exercise"></span><h2>Exercise<a class="headerlink" href="#exercise" title="Permalink to this headline">¶</a></h2>
 <p>Train a image classification of birds using VGG model and CUB-200 dataset. The birds dataset can be downloaded here. It contains an image dataset with photos of 200 bird species (mostly North American).</p>
 <p><a class="reference external" href="http://www.vision.caltech.edu/visipedia/CUB-200.html">http://www.vision.caltech.edu/visipedia/CUB-200.html</a></p>
 </div>
 <div class="section" id="delve-into-details">
-<span id="delve-into-details"></span><h1>Delve into Details<a class="headerlink" href="#delve-into-details" title="Permalink to this headline">¶</a></h1>
+<span id="delve-into-details"></span><h2>Delve into Details<a class="headerlink" href="#delve-into-details" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="convolutional-neural-network">
-<span id="convolutional-neural-network"></span><h2>Convolutional Neural Network<a class="headerlink" href="#convolutional-neural-network" title="Permalink to this headline">¶</a></h2>
+<span id="convolutional-neural-network"></span><h3>Convolutional Neural Network<a class="headerlink" href="#convolutional-neural-network" title="Permalink to this headline">¶</a></h3>
 <p>A Convolutional Neural Network is a feedforward neural network that uses convolution layers. It is very suitable for building neural networks that process and understand images. A standard convolutional neural network is shown below:</p>
 <p><img alt="Convolutional Neural Network" src="../../_images/lenet.png" /></p>
 <p>Convolutional Neural Network contains the following layers:</p>
@@ -251,6 +252,7 @@ python prediction.py $model $image $use_gpu
 <p>For more details of how to define layers and their connections, please refer to the documentation of layers.</p>
 </div>
 </div>
+</div>
 
 
           </div>
@@ -260,13 +262,16 @@ python prediction.py $model $image $use_gpu
         <div class="sphinxsidebarwrapper">
   <h3><a href="../../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Data Preparation</a></li>
+<li><a class="reference internal" href="#">Image Classification Tutorial</a><ul>
+<li><a class="reference internal" href="#data-preparation">Data Preparation</a></li>
 <li><a class="reference internal" href="#preprocess">Preprocess</a></li>
 <li><a class="reference internal" href="#model-training">Model Training</a></li>
 <li><a class="reference internal" href="#prediction">Prediction</a></li>
 <li><a class="reference internal" href="#exercise">Exercise</a></li>
 <li><a class="reference internal" href="#delve-into-details">Delve into Details</a><ul>
 <li><a class="reference internal" href="#convolutional-neural-network">Convolutional Neural Network</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

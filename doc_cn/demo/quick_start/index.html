@@ -55,7 +55,7 @@
 <p>我们以文本分类问题作为背景，介绍PaddlePaddle使用流程和常用的网络基础单元的配置方法。</p>
 <div class="section" id="install">
 <span id="install"></span><h2>安装(Install)<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h2>
-<p>首先请参考<a href = "../../build/index.html">安装教程</a>安装PaddlePaddle。</p>
+<p>首先请参考<a href = "../../build_and_install/install/index.html">安装教程</a>安装PaddlePaddle。</p>
 </div>
 <div class="section" id="overview">
 <span id="overview"></span><h2>使用概述(Overview)<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
@@ -192,8 +192,8 @@
 <li>obj=&#8221;process&#8221;: 指定生成数据的函数</li>
 <li>args={&#8220;dictionary&#8221;: word_dict}: 额外的参数，这里指定词典</li>
 </ul>
-<p>更详细用例请参考文档<a href = "../../ui/data_provider/python_case.html">Python Use Case</a>，
-数据格式和详细文档请参考<a href = "../../ui/py_data_provider_wrapper_api.html">
+<p>更详细用例请参考文档<a href = "../../../doc/ui/data_provider/python_case.html">Python Use Case</a>，
+数据格式和详细文档请参考<a href = "../../../doc/ui/data_provider/pydataprovider2.html">
 PyDataProviderWrapper</a>。</p>
 </div>
 </div>
@@ -202,7 +202,7 @@ PyDataProviderWrapper</a>。</p>
 <p>本节我们将专注于网络结构的介绍。
 <center> <img alt="" src="../../_images/PipelineNetwork.jpg" /> </center></p>
 <p>我们将以基本的逻辑回归网络作为起点，并逐渐展示更加深入的功能。更详细的网络配置
-连接请参考<a href = "../../ui/trainer_config_helpers_api.html#module-paddle.trainer_config_helpers.layers">Layer文档</a>。
+连接请参考<a href = "../../../doc/layer.html">Layer文档</a>。
 所有配置在<code class="docutils literal"><span class="pre">demo/quick_start</span></code>目录，首先列举逻辑回归网络。</p>
 <div class="section" id="logistic-regression">
 <span id="logistic-regression"></span><h3>逻辑回归模型(Logistic Regression)<a class="headerlink" href="#logistic-regression" title="Permalink to this headline">¶</a></h3>
@@ -374,7 +374,7 @@ PyDataProviderWrapper</a>。</p>
 </div>
 <div class="section" id="optimization-algorithm">
 <span id="optimization-algorithm"></span><h2>优化算法(Optimization Algorithm)<a class="headerlink" href="#optimization-algorithm" title="Permalink to this headline">¶</a></h2>
-<p><a href = "../../ui/trainer_config_helpers_api.html#module-paddle.trainer_config_helpers.optimizers">优化算法</a>包括
+<p><a href = "../../../doc/ui/trainer_config_helpers_api.html#module-paddle.trainer_config_helpers.optimizers">优化算法</a>包括
 Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优化方法，加了L2正则和梯度截断。</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">settings</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
          <span class="n">learning_rate</span><span class="o">=</span><span class="mf">2e-3</span><span class="p">,</span>
@@ -397,7 +397,7 @@ Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优�
 --use_gpu<span class="o">=</span><span class="nb">false</span>
 </pre></div>
 </div>
-<p>这里没有介绍多机分布式训练，可以参考<a href = "../../platform/index.html">分布式训练</a>的demo学习如何进行多机训练。</p>
+<p>这里没有介绍多机分布式训练，可以参考<a href = "../../cluster/index.html">分布式训练</a>的demo学习如何进行多机训练。</p>
 </div>
 <div class="section" id="prediction">
 <span id="prediction"></span><h2>预测(Prediction)<a class="headerlink" href="#prediction" title="Permalink to this headline">¶</a></h2>

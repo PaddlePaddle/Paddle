@@ -17,10 +17,10 @@ how to write a simple PyDataProvider.
 
 MNIST is a handwriting classification data set. It contains 70,000 digital
 grayscale images. Labels of the training sample range from 0 to 9. All the
-images have been size-normalized and centered into images with a same size
+images have been size-normalized and centered into images with the same size
 of 28 x 28 pixels.
 
-A small part of the original data as an example can be found in the path below:
+A small part of the original data as an example is shown as below:
 
 .. literalinclude:: ../../../doc_cn/ui/data_provider/mnist_train.txt
 
@@ -31,10 +31,9 @@ Just write path of the above data into train.list. It looks like this:
 
 .. literalinclude:: ../../../doc_cn/ui/data_provider/train.list
 
-The corresponding dataprovider can be found in the path below:
+The corresponding dataprovider is shown as below:
 
 .. literalinclude:: ../../../doc_cn/ui/data_provider/mnist_provider.py
-   : linenos:
 
 The first line imports PyDataProvider2 package.
 The main function is the process function, that has two parameters.
@@ -45,8 +44,8 @@ This parameter is passed to the process function by PaddlePaddle.
 :code:`@provider` is a Python
 `Decorator <http://www.learnpython.org/en/Decorators>`_ .
 It sets some properties to DataProvider, and constructs a real PaddlePaddle
-DataProvider from a very sample user implemented python function. It does not
-matter if you are not familiar with `Decorator`_. You can keep it sample by
+DataProvider from a very simple user implemented python function. It does not
+matter if you are not familiar with `Decorator`_. You can keep it simple by
 just taking :code:`@provider` as a fixed mark above the provider function you
 implemented.
 
@@ -59,9 +58,9 @@ document of `input_types`_ for more details.
 
 The process method is the core part to construct a real DataProvider in
 PaddlePaddle. It implements how to open the text file, how to read one sample
-from the original text file, converted them into `input_types`_, and give them
+from the original text file, convert them into `input_types`_, and give them
 back to PaddlePaddle process at line 23.
-Note that data yields by the process function must follow a same order that
+Note that data yielded by the process function must follow the same order that
 `input_types`_ are defined.
 
 
@@ -111,7 +110,7 @@ The corresponding data provider can be found in the path below:
 
 .. literalinclude:: ../../../doc_cn/ui/data_provider/sentimental_provider.py
 
-This data provider for sequential model is a little bit complex than that
+This data provider for sequential model is a little more complex than that
 for MINST dataset.
 A new initialization method is introduced here.
 The method :code:`on_init` is configured to DataProvider by :code:`@provider`'s
@@ -243,7 +242,7 @@ parameters which your init_hook does not use.
 cache
 +++++
 DataProvider provides two simple cache strategy. They are
-* CacheType.NO_CACHE means do not cache any data, then data is read runtime by
+* CacheType.NO_CACHE means do not cache any data, then data is read at runtime by
   the user implemented python module every pass.
 * CacheType.CACHE_PASS_IN_MEM means the first pass reads data by the user
   implemented python module, and the rest passes will directly read data from

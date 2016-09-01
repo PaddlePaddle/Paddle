@@ -319,7 +319,24 @@ False if no bias.</li>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">lstmemory_unit</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>TODO(yuyang18): complete docs</p>
+<dd><p>Define calculations that a LSTM unit performs in a single time step.
+This function itself is not a recurrent layer, so that it can not be
+directly applied to sequence input. This function is always used in
+recurrent_group (see layers.py for more details) to implement attention
+mechanism.</p>
+<p>Please refer to  <strong>Generating Sequences With Recurrent Neural Networks</strong>
+for more details about LSTM. The link goes as follows:
+.. _Link: <a class="reference external" href="https://arxiv.org/abs/1308.0850">https://arxiv.org/abs/1308.0850</a></p>
+<div class="math">
+\[\begin{split}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\end{split}\]\[\begin{split}f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\end{split}\]\[\begin{split}c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\end{split}\]\[\begin{split}o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\end{split}\]\[\begin{split}h_t &amp; = o_t tanh(c_t)\end{split}\]</div>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">lstm_step</span> <span class="o">=</span> <span class="n">lstmemory_unit</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">],</span>
+                           <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+                           <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
+                           <span class="n">gate_act</span><span class="o">=</span><span class="n">SigmoidActivation</span><span class="p">(),</span>
+                           <span class="n">state_act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">())</span>
+</pre></div>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -329,9 +346,9 @@ False if no bias.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; lstmemory unit name.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; lstmemory unit size.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter config, None if use default.</li>
-<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; lstm final activate type</li>
-<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; lstm gate activate type</li>
-<li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; lstm state activate type.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; lstm final activiation type</li>
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; lstm gate activiation type</li>
+<li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; lstm state activiation type.</li>
 <li><strong>mixed_bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; bias parameter attribute of mixed layer.
 False means no bias, None means default bias.</li>
 <li><strong>lstm_bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; bias parameter attribute of lstm layer.
@@ -358,7 +375,28 @@ False means no bias, None means default bias.</li>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">lstmemory_group</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>TODO(yuyang18): complete docs</p>
+<dd><p>lstm_group is a recurrent layer group version Long Short Term Memory. It
+does exactly the same calculation as the lstmemory layer (see lstmemory in
+layers.py for the maths) does. A promising benefit is that LSTM memory
+cell states, or hidden states in every time step are accessible to for the
+user. This is especially useful in attention model. If you do not need to
+access to the internal states of the lstm, but merely use its outputs,
+it is recommanded to use the lstmemory, which is relatively faster than
+lstmemory_group.</p>
+<p>NOTE: In PaddlePaddle&#8217;s implementation, the following input-to-hidden
+multiplications:
+<span class="math">\(W_{xi}x_{t}\)</span> , <span class="math">\(W_{xf}x_{t}\)</span>,
+<span class="math">\(W_{xc}x_t\)</span>, <span class="math">\(W_{xo}x_{t}\)</span> are not done in lstmemory_unit to
+speed up the calculations. Consequently, an additional mixed_layer with
+full_matrix_projection must be included before lstmemory_unit is called.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">lstm_step</span> <span class="o">=</span> <span class="n">lstmemory_group</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">],</span>
+                            <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+                            <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
+                            <span class="n">gate_act</span><span class="o">=</span><span class="n">SigmoidActivation</span><span class="p">(),</span>
+                            <span class="n">state_act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">())</span>
+</pre></div>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -369,9 +407,9 @@ False means no bias, None means default bias.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; lstmemory group size.</li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; is lstm reversed</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter config, None if use default.</li>
-<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; lstm final activate type</li>
-<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; lstm gate activate type</li>
-<li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; lstm state activate type.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; lstm final activiation type</li>
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; lstm gate activiation type</li>
+<li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; lstm state activiation type.</li>
 <li><strong>mixed_bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; bias parameter attribute of mixed layer.
 False means no bias, None means default bias.</li>
 <li><strong>lstm_bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; bias parameter attribute of lstm layer.
@@ -382,7 +420,7 @@ False means no bias, None means default bias.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">lstmemory group name.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the lstmemory group.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
@@ -413,14 +451,14 @@ want to know what lstm is. <a class="reference external" href="http://arxiv.org/
 <li><strong>name</strong> (<em>basestring</em>) &#8211; lstm layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer name.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; lstm layer size.</li>
-<li><strong>reverse</strong> (<em>bool</em>) &#8211; is lstm reversed</li>
+<li><strong>reverse</strong> (<em>bool</em>) &#8211; whether to process the input data in a reverse order</li>
 <li><strong>mat_param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; mixed layer&#8217;s matrix projection parameter attribute.</li>
 <li><strong>bias_param_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; bias parameter attribute. False means no bias, None
 means default bias.</li>
 <li><strong>inner_param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; lstm cell parameter attribute.</li>
-<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; lstm final activate type</li>
-<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; lstm gate activate type</li>
-<li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; lstm state activate type.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; lstm final activiation type</li>
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; lstm gate activiation type</li>
+<li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; lstm state activiation type.</li>
 <li><strong>mixed_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; mixed layer&#8217;s extra attribute.</li>
 <li><strong>lstm_cell_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; lstm layer&#8217;s extra attribute.</li>
 </ul>
@@ -442,7 +480,19 @@ means default bias.</li>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">bidirectional_lstm</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>TODO(yuyang18): Complete docs</p>
+<dd><p>A bidirectional_lstm is a recurrent unit that iterates over the input
+sequence both in forward and bardward orders, and then concatenate two
+outputs form a final output. However, concatenation of two outputs
+is not the only way to form the final output, you can also, for example,
+just add them together.</p>
+<p>Please refer to  <strong>Neural Machine Translation by Jointly Learning to Align
+and Translate</strong> for more details about the bidirectional lstm.
+The link goes as follows:
+.. _Link: <a class="reference external" href="https://arxiv.org/pdf/1409.0473v3.pdf">https://arxiv.org/pdf/1409.0473v3.pdf</a></p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">lstm_step</span> <span class="o">=</span> <span class="n">bidirectional_lstm</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">input1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+</pre></div>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -451,8 +501,11 @@ means default bias.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; bidirectional lstm layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; lstm layer size.</li>
-<li><strong>return_seq</strong> (<em>bool</em>) &#8211; If False, concat word in last time step and return.
-If True, concat sequnce in all time step and return.</li>
+<li><strong>return_seq</strong> (<em>bool</em>) &#8211; If set False, outputs of the last time step are
+concatenated and returned.
+If set True, the entire output sequences that are
+processed in forward and backward directions are
+concatenated and returned.</li>
 </ul>
 </td>
 </tr>
@@ -475,22 +528,30 @@ If True, concat sequnce in all time step and return.</li>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">gru_unit</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
+<dd><p>Define calculations that a gated recurrent unit performs in a single time
+step. This function itself is not a recurrent layer, so that it can not be
+directly applied to sequence input. This function is almost always used in
+the recurrent_group (see layers.py for more details) to implement attention
+mechanism.</p>
+<p>Please see grumemory in layers.py for the details about the maths.</p>
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; </li>
-<li><strong>name</strong> &#8211; </li>
-<li><strong>size</strong> &#8211; </li>
-<li><strong>gru_bias_attr</strong> &#8211; </li>
-<li><strong>act</strong> &#8211; </li>
-<li><strong>gate_act</strong> &#8211; </li>
-<li><strong>gru_layer_attr</strong> &#8211; </li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer name.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; name of the gru group.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; hidden size of the gru.</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; type of the activation</li>
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; type of the gate activation</li>
+<li><strong>gru_layer_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; Extra parameter attribute of the gru layer.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the gru output layer.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
 </td>
 </tr>
 </tbody>
@@ -500,9 +561,94 @@ If True, concat sequnce in all time step and return.</li>
 </div>
 <div class="section" id="gru-group">
 <h3>gru_group<a class="headerlink" href="#gru-group" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">gru_group</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>gru_group is a recurrent layer group version Gated Recurrent Unit. It
+does exactly the same calculation as the grumemory layer does. A promising
+benefit is that gru hidden sates are accessible to for the user. This is
+especially useful in attention model. If you do not need to access to
+any internal state, but merely use the outputs of a GRU, it is recommanded
+to use the grumemory, which is relatively faster.</p>
+<p>Please see grumemory in layers.py for more detail about the maths.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">gru</span> <span class="o">=</span> <span class="n">gur_group</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">],</span>
+                <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+                <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
+                <span class="n">gate_act</span><span class="o">=</span><span class="n">SigmoidActivation</span><span class="p">())</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer name.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; name of the gru group.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; hidden size of the gru.</li>
+<li><strong>reverse</strong> (<em>bool</em>) &#8211; whether to process the input data in a reverse order</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; type of the activiation</li>
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; type of the gate activiation</li>
+<li><strong>gru_bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; bias. False means no bias, None means default bias.</li>
+<li><strong>gru_layer_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; Extra parameter attribute of the gru layer.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the gru group.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 <div class="section" id="simple-gru">
 <h3>simple_gru<a class="headerlink" href="#simple-gru" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">simple_gru</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>simple_gru is also a recurrent layer group version Gated Recurrent Unit as
+gru_group. The difference only lies in implemention details.
+The computational speed is that, grumemory is relatively better than
+gru_group, and gru_group is relatively better than simple_gru.</p>
+<p>simple_gru does exactly the same calculation as the grumemory layer does.
+Please see grumemory in layers.py for more detail about the maths.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">gru</span> <span class="o">=</span> <span class="n">gur_group</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">],</span>
+                <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+                <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
+                <span class="n">gate_act</span><span class="o">=</span><span class="n">SigmoidActivation</span><span class="p">())</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer name.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; name of the gru group.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; hidden size of the gru.</li>
+<li><strong>reverse</strong> (<em>bool</em>) &#8211; whether to process the input data in a reverse order</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; type of the activiation</li>
+<li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; type of the gate activiation</li>
+<li><strong>gru_bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; bias. False means no bias, None means default bias.</li>
+<li><strong>gru_layer_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; Extra parameter attribute of the gru layer.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the gru group.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 </div>
 <div class="section" id="simple-attention">

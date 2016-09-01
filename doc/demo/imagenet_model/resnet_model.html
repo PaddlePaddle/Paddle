@@ -57,7 +57,7 @@
             
   <div class="section" id="model-zoo-imagenet">
 <span id="model-zoo-imagenet"></span><h1>Model Zoo - ImageNet<a class="headerlink" href="#model-zoo-imagenet" title="Permalink to this headline">¶</a></h1>
-<p><a class="reference external" href="http://www.image-net.org/">ImageNet</a> is a popular dataset for generic object classification. This tutorial provided convolutional neural network(CNN) models for ImageNet.</p>
+<p><a class="reference external" href="http://www.image-net.org/">ImageNet</a> is a popular dataset for generic object classification. This tutorial provides convolutional neural network(CNN) models for ImageNet.</p>
 <div class="section" id="resnet-introduction">
 <span id="resnet-introduction"></span><h2>ResNet Introduction<a class="headerlink" href="#resnet-introduction" title="Permalink to this headline">¶</a></h2>
 <p>ResNets from paper <a class="reference external" href="http://arxiv.org/abs/1512.03385">Deep Residual Learning for Image Recognition</a> won the 1st place on the ILSVRC 2015 classification task. They present residual learning framework to ease the training of networks that are substantially deeper than those used previously. The residual connections are shown in following figure. The left building block is used in network of 34 layers and the right bottleneck building block is used in network of 50, 101, 152 layers .</p>
@@ -97,10 +97,10 @@
 <br></div>
 <div class="section" id="resnet-model">
 <span id="resnet-model"></span><h2>ResNet Model<a class="headerlink" href="#resnet-model" title="Permalink to this headline">¶</a></h2>
-<p>See <code class="docutils literal"><span class="pre">demo/model_zoo/resnet/resnet.py</span></code>. This confgiure contains network of 50, 101 and 152 layers. You can specify layer number by adding argument like this <code class="docutils literal"><span class="pre">--config_args=layer_num=50</span></code> in command line arguments.</p>
+<p>See <code class="docutils literal"><span class="pre">demo/model_zoo/resnet/resnet.py</span></code>. This config contains network of 50, 101 and 152 layers. You can specify layer number by adding argument like <code class="docutils literal"><span class="pre">--config_args=layer_num=50</span></code> in command line arguments.</p>
 <div class="section" id="network-visualization">
 <span id="network-visualization"></span><h3>Network Visualization<a class="headerlink" href="#network-visualization" title="Permalink to this headline">¶</a></h3>
-<p>You can get a diagram of ResNet network by running the following command. The script generates dot file and then converts dot file to PNG file, which uses installed draw_dot tool in our server. If you can not access the server, just install graphviz to convert dot file.</p>
+<p>You can get a diagram of ResNet network by running the following commands. The script generates dot file and then converts dot file to PNG file, which uses installed draw_dot tool in our server. If you can not access the server, just install graphviz to convert dot file.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span>cd demo/model_zoo/resnet
 ./net_diagram.sh
 </pre></div>
@@ -227,7 +227,7 @@ shape: <code class="docutils literal"><span class="pre">(Co,</span> <span class=
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">Outputs</span><span class="p">(</span><span class="s2">&quot;res5_3_branch2c_conv&quot;</span><span class="p">,</span> <span class="s2">&quot;res5_3_branch2c_bn&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Third, specify model path and output directory in <code class="docutils literal"><span class="pre">extract_fea_c++.sh</span></code>, and then run following commands</p>
+<p>Third, specify model path and output directory in <code class="docutils literal"><span class="pre">extract_fea_c++.sh</span></code>, and then run the following commands.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span>cd demo/model_zoo/resnet
 ./extract_fea_c++.sh
 </pre></div>

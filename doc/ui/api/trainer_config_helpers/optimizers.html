@@ -79,12 +79,6 @@ be learned. The i is the i-th observation in (trainning) data.</p>
 <div class="math">
 \[w = w - \eta \nabla Q(w) = w - \eta \sum_{i}^{n} \nabla Q_i(w)\]</div>
 <p>where <span class="math">\(\eta\)</span> is learning rate. And <span class="math">\(n\)</span> is batch size.</p>
-<p>The SGD method is implemented by paddle with multiple extensions. Such as
-momentum, adagrad, rmsprop, adam. Please use method &#8216;use_xxx&#8217;, such as
-use_adam, to enhance the SGD method.</p>
-<p>WARNING: IN PADDLE&#8217;S IMPLEMENTATION, BATCH_SIZE IS SET FOR ONE COMPUTE
-PROCESS(NODE). IF YOU USE MULTIPLE MACHINE TO TRAIN YOUR NETWORK, THE GLOBAL
-BATCH SIZE WILL BE (BATCH_SIZE * MACHINE_COUNT).</p>
 </dd></dl>
 
 </div>
@@ -239,23 +233,33 @@ w &amp; = w - \frac{\eta} {\sqrt{v(w,t) + \epsilon}} \nabla Q_{i}(w)\end{split}\
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">settings</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>TODO(yuyang18): Complete docs.</p>
+<dd><p>Set the optimization method, learning rate, batch size, and other training
+settings. The currently supported algorithms are SGD and Async-SGD.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Note that the &#8216;batch_size&#8217; in PaddlePaddle is not equal to global
+training batch size. It represents the single training process&#8217;s batch
+size. If you use N processes to train one model, for example use three
+GPU machines, the global batch size is N*&#8217;batch_size&#8217;.</p>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>batch_size</strong> &#8211; </li>
-<li><strong>learning_rate</strong> &#8211; </li>
-<li><strong>learning_method</strong> &#8211; </li>
-<li><strong>regularization</strong> &#8211; </li>
-<li><strong>is_async</strong> &#8211; </li>
-<li><strong>model_average</strong> &#8211; </li>
-<li><strong>gradient_clipping_threshold</strong> &#8211; </li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>batch_size</strong> (<em>int</em>) &#8211; batch size for one training process.</li>
+<li><strong>learning_rate</strong> (<em>float</em>) &#8211; learning rate for SGD</li>
+<li><strong>learning_method</strong> (<em>BaseSGDOptimizer</em>) &#8211; The extension optimization algorithms of gradient
+descent, such as momentum, adagrad, rmsprop, etc.
+Note that it should be instance with base type
+BaseSGDOptimizer.</li>
+<li><strong>regularization</strong> (<em>BaseRegularization</em>) &#8211; The regularization method.</li>
+<li><strong>is_async</strong> (<em>bool</em>) &#8211; Is Async-SGD or not. Default value is False.</li>
+<li><strong>model_average</strong> (<em>ModelAverage</em>) &#8211; Model Average Settings.</li>
+<li><strong>gradient_clipping_threshold</strong> (<em>float</em>) &#8211; gradient clipping threshold. If gradient
+value larger than some value, will be
+clipped.</li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
 </td>
 </tr>
 </tbody>
