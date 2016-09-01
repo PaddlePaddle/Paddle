@@ -16,6 +16,8 @@ limitations under the License. */
 #ifndef HL_DEVICE_FUNCTIONS_CUH_
 #define HL_DEVICE_FUNCTIONS_CUH_
 
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600
+
 namespace hppl {
 
 static __inline__ __device__ double atomicAdd(double* address, double val) {
@@ -38,6 +40,8 @@ static __inline__ __device__ double atomicAdd(double* address, double val) {
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600
 using hppl::atomicAdd;
+#endif
+
 #endif
 
 #endif /* HL_DEVICE_FUNCTIONS_CUH_ */
