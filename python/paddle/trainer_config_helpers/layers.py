@@ -743,7 +743,8 @@ def pooling_layer(input, pooling_type=None, name=None, bias_attr=None,
                                 pooling_type=AvgPooling(),
                                 agg_level=AggregateLevel.EACH_SEQUENCE)
 
-    :param agg_level: AggregateLevel.EACH_TIMESTEP or AggregateLevel.EACH_SEQUENCE
+    :param agg_level: AggregateLevel.EACH_TIMESTEP or
+                      AggregateLevel.EACH_SEQUENCE
     :type agg_level: AggregateLevel
     :param name: layer name.
     :type name: basestring
@@ -806,21 +807,24 @@ def lstmemory(input, name=None, reverse=False, act=None,
         h_t & = o_t tanh(c_t)
 
 
-    NOTE: In paddle's implementation, the multiply operation
+    NOTE: In PaddlePaddle's implementation, the multiplications
     :math:`W_{xi}x_{t}` , :math:`W_{xf}x_{t}`,
-    :math:`W_{xc}x_t`, :math:`W_{xo}x_{t}` is not done by
-    lstmemory layer, so it must use a mixed_layer do this full_matrix_projection
-    before lstm is used.
+    :math:`W_{xc}x_t`, :math:`W_{xo}x_{t}` are not done in the lstmemory layer,
+    so an additional mixed_layer with full_matrix_projection or a fc_layer must
+    be included in the configuration file to complete the input-to-hidden
+    mappings before lstmemory is called.
 
-    NOTE: This is a low level user interface. You may use network.simple_lstm
+    NOTE: This is a low level user interface. You can use network.simple_lstm
     to config a simple plain lstm layer.
 
-    Please refer **Generating Sequences With Recurrent Neural Networks** if you
-    want to know what lstm is. Link_ is here.
+    Please refer to **Generating Sequences With Recurrent Neural Networks** for
+    more details about LSTM.
+
+    Link_ goes as below.
 
     .. _Link: http://arxiv.org/abs/1308.0850
 
-    TODO(yuyang18): Check lstm can input multiple values or not?
+    TODO(yuyang18): Check lstm can take multiple input values or not?
 
     :param name: The lstmemory layer name.
     :type name: basestring
@@ -894,28 +898,30 @@ def grumemory(input, name=None, reverse=False, act=None,
 
         r_t = \\sigma(W_{r}x_{t} + U_{r}h_{t-1} + b_r)
 
-    3. The candidate activation :math:`\\tilde{h_t}` is computed similarly to that
-    of the traditional recurrent unit:
+    3. The candidate activation :math:`\\tilde{h_t}` is computed similarly to
+    that of the traditional recurrent unit:
 
     ..  math::
 
         {\\tilde{h_t}} = tanh(W x_{t} + U (r_{t} \odot h_{t-1}) + b)
 
-    4. The hidden activation :math:`h_t` of the GRU at time t is a linear interpolation
-    between the previous activation :math:`h_{t-1}` and the candidate activation
-    :math:`\\tilde{h_t}`:
+    4. The hidden activation :math:`h_t` of the GRU at time t is a linear
+    interpolation between the previous activation :math:`h_{t-1}` and the
+    candidate activation :math:`\\tilde{h_t}`:
 
     ..  math::
 
         h_t = (1 - z_t) h_{t-1} + z_t {\\tilde{h_t}}
 
-    NOTE: In paddle's implementation, the multiply operation
+    NOTE: In PaddlePaddle's implementation, the multiplication operations
     :math:`W_{r}x_{t}`, :math:`W_{z}x_{t}` and :math:`W x_t` are not computed in
-    gate_recurrent layer. So it must use a mixed_layer with full_matrix_projection
-    or fc_layer to compute them before GRU.
+    gate_recurrent layer. Consequently, an additional mixed_layer with
+    full_matrix_projection or a fc_layer must be included before grumemory
+    is called.
 
-    The details can refer to `Empirical Evaluation of Gated Recurrent
-    Neural Networks on Sequence Modeling. <https://arxiv.org/abs/1412.3555>`_
+    More details can be found by referring to `Empirical Evaluation of Gated
+    Recurrent Neural Networks on Sequence Modeling.
+    <https://arxiv.org/abs/1412.3555>`_
 
     The simple usage is:
 
@@ -1279,7 +1285,8 @@ def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
 @wrap_name_default()
 @wrap_bias_attr_default(has_bias=True)
 @layer_support()
-def hsigmoid(input, label, num_classes, name=None, bias_attr=None, layer_attr=None):
+def hsigmoid(input, label, num_classes, name=None, bias_attr=None,
+             layer_attr=None):
     """
     Organize the classes into a binary tree. At each node, a sigmoid function
     is used to calculate the probability of belonging to the right branch.
@@ -1358,12 +1365,12 @@ def img_conv_layer(input, filter_size, num_filters,
     input is raw pixels of image(mono or RGB), or it may be the previous layer's
     num_filters * num_group.
 
-    There are several group of filter in paddle
-    implementation. Each group will process some channel of inputs. For example,
-    if input num_channel = 256, group = 4, num_filter=32, the paddle will create
+    There are several group of filter in PaddlePaddle implementation.
+    Each group will process some channel of the inputs. For example, if an input
+    num_channel = 256, group = 4, num_filter=32, the PaddlePaddle will create
     32*4 = 128 filters to process inputs. The channels will be split into 4
-    pieces. First 256/4 = 64 channels will process by first 32 filters. The rest
-    channels will be processed by rest group of filters.
+    pieces. First 256/4 = 64 channels will process by first 32 filters. The
+    rest channels will be processed by rest group of filters.
 
     :param name: Layer name.
     :type name: basestring
@@ -1371,9 +1378,9 @@ def img_conv_layer(input, filter_size, num_filters,
     :type input: LayerOutput
     :param filter_size: The x dimension of a filter kernel.
     :type filter_size: int
-    :param filter_size_y: The y dimension of a filter kernel. Since paddle now
-                        support rectangular filters, the filter's shape
-                        will be (filter_size, filter_size_y).
+    :param filter_size_y: The y dimension of a filter kernel. Since PaddlePaddle
+                        currently supports rectangular filters, the filter's
+                        shape will be (filter_size, filter_size_y).
     :type filter_size_y: int
     :param num_filters: Each filter group's number of filter
     :param act: Activation type. Default is tanh
@@ -1744,11 +1751,13 @@ def addto_layer(input, act=None, name=None, bias_attr=None,
     inputs. Each input of this layer should be the same size, which is also the
     output size of this layer.
 
-    There is no weight matrix for each input, because it just a simple add operation.
-    If you want to a complicated operation before add, please use mixed_layer.
+    There is no weight matrix for each input, because it just a simple add
+    operation. If you want a complicated operation before add, please use
+    mixed_layer.
 
     It is a very good way to set dropout outside the layers. Since not all
-    paddle layer support dropout, you can add an add_to layer, set dropout here.
+    PaddlePaddle layer support dropout, you can add an add_to layer, set
+    dropout here.
     Please refer to dropout_layer for details.
 
     :param name: Layer name.
@@ -2063,9 +2072,10 @@ def gru_step_layer(input, output_mem, size=None, act=None,
 @layer_support()
 def get_output_layer(input, arg_name, name=None, layer_attr=None):
     """
-    Get layer's output by name. In paddle, a layer might return multiple value,
-    but return one layer output. If user want to reference another output beside
-    default output, use get_output_layer first to get another output from input.
+    Get layer's output by name. In PaddlePaddle, a layer might return multiple
+    values, but returns one layer's output. If the user wants to use another
+    output besides the default one, please use get_output_layer first to get
+    the output from input.
 
     :param name: Layer's name.
     :type name: basestring
@@ -2155,7 +2165,11 @@ class SubsequenceInput(object):
 @wrap_name_default("recurrent_group")
 def recurrent_group(step, input, reverse=False, name=None):
     """
-    Recurrent Group. It supports time steps and sequence steps mechanisms.
+    Recurrent layer group is an extremely flexible recurrent unit in
+    PaddlePaddle. As long as the user defines the calculation done within a
+    time step, PaddlePaddle will iterate such a recurrent calculation over
+    sequence input. This is extremely usefull for attention based model, or
+    Neural Turning Machine like models.
 
     The basic usage (time steps) is:
 
@@ -2603,9 +2617,9 @@ def conv_operator(input, filter_size, num_filters,
     :type input: LayerOutput|list|tuple
     :param filter_size: The x dimension of a filter kernel.
     :type filter_size: int
-    :param filter_size_y: The y dimension of a filter kernel. Since paddle now
-                        support rectangular filters, the filter's shape
-                        will be (filter_size, filter_size_y).
+    :param filter_size_y: The y dimension of a filter kernel. Since
+                        PaddlePaddle now supports rectangular filters,
+                        the filter's shape can be (filter_size, filter_size_y).
     :type filter_size_y: int
     :param num_filter: channel of output data.
     :type num_filter: int
@@ -3264,9 +3278,9 @@ def lambda_cost(input, score, NDCG_num=5, max_sort_size=-1, coeff=1.0):
                           If max_sort_size = -1, then for each list, the
                           algorithm will sort the entire list to get gradient.
                           In other cases, max_sort_size must be greater than or
-                          equal to NDCG_num. And if max_sort_size is greater than
-                          the size of a list, the algorithm will sort the entire
-                          list of get gradient.
+                          equal to NDCG_num. And if max_sort_size is greater
+                          than the size of a list, the algorithm will sort the
+                          entire list of get gradient.
     :type max_sort_size: int
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
