@@ -36,6 +36,8 @@ static __inline__ __device__ double atomicAdd(double* address, double val) {
 
 }  // namespace hppl
 
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600
 using hppl::atomicAdd;
+#endif
 
 #endif /* HL_DEVICE_FUNCTIONS_CUH_ */
