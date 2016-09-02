@@ -78,7 +78,6 @@ foreach(capability 30 35 50)
     list(APPEND __arch_flags " -gencode arch=compute_${capability},code=sm_${capability}")
 endforeach()
 
-message(${__arch_flags})
 if (CUDA_VERSION VERSION_GREATER "7.0")
     list(APPEND __arch_flags " -gencode arch=compute_52,code=sm_52")
 endif()
