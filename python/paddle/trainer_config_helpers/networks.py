@@ -1121,12 +1121,13 @@ def outputs(layers):
     logger.info(
         "".join(["The input order is [", ", ".join(final_inputs), "]"])
     )
+
+    if len(final_outputs) == 0:
+        final_outputs = map(lambda x: x.name, layers)
+
     logger.info(
         "".join(["The output order is [", ", ".join(final_outputs), "]"
                  ]))
 
     Inputs(*final_inputs)
-    if len(final_outputs) != 0:
-        Outputs(*final_outputs)
-    else:
-        Outputs(*map(lambda x: x.name, layers))
+    Outputs(*final_outputs)
