@@ -44,6 +44,4 @@ using hppl::atomicAdd;
 
 #endif
 
-#endif
-
 #endif /* HL_DEVICE_FUNCTIONS_CUH_ */
