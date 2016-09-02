@@ -64,6 +64,18 @@ limitations under the License. */
 namespace paddle {
 
 /**
+ * return the 1-based index of the highest bit set
+ *
+ * for x > 0:
+ * \f[
+ *    findLastSet(x) = 1 + \floor*{\log_{2}x}
+ * \f]
+ */
+inline constexpr size_t findLastSet(size_t x) {
+  return x ? 8 * sizeof(unsigned long) - __builtin_clzl(x) : 0;  // NOLINT
+}
+
+/**
  * calculate the non-negative remainder of a/b
  * @param[in] a
  * @param[in] b, should be positive

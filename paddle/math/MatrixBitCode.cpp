@@ -14,7 +14,7 @@ limitations under the License. */
 
 
 #include "paddle/utils/Logging.h"
-#include "Bits.h"
+#include "paddle/utils/Util.h"
 #include "Matrix.h"
 #include "hl_gpu.h"
 
