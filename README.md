@@ -1,5 +1,11 @@
 # PaddlePaddle
 
+Welcome to the PaddlePaddle GitHub.
+
+The software will be released on Sept. 30 with full documentation and installation support. 
+
+A pre-release version is available now for those who are eager to take a look.
+
 PaddlePaddle (PArallel Distributed Deep LEarning) is an easy-to-use,
 efficient, flexible and scalable deep learning platform, which is originally
 developed by Baidu scientists and engineers for the purpose of applying deep
