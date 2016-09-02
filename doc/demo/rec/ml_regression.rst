@@ -291,7 +291,7 @@ It just start a paddle training process, write the log to `log.txt`,
 then print it on screen.
 
 Each command line argument in :code:`run.sh`, please refer to the `command line
-arguments <TBD>`_ page. The short description of these arguments is shown as follow.
+arguments <../../ui/index.html#command-line-argument>`_ page. The short description of these arguments is shown as follow.
 
 *  config\: Tell paddle which file is neural network configuration.
 *  save_dir\: Tell paddle save model into './output'
@@ -302,8 +302,6 @@ arguments <TBD>`_ page. The short description of these arguments is shown as fol
 *  log_period\: Print log after train :code:`log_period` batches.
 *  dot_period\: Print a :code:`.` after train :code:`dot_period` batches.
 *  num_passes\: Train at most :code:`num_passes`.
-
-
 
 If training process starts successfully, the output likes follow:
 
