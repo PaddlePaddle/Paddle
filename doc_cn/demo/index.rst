@@ -4,7 +4,7 @@
 图像
 ''''
 
-* `图像分类 <../..doc/demo/image_classification/index.html>`_
+* `图像分类 <../../doc/demo/image_classification/index.html>`_
 
 自然语言处理
 ''''''''''''
