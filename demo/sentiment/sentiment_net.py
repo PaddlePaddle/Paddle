@@ -65,7 +65,7 @@ def bidirectional_lstm_net(input_dim,
     bi_lstm = bidirectional_lstm(input=emb, size=lstm_dim)
     dropout = dropout_layer(input=bi_lstm, dropout_rate=0.5)
     output = fc_layer(input=dropout, size=class_dim,
-                      act_type=SoftmaxActivation())
+                      act=SoftmaxActivation())
 
     if not is_predict:
         lbl = data_layer("label", 1)
