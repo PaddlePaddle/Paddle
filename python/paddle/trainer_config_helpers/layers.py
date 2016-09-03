@@ -36,7 +36,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            "cos_sim", "hsigmoid",
            "regression_cost", 'classification_cost', "LayerOutput",
            'img_conv_layer', 'img_pool_layer', 'batch_norm_layer',
-           'img_cmrnorm_layer', 'img_rnorm_layer', 'addto_layer',
+           'img_cmrnorm_layer', 'addto_layer',
            'concat_layer', 'lstm_step_layer', 'recurrent_group',
            'memory', 'StaticInput', 'expand_layer', 'scaling_layer',
            'power_layer', 'interpolation_layer', 'trans_layer',
@@ -1419,7 +1419,10 @@ def img_conv_layer(input, filter_size, num_filters,
         padding_y = padding
     if param_attr.attr.get('initial_smart') == True: # special initial for conv layers.
         init_w = (2.0 / (filter_size ** 2 * num_channels)) ** 0.5
-        param_attr = ParameterAttribute(initial_mean=0.0, initial_std=init_w)
+        param_attr.attr["initial_mean"] = 0.0
+        param_attr.attr["initial_std"] = init_w
+        param_attr.attr["initial_strategy"] = 0
+        param_attr.attr["initial_smart"] = False
     Layer(
         name=name,
         inputs=Input(input.name, conv=Conv(
@@ -2724,7 +2727,7 @@ def tensor_layer(input, size, act=None, name=None,
         type=LayerType.TENSOR_LAYER,
         active_type=act.name,
         bias=ParamAttr.to_bias(bias_attr),
-        inputs=[Input(input[0].name, **param_attr),
+        inputs=[Input(input[0].name, **param_attr.attr),
                 Input(input[1].name)],
         **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
@@ -3067,6 +3070,7 @@ def ctc_layer(input, label, size, name=None, norm_by_times=False):
     return LayerOutput(name, LayerType.CTC_LAYER, [input, label], size=size)
 
 @wrap_name_default()
+@wrap_param_attr_default()
 def crf_layer(input, label, size, weight=None, param_attr=None, name=None):
     """
     A layer for calculating the cost of sequential conditional random
@@ -3100,7 +3104,7 @@ def crf_layer(input, label, size, weight=None, param_attr=None, name=None):
     assert isinstance(label, LayerOutput)
     assert weight is None or isinstance(weight, LayerOutput)
 
-    ipts = [Input(input.name, **param_attr),
+    ipts = [Input(input.name, **param_attr.attr),
             Input(label.name)]
     if weight is not None:
         ipts.append(Input(weight.name))
@@ -3117,6 +3121,7 @@ def crf_layer(input, label, size, weight=None, param_attr=None, name=None):
     return LayerOutput(name, LayerType.CRF_LAYER, parents, size=size)
 
 @wrap_name_default()
+@wrap_param_attr_default()
 def crf_decoding_layer(input, size, label=None, param_attr=None, name=None):
     """
     A layer for calculating the decoding sequence of sequential conditional
@@ -3142,7 +3147,7 @@ def crf_decoding_layer(input, size, label=None, param_attr=None, name=None):
     assert isinstance(input, LayerOutput)
     assert label is None or isinstance(label, LayerOutput)
 
-    ipts = [Input(input.name, **param_attr)]
+    ipts = [Input(input.name, **param_attr.attr)]
     if label is not None:
         ipts.append(Input(label.name))
 
