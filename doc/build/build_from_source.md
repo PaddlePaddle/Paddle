@@ -125,6 +125,8 @@ mkdir build
 cd build
 # you can add build option here, such as:    
 cmake -DWITH_GPU=ON -DWITH_DOC=OFF -DCMAKE_INSTALL_PREFIX=<path to install> ..
+# please use sudo make install, if you want
+# to install PaddlePaddle into the system
 make -j `nproc` && make install
 # PaddlePaddle installation path
 export PATH=<path to install>/bin:$PATH
