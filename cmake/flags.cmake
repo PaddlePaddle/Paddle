@@ -76,7 +76,7 @@ endforeach()
 
 function(specify_cuda_arch cuda_version cuda_arch)
     if(${cuda_version} VERSION_GREATER "8.0")
-        foreach(capability 60 61 62)
+        foreach(capability 61 62)
           if(${cuda_arch} STREQUAL ${capability})
             list(APPEND __arch_flags " -gencode arch=compute_${cuda_arch},code=sm_${cuda_arch}")
           endif()
@@ -90,12 +90,17 @@ function(specify_cuda_arch cuda_version cuda_arch)
     endif()
 endfunction()
 
-# Common cuda architectures
+# Common gpu architectures: Kepler, Maxwell
 foreach(capability 30 35 50)
     list(APPEND __arch_flags " -gencode arch=compute_${capability},code=sm_${capability}")
 endforeach()
 
-# Custom cuda architecture
+# Modern gpu architectures: Pascal
+if (CUDA_VERSION VERSION_GREATER "8.0")
+      list(APPEND __arch_flags " -gencode arch=compute_60,code=sm_60")
+endif()
+
+# Custom gpu architecture
 set(CUDA_ARCH)
 
 if(CUDA_ARCH)
