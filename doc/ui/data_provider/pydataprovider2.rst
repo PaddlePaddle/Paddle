@@ -152,7 +152,6 @@ Please refer to the following section reference for details.
 Reference
 ---------
 
-.. _@provider::
 @provider
 +++++++++
 
@@ -170,31 +169,28 @@ PaddlePaddle from a user defined function. Its parameters are:
   usefull in sequential model, that defines batch size is counted upon sequence
   or token. By default, each sample or sequence counts to 1 when calculating
   batch size.
-* cache is a data cache strategy, see `cache`_
+* cache is a data cache strategy, see `cache`_.
 * Init_hook function is invoked once the data provider is initialized,
-  see `init_hook`_
+  see `init_hook`_.
 
-.. _input_types::
 input_types
 +++++++++++
 
 PaddlePaddle has four data types, and three sequence types.
 The four data types are: 
 
-* dense_vector represents dense float vector.
-* sparse_binary_vector sparse binary vector, most of the value is 0, and
+* :code:`dense_vector`: dense float vector.
+* :code:`sparse_binary_vector`: sparse binary vector, most of the value is 0, and
   the non zero elements are fixed to 1.
-* sparse_float_vector sparse float vector, most of the value is 0, and some
-  non zero elements that can be any float value. They are given by the user.
-* integer represents an integer scalar, that is especially used for label or
-  word index.
+* :code:`sparse_float_vector`: sparse float vector, most of the value is 0, and some
+  non zero elements can be any float value. They are given by the user.
+* :code:`integer`: an integer scalar, that is especially used for label or word index.
 
+The three sequence types are:
 
-The three sequence types are
-
-* SequenceType.NO_SEQUENCE means the sample is not a sequence
-* SequenceType.SEQUENCE means the sample is a sequence
-* SequenceType.SUB_SEQUENCE means it is a nested sequence, that each timestep of
+* :code:`SequenceType.NO_SEQUENCE` means the sample is not a sequence.
+* :code:`SequenceType.SEQUENCE` means the sample is a sequence.
+* :code:`SequenceType.SUB_SEQUENCE` means it is a nested sequence, that each timestep of
   the input sequence is also a sequence.
 
 Different input type has a defferenct input format. Their formats are shown
@@ -214,36 +210,39 @@ in the above table.
 
 where f represents a float value, i represents an integer value.
 
-.. _init_hook::
-.. _settings::
 init_hook
 +++++++++
 
 init_hook is a function that is invoked once the data provoder is initialized.
 Its parameters lists as follows:
 
-* The first parameter is a settings object, which is the same to :code:'settings'
-  in :code:`process` method.  The object contains several attributes, including:
-  * settings.input_types the input types. Reference `input_types`_
-  * settings.logger a logging object
+* The first parameter is a settings object, which is the same to :code:`settings`
+  in :code:`process` method. The object contains several attributes, including:
+
+  * :code:`settings.input_types`: the input types. Reference `input_types`_.
+  * :code:`settings.logger`: a logging object.
+
 * The rest parameters are the key word arguments. It is made up of PaddpePaddle
   pre-defined parameters and user defined parameters.
-  * PaddlePaddle defines parameters including:
-    * is_train is a bool parameter that indicates the DataProvider is used in
-      training or testing
-    * file_list is the list of all files.
+
+  * PaddlePaddle-defined parameters including:
+
+    * :code:`is_train` is a bool parameter that indicates the DataProvider is used in
+      training or testing.
+    * :code:`file_list` is the list of all files.
+      
   * User-defined parameters args can be set in training configuration.
 
 Note, PaddlePaddle reserves the right to add pre-defined parameter, so please
 use :code:`**kwargs` in init_hook to ensure compatibility by accepting the
 parameters which your init_hook does not use.
 
-.. _cache ::
 cache
 +++++
-DataProvider provides two simple cache strategy. They are
-* CacheType.NO_CACHE means do not cache any data, then data is read at runtime by
+DataProvider provides two simple cache strategy. They are:
+
+* :code:`CacheType.NO_CACHE` means do not cache any data, then data is read at runtime by
   the user implemented python module every pass.
-* CacheType.CACHE_PASS_IN_MEM means the first pass reads data by the user
+* :code:`CacheType.CACHE_PASS_IN_MEM` means the first pass reads data by the user
   implemented python module, and the rest passes will directly read data from
   memory.
