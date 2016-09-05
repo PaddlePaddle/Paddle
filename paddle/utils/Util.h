@@ -72,7 +72,11 @@ namespace paddle {
  * \f]
  */
 inline constexpr size_t findLastSet(size_t x) {
-  return x ? 8 * sizeof(unsigned long) - __builtin_clzl(x) : 0;  // NOLINT
+  return std::is_same<size_t , unsigned int>::value ?
+      (x ? 8 * sizeof(x) - __builtin_clz(x) : 0)
+    : (std::is_same<size_t , unsigned long>::value ? // NOLINT
+      (x ? 8 * sizeof(x) - __builtin_clzl(x) : 0)
+    : (x ? 8 * sizeof(x) - __builtin_clzll(x) : 0));
 }
 
 /**
