@@ -74,13 +74,8 @@ endforeach()
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
 
-foreach(capability 30 35 50)
+foreach(capability 30 35 50 52 60)
     list(APPEND __arch_flags " -gencode arch=compute_${capability},code=sm_${capability}")
 endforeach()
-
-if (CUDA_VERSION VERSION_GREATER "7.0")
-    list(APPEND __arch_flags " -gencode arch=compute_52,code=sm_52")
-endif()
-
 
 set(CUDA_NVCC_FLAGS ${__arch_flags} ${CUDA_NVCC_FLAGS})
