@@ -262,8 +262,8 @@ def SubModelEnd(name = None):
 
 def MakeLayerNameInParentSubmodel(name):
     suffix = ""
-    for submodel in g_submodel_stack[1:]:
-        suffix = "@" + submodel.name + suffix
+    if len(g_submodel_stack) > 1:
+        suffix = "@" + g_submodel_stack[-1].name
     return name + suffix
 
 def GetLayerBaseName(name):
