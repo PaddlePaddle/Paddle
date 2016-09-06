@@ -42,7 +42,7 @@ sudo apt-get install -y g++ make cmake build-essential libatlas-base-dev python 
 sudo apt-get install libgoogle-glog-dev
 sudo apt-get install libgflags-dev
 sudo apt-get install libgtest-dev
-pip install wheel
+sudo pip install wheel
 pushd /usr/src/gtest
 cmake .
 make

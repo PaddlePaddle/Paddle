@@ -59,7 +59,7 @@ To build your text classification system, your code will need to perform five st
 ## Preprocess data into standardized format
 In this example, you are going to use [Amazon electronic product review dataset](http://jmcauley.ucsd.edu/data/amazon/) to build a bunch of deep neural network models for text classification. Each text in this dataset is a product review. This dataset has two categories: “positive” and “negative”. Positive means the reviewer likes the product, while negative means the reviewer does not like the product.
 
-`demo/quick_start` in the source code provides scripts for downloading data and preprocessing data as shown below. The data process takes several minutes (about 3 minutes in our machine).
+`demo/quick_start` in the [source code](https://github.com/baidu/Paddle) provides scripts for downloading data and preprocessing data as shown below. The data process takes several minutes (about 3 minutes in our machine).
 
 ```bash
 cd demo/quick_start
