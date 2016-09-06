@@ -22,11 +22,8 @@ namespace paddle {
 static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src, bool useGpu,
                           hl_stream_t stream) {
   if (src) {
-    if (!dest) {
-      dest = src->clone(0, 0, useGpu);
-    } else {
-      dest->resize(src->getHeight(), src->getWidth());
-    }
+    Matrix::resizeOrCreate(dest, src->getHeight(),
+                           src->getWidth(), false, useGpu);
     dest->copyFrom(*src, stream);
   } else {
     dest.reset();
@@ -60,14 +57,9 @@ static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src,
                           hl_stream_t stream = HPPL_STREAM_DEFAULT) {
   if (src) {
     CHECK_LE((size_t)startRow + copySize, src->getHeight());
-
     int height = copySize;
     int width = src->getWidth();
-    if (!dest) {
-      dest = src->clone(height, width, useGpu);
-    } else {
-      dest->resize(height, width);
-    }
+    Matrix::resizeOrCreate(dest, height, width, false, useGpu);
     MatrixPtr submat = src->subMatrix(startRow, copySize);
     if (dynamic_cast<GpuSparseMatrix*>(dest.get())) {
       // copy a subMatrix of CpuSparseMatrix to GpuSparseMatrix.
@@ -182,6 +174,11 @@ static void resizeAndCopy(SVectorPtr& dest, const SVectorPtr& src,
   }
 }
 
+void Argument::resizeAndCopyFrom(const Argument& src, bool useGpu) {
+   resizeAndCopyFrom(src, useGpu, HPPL_STREAM_DEFAULT);
+   hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+}
+
 void Argument::resizeAndCopyFrom(const Argument& src, bool useGpu,
                                  hl_stream_t stream) {
   dataId = src.dataId;
@@ -197,6 +194,14 @@ void Argument::resizeAndCopyFrom(const Argument& src, bool useGpu,
   }
   resizeAndCopy(udp, src.udp, useGpu, stream);
   resizeAndCopy(strs, src.strs, useGpu, stream);
+}
+
+int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,
+                                    int32_t copySize, bool useGpu) {
+    int32_t size = resizeAndCopyFrom(src, startSeq, copySize, useGpu,
+                                     HPPL_STREAM_DEFAULT);
+    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+    return size;
 }
 
 int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,

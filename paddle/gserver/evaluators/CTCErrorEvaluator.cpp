@@ -196,7 +196,6 @@ public:
     Argument output, label;
     output.resizeAndCopyFrom(arguments[0], false);
     label.resizeAndCopyFrom(arguments[1], false);
-    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
     CHECK(label.sequenceStartPositions);
     CHECK(label.ids);
     size_t numSequences = label.sequenceStartPositions->getSize() - 1;

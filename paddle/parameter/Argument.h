@@ -205,11 +205,14 @@ struct Argument {
    *   return value: how many samples are copied
    */
   int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
-                            int32_t copySize, bool useGpu = FLAGS_use_gpu,
-                            hl_stream_t stream = HPPL_STREAM_DEFAULT);
+                            int32_t copySize, bool useGpu, hl_stream_t stream);
 
-  void resizeAndCopyFrom(const Argument& src, bool useGpu = FLAGS_use_gpu,
-                         hl_stream_t stream = HPPL_STREAM_DEFAULT);
+  int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
+                            int32_t copySize, bool useGpu = FLAGS_use_gpu);
+
+  void resizeAndCopyFrom(const Argument& src, bool useGpu, hl_stream_t stream);
+
+  void resizeAndCopyFrom(const Argument& src, bool useGpu = FLAGS_use_gpu);
 
   /*
     @brief Concatenate several arguments into one and put the result into it.

@@ -54,6 +54,7 @@ public:
       for (size_t i = 0; i < inputLayers_.size(); i++) {
         tmpCpuInput_[i].resizeAndCopyFrom(getInput(i), false, HPPL_STREAM_1);
       }
+      hl_stream_synchronize(HPPL_STREAM_1);
       forwardImp(tmpCpuInput_[0]);
     } else {
       forwardImp(getInput(0));
