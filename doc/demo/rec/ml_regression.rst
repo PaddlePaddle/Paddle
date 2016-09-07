@@ -257,7 +257,7 @@ In these network, we use several api in `trainer_config_helpers
 *  Text Convolution Pooling Layer, `text_conv_pool
    <../../ui/api/trainer_config_helpers/networks.html
    #trainer_config_helpers.networks.text_conv_pool>`_
-*  Declare Python Data Sources, `define_py_data_sources
+*  Declare Python Data Sources, `define_py_data_sources2
    <../../ui/api/trainer_config_helpers/data_sources.html>`_
 
 Data Provider
