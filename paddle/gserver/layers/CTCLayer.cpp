@@ -49,9 +49,10 @@ void CTCLayer::forward(PassType passType) {
   Layer::forward(passType);
   if (useGpu_) {
     for (size_t i = 0; i < inputLayers_.size(); i++) {
-      tmpCpuInput_[i].resizeAndCopyFrom(getInput(i), false, HPPL_STREAM_1);
+      tmpCpuInput_[i].resizeAndCopyFrom(
+          getInput(i), false, HPPL_STREAM_DEFAULT);
     }
-    hl_stream_synchronize(HPPL_STREAM_1);
+    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
     forwardImp(tmpCpuInput_[0], tmpCpuInput_[1]);
   } else {
     forwardImp(getInput(0), getInput(1));
@@ -93,9 +94,9 @@ void CTCLayer::backward(const UpdateCallback &callback) {
   if (useGpu_) {
     backwardImp(callback, tmpCpuInput_[0], tmpCpuInput_[1]);
     const_cast<Argument&>(getInput(0)).
-            resizeAndCopyFrom(tmpCpuInput_[0], true, HPPL_STREAM_1);
+            resizeAndCopyFrom(tmpCpuInput_[0], true, HPPL_STREAM_DEFAULT);
     const_cast<Argument&>(getInput(1)).
-            resizeAndCopyFrom(tmpCpuInput_[1], true, HPPL_STREAM_1);
+            resizeAndCopyFrom(tmpCpuInput_[1], true, HPPL_STREAM_DEFAULT);
   } else {
     backwardImp(callback, getInput(0), getInput(1));
   }

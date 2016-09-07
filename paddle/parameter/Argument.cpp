@@ -22,8 +22,12 @@ namespace paddle {
 static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src, bool useGpu,
                           hl_stream_t stream) {
   if (src) {
-    Matrix::resizeOrCreate(dest, src->getHeight(),
-                           src->getWidth(), false, useGpu);
+    if (!dest) {
+      dest = src->clone(0, 0, useGpu);
+    } else {
+      CHECK_EQ(dest->useGpu(), useGpu);
+      dest->resize(src->getHeight(), src->getWidth());
+    }
     dest->copyFrom(*src, stream);
   } else {
     dest.reset();
@@ -59,7 +63,12 @@ static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src,
     CHECK_LE((size_t)startRow + copySize, src->getHeight());
     int height = copySize;
     int width = src->getWidth();
-    Matrix::resizeOrCreate(dest, height, width, false, useGpu);
+    if (!dest) {
+      dest = src->clone(height, width, useGpu);
+    } else {
+      CHECK_EQ(dest->useGpu(), useGpu);
+      dest->resize(height, width);
+    }
     MatrixPtr submat = src->subMatrix(startRow, copySize);
     if (dynamic_cast<GpuSparseMatrix*>(dest.get())) {
       // copy a subMatrix of CpuSparseMatrix to GpuSparseMatrix.

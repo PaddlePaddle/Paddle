@@ -878,7 +878,11 @@ void TrainerThread::copyOutputGrad() {
   outArgs_.resize(outputGradArgs.size());
   for (size_t i = 0; i < outputGradArgs.size(); i++) {
     outArgs_[i].resizeAndCopyFrom(outputGradArgs[i], startSeq, copySize,
-                                  multiMachine_->useGpu());
+                                  multiMachine_->useGpu(),
+                                  HPPL_STREAM_DEFAULT);
+  }
+  if (multiMachine_->useGpu()) {
+    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   }
   gradientMachine_->setOutputGrad(outArgs_);
 }

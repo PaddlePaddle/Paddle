@@ -203,15 +203,27 @@ struct Argument {
    *   startSeq: the sample id of start
    *   copySize: how many samples need to copy
    *   return value: how many samples are copied
+   * Note that when specifying the stream explicitly in this case,
+   * synchronize should also be called somewhere after this function
    */
   int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
                             int32_t copySize, bool useGpu, hl_stream_t stream);
 
+  /*
+   * same with the above function, except that the stream is
+   * HPPL_STREAM_DEFAULT and synchronize is automatically called
+   * inside it
+   */
   int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
                             int32_t copySize, bool useGpu = FLAGS_use_gpu);
 
   void resizeAndCopyFrom(const Argument& src, bool useGpu, hl_stream_t stream);
 
+  /*
+   * same with the above function, except that the stream is
+   * HPPL_STREAM_DEFAULT and synchronize is automatically called
+   * inside it
+   */
   void resizeAndCopyFrom(const Argument& src, bool useGpu = FLAGS_use_gpu);
 
   /*
