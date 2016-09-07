@@ -179,10 +179,9 @@ TEST(Layer, CRFLayer) {
   config.layerConfig.add_inputs();
   config.layerConfig.add_inputs();
 
-  for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "crf", 100, /* trans */ false, /* useGpu */ useGpu,
-                  false /*useWeight*/, 0.03 /*epsilon*/);
-  }
+  // Not support GPU now
+  testLayerGrad(config, "crf", 100, /* trans */ false, /* useGpu */ false,
+                false /*useWeight*/, 0.03 /*epsilon*/);
 }
 
 TEST(Layer, CTCLayer) {
