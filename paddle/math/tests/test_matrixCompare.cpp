@@ -1697,7 +1697,6 @@ TEST(Matrix, cosSimDerivate) {
   }
 }
 
-
 void testParamReluForward(int height, int width, int w_height,
                                                  int w_width) {
   MatrixPtr output = CpuMatrix::create(height, width, false, false);
@@ -1736,7 +1735,6 @@ TEST(Matrix, paramReluForward) {
   }
 }
 
-
 void testParamReluBackwardW(int height, int width, int w_height,
                                                    int w_width) {
   MatrixPtr oGrad = CpuMatrix::create(height, width, false, false);
@@ -1774,7 +1772,6 @@ TEST(Matrix, paramReluBackwardW) {
     }
   }
 }
-
 
 void testParamReluBackwardDiff(int height, int width, int w_height,
                                                       int w_width) {
@@ -1815,6 +1812,36 @@ TEST(Matrix, paramReluBackwardDiff) {
           testParamReluBackwardDiff(height, width, w_height, w_width);
         }
       }
+    }
+  }
+}
+
+void testClassificationError(int numSamples, int dim) {
+  MatrixPtr cpuError = std::make_shared<CpuMatrix>(numSamples, 1);
+  MatrixPtr gpuError = std::make_shared<GpuMatrix>(numSamples, 1);
+  MatrixPtr cpuOutput = std::make_shared<CpuMatrix>(numSamples, dim);
+  MatrixPtr gpuOutput = std::make_shared<GpuMatrix>(numSamples, dim);
+  IVectorPtr cpuLabel = std::make_shared<CpuIVector>(numSamples);
+  IVectorPtr gpuLabel = std::make_shared<GpuIVector>(numSamples);
+
+  cpuOutput->randomizeUniform();
+  cpuLabel->rand(dim);
+  gpuOutput->copyFrom(*cpuOutput);
+  gpuLabel->copyFrom(*cpuLabel);
+
+  cpuError->classificationError(cpuOutput, cpuLabel);
+  gpuError->classificationError(gpuOutput, gpuLabel);
+
+  MatrixPtr check = std::make_shared<CpuMatrix>(numSamples, 1);
+  check->copyFrom(*gpuError);
+  MatrixCheckEqual(*cpuError, *check);
+}
+
+TEST(Matrix, classificationError) {
+  for (auto numSamples : {1, 10, 100, 1000, 70000}) {
+    for (auto dim : {1, 10, 100, 1000}) {
+      VLOG(3) << " numSamples=" << numSamples << " dim=" << dim;
+      testClassificationError(numSamples, dim);
     }
   }
 }
