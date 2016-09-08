@@ -37,6 +37,7 @@ option(WITH_TIMER "Compile PaddlePaddle use timer" OFF)
 option(WITH_TESTING "Compile and run unittest for PaddlePaddle" ${GTEST_FOUND})
 option(WITH_DOC "Compile PaddlePaddle with documentation" OFF)
 option(WITH_SWIG_PY "Compile PaddlePaddle with py PaddlePaddle prediction api" ${SWIG_FOUND})
+option(ON_TRAVIS "Running test on travis-ci or not." OFF)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING 
         "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
