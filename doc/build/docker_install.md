@@ -8,12 +8,12 @@ Docker is a tool designed to make it easier to create, deploy, and run applicati
 ### PaddlePaddle Docker images
 There are six Docker images:
 
-- paddledev/paddle:latest-cpu: PaddlePaddle CPU binary image.
-- paddledev/paddle:latest-gpu: PaddlePaddle GPU binary image.
-- paddledev/paddle:latest-cpu-devel: PaddlePaddle CPU binary image plus source code.
-- paddledev/paddle:latest-gpu-devel: PaddlePaddle GPU binary image plus source code.
-- paddledev/paddle:latest-cpu-demo: PaddlePaddle CPU binary image plus source code and demo
-- paddledev/paddle:latest-gpu-demo: PaddlePaddle GPU binary image plus source code and demo
+- paddledev/paddle:cpu-latest: PaddlePaddle CPU binary image.
+- paddledev/paddle:gpu-latest: PaddlePaddle GPU binary image.
+- paddledev/paddle:cpu-devel-latest: PaddlePaddle CPU binary image plus source code.
+- paddledev/paddle:gpu-devel-latest: PaddlePaddle GPU binary image plus source code.
+- paddledev/paddle:cpu-demo-latest: PaddlePaddle CPU binary image plus source code and demo
+- paddledev/paddle:gpu-demo-latest: PaddlePaddle GPU binary image plus source code and demo
 
 Tags with latest will be replaced by a released version. 
 
@@ -23,7 +23,7 @@ You have to install Docker in your machine which has linux kernel version 3.10+ 
 
 You can use ```docker pull ```to download images first, or just launch a container with ```docker run```:
 ```bash
-docker run -it paddledev/paddle:lastest-cpu
+docker run -it paddledev/paddle:cpu-latest
 ```
 
 If you want to launch container with GPU support, you need to set some environment variables at the same time:
@@ -31,7 +31,7 @@ If you want to launch container with GPU support, you need to set some environme
 ```bash
 export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}"
 export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-docker run -it paddledev/paddle:latest-gpu
+docker run -it paddledev/paddle:gpu-latest
 ``` 
 
 ### Notice

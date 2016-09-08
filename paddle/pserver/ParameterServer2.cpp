@@ -724,7 +724,7 @@ void ParameterServer2::sendBackParameter(const ParameterBlock& block,
       << " id=" << block.para_id() << " block id=" << block.block_id();
 
   real* valueBuffer = vectors_[parameterType]->getPoint(offset);
-  outputBuffers->push_back({valueBuffer, block.block_size()});
+  outputBuffers->push_back({valueBuffer, (size_t) block.block_size()});
 }
 
 void ParameterServer2::sendBackParameter(const ParameterBlock& block,

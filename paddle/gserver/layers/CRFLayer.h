@@ -32,11 +32,7 @@ public:
   explicit CRFLayer(const LayerConfig& config) : Layer(config) {}
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
   virtual void forward(PassType passType);
-  void forwardImp(const Argument&output, const Argument& label,
-                  VectorPtr parameterValue, VectorPtr parameterGradient);
   virtual void backward(const UpdateCallback& callback);
-  void backwardImp(const UpdateCallback& callback, const Argument&output,
-                   const Argument& label);
 
 protected:
   size_t numClasses_;
@@ -44,7 +40,6 @@ protected:
   std::vector<LinearChainCRF> crfs_;
   LayerPtr weightLayer_;  // weight for each sequence
   real coeff_;  // weight for the layer
-  std::vector<Argument> tmpCpuInput_;
 };
 
 }  // namespace paddle
