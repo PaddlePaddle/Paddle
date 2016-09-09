@@ -162,7 +162,7 @@ PaddlePaddle from a user defined function. Its parameters are:
 * should_shuffle defines whether to shuffle data or not. By default, it is set
   true during training, and false during testing.
 * pool_size is the memory pool size (in sample number) in DataProvider.
-  -1 means no limit.
+  -1 means no limit and loading all data before training.
 * can_over_batch_size defines whether PaddlePaddle can store little more
   samples than pool_size. It is better to set True to avoid some deadlocks.
 * calc_batch_size is a function define how to calculate batch size. This is

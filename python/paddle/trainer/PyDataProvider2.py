@@ -108,7 +108,7 @@ class SingleSlotWrapper(object):
 def provider(input_types=None, should_shuffle=True, pool_size=-1,
              can_over_batch_size=True,
              calc_batch_size=None,
-             cache=CacheType.NO_CACHE,
+             cache=CacheType.CACHE_PASS_IN_MEM,
              init_hook=None, **kwargs):
     """
     Provider decorator. Use it to make a function into PyDataProvider2 object.
@@ -133,6 +133,7 @@ def provider(input_types=None, should_shuffle=True, pool_size=-1,
     :param should_shuffle: True if data should shuffle.
     :type should_shuffle: bool
     :param pool_size: Max number of sample in data pool.
+                      -1 means loading all data before training.
     :type pool_size: int
     :param can_over_batch_size: True if paddle can return a mini-batch larger
                                 than batch size in settings. It is useful when
