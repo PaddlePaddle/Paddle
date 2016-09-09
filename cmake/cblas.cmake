@@ -44,8 +44,8 @@ set(ATLAS_LIB_SEARCH_PATHS
         /usr/lib
         /usr/lib/blas/atlas
         /usr/lib/atlas
-        /usr/lib/atlas-base   # special for ubuntu 14.04.
-    )
+        /usr/lib/atlas-base)   # special for ubuntu 14.04.
+
 find_path(ATLAS_INC_DIR NAMES cblas.h 
   PATHS ${ATLAS_INCLUDE_SEARCH_PATHS})
 find_library(ATLAS_CBLAS_LIB NAMES cblas libcblas.so.3 
@@ -65,12 +65,14 @@ set(OPENBLAS_ROOT $ENV{OPENBLAS_ROOT} CACHE PATH "Folder contains Openblas")
 set(OPENBLAS_INCLUDE_SEARCH_PATHS
         ${OPENBLAS_ROOT}/include
         /usr/include
-        /usr/include/openblas)
+        /usr/include/openblas
+        /usr/local/opt/openblas/include)
 set(OPENBLAS_LIB_SEARCH_PATHS
         ${OPENBLAS_ROOT}/lib
         /usr/lib
         /usr/lib/blas/openblas
-        /usr/lib/openblas)
+        /usr/lib/openblas
+        /usr/local/opt/openblas/lib)
 
 find_path(OPENBLAS_INC_DIR NAMES cblas.h
   PATHS ${OPENBLAS_INCLUDE_SEARCH_PATHS})
