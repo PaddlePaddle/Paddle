@@ -73,6 +73,7 @@ if [ $? -eq 1 ]; then  # Older version installed, or not installed at all
       echo "pip install wheels failed. "
       echo "Please use 'sudo paddle' at the first time you use PaddlePaddle"
       echo "PaddlePaddle will install some python dependencies automatically."
+      exit 1
    fi
    echo "Python dependencies are installed."
 fi
