@@ -1,2 +1,0 @@
-# Resnet
- TBD
