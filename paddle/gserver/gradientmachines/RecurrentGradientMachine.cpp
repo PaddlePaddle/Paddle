@@ -519,7 +519,6 @@ void RecurrentGradientMachine::forward(const std::vector<Argument>& inArgs,
           dynamic_cast<GatherAgentLayer*>(outFrameLine.agentLayer.get());
       gatherAgent->addRealLayer(outFrameLine.frames[i]);
     }
-
     // connect memory links
     // Adopt info_[0].idIndex because seq which has_subseq=True
     // doesn't support Memory with !hasSubseq bootlayer;
@@ -529,7 +528,7 @@ void RecurrentGradientMachine::forward(const std::vector<Argument>& inArgs,
       NeuralNetwork::connect(
           memoryFrameLine.agents[i],
           i == 0 ? memoryFrameLine.bootLayer : memoryFrameLine.frames[i - 1],
-          idSize /*height of agent*/);
+          numSeqs_[i] /*height of agent*/);
     }
   }
 
@@ -622,6 +621,8 @@ void RecurrentGradientMachine::createInFrameInfo(int inlinks_id,
   // numSequences: # samples(sequences) in a batch
   size_t numSequences = input.getNumSequences();
   std::vector<int> allIds;
+
+  numSeqs_.clear();
   Info* inlink_info = &info_[inlinks_id];
   inlink_info->idIndex.clear();
   inlink_info->idIndex.push_back(0);  // first idIndex = 0
@@ -634,10 +635,12 @@ void RecurrentGradientMachine::createInFrameInfo(int inlinks_id,
     // maxSequenceLength_: max number of sentences(subseq) in allsamples
     for (int i = 0; i < maxSequenceLength_; ++i) {
       sequenceStartPositions.push_back(0);            // first element = 0
+      int numSeqs = 0;
       for (size_t j = 0; j < numSubSequences; ++j) {  // for each sentence
         // seqLengthAndStart_[inlinks_id][j]:
         // a 4-tuple including <subseqlen, subseqstart, seqid, subseqid>
         if (std::get<3>(seqLengthAndStart_[inlinks_id][j]) == i) {
+          ++numSeqs;
           // subseqstart: the cpuSubSequenceStartPositions of this subseq
           int subSeqStart = std::get<1>(seqLengthAndStart_[inlinks_id][j]);
           int subSeqLength = std::get<0>(seqLengthAndStart_[inlinks_id][j]);
@@ -650,6 +653,7 @@ void RecurrentGradientMachine::createInFrameInfo(int inlinks_id,
       }
       inlink_info->idIndex.push_back(allIds.size());
       inlink_info->seqStartPosIndex.push_back(sequenceStartPositions.size());
+      numSeqs_.push_back(numSeqs);
     }
     // inFrameLine create sequenceStartPositions one time
     CHECK_EQ(sequenceStartPositions.size(),
@@ -659,16 +663,19 @@ void RecurrentGradientMachine::createInFrameInfo(int inlinks_id,
     createSeqPos(sequenceStartPositions, &inlink_info->sequenceStartPositions);
   } else {  // for scatterAgentLayer
     for (int i = 0; i < maxSequenceLength_; ++i) {
+      int numSeqs = 0;
       for (size_t j = 0; j < numSequences; ++j) {
         int seqLength = std::get<0>(seqLengthAndStart_[inlinks_id][j]);
         if (i >= seqLength) {
           break;
         }
+        ++numSeqs;
         int seqStart = std::get<1>(seqLengthAndStart_[inlinks_id][j]);
         allIds.push_back(reversed_ ? (seqStart + seqLength - 1 - i)
                                    : (seqStart + i));
       }
       inlink_info->idIndex.push_back(allIds.size());
+      numSeqs_.push_back(numSeqs);
     }
   }
 

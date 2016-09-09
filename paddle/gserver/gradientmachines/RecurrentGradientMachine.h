@@ -333,6 +333,10 @@ protected:
   };
   std::vector<Info> info_;
 
+  // numSeqs_[i] is the number sequences which is longer than i (for sequence
+  // data) or has more than i subsequences (for subsequence data)
+  std::vector<int> numSeqs_;
+
   // each inlinks has a "std::vector<std::tuple<int, int, int, int>>" denotes
   // its sequence info:
   //  if hasSubSeq, tuple of (subSeqLength, subSeqStart, seqIndex, subSeqIndex)

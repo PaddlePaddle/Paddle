@@ -255,6 +255,15 @@ struct Argument {
 
   /*
    Get Sequence Length, startPositions and max Length according to input
+   1. For sequence data:
+      Each tuple is (seq_length, seq_start, seq_id, seq_id)
+      The tuples are sorted according to seq_length or subseq_length
+      *maxSequenceLength is the maximal sequence length
+
+   2. For subsequence data:
+      Each tuple is (subseq_length, subseq_start, seq_id, subseq_id)
+      The tuples are not sorted. They are in the original order.
+      *maxSequenceLenth is the maximal number of subsequences in each sequence.
    */
   void getSeqLengthAndStart(
       std::vector<std::tuple<int, int, int, int>>* seqLengthAndStart,
