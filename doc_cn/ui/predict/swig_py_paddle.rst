@@ -10,7 +10,7 @@ PaddlePaddle目前使用Swig对其常用的预测接口进行了封装，使在P
 * 预测
 
 典型的预测代码如下，使用mnist手写识别作为样例, 完整代码见
-:code:`src_root/doc/ui/predict/predict_sample.py`.
+:code:`src_root/doc/ui/predict/predict_sample.py` 。
 
 ..  literalinclude:: ../../../doc/ui/predict/predict_sample.py
     :language: python
@@ -20,7 +20,8 @@ PaddlePaddle目前使用Swig对其常用的预测接口进行了封装，使在P
 :code:`help()` 函数查询文档。主要步骤为:
 
 * 在程序开始阶段，使用 :code:`swig_paddle.initPaddle()` 传入命令行参数初始化
-  PaddlePaddle。
+  PaddlePaddle。详细的命令行参数请参考
+  `命令行参数 <../cmd_argument/detail_introduction.html>`_ 。
 * 接下来使用 :code:`parse_config()` 解析训练时的配置文件。这里要注意预测数据通常
   不包含label, 而且预测网络通常直接输出最后一层的结果而不是像训练时一样以cost
   layer作为输出，所以用于预测的配置文件要做相应的修改。
@@ -28,8 +29,9 @@ PaddlePaddle目前使用Swig对其常用的预测接口进行了封装，使在P
   析好的配置创建神经网络。
 * 创建一个 :code:`DataProviderConverter` 对象converter。
     - swig_paddle接受的原始数据是C++的Matrix，也就是直接写内存的float数组。
-    - 这个接口并不用户友好。所以，我们提供了一个工具类DataProviderConverter.
-    - 这个工具类接收和PyDataProvider2一样的输入数据，请参考PyDataProviderWrapper的文档。
+      这个接口并不用户友好。所以，我们提供了一个工具类DataProviderConverter。
+      这个工具类接收和PyDataProvider2一样的输入数据，详情请参考
+      `PyDataProvider2文档 <../../../doc/ui/data_provider/pydataprovider2.html>`_ 。
 * 最后使用 :code:`forwardTest()` 直接提取出神经网络Output层的输出结果。典型的输出结果为\:
 
 ..  code-block:: text
