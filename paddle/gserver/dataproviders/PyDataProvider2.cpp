@@ -261,6 +261,7 @@ private:
     if (!ok) {
       this->poolSize_ = -1UL;
     }
+    loadAll_ = poolSize_ == -1UL;
     this->canOverBatchSize_ = self.getBoolAttr("can_over_batch_size");
 
     calcBatchSize_.reset(self.getAttr("calc_batch_size"));
@@ -320,7 +321,9 @@ private:
       CHECK(PyIter_Check(callingContexts_.back()));
     }
     DBG << "Create context done";
-    callingContextCreated_.wait();
+    if (!loadAll_) {
+      callingContextCreated_.wait();
+    }
 
     PositionRandom p(skipShuffle_);
 
@@ -389,7 +392,9 @@ private:
     }
     poolActualSize_ = 0;
     exit_ = false;
-    if (startNewThread && cache_->reset()) {
+    if (loadAll_) {
+      loadThread();
+    } else if (startNewThread && cache_->reset()) {
       DBG << "Start new thread.";
       loadThread_.reset(new std::thread([this] {
         loadThread();
@@ -413,6 +418,7 @@ private:
 
   PyObjectPtr instance_;
   size_t poolSize_;
+  bool loadAll_;
   bool canOverBatchSize_;
   PyObjectPtr calcBatchSize_;
   PyObjectPtr generator_;
