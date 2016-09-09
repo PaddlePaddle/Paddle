@@ -17,6 +17,7 @@ limitations under the License. */
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <fcntl.h>
 
 #include <arpa/inet.h>
@@ -24,12 +25,6 @@ limitations under the License. */
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <sstream>
-
-#if defined(__OSX__) || defined(__APPLE__)
-#include <netinet/tcp.h>
-#else
-#include <linux/tcp.h>
-#endif
 
 #include "LightNetwork.h"
 #include "paddle/utils/Util.h"
