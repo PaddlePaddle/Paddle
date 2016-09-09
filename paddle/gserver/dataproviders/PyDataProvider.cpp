@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/utils/PythonUtil.h"
 #include <fenv.h>
 #include "paddle/utils/Util.h"
+#include "paddle/utils/Excepts.h"
+
 
 namespace paddle {
 

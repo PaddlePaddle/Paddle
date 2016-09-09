@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
+#include "paddle/utils/Excepts.h"
 #include "paddle/utils/GlobalConstants.h"
 
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"

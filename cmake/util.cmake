@@ -1,4 +1,21 @@
 # Some common routine for paddle compile.
+if(APPLE)
+    # -------------------------------------------------------
+    # OSX
+    # -------------------------------------------------------
+    set(GROUP_START "-Wl,-force_load")
+    set(GROUP_END "")
+
+    set(ARCHIVE_START "-Wl,-force_load")
+    set(ARCHIVE_END "")
+else()
+    set(GROUP_START "-Wl,--start-group")
+    set(GROUP_END "-Wl,--end-group")
+
+    set(ARCHIVE_START "-Wl,--whole-archive")
+    set(ARCHIVE_END "-Wl,--no-whole-archive")
+endif()
+
 
 
 # target_circle_link_libraries
@@ -7,10 +24,18 @@
 # First Argument: target name want to be linked with libraries
 # Rest Arguments: libraries which link together.
 function(target_circle_link_libraries TARGET_NAME)
-    target_link_libraries(${TARGET_NAME}
-        -Wl,--start-group
-        ${ARGN}
-        -Wl,--end-group)
+    if(APPLE)
+        foreach(f ${ARGN})
+            list(APPEND OSX_LIBRARIES "-Wl,-force_load" "${f}")
+        endforeach(f)
+        target_link_libraries(${TARGET_NAME}
+                ${OSX_LIBRARIES})
+    else()
+        target_link_libraries(${TARGET_NAME}
+                ${GROUP_START}
+                ${ARGN}
+                ${GROUP_END})
+    endif()
 endfunction()
 
 # compile_cu_as_cpp
@@ -41,20 +66,18 @@ function(link_paddle_exe TARGET_NAME)
     if(PADDLE_WITH_INTERNAL)
         set(INTERAL_LIBS paddle_internal_gserver paddle_internal_parameter)
         target_circle_link_libraries(${TARGET_NAME}
-            -Wl,--whole-archive
             paddle_internal_gserver
             paddle_internal_owlqn
-            -Wl,--no-whole-archive
             paddle_internal_parameter)
     else()
         set(INTERAL_LIBS "")
     endif()
 
     target_circle_link_libraries(${TARGET_NAME}
-        -Wl,--whole-archive
+#        ${ARCHIVE_START}
         paddle_gserver
         ${METRIC_LIBS}
-        -Wl,--no-whole-archive
+#        ${ARCHIVE_END}
         paddle_pserver
         paddle_trainer_lib
         paddle_network
@@ -69,7 +92,7 @@ function(link_paddle_exe TARGET_NAME)
         ${CBLAS_LIBS}
         ${CMAKE_DL_LIBS}
         ${INTERAL_LIBS}
-        -lz)
+        )
     
     if(WITH_PYTHON)
         target_link_libraries(${TARGET_NAME}

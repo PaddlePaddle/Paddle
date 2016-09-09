@@ -23,6 +23,50 @@ limitations under the License. */
 #include <condition_variable>
 #include <mutex>
 
+#ifdef __APPLE__
+#include <dispatch/dispatch.h>
+#endif
+
+#ifdef __APPLE__
+#ifndef PTHREAD_BARRIER_H_
+#define PTHREAD_BARRIER_H_
+
+#include <pthread.h>
+#include <errno.h>
+
+typedef int pthread_barrierattr_t;
+typedef struct {
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    int count;
+    int tripCount;
+} pthread_barrier_t;
+
+
+extern int pthread_barrier_init(pthread_barrier_t *barrier,
+                                const pthread_barrierattr_t *attr,
+                                unsigned int count);
+
+extern int pthread_barrier_destroy(pthread_barrier_t *barrier);
+
+extern int pthread_barrier_wait(pthread_barrier_t *barrier);
+
+#endif  // PTHREAD_BARRIER_H_
+
+typedef int pthread_spinlock_t;
+
+extern int pthread_spin_init(pthread_spinlock_t *lock, int pshared);
+
+extern int pthread_spin_destroy(pthread_spinlock_t *lock);
+
+extern int pthread_spin_lock(pthread_spinlock_t *lock);
+
+extern int pthread_spin_unlock(pthread_spinlock_t *lock);
+
+#endif
+
+
+
 namespace paddle {
 
 /**
@@ -117,6 +161,29 @@ protected:
 /**
  * A simple wapper of semaphore which can only be shared in the same process.
  */
+
+#ifdef __APPLE__
+
+class Semaphore {
+public:
+    explicit Semaphore(int initValue = 0) {
+        sem_ = dispatch_semaphore_create(initValue);
+    }
+
+    ~Semaphore() { dispatch_release(sem_); }
+    bool timeWait(struct timespec* ts) {
+        dispatch_time_t m = dispatch_walltime(ts, 0);
+        return (0 == dispatch_semaphore_wait(sem_, m));
+    }
+    void wait() { dispatch_semaphore_wait(sem_, DISPATCH_TIME_FOREVER); }
+    void post() { dispatch_semaphore_signal(sem_);}
+
+protected:
+ dispatch_semaphore_t sem_;
+};
+
+#else
+
 class Semaphore {
 public:
   /**
@@ -152,6 +219,8 @@ public:
 protected:
   sem_t sem_;
 };
+
+#endif
 
 static_assert(sizeof(SpinLock) == 64, "Wrong padding");
 
