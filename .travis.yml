@@ -29,6 +29,7 @@ before_install:
 script:
   - paddle/scripts/travis/build.sh
   - paddle/scripts/travis/unittest.sh
+  - paddle/scripts/travis/make_install.sh
 notifications:
   email:
     on_success: change
