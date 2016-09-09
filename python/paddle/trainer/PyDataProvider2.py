@@ -133,7 +133,10 @@ def provider(input_types=None, should_shuffle=True, pool_size=-1,
     :param should_shuffle: True if data should shuffle.
     :type should_shuffle: bool
     :param pool_size: Max number of sample in data pool.
-                      -1 means loading all data before training.
+                      -1 means loading all data before training. If your
+                      original data contains small number of files or not
+                      shuffled, you are not recommended to set a different
+                      pool_size.
     :type pool_size: int
     :param can_over_batch_size: True if paddle can return a mini-batch larger
                                 than batch size in settings. It is useful when
