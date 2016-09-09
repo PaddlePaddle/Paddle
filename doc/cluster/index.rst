@@ -5,3 +5,4 @@ Cluster Train
   :glob:
 
   opensource/cluster_train.md
+  internal/index.md

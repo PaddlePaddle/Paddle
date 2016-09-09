@@ -8,7 +8,7 @@ PaddlePaddle文档
 * `用户接口 <ui/index.html>`_
 * `使用示例 <demo/index.html>`_
 * `模型配置 <../doc/ui/api/trainer_config_helpers/index.html>`_
-* `集群训练 <../doc/cluster/index.html>`_
+* `集群训练 <cluster/index.html>`_
 
 开发指南
 --------
