@@ -1,8 +1,11 @@
+set(AVX_SOURCES
+    src/hl_math.cc
+    src/hl_avx_functions.cc
+)
 set(CUDA_SOURCES
     src/hl_time.cc
-    src/hl_math.cc
     src/hl_cpu_functions.cc
-    src/hl_avx_functions.cc)
+    ${AVX_SOURCES})
 
 set(CUDA_CXX_WITH_GPU_SOURCES
     src/hl_cuda_cublas.cc
@@ -12,7 +15,7 @@ set(CUDA_CXX_WITH_GPU_SOURCES
 set_source_files_properties(${CUDA_CXX_WITH_GPU_SOURCES}
                             PROPERTIES COMPILE_FLAGS "-D__NVCC__")
 
-set_source_files_properties(${CUDA_SOURCES}
+set_source_files_properties(${AVX_SOURCES}
                             PROPERTIES COMPILE_FLAGS "-mavx")
 
 set(CUDA_DSO_SOURCES
@@ -73,4 +76,3 @@ endif()
 
 add_style_check_target(paddle_cuda ${CUDA_SOURCES})
 add_style_check_target(paddle_cuda ${CUDA_HEADERS})
-# add_style_check_target(hppl ${HPPL_CU_SOURCES})   # TODO(yuyang18): Format hppl style
