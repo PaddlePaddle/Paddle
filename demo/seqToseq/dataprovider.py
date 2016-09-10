@@ -30,22 +30,15 @@ def hook(settings, src_dict, trg_dict, file_list, **kwargs):
     if settings.job_mode:
         settings.trg_dict = trg_dict
         settings.slots = [
-            integer_value(
-                len(settings.src_dict),
-                seq_type=SequenceType.SEQUENCE), integer_value(
-                    len(settings.trg_dict),
-                    seq_type=SequenceType.SEQUENCE), integer_value(
-                        len(settings.trg_dict),
-                        seq_type=SequenceType.SEQUENCE)
+            integer_value_sequence(len(settings.src_dict)), 
+            integer_value_sequence(len(settings.trg_dict)), 
+            integer_value_sequence(len(settings.trg_dict))
         ]
         settings.logger.info("trg dict len : %d" % (len(settings.trg_dict)))
     else:
         settings.slots = [
-            integer_value(
-                len(settings.src_dict),
-                seq_type=SequenceType.SEQUENCE), integer_value(
-                    len(open(file_list[0], "r").readlines()),
-                    seq_type=SequenceType.SEQUENCE)
+            integer_value_sequence(len(settings.src_dict)), 
+            integer_value_sequence(len(open(file_list[0], "r").readlines()))
         ]
 
 

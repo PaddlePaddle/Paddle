@@ -10,10 +10,10 @@ AdamOptimizer
     :members: AdamOptimizer
     :noindex:
 
-AdamxOptimizer
+AdamaxOptimizer
 ================
 ..  automodule:: paddle.trainer_config_helpers.optimizers
-    :members: AdamxOptimizer
+    :members: AdamaxOptimizer
     :noindex:
 
 AdaGradOptimizer

@@ -219,9 +219,9 @@ The network structure shows below.
 
 The demo's neural network config file "trainer_config.py" show as below.
 
-..  include:: ../../../demo/recommendation/trainer_config.py
-    :code: python
-    :literal:
+..  literalinclude:: ../../../demo/recommendation/trainer_config.py
+    :language: python
+    :lines: 15-
 
 In this :code:`trainer_config.py`, we just map each feature type to
 a feature vector, following shows how to map each feature to a vector shows below.
@@ -257,15 +257,15 @@ In these network, we use several api in `trainer_config_helpers
 *  Text Convolution Pooling Layer, `text_conv_pool
    <../../ui/api/trainer_config_helpers/networks.html
    #trainer_config_helpers.networks.text_conv_pool>`_
-*  Declare Python Data Sources, `define_py_data_sources
+*  Declare Python Data Sources, `define_py_data_sources2
    <../../ui/api/trainer_config_helpers/data_sources.html>`_
 
 Data Provider
 '''''''''''''
 
-..  include:: ../../../demo/recommendation/dataprovider.py
-    :code: python
-    :literal:
+..  literalinclude:: ../../../demo/recommendation/dataprovider.py
+    :language: python
+    :lines: 15-
 
 The data provider just read the meta.bin and rating file, yield each sample for training.
 In this :code:`dataprovider.py`, we should set\:
@@ -274,7 +274,7 @@ In this :code:`dataprovider.py`, we should set\:
 * use_seq\: Whether this :code:`dataprovider.py` in sequence mode or not.
 * process\: Return each sample of data to :code:`paddle`.
 
-The data provider details document see `there <../../ui/DataProvider.html>`_.
+The data provider details document see `there <../../ui/data_provider/pydataprovider2.html>`_.
 
 Train
 `````
@@ -283,15 +283,15 @@ After prepare data, config network, writting data provider, now we can run paddl
 
 The run.sh is shown as follow:
 
-..  include:: ../../../demo/recommendation/run.sh
-    :code: bash
-    :literal:
+..  literalinclude:: ../../../demo/recommendation/run.sh
+    :language: bash
+    :lines: 16-
 
 It just start a paddle training process, write the log to `log.txt`,
 then print it on screen.
 
 Each command line argument in :code:`run.sh`, please refer to the `command line
-arguments <TBD>`_ page. The short description of these arguments is shown as follow.
+arguments <../../ui/index.html#command-line-argument>`_ page. The short description of these arguments is shown as follow.
 
 *  config\: Tell paddle which file is neural network configuration.
 *  save_dir\: Tell paddle save model into './output'
@@ -302,8 +302,6 @@ arguments <TBD>`_ page. The short description of these arguments is shown as fol
 *  log_period\: Print log after train :code:`log_period` batches.
 *  dot_period\: Print a :code:`.` after train :code:`dot_period` batches.
 *  num_passes\: Train at most :code:`num_passes`.
-
-
 
 If training process starts successfully, the output likes follow:
 
@@ -330,11 +328,11 @@ The model is saved in :code:`output/` directory. You can use :code:`Ctrl-C` to s
 Evaluate and Predict
 ````````````````````
 
-After training several passes, you can evalute them and get the best pass. Just run
+After training several passes, you can evaluate them and get the best pass. Just run
 
 .. code-block:: bash
 
-    ./evalute.sh 
+    ./evaluate.sh 
 
 You will see messages like this:
 

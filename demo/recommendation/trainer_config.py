@@ -61,9 +61,7 @@ def construct_feature(name):
             slot_dim = each_meta['max']
             embedding = embedding_layer(input=data_layer(slot_name,
                                                           size=slot_dim),
-                                        size=256,
-                                        param_attr=ParamAttr(
-                                            sparse_update=True))
+                                        size=256)
             fusion.append(fc_layer(input=embedding,
                                    size=256))
         elif type_name == 'embedding':

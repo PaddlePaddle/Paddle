@@ -1,6 +1,11 @@
 # PaddlePaddle
+[![Build Status](https://travis-ci.org/baidu/Paddle.svg?branch=master)](https://travis-ci.org/baidu/Paddle)
 
-[![Documentation Status](https://readthedocs.org/projects/ctcspeechrecognition/badge/?version=latest)](http://ctcspeechrecognition.readthedocs.io/en/latest/?badge=latest)
+Welcome to the PaddlePaddle GitHub.
+
+The software will be released on Sept. 30 with full documentation and installation support. 
+
+A pre-release version is available now for those who are eager to take a look.
 
 PaddlePaddle (PArallel Distributed Deep LEarning) is an easy-to-use,
 efficient, flexible and scalable deep learning platform, which is originally
@@ -46,39 +51,40 @@ learning to many products at Baidu.
   the capability of PaddlePaddle to make a huge impact for your product.
 
 ## Installation
-See [installation guide]() to build and install from the source code or install
-the Docker Image.
+See [Installation Guide](http://paddlepaddle.org/doc/build/) to install from pre-built package or build from the source code. (Note: The installation packages are still in pre-release state and your experience of installation may not be smooth.).
 
 ## Documentation
-- [Quick Start]() <br>
+- [Chinese Documentation](http://paddlepaddle.org/doc_cn/) <br>
+
+- [Quick Start](http://paddlepaddle.org/doc/demo/quick_start/index_en) <br>
    You can follow the quick start tutorial to learn how use PaddlePaddle
    step-by-step.
     
-- [Example and Demo]() <br>
+- [Example and Demo](http://paddlepaddle.org/doc/demo/) <br>
    We provide five demos, including: image classification, sentiment analysis,
-   sequence to sequence model, recommendation, semantic role labelling. 
+   sequence to sequence model, recommendation, semantic role labeling. 
    
-- [Distributed Training]() <br>
+- [Distributed Training](http://paddlepaddle.org/doc/cluster) <br>
   This system supports training deep learning models on multiple machines
   with data parallelism.
    
-- [Python API]() <br>
+- [Python API](http://paddlepaddle.org/doc/ui/) <br>
    PaddlePaddle supports using either Python interface or C++ to build your
    system. We also use SWIG to wrap C++ source code to create a user friendly
    interface for Python. You can also use SWIG to create interface for your
    favorite programming language.
  
-- [How to Contribute]() <br>
-   We sincerely appreciate your interest and contributions. If you’d like to
+- [How to Contribute](http://paddlepaddle.org/doc/build/contribute_to_paddle.html) <br>
+   We sincerely appreciate your interest and contributions. If you would like to
    contribute, please read the contribution guide.   
 
-- [Source Code Documents]() <br>
-      
+- [Source Code Documents](http://paddlepaddle.org/doc/source/) <br>
+
 ## Ask Questions
 
 If you want to ask questions and discuss about methods and models, welcome
 to send email to paddle-dev@baidu.com. Framework development discussions and
-bug reports are collected on [Issues](https://github.com/paddle/paddle/issues).
+bug reports are collected on [Issues](https://github.com/baidu/paddle/issues).
 
 ## Copyright and License
 PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).

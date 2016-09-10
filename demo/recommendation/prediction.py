@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from py_paddle import swig_paddle, DataProviderWrapperConverter
+from py_paddle import swig_paddle, DataProviderConverter
 
 from common_utils import *
 from paddle.trainer.config_parser import parse_config
@@ -31,11 +31,11 @@ if __name__ == '__main__':
     network = swig_paddle.GradientMachine.createFromConfigProto(conf.model_config)
     assert isinstance(network, swig_paddle.GradientMachine)
     network.loadParameters(model_path)
-    with open('meta.bin', 'rb') as f:
+    with open('./data/meta.bin', 'rb') as f:
         meta = pickle.load(f)
         headers = list(meta_to_header(meta, 'movie'))
         headers.extend(list(meta_to_header(meta, 'user')))
-        cvt = DataProviderWrapperConverter(True, map(lambda x: x[1], headers))
+        cvt = DataProviderConverter(headers)
         while True:
             movie_id = int(raw_input("Input movie_id: "))
             user_id = int(raw_input("Input user_id: "))
@@ -45,7 +45,5 @@ if __name__ == '__main__':
             data.extend(movie_meta)
             data.append(user_id - 1)
             data.extend(user_meta)
-            data = map(lambda (header, val): val if header[0] else [val],
-                       zip(headers, data))
-            print "Prediction Score is %.2f" % ((network.forwardTest(cvt([
-                data]))[0]['value'][0][0] + 5) / 2)
+            print "Prediction Score is %.2f" % ((network.forwardTest(
+                cvt.convert([data]))[0]['value'][0][0] + 5) / 2)

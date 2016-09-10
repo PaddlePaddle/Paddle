@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * @brief basic parent layer of pooling
+ * @brief Basic parent layer of pooling
  * Pools the input within regions
  */
 class PoolLayer : public Layer {
@@ -41,7 +41,9 @@ protected:
 public:
   explicit PoolLayer(const LayerConfig& config) : Layer(config) {}
 
-  // create pooling layer by pool_type
+  /**
+   * @brief create pooling layer by pool_type
+   */
   static Layer* create(const LayerConfig& config);
 
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);

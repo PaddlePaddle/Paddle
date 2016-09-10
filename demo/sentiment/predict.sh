@@ -14,8 +14,10 @@
 # limitations under the License.
 set -e
 
-config=trainer_config.py
+#Note the default model is pass-00002, you shold make sure the model path
+#exists or change the mode path.
 model=model_output/pass-00002/
+config=trainer_config.py
 label=data/pre-imdb/labels.list
 python predict.py \
      -n $config\

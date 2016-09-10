@@ -440,20 +440,20 @@ def simple_lstm(input, size, name=None, reverse=False, mat_param_attr=None,
     """
     Simple LSTM Cell.
 
-    It just combine a mix_layer with fully_matrix_projection and a lstmemory
+    It just combine a mixed layer with fully_matrix_projection and a lstmemory
     layer. The simple lstm cell was implemented as follow equations.
 
     ..  math::
 
-        i_t = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
+        i_t & = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
 
-        f_t = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
+        f_t & = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
 
-        c_t = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
+        c_t & = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
 
-        o_t = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
+        o_t & = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
 
-        h_t = o_t tanh(c_t)
+        h_t & = o_t tanh(c_t)
 
     Please refer **Generating Sequences With Recurrent Neural Networks** if you
     want to know what lstm is. Link_ is here.
@@ -466,7 +466,7 @@ def simple_lstm(input, size, name=None, reverse=False, mat_param_attr=None,
     :type input: LayerOutput
     :param size: lstm layer size.
     :type size: int
-    :param reverse: is lstm reversed
+    :param reverse: whether to process the input data in a reverse order
     :type reverse: bool
     :param mat_param_attr: mixed layer's matrix projection parameter attribute.
     :type mat_param_attr: ParameterAttribute
@@ -475,11 +475,11 @@ def simple_lstm(input, size, name=None, reverse=False, mat_param_attr=None,
     :type bias_param_attr: ParameterAttribute|False
     :param inner_param_attr: lstm cell parameter attribute.
     :type inner_param_attr: ParameterAttribute
-    :param act: lstm final activate type
+    :param act: lstm final activiation type
     :type act: BaseActivation
-    :param gate_act: lstm gate activate type
+    :param gate_act: lstm gate activiation type
     :type gate_act: BaseActivation
-    :param state_act: lstm state activate type.
+    :param state_act: lstm state activiation type.
     :type state_act: BaseActivation
     :param mixed_layer_attr: mixed layer's extra attribute.
     :type mixed_layer_attr: ExtraLayerAttribute
@@ -502,28 +502,73 @@ def simple_lstm(input, size, name=None, reverse=False, mat_param_attr=None,
 
 
 @wrap_name_default('lstm_unit')
-def lstmemory_unit(input, name=None, size=None,
-                   mixed_bias_attr=None, mixed_layer_attr=None,
-                   param_attr=None, lstm_bias_attr=None,
-                   act=None, gate_act=None,
-                   state_act=None, lstm_layer_attr=None,
+def lstmemory_unit(input, name=None, size=None, param_attr=None,
+                   act=None, gate_act=None, state_act=None,
+                   mixed_bias_attr=None, lstm_bias_attr=None,
+                   mixed_layer_attr=None,lstm_layer_attr=None,
                    get_output_layer_attr=None):
     """
-    TODO(yuyang18): complete docs
+    Define calculations that a LSTM unit performs in a single time step.
+    This function itself is not a recurrent layer, so that it can not be
+    directly applied to sequence input. This function is always used in
+    recurrent_group (see layers.py for more details) to implement attention
+    mechanism.
 
-    @param input:
-    @param name:
-    @param size:
-    @param mixed_bias_attr:
-    @param mixed_layer_attr:
-    @param param_attr:
-    @param lstm_bias_attr:
-    @param act:
-    @param gate_act:
-    @param state_act:
-    @param lstm_layer_attr:
-    @param get_output_layer_attr:
-    @return:
+    Please refer to  **Generating Sequences With Recurrent Neural Networks**
+    for more details about LSTM. The link goes as follows:
+    .. _Link: https://arxiv.org/abs/1308.0850
+
+    ..  math::
+
+        i_t & = \\sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)
+
+        f_t & = \\sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)
+
+        c_t & = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)
+
+        o_t & = \\sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)
+
+        h_t & = o_t tanh(c_t)
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        lstm_step = lstmemory_unit(input=[layer1],
+                                   size=256,
+                                   act=TanhActivation(),
+                                   gate_act=SigmoidActivation(),
+                                   state_act=TanhActivation())
+
+
+    :param input: input layer name.
+    :type input: LayerOutput
+    :param name: lstmemory unit name.
+    :type name: basestring
+    :param size: lstmemory unit size.
+    :type size: int
+    :param param_attr: Parameter config, None if use default.
+    :type param_attr: ParameterAttribute
+    :param act: lstm final activiation type
+    :type act: BaseActivation
+    :param gate_act: lstm gate activiation type
+    :type gate_act: BaseActivation
+    :param state_act: lstm state activiation type.
+    :type state_act: BaseActivation
+    :param mixed_bias_attr: bias parameter attribute of mixed layer. 
+                            False means no bias, None means default bias.
+    :type mixed_bias_attr: ParameterAttribute|False
+    :param lstm_bias_attr: bias parameter attribute of lstm layer.
+                           False means no bias, None means default bias.
+    :type lstm_bias_attr: ParameterAttribute|False
+    :param mixed_layer_attr: mixed layer's extra attribute.
+    :type mixed_layer_attr: ExtraLayerAttribute
+    :param lstm_layer_attr: lstm layer's extra attribute.
+    :type lstm_layer_attr: ExtraLayerAttribute
+    :param get_output_layer_attr: get output layer's extra attribute.
+    :type get_output_layer_attr: ExtraLayerAttribute
+    :return: lstmemory unit name.
+    :rtype: LayerOutput
     """
     if size is None:
         assert input.size % 4 == 0
@@ -560,32 +605,72 @@ def lstmemory_unit(input, name=None, size=None,
 @wrap_name_default('lstm_group')
 def lstmemory_group(input, size=None, name=None,
                     reverse=False, param_attr=None,
-                    mix_bias_attr=None, lstm_bias_attr=None,
                     act=None, gate_act=None, state_act=None,
+                    mixed_bias_attr=None, lstm_bias_attr=None,
                     mixed_layer_attr=None, lstm_layer_attr=None,
                     get_output_layer_attr=None):
     """
-    TODO(yuyang18): complete docs
+    lstm_group is a recurrent layer group version Long Short Term Memory. It
+    does exactly the same calculation as the lstmemory layer (see lstmemory in
+    layers.py for the maths) does. A promising benefit is that LSTM memory
+    cell states, or hidden states in every time step are accessible to for the
+    user. This is especially useful in attention model. If you do not need to
+    access to the internal states of the lstm, but merely use its outputs,
+    it is recommanded to use the lstmemory, which is relatively faster than
+    lstmemory_group.
 
-    @param input:
-    @param size:
-    @param name:
-    @param reverse:
-    @param param_attr:
-    @param mix_bias_attr:
-    @param lstm_bias_attr:
-    @param act:
-    @param gate_act:
-    @param state_act:
-    @param mixed_layer_attr:
-    @param lstm_layer_attr:
-    @param get_output_layer_attr:
-    @return:
+    NOTE: In PaddlePaddle's implementation, the following input-to-hidden
+    multiplications:
+    :math:`W_{xi}x_{t}` , :math:`W_{xf}x_{t}`,
+    :math:`W_{xc}x_t`, :math:`W_{xo}x_{t}` are not done in lstmemory_unit to
+    speed up the calculations. Consequently, an additional mixed_layer with
+    full_matrix_projection must be included before lstmemory_unit is called.
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        lstm_step = lstmemory_group(input=[layer1],
+                                    size=256,
+                                    act=TanhActivation(),
+                                    gate_act=SigmoidActivation(),
+                                    state_act=TanhActivation())
+
+    :param input: input layer name.
+    :type input: LayerOutput
+    :param name: lstmemory group name.
+    :type name: basestring
+    :param size: lstmemory group size.
+    :type size: int
+    :param reverse: is lstm reversed
+    :type reverse: bool
+    :param param_attr: Parameter config, None if use default.
+    :type param_attr: ParameterAttribute
+    :param act: lstm final activiation type
+    :type act: BaseActivation
+    :param gate_act: lstm gate activiation type
+    :type gate_act: BaseActivation
+    :param state_act: lstm state activiation type.
+    :type state_act: BaseActivation
+    :param mixed_bias_attr: bias parameter attribute of mixed layer.
+                            False means no bias, None means default bias.
+    :type mixed_bias_attr: ParameterAttribute|False
+    :param lstm_bias_attr: bias parameter attribute of lstm layer.
+                           False means no bias, None means default bias.
+    :type lstm_bias_attr: ParameterAttribute|False
+    :param mixed_layer_attr: mixed layer's extra attribute.
+    :type mixed_layer_attr: ExtraLayerAttribute
+    :param lstm_layer_attr: lstm layer's extra attribute.
+    :type lstm_layer_attr: ExtraLayerAttribute
+    :param get_output_layer_attr: get output layer's extra attribute.
+    :type get_output_layer_attr: ExtraLayerAttribute
+    :return: the lstmemory group.
+    :rtype: LayerOutput
     """
 
     def __lstm_step__(ipt):
         return lstmemory_unit(input=ipt, name=name,
-                              size=size, mixed_bias_attr=mix_bias_attr,
+                              size=size, mixed_bias_attr=mixed_bias_attr,
                               mixed_layer_attr=mixed_layer_attr,
                               param_attr=param_attr,
                               lstm_bias_attr=lstm_bias_attr,
@@ -609,16 +694,28 @@ def gru_unit(input,
              gate_act=None,
              gru_layer_attr=None):
     """
+    Define calculations that a gated recurrent unit performs in a single time
+    step. This function itself is not a recurrent layer, so that it can not be
+    directly applied to sequence input. This function is almost always used in
+    the recurrent_group (see layers.py for more details) to implement attention
+    mechanism.
 
-    :param input:
+    Please see grumemory in layers.py for the details about the maths.
+
+    :param input: input layer name.
     :type input: LayerOutput
-    :param name:
-    :param size:
-    :param gru_bias_attr:
-    :param act:
-    :param gate_act:
-    :param gru_layer_attr:
-    :return:
+    :param name: name of the gru group.
+    :type name: basestring
+    :param size: hidden size of the gru.
+    :type size: int
+    :param act: type of the activation
+    :type act: BaseActivation
+    :param gate_act: type of the gate activation
+    :type gate_act: BaseActivation
+    :param gru_layer_attr: Extra parameter attribute of the gru layer.
+    :type gru_layer_attr: ParameterAttribute|False
+    :return: the gru output layer.
+    :rtype: LayerOutput
     """
 
     assert input.size % 3 == 0
@@ -648,6 +745,46 @@ def gru_group(input,
               gru_bias_attr=None,
               act=None, gate_act=None,
               gru_layer_attr=None):
+
+    """
+    gru_group is a recurrent layer group version Gated Recurrent Unit. It
+    does exactly the same calculation as the grumemory layer does. A promising
+    benefit is that gru hidden sates are accessible to for the user. This is
+    especially useful in attention model. If you do not need to access to
+    any internal state, but merely use the outputs of a GRU, it is recommanded
+    to use the grumemory, which is relatively faster.
+
+    Please see grumemory in layers.py for more detail about the maths.
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        gru = gur_group(input=[layer1],
+                        size=256,
+                        act=TanhActivation(),
+                        gate_act=SigmoidActivation())
+
+    :param input: input layer name.
+    :type input: LayerOutput
+    :param name: name of the gru group.
+    :type name: basestring
+    :param size: hidden size of the gru.
+    :type size: int
+    :param reverse: whether to process the input data in a reverse order
+    :type reverse: bool
+    :param act: type of the activiation
+    :type act: BaseActivation
+    :param gate_act: type of the gate activiation
+    :type gate_act: BaseActivation
+    :param gru_bias_attr: bias. False means no bias, None means default bias.
+    :type gru_bias_attr: ParameterAttribute|False
+    :param gru_layer_attr: Extra parameter attribute of the gru layer.
+    :type gru_layer_attr: ParameterAttribute|False
+    :return: the gru group.
+    :rtype: LayerOutput
+    """
+
     def __gru_step__(ipt):
         return gru_unit(
             input=ipt,
@@ -678,6 +815,43 @@ def simple_gru(input,
                gate_act=None,
                gru_layer_attr=None
                ):
+    """
+    simple_gru is also a recurrent layer group version Gated Recurrent Unit as
+    gru_group. The difference only lies in implemention details.
+    The computational speed is that, grumemory is relatively better than
+    gru_group, and gru_group is relatively better than simple_gru.
+
+    simple_gru does exactly the same calculation as the grumemory layer does.
+    Please see grumemory in layers.py for more detail about the maths.
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        gru = gur_group(input=[layer1],
+                        size=256,
+                        act=TanhActivation(),
+                        gate_act=SigmoidActivation())
+
+    :param input: input layer name.
+    :type input: LayerOutput
+    :param name: name of the gru group.
+    :type name: basestring
+    :param size: hidden size of the gru.
+    :type size: int
+    :param reverse: whether to process the input data in a reverse order
+    :type reverse: bool
+    :param act: type of the activiation
+    :type act: BaseActivation
+    :param gate_act: type of the gate activiation
+    :type gate_act: BaseActivation
+    :param gru_bias_attr: bias. False means no bias, None means default bias.
+    :type gru_bias_attr: ParameterAttribute|False
+    :param gru_layer_attr: Extra parameter attribute of the gru layer.
+    :type gru_layer_attr: ParameterAttribute|False
+    :return: the gru group.
+    :rtype: LayerOutput
+    """
     with mixed_layer(name='%s_transform' % name,
                      size=size * 3,
                      bias_attr=mixed_bias_param_attr,
@@ -709,7 +883,22 @@ def bidirectional_lstm(input, size, name=None, return_seq=False,
                        last_seq_attr=None, first_seq_attr=None,
                        concat_attr=None, concat_act=None):
     """
-    TODO(yuyang18): Complete docs
+    A bidirectional_lstm is a recurrent unit that iterates over the input
+    sequence both in forward and bardward orders, and then concatenate two
+    outputs form a final output. However, concatenation of two outputs
+    is not the only way to form the final output, you can also, for example,
+    just add them together.
+
+    Please refer to  **Neural Machine Translation by Jointly Learning to Align
+    and Translate** for more details about the bidirectional lstm.
+    The link goes as follows:
+    .. _Link: https://arxiv.org/pdf/1409.0473v3.pdf
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        lstm_step = bidirectional_lstm(input=[input1], size=512)
 
     :param name: bidirectional lstm layer name.
     :type name: basestring
@@ -717,8 +906,11 @@ def bidirectional_lstm(input, size, name=None, return_seq=False,
     :type input: LayerOutput
     :param size: lstm layer size.
     :type size: int
-    :param return_seq: If False, concat word in last time step and return.
-                       If True, concat sequnce in all time step and return.
+    :param return_seq: If set False, outputs of the last time step are
+                       concatenated and returned.
+                       If set True, the entire output sequences that are
+                       processed in forward and backward directions are
+                       concatenated and returned.
     :type return_seq: bool
     :return: lstm layer name.
     :rtype: LayerOutput
@@ -757,16 +949,17 @@ def simple_attention(encoded_sequence,
                      name=None):
     """
     Calculate and then return a context vector by attention machanism.
-    Size of the context vector equals to size of encoded_sequence.
+    Size of the context vector equals to size of the encoded_sequence.
 
     ..  math::
-        a(s_{i-1},h_{j}) = v_{a}f(W_{a}s_{t-1} + U_{a}h_{j})
-    ..  math::
-        e_{i,j} = a(s_{i-1}, h_{j})
-    ..  math::
-        a_{i,j} = \\frac{exp(e_{i,i})}{\\sum_{k=1}^{T_{x}{exp(e_{i,k})}}}
-    ..  math::
-        c_{i} = \\sum_{j=1}^{T_{x}}a_{i,j}h_{j}
+
+        a(s_{i-1},h_{j}) & = v_{a}f(W_{a}s_{t-1} + U_{a}h_{j})
+
+        e_{i,j} & = a(s_{i-1}, h_{j})
+
+        a_{i,j} & = \\frac{exp(e_{i,j})}{\\sum_{k=1}^{T_x}{exp(e_{i,k})}}
+
+        c_{i} & = \\sum_{j=1}^{T_{x}}a_{i,j}h_{j}
 
     where :math:`h_{j}` is the jth element of encoded_sequence,
     :math:`U_{a}h_{j}` is the jth element of encoded_proj
@@ -778,6 +971,7 @@ def simple_attention(encoded_sequence,
     https://arxiv.org/abs/1409.0473.
 
     The example usage is:
+
     ..  code-block:: python
 
         context = simple_attention(encoded_sequence=enc_seq,
@@ -927,12 +1121,13 @@ def outputs(layers):
     logger.info(
         "".join(["The input order is [", ", ".join(final_inputs), "]"])
     )
+
+    if len(final_outputs) == 0:
+        final_outputs = map(lambda x: x.name, layers)
+
     logger.info(
         "".join(["The output order is [", ", ".join(final_outputs), "]"
                  ]))
 
     Inputs(*final_inputs)
-    if len(final_outputs) != 0:
-        Outputs(*final_outputs)
-    else:
-        Outputs(*map(lambda x: x.name, layers))
+    Outputs(*final_outputs)

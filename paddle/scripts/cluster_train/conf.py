@@ -35,3 +35,6 @@ PADDLE_PORT = 7164
 PADDLE_PORTS_NUM = 2
 #pserver sparse ports num
 PADDLE_PORTS_NUM_FOR_SPARSE = 2
+
+#environments setting for all processes in cluster job
+LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib64"

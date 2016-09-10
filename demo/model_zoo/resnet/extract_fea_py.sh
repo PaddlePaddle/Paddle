@@ -14,11 +14,16 @@
 # limitations under the License.
 set -e
 
+#Note if you use CPU mode, you need to set use_gpu=0 in classify.py. like this:
+#conf_args = "is_test=0,use_gpu=1,is_predict=1"
+#conf = parse_config(train_conf, conf_args)
+#swig_paddle.initPaddle("--use_gpu=0")
 python classify.py \
      --job=extract \
      --conf=resnet.py \
+     --use_gpu=1 \
      --mean=model/mean_meta_224/mean.meta \
      --model=model/resnet_50 \
      --data=./example/test.list \
      --output_layer="res5_3_branch2c_conv,res5_3_branch2c_bn" \
-     --output_dir=features 
+     --output_dir=features

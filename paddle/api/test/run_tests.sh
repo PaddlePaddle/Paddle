@@ -20,7 +20,7 @@ popd > /dev/null
 
 cd $SCRIPTPATH
 
-if [ ! -f ../../*.whl ] ; then  # Swig not compiled.
+if [ ! -f ../../dist/*.whl ] ; then  # Swig not compiled.
   exit 0
 fi
 
@@ -28,7 +28,7 @@ rm .test_env -rf
 virtualenv .test_env
 source .test_env/bin/activate
 
-pip --timeout 600  install ../../*.whl
+pip --timeout 600  install ../../dist/*.whl
 
 test_list="testArguments.py testGradientMachine.py testMatrix.py  testVector.py testTrain.py"
 

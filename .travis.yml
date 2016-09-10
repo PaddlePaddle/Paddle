@@ -1,0 +1,36 @@
+language: cpp
+cache: ccache
+sudo: required
+dist: trusty
+addons:
+  apt:
+    packages:
+      - gcc-4.8
+      - g++-4.8
+      - wget
+      - git
+      - build-essential
+      - libatlas-base-dev
+      - python
+      - python-pip
+      - python2.7-dev
+      - m4
+      - libprotobuf-dev
+      - protobuf-compiler
+      - python-protobuf
+      - python-numpy
+      - python-wheel
+      - libgoogle-glog-dev
+      - libgflags-dev
+      - libgtest-dev
+before_install:
+  - pip install wheel protobuf
+  - sudo paddle/scripts/travis/before_install.sh
+script:
+  - paddle/scripts/travis/build.sh
+  - paddle/scripts/travis/unittest.sh
+  - paddle/scripts/travis/make_install.sh
+notifications:
+  email:
+    on_success: change
+    on_failure: always

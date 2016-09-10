@@ -37,11 +37,12 @@ PaddlePaddle also support some build options, you have to install related librar
 ```bash
 # necessary
 sudo apt-get update
-sudo apt-get install -y g++ make cmake build-essential libatlas-base-dev python python-pip libpython-dev m4 libprotobuf-dev protobuf-compiler python-protobuf python-numpy git 
+sudo apt-get install -y g++ make cmake build-essential libatlas-base-dev python python-pip libpython-dev m4 libprotobuf-dev protobuf-compiler python-protobuf python-numpy git
 # optional
 sudo apt-get install libgoogle-glog-dev
 sudo apt-get install libgflags-dev
 sudo apt-get install libgtest-dev
+sudo pip install wheel
 pushd /usr/src/gtest
 cmake .
 make
@@ -70,7 +71,7 @@ sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
 Then you need to set LD\_LIBRARY\_PATH, CUDA\_HOME and PATH environment variables in ~/.bashrc.
 
 ```bash
-export LD_LIBARAY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export CUDA_HOME=/usr/local/cuda
 export PATH=/usr/local/cuda/bin:$PATH
 ```
@@ -87,12 +88,12 @@ sudo apt-get install swig
 If you want to compile PaddlePaddle with doc, you need to add -DWITH_DOC=ON in cmake command and install these first:
 
 ```bash
-pip install sphinx
+pip install 'sphinx>=1.4.0'
 pip install sphinx_rtd_theme breathe recommonmark
-sudo apt-get install python-sphinx doxygen 
+sudo apt-get install doxygen 
 ```
 
-### Build an Install
+### Build and Install
 
 CMake will find dependent libraries in system default paths first. After installing some optional libraries, corresponding build option will automatically be on(such as glog, gtest and gflags). And if libraries are not found, you have to set following variables manually in cmake command(CUDNN_ROOT, ATLAS_ROOT, MKL_ROOT, OPENBLAS_ROOT).
 
@@ -125,7 +126,11 @@ mkdir build
 cd build
 # you can add build option here, such as:    
 cmake -DWITH_GPU=ON -DWITH_DOC=OFF -DCMAKE_INSTALL_PREFIX=<path to install> ..
+# please use sudo make install, if you want
+# to install PaddlePaddle into the system
 make -j `nproc` && make install
+# PaddlePaddle installation path
+export PATH=<path to install>/bin:$PATH
 ```
 **Note**
 

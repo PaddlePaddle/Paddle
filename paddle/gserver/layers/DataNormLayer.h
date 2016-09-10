@@ -22,18 +22,18 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * A layer for data normalization
- * Input: One and only one input layer is accepted. The input layer must
+ * @brief A layer for data normalization
+ * - Input: One and only one input layer is accepted. The input layer must
  *        be DataLayer with dense data type.
- * Output: The normalization of the input data
+ * - Output: The normalization of the input data
  *
  * Reference:
  *    LA Shalabi, Z Shaaban, B Kasasbeh. Data mining: A preprocessing engine
  *
  * Three data normalization methoeds are considered
- *    z-score: y = (x-mean)/std
- *    min-max: y = (x-min)/(max-min)
- *    decimal-scaling: y = x/10^j, where j is the smallest integer such that
+ * - z-score: y = (x-mean)/std
+ * - min-max: y = (x-min)/(max-min)
+ * - decimal-scaling: y = x/10^j, where j is the smallest integer such that
  *max(|y|)<1
  */
 

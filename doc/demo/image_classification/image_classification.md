@@ -1,4 +1,5 @@
-#Image Classification Tutorial
+Image Classification Tutorial
+==============================
 
 This tutorial will guide you through training a convolutional neural network to classify objects using the CIFAR-10 image classification dataset.
 As shown in the following figure, the convolutional neural network can recognize the main object in images, and output the classification result.
@@ -11,7 +12,17 @@ First, download CIFAR-10 dataset. CIFAR-10 dataset can be downloaded from its of
 <https://www.cs.toronto.edu/~kriz/cifar.html>
 
 We have prepared a script to download and process CIFAR-10 dataset. The script will download CIFAR-10 dataset from the official dataset.
-It will convert it to jpeg images and organize them into a directory with the required structure for the tutorial. Make sure that you have installed the python dependency (PIL).
+It will convert it to jpeg images and organize them into a directory with the required structure for the tutorial. Make sure that you have installed pillow and its dependents.
+Consider the following commands:
+
+1. install pillow dependents
+
+```bash
+sudo apt-get install libjpeg-dev
+pip install pillow
+```
+
+2. download data and preparation
 
 ```bash
 cd demo/image_classification/data/
@@ -162,7 +173,7 @@ python -m paddle.utils.plotcurve -i $log > plot.png
 - The script `plotcurve.py` requires the python module of `matplotlib`, so if it fails, maybe you need to install `matplotlib`.
 
 
-After training finishes, the training and testing error curve will be saved to `plot.png` using `plotcurve.py` script. An example of the plot is shown below:
+After training finishes, the training and testing error curves will be saved to `plot.png` using `plotcurve.py` script. An example of the plot is shown below:
 
 <center>![Training and testing curves.](./plot.png)</center>
 
@@ -170,8 +181,19 @@ After training finishes, the training and testing error curve will be saved to `
 ## Prediction
 After we train the model, the model file as well as the model parameters are stored in path `./cifar_vgg_model/pass-%05d`. For example, the model of the 300-th pass is stored at `./cifar_vgg_model/pass-00299`.
 
-To make a prediction for an image, such as `test.jpg`,  one can run `sh classify.sh ./cifar_vgg_model/pass-00299 test.jpg`. The script will output the label of the classfiication.
+To make a prediction for an image, one can run `predict.sh` as follows. The script will output the label of the classfiication.
 
+```
+sh predict.sh
+```
+
+predict.sh:
+```
+model=cifar_vgg_model/pass-00299/
+image=data/cifar-out/test/airplane/seaplane_s_000978.png
+use_gpu=1
+python prediction.py $model $image $use_gpu
+```
 
 ## Exercise
 Train a image classification of birds using VGG model and CUB-200 dataset. The birds dataset can be downloaded here. It contains an image dataset with photos of 200 bird species (mostly North American).

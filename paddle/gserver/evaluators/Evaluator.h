@@ -24,12 +24,21 @@ limitations under the License. */
 namespace paddle {
 
 class NeuralNetwork;
+/**
+ * @def REGISTER_EVALUATOR
+ * @brief Macro for registering evaluator class
+ */
 
 #define REGISTER_EVALUATOR(__type_name, __class_name)                \
   static InitFunction __reg_type_##__type_name([]() {                \
     Evaluator::registrar_.registerClass<__class_name>(#__type_name); \
   })
-
+/**
+ * @brief Base class for Evaluator
+ * Evaluating the performance of a model is very important.
+ * It indicates how successful the scores(predictions) of a datasets
+ * has been by a trained model.
+ */
 class Evaluator {
 public:
   static Evaluator* create(const EvaluatorConfig& config);
@@ -41,7 +50,7 @@ public:
   virtual void init(const EvaluatorConfig& config) { config_ = config; }
 
   /**
-   * start to evaluate some data
+   * @brief start to evaluate some data
    */
   virtual void start() {
     numSamples_ = 0;
@@ -49,20 +58,21 @@ public:
   }
 
   /**
-   * Process a batch of data.
+   * @brief Process a batch of data.
    */
   virtual void eval(const NeuralNetwork& nn);
 
   /**
-   * Process a batch of data.
-   * return the score for the batch if it make sense to sum the score across
-   * batches. Otherwise evaluator should return 0 and override finish() and
+   * @brief Process a batch of data.
+   * @return the score for the batch if it make sense to sum the score across
+   * batches.
+   * @note Otherwise evaluator should return 0 and override finish() and
    * printStats() to do the right calculation.
    */
   virtual real evalImp(std::vector<Argument>& arguments) = 0;
 
   /**
-   * Update the number of processed samples
+   * @brief Update the number of processed samples
    */
   virtual void updateSamplesNum(const std::vector<Argument>& arguments) {
     numSamples_ += arguments[0].getBatchSize();
@@ -81,11 +91,14 @@ public:
   }
 
   /**
-   * finish the evaluation.
+   * @brief finish the evaluation.
    */
   virtual void finish() {}
 
-  /// finish() should be called before printStats
+  /**
+   * @brief print the statistics of evaluate result
+   * @note finish() should be called before printStats
+   */
   virtual void printStats(std::ostream& os) {
     os << config_.name() << "="
        << (numSamples_ ? totalScore_ / numSamples_ : 0);
@@ -124,17 +137,23 @@ public:
   virtual void finish() {}
   virtual void printStats(std::ostream&) {}
 };
-
+/**
+ * @brief evaluate AUC using colIdx-th column as prediction.
+ * The AUC(Area Under the Curve) is a common evaluation metric
+ * for binary classification problems. It computes the area under
+ * the receiver operating characteristic(ROC) curve.
+ *
+ * @note colIdx-th column
+ *
+ * - colIdx = 0: the 0-th column.
+ * - colIdx > 0: the colIdx-th column.
+ * - colIdx < 0: the last colIdx-th column.
+ *
+ * The config file api is auc_evaluator.
+ *
+ */
 class AucEvaluator : public Evaluator {
 public:
-  /**
-   * @brief evaluate AUC using colIdx-th column as prediction.
-   *
-   * - colIdx = 0: the 0-th column.
-   * - colIdx > 0: the colIdx-th column.
-   * - colIdx < 0: the last colIdx-th column.
-   *
-   */
   AucEvaluator(int32_t colIdx)
       : colIdx_(colIdx),
         realColumnIdx_(0),
@@ -174,13 +193,11 @@ private:
 };
 
 /**
- * @brief RankAucEvaluator calculates the AUC of each list
- * (i.e., titles under the same query), and averages them.
- *
- * Each list should be organized as a sequence.
- * The inputs of this evaluator is [output, click, pv].
- * If pv is not provided, it will be set to 1.
- * The types of click and pv are dense value.
+ * @brief RankAucEvaluator calculates the AUC of each list (i.e., titles
+ * under the same query), and averages them. Each list should be organized
+ * as a sequence. The inputs of this evaluator is [output, click, pv]. If pv
+ * is not provided, it will be set to 1. The types of click and pv are
+ * dense value.
  */
 class RankAucEvaluator : public Evaluator {
 public:
@@ -204,7 +221,16 @@ private:
   double calcRankAuc(real* outputData, real* clickData, real* pvData,
                      size_t size);
 };
-
+/**
+ * @brief precision, recall and f1 score Evaluator
+ * \f[
+ * precision = \frac{tp}{tp+tn} \\
+ * recall=\frac{tp}{tp+fn} \\
+ * f1=2*\frac{precsion*recall}{precision+recall}
+ * \f]
+ *
+ * The config file api is precision_recall_evaluator.
+ */
 class PrecisionRecallEvaluator : public Evaluator {
 public:
   // Evaluate precision, recall and F1 score
@@ -274,8 +300,10 @@ private:
   }
 };
 
-/**
- * Positive-negative pair rate Evaluator
+/*
+ * @brief positive-negative pair rate Evaluator
+ *
+ * The config file api is pnpair_evaluator.
  */
 class PnpairEvaluator : public Evaluator {
 public:

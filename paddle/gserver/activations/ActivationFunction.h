@@ -17,7 +17,18 @@ limitations under the License. */
 #include <string>
 
 namespace paddle {
+
 struct Argument;
+/**
+ * @brief Activation function is a function that transforms a set of input
+ * signals into an output signals. The purpose of the activation function
+ * is to introduce non-liearilty into the network.
+ *
+ * @note Common activation function are provieded, including linear,
+ * sigmoid, softmax, sequence_max, relu, brelu, tanh, stanh,
+ * softrelu, abs, square, exponential.
+ *
+ */
 class ActivationFunction {
 public:
   static ActivationFunction* create(const std::string& type);
@@ -26,16 +37,25 @@ public:
 
   virtual ~ActivationFunction() {}
 
-  // act.value <- f(act.value),
-  // where f is the activation function.
-  // Suppose that before calling forward(), act.value is x and
-  // after forward() is called, act.value is y, then y = f(x),
-  // Usually, act is Layer::output_
+  /**
+   * @brief Foward propagation
+   *
+   * act.value <- f(act.value),
+   * where f is the activation function.
+   * Suppose that before calling forward(), act.value is x and
+   * after forward() is called, act.value is y, then y = f(x).
+   *
+   * Usually, act is Layer::output_
+   */
   virtual void forward(Argument& act) = 0;
 
-  // x and y are defined in the above comment for forward().
-  // Before calling backward(), act.grad = dE / dy, where E is the error/cost.
-  // After backward() returns, act.grad = dE / dx = (dE/dy) * (dy/dx)
+  /**
+   * @brief Backward propagaion
+   *
+   * x and y are defined in the above comment for forward().
+   * - Before calling backward(), act.grad = dE / dy, where E is the error/cost
+   * - After backward() returns, act.grad = dE / dx = (dE/dy) * (dy/dx)
+   */
   virtual void backward(Argument& act) = 0;
 
   virtual const std::string& getName() const = 0;

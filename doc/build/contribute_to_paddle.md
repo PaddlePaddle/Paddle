@@ -45,7 +45,7 @@ are the details if any.
 
 ## Keeping Fork Up to Date
 
-Before pull your request, you shold sync you code from the latest Paddle.
+Before pull your request, you shold sync you code from the latest PaddlePaddle.
 To do this, you'll need to add a remote at first:
 
 ```shell

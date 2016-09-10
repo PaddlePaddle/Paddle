@@ -21,7 +21,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/utils/GlobalConstants.h"
 
-/// Import Paddle's enumeration into global namespace.
+/// Import PaddlePaddle's enumeration into global namespace.
 using namespace paddle::enumeration_wrapper;  // NOLINT
 
 #define DISABLE_COPY_AND_ASSIGN(classname) \
@@ -374,6 +374,7 @@ public:
   IVector* getSlotIds(size_t idx) const throw(RangeError);
   Matrix* getSlotIn(size_t idx) const throw(RangeError);
   IVector* getSlotSequenceStartPositions(size_t idx) const throw(RangeError);
+  IVector* getSlotSubSequenceStartPositions(size_t idx) const throw(RangeError);
   IVector* getSlotSequenceDim(size_t idx) const throw(RangeError);
   // End Of get functions of Arguments
 
@@ -390,6 +391,8 @@ public:
   void setSlotIds(size_t idx, IVector* vec) throw(RangeError);
   void setSlotSequenceStartPositions(size_t idx,
                                      IVector* vec) throw(RangeError);
+  void setSlotSubSequenceStartPositions(size_t idx,
+                                        IVector* vec) throw(RangeError);
   void setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError);
 
 private:

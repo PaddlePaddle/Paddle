@@ -20,7 +20,9 @@ limitations under the License. */
 #include <vector>
 
 namespace paddle {
-
+/**
+ * @brief Basic parent layer of different kinds of pooling
+ */
 class PoolProjectionLayer : public PoolLayer {
 protected:
   size_t imgSizeH_, imgSizeW_;
@@ -30,7 +32,9 @@ public:
   size_t getSize();
   explicit PoolProjectionLayer(const LayerConfig& config) : PoolLayer(config) {}
 };
-
+/**
+ * @brief A layer for max pooling
+ */
 class MaxPoolProjectionLayer : public PoolProjectionLayer {
 public:
   explicit MaxPoolProjectionLayer(const LayerConfig& config)
@@ -41,7 +45,9 @@ public:
   virtual void forward(PassType passType);
   virtual void backward(const UpdateCallback& callback = nullptr);
 };
-
+/**
+ * @brief A layer for average pooling
+ */
 class AvgPoolProjectionLayer : public PoolProjectionLayer {
 public:
   explicit AvgPoolProjectionLayer(const LayerConfig& config)

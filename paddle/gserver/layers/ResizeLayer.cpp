@@ -18,7 +18,12 @@ limitations under the License. */
 #include "paddle/math/BaseMatrix.h"
 
 namespace paddle {
-/* resize a minibatch matrix h*w to h'*w' */
+/**
+ * @brief A layer for resizing a minibatch matrix h*w to h'*w'
+ * @note
+ * origin matrix height * witdth)
+ * resize matrix: (height * width / size) * size
+ */
 class ResizeLayer : public Layer {
 public:
   explicit ResizeLayer(const LayerConfig& config) : Layer(config) {}

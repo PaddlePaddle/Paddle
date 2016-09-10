@@ -43,34 +43,52 @@ vgg_16_network
 Recurrent
 =========
 
+LSTM
+----
+
 lstmemory_unit
---------------
+``````````````
 ..  automodule:: paddle.trainer_config_helpers.networks
     :members: lstmemory_unit
     :noindex:
 
 lstmemory_group
----------------
+```````````````
 ..  automodule:: paddle.trainer_config_helpers.networks
     :members: lstmemory_group
     :noindex:
 
-gru_unit
----------
-..  automodule:: paddle.trainer_config_helpers.networks
-    :members: gru_unit
-    :noindex:
-
 simple_lstm
------------
+```````````
 ..  automodule:: paddle.trainer_config_helpers.networks
     :members: simple_lstm
     :noindex:
 
 bidirectional_lstm
-------------------
+``````````````````
 ..  automodule:: paddle.trainer_config_helpers.networks
     :members: bidirectional_lstm
+    :noindex:
+
+GRU
+---
+
+gru_unit
+````````
+..  automodule:: paddle.trainer_config_helpers.networks
+    :members: gru_unit
+    :noindex:
+
+gru_group
+`````````
+..  automodule:: paddle.trainer_config_helpers.networks
+    :members: gru_group
+    :noindex:
+
+simple_gru
+``````````
+..  automodule:: paddle.trainer_config_helpers.networks
+    :members: simple_gru
     :noindex:
 
 simple_attention
