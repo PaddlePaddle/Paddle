@@ -79,6 +79,7 @@ std::string getIpAddr(std::string &device) {
  * @note adjust some default sock option for better performance
  */
 void setOption(int sockfd) {
+#if !defined(__APPLE__) && !defined(__OSX__)
   int sendSize = FLAGS_sock_send_buf_size;
   int recvSize = FLAGS_sock_recv_buf_size;
   CHECK_GE(
@@ -87,6 +88,8 @@ void setOption(int sockfd) {
   CHECK_GE(
       setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &sendSize, sizeof(sendSize)),
       0);
+#endif
+
   if (FLAGS_small_messages) {
     int optval = 1;
     CHECK_GE(
