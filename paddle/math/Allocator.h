@@ -48,14 +48,10 @@ public:
    * @return Pointer to the allocated memory
    */
   virtual void* alloc(size_t size) {
-    #if defined(__APPLE__) || defined(__OSX__)
-      return malloc(size);
-    #else
       void* ptr;
       posix_memalign(&ptr, 32ul, size);
       CHECK(ptr) << "Fail to allocate CPU memory: size=" << size;
       return ptr;
-    #endif
   }
 
   /**

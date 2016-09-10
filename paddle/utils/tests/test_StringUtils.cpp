@@ -22,3 +22,8 @@ TEST(StringUtil, to) {
   ASSERT_DEATH(paddle::str::to<double>("12.45x23"), ".*");
   ASSERT_DEATH(paddle::str::to<int>(""), ".*");
 }
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
