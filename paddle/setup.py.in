@@ -17,6 +17,14 @@
 from setuptools import setup, Extension
 import numpy as np
 import api.paddle_ld_flags
+import platform
+
+system = platform.system().lower()
+
+is_osx = (system == 'darwin')
+is_win = (system == 'windows')
+is_lin = (system == 'linux')
+
 
 # The extra links will passed from COMAKE
 #   because generate paddle LDFLAGS is too complicated to do in setup.py
@@ -34,17 +42,24 @@ try:
 except:
   pass
 
+if is_lin == True:
+    extra_links = ["-Xlinker", '-start-group'] + extra_links + ["-Xlinker", "-end-group"]
+elif is_osx == True:
+    extra_links = ["-Wl,-all_load"] + extra_links
+
+include_dirs = [np.get_include(), "../"]    # include numpy and paddle.
+
 setup(name="py_paddle",
   version="@PADDLE_VERSION@",
   ext_modules=[
     Extension('py_paddle._swig_paddle',      # Build SWIG Extension.
-      ['Paddle_wrap.cxx'],
-      extra_link_args=["-Xlinker", '-start-group'] +
-                        extra_links + ["-Xlinker", "-end-group"]
+       ['Paddle_wrap.cxx'],
+       include_dirs = include_dirs,
+       extra_link_args = extra_links
     )
   ],
   packages=['py_paddle'],
-  include_dirs = [np.get_include(), "../"],   # include numpy and paddle.
+  include_dirs = include_dirs,
   install_requires = [
     'numpy>=1.8.0',      # The numpy is required.
     'protobuf>=2.4.1' # The paddle protobuf version
