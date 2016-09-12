@@ -452,6 +452,9 @@ message SubModelConfig {
   repeated LinkConfig out_links = 10;
 
   optional GeneratorConfig generator = 11;
+
+  // the id of inlink which share info with outlinks, used in recurrent layer group
+  optional int32 target_inlinkid = 12;
 }
 
 message ModelConfig {
