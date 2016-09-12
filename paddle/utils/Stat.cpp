@@ -23,10 +23,14 @@ namespace paddle {
 
 // return the thread id used by glog
 pid_t getTID() {
-#ifndef __NR_gettid
-#define __NR_gettid 224
-#endif
-  pid_t tid = syscall(__NR_gettid);
+  #if defined(__APPLE__) || defined(__OSX__)
+      pid_t tid = syscall(SYS_thread_selfid);
+  #elif defined(__LINUX__)
+      #ifndef __NR_gettid
+      #define __NR_gettid 224
+      #endif
+      pid_t tid = syscall(__NR_gettid);
+  #endif
   CHECK_NE(tid, -1);
   return tid;
 }
