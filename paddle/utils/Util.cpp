@@ -129,13 +129,7 @@ void runInitFunctions() {
 
 void initMain(int argc, char** argv) {
   initializeLogging(argc, argv);
-  logging::installFailureWriter([](const char* data, int sz) {
-    std::cerr << "Current Layer forward/backward stack is " << std::endl;
-    gLayerStackTrace.dump([](const std::string& layername){
-      std::cerr << "LayerName: " << layername << std::endl;
-    });
-    std::cerr.write(data, sz);
-  });
+  installLayerStackTracer();
   std::string line;
   for (int i = 0; i < argc; ++i) {
     line += argv[i];
