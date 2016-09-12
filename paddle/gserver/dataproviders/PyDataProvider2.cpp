@@ -340,6 +340,7 @@ private:
 
       size_t additionalBatchSize = 1;
       if (calcBatchSize_) {
+        PyGuard guard;
         py::CallableHelper calcBatchSize(this->calcBatchSize_);
         calcBatchSize.setArgsSize(1);
         calcBatchSize.getArgs().set(0, data);
@@ -513,6 +514,7 @@ public:
       }
       {
         if (calcBatchSize_) {  // custom calc batch size.
+          PyGuard guard;
           Py_INCREF(data.back().get());
           py::CallableHelper calcBatchSize(calcBatchSize_);
           calcBatchSize.setArgsSize(1);
@@ -575,6 +577,11 @@ public:
       scanners[i]->finishFill(inArgs[i]);
     }
 
+    {
+      PyGuard g;
+      cache_->drop(&data);
+    }
+
     DBG << "Reading CPU Batch Done.";
 
     if (useGpu_) {
@@ -592,10 +599,6 @@ public:
       *batch = cpuBatch;
     }
 
-    {
-      PyGuard g;
-      cache_->drop(&data);
-    }
     return bsize;
   }
 };
