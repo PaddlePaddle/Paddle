@@ -39,15 +39,30 @@ limitations under the License. */
 #include "paddle/parameter/Argument.h"
 
 namespace paddle {
-
 /**
  * @def REGISTER_DATA_PROVIDER
- * @brief Macro for registering a data provider
+ * @brief Macro for registering a data provider. The class type should contain
+ *        a consturctor with parameter (DataConfig, bool).
  */
-#define REGISTER_DATA_PROVIDER(__type_name, __class_name)               \
-  static InitFunction __reg_type_##__type_name([]() {                   \
-    DataProvider::registrar_.registerClass<__class_name>(#__type_name); \
-  })
+#define REGISTER_DATA_PROVIDER(__type_name, __class_name)\
+  static InitFunction __reg_type_##__type_name([]() {\
+  DataProvider::registrar_.registerClass(\
+  #__type_name, \
+  [](DataConfig conf, ModelConfig, bool useGpu) -> DataProvider* { \
+    DataProvider* dp = new __class_name (conf, useGpu);\
+    return dp;\
+  });\
+})
+
+/**
+ * @def REGISTER_DATA_PROVIDER_EX
+ * @brief Macro for registering a data provider, which contains a constructor
+ *        with parameter (DataConfig, ModelConfig, bool).
+ */
+#define REGISTER_DATA_PROVIDER_EX(__type_name, __class_name)            \
+  static InitFunction __reg_type_##__type_name([] {                     \
+  DataProvider::registrar_.registerClass<__class_name>(#__type_name);   \
+})
 
 class DataBatch;
 class BufferBatch;
@@ -285,9 +300,17 @@ protected:
  */
 class DataProvider {
 public:
-  static ClassRegistrar<DataProvider, DataConfig, bool> registrar_;
+  static ClassRegistrar<DataProvider, DataConfig, ModelConfig, bool> registrar_;
   static DataProvider* create(const DataConfig& config,
+                              const ModelConfig& modelConfig,
                               bool useGpu = FLAGS_use_gpu);
+
+  /**
+   * @brief create only used for unittest.
+   */
+  inline static DataProvider* create(const DataConfig &config, bool useGpu) {
+    return create(config, ModelConfig(), useGpu);
+  }
 
   DataProvider(const DataConfig& config, bool useGpu)
       : config_(config),
@@ -336,13 +359,13 @@ public:
    * @note return -1 to indicate unlimited number of samples.
    */
   virtual int64_t getSize() = 0;
+
   /**
    * @brief Get next batch training samples internally
    * @param[in]    size      size of training samples to get
    * @param[out]   batch     a batch of training samples
    * @return actual size of obtained training samples
    */
-
   virtual int64_t getNextBatchInternal(int64_t size, DataBatch* batch) = 0;
 
 protected:

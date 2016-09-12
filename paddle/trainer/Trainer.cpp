@@ -193,7 +193,7 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
 
   dataProvider_ = dataProvider;
   if (!dataProvider_ && config_->hasDataConfig()) {
-    dataProvider_.reset(DataProvider::create(*config_, gpuData));
+    dataProvider_.reset(DataProvider::create(*config_, *config_, gpuData));
   }
   if (dataProvider_) {
     evaluator_.reset(trainerInternal_.getGradientMachine()->makeEvaluator());
@@ -211,7 +211,7 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
   testDataProvider_ = testDataProvider;
   if (!testDataProvider_ && config_->hasTestDataConfig()) {
     testDataProvider_.reset(
-        DataProvider::create(config_->getTestDataConfig(), gpuData));
+        DataProvider::create(config_->getTestDataConfig(), *config_, gpuData));
   }
   if (testDataProvider_) {
     tester_.reset(new Tester(config_, createTesterConfig(),
