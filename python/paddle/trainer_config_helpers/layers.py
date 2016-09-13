@@ -171,6 +171,8 @@ class LayerOutput(object):
         assert LayerType.is_layer_type(layer_type)
         self.name = name
         self.layer_type = layer_type
+        if parents is not None and type(parents) != list:
+            parents = [parents]
         self.parents = [] if parents is None else parents
         self.activation = activation
         self.num_filters = num_filters
@@ -512,7 +514,7 @@ class MixedLayerType(LayerOutput):
         :rtype: MixedLayerType
         """
         if not self.finalized:
-            assert isinstance(other, Projection)
+            assert isinstance(other, Projection) or isinstance(other, Operator)
             self.inputs.append(other)
             self.parents.append(other.origin)
             return self
