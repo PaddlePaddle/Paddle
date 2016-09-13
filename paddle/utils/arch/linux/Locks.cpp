@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/util/Locks.h"
+#include "paddle/utils/Locks.h"
 #include <semaphore.h>
 #include <unistd.h>
 
@@ -35,7 +35,7 @@ bool Semaphore::timeWait(struct timespec* ts) {
 }
 
 void Semaphore::wait() {
-  sem_wait(&m->sem); 
+  sem_wait(&m->sem);
 }
 
 void Semaphore::post() {

@@ -104,9 +104,10 @@ function(link_paddle_exe TARGET_NAME)
         ${PROTOBUF_LIBRARY}
         ${CMAKE_THREAD_LIBS_INIT}
         ${CBLAS_LIBS}
-        ${CMAKE_DL_LIBS}
         ${INTERAL_LIBS}
-        ${ZLIB_LIBRARIES})
+        ${ZLIB_LIBRARIES}
+        ${CMAKE_DL_LIBS}
+        )
     
     if(WITH_PYTHON)
         target_link_libraries(${TARGET_NAME}
