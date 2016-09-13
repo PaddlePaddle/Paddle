@@ -1614,7 +1614,7 @@ class BatchNormLayer(LayerBase):
         # Also based on cudnn version.
         use_cudnn = use_gpu and batch_norm_type != "batch_norm" and \
             ((not parallel_nn) or self.config.device > -1) and \
-            cudnn_version >= 4000
+            cudnn_version >= 4007
         self.layer_type = "cudnn_batch_norm" if use_cudnn else "batch_norm"
         super(BatchNormLayer, self).__init__(name, self.layer_type, 0,
                                              active_type=active_type,
