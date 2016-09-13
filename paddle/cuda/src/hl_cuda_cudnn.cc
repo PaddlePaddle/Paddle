@@ -150,7 +150,7 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R3(DYNAMIC_LOAD_CUDNN_WRAP)
 
 
 // APIs available after R4:
-#if CUDNN_VERSION >= 4000
+#if CUDNN_VERSION >= 4007
 #define CUDNN_DNN_ROUTINE_EACH_AFTER_R4(__macro)             \
   __macro(cudnnBatchNormalizationForwardTraining)            \
   __macro(cudnnBatchNormalizationForwardInference)           \
@@ -999,7 +999,7 @@ void hl_batch_norm_forward_training(hl_tensor_descriptor inputDesc,
                                     double epsilon,
                                     real *savedMean,
                                     real *savedVar) {
-#if CUDNN_VERSION >= 4000
+#if CUDNN_VERSION >= 4007
   if ((NULL != runningMean && NULL == runningInvVar) ||
       (NULL == runningMean && NULL != runningInvVar)) {
     LOG(FATAL) << "runningMean and runningInvVar can be NULL "
@@ -1024,7 +1024,7 @@ void hl_batch_norm_forward_training(hl_tensor_descriptor inputDesc,
 
   CHECK_SYNC("hl_batch_norm_forward_training failed");
 #else
-  LOG(FATAL) << "CudnnBatchNorm requires cudnn version >= 4000. "
+  LOG(FATAL) << "CudnnBatchNorm requires cudnn version >= 4007. "
              << "But cudnn lib version is " << g_cudnn_lib_version;
 #endif
 }
@@ -1039,7 +1039,7 @@ void hl_batch_norm_forward_inference(hl_tensor_descriptor inputDesc,
                                     real *estimatedMean,
                                     real *estimatedInvVar,
                                     double epsilon) {
-#if CUDNN_VERSION >= 4000
+#if CUDNN_VERSION >= 4007
   cudnnTensorDescriptor_t xDesc = GET_TENSOR_DESCRIPTOR(inputDesc);
   cudnnTensorDescriptor_t yDesc = GET_TENSOR_DESCRIPTOR(outputDesc);
   cudnnTensorDescriptor_t bnDesc = GET_TENSOR_DESCRIPTOR(bnParamDesc);
@@ -1053,7 +1053,7 @@ void hl_batch_norm_forward_inference(hl_tensor_descriptor inputDesc,
 
   CHECK_SYNC("hl_batch_norm_forward_inference failed");
 #else
-  LOG(FATAL) << "CudnnBatchNorm requires cudnn version >= 4000. "
+  LOG(FATAL) << "CudnnBatchNorm requires cudnn version >= 4007. "
              << "But cudnn lib version is " << g_cudnn_lib_version;
 #endif
 }
@@ -1071,7 +1071,7 @@ void hl_batch_norm_backward(hl_tensor_descriptor inputDesc,
                             double epsilon,
                             real *savedMean,
                             real *savedInvVar) {
-#if CUDNN_VERSION >= 4000
+#if CUDNN_VERSION >= 4007
   if ((NULL != savedMean && NULL == savedInvVar) ||
       (NULL == savedMean && NULL != savedInvVar)) {
     LOG(FATAL) << "savedMean and savedVar can be NULL "
@@ -1087,16 +1087,14 @@ void hl_batch_norm_backward(hl_tensor_descriptor inputDesc,
   cudnnBatchNormMode_t mode = CUDNN_BATCHNORM_SPATIAL;
   CHECK_CUDNN(dynload::cudnnBatchNormalizationBackward(
               t_resource.cudnn_handle, mode, &alpha, &beta,
-#if CUDNN_VERSION >= 5000
               &alpha, &beta,
-#endif
               xDesc, input, dyDesc, outGrad, dxDesc, inGrad,
               bnDesc, scale, scaleGrad, biasGrad, epsilon,
               savedMean, savedInvVar));
 
   CHECK_SYNC("hl_batch_norm_backward failed");
 #else
-  LOG(FATAL) << "CudnnBatchNorm requires cudnn version >= 4000. "
+  LOG(FATAL) << "CudnnBatchNorm requires cudnn version >= 4007. "
              << "But cudnn lib version is " << g_cudnn_lib_version;
 #endif
 }
