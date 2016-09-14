@@ -140,7 +140,7 @@ struct VectorPrivate {
   paddle::VectorPtr vec;
 
   void safeAccessData(const size_t idx,
-                      const std::function<void(float&)>& func) const
+                      const std::function<void(real&)>& func) const
       throw(RangeError, UnsupportError) {
     auto cpuVec = std::dynamic_pointer_cast<const paddle::CpuVector>(vec);
     if (cpuVec != nullptr) {
@@ -170,7 +170,7 @@ Vector* Vector::createZero(size_t sz, bool useGpu) {
   return retVec;
 }
 
-Vector* Vector::create(const std::vector<float>& data, bool useGpu) {
+Vector* Vector::create(const std::vector<real>& data, bool useGpu) {
   auto retVec = new Vector();
   retVec->m->vec = paddle::Vector::create(data.size(), useGpu);
   retVec->m->vec->copyFrom(data.data(), data.size());
@@ -188,7 +188,7 @@ Vector* Vector::createByPaddleVectorPtr(void* ptr) {
   }
 }
 
-Vector* Vector::createCpuVectorFromNumpy(float* data, int dim, bool copy) {
+Vector* Vector::createCpuVectorFromNumpy(real* data, int dim, bool copy) {
   CHECK_GT(dim, 0);
   auto retVec = new Vector();
   if (copy) {
@@ -200,7 +200,7 @@ Vector* Vector::createCpuVectorFromNumpy(float* data, int dim, bool copy) {
   return retVec;
 }
 
-Vector* Vector::createGpuVectorFromNumpy(float* data, int dim) {
+Vector* Vector::createGpuVectorFromNumpy(real* data, int dim) {
   CHECK_GT(dim, 0);
   auto retVec = new Vector();
   retVec->m->vec = paddle::Vector::create((size_t)dim, true);
@@ -208,7 +208,7 @@ Vector* Vector::createGpuVectorFromNumpy(float* data, int dim) {
   return retVec;
 }
 
-void Vector::toNumpyArrayInplace(float** view_data,
+void Vector::toNumpyArrayInplace(real** view_data,
                                  int* dim1) throw(UnsupportError) {
   auto v = std::dynamic_pointer_cast<paddle::CpuVector>(m->vec);
   if (v != nullptr) {
@@ -219,20 +219,20 @@ void Vector::toNumpyArrayInplace(float** view_data,
   }
 }
 
-void Vector::copyToNumpyArray(float** view_m_data, int* dim1) {
+void Vector::copyToNumpyArray(real** view_m_data, int* dim1) {
   *dim1 = m->vec->getSize();
-  *view_m_data = new float[*dim1];
+  *view_m_data = new real[*dim1];
   if (auto cpuVec = dynamic_cast<paddle::CpuVector*>(m->vec.get())) {
-    std::memcpy(*view_m_data, cpuVec->getData(), sizeof(float) * (*dim1));
+    std::memcpy(*view_m_data, cpuVec->getData(), sizeof(real) * (*dim1));
   } else if (auto gpuVec = dynamic_cast<paddle::CpuVector*>(m->vec.get())) {
     hl_memcpy_device2host(*view_m_data, gpuVec->getData(),
-                          sizeof(float) * (*dim1));
+                          sizeof(real) * (*dim1));
   } else {
     LOG(INFO) << "Unexpected situation";
   }
 }
 
-void Vector::copyFromNumpyArray(float* data, int dim) {
+void Vector::copyFromNumpyArray(real* data, int dim) {
   m->vec->resize(dim);
   m->vec->copyFrom(data, dim);
 }
@@ -241,15 +241,15 @@ bool Vector::isGpu() const {
   return std::dynamic_pointer_cast<paddle::GpuVector>(m->vec) != nullptr;
 }
 
-float Vector::get(const size_t idx) const throw(RangeError, UnsupportError) {
-  float r;
-  m->safeAccessData(idx, [&](float& o) { r = o; });
+real Vector::get(const size_t idx) const throw(RangeError, UnsupportError) {
+  real r;
+  m->safeAccessData(idx, [&](real& o) { r = o; });
   return r;
 }
 
-void Vector::set(const size_t idx, float val) throw(RangeError,
+void Vector::set(const size_t idx, real val) throw(RangeError,
                                                     UnsupportError) {
-  m->safeAccessData(idx, [&](float& o) { o = val; });
+  m->safeAccessData(idx, [&](real& o) { o = val; });
 }
 
 size_t Vector::getSize() const { return m->vec->getSize(); }

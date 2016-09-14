@@ -31,13 +31,13 @@ void initPaddle(int argc, char** argv) {
   feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW);
 }
 
-FloatArray::FloatArray(const float* b, const size_t l)
+FloatArray::FloatArray(const real* b, const size_t l)
     : buf(b), length(l), needFree(false) {}
 
 IntArray::IntArray(const int* b, const size_t l, bool f)
     : buf(b), length(l), needFree(f) {}
 
-IntWithFloatArray::IntWithFloatArray(const float* v, const int* i, size_t l,
+IntWithFloatArray::IntWithFloatArray(const real* v, const int* i, size_t l,
                                      bool f)
     : valBuf(v), idxBuf(i), length(l), needFree(f) {}
 
