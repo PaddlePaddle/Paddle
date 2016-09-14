@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
 #include "paddle/utils/Flags.h"
@@ -291,6 +290,8 @@ void RecurrentGradientMachine::init(
   if (subModelConfig->evaluator_names_size() > 0) {
     evaluator_.reset(frames_[0]->makeEvaluator());
   }
+
+  targetInfoInlinkId_ = subModelConfig->target_inlinkid();
 }
 
 void RecurrentGradientMachine::resizeOrCreateFrames(int numFrames) {
@@ -325,7 +326,7 @@ void RecurrentGradientMachine::resizeOrCreateFrames(int numFrames) {
 
   for (int i = frames_.size(); i < numFrames; ++i) {
     std::unique_ptr<NeuralNetwork> frame(
-          NeuralNetwork::newNeuralNetwork(subModelName_));
+        NeuralNetwork::newNeuralNetwork(subModelName_));
     frame->init(config_, subParamInitCb);
 
     for (auto& inFrameLine : inFrameLines_) {
@@ -382,6 +383,16 @@ void RecurrentGradientMachine::forward(const std::vector<Argument>& inArgs,
   size_t numSequences = input.getNumSequences();
   const int* starts = input.sequenceStartPositions->getData(false);
   bool hasSubseq = input.hasSubseq();
+
+  // In case of !hasSubseq or targetInfoInlinkId_ == -1, all inlinks share the
+  // same inframe info
+  bool shareInlinkInfo = !hasSubseq || targetInfoInlinkId_ == -1;
+
+  // Defaultly, share info with the first inlink
+  if (shareInlinkInfo) {
+    targetInfoInlinkId_ = 0;
+  }
+
   // check hasSubseq in both config and input are the same
   CHECK_EQ(hasSubseq, inFrameLines_[0].hasSubseq);
 
@@ -394,9 +405,17 @@ void RecurrentGradientMachine::forward(const std::vector<Argument>& inArgs,
     CHECK_EQ((size_t)input1.getNumSequences(), numSequences);
     // check all inputs should have same hasSubseq flag
     CHECK_EQ(input.hasSubseq(), inFrameLines_[0].hasSubseq);
-    CHECK_EQ(input1.getBatchSize(), batchSize);
-    CHECK(std::equal(starts, starts + numSequences + 1,
-                     input1.sequenceStartPositions->getData(false)));
+
+    // if shareInlinkInfo, checks:
+    // 1. all inlinks have same number of total tokens
+    // 2. all inlinks have same number of tokens for each sentence of each
+    //    sample. If hasSubseq, one sample has multiple sentence, else, one
+    //    sample is one sentence
+    if (shareInlinkInfo) {
+      CHECK_EQ(input1.getBatchSize(), batchSize);
+      CHECK(std::equal(starts, starts + numSequences + 1,
+                       input1.sequenceStartPositions->getData(false)));
+    }
   }
 
   if (hasSubseq) {
@@ -408,18 +427,43 @@ void RecurrentGradientMachine::forward(const std::vector<Argument>& inArgs,
     for (size_t i = 1; i < inFrameLines_.size(); ++i) {
       const Argument& input1 = inFrameLines_[i].inLayer->getOutput();
       CHECK_EQ((size_t)input1.getNumSubSequences(), numSubSequences);
-      CHECK(std::equal(subStarts, subStarts + numSubSequences + 1,
-                       input1.subSequenceStartPositions->getData(false)));
+      if (shareInlinkInfo) {
+        CHECK(std::equal(subStarts, subStarts + numSubSequences + 1,
+                         input1.subSequenceStartPositions->getData(false)));
+      }
     }
   }
 
   seqLengthAndStart_.clear();
-  input.getSeqLengthAndStart(&seqLengthAndStart_, &maxSequenceLength_);
+  info_.clear();
+  info_.resize(inFrameLines_.size());
+  seqLengthAndStart_.resize(inFrameLines_.size());
+
+  {
+    AsyncGpuBlock asyncGpuBlock;
+    // if shareInlinkInfo, only calculate info of the first inlink
+    // else, calculate info for each inlink
+    if (shareInlinkInfo) {
+      input.getSeqLengthAndStart(&seqLengthAndStart_[0], &maxSequenceLength_);
+      createInFrameInfo(0, input, passType);
+    } else {
+      for (size_t i = 0; i < inFrameLines_.size(); i++) {
+        const Argument& input1 = inFrameLines_[i].inLayer->getOutput();
+        input1.getSeqLengthAndStart(&seqLengthAndStart_[i],
+                                    &maxSequenceLength_);
+        createInFrameInfo(i, input1, passType);
+      }
+    }
+
+    // inFrameLine select rows in real layer one time
+    for (size_t i = 0; i < inFrameLines_.size(); i++) {
+      int curInlinkId = shareInlinkInfo ? 0 : i;
+      selectRowsOneTime(inFrameLines_[i].inLayer, info_[curInlinkId].allIds,
+                        &(inFrameLines_[i].outArg), passType);
+    }
+  }
   resizeOrCreateFrames(maxSequenceLength_);
   resizeBootFrame(numSequences);
-
-  AsyncGpuBlock asyncGpuBlock;
-  createInFrameInfo(input, passType);
 
   for (auto& memoryFrameLine : memoryFrameLines_) {
     if (memoryFrameLine.rootAgent) {
@@ -443,23 +487,29 @@ void RecurrentGradientMachine::forward(const std::vector<Argument>& inArgs,
     auto gatherAgent =
         dynamic_cast<GatherAgentLayer*>(outFrameLine.agentLayer.get());
     CHECK_NOTNULL(gatherAgent);
-    gatherAgent->copyIdAndSequenceInfo(input, info_.allIds, info_.idIndex);
+    gatherAgent->copyIdAndSequenceInfo(input, info_[targetInfoInlinkId_].allIds,
+                                       info_[targetInfoInlinkId_].idIndex);
   }
 
   for (int i = 0; i < maxSequenceLength_; ++i) {
-    int idSize = info_.idIndex[i + 1] - info_.idIndex[i];
-
+    int idSize = 0;
     // connect in_links
-    for (auto& inFrameLine : inFrameLines_) {
+    for (size_t j = 0; j < inFrameLines_.size(); ++j) {
+      // idSize denotes the sum number of tokens in each length i
+      idSize = info_[j].idIndex[i + 1] - info_[j].idIndex[i];
+      InFrameLine inFrameLine = inFrameLines_[j];
       auto scatterAgent =
           dynamic_cast<ScatterAgentLayer*>(inFrameLine.agents[i].get());
       scatterAgent->setRealLayerAndOutput(inFrameLine.inLayer,
-                                          inFrameLine.outArg, info_.allIds,
-                                          info_.idIndex[i], idSize);
+                                          inFrameLine.outArg, info_[j].allIds,
+                                          info_[j].idIndex[i], idSize);
       if (hasSubseq) {
-        int size = info_.seqStartPosIndex[i + 1] - info_.seqStartPosIndex[i];
-        scatterAgent->setSequenceStartPositions(
-            info_.sequenceStartPositions, info_.seqStartPosIndex[i], size);
+        // size: the length of subsequence
+        int size =
+            info_[j].seqStartPosIndex[i + 1] - info_[j].seqStartPosIndex[i];
+        scatterAgent->setSequenceStartPositions(info_[j].sequenceStartPositions,
+                                                info_[j].seqStartPosIndex[i],
+                                                size);
       }
     }
 
@@ -469,13 +519,16 @@ void RecurrentGradientMachine::forward(const std::vector<Argument>& inArgs,
           dynamic_cast<GatherAgentLayer*>(outFrameLine.agentLayer.get());
       gatherAgent->addRealLayer(outFrameLine.frames[i]);
     }
-
     // connect memory links
+    // Adopt info_[0].idIndex because seq which has_subseq=True
+    // doesn't support Memory with !hasSubseq bootlayer;
+    // And inlinks that !hasSubSeq must have same inlink length.
+    idSize = info_[0].idIndex[i + 1] - info_[0].idIndex[i];
     for (auto& memoryFrameLine : memoryFrameLines_) {
       NeuralNetwork::connect(
           memoryFrameLine.agents[i],
           i == 0 ? memoryFrameLine.bootLayer : memoryFrameLine.frames[i - 1],
-          idSize /*height of agent*/);
+          numSeqs_[i] /*height of agent*/);
     }
   }
 
@@ -560,62 +613,76 @@ void RecurrentGradientMachine::removeBeamSearchStatisticsCallbacks() {
  * If hasSubseq, will also create scattered sequenceStartPositions infomation
  * for all realLayer of inFrameLines one time.
 */
-void RecurrentGradientMachine::createInFrameInfo(const Argument& input,
+
+void RecurrentGradientMachine::createInFrameInfo(int inlinks_id,
+                                                 const Argument& input,
                                                  PassType passType) {
   bool hasSubseq = input.hasSubseq();
+  // numSequences: # samples(sequences) in a batch
   size_t numSequences = input.getNumSequences();
   std::vector<int> allIds;
-  info_.idIndex.clear();
-  info_.idIndex.push_back(0);  // first idIndex = 0
-  if (hasSubseq) {             // for sequenceScatterAgentLayer
+
+  numSeqs_.clear();
+  Info* inlink_info = &info_[inlinks_id];
+  inlink_info->idIndex.clear();
+  inlink_info->idIndex.push_back(0);  // first idIndex = 0
+  if (hasSubseq) {                    // for sequenceScatterAgentLayer
+    // numSubSequences : all sentences within all samples(batch)
     size_t numSubSequences = input.getNumSubSequences();
     std::vector<int> sequenceStartPositions;
-    info_.seqStartPosIndex.clear();
-    info_.seqStartPosIndex.push_back(0);  // first seqStartPosIndex = 0
+    inlink_info->seqStartPosIndex.clear();
+    inlink_info->seqStartPosIndex.push_back(0);  // first seqStartPosIndex = 0
+    // maxSequenceLength_: max number of sentences(subseq) in allsamples
     for (int i = 0; i < maxSequenceLength_; ++i) {
-      sequenceStartPositions.push_back(0);  // first element = 0
-      for (size_t j = 0; j < numSubSequences; ++j) {
-        if (std::get<3>(seqLengthAndStart_[j]) == i) {
-          int subSeqStart = std::get<1>(seqLengthAndStart_[j]);
-          int subSeqLength = std::get<0>(seqLengthAndStart_[j]);
+      sequenceStartPositions.push_back(0);            // first element = 0
+      int numSeqs = 0;
+      for (size_t j = 0; j < numSubSequences; ++j) {  // for each sentence
+        // seqLengthAndStart_[inlinks_id][j]:
+        // a 4-tuple including <subseqlen, subseqstart, seqid, subseqid>
+        if (std::get<3>(seqLengthAndStart_[inlinks_id][j]) == i) {
+          ++numSeqs;
+          // subseqstart: the cpuSubSequenceStartPositions of this subseq
+          int subSeqStart = std::get<1>(seqLengthAndStart_[inlinks_id][j]);
+          int subSeqLength = std::get<0>(seqLengthAndStart_[inlinks_id][j]);
           for (int k = subSeqStart; k < subSeqStart + subSeqLength; ++k) {
             allIds.push_back(k);
           }
           sequenceStartPositions.push_back(sequenceStartPositions.back() +
-                                              subSeqLength);
+                                           subSeqLength);
         }
       }
-      info_.idIndex.push_back(allIds.size());
-      info_.seqStartPosIndex.push_back(sequenceStartPositions.size());
+      inlink_info->idIndex.push_back(allIds.size());
+      inlink_info->seqStartPosIndex.push_back(sequenceStartPositions.size());
+      numSeqs_.push_back(numSeqs);
     }
     // inFrameLine create sequenceStartPositions one time
     CHECK_EQ(sequenceStartPositions.size(),
              maxSequenceLength_ + numSubSequences);
-    CHECK_EQ(info_.seqStartPosIndex.size(),
+    CHECK_EQ(inlink_info->seqStartPosIndex.size(),
              static_cast<size_t>(maxSequenceLength_ + 1));
-    createSeqPos(sequenceStartPositions, &info_.sequenceStartPositions);
+    createSeqPos(sequenceStartPositions, &inlink_info->sequenceStartPositions);
   } else {  // for scatterAgentLayer
     for (int i = 0; i < maxSequenceLength_; ++i) {
+      int numSeqs = 0;
       for (size_t j = 0; j < numSequences; ++j) {
-        int seqLength = std::get<0>(seqLengthAndStart_[j]);
+        int seqLength = std::get<0>(seqLengthAndStart_[inlinks_id][j]);
         if (i >= seqLength) {
           break;
         }
-        int seqStart = std::get<1>(seqLengthAndStart_[j]);
+        ++numSeqs;
+        int seqStart = std::get<1>(seqLengthAndStart_[inlinks_id][j]);
         allIds.push_back(reversed_ ? (seqStart + seqLength - 1 - i)
                                    : (seqStart + i));
       }
-      info_.idIndex.push_back(allIds.size());
+      inlink_info->idIndex.push_back(allIds.size());
+      numSeqs_.push_back(numSeqs);
     }
   }
+
   // copy and check scatterId
-  copyScattedId(allIds, &info_.allIds, input.getBatchSize());
-  CHECK_EQ(info_.idIndex.size(), static_cast<size_t>(maxSequenceLength_ + 1));
-  // inFrameLine select rows in real layer one time
-  for (auto& inFrameLine : inFrameLines_) {
-    selectRowsOneTime(inFrameLine.inLayer, info_.allIds, &inFrameLine.outArg,
-                      passType);
-  }
+  copyScattedId(allIds, &inlink_info->allIds, input.getBatchSize());
+  CHECK_EQ(inlink_info->idIndex.size(),
+           static_cast<size_t>(maxSequenceLength_ + 1));
 }
 
 /* like createInFrameInfo, but for all realLayer of memoryFrameLines*/
@@ -633,19 +700,20 @@ void RecurrentGradientMachine::createMemoryFrameInfo(
     sequenceStartPositions.push_back(0);  // first element = 0
     const int* starts = input.sequenceStartPositions->getData(false);
     for (size_t i = 0; i < numSequences; ++i) {
-      int seqId = std::get<2>(seqLengthAndStart_[i]);
+      // memory info adopt info of inlinks[0]
+      int seqId = std::get<2>(seqLengthAndStart_[0][i]);
       for (int k = starts[seqId]; k < starts[seqId + 1]; ++k) {
         allIds.push_back(k);
       }
       sequenceStartPositions.push_back(sequenceStartPositions.back() +
-                                          starts[seqId + 1] - starts[seqId]);
+                                       starts[seqId + 1] - starts[seqId]);
     }
     createSeqPos(sequenceStartPositions,
                  &(*memoryFrameLine).sequenceStartPositions);
 
   } else {  // for scatterAgentLayer
     for (size_t i = 0; i < numSequences; ++i) {
-      allIds.push_back(std::get<2>(seqLengthAndStart_[i]));
+      allIds.push_back(std::get<2>(seqLengthAndStart_[0][i]));
     }
   }
   // copy and check scatterId
@@ -699,18 +767,19 @@ size_t RecurrentGradientMachine::getGenBatchSize() {
   for (auto& memoryFrameLine : memoryFrameLines_) {
     if (!memoryFrameLine.rootLayer) continue;
     Argument& bootArg = memoryFrameLine.rootLayer->getOutput();
-    size_t batchSize = memoryFrameLine.is_sequence ?
-                       bootArg.getNumSequences() : bootArg.getBatchSize();
+    size_t batchSize = memoryFrameLine.is_sequence ? bootArg.getNumSequences()
+                                                   : bootArg.getBatchSize();
     if (numSequences) {
       CHECK_EQ(numSequences, batchSize);
     } else {
       numSequences = batchSize;
     }
   }
-  CHECK(numSequences) << "Fail to get batch size in generation. "
-    "At least one of the Memory layer MUST have a layer that is NOT in "
-    "the layer group to boot it, and this boot layer is used to "
-    "decide batch_size in generation process.";
+  CHECK(numSequences)
+      << "Fail to get batch size in generation. "
+         "At least one of the Memory layer MUST have a layer that is NOT in "
+         "the layer group to boot it, and this boot layer is used to "
+         "decide batch_size in generation process.";
   return numSequences;
 }
 
@@ -732,7 +801,9 @@ void RecurrentGradientMachine::generateSequence() {
 
   // connect boot frame memory links
   std::vector<int> ids(numSequences);
-  for (size_t i = 0; i < numSequences; ++i) { ids[i] = i; }
+  for (size_t i = 0; i < numSequences; ++i) {
+    ids[i] = i;
+  }
   for (auto& memoryFrameLine : memoryFrameLines_) {
     if (memoryFrameLine.rootAgent) {
       auto scatterAgent =
@@ -756,7 +827,8 @@ void RecurrentGradientMachine::generateSequence() {
 
   // init outArg
   size_t resultNum = generator_.config.num_results_per_sample();
-  IVector::resizeOrCreate(generator_.outArg.ids,
+  IVector::resizeOrCreate(
+      generator_.outArg.ids,
       generator_.config.max_num_frames() * numSequences * resultNum, false);
   if (resultNum > 1) {
     CHECK_LE(resultNum, static_cast<size_t>(generator_.config.beam_size()));
@@ -847,7 +919,9 @@ void RecurrentGradientMachine::oneWaySearch(size_t batchSize) {
         // path.seqId = -1 indicates end of generation
         // of an input sequence
         finalPaths[seqIds_[j]].seqId = -1;
-      } else { scatterIds.push_back(j); }
+      } else {
+        scatterIds.push_back(j);
+      }
     }
   }
 
@@ -856,13 +930,12 @@ void RecurrentGradientMachine::oneWaySearch(size_t batchSize) {
   starts[0] = 0;
   generator_.ids.clear();
   for (size_t i = 0; i < batchSize; ++i) {
-    generator_.ids.insert(generator_.ids.end(),
-                          finalPaths[i].ids.begin(),
+    generator_.ids.insert(generator_.ids.end(), finalPaths[i].ids.begin(),
                           finalPaths[i].ids.end());
     starts[i + 1] = generator_.ids.size();
     batchMachineIdVec_.insert(batchMachineIdVec_.end(),
-                             finalPaths[i].machineIdVec.begin(),
-                             finalPaths[i].machineIdVec.end());
+                              finalPaths[i].machineIdVec.begin(),
+                              finalPaths[i].machineIdVec.end());
   }
 }
 
@@ -920,9 +993,9 @@ void RecurrentGradientMachine::forwardFrame(int machineCur) {
   }
 }
 
-void RecurrentGradientMachine::singlePathExpand(
-    Path& curPath, size_t curPathId, std::vector<Path>& newPaths,
-    size_t expandWidth) {
+void RecurrentGradientMachine::singlePathExpand(Path& curPath, size_t curPathId,
+                                                std::vector<Path>& newPaths,
+                                                size_t expandWidth) {
   int calc_id =
       gDiyProbStart ? gDiyProbStart(curPath.ids.size(), curPath.ids.data()) : 0;
 
@@ -946,19 +1019,20 @@ void RecurrentGradientMachine::singlePathExpand(
     if (id == -1) break;
 
     real newLogProb = generator_.config.log_prob() ? std::log(prob) : prob;
-    Path newPath(curPath, id, newLogProb,
-                 curPathId /*machineId*/, k /*topIndex*/);
+    Path newPath(curPath, id, newLogProb, curPathId /*machineId*/,
+                 k /*topIndex*/);
     if (this->beamSearchCtrlCallbacks_) {
       if (beamSearchCtrlCallbacks_->stopDetermineCandidates(
-              newPath.seqId, newPath.ids, newPath.probHistory)) return;
+              newPath.seqId, newPath.ids, newPath.probHistory))
+        return;
     }
     // outFrameLines_.size() > 1UL
     if (dataArgsSize_) {
       newPath.machineIdVec = curPath.machineIdVec;
       newPath.machineIdVec.push_back(curPathId);
     }
-    bool atEos = eosVec[index] == 1U ||
-                 newPath.ids.size() >= (size_t)maxSequenceLength_;
+    bool atEos =
+        eosVec[index] == 1U || newPath.ids.size() >= (size_t)maxSequenceLength_;
     // adjustNewPath
     newPath.adjustProb(calc_id, atEos);
     if (this->beamSearchCtrlCallbacks_) {
@@ -966,16 +1040,18 @@ void RecurrentGradientMachine::singlePathExpand(
           newPath.seqId, newPath.ids, newPath.probHistory, &newPath.logProb);
     }
     if (!newPath.isDropable()) {
-      atEos ? finalPaths_[curPath.seqId].push_back(newPath) :
-              newPaths.push_back(newPath);
+      atEos ? finalPaths_[curPath.seqId].push_back(newPath)
+            : newPaths.push_back(newPath);
     }
   }  // for expandWidth
 
-  if (gDiyProbStop) { gDiyProbStop(calc_id); }
+  if (gDiyProbStop) {
+    gDiyProbStop(calc_id);
+  }
 }
 
-void RecurrentGradientMachine::beamExpand(
-    std::vector<Path>& paths, std::vector<Path>& newPaths) {
+void RecurrentGradientMachine::beamExpand(std::vector<Path>& paths,
+                                          std::vector<Path>& newPaths) {
   size_t candidatePathCount = paths.size();
   // idVec.size() could be larger than candidatePathCount * beam,
   // so user can drop some node customly.
@@ -988,7 +1064,7 @@ void RecurrentGradientMachine::beamExpand(
   int curSeqId = 0;
   for (size_t j = 0; j <= candidatePathCount; j++) {
     // expansions of a single sequence are all processed
-    curSeqId = (j < candidatePathCount? paths[j].seqId : curSeqId + 1);
+    curSeqId = (j < candidatePathCount ? paths[j].seqId : curSeqId + 1);
     if (prevSeqId != -1 && curSeqId != prevSeqId) {
       totalExpandCount += beamShrink(newPaths, prevSeqId, totalExpandCount);
     }
@@ -1000,11 +1076,14 @@ void RecurrentGradientMachine::beamExpand(
 }
 
 // Drop extra nodes to beam size.
-size_t RecurrentGradientMachine::beamShrink(
-    std::vector<Path>& newPaths, size_t seqId, size_t totalExpandCount) {
-  size_t minNewPathSize = std::min(getBeamSize(),
-                                   newPaths.size() - totalExpandCount);
-  if (!minNewPathSize) { return 0; }
+size_t RecurrentGradientMachine::beamShrink(std::vector<Path>& newPaths,
+                                            size_t seqId,
+                                            size_t totalExpandCount) {
+  size_t minNewPathSize =
+      std::min(getBeamSize(), newPaths.size() - totalExpandCount);
+  if (!minNewPathSize) {
+    return 0;
+  }
   std::nth_element(newPaths.begin() + totalExpandCount,
                    newPaths.begin() + totalExpandCount + minNewPathSize,
                    newPaths.end(), Path::greaterPath);
@@ -1017,11 +1096,8 @@ size_t RecurrentGradientMachine::beamShrink(
 
   // Remove the already formed paths that are relatively short
   finalPaths_[seqId].erase(
-      std::remove_if(finalPaths_[seqId].begin(),
-                     finalPaths_[seqId].end(),
-                     [&](Path& p) {
-                         return p.logProb < minPathLogProb;
-                     }),
+      std::remove_if(finalPaths_[seqId].begin(), finalPaths_[seqId].end(),
+                     [&](Path& p) { return p.logProb < minPathLogProb; }),
       finalPaths_[seqId].end());
   for (auto p : finalPaths_[seqId]) {
     if (minFinalPathLogProb_[seqId] > p.logProb) {
@@ -1030,7 +1106,7 @@ size_t RecurrentGradientMachine::beamShrink(
   }
 
   if (finalPaths_[seqId].size() >= getBeamSize() &&
-          minFinalPathLogProb_[seqId] >= maxPathLogProb) {
+      minFinalPathLogProb_[seqId] >= maxPathLogProb) {
     newPaths.resize(totalExpandCount);
     return 0;
   }
@@ -1067,7 +1143,8 @@ void RecurrentGradientMachine::fillGenOutputs() {
           // in beam search, here only reserved the top 1 generated result
           // for out_links that are not the generated word indices.
           batchMachineIdVec_.insert(batchMachineIdVec_.end(),
-              path.machineIdVec.begin(), path.machineIdVec.end());
+                                    path.machineIdVec.begin(),
+                                    path.machineIdVec.end());
         }
       }
       starts[i + 1] = generator_.ids.size();
@@ -1091,21 +1168,21 @@ void RecurrentGradientMachine::copyDataOutlinkFrame(size_t machineCur) {
 
 void RecurrentGradientMachine::createDataOutlink(
     std::vector<int>& machineIdVec) {
-  size_t seqNum = getBeamSize() > 1UL ?
-                  finalPaths_.size() : finalPaths_[0].size();
+  size_t seqNum =
+      getBeamSize() > 1UL ? finalPaths_.size() : finalPaths_[0].size();
   std::vector<int> starts(seqNum + 1, 0);
   for (size_t i = 0; i < seqNum; ++i) {
-    size_t seqLen = getBeamSize() > 1UL ? finalPaths_[i][0].ids.size() :
-                                          finalPaths_[0][i].ids.size();
+    size_t seqLen = getBeamSize() > 1UL ? finalPaths_[i][0].ids.size()
+                                        : finalPaths_[0][i].ids.size();
     starts[i + 1] = starts[i] + seqLen;
   }
 
   for (size_t i = 0; i < dataArgsSize_; i++) {
-    dataArgs_[i].concat(dataArgsFrame_[i], machineIdVec,
-                        starts, useGpu_, HPPL_STREAM_1, PASS_TEST);
+    dataArgs_[i].concat(dataArgsFrame_[i], machineIdVec, starts, useGpu_,
+                        HPPL_STREAM_1, PASS_TEST);
 
-    auto dataAgent = dynamic_cast<DataLayer*>(
-        outFrameLines_[i + 1].agentLayer.get());
+    auto dataAgent =
+        dynamic_cast<DataLayer*>(outFrameLines_[i + 1].agentLayer.get());
     CHECK_NOTNULL(dataAgent);
     dataAgent->setData(dataArgs_[i]);
   }

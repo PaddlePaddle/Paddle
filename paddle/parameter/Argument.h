@@ -203,13 +203,28 @@ struct Argument {
    *   startSeq: the sample id of start
    *   copySize: how many samples need to copy
    *   return value: how many samples are copied
+   * Note that when specifying the stream explicitly in this case,
+   * synchronize should also be called somewhere after this function
    */
   int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
-                            int32_t copySize, bool useGpu = FLAGS_use_gpu,
-                            hl_stream_t stream = HPPL_STREAM_DEFAULT);
+                            int32_t copySize, bool useGpu, hl_stream_t stream);
 
-  void resizeAndCopyFrom(const Argument& src, bool useGpu = FLAGS_use_gpu,
-                         hl_stream_t stream = HPPL_STREAM_DEFAULT);
+  /*
+   * same with the above function, except that the stream is
+   * HPPL_STREAM_DEFAULT and synchronize is automatically called
+   * inside it
+   */
+  int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
+                            int32_t copySize, bool useGpu = FLAGS_use_gpu);
+
+  void resizeAndCopyFrom(const Argument& src, bool useGpu, hl_stream_t stream);
+
+  /*
+   * same with the above function, except that the stream is
+   * HPPL_STREAM_DEFAULT and synchronize is automatically called
+   * inside it
+   */
+  void resizeAndCopyFrom(const Argument& src, bool useGpu = FLAGS_use_gpu);
 
   /*
     @brief Concatenate several arguments into one and put the result into it.
@@ -240,6 +255,15 @@ struct Argument {
 
   /*
    Get Sequence Length, startPositions and max Length according to input
+   1. For sequence data:
+      Each tuple is (seq_length, seq_start, seq_id, seq_id)
+      The tuples are sorted according to seq_length or subseq_length
+      *maxSequenceLength is the maximal sequence length
+
+   2. For subsequence data:
+      Each tuple is (subseq_length, subseq_start, seq_id, subseq_id)
+      The tuples are not sorted. They are in the original order.
+      *maxSequenceLenth is the maximal number of subsequences in each sequence.
    */
   void getSeqLengthAndStart(
       std::vector<std::tuple<int, int, int, int>>* seqLengthAndStart,

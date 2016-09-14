@@ -194,8 +194,8 @@ public:
   virtual real evalImp(std::vector<Argument>& arguments) {
     CHECK_EQ(arguments.size(), (size_t)2);
     Argument output, label;
-    output.resizeAndCopyFrom(arguments[0], false);
-    label.resizeAndCopyFrom(arguments[1], false);
+    output.resizeAndCopyFrom(arguments[0], false, HPPL_STREAM_DEFAULT);
+    label.resizeAndCopyFrom(arguments[1], false, HPPL_STREAM_DEFAULT);
     hl_stream_synchronize(HPPL_STREAM_DEFAULT);
     CHECK(label.sequenceStartPositions);
     CHECK(label.ids);

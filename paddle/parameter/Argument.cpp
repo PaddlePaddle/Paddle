@@ -25,6 +25,7 @@ static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src, bool useGpu,
     if (!dest) {
       dest = src->clone(0, 0, useGpu);
     } else {
+      CHECK_EQ(dest->useGpu(), useGpu);
       dest->resize(src->getHeight(), src->getWidth());
     }
     dest->copyFrom(*src, stream);
@@ -60,12 +61,12 @@ static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src,
                           hl_stream_t stream = HPPL_STREAM_DEFAULT) {
   if (src) {
     CHECK_LE((size_t)startRow + copySize, src->getHeight());
-
     int height = copySize;
     int width = src->getWidth();
     if (!dest) {
       dest = src->clone(height, width, useGpu);
     } else {
+      CHECK_EQ(dest->useGpu(), useGpu);
       dest->resize(height, width);
     }
     MatrixPtr submat = src->subMatrix(startRow, copySize);
@@ -182,6 +183,11 @@ static void resizeAndCopy(SVectorPtr& dest, const SVectorPtr& src,
   }
 }
 
+void Argument::resizeAndCopyFrom(const Argument& src, bool useGpu) {
+   resizeAndCopyFrom(src, useGpu, HPPL_STREAM_DEFAULT);
+   hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+}
+
 void Argument::resizeAndCopyFrom(const Argument& src, bool useGpu,
                                  hl_stream_t stream) {
   dataId = src.dataId;
@@ -197,6 +203,14 @@ void Argument::resizeAndCopyFrom(const Argument& src, bool useGpu,
   }
   resizeAndCopy(udp, src.udp, useGpu, stream);
   resizeAndCopy(strs, src.strs, useGpu, stream);
+}
+
+int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,
+                                    int32_t copySize, bool useGpu) {
+    int32_t size = resizeAndCopyFrom(src, startSeq, copySize, useGpu,
+                                     HPPL_STREAM_DEFAULT);
+    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+    return size;
 }
 
 int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,
