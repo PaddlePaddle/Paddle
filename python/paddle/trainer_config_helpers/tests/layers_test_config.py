@@ -41,7 +41,7 @@ tmp = fc_layer(input=x1,
 ctc = ctc_layer(input=tmp,
                 label=y,
                 size=num_classes + 1)
-ctc_eval = ctc_error_evaluator(input=ctc, label=y)
+ctc_eval = ctc_error_evaluator(input=tmp, label=y)
 
 settings(
     batch_size=10,

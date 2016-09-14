@@ -310,9 +310,10 @@ def ctc_error_evaluator(
 
     :param name: Evaluator name.
     :type name: None|basestring
-    :param input: Input Layer.
+    :param input: Input Layer. Should be the same as the input for ctc_layer.
     :type input: LayerOutput
-    :param label: input label, which is a data_layer.
+    :param label: input label, which is a data_layer. Should be the same as the
+                  label for ctc_layer
     :type label: LayerOutput
     """
     evaluator_base(name=name,
