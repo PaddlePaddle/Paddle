@@ -178,4 +178,10 @@ int main(int argc, char** argv) {
   return ret;
 }
 
+#else
+
+int main(int argc, char const* argv[]) {
+    return 0;
+}
+
 #endif
