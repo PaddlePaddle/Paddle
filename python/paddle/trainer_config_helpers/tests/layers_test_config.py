@@ -34,6 +34,15 @@ out = fc_layer(input=[cos1, cos3, linear_comb],
 
 outputs(classification_cost(out, data_layer(name="label", size=num_classes)))
 
+# for ctc
+tmp = fc_layer(input=x1,
+               size=num_classes + 1,
+               act=SoftmaxActivation())
+ctc = ctc_layer(input=tmp,
+                label=y,
+                size=num_classes + 1)
+ctc_eval = ctc_error_evaluator(input=ctc, label=y)
+
 settings(
     batch_size=10,
     learning_rate=2e-3,

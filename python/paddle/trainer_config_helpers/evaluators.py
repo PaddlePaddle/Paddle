@@ -94,7 +94,7 @@ def evaluator_base(
          Batch=200 samples=20000 AvgCost=0.679655 CurrentCost=0.662179 Eval:
          classification_error_evaluator=0.4486
          CurrentEval: ErrorRate=0.3964
-         
+
     :param input: Input layers, a object of LayerOutput or a list of
                   LayerOutput.
     :type input: list|LayerOutput
@@ -296,6 +296,7 @@ def precision_recall_evaluator(
 @wrap_name_default()
 def ctc_error_evaluator(
         input,
+        label,
         name=None,
         ):
     """
@@ -305,16 +306,19 @@ def ctc_error_evaluator(
 
     .. code-block:: python
 
-       eval = ctc_error_evaluator(input)
+       eval = ctc_error_evaluator(input=input, label=lbl)
 
     :param name: Evaluator name.
     :type name: None|basestring
     :param input: Input Layer.
     :type input: LayerOutput
+    :param label: input label, which is a data_layer.
+    :type label: LayerOutput
     """
     evaluator_base(name=name,
                    type="ctc_edit_distance",
-                   input=input)
+                   input=input,
+                   label=label)
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
 @wrap_name_default()

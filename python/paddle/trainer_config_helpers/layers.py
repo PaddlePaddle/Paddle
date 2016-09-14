@@ -2944,7 +2944,7 @@ def linear_comb_layer(weights, vectors, size, name=None):
 
     .. math::
 
-       z = x^T Y
+       z = x^\mathrm{T} Y
 
     In this formular:
       - :math:`x`: weights
@@ -3064,6 +3064,17 @@ def ctc_layer(input, label, size, name=None, norm_by_times=False):
     classication task. That is, for sequence labeling problems where the
     alignment between the inputs and the target labels is unknown.
 
+    More details can be found by referring to `Connectionist Temporal
+    Classification: Labelling Unsegmented Sequence Data with Recurrent
+    Neural Networks <http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf>`_
+
+    Note:
+        Considering the 'blank' label needed by CTC, you need to use
+        (num_classes + 1) as the input size. num_classes is the category number.
+        And the 'blank' is the last category index. So the size of 'input' layer, such as
+        fc_layer with softmax activation, should be num_classes + 1. The size of ctc_layer
+        should also be num_classes + 1.
+
     The simple usage:
 
     .. code-block:: python
@@ -3077,7 +3088,7 @@ def ctc_layer(input, label, size, name=None, norm_by_times=False):
     :type input: LayerOutput
     :param label: The data layer of label with variable length.
     :type label: LayerOutput
-    :param size: category numbers.
+    :param size: category numbers + 1.
     :type size: int
     :param name: The name of this layer, which can not specify.
     :type name: string|None
