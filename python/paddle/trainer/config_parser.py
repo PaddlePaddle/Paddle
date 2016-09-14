@@ -2264,6 +2264,9 @@ class ConvexCombinationLayer(LayerBase):
            name, 'convex_comb', size, inputs=inputs, device=device)
         config_assert(len(self.inputs) == 2,
           'ConvexCombinationLayer must have 2 inputs')
+        config_assert(
+            size * self.get_input_layer(0).size == self.get_input_layer(1).size,
+            'Wrong input size for ConvexCombinationLayer')
         self.set_layer_size(size)
 
 @config_layer('interpolation')
@@ -2313,6 +2316,9 @@ class CosSimVecMatLayer(LayerBase):
         self.config.cos_scale = cos_scale
         config_assert(len(self.inputs) == 2,
           'CosSimVecMatLayer must have 2 inputs')
+        config_assert(
+            size * self.get_input_layer(0).size == self.get_input_layer(1).size,
+            'Wrong input size for CosSimVecMatLayer')
 
 @config_layer('sampling_id')
 class SamplingIdLayer(LayerBase):
@@ -2361,6 +2367,7 @@ class CosSimLayer(LayerBase):
             self,
             name,
             inputs,
+            cos_scale=5,
             device=None):
         super(CosSimLayer, self).__init__(
             name, 'cos', 1, inputs=inputs, device=device)
@@ -2368,6 +2375,7 @@ class CosSimLayer(LayerBase):
         config_assert(
             self.get_input_layer(0).size == self.get_input_layer(1).size,
             'inputs of CosSimLayer must have same dim')
+        self.config.cos_scale = cos_scale
 
 
 @config_layer('tensor')
