@@ -303,7 +303,8 @@ def MakeLayerNameInSubmodel(name, submodel_name = None):
 @config_func
 def RecurrentLayerGroupWithoutOutLinksBegin(name,
                                             in_links,
-                                            seq_reversed=False):
+                                            seq_reversed=False,
+                                            target_inlinkname=""):
     global g_current_submodel
     config_assert(g_config.model_config.type == "recurrent_nn",
                   "RecurrentLayerGroup should be used only in recurrent_nn")
@@ -311,14 +312,19 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
     SubModelBegin(name)
     g_current_submodel.is_recurrent_layer_group = True
     g_current_submodel.reversed = seq_reversed
+    g_current_submodel.target_inlinkid = -1
     in_links_count = 0
-    for link in in_links:
+    for linkid, link in enumerate(in_links):
         if isinstance(link, basestring):
             name = link
             has_subseq = False
         else:
             name = link.link_name
             has_subseq = link.has_subseq
+        # assign target_inlinkid according to target_inlinkname
+        if target_inlinkname == name:
+            g_current_submodel.target_inlinkid = linkid
+
         if in_links_count == 0:
             in_links_has_subseq = has_subseq
         else:
@@ -331,6 +337,7 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
             SequenceScatterAgentLayer(name=name, size=layer.size)
         else:
             ScatterAgentLayer(name=name, size=layer.size)
+
         pair = g_current_submodel.in_links.add()
         pair.layer_name = layer_name
         pair.link_name = MakeLayerNameInSubmodel(name)
@@ -362,10 +369,12 @@ def RecurrentLayerGroupBegin(name,
                              in_links,
                              out_links,
                              generator=None,
+                             target_inlinkname="",
                              seq_reversed=False):
     RecurrentLayerGroupWithoutOutLinksBegin(name,
                                             in_links,
-                                            seq_reversed)
+                                            seq_reversed,
+                                            target_inlinkname)
     for link in out_links:
         RecurrentLayerGroupSetOutLink(link)
 

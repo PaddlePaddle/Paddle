@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "GradientMachine.h"
@@ -101,7 +100,7 @@ public:
    * Return true if this prefix or candidate is expected to be dropped.
    */
   typedef std::function<bool(int seqId, const std::vector<int>&,
-      const std::vector<real>&)> DropCallback;
+                             const std::vector<real>&)> DropCallback;
 
   /**
     * @brief NormOrDropNodeCallback
@@ -117,7 +116,7 @@ public:
     * The fourth parameter is the probability of the whole path.
     */
   typedef std::function<void(int seqId, const std::vector<int>&,
-      std::vector<real>&, real*)> NormOrDropNodeCallback;
+                             std::vector<real>&, real*)> NormOrDropNodeCallback;
 
   /**
    * @brief Register beam search control callbacks. Used for prediction.
@@ -192,7 +191,7 @@ public:
 
     int machineId;  // index of sample in frame
     int topIndex;   // index of MaxIdLayer output in one sample
-    int seqId;  // index of sequence in batch generation
+    int seqId;      // index of sequence in batch generation
     std::vector<int> machineIdVec;
 
     /**
@@ -206,7 +205,10 @@ public:
     /**
      * @brief Path default ctor, first logProb is 0.
      */
-    Path() { logProb = 0; seqId = 0; }
+    Path() {
+      logProb = 0;
+      seqId = 0;
+    }
     explicit Path(size_t seqId) : seqId(seqId) { logProb = 0; }
 
     /**
@@ -319,21 +321,37 @@ protected:
   };
   std::vector<MemoryFrameLine> memoryFrameLines_;
 
-  // All inFrameLines and outFrameLines have the same element as follows.
+  // Each inFrameLines(inlinks) has its own info(elements) below,
+  // and all outFrameLines(outlinks) share the info with one inFrameLine,
+  // which is assigned by targetInfoInlinkId_.
   struct Info {
     IVectorPtr allIds;         // scattered id of realLayer
     std::vector<int> idIndex;  // index of allIds
     ICpuGpuVectorPtr
-        sequenceStartPositions;      // scattered sequenceStartPositions
+        sequenceStartPositions;         // scattered sequenceStartPositions
     std::vector<int> seqStartPosIndex;  // index of sequenceStartPositions
   };
-  Info info_;
+  std::vector<Info> info_;
 
-  // if no subSeq, tuple of (seqLength, seqStart, seqIndex, seqIndex)
-  // else, tuple of (subSeqLength, subSeqStart, seqIndex, subSeqIndex)
-  std::vector<std::tuple<int, int, int, int>> seqLengthAndStart_;
+  // numSeqs_[i] is the number sequences which is longer than i (for sequence
+  // data) or has more than i subsequences (for subsequence data)
+  std::vector<int> numSeqs_;
 
-  void createInFrameInfo(const Argument& input, PassType passType);
+  // each inlinks has a "std::vector<std::tuple<int, int, int, int>>" denotes
+  // its sequence info:
+  //  if hasSubSeq, tuple of (subSeqLength, subSeqStart, seqIndex, subSeqIndex)
+  //  else, tuple of (seqLength, seqStart, seqIndex, seqIndex)
+  std::vector<std::vector<std::tuple<int, int, int, int>>> seqLengthAndStart_;
+
+  // the id of inlink which share info with outlinks
+  int targetInfoInlinkId_;
+
+  /* create scattered id infomation for all realLayer of inFrameLines one time.
+  *  If hasSubseq, will also create scattered sequenceStartPositions infomation
+  *  for all realLayer of inFrameLines one time.
+  */
+  void createInFrameInfo(int inlinks_id, const Argument& input,
+                         PassType passType);
 
   void createMemoryFrameInfo(MemoryFrameLine* memoryFrameLine,
                              PassType passType);
@@ -363,6 +381,9 @@ protected:
 
   NeuralNetwork* rootNetwork_;
   bool reversed_;
+
+  // if hasSubseq: max number of sentences(subseq)in batchsize samples
+  // else: max number of tokens in batchsize samples(sentences)
   int maxSequenceLength_;
   bool useGpu_;
   bool stopBeamSearch_;
@@ -415,7 +436,7 @@ private:
    * @param machineIdVec : select a row of output matrix in each frame
    * that the generation process expanded.
    */
-  void createDataOutlink(std::vector<int> & machineIdVec);
+  void createDataOutlink(std::vector<int>& machineIdVec);
 
   /*
    * @brief used in beam search, connect previous frame to form recurrent link

@@ -509,8 +509,10 @@ void HuberTwoClass::forwardImp(Matrix &output, Argument &label,
                                Matrix &cost) {
   if (useGpu_) {
     for (size_t i = 0; i < inputLayers_.size(); i++) {
-      tmpCpuInput_[i].resizeAndCopyFrom(getInput(i), false, HPPL_STREAM_1);
+      tmpCpuInput_[i].resizeAndCopyFrom(
+          getInput(i), false, HPPL_STREAM_DEFAULT);
     }
+    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   }
   forwardImpIn(output, label, cost);
 }
