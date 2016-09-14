@@ -47,6 +47,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'BaseGeneratedInput', 'conv_operator', 'conv_shift_layer',
            'tensor_layer', 'selective_fc_layer', 'sampling_id_layer',
            'slope_intercept_layer', 'trans_full_matrix_projection',
+           'linear_comb_layer',
            'convex_comb_layer', 'ctc_layer', 'crf_layer', 'crf_decoding_layer',
            'cross_entropy_with_selfnorm', 'cross_entropy',
            'multi_binary_label_cross_entropy',
@@ -70,7 +71,8 @@ class LayerType(object):
     POOLING_AVG = 'average'
     FC_LAYER = "fc"
     COST = 'cost'
-    COSINE_SIM = 'cos_vm'
+    COSINE_SIM_VEC = 'cos_vm'
+    COSINE_SIM = 'cos'
     HSIGMOID = 'hsigmoid'
     CONV_LAYER = "conv"
     POOL_LAYER = "pool"
@@ -102,7 +104,7 @@ class LayerType(object):
     SEL_FC_LAYER = "selective_fc"
     SAMPLING_ID_LAYER = "sampling_id"
     SLOPE_INTERCEPT_LAYER = "slope_intercept"
-    CONVEX_COMBINATION_LAYER = "convex_comb"
+    LINEAR_COMBINATION_LAYER = "convex_comb"
     BLOCK_EXPAND = "blockexpand"
 
     CTC_LAYER = "ctc"
@@ -1171,13 +1173,16 @@ def power_layer(input, weight, name=None, layer_attr=None):
 @layer_support()
 def scaling_layer(input, weight, name=None, layer_attr=None):
     """
-    A layer for each row of a matrix, multiplying with a element of a vector.
+    A layer for multiplying input vector by weight scalar.
 
     .. math::
-       y.row[i] = w[i] * x.row[i]
+       y  = w x
 
-    where :math:`x` is (batchSize x dataDim) input, :math:`w` is
-    (batchSize x 1) weight vector, and :math:`y` is (batchSize x dataDim) output.
+    where :math:`x` is size=dataDim input, :math:`w` is size=1 weight,
+    and :math:`y` is size=dataDim output.
+
+    Note that the above computation is for one sample. Multiple samples are
+    processed in one batch.
 
     The example usage is:
 
@@ -1251,11 +1256,14 @@ def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
 
     ..  math::
         similarity = cos(\\theta) = {\\mathbf{a} \\cdot \\mathbf{b}
-        \\over \\|\\mathbf{b}\\| \\|\\mathbf{b}\\|}
+        \\over \\|\\mathbf{a}\\| \\|\\mathbf{b}\\|}
 
-    And the input dimension is :math:`a \in R^M`, :math:`b \in R^{MN}`. The
-    similarity will be calculated N times by step M. The output dimension is
-    :math:`R^N`. The scale will be multiplied to similarity.
+    The size of a is M, size of b is M*N,
+    Similarity will be calculated N times by step M. The output size is
+    N. The scale will be multiplied to similarity.
+
+    Note that the above computation is for one sample. Multiple samples are
+    processed in one batch.
 
     :param name: layer name
     :type name: basestring
@@ -1272,14 +1280,23 @@ def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    Layer(
-        name=name,
-        type=LayerType.COSINE_SIM,
-        size=size,
-        cos_scale=scale,
-        inputs=[a.name, b.name],
-        **ExtraLayerAttribute.to_kwargs(layer_attr)
-    )
+    if size == 1:
+        Layer(
+            name=name,
+            type=LayerType.COSINE_SIM,
+            cos_scale=scale,
+            inputs=[a.name, b.name],
+            **ExtraLayerAttribute.to_kwargs(layer_attr)
+        )
+    else:
+        Layer(
+            name=name,
+            type=LayerType.COSINE_SIM_VEC,
+            size=size,
+            cos_scale=scale,
+            inputs=[a.name, b.name],
+            **ExtraLayerAttribute.to_kwargs(layer_attr)
+        )
     return LayerOutput(name, LayerType.COSINE_SIM, parents=[a, b])
 
 @wrap_name_default()
@@ -2911,29 +2928,37 @@ def slope_intercept_layer(input, name=None, slope=1.0, intercept=0.0):
 
 
 @wrap_name_default()
-def convex_comb_layer(input, size, name=None):
+def linear_comb_layer(weights, vectors, size, name=None):
     """
-    A layer for convex weighted average of vectors takes two inputs.
-      - Input: a vector containing the convex weights (batchSize x weightdim),
-               and a matrix in a vector form (batchSize x (weightdim * datadim)).
-      - Output: a vector (batchSize * datadim).
+    A layer for weighted sum of vectors takes two inputs.
+      - Input: size of weights is M
+               size of vectors is M*N
+      - Output: a vector of size=N
 
     .. math::
 
-       y[i][j] = \sum_{j}(x_{1}(i, j) * x_{2}(i,j + i * dataDim)),
+       z(i) = \sum_{j=0}^{M-1} x(j) y(i+Nj)
+    where :math:`0 \le i \le N-1`
 
-                   i = 0,1,...,(batchSize-1); j = 0, 1,...,(dataDim-1)
+    Or in the matrix notation:
+
+    .. math::
+
+       z = x^T Y
 
     In this formular:
-      - :math:`x_{1}`: the first input.
-      - :math:`x_{2}`: the second input.
-      - :math:`y`: the output.
+      - :math:`x`: weights
+      - :math:`y`: vectors.
+      - :math:`z`: the output.
+
+    Note that the above computation is for one sample. Multiple samples are
+    processed in one batch.
 
     The simple usage is:
 
     .. code-block:: python
 
-       convex_comb = convex_comb_layer(input=inputs,
+       linear_comb = linear_comb_layer(weighs=weight, vectors=vectors,
                                        size=elem_dim)
 
     :param input: The input layers.
@@ -2946,15 +2971,16 @@ def convex_comb_layer(input, size, name=None):
     :rtype: LayerOutput
     """
 
-    assert isinstance(input, list) or isinstance(input, tuple)
-    assert len(input) == 2
     Layer(
         name=name,
-        type=LayerType.CONVEX_COMBINATION_LAYER,
+        type=LayerType.LINEAR_COMBINATION_LAYER,
         size=size,
-        inputs=[Input(input[0].name), Input(input[1].name)],
+        inputs=[Input(weights.name), Input(vectors.name)],
     )
-    return LayerOutput(name, LayerType.CONVEX_COMBINATION_LAYER, input, size=size)
+    return LayerOutput(name, LayerType.LINEAR_COMBINATION_LAYER,
+                       [weights, vectors], size=size)
+
+convex_comb_layer = linear_comb_layer
 
 @wrap_name_default()
 def block_expand_layer(input,
