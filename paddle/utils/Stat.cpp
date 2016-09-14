@@ -25,7 +25,7 @@ namespace paddle {
 pid_t getTID() {
   #if defined(__APPLE__) || defined(__OSX__)
       pid_t tid = syscall(SYS_thread_selfid);
-  #elif defined(__LINUX__)
+  #else
       #ifndef __NR_gettid
       #define __NR_gettid 224
       #endif

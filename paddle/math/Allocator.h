@@ -49,7 +49,7 @@ public:
    */
   virtual void* alloc(size_t size) {
       void* ptr;
-      posix_memalign(&ptr, 32ul, size);
+      CHECK_EQ(posix_memalign(&ptr, 32ul, size), 0);
       CHECK(ptr) << "Fail to allocate CPU memory: size=" << size;
       return ptr;
   }

@@ -277,6 +277,7 @@ void NeuralNetwork::getState(MachineState& machineState) {
 }
 
 void NeuralNetwork::backward(const UpdateCallback& callback) {
+  gLayerStackTrace.pop("");  // tell layer trace is during backward.
   FOR_EACH_R(layer, layers_) {
     REGISTER_TIMER_INFO("BackwardTimer", (*layer)->getName().c_str());
     if ((*layer)->needGradient()) {

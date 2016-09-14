@@ -38,7 +38,7 @@ static std::mt19937 RandomEngine(time(0));
 inline static std::unique_ptr<float[]> NewVector(size_t len = VECTOR_LEN,
                                                  size_t align = ALIGN) {
   float* ptr;
-  posix_memalign((void**)&ptr, align, len * sizeof(float));
+  CHECK_EQ(posix_memalign((void**)&ptr, align, len * sizeof(float)), 0);
   return std::unique_ptr<float[]>(ptr);
 }
 
