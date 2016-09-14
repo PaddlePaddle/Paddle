@@ -254,4 +254,10 @@ int main(int argc, char** argv) {
   return RUN_ALL_TESTS();
 }
 
+#else
+
+int main(int argc, char const* argv[]) {
+    return 0;
+}
+
 #endif

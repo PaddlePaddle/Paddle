@@ -49,7 +49,7 @@ void Semaphore::post() {
 
 class SpinLockPrivate {
 public:
-  SpinLockPrivate(): lock_(0) {}
+  SpinLockPrivate(): lock_(OS_SPINLOCK_INIT) {}
 
   OSSpinLock lock_;
   char padding_[64 - sizeof(OSSpinLock)];  // Padding to cache line size
@@ -92,7 +92,7 @@ public:
   inline bool wait() {
     pthread_mutex_lock(&mutex);
     ++count;
-    if (count > tripCount) {
+    if (count >= tripCount) {
       count = 0;
       pthread_cond_broadcast(&cond);
       pthread_mutex_unlock(&mutex);
