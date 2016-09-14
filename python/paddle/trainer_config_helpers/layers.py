@@ -52,7 +52,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'cross_entropy_with_selfnorm', 'cross_entropy',
            'multi_binary_label_cross_entropy',
            'rank_cost', 'lambda_cost', 'huber_cost',
-           'block_expand_layer', 'out_prod_layer',
+           'block_expand_layer', 'out_prod_layer', 'print_layer'
            ]
 
 
@@ -107,6 +107,8 @@ class LayerType(object):
     SLOPE_INTERCEPT_LAYER = "slope_intercept"
     LINEAR_COMBINATION_LAYER = "convex_comb"
     BLOCK_EXPAND = "blockexpand"
+
+    PRINT_LAYER = "print"
 
     CTC_LAYER = "ctc"
     CRF_LAYER = "crf"
@@ -729,6 +731,19 @@ def fc_layer(input, size, act=None, name=None,
     return LayerOutput(name, LayerType.FC_LAYER, input, activation=act,
                        size=size)
 
+@wrap_name_default("print")
+def print_layer(input, name=None):
+    """
+    Print the output value of input layers. This layer is useful for debugging.
+    """
+    assert isinstance(input, list)
+
+    Layer(
+        name=name,
+        type=LayerType.PRINT_LAYER,
+        inputs=[l.name for l in input],
+    )
+    return LayerOutput(name, LayerType.PRINT_LAYER, input)
 
 @wrap_name_default("seq_pooling")
 @wrap_bias_attr_default(has_bias=False)

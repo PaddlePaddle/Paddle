@@ -92,7 +92,7 @@ void CalCost(const string& conf, const string& dir, real* cost,
   rmDir(dir.c_str());
 }
 
-void test(const string& conf1, const string& conf2) {
+void test(const string& conf1, const string& conf2, double eps) {
   int num_passes = 5;
   real* cost1 = new real[num_passes];
   const string dir1 = "gserver/tests/t1";
@@ -104,8 +104,9 @@ void test(const string& conf1, const string& conf2) {
 
   for (int i = 0; i < num_passes; i++) {
     LOG(INFO) << "num_passes: " << i << ", cost1=" << cost1[i]
-              << ", cost2=" << cost2[i];
-    ASSERT_NEAR(cost1[i], cost2[i], 1e-3);
+              << ", cost2=" << cost2[i]
+              << ", diff=" << std::abs(cost1[i] - cost2[i]);
+    ASSERT_NEAR(cost1[i], cost2[i], eps);
   }
   delete[] cost1;
   delete[] cost2;
@@ -113,12 +114,14 @@ void test(const string& conf1, const string& conf2) {
 
 TEST(RecurrentGradientMachine, HasSubSequence) {
   test("gserver/tests/sequence_layer_group.conf",
-       "gserver/tests/sequence_nest_layer_group.conf");
+       "gserver/tests/sequence_nest_layer_group.conf",
+       1e-5);
 }
 
 TEST(RecurrentGradientMachine, rnn) {
   test("gserver/tests/sequence_rnn.conf",
-       "gserver/tests/sequence_nest_rnn.conf");
+       "gserver/tests/sequence_nest_rnn.conf",
+       0);
 }
 
 

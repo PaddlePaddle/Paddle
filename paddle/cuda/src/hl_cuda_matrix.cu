@@ -19,6 +19,7 @@ limitations under the License. */
 #include "hl_matrix_apply.cuh"
 #include "hl_sequence.h"
 #include "paddle/utils/Logging.h"
+#include "hl_device_functions.cuh"
 
 DEFINE_MATRIX_UNARY_OP(Zero, a = 0);
 DEFINE_MATRIX_TERNARY_PARAMETER_OP(_add, TWO_PARAMETER, c = p1*a + p2*b);

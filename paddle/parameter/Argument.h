@@ -253,21 +253,29 @@ struct Argument {
   static void splitByDataId(const std::vector<Argument>& argus,
                             std::vector<std::vector<Argument>>* arguGroups);
 
-  /*
-   Get Sequence Length, startPositions and max Length according to input
-   1. For sequence data:
-      Each tuple is (seq_length, seq_start, seq_id, seq_id)
-      The tuples are sorted according to seq_length or subseq_length
-      *maxSequenceLength is the maximal sequence length
+  struct SeqInfo {
+    // Equal to sequence length for sequence data
+    // Equal to number of subsequences for subsequence data
+    int topLevelLength;
 
-   2. For subsequence data:
-      Each tuple is (subseq_length, subseq_start, seq_id, subseq_id)
-      The tuples are not sorted. They are in the original order.
-      *maxSequenceLenth is the maximal number of subsequences in each sequence.
-   */
-  void getSeqLengthAndStart(
-      std::vector<std::tuple<int, int, int, int>>* seqLengthAndStart,
-      int* maxSequenceLength) const;
+    int seqStart;
+    int seqId;
+
+    // Equal to topLevelLength for sequence data
+    // Equal to sum of the length of subsequences for subsequence data
+    int subLevelLength;
+
+    // Only used for subsequence data, start position of this sequence
+    // is subSequenceStartPositions, i.e.
+    // subSequenceStartPositions[subSeqStart] == seqStart
+    int subSeqStart;
+  };
+  /*
+    Get SeqInfo for each sequence of this argument
+    Elements in *seqInfo are sorted by topLevelLength in descending order
+  */
+  void getSeqInfo(std::vector<SeqInfo>* segInfo) const;
+
   /*
    Check Whether sequenceStartPositions is subset of
    subSequenceStartPositions.
