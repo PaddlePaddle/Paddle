@@ -1623,7 +1623,7 @@ class BatchNormLayer(LayerBase):
         # Also based on cudnn version.
         use_cudnn = use_gpu and batch_norm_type != "batch_norm" and \
             ((not parallel_nn) or self.config.device > -1) and \
-            cudnn_version >= 4000
+            cudnn_version >= 4007
         self.layer_type = "cudnn_batch_norm" if use_cudnn else "batch_norm"
         super(BatchNormLayer, self).__init__(name, self.layer_type, 0,
                                              active_type=active_type,
@@ -2273,6 +2273,9 @@ class ConvexCombinationLayer(LayerBase):
            name, 'convex_comb', size, inputs=inputs, device=device)
         config_assert(len(self.inputs) == 2,
           'ConvexCombinationLayer must have 2 inputs')
+        config_assert(
+            size * self.get_input_layer(0).size == self.get_input_layer(1).size,
+            'Wrong input size for ConvexCombinationLayer')
         self.set_layer_size(size)
 
 @config_layer('interpolation')
@@ -2322,6 +2325,9 @@ class CosSimVecMatLayer(LayerBase):
         self.config.cos_scale = cos_scale
         config_assert(len(self.inputs) == 2,
           'CosSimVecMatLayer must have 2 inputs')
+        config_assert(
+            size * self.get_input_layer(0).size == self.get_input_layer(1).size,
+            'Wrong input size for CosSimVecMatLayer')
 
 @config_layer('sampling_id')
 class SamplingIdLayer(LayerBase):
@@ -2370,6 +2376,7 @@ class CosSimLayer(LayerBase):
             self,
             name,
             inputs,
+            cos_scale=5,
             device=None):
         super(CosSimLayer, self).__init__(
             name, 'cos', 1, inputs=inputs, device=device)
@@ -2377,6 +2384,7 @@ class CosSimLayer(LayerBase):
         config_assert(
             self.get_input_layer(0).size == self.get_input_layer(1).size,
             'inputs of CosSimLayer must have same dim')
+        self.config.cos_scale = cos_scale
 
 
 @config_layer('tensor')
