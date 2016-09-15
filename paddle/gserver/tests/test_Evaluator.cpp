@@ -87,18 +87,31 @@ void testEvaluator(TestConfig testConf, string testEvaluatorName,
         return;
     }
 
+    ICpuGpuVectorPtr sequenceStartPositions;
+    if (testConf.inputDefs[i].inputType == INPUT_SEQUENCE_DATA ||
+        testConf.inputDefs[i].inputType == INPUT_SEQUENCE_LABEL) {
+      if (!sequenceStartPositions) {
+        generateSequenceStartPositions(batchSize, sequenceStartPositions);
+      }
+      data.sequenceStartPositions = sequenceStartPositions;
+    }
+
     arguments.push_back(data);
   }
 
   Evaluator* testEvaluator = Evaluator::create(testConf.evaluatorConfig);
   double totalScore = 0.0;
+  testEvaluator->start();
   totalScore += testEvaluator->evalImp(arguments);
   testEvaluator->updateSamplesNum(arguments);
+  testEvaluator->finish();
   LOG(INFO) << *testEvaluator;
 
   double totalScore2 = 0.0;
   if (testConf.testAccumulate) {
+    testEvaluator->start();
     totalScore2 += testEvaluator->evalImp(arguments);
+    testEvaluator->finish();
     EXPECT_LE(fabs(totalScore - totalScore2), 1.0e-5);
   }
 }
@@ -200,6 +213,15 @@ TEST(Evaluator, precision_recall) {
   // Not support GPU
   testEvaluator(config, "precision_recall_weight_multi_binary_label", 100,
                 false);
+}
+
+TEST(Evaluator, ctc_error_evaluator) {
+  TestConfig config;
+  config.evaluatorConfig.set_type("ctc_edit_distance");
+
+  config.inputDefs.push_back({INPUT_SEQUENCE_DATA, "output", 32});
+  config.inputDefs.push_back({INPUT_SEQUENCE_LABEL, "label", 1});
+  testEvaluatorAll(config, "ctc_error_evaluator", 100);
 }
 
 int main(int argc, char** argv) {

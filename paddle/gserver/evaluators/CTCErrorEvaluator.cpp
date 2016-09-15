@@ -207,7 +207,7 @@ public:
       real err = 0;
       err = editDistance(
           output.value->getData() + output.value->getWidth() * outputStarts[i],
-          output.value->getHeight(), output.value->getWidth(),
+          outputStarts[i+1] - outputStarts[i], output.value->getWidth(),
           label.ids->getData() + labelStarts[i],
           labelStarts[i + 1] - labelStarts[i]);
 
@@ -224,6 +224,9 @@ public:
     for (const std::string& name : config_.input_layers()) {
       arguments.push_back(nn.getLayer(name)->getOutput());
     }
+  }
+
+  virtual void updateSamplesNum(const std::vector<Argument>& arguments) {
     numSequences_ += arguments[1].getNumSequences();
   }
 
