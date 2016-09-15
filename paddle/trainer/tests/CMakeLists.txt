@@ -53,12 +53,13 @@ add_test(NAME test_CompareTwoOpts
 ################# test_CompareSparse ##################
 add_unittest_without_exec(test_CompareSparse
     test_CompareSparse.cpp)
-add_test(NAME test_CompareSparse
-  COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
-            ./.set_port.sh -p port -n 6
-                ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
+if(NOT ON_TRAVIS)
+  add_test(NAME test_CompareSparse
+    COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
+              ./.set_port.sh -p port -n 6
+                  ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle/)
-
+endif()
 ################# test_recurrent_machine_generation ###############
 add_unittest_without_exec(test_recurrent_machine_generation
     test_recurrent_machine_generation.cpp)

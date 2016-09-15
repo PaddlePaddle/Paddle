@@ -35,11 +35,11 @@ except:
   pass
 
 setup(name="py_paddle",
-  version="0.8.0b",  # TODO(yuyang18): Make this version same as CMake
+  version="@PADDLE_VERSION@",
   ext_modules=[
     Extension('py_paddle._swig_paddle',      # Build SWIG Extension.
       ['Paddle_wrap.cxx'],
-      extra_link_args=["-Xlinker", '-start-group'] + 
+      extra_link_args=["-Xlinker", '-start-group'] +
                         extra_links + ["-Xlinker", "-end-group"]
     )
   ],

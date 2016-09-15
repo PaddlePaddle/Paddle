@@ -22,9 +22,7 @@ find_python_module(pip REQUIRED)
 find_python_module(wheel REQUIRED)
 find_python_module(google.protobuf REQUIRED)
 
-install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} setup.py install -f
-    WORKING_DIRECTORY
-    ${CMAKE_CURRENT_BINARY_DIR})")
+add_subdirectory(paddle/trainer_config_helpers/tests)
 
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/dist/
     DESTINATION opt/paddle/share/wheels

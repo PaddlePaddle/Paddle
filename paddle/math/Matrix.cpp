@@ -146,6 +146,7 @@ void Matrix::resizeOrCreate(MatrixPtr& matrix, size_t height, size_t width,
   if (!matrix) {
     matrix = Matrix::create(height, width, trans, useGpu);
   } else {
+    CHECK_EQ(matrix->useGpu(), useGpu);
     matrix->resize(height, width);
   }
 }
@@ -161,6 +162,7 @@ void Matrix::resizeOrCreateSparseMatrix(MatrixPtr& matrix, size_t height,
   } else {
     CHECK(dynamic_cast<CpuSparseMatrix*>(matrix.get()) ||
           dynamic_cast<GpuSparseMatrix*>(matrix.get()));
+    CHECK_EQ(matrix->useGpu(), useGpu);
     matrix->resize(height, width, nnz, valueType, format);
   }
 }

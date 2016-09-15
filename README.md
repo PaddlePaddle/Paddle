@@ -1,5 +1,6 @@
 QA-test
 # PaddlePaddle
+[![Build Status](https://travis-ci.org/baidu/Paddle.svg?branch=master)](https://travis-ci.org/baidu/Paddle)
 
 Welcome to the PaddlePaddle GitHub.
 

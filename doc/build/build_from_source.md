@@ -37,11 +37,12 @@ PaddlePaddle also support some build options, you have to install related librar
 ```bash
 # necessary
 sudo apt-get update
-sudo apt-get install -y g++ make cmake build-essential libatlas-base-dev python python-pip libpython-dev m4 libprotobuf-dev protobuf-compiler python-protobuf python-numpy git 
+sudo apt-get install -y g++ make cmake build-essential libatlas-base-dev python python-pip libpython-dev m4 libprotobuf-dev protobuf-compiler python-protobuf python-numpy git
 # optional
 sudo apt-get install libgoogle-glog-dev
 sudo apt-get install libgflags-dev
 sudo apt-get install libgtest-dev
+sudo pip install wheel
 pushd /usr/src/gtest
 cmake .
 make

@@ -64,6 +64,22 @@ limitations under the License. */
 namespace paddle {
 
 /**
+ * return the 1-based index of the highest bit set
+ *
+ * for x > 0:
+ * \f[
+ *    findLastSet(x) = 1 + \floor*{\log_{2}x}
+ * \f]
+ */
+inline constexpr size_t findLastSet(size_t x) {
+  return std::is_same<size_t , unsigned int>::value ?
+      (x ? 8 * sizeof(x) - __builtin_clz(x) : 0)
+    : (std::is_same<size_t , unsigned long>::value ? // NOLINT
+      (x ? 8 * sizeof(x) - __builtin_clzl(x) : 0)
+    : (x ? 8 * sizeof(x) - __builtin_clzll(x) : 0));
+}
+
+/**
  * calculate the non-negative remainder of a/b
  * @param[in] a
  * @param[in] b, should be positive

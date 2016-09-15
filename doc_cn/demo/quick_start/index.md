@@ -32,7 +32,7 @@
 
 ## 数据格式准备(Data Preparation)
 在本问题中，我们使用[Amazon电子产品评论数据](http://jmcauley.ucsd.edu/data/amazon/)，
-将评论分为好评(正样本)和差评(负样本)两类。`demo/quick_start`里提供了数据下载脚本
+将评论分为好评(正样本)和差评(负样本)两类。[源码](https://github.com/baidu/Paddle)的`demo/quick_start`里提供了数据下载脚本
 和预处理脚本。
 
 ```bash
@@ -144,7 +144,7 @@ PyDataProviderWrapper</a>。
 
 我们将以基本的逻辑回归网络作为起点，并逐渐展示更加深入的功能。更详细的网络配置
 连接请参考<a href = "../../../doc/layer.html">Layer文档</a>。
-所有配置在`demo/quick_start`目录，首先列举逻辑回归网络。
+所有配置在[源码](https://github.com/baidu/Paddle)`demo/quick_start`目录，首先列举逻辑回归网络。
 
 ### 逻辑回归模型(Logistic Regression)
 
@@ -407,7 +407,7 @@ paddle train \
 
 mv rank-00000 result.txt
 ```
-与训练网络配置不同的是：无需label相关的层，指定outputs输出概率层(softmax输出)，
+这里以`output/pass-00003`为例进行预测，用户可以根据训练log选择test结果最好的模型来预测。与训练网络配置不同的是：无需label相关的层，指定outputs输出概率层(softmax输出)，
 指定batch_size=1，数据传输无需label数据，预测数据指定test_list的位置。
 
 预测结果以文本的形式保存在`result.txt`中，一行为一个样本，格式如下：

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 project(paddle CXX C)
 set(PADDLE_MAJOR_VERSION 0)
 set(PADDLE_MINOR_VERSION 8)
-set(PADDLE_PATCH_VERSION 0b)
+set(PADDLE_PATCH_VERSION 0b0)
 set(PADDLE_VERSION ${PADDLE_MAJOR_VERSION}.${PADDLE_MINOR_VERSION}.${PADDLE_PATCH_VERSION})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
@@ -37,6 +37,7 @@ option(WITH_TIMER "Compile PaddlePaddle use timer" OFF)
 option(WITH_TESTING "Compile and run unittest for PaddlePaddle" ${GTEST_FOUND})
 option(WITH_DOC "Compile PaddlePaddle with documentation" OFF)
 option(WITH_SWIG_PY "Compile PaddlePaddle with py PaddlePaddle prediction api" ${SWIG_FOUND})
+option(ON_TRAVIS "Running test on travis-ci or not." OFF)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING 
         "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"

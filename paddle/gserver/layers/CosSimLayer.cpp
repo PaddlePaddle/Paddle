@@ -48,7 +48,7 @@ void CosSimLayer::forward(PassType passType) {
     REGISTER_TIMER_INFO("CosFwAtvTimer", getName().c_str());
     MatrixPtr prevOut1 = getInputValue(0);
     MatrixPtr prevOut2 = getInputValue(1);
-    outV->cosSim(*prevOut1, *prevOut2, kCosSimScale_);
+    outV->cosSim(*prevOut1, *prevOut2, config_.cos_scale());
   }
 }
 
@@ -59,7 +59,7 @@ void CosSimLayer::backward(const UpdateCallback& callback) {
 
     outG->cosSimDerivative(*this->getOutputValue(), *getInputValue(0),
                            *getInputValue(1), *getInputGrad(0),
-                           *getInputGrad(1), kCosSimScale_);
+                           *getInputGrad(1), config_.cos_scale());
   }
 }
 

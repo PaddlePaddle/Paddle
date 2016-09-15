@@ -47,81 +47,40 @@ bool CRFLayer::init(const LayerMap& layerMap,
   // We don't need sequenceStartPositions because each sample of output_ is
   // for the cost of one sequence.
   setNeedSequenceInfo(false);
-  if (useGpu_) {
-    tmpCpuInput_.reserve(inputLayers_.size());
-    for (size_t i = 0; i < inputLayers_.size(); i++) {
-      tmpCpuInput_.push_back(Argument());
-    }
-  }
+
   return true;
 }
 
 void CRFLayer::forward(PassType passType) {
   Layer::forward(passType);
-  if (useGpu_) {
-    for (size_t i = 0; i < inputLayers_.size(); i++) {
-      tmpCpuInput_[i].resizeAndCopyFrom(getInput(i), false, HPPL_STREAM_1);
-    }
-    VectorPtr cpuParameterValue;
-    VectorPtr cpuParameterGradient;
-    cpuParameterValue =
-      Vector::create(parameter_->getBuf(PARAMETER_VALUE)->getSize(), false);
-    cpuParameterValue->
-      copyFrom(*parameter_->getBuf(PARAMETER_VALUE), HPPL_STREAM_1);
-    if (parameter_->getBuf(PARAMETER_GRADIENT)) {
-      cpuParameterGradient =
-        Vector::create(parameter_->getBuf(PARAMETER_GRADIENT)->getSize(),
-                       false);
-      cpuParameterGradient->
-        copyFrom(*parameter_->getBuf(PARAMETER_GRADIENT), HPPL_STREAM_1);
-    } else {
-      cpuParameterGradient = nullptr;
-    }
-    forwardImp(tmpCpuInput_[0], tmpCpuInput_[1], cpuParameterValue,
-               cpuParameterGradient);
-    parameter_->getBuf(PARAMETER_VALUE)->copyFrom(*cpuParameterValue,
-                                                  HPPL_STREAM_1);
-    if (parameter_->getBuf(PARAMETER_GRADIENT)) {
-      parameter_->getBuf(PARAMETER_GRADIENT)->copyFrom(*cpuParameterGradient,
-                                                    HPPL_STREAM_1);
-    }
-  } else {
-    forwardImp(getInput(0), getInput(1), parameter_->getBuf(PARAMETER_VALUE),
-               parameter_->getBuf(PARAMETER_GRADIENT));
-  }
-}
 
-void CRFLayer::forwardImp(const Argument&output,
-                          const Argument& label,
-                          VectorPtr parameterValue,
-                          VectorPtr parameterGradient) {
+  CHECK(!useGpu_) << "GPU is not supported";
+
+  const Argument& output = getInput(0);
+  const Argument& label = getInput(1);
   CHECK(label.sequenceStartPositions);
   CHECK(label.ids);
 
   int batchSize = output.getBatchSize();
   size_t numSequences = label.sequenceStartPositions->getSize() - 1;
   resizeOutput(numSequences, 1);
-  std::vector<real> out(numSequences);
 
   const int* starts = label.sequenceStartPositions->getData(false);
   CHECK_EQ(starts[numSequences], batchSize);
-  VectorPtr cpuParameterValue;
-  VectorPtr cpuParameterGradient;
-
 
   for (size_t i = 0; i < numSequences; ++i) {
     if (i >= crfs_.size()) {
       crfs_.emplace_back(numClasses_,
-                         parameterValue->getData(),
-                         parameterGradient
-                            ? parameterGradient->getData()
+                         parameter_->getBuf(PARAMETER_VALUE)->getData(),
+                         parameter_->getBuf(PARAMETER_GRADIENT)
+                            ? parameter_->getBuf(PARAMETER_GRADIENT)->getData()
                             : nullptr);
     }
-    out[i] = crfs_[i].forward(
+    output_.value->getData()[i] = crfs_[i].forward(
         output.value->getData() + numClasses_ * starts[i],
         label.ids->getData() + starts[i], starts[i + 1] - starts[i]);
   }
-  output_.value->copyFrom(out.data(), numSequences);
+
   if (weightLayer_) {
     const MatrixPtr& weight = getInputValue(*weightLayer_);
     getOutputValue()->dotMul(*getOutputValue(), *weight);
@@ -129,22 +88,8 @@ void CRFLayer::forwardImp(const Argument&output,
 }
 
 void CRFLayer::backward(const UpdateCallback &callback) {
-  (void)callback;
-  if (useGpu_) {
-    backwardImp(callback, tmpCpuInput_[0], tmpCpuInput_[1]);
-    const_cast<Argument&>(getInput(0)).
-            resizeAndCopyFrom(tmpCpuInput_[0], true, HPPL_STREAM_1);
-    const_cast<Argument&>(getInput(1)).
-            resizeAndCopyFrom(tmpCpuInput_[1], true, HPPL_STREAM_1);
-
-  } else {
-    backwardImp(callback, getInput(0), getInput(1));
-  }
-}
-
-void CRFLayer::backwardImp(const UpdateCallback& callback,
-                           const Argument&output,
-                           const Argument& label) {
+  const Argument& output = getInput(0);
+  const Argument& label = getInput(1);
   const int* starts = label.sequenceStartPositions->getData(false);
   int numSequences = label.sequenceStartPositions->getSize() - 1;
 
@@ -159,9 +104,11 @@ void CRFLayer::backwardImp(const UpdateCallback& callback,
       grad->mulScalar(weight);
     }
   }
+
   if (coeff_ != real(1.0f)) {
     output.grad->mulScalar(coeff_);
   }
+
   parameter_->incUpdate(callback);
 }
 

@@ -165,7 +165,7 @@ We provide both C++ and Python interfaces to extract features. The following exa
 
 ### C++ Interface
 
-First, specify image data list in `define_py_data_sources` in the config, see example `demo/model_zoo/resnet/resnet.py`.
+First, specify image data list in `define_py_data_sources2` in the config, see example `demo/model_zoo/resnet/resnet.py`.
 
 ```
     train_list = 'train.list' if not is_test else None
