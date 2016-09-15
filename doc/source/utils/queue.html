@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Queue &mdash; PaddlePaddle  documentation</title>
+    <title>Queue &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -45,8 +45,8 @@
         <li class="right" >
           <a href="lock.html" title="Thread"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -65,27 +65,27 @@
 <dt id="_CPPv2N6paddle5QueueE">
 <span id="paddle::Queue"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Queue</code><a class="headerlink" href="#_CPPv2N6paddle5QueueE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A thread-safe queue that automatically grows but never shrinks. Dequeue a empty queue will block current thread. Enqueue an element will wake up another thread that blocked by dequeue method.</p>
-<p>For example.  <div class="highlight-python"><div class="highlight"><pre><span></span>paddle::Queue&lt;int&gt; q;
-END_OF_JOB=-1
-void thread1() {
-  while (true) {
-    auto job = q.dequeue();
-    if (job == END_OF_JOB) {
-      break;
-    }
-    processJob(job);
-  }
-}
+<p>For example.  <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span><span class="p">::</span><span class="n">Queue</span><span class="o">&lt;</span><span class="nb">int</span><span class="o">&gt;</span> <span class="n">q</span><span class="p">;</span>
+<span class="n">END_OF_JOB</span><span class="o">=-</span><span class="mi">1</span>
+<span class="n">void</span> <span class="n">thread1</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">while</span> <span class="p">(</span><span class="n">true</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">auto</span> <span class="n">job</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">dequeue</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">job</span> <span class="o">==</span> <span class="n">END_OF_JOB</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">processJob</span><span class="p">(</span><span class="n">job</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
 
-void thread2() {
-  while (true) {
-     auto job = getJob();
-     q.enqueue(job);
-     if (job == END_OF_JOB) {
-       break;
-     }
-  }
-}
+<span class="n">void</span> <span class="n">thread2</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">while</span> <span class="p">(</span><span class="n">true</span><span class="p">)</span> <span class="p">{</span>
+     <span class="n">auto</span> <span class="n">job</span> <span class="o">=</span> <span class="n">getJob</span><span class="p">();</span>
+     <span class="n">q</span><span class="o">.</span><span class="n">enqueue</span><span class="p">(</span><span class="n">job</span><span class="p">);</span>
+     <span class="k">if</span> <span class="p">(</span><span class="n">job</span> <span class="o">==</span> <span class="n">END_OF_JOB</span><span class="p">)</span> <span class="p">{</span>
+       <span class="k">break</span><span class="p">;</span>
+     <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
 </pre></div>
 </div>
 </p>
@@ -94,7 +94,7 @@ void thread2() {
 <dl class="function">
 <dt id="_CPPv2N6paddle5Queue5QueueEv">
 <span id="paddle::Queue::Queue"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a4f635b36dbf76eca675be69de3eda18a"></span><code class="descname">Queue</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Queue5QueueEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Construct Function. Default capacity of <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span>Queue</span></a> is zero. </p>
+<dd><p>Construct Function. Default capacity of <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span class="std std-ref">Queue</span></a> is zero. </p>
 </dd></dl>
 
 <dl class="function">
@@ -105,7 +105,7 @@ void thread2() {
 <dl class="function">
 <dt id="_CPPv2N6paddle5Queue7enqueueERK1T">
 <span id="paddle::Queue::enqueue__TCR"></span><span class="target" id="paddleclasspaddle_1_1Queue_1ab7feef122fb9fff3c0009e7830fa432a"></span>void <code class="descname">enqueue</code><span class="sig-paren">(</span><em class="property">const</em> T &amp;<em>el</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Queue7enqueueERK1T" title="Permalink to this definition">¶</a></dt>
-<dd><p>enqueue an element into <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span>Queue</span></a>. </p>
+<dd><p>enqueue an element into <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span class="std std-ref">Queue</span></a>. </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>This method is thread-safe, and will wake up another blocked thread. </dd>
@@ -122,7 +122,7 @@ void thread2() {
 <dl class="function">
 <dt id="_CPPv2N6paddle5Queue7enqueueERR1T">
 <span id="paddle::Queue::enqueue__TRR"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a364dd46c374795465b79044df4ef3056"></span>void <code class="descname">enqueue</code><span class="sig-paren">(</span>T &amp;&amp;<em>el</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Queue7enqueueERR1T" title="Permalink to this definition">¶</a></dt>
-<dd><p>enqueue an element into <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span>Queue</span></a>. </p>
+<dd><p>enqueue an element into <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span class="std std-ref">Queue</span></a>. </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>This method is thread-safe, and will wake up another blocked thread. </dd>
@@ -207,12 +207,12 @@ void thread2() {
 <dl class="function">
 <dt id="_CPPv2N6paddle13BlockingQueue7enqueueERK1T">
 <span id="paddle::BlockingQueue::enqueue__TCR"></span><span class="target" id="paddleclasspaddle_1_1BlockingQueue_1ae342ffe1695f6fd71f7cd6533436de3d"></span>void <code class="descname">enqueue</code><span class="sig-paren">(</span><em class="property">const</em> T &amp;<em>x</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13BlockingQueue7enqueueERK1T" title="Permalink to this definition">¶</a></dt>
-<dd><p>enqueue an element into <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span>Queue</span></a>. </p>
+<dd><p>enqueue an element into <a class="reference internal" href="#paddleclasspaddle_1_1Queue"><span class="std std-ref">Queue</span></a>. </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>This method is thread-safe, and will wake up another thread who was blocked because of the queue is empty. </dd>
-<dt><strong>Note</strong></dt>
-<dd>If it&#8217;s <a class="reference internal" href="#paddleclasspaddle_1_1BlockingQueue_1a896e557a322cd5583491e2a603f462f9"><span>size()</span></a> &gt;= capacity before enqueue, this method will block and wait until <a class="reference internal" href="#paddleclasspaddle_1_1BlockingQueue_1a896e557a322cd5583491e2a603f462f9"><span>size()</span></a> &lt; capacity. </dd>
+<dd><p class="first">This method is thread-safe, and will wake up another thread who was blocked because of the queue is empty. </p>
+<p class="last">If it&#8217;s <a class="reference internal" href="#paddleclasspaddle_1_1BlockingQueue_1a896e557a322cd5583491e2a603f462f9"><span class="std std-ref">size()</span></a> &gt;= capacity before enqueue, this method will block and wait until <a class="reference internal" href="#paddleclasspaddle_1_1BlockingQueue_1a896e557a322cd5583491e2a603f462f9"><span class="std std-ref">size()</span></a> &lt; capacity. </p>
+</dd>
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last">
 <li><code class="first docutils literal"><span class="pre">x</span></code> - <p>The enqueue element, pass by reference . </p>
@@ -228,9 +228,9 @@ void thread2() {
 <span id="paddle::BlockingQueue::dequeue"></span><span class="target" id="paddleclasspaddle_1_1BlockingQueue_1a5e3a8bafedde4c154eab3310b42d66cd"></span>T <code class="descname">dequeue</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13BlockingQueue7dequeueEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Dequeue from a queue and return a element. <dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>this method will be blocked until not empty. </dd>
-<dt><strong>Note</strong></dt>
-<dd>this method will wake up another thread who was blocked because of the queue is full. </dd>
+<dd><p class="first">this method will be blocked until not empty. </p>
+<p class="last">this method will wake up another thread who was blocked because of the queue is full. </p>
+</dd>
 </dl>
 </p>
 </dd></dl>
@@ -296,14 +296,11 @@ void thread2() {
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -325,13 +322,13 @@ void thread2() {
         <li class="right" >
           <a href="lock.html" title="Thread"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

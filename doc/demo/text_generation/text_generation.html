@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Text generation Tutorial &mdash; PaddlePaddle  documentation</title>
+    <title>Text generation Tutorial &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -26,7 +26,7 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
     <link rel="up" title="Text Generation Tutorial" href="index.html" />
-    <link rel="next" title="MovieLens Dataset" href="../rec/ml_dataset.html" />
+    <link rel="next" title="Semantic Role Labeling Tutorial" href="../semantic_role_labeling/index.html" />
     <link rel="prev" title="Text Generation Tutorial" href="index.html" /> 
   </head>
   <body role="document">
@@ -40,14 +40,14 @@
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../rec/ml_dataset.html" title="MovieLens Dataset"
+          <a href="../semantic_role_labeling/index.html" title="Semantic Role Labeling Tutorial"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="index.html" title="Text Generation Tutorial"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Text Generation Tutorial</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Text Generation Tutorial</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -120,19 +120,19 @@
 <div class="section" id="user-defined-dataset">
 <span id="user-defined-dataset"></span><h3>User Defined Dataset<a class="headerlink" href="#user-defined-dataset" title="Permalink to this headline">¶</a></h3>
 <p>If you need to do other sequence-to-sequence tasks, such as Paraphrasing, you only need to organize the data as follows, and place them in <code class="docutils literal"><span class="pre">demo/seqToseq/data</span></code>:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>dataset
-  train
-    file1.src file1.trg
-    file2.src file2.trg
-    ......
-  test
-    file1.src file1.trg
-    file2.src file2.trg
-    ......
-  gen
-    file1.src file1.trg
-    file2.src file2.trg
-    ......
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">dataset</span>
+  <span class="n">train</span>
+    <span class="n">file1</span><span class="o">.</span><span class="n">src</span> <span class="n">file1</span><span class="o">.</span><span class="n">trg</span>
+    <span class="n">file2</span><span class="o">.</span><span class="n">src</span> <span class="n">file2</span><span class="o">.</span><span class="n">trg</span>
+    <span class="o">......</span>
+  <span class="n">test</span>
+    <span class="n">file1</span><span class="o">.</span><span class="n">src</span> <span class="n">file1</span><span class="o">.</span><span class="n">trg</span>
+    <span class="n">file2</span><span class="o">.</span><span class="n">src</span> <span class="n">file2</span><span class="o">.</span><span class="n">trg</span>
+    <span class="o">......</span>
+  <span class="n">gen</span>
+    <span class="n">file1</span><span class="o">.</span><span class="n">src</span> <span class="n">file1</span><span class="o">.</span><span class="n">trg</span>
+    <span class="n">file2</span><span class="o">.</span><span class="n">src</span> <span class="n">file2</span><span class="o">.</span><span class="n">trg</span>
+    <span class="o">......</span>
 </pre></div>
 </div>
 <ul class="simple">
@@ -182,10 +182,10 @@
 <li><code class="docutils literal"><span class="pre">-m</span> <span class="pre">--mergeDict</span></code>: merge source and target dictionary, thus, two dictionaries have the same context</li>
 </ul>
 <p>And you will see messages like this:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>concat parallel corpora for dataset
-build source dictionary for train data
-build target dictionary for train data
-dictionary size is XXX
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">concat</span> <span class="n">parallel</span> <span class="n">corpora</span> <span class="k">for</span> <span class="n">dataset</span>
+<span class="n">build</span> <span class="n">source</span> <span class="n">dictionary</span> <span class="k">for</span> <span class="n">train</span> <span class="n">data</span>
+<span class="n">build</span> <span class="n">target</span> <span class="n">dictionary</span> <span class="k">for</span> <span class="n">train</span> <span class="n">data</span>
+<span class="n">dictionary</span> <span class="n">size</span> <span class="ow">is</span> <span class="n">XXX</span>
 </pre></div>
 </div>
 <p>Here, you can simply run the command:</p>
@@ -193,7 +193,7 @@ dictionary size is XXX
 </pre></div>
 </div>
 <p>It will take several minutes, and store the preprocessed dataset in <code class="docutils literal"><span class="pre">demo/seqToseq/data/pre-wmt14</span></code>, the directory has following structure.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>train test gen train.list test.list gen.list src.dict trg.dict
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">train</span> <span class="n">test</span> <span class="n">gen</span> <span class="n">train</span><span class="o">.</span><span class="n">list</span> <span class="n">test</span><span class="o">.</span><span class="n">list</span> <span class="n">gen</span><span class="o">.</span><span class="n">list</span> <span class="n">src</span><span class="o">.</span><span class="n">dict</span> <span class="n">trg</span><span class="o">.</span><span class="n">dict</span>
 </pre></div>
 </div>
 <ul class="simple">
@@ -274,9 +274,9 @@ dictionary size is XXX
 <li>dot_period: here print &#8216;.&#8217; every 5 batches</li>
 </ul>
 <p>The training loss function is printed every 10 batch by default, and you will see messages like this:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>I0719 19:16:45.952062 15563 TrainerInternal.cpp:160]  Batch=10 samples=500 AvgCost=198.475 CurrentCost=198.475 Eval: classification_error_evaluator=0.737155  CurrentEval: classification_error_evaluator=0.737155
-I0719 19:17:56.707319 15563 TrainerInternal.cpp:160]  Batch=20 samples=1000 AvgCost=157.479 CurrentCost=116.483 Eval: classification_error_evaluator=0.698392  CurrentEval: classification_error_evaluator=0.659065
-.....
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">I0719</span> <span class="mi">19</span><span class="p">:</span><span class="mi">16</span><span class="p">:</span><span class="mf">45.952062</span> <span class="mi">15563</span> <span class="n">TrainerInternal</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">160</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">10</span> <span class="n">samples</span><span class="o">=</span><span class="mi">500</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mf">198.475</span> <span class="n">CurrentCost</span><span class="o">=</span><span class="mf">198.475</span> <span class="n">Eval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.737155</span>  <span class="n">CurrentEval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.737155</span>
+<span class="n">I0719</span> <span class="mi">19</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mf">56.707319</span> <span class="mi">15563</span> <span class="n">TrainerInternal</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">160</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">20</span> <span class="n">samples</span><span class="o">=</span><span class="mi">1000</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mf">157.479</span> <span class="n">CurrentCost</span><span class="o">=</span><span class="mf">116.483</span> <span class="n">Eval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.698392</span>  <span class="n">CurrentEval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.659065</span>
+<span class="o">.....</span>
 </pre></div>
 </div>
 <ul class="simple">
@@ -360,23 +360,23 @@ I0719 19:17:56.707319 15563 TrainerInternal.cpp:160]  Batch=20 samples=1000 AvgC
 <li>num_passes and test_pass: loading model parameters from test_pass to (num_passes - 1), here only loads <code class="docutils literal"><span class="pre">data/wmt14_model/pass-00012</span></code></li>
 </ul>
 <p>You will see messages like this:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>I0706 14:48:31.178915 31441 GradientMachine.cpp:143] Loading parameters from data/wmt14_model/pass-00012
-I0706 14:48:40.012039 31441 Tester.cpp:125]  Batch=100 samples=100 AvgCost=0
-I0706 14:48:48.898632 31441 Tester.cpp:125]  Batch=200 samples=200 AvgCost=0
-...
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">I0706</span> <span class="mi">14</span><span class="p">:</span><span class="mi">48</span><span class="p">:</span><span class="mf">31.178915</span> <span class="mi">31441</span> <span class="n">GradientMachine</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">143</span><span class="p">]</span> <span class="n">Loading</span> <span class="n">parameters</span> <span class="kn">from</span> <span class="nn">data</span><span class="o">/</span><span class="n">wmt14_model</span><span class="o">/</span><span class="k">pass</span><span class="o">-</span><span class="mi">00012</span>
+<span class="n">I0706</span> <span class="mi">14</span><span class="p">:</span><span class="mi">48</span><span class="p">:</span><span class="mf">40.012039</span> <span class="mi">31441</span> <span class="n">Tester</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">125</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">100</span> <span class="n">samples</span><span class="o">=</span><span class="mi">100</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mi">0</span>
+<span class="n">I0706</span> <span class="mi">14</span><span class="p">:</span><span class="mi">48</span><span class="p">:</span><span class="mf">48.898632</span> <span class="mi">31441</span> <span class="n">Tester</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">125</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">200</span> <span class="n">samples</span><span class="o">=</span><span class="mi">200</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mi">0</span>
+<span class="o">...</span>
 </pre></div>
 </div>
 <p>And the generating result in <code class="docutils literal"><span class="pre">demo/seqToseq/translation/gen_result</span></code> likes:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>0
-0       -11.1314         The &lt;unk&gt; &lt;unk&gt; about the width of the seats while large controls are at stake &lt;e&gt;
-1       -11.1519         The &lt;unk&gt; &lt;unk&gt; on the width of the seats while large controls are at stake &lt;e&gt;
-2       -11.5988         The &lt;unk&gt; &lt;unk&gt; about the width of the seats while large controls are at stake . &lt;e&gt;
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">0</span>
+<span class="mi">0</span>       <span class="o">-</span><span class="mf">11.1314</span>         <span class="n">The</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">seats</span> <span class="k">while</span> <span class="n">large</span> <span class="n">controls</span> <span class="n">are</span> <span class="n">at</span> <span class="n">stake</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">1</span>       <span class="o">-</span><span class="mf">11.1519</span>         <span class="n">The</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">on</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">seats</span> <span class="k">while</span> <span class="n">large</span> <span class="n">controls</span> <span class="n">are</span> <span class="n">at</span> <span class="n">stake</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">2</span>       <span class="o">-</span><span class="mf">11.5988</span>         <span class="n">The</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">seats</span> <span class="k">while</span> <span class="n">large</span> <span class="n">controls</span> <span class="n">are</span> <span class="n">at</span> <span class="n">stake</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
 
-1
-0       -24.4149         The dispute is between the major aircraft manufacturers about the width of the tourist seats on the &lt;unk&gt; flights , paving the way for a &lt;unk&gt; confrontation during the month of the Dubai &lt;unk&gt; . &lt;e&gt;
-1       -26.9524         The dispute is between the major aircraft manufacturers about the width of the tourist seats on the &lt;unk&gt; flights , paving the way for a &lt;unk&gt; confrontation during the month of Dubai &amp;apos; s &lt;unk&gt; . &lt;e&gt;
-2       -27.9574         The dispute is between the major aircraft manufacturers about the width of the tourist seats on the &lt;unk&gt; flights , paving the way for a &lt;unk&gt; confrontation during the month of Dubai &amp;apos; s Dubai &lt;unk&gt; . &lt;e&gt;
-...
+<span class="mi">1</span>
+<span class="mi">0</span>       <span class="o">-</span><span class="mf">24.4149</span>         <span class="n">The</span> <span class="n">dispute</span> <span class="ow">is</span> <span class="n">between</span> <span class="n">the</span> <span class="n">major</span> <span class="n">aircraft</span> <span class="n">manufacturers</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">tourist</span> <span class="n">seats</span> <span class="n">on</span> <span class="n">the</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">flights</span> <span class="p">,</span> <span class="n">paving</span> <span class="n">the</span> <span class="n">way</span> <span class="k">for</span> <span class="n">a</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">confrontation</span> <span class="n">during</span> <span class="n">the</span> <span class="n">month</span> <span class="n">of</span> <span class="n">the</span> <span class="n">Dubai</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">1</span>       <span class="o">-</span><span class="mf">26.9524</span>         <span class="n">The</span> <span class="n">dispute</span> <span class="ow">is</span> <span class="n">between</span> <span class="n">the</span> <span class="n">major</span> <span class="n">aircraft</span> <span class="n">manufacturers</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">tourist</span> <span class="n">seats</span> <span class="n">on</span> <span class="n">the</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">flights</span> <span class="p">,</span> <span class="n">paving</span> <span class="n">the</span> <span class="n">way</span> <span class="k">for</span> <span class="n">a</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">confrontation</span> <span class="n">during</span> <span class="n">the</span> <span class="n">month</span> <span class="n">of</span> <span class="n">Dubai</span> <span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">s</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="mi">2</span>       <span class="o">-</span><span class="mf">27.9574</span>         <span class="n">The</span> <span class="n">dispute</span> <span class="ow">is</span> <span class="n">between</span> <span class="n">the</span> <span class="n">major</span> <span class="n">aircraft</span> <span class="n">manufacturers</span> <span class="n">about</span> <span class="n">the</span> <span class="n">width</span> <span class="n">of</span> <span class="n">the</span> <span class="n">tourist</span> <span class="n">seats</span> <span class="n">on</span> <span class="n">the</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">flights</span> <span class="p">,</span> <span class="n">paving</span> <span class="n">the</span> <span class="n">way</span> <span class="k">for</span> <span class="n">a</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="n">confrontation</span> <span class="n">during</span> <span class="n">the</span> <span class="n">month</span> <span class="n">of</span> <span class="n">Dubai</span> <span class="o">&amp;</span><span class="n">apos</span><span class="p">;</span> <span class="n">s</span> <span class="n">Dubai</span> <span class="o">&lt;</span><span class="n">unk</span><span class="o">&gt;</span> <span class="o">.</span> <span class="o">&lt;</span><span class="n">e</span><span class="o">&gt;</span>
+<span class="o">...</span>
 </pre></div>
 </div>
 <ul class="simple">
@@ -455,8 +455,8 @@ I0706 14:48:48.898632 31441 Tester.cpp:125]  Batch=200 samples=200 AvgCost=0
   <p class="topless"><a href="index.html"
                         title="previous chapter">Text Generation Tutorial</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="../rec/ml_dataset.html"
-                        title="next chapter">MovieLens Dataset</a></p>
+  <p class="topless"><a href="../semantic_role_labeling/index.html"
+                        title="next chapter">Semantic Role Labeling Tutorial</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -467,14 +467,11 @@ I0706 14:48:48.898632 31441 Tester.cpp:125]  Batch=200 samples=200 AvgCost=0
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -491,19 +488,19 @@ I0706 14:48:48.898632 31441 Tester.cpp:125]  Batch=200 samples=200 AvgCost=0
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../rec/ml_dataset.html" title="MovieLens Dataset"
+          <a href="../semantic_role_labeling/index.html" title="Semantic Role Labeling Tutorial"
              >next</a> |</li>
         <li class="right" >
           <a href="index.html" title="Text Generation Tutorial"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Text Generation Tutorial</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Text Generation Tutorial</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

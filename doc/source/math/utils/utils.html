@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Utils &mdash; PaddlePaddle  documentation</title>
+    <title>Utils &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -45,9 +45,9 @@
         <li class="right" >
           <a href="index.html" title="Utils Documents"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Utils Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Utils Documents</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -58,36 +58,6 @@
             
   <div class="section" id="utils">
 <h1>Utils<a class="headerlink" href="#utils" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="bits">
-<h2>Bits<a class="headerlink" href="#bits" title="Permalink to this headline">¶</a></h2>
-<dl class="type">
-<dt id="_CPPv26paddle">
-<span id="paddle"></span><span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
-<dd><div class="breathe-sectiondef container">
-<p class="breathe-sectiondef-title rubric">Functions</p>
-<dl class="function">
-<dt>
-<em class="property">template </em>&lt;<em class="property">class</em> T&gt;</dt>
-<dt id="_CPPv2N6paddle11findLastSetE1T">
-<span id="paddle::findLastSet__TCE"></span><span class="target" id="paddlenamespacepaddle_1ab8cf81e1dc466a7b50fa00da68e6e7e0"></span><em class="property">constexpr</em> std::enable_if&lt;(std::is_integral&lt;T&gt;::value &amp;&amp; std::is_unsigned&lt;T&gt;::value &amp;&amp; sizeof(T) &lt;= sizeof(unsigned int)), unsigned int&gt;::type <code class="descname">findLastSet</code><span class="sig-paren">(</span>T <em>x</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle11findLastSetE1T" title="Permalink to this definition">¶</a></dt>
-<dd><p>From Facebook folly: <a class="reference external" href="https://github.com/facebook/folly/blob/master/folly/Bits.h">https://github.com/facebook/folly/blob/master/folly/Bits.h</a></p>
-<p>findLastSet: return the 1-based index of the highest bit set</p>
-<p>for x &gt; 0: <div class="math">
-\[ findLastSet(x) = 1 + \floor*{\log_{2}x} \]</div>
- </p>
-</dd></dl>
-
-<dl class="function">
-<dt>
-<em class="property">template </em>&lt;<em class="property">class</em> T&gt;</dt>
-<dt id="_CPPv2N6paddle11findLastSetE1T">
-<span id="paddle::findLastSet__TCE"></span><span class="target" id="paddlenamespacepaddle_1a2b279ab7468a4082405e604156dee96e"></span><em class="property">constexpr</em> std::enable_if&lt;(std::is_integral&lt;T&gt;::value &amp;&amp; std::is_unsigned&lt;T&gt;::value &amp;&amp; sizeof(T) &gt; sizeof(unsigned int) &amp;&amp; sizeof(T) &lt;= sizeof(unsigned long)), unsigned int&gt;::type <code class="descname">findLastSet</code><span class="sig-paren">(</span>T <em>x</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle11findLastSetE1T" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</div>
-</dd></dl>
-
-</div>
 <div class="section" id="memory-handle">
 <h2>Memory Handle<a class="headerlink" href="#memory-handle" title="Permalink to this headline">¶</a></h2>
 <dl class="type">
@@ -112,51 +82,9 @@
 
 </div>
 <dl class="class">
-<dt id="_CPPv2N6paddle15CpuMemoryHandleE">
-<span id="paddle::CpuMemoryHandle"></span><span class="target" id="paddleclasspaddle_1_1CpuMemoryHandle"></span><em class="property">class </em><code class="descname">CpuMemoryHandle</code><a class="headerlink" href="#_CPPv2N6paddle15CpuMemoryHandleE" title="Permalink to this definition">¶</a></dt>
-<dd><em>#include &lt;MemoryHandle.h&gt;</em><p>Wrapper class for raw cpu memory handle.</p>
-<p>The raw handle will be released at destructor </p>
-<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1MemoryHandle"><span>paddle::MemoryHandle</span></a></p>
-<div class="breathe-sectiondef container">
-<p class="breathe-sectiondef-title rubric">Public Functions</p>
-<dl class="function">
-<dt id="_CPPv2N6paddle15CpuMemoryHandle15CpuMemoryHandleE6size_t">
-<span id="paddle::CpuMemoryHandle::CpuMemoryHandle__s"></span><span class="target" id="paddleclasspaddle_1_1CpuMemoryHandle_1a05efa9ed2ddb84a48478419305b310ad"></span><code class="descname">CpuMemoryHandle</code><span class="sig-paren">(</span>size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15CpuMemoryHandle15CpuMemoryHandleE6size_t" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="_CPPv2N6paddle15CpuMemoryHandleD0Ev">
-<span id="paddle::CpuMemoryHandle::~CpuMemoryHandle"></span>virtual <span class="target" id="paddleclasspaddle_1_1CpuMemoryHandle_1a57034e434df5b23cc0743eb462254b1d"></span><code class="descname">~CpuMemoryHandle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15CpuMemoryHandleD0Ev" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</div>
-</dd></dl>
-
-<dl class="class">
-<dt id="_CPPv2N6paddle15GpuMemoryHandleE">
-<span id="paddle::GpuMemoryHandle"></span><span class="target" id="paddleclasspaddle_1_1GpuMemoryHandle"></span><em class="property">class </em><code class="descname">GpuMemoryHandle</code><a class="headerlink" href="#_CPPv2N6paddle15GpuMemoryHandleE" title="Permalink to this definition">¶</a></dt>
-<dd><em>#include &lt;MemoryHandle.h&gt;</em><p>Wrapper class for raw gpu memory handle.</p>
-<p>The raw handle will be released at destructor </p>
-<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1MemoryHandle"><span>paddle::MemoryHandle</span></a></p>
-<div class="breathe-sectiondef container">
-<p class="breathe-sectiondef-title rubric">Public Functions</p>
-<dl class="function">
-<dt id="_CPPv2N6paddle15GpuMemoryHandle15GpuMemoryHandleE6size_t">
-<span id="paddle::GpuMemoryHandle::GpuMemoryHandle__s"></span><span class="target" id="paddleclasspaddle_1_1GpuMemoryHandle_1ac2c01aa7ccad4d310d10909b40430267"></span><code class="descname">GpuMemoryHandle</code><span class="sig-paren">(</span>size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15GpuMemoryHandle15GpuMemoryHandleE6size_t" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="_CPPv2N6paddle15GpuMemoryHandleD0Ev">
-<span id="paddle::GpuMemoryHandle::~GpuMemoryHandle"></span>virtual <span class="target" id="paddleclasspaddle_1_1GpuMemoryHandle_1a9413da30f569e6e5afb2fff0784df638"></span><code class="descname">~GpuMemoryHandle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15GpuMemoryHandleD0Ev" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</div>
-</dd></dl>
-
-<dl class="class">
 <dt id="_CPPv2N6paddle12MemoryHandleE">
 <span id="paddle::MemoryHandle"></span><span class="target" id="paddleclasspaddle_1_1MemoryHandle"></span><em class="property">class </em><code class="descname">MemoryHandle</code><a class="headerlink" href="#_CPPv2N6paddle12MemoryHandleE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1CpuMemoryHandle"><span>paddle::CpuMemoryHandle</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GpuMemoryHandle"><span>paddle::GpuMemoryHandle</span></a></p>
+<dd><p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1CpuMemoryHandle"><span class="std std-ref">paddle::CpuMemoryHandle</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GpuMemoryHandle"><span class="std std-ref">paddle::GpuMemoryHandle</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -219,17 +147,59 @@
 </div>
 </dd></dl>
 
+<dl class="class">
+<dt id="_CPPv2N6paddle15GpuMemoryHandleE">
+<span id="paddle::GpuMemoryHandle"></span><span class="target" id="paddleclasspaddle_1_1GpuMemoryHandle"></span><em class="property">class </em><code class="descname">GpuMemoryHandle</code><a class="headerlink" href="#_CPPv2N6paddle15GpuMemoryHandleE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;MemoryHandle.h&gt;</em><p>Wrapper class for raw gpu memory handle.</p>
+<p>The raw handle will be released at destructor </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1MemoryHandle"><span class="std std-ref">paddle::MemoryHandle</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle15GpuMemoryHandle15GpuMemoryHandleE6size_t">
+<span id="paddle::GpuMemoryHandle::GpuMemoryHandle__s"></span><span class="target" id="paddleclasspaddle_1_1GpuMemoryHandle_1ac2c01aa7ccad4d310d10909b40430267"></span><code class="descname">GpuMemoryHandle</code><span class="sig-paren">(</span>size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15GpuMemoryHandle15GpuMemoryHandleE6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15GpuMemoryHandleD0Ev">
+<span id="paddle::GpuMemoryHandle::~GpuMemoryHandle"></span>virtual <span class="target" id="paddleclasspaddle_1_1GpuMemoryHandle_1a9413da30f569e6e5afb2fff0784df638"></span><code class="descname">~GpuMemoryHandle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15GpuMemoryHandleD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle15CpuMemoryHandleE">
+<span id="paddle::CpuMemoryHandle"></span><span class="target" id="paddleclasspaddle_1_1CpuMemoryHandle"></span><em class="property">class </em><code class="descname">CpuMemoryHandle</code><a class="headerlink" href="#_CPPv2N6paddle15CpuMemoryHandleE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;MemoryHandle.h&gt;</em><p>Wrapper class for raw cpu memory handle.</p>
+<p>The raw handle will be released at destructor </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1MemoryHandle"><span class="std std-ref">paddle::MemoryHandle</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle15CpuMemoryHandle15CpuMemoryHandleE6size_t">
+<span id="paddle::CpuMemoryHandle::CpuMemoryHandle__s"></span><span class="target" id="paddleclasspaddle_1_1CpuMemoryHandle_1a05efa9ed2ddb84a48478419305b310ad"></span><code class="descname">CpuMemoryHandle</code><span class="sig-paren">(</span>size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15CpuMemoryHandle15CpuMemoryHandleE6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15CpuMemoryHandleD0Ev">
+<span id="paddle::CpuMemoryHandle::~CpuMemoryHandle"></span>virtual <span class="target" id="paddleclasspaddle_1_1CpuMemoryHandle_1a57034e434df5b23cc0743eb462254b1d"></span><code class="descname">~CpuMemoryHandle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15CpuMemoryHandleD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
 <dt id="_CPPv26paddle">
-<span id="paddle"></span><span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="class">
 <dt id="_CPPv2N6paddle9AllocatorE">
 <span id="paddle::Allocator"></span><span class="target" id="paddleclasspaddle_1_1Allocator"></span><em class="property">class </em><code class="descname">Allocator</code><a class="headerlink" href="#_CPPv2N6paddle9AllocatorE" title="Permalink to this definition">¶</a></dt>
-<dd><em>#include &lt;Allocator.h&gt;</em><p><a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span>Allocator</span></a> base class. </p>
-<p>This is the base class of all <a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span>Allocator</span></a> class. </p>
-<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1CpuAllocator"><span>paddle::CpuAllocator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CudaHostAllocator"><span>paddle::CudaHostAllocator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GpuAllocator"><span>paddle::GpuAllocator</span></a></p>
+<dd><em>#include &lt;Allocator.h&gt;</em><p><a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span class="std std-ref">Allocator</span></a> base class. </p>
+<p>This is the base class of all <a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span class="std std-ref">Allocator</span></a> class. </p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1CpuAllocator"><span class="std std-ref">paddle::CpuAllocator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CudaHostAllocator"><span class="std std-ref">paddle::CudaHostAllocator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GpuAllocator"><span class="std std-ref">paddle::GpuAllocator</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -259,7 +229,7 @@
 <dt id="_CPPv2N6paddle12CpuAllocatorE">
 <span id="paddle::CpuAllocator"></span><span class="target" id="paddleclasspaddle_1_1CpuAllocator"></span><em class="property">class </em><code class="descname">CpuAllocator</code><a class="headerlink" href="#_CPPv2N6paddle12CpuAllocatorE" title="Permalink to this definition">¶</a></dt>
 <dd><em>#include &lt;Allocator.h&gt;</em><p>CPU allocator implementation. </p>
-<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span>paddle::Allocator</span></a></p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span class="std std-ref">paddle::Allocator</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -308,62 +278,10 @@
 </dd></dl>
 
 <dl class="class">
-<dt id="_CPPv2N6paddle17CudaHostAllocatorE">
-<span id="paddle::CudaHostAllocator"></span><span class="target" id="paddleclasspaddle_1_1CudaHostAllocator"></span><em class="property">class </em><code class="descname">CudaHostAllocator</code><a class="headerlink" href="#_CPPv2N6paddle17CudaHostAllocatorE" title="Permalink to this definition">¶</a></dt>
-<dd><em>#include &lt;Allocator.h&gt;</em><p>CPU pinned memory allocator implementation. </p>
-<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span>paddle::Allocator</span></a></p>
-<div class="breathe-sectiondef container">
-<p class="breathe-sectiondef-title rubric">Public Functions</p>
-<dl class="function">
-<dt id="_CPPv2N6paddle17CudaHostAllocatorD0Ev">
-<span id="paddle::CudaHostAllocator::~CudaHostAllocator"></span><span class="target" id="paddleclasspaddle_1_1CudaHostAllocator_1a3d01e8f416075196f6e8f90f17119512"></span><code class="descname">~CudaHostAllocator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CudaHostAllocatorD0Ev" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="_CPPv2N6paddle17CudaHostAllocator5allocE6size_t">
-<span id="paddle::CudaHostAllocator::alloc__s"></span>virtual <span class="target" id="paddleclasspaddle_1_1CudaHostAllocator_1aaa6d38d7ded5d6f56dce372e7f2e1b3a"></span>void *<code class="descname">alloc</code><span class="sig-paren">(</span>size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CudaHostAllocator5allocE6size_t" title="Permalink to this definition">¶</a></dt>
-<dd><p>Allocate pinned memory. </p>
-<p><dl class="docutils">
-<dt><strong>Return</strong></dt>
-<dd>Pointer to the allocated memory </dd>
-<dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>Size to be allocated. </p>
-</li>
-</ul>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="_CPPv2N6paddle17CudaHostAllocator4freeEPv">
-<span id="paddle::CudaHostAllocator::free__voidP"></span>virtual <span class="target" id="paddleclasspaddle_1_1CudaHostAllocator_1a205169ec923beeffc2336fb49b7baff8"></span>void <code class="descname">free</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CudaHostAllocator4freeEPv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Free the pinned memory. </p>
-<p><dl class="docutils">
-<dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">ptr</span></code> - <p>Pointer to be free. </p>
-</li>
-</ul>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="_CPPv2N6paddle17CudaHostAllocator7getNameEv">
-<span id="paddle::CudaHostAllocator::getName"></span>virtual <span class="target" id="paddleclasspaddle_1_1CudaHostAllocator_1ad76d0910bc49235cc2047566c8bc53a2"></span>std::string <code class="descname">getName</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CudaHostAllocator7getNameEv" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</div>
-</dd></dl>
-
-<dl class="class">
 <dt id="_CPPv2N6paddle12GpuAllocatorE">
 <span id="paddle::GpuAllocator"></span><span class="target" id="paddleclasspaddle_1_1GpuAllocator"></span><em class="property">class </em><code class="descname">GpuAllocator</code><a class="headerlink" href="#_CPPv2N6paddle12GpuAllocatorE" title="Permalink to this definition">¶</a></dt>
 <dd><em>#include &lt;Allocator.h&gt;</em><p>GPU allocator implementation. </p>
-<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span>paddle::Allocator</span></a></p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span class="std std-ref">paddle::Allocator</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -411,11 +329,63 @@
 </div>
 </dd></dl>
 
+<dl class="class">
+<dt id="_CPPv2N6paddle17CudaHostAllocatorE">
+<span id="paddle::CudaHostAllocator"></span><span class="target" id="paddleclasspaddle_1_1CudaHostAllocator"></span><em class="property">class </em><code class="descname">CudaHostAllocator</code><a class="headerlink" href="#_CPPv2N6paddle17CudaHostAllocatorE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;Allocator.h&gt;</em><p>CPU pinned memory allocator implementation. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span class="std std-ref">paddle::Allocator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle17CudaHostAllocatorD0Ev">
+<span id="paddle::CudaHostAllocator::~CudaHostAllocator"></span><span class="target" id="paddleclasspaddle_1_1CudaHostAllocator_1a3d01e8f416075196f6e8f90f17119512"></span><code class="descname">~CudaHostAllocator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CudaHostAllocatorD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CudaHostAllocator5allocE6size_t">
+<span id="paddle::CudaHostAllocator::alloc__s"></span>virtual <span class="target" id="paddleclasspaddle_1_1CudaHostAllocator_1aaa6d38d7ded5d6f56dce372e7f2e1b3a"></span>void *<code class="descname">alloc</code><span class="sig-paren">(</span>size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CudaHostAllocator5allocE6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate pinned memory. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>Pointer to the allocated memory </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>Size to be allocated. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CudaHostAllocator4freeEPv">
+<span id="paddle::CudaHostAllocator::free__voidP"></span>virtual <span class="target" id="paddleclasspaddle_1_1CudaHostAllocator_1a205169ec923beeffc2336fb49b7baff8"></span>void <code class="descname">free</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CudaHostAllocator4freeEPv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Free the pinned memory. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">ptr</span></code> - <p>Pointer to be free. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CudaHostAllocator7getNameEv">
+<span id="paddle::CudaHostAllocator::getName"></span>virtual <span class="target" id="paddleclasspaddle_1_1CudaHostAllocator_1ad76d0910bc49235cc2047566c8bc53a2"></span>std::string <code class="descname">getName</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CudaHostAllocator7getNameEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
-<dt id="_CPPv26paddle">
-<span id="paddle"></span><span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<dt>
+<span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code></dt>
 <dd><dl class="class">
 <dt id="_CPPv2N6paddle13PoolAllocatorE">
 <span id="paddle::PoolAllocator"></span><span class="target" id="paddleclasspaddle_1_1PoolAllocator"></span><em class="property">class </em><code class="descname">PoolAllocator</code><a class="headerlink" href="#_CPPv2N6paddle13PoolAllocatorE" title="Permalink to this definition">¶</a></dt>
@@ -429,7 +399,7 @@
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">allocator</span></code> - <p>a <a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span>Allocator</span></a> object. </p>
+<li><code class="first docutils literal"><span class="pre">allocator</span></code> - <p>a <a class="reference internal" href="#paddleclasspaddle_1_1Allocator"><span class="std std-ref">Allocator</span></a> object. </p>
 </li>
 <li><code class="first docutils literal"><span class="pre">sizeLimit</span></code> - <p>The maximum size memory can be managed, if sizeLimit == 0, the pool allocator is a simple wrapper of allocator. </p>
 </li>
@@ -512,8 +482,8 @@
 </dd></dl>
 
 <dl class="type">
-<dt id="_CPPv26paddle">
-<span id="paddle"></span><span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<dt>
+<span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code></dt>
 <dd><dl class="class">
 <dt id="_CPPv2N6paddle13StorageEngineE">
 <span id="paddle::StorageEngine"></span><span class="target" id="paddleclasspaddle_1_1StorageEngine"></span><em class="property">class </em><code class="descname">StorageEngine</code><a class="headerlink" href="#_CPPv2N6paddle13StorageEngineE" title="Permalink to this definition">¶</a></dt>
@@ -545,7 +515,7 @@
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle13StorageEngine9singletonEv">
-<span id="paddle::StorageEngine::singleton"></span><span class="target" id="paddleclasspaddle_1_1StorageEngine_1aac847864c8bd761bf9b23f8b9d8d83de"></span><a class="reference internal" href="#_CPPv2N6paddle13StorageEngine13StorageEngineEv" title="paddle::StorageEngine::StorageEngine">StorageEngine</a> *<code class="descname">singleton</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13StorageEngine9singletonEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::StorageEngine::singleton"></span><span class="target" id="paddleclasspaddle_1_1StorageEngine_1aac847864c8bd761bf9b23f8b9d8d83de"></span><a class="reference internal" href="#_CPPv2N6paddle13StorageEngineE" title="paddle::StorageEngine">StorageEngine</a> *<code class="descname">singleton</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13StorageEngine9singletonEv" title="Permalink to this definition">¶</a></dt>
 <dd><p><dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>Storage singleton </dd>
@@ -601,7 +571,6 @@
   <h3><a href="../../../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Utils</a><ul>
-<li><a class="reference internal" href="#bits">Bits</a></li>
 <li><a class="reference internal" href="#memory-handle">Memory Handle</a></li>
 </ul>
 </li>
@@ -623,14 +592,11 @@
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -652,14 +618,14 @@
         <li class="right" >
           <a href="index.html" title="Utils Documents"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Utils Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Utils Documents</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

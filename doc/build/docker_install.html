@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Docker installation guide &mdash; PaddlePaddle  documentation</title>
+    <title>Docker installation guide &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -45,8 +45,8 @@
         <li class="right" >
           <a href="contribute_to_paddle.html" title="Contribute to PaddlePaddle"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Build And Install PaddlePaddle</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Build And Install PaddlePaddle</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -65,12 +65,12 @@
 <span id="paddlepaddle-docker-images"></span><h3>PaddlePaddle Docker images<a class="headerlink" href="#paddlepaddle-docker-images" title="Permalink to this headline">¶</a></h3>
 <p>There are six Docker images:</p>
 <ul class="simple">
-<li>paddledev/paddle:latest-cpu: PaddlePaddle CPU binary image.</li>
-<li>paddledev/paddle:latest-gpu: PaddlePaddle GPU binary image.</li>
-<li>paddledev/paddle:latest-cpu-devel: PaddlePaddle CPU binary image plus source code.</li>
-<li>paddledev/paddle:latest-gpu-devel: PaddlePaddle GPU binary image plus source code.</li>
-<li>paddledev/paddle:latest-cpu-demo: PaddlePaddle CPU binary image plus source code and demo</li>
-<li>paddledev/paddle:latest-gpu-demo: PaddlePaddle GPU binary image plus source code and demo</li>
+<li>paddledev/paddle:cpu-latest: PaddlePaddle CPU binary image.</li>
+<li>paddledev/paddle:gpu-latest: PaddlePaddle GPU binary image.</li>
+<li>paddledev/paddle:cpu-devel-latest: PaddlePaddle CPU binary image plus source code.</li>
+<li>paddledev/paddle:gpu-devel-latest: PaddlePaddle GPU binary image plus source code.</li>
+<li>paddledev/paddle:cpu-demo-latest: PaddlePaddle CPU binary image plus source code and demo</li>
+<li>paddledev/paddle:gpu-demo-latest: PaddlePaddle GPU binary image plus source code and demo</li>
 </ul>
 <p>Tags with latest will be replaced by a released version.</p>
 </div>
@@ -78,13 +78,13 @@
 <span id="download-and-run-docker-images"></span><h3>Download and Run Docker images<a class="headerlink" href="#download-and-run-docker-images" title="Permalink to this headline">¶</a></h3>
 <p>You have to install Docker in your machine which has linux kernel version 3.10+ first. You can refer to the official guide https://docs.docker.com/engine/installation/ for further information.</p>
 <p>You can use <code class="docutils literal"><span class="pre">docker</span> <span class="pre">pull</span></code>to download images first, or just launch a container with <code class="docutils literal"><span class="pre">docker</span> <span class="pre">run</span></code>:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it paddledev/paddle:lastest-cpu
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it paddledev/paddle:cpu-latest
 </pre></div>
 </div>
 <p>If you want to launch container with GPU support, you need to set some environment variables at the same time:</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>export CUDA_SO=&quot;$(\ls /usr/lib64/libcuda* | xargs -I{} echo &#39;-v {}:{}&#39;) $(\ls /usr/lib64/libnvidia* | xargs -I{} echo &#39;-v {}:{}&quot;
 export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo &#39;--device {}:{}&#39;)
-docker run -it paddledev/paddle:latest-gpu
+docker run -it paddledev/paddle:gpu-latest
 </pre></div>
 </div>
 </div>
@@ -178,14 +178,11 @@ docker rm paddle_ssh_machine
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -207,13 +204,13 @@ docker rm paddle_ssh_machine
         <li class="right" >
           <a href="contribute_to_paddle.html" title="Contribute to PaddlePaddle"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="index.html" >Build And Install PaddlePaddle</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Build And Install PaddlePaddle</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>安装PaddlePaddle的Docker镜像 &mdash; PaddlePaddle  documentation</title>
+    <title>安装PaddlePaddle的Docker镜像 &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -24,10 +24,7 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
-    <link rel="up" title="安装PaddlePaddle" href="index.html" />
-    <link rel="next" title="使用deb包在Ubuntu上安装PaddlePaddle" href="ubuntu_install.html" />
-    <link rel="prev" title="安装PaddlePaddle" href="index.html" /> 
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -36,15 +33,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="ubuntu_install.html" title="使用deb包在Ubuntu上安装PaddlePaddle"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="index.html" title="安装PaddlePaddle"
-             accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >编译与安装</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">安装PaddlePaddle</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -130,21 +119,21 @@ $ docker run -it paddledev/paddlepaddle:latest-gpu
 <a class="reference external" href="https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/">Dockerfile的最佳实践</a>
 两个文档。</p>
 <p>简单的含有ssh的Dockerfile如下：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>FROM paddledev/paddle:cpu-latest
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">FROM</span> <span class="n">paddledev</span><span class="o">/</span><span class="n">paddle</span><span class="p">:</span><span class="n">cpu</span><span class="o">-</span><span class="n">latest</span>
 
-MAINTAINER PaddlePaddle dev team &lt;paddle-dev@baidu.com&gt;
+<span class="n">MAINTAINER</span> <span class="n">PaddlePaddle</span> <span class="n">dev</span> <span class="n">team</span> <span class="o">&lt;</span><span class="n">paddle</span><span class="o">-</span><span class="n">dev</span><span class="nd">@baidu</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
 
-RUN apt-get update
-RUN apt-get install -y openssh-server
-RUN mkdir /var/run/sshd
-RUN echo &#39;root:root&#39; | chpasswd
+<span class="n">RUN</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">update</span>
+<span class="n">RUN</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="o">-</span><span class="n">y</span> <span class="n">openssh</span><span class="o">-</span><span class="n">server</span>
+<span class="n">RUN</span> <span class="n">mkdir</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">run</span><span class="o">/</span><span class="n">sshd</span>
+<span class="n">RUN</span> <span class="n">echo</span> <span class="s1">&#39;root:root&#39;</span> <span class="o">|</span> <span class="n">chpasswd</span>
 
-RUN sed -ri &#39;s/^PermitRootLogin\s+.*/PermitRootLogin yes/&#39; /etc/ssh/sshd_config
-RUN sed -ri &#39;s/UsePAM yes/#UsePAM yes/g&#39; /etc/ssh/sshd_config
+<span class="n">RUN</span> <span class="n">sed</span> <span class="o">-</span><span class="n">ri</span> <span class="s1">&#39;s/^PermitRootLogin\s+.*/PermitRootLogin yes/&#39;</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ssh</span><span class="o">/</span><span class="n">sshd_config</span>
+<span class="n">RUN</span> <span class="n">sed</span> <span class="o">-</span><span class="n">ri</span> <span class="s1">&#39;s/UsePAM yes/#UsePAM yes/g&#39;</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ssh</span><span class="o">/</span><span class="n">sshd_config</span>
 
-EXPOSE 22
+<span class="n">EXPOSE</span> <span class="mi">22</span>
 
-CMD    [&quot;/usr/sbin/sshd&quot;, &quot;-D&quot;]
+<span class="n">CMD</span>    <span class="p">[</span><span class="s2">&quot;/usr/sbin/sshd&quot;</span><span class="p">,</span> <span class="s2">&quot;-D&quot;</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>使用该Dockerfile构建出镜像，然后运行这个container即可。相关命令为:</p>
@@ -191,12 +180,6 @@ root，密码也是root。命令为:</p>
 </li>
 </ul>
 
-  <h4>Previous topic</h4>
-  <p class="topless"><a href="index.html"
-                        title="previous chapter">安装PaddlePaddle</a></p>
-  <h4>Next topic</h4>
-  <p class="topless"><a href="ubuntu_install.html"
-                        title="next chapter">使用deb包在Ubuntu上安装PaddlePaddle</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -207,14 +190,11 @@ root，密码也是root。命令为:</p>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -227,20 +207,12 @@ root，密码也是root。命令为:</p>
         <li class="right" style="margin-right: 10px">
           <a href="../../genindex.html" title="General Index"
              >index</a></li>
-        <li class="right" >
-          <a href="ubuntu_install.html" title="使用deb包在Ubuntu上安装PaddlePaddle"
-             >next</a> |</li>
-        <li class="right" >
-          <a href="index.html" title="安装PaddlePaddle"
-             >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >编译与安装</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >安装PaddlePaddle</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Image Classification Tutorial &mdash; PaddlePaddle  documentation</title>
+    <title>Image Classification Tutorial &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -45,9 +45,9 @@
         <li class="right" >
           <a href="index.html" title="Image Classification Tutorial"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Image Classification Tutorial</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Image Classification Tutorial</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -86,7 +86,7 @@ sh download_cifar.sh
 <p>Here are the classes in the dataset, as well as 10 random images from each:
 <center><img alt="Image Classification" src="../../_images/cifar.png" /></center></p>
 <p>After downloading and converting, we should find a directory (cifar-out) containing the dataset in the following format:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">train</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">train</span>
 <span class="o">---</span><span class="n">airplane</span>
 <span class="o">---</span><span class="n">automobile</span>
 <span class="o">---</span><span class="n">bird</span>
@@ -115,8 +115,8 @@ sh download_cifar.sh
 <div class="section" id="preprocess">
 <span id="preprocess"></span><h2>Preprocess<a class="headerlink" href="#preprocess" title="Permalink to this headline">¶</a></h2>
 <p>After the data has been downloaded, it needs to be pre-processed into the Paddle format. We can run the following command for preprocessing.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>cd demo/image_classification/
-sh preprocess.sh
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">demo</span><span class="o">/</span><span class="n">image_classification</span><span class="o">/</span>
+<span class="n">sh</span> <span class="n">preprocess</span><span class="o">.</span><span class="n">sh</span>
 </pre></div>
 </div>
 <p><code class="docutils literal"><span class="pre">preprocess.sh</span></code> calls <code class="docutils literal"><span class="pre">./demo/image_classification/preprocess.py</span></code> to preprocess image data.</p>
@@ -220,11 +220,11 @@ python -m paddle.utils.plotcurve -i <span class="nv">$log</span> &gt; plot.png
 <span id="prediction"></span><h2>Prediction<a class="headerlink" href="#prediction" title="Permalink to this headline">¶</a></h2>
 <p>After we train the model, the model file as well as the model parameters are stored in path <code class="docutils literal"><span class="pre">./cifar_vgg_model/pass-%05d</span></code>. For example, the model of the 300-th pass is stored at <code class="docutils literal"><span class="pre">./cifar_vgg_model/pass-00299</span></code>.</p>
 <p>To make a prediction for an image, one can run <code class="docutils literal"><span class="pre">predict.sh</span></code> as follows. The script will output the label of the classfiication.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>sh predict.sh
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">sh</span> <span class="n">predict</span><span class="o">.</span><span class="n">sh</span>
 </pre></div>
 </div>
 <p>predict.sh:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>model=cifar_vgg_model/pass-00299/
+<div class="highlight-default"><div class="highlight"><pre><span></span>model=cifar_vgg_model/pass-00299/
 image=data/cifar-out/test/airplane/seaplane_s_000978.png
 use_gpu=1
 python prediction.py $model $image $use_gpu
@@ -292,14 +292,11 @@ python prediction.py $model $image $use_gpu
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -321,14 +318,14 @@ python prediction.py $model $image $use_gpu
         <li class="right" >
           <a href="index.html" title="Image Classification Tutorial"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Image Classification Tutorial</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Image Classification Tutorial</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

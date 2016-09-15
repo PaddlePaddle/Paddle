@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Trainer &mdash; PaddlePaddle  documentation</title>
+    <title>Trainer &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -45,8 +45,8 @@
         <li class="right" >
           <a href="../pserver/server/server.html" title="Server"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -62,7 +62,7 @@
 <dl class="class">
 <dt id="_CPPv2N6paddle12TrainerStatsE">
 <span id="paddle::TrainerStats"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">TrainerStats</code><a class="headerlink" href="#_CPPv2N6paddle12TrainerStatsE" title="Permalink to this definition">¶</a></dt>
-<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1TrainerStats"><span>TrainerStats</span></a> object will statistics sample processed and total cost. </p>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1TrainerStats"><span class="std std-ref">TrainerStats</span></a> object will statistics sample processed and total cost. </p>
 <p>There are two stats in it, the &#8216;AvgCost&#8217; and &#8216;CurrentAvgCost&#8217;. &#8216;AvgCost&#8217; means cost through one pass(all mini-batches). &#8216;CurrentAvgCost&#8217; means cost through one mini-batch. </p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
@@ -132,11 +132,11 @@
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12TrainerStatspLERKNSt4pairI7int64_t4realEE">
-<span id="paddle::TrainerStats::add-assign-operator__std::pair:int64_t.real:CR"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1aa6d92c969c2a48c1d4ae3252ef18dfbd"></span><a class="reference internal" href="#_CPPv2N6paddle12TrainerStats12TrainerStatsEv" title="paddle::TrainerStats::TrainerStats">TrainerStats</a> &amp;<code class="descname">operator+=</code><span class="sig-paren">(</span><em class="property">const</em> std::pair&lt;int64_t, real&gt; &amp;<em>p</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12TrainerStatspLERKNSt4pairI7int64_t4realEE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::TrainerStats::add-assign-operator__std::pair:int64_t.real:CR"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1aa6d92c969c2a48c1d4ae3252ef18dfbd"></span><a class="reference internal" href="#_CPPv2N6paddle12TrainerStatsE" title="paddle::TrainerStats">TrainerStats</a> &amp;<code class="descname">operator+=</code><span class="sig-paren">(</span><em class="property">const</em> std::pair&lt;int64_t, real&gt; &amp;<em>p</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12TrainerStatspLERKNSt4pairI7int64_t4realEE" title="Permalink to this definition">¶</a></dt>
 <dd><p>same function as addCost. But it is simple to invoke. For example: </p>
-<p><div class="highlight-python"><div class="highlight"><pre><span></span>TrainerStats stat;
-cost = neuralNetwork.forward(batchSize);
-stat += {batchSize, cost};
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">TrainerStats</span> <span class="n">stat</span><span class="p">;</span>
+<span class="n">cost</span> <span class="o">=</span> <span class="n">neuralNetwork</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">batchSize</span><span class="p">);</span>
+<span class="n">stat</span> <span class="o">+=</span> <span class="p">{</span><span class="n">batchSize</span><span class="p">,</span> <span class="n">cost</span><span class="p">};</span>
 </pre></div>
 </div>
 </p>
@@ -156,7 +156,7 @@ stat += {batchSize, cost};
 <dl class="function">
 <dt id="_CPPv2N6paddle12TrainerStats12TrainerStatsEv">
 <span id="paddle::TrainerStats::TrainerStats"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1aa07472b42c3eccb06e5688feb2449c06"></span><code class="descname">TrainerStats</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12TrainerStats12TrainerStatsEv" title="Permalink to this definition">¶</a></dt>
-<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1TrainerStats"><span>TrainerStats</span></a> Constructor. </p>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1TrainerStats"><span class="std std-ref">TrainerStats</span></a> Constructor. </p>
 <p>reset stat when constructed. </p>
 </dd></dl>
 
@@ -207,8 +207,8 @@ stat += {batchSize, cost};
 <dd><p>Normal remote parameter updater for dense parameters.</p>
 <p>It first packs all parameters for all pservers using ParameterClient module, then wait for merged parameters data from all pservers. The synchronization pattern specified by sync-sgd or async-sgd is achieved by all pservers with the help of the controller within this remote parameter updater. This module indeedly bridges the gradient machines and parameter servers. It helps to transfer the parameters from acceleration device to cpu end for network. It contains additional parameters copy buffers for acceleration devices at cpu end, such as gpu, otherwise it will directly use original parameters data to update pservers.</p>
 <p>This remote parameter updater does not use pipeline mechanism to hide copy latency from gpu to cpu buffer. In addition the overlapped between backward and communication is not supported. </p>
-<p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdater"><span>paddle::ParameterUpdater</span></a></p>
-<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater"><span>paddle::ConcurrentRemoteParameterUpdater</span></a></p>
+<p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdater"><span class="std std-ref">paddle::ParameterUpdater</span></a></p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater"><span class="std std-ref">paddle::ConcurrentRemoteParameterUpdater</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -414,8 +414,8 @@ stat += {batchSize, cost};
 <dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdaterE">
 <span id="paddle::ConcurrentRemoteParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ConcurrentRemoteParameterUpdater</code><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdaterE" title="Permalink to this definition">¶</a></dt>
 <dd><p>This updater add additional optimization for overlapping synchronization from pservers with backward computation.</p>
-<p><a class="reference internal" href="../parameter/parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span>Parameter</span></a> can be sent to pservers when related backward stage is finished. This concurrent udpater does data copy from acceleration device to host memory aynchronously. In addition internal parameter client reads data in host memory and send them to all pservers in next stage. So this class help to pipeline device-to-host copy and host-to-network to hide network latency in backward stage. It contains separate send and recv thread for pipeline usage. </p>
-<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1RemoteParameterUpdater"><span>paddle::RemoteParameterUpdater</span></a></p>
+<p><a class="reference internal" href="../parameter/parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> can be sent to pservers when related backward stage is finished. This concurrent udpater does data copy from acceleration device to host memory aynchronously. In addition internal parameter client reads data in host memory and send them to all pservers in next stage. So this class help to pipeline device-to-host copy and host-to-network to hide network latency in backward stage. It contains separate send and recv thread for pipeline usage. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1RemoteParameterUpdater"><span class="std std-ref">paddle::RemoteParameterUpdater</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -512,7 +512,7 @@ stat += {batchSize, cost};
 <p>It allows part of parameter to be exchanged with all pservers. If sparse input assigned, part gradients of first hidden layer could remained zero which can not need to be exchanged within all pservers. This is the key optimization point for this updater</p>
 <p>For updating sparse parameters, all latest parameters are stored in pservers instead of keeping full copy at train end, so need to prefetch parameters weight value which can be changed in next-batch before doing next forwardbackward. Also, with above fact that the parameters can be stored in pserver instead of trainer, we can fetch specified parmeters if necessary, and can support huge parameters which is larger enough than the RAM size in single node.</p>
 <p>Internally, this updater will direct internal parameter client to encapsulate sparse specified message for all pservers. </p>
-<p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdater"><span>paddle::ParameterUpdater</span></a></p>
+<p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdater"><span class="std std-ref">paddle::ParameterUpdater</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -674,26 +674,26 @@ stat += {batchSize, cost};
 <dd><p>Class for supporting normal updater and sparse updater</p>
 <p>Not all parts of one model are sparse, so it exists dense updater for normal layers while sparse updater is for sparse layers.</p>
 <p>it directly call internal dense and sparse udpater individually. </p>
-<p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdaterComposite"><span>paddle::ParameterUpdaterComposite</span></a></p>
+<p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdaterComposite"><span class="std std-ref">paddle::ParameterUpdaterComposite</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
-<dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite12__anonymous0E">
-<span id="paddle::SparseRemoteParameterUpdaterComposite::__anonymous0"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1ad8493439948e44e50d85d6c7008c7098"></span><em class="property">enum </em><code class="descname"><strong>[anonymous]</strong></code><a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite12__anonymous0E" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite12__anonymous4E">
+<span id="paddle::SparseRemoteParameterUpdaterComposite::__anonymous4"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1a81a8f540b5b48843fc45051006f9c99c"></span><em class="property">enum </em><code class="descname"><strong>[anonymous]</strong></code><a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite12__anonymous4E" title="Permalink to this definition">¶</a></dt>
 <dd><p><em>Values:</em></p>
 <dl class="member">
 <dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite21UPDATER_SPARSE_REMOTEE">
-<span id="paddle::SparseRemoteParameterUpdaterComposite::UPDATER_SPARSE_REMOTE"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1ad8493439948e44e50d85d6c7008c7098aa70f2a6bbf29a8c4e0c82cbcbe29adbe"></span><code class="descname">UPDATER_SPARSE_REMOTE</code> = 0<a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite21UPDATER_SPARSE_REMOTEE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SparseRemoteParameterUpdaterComposite::UPDATER_SPARSE_REMOTE"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1a81a8f540b5b48843fc45051006f9c99caa70f2a6bbf29a8c4e0c82cbcbe29adbe"></span><code class="descname">UPDATER_SPARSE_REMOTE</code> = 0<a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite21UPDATER_SPARSE_REMOTEE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite14UPDATER_NORMALE">
-<span id="paddle::SparseRemoteParameterUpdaterComposite::UPDATER_NORMAL"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1ad8493439948e44e50d85d6c7008c7098a5983acbc68aaf23edae999a59d705424"></span><code class="descname">UPDATER_NORMAL</code> = 1<a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite14UPDATER_NORMALE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SparseRemoteParameterUpdaterComposite::UPDATER_NORMAL"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1a81a8f540b5b48843fc45051006f9c99ca5983acbc68aaf23edae999a59d705424"></span><code class="descname">UPDATER_NORMAL</code> = 1<a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite14UPDATER_NORMALE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite15NUMBER_UPDATERSE">
-<span id="paddle::SparseRemoteParameterUpdaterComposite::NUMBER_UPDATERS"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1ad8493439948e44e50d85d6c7008c7098a4ac16a19f7fe5e4cce08ee453d83bf30"></span><code class="descname">NUMBER_UPDATERS</code> = 2<a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite15NUMBER_UPDATERSE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SparseRemoteParameterUpdaterComposite::NUMBER_UPDATERS"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1a81a8f540b5b48843fc45051006f9c99ca4ac16a19f7fe5e4cce08ee453d83bf30"></span><code class="descname">NUMBER_UPDATERS</code> = 2<a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite15NUMBER_UPDATERSE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -758,14 +758,11 @@ stat += {batchSize, cost};
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -787,13 +784,13 @@ stat += {batchSize, cost};
         <li class="right" >
           <a href="../pserver/server/server.html" title="Server"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

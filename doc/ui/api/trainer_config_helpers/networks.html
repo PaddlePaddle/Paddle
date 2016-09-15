@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>NLP &mdash; PaddlePaddle  documentation</title>
+    <title>NLP &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -45,10 +45,10 @@
         <li class="right" >
           <a href="networks_index.html" title="Networks"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-3"><a href="networks_index.html" accesskey="U">Networks</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
+          <li class="nav-item nav-item-3"><a href="networks_index.html" accesskey="U">Networks</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -328,7 +328,7 @@ mechanism.</p>
 for more details about LSTM. The link goes as follows:
 .. _Link: <a class="reference external" href="https://arxiv.org/abs/1308.0850">https://arxiv.org/abs/1308.0850</a></p>
 <div class="math">
-\[\begin{split}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\end{split}\]\[\begin{split}f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\end{split}\]\[\begin{split}c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\end{split}\]\[\begin{split}o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\end{split}\]\[\begin{split}h_t &amp; = o_t tanh(c_t)\end{split}\]</div>
+\[ \begin{align}\begin{aligned}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\\f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\\c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\\o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\\h_t &amp; = o_t tanh(c_t)\end{aligned}\end{align} \]</div>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">lstm_step</span> <span class="o">=</span> <span class="n">lstmemory_unit</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">],</span>
                            <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
@@ -440,7 +440,7 @@ False means no bias, None means default bias.</li>
 <p>It just combine a mixed layer with fully_matrix_projection and a lstmemory
 layer. The simple lstm cell was implemented as follow equations.</p>
 <div class="math">
-\[\begin{split}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\end{split}\]\[\begin{split}f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\end{split}\]\[\begin{split}c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\end{split}\]\[\begin{split}o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\end{split}\]\[\begin{split}h_t &amp; = o_t tanh(c_t)\end{split}\]</div>
+\[ \begin{align}\begin{aligned}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\\f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\\c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\\o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\\h_t &amp; = o_t tanh(c_t)\end{aligned}\end{align} \]</div>
 <p>Please refer <strong>Generating Sequences With Recurrent Neural Networks</strong> if you
 want to know what lstm is. <a class="reference external" href="http://arxiv.org/abs/1308.0850">Link</a> is here.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -659,7 +659,7 @@ Please see grumemory in layers.py for more detail about the maths.</p>
 <dd><p>Calculate and then return a context vector by attention machanism.
 Size of the context vector equals to size of the encoded_sequence.</p>
 <div class="math">
-\[\begin{split}a(s_{i-1},h_{j}) &amp; = v_{a}f(W_{a}s_{t-1} + U_{a}h_{j})\end{split}\]\[\begin{split}e_{i,j} &amp; = a(s_{i-1}, h_{j})\end{split}\]\[\begin{split}a_{i,j} &amp; = \frac{exp(e_{i,j})}{\sum_{k=1}^{T_x}{exp(e_{i,k})}}\end{split}\]\[\begin{split}c_{i} &amp; = \sum_{j=1}^{T_{x}}a_{i,j}h_{j}\end{split}\]</div>
+\[ \begin{align}\begin{aligned}a(s_{i-1},h_{j}) &amp; = v_{a}f(W_{a}s_{t-1} + U_{a}h_{j})\\e_{i,j} &amp; = a(s_{i-1}, h_{j})\\a_{i,j} &amp; = \frac{exp(e_{i,j})}{\sum_{k=1}^{T_x}{exp(e_{i,k})}}\\c_{i} &amp; = \sum_{j=1}^{T_{x}}a_{i,j}h_{j}\end{aligned}\end{align} \]</div>
 <p>where <span class="math">\(h_{j}\)</span> is the jth element of encoded_sequence,
 <span class="math">\(U_{a}h_{j}\)</span> is the jth element of encoded_proj
 <span class="math">\(s_{i-1}\)</span> is decoder_state
@@ -815,14 +815,11 @@ train network&#8217;s output automatically.</p>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -844,15 +841,15 @@ train network&#8217;s output automatically.</p>
         <li class="right" >
           <a href="networks_index.html" title="Networks"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-3"><a href="networks_index.html" >Networks</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
+          <li class="nav-item nav-item-3"><a href="networks_index.html" >Networks</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

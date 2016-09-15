@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Gradient Machines &mdash; PaddlePaddle  documentation</title>
+    <title>Gradient Machines &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -45,9 +45,9 @@
         <li class="right" >
           <a href="index.html" title="Gradient Machines Documents"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Gradient Machines Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Gradient Machines Documents</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -63,7 +63,7 @@
 <dl class="class">
 <dt id="_CPPv2N6paddle15GradientMachineE">
 <span id="paddle::GradientMachine"></span><span class="target" id="paddleclasspaddle_1_1GradientMachine"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">GradientMachine</code><a class="headerlink" href="#_CPPv2N6paddle15GradientMachineE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span>paddle::MultiGradientMachine</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork"><span>paddle::NeuralNetwork</span></a></p>
+<dd><p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span class="std std-ref">paddle::MultiGradientMachine</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork"><span class="std std-ref">paddle::NeuralNetwork</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
@@ -113,7 +113,7 @@
 <p>Calculate outputs (outArgs) based the inputs (inArgs)</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>: if passType==PASS_TEST, then <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a5a6d89a9412849259e07729720c4b2cc"><span>backward()</span></a> should not be called </dd>
+<dd>: if passType==PASS_TEST, then <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a5a6d89a9412849259e07729720c4b2cc"><span class="std std-ref">backward()</span></a> should not be called </dd>
 </dl>
 </p>
 </dd></dl>
@@ -123,17 +123,17 @@
 <span id="paddle::GradientMachine::backward__UpdateCallbackCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1GradientMachine_1a5a6d89a9412849259e07729720c4b2cc"></span>void <code class="descname">backward</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em> = nullptr<span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle15GradientMachine8backwardERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Backward propagation. </p>
 <p>Calculate the gradient of inArgs and parameter.</p>
-<p>This function should only be called after a corresponding <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a60ae3a022a0faa5ff83bbb576402fdff"><span>forward()</span></a> call. The caller is responsible for filling the correct grad for the outArgs obtained using <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a60ae3a022a0faa5ff83bbb576402fdff"><span>forward()</span></a>.</p>
-<p>It may also change the grad field for the inArgs supplied at <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a60ae3a022a0faa5ff83bbb576402fdff"><span>forward()</span></a> </p>
+<p>This function should only be called after a corresponding <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a60ae3a022a0faa5ff83bbb576402fdff"><span class="std std-ref">forward()</span></a> call. The caller is responsible for filling the correct grad for the outArgs obtained using <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a60ae3a022a0faa5ff83bbb576402fdff"><span class="std std-ref">forward()</span></a>.</p>
+<p>It may also change the grad field for the inArgs supplied at <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a60ae3a022a0faa5ff83bbb576402fdff"><span class="std std-ref">forward()</span></a> </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle15GradientMachine15forwardBackwardERKNSt6vectorI8ArgumentEEPNSt6vectorI8ArgumentEE8PassTypeRK14UpdateCallback">
 <span id="paddle::GradientMachine::forwardBackward__std::vector:Argument:CR.std::vector:Argument:P.PassType.UpdateCallbackCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1GradientMachine_1a0fdab5811202bc5bf16ca58e2f14c994"></span>void <code class="descname">forwardBackward</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>inArgs</em>, std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; *<em>outArgs</em>, PassType <em>passType</em>, <em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15GradientMachine15forwardBackwardERKNSt6vectorI8ArgumentEEPNSt6vectorI8ArgumentEE8PassTypeRK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Combine <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a60ae3a022a0faa5ff83bbb576402fdff"><span>forward()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a5a6d89a9412849259e07729720c4b2cc"><span>backward()</span></a>. For multithread training, this may be faster.</p>
+<dd><p>Combine <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a60ae3a022a0faa5ff83bbb576402fdff"><span class="std std-ref">forward()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a5a6d89a9412849259e07729720c4b2cc"><span class="std std-ref">backward()</span></a>. For multithread training, this may be faster.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>: passType PASS_TEST is not allowed for <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a0fdab5811202bc5bf16ca58e2f14c994"><span>forwardBackward()</span></a>. </dd>
+<dd>: passType PASS_TEST is not allowed for <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a0fdab5811202bc5bf16ca58e2f14c994"><span class="std std-ref">forwardBackward()</span></a>. </dd>
 </dl>
 </p>
 </dd></dl>
@@ -161,7 +161,7 @@
 <dl class="function">
 <dt id="_CPPv2N6paddle15GradientMachine13makeEvaluatorEv">
 <span id="paddle::GradientMachine::makeEvaluator"></span>virtual <span class="target" id="paddleclasspaddle_1_1GradientMachine_1a866512146d396e9da1c7dad4a5ee0b45"></span><a class="reference internal" href="../evaluators/evaluators.html#_CPPv2N6paddle9EvaluatorE" title="paddle::Evaluator">Evaluator</a> *<code class="descname">makeEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle15GradientMachine13makeEvaluatorEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create an evaluator which can be used for <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a2afd8662dead64471d904953af045af2"><span>eval()</span></a> </p>
+<dd><p>Create an evaluator which can be used for <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a2afd8662dead64471d904953af045af2"><span class="std std-ref">eval()</span></a> </p>
 </dd></dl>
 
 <dl class="function">
@@ -261,31 +261,31 @@
 <dl class="function">
 <dt>
 <span class="target" id="paddleclasspaddle_1_1GradientMachine_1a499de31ce0a86d4fb2ba458bd67d830f"></span><code class="descname">GradientMachine * GradientMachine::create(const  ModelConfig  &amp; config, int mode = kNormal, const std::vector&lt; ParameterType &gt; &amp; parameterTypes = std::vector&lt; ParameterType &gt;{PARAMETER_VALUE, PARAMETER_GRADIENT, PARAMETER_MOMENTUM})</code></dt>
-<dd><p>Create a gradient machine from <a class="reference internal" href="../../api/api.html#paddleclassModelConfig"><span>ModelConfig</span></a> <a class="reference internal" href="../../parameter/parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span>Parameter</span></a> will have parameterTypes </p>
+<dd><p>Create a gradient machine from <a class="reference internal" href="../../api/api.html#paddleclassModelConfig"><span class="std std-ref">ModelConfig</span></a> <a class="reference internal" href="../../parameter/parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> will have parameterTypes </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N15GradientMachine6createERKNSt6stringEP10DataConfig">
-<span id="GradientMachine::create__ssCR.DataConfigP"></span><span class="target" id="paddleclasspaddle_1_1GradientMachine_1aa2e3f002654343886cdd17a00bf38c20"></span><a class="reference internal" href="../../api/api.html#_CPPv2N15GradientMachine15GradientMachineEv" title="GradientMachine::GradientMachine">GradientMachine</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>modelFile</em>, DataConfig *<em>dataConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine6createERKNSt6stringEP10DataConfig" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a gradient machine from the merged model file. The merged model file can be generated using tools/merge_model If dataConfig is not null, it will be filled with the DataConfig from the <a class="reference internal" href="../../api/api.html#paddleclassTrainerConfig"><span>TrainerConfig</span></a> </p>
+<span id="GradientMachine::create__ssCR.DataConfigP"></span><span class="target" id="paddleclasspaddle_1_1GradientMachine_1aa2e3f002654343886cdd17a00bf38c20"></span><a class="reference internal" href="../../api/api.html#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>modelFile</em>, DataConfig *<em>dataConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine6createERKNSt6stringEP10DataConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a gradient machine from the merged model file. The merged model file can be generated using tools/merge_model If dataConfig is not null, it will be filled with the DataConfig from the <a class="reference internal" href="../../api/api.html#paddleclassTrainerConfig"><span class="std std-ref">TrainerConfig</span></a> </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N15GradientMachine6createERNSt7istreamEP10DataConfig">
-<span id="GradientMachine::create__isR.DataConfigP"></span><span class="target" id="paddleclasspaddle_1_1GradientMachine_1a6f80c53c1bfd2e9ec618db9a4032899d"></span><a class="reference internal" href="../../api/api.html#_CPPv2N15GradientMachine15GradientMachineEv" title="GradientMachine::GradientMachine">GradientMachine</a> *<code class="descname">create</code><span class="sig-paren">(</span>std::istream &amp;<em>is</em>, DataConfig *<em>dataConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine6createERNSt7istreamEP10DataConfig" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a gradient machine from a stream which contains the merged model file. The merged model file can be generated using tools/merge_model If dataConfig is not null, it will be filled with the DataConfig from the <a class="reference internal" href="../../api/api.html#paddleclassTrainerConfig"><span>TrainerConfig</span></a> </p>
+<span id="GradientMachine::create__isR.DataConfigP"></span><span class="target" id="paddleclasspaddle_1_1GradientMachine_1a6f80c53c1bfd2e9ec618db9a4032899d"></span><a class="reference internal" href="../../api/api.html#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a> *<code class="descname">create</code><span class="sig-paren">(</span>std::istream &amp;<em>is</em>, DataConfig *<em>dataConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine6createERNSt7istreamEP10DataConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a gradient machine from a stream which contains the merged model file. The merged model file can be generated using tools/merge_model If dataConfig is not null, it will be filled with the DataConfig from the <a class="reference internal" href="../../api/api.html#paddleclassTrainerConfig"><span class="std std-ref">TrainerConfig</span></a> </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N15GradientMachine6createERKNSt6stringEP13TrainerConfig">
-<span id="GradientMachine::create__ssCR.TrainerConfigP"></span><span class="target" id="paddleclasspaddle_1_1GradientMachine_1a9c26eb82df7a536af39b472af3b37754"></span><a class="reference internal" href="../../api/api.html#_CPPv2N15GradientMachine15GradientMachineEv" title="GradientMachine::GradientMachine">GradientMachine</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>modelFile</em>, <a class="reference internal" href="../../api/api.html#_CPPv213TrainerConfig" title="TrainerConfig">TrainerConfig</a> *<em>trainerConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine6createERKNSt6stringEP13TrainerConfig" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a gradient machine from the merged model file. The merged model file can be generated using tools/merge_model If trainerConfig is not null, it will be filled with the <a class="reference internal" href="../../api/api.html#paddleclassTrainerConfig"><span>TrainerConfig</span></a> </p>
+<span id="GradientMachine::create__ssCR.TrainerConfigP"></span><span class="target" id="paddleclasspaddle_1_1GradientMachine_1a9c26eb82df7a536af39b472af3b37754"></span><a class="reference internal" href="../../api/api.html#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>modelFile</em>, <a class="reference internal" href="../../api/api.html#_CPPv213TrainerConfig" title="TrainerConfig">TrainerConfig</a> *<em>trainerConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine6createERKNSt6stringEP13TrainerConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a gradient machine from the merged model file. The merged model file can be generated using tools/merge_model If trainerConfig is not null, it will be filled with the <a class="reference internal" href="../../api/api.html#paddleclassTrainerConfig"><span class="std std-ref">TrainerConfig</span></a> </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N15GradientMachine6createERNSt7istreamEP13TrainerConfig">
-<span id="GradientMachine::create__isR.TrainerConfigP"></span><span class="target" id="paddleclasspaddle_1_1GradientMachine_1a28ed48209b8c50eec089e83d2448c410"></span><a class="reference internal" href="../../api/api.html#_CPPv2N15GradientMachine15GradientMachineEv" title="GradientMachine::GradientMachine">GradientMachine</a> *<code class="descname">create</code><span class="sig-paren">(</span>std::istream &amp;<em>is</em>, <a class="reference internal" href="../../api/api.html#_CPPv213TrainerConfig" title="TrainerConfig">TrainerConfig</a> *<em>trainerConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine6createERNSt7istreamEP13TrainerConfig" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a gradient machine from a stream which contains the merged model file. The merged model file can be generated using tools/merge_model If trainerConfig is not null, it will be filled with the <a class="reference internal" href="../../api/api.html#paddleclassTrainerConfig"><span>TrainerConfig</span></a> </p>
+<span id="GradientMachine::create__isR.TrainerConfigP"></span><span class="target" id="paddleclasspaddle_1_1GradientMachine_1a28ed48209b8c50eec089e83d2448c410"></span><a class="reference internal" href="../../api/api.html#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a> *<code class="descname">create</code><span class="sig-paren">(</span>std::istream &amp;<em>is</em>, <a class="reference internal" href="../../api/api.html#_CPPv213TrainerConfig" title="TrainerConfig">TrainerConfig</a> *<em>trainerConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine6createERNSt7istreamEP13TrainerConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a gradient machine from a stream which contains the merged model file. The merged model file can be generated using tools/merge_model If trainerConfig is not null, it will be filled with the <a class="reference internal" href="../../api/api.html#paddleclassTrainerConfig"><span class="std std-ref">TrainerConfig</span></a> </p>
 </dd></dl>
 
 </div>
@@ -342,8 +342,8 @@
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20IGradientMachineMode10shouldBeMeERKNSt6stringE6size_tbb">
-<span id="paddle::IGradientMachineMode::shouldBeMe__ssCR.s.b.b"></span>virtual <span class="target" id="paddleclasspaddle_1_1IGradientMachineMode_1ab86aef2bffb6c8fde2277804ddd63169"></span>bool <code class="descname">shouldBeMe</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>algo</em>, size_t <em>trainerCount</em>, bool <em>isLocal</em>, bool <em>isGpu</em><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N6paddle20IGradientMachineMode10shouldBeMeERKNSt6stringE6size_tbb" title="Permalink to this definition">¶</a></dt>
-<dd><p>shouldBeMe the current mode of <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine"><span>GradientMachine</span></a> should be this mode. </p>
+<span id="paddle::IGradientMachineMode::shouldBeMe__ssCR.s.b.b"></span>virtual <span class="target" id="paddleclasspaddle_1_1IGradientMachineMode_1a322683640e99479bd94e54859f21d0b5"></span>bool <code class="descname">shouldBeMe</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>algo</em>, size_t <em>trainerCount</em>, bool <em>isLocal</em>, bool <em>isGpu</em><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N6paddle20IGradientMachineMode10shouldBeMeERKNSt6stringE6size_tbb" title="Permalink to this definition">¶</a></dt>
+<dd><p>shouldBeMe the current mode of <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine"><span class="std std-ref">GradientMachine</span></a> should be this mode. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>true if mode should be this mode. </dd>
@@ -365,7 +365,7 @@
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20IGradientMachineMode15isDataMustInCpuE6size_t">
-<span id="paddle::IGradientMachineMode::isDataMustInCpu__s"></span>virtual <span class="target" id="paddleclasspaddle_1_1IGradientMachineMode_1af0d007f74a0ad366dcb3b333536fbb8f"></span>bool <code class="descname">isDataMustInCpu</code><span class="sig-paren">(</span>size_t <em>trainerCount</em><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N6paddle20IGradientMachineMode15isDataMustInCpuE6size_t" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IGradientMachineMode::isDataMustInCpu__s"></span>virtual <span class="target" id="paddleclasspaddle_1_1IGradientMachineMode_1a013545b056432104a068b7eec17edbad"></span>bool <code class="descname">isDataMustInCpu</code><span class="sig-paren">(</span>size_t <em>trainerCount</em><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N6paddle20IGradientMachineMode15isDataMustInCpuE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd><p>Is data must be in cpu even if using gpu mode. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
@@ -382,7 +382,7 @@
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20IGradientMachineMode28needTrainWholeDataInOneBatchEv">
-<span id="paddle::IGradientMachineMode::needTrainWholeDataInOneBatch"></span>virtual <span class="target" id="paddleclasspaddle_1_1IGradientMachineMode_1a1fa913079b2c35f86b8017f0362e833e"></span>bool <code class="descname">needTrainWholeDataInOneBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N6paddle20IGradientMachineMode28needTrainWholeDataInOneBatchEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IGradientMachineMode::needTrainWholeDataInOneBatch"></span>virtual <span class="target" id="paddleclasspaddle_1_1IGradientMachineMode_1a5936aa274940884dd6a9975d1893b110"></span>bool <code class="descname">needTrainWholeDataInOneBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N6paddle20IGradientMachineMode28needTrainWholeDataInOneBatchEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Need not to use mini-batch method, and should train all data in one batch in one pass. </p>
 </dd></dl>
 
@@ -482,18 +482,18 @@
 <dl class="class">
 <dt id="_CPPv2N6paddle20MultiGradientMachineE">
 <span id="paddle::MultiGradientMachine"></span><span class="target" id="paddleclasspaddle_1_1MultiGradientMachine"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MultiGradientMachine</code><a class="headerlink" href="#_CPPv2N6paddle20MultiGradientMachineE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span>MultiGradientMachine</span></a> is a synchronous <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine"><span>GradientMachine</span></a> which devides one data batch into several smaller batches and assign each one small batch to one computint thread for computation. After each thread finishes computation, it merges result (including output <a class="reference internal" href="../../parameter/parameter/parameter.html#paddlestructpaddle_1_1Argument"><span>Argument</span></a> and gradient during <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span>backward()</span></a>). It basically is the same as single thread gradient machine, except that it uses multi-thread to do the computation.</p>
+<dd><p>A <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span class="std std-ref">MultiGradientMachine</span></a> is a synchronous <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine"><span class="std std-ref">GradientMachine</span></a> which devides one data batch into several smaller batches and assign each one small batch to one computint thread for computation. After each thread finishes computation, it merges result (including output <a class="reference internal" href="../../parameter/parameter/parameter.html#paddlestructpaddle_1_1Argument"><span class="std std-ref">Argument</span></a> and gradient during <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span class="std std-ref">backward()</span></a>). It basically is the same as single thread gradient machine, except that it uses multi-thread to do the computation.</p>
 <p>It handles GPU and Cpu parameters differently. In GPU, one computing thread generally corresponds to one GPU device. Thus, each thread keeps a separate copy of the parameter in its own device&#8217;s memory. In CPU, we only need to keep one copy of the parameters in the main memory. After, each computing thread computes its own parameter gradient, the update process needs to accumulate the parameter gradients from all the computing threads, and update the accumulated parameter gradient to the corresponding parameter value.</p>
 <p>Each GPU parameter is assigned to a thread called its main thread. For each parameter, the accumulation of its gradients and the update of its value happens in its main thread. The main thread first gather the parameter gradients from all the computing thread. Then, it performs parameter update. After a gradient is updated by the main thread, it is scattered to all the computing thread so that the parameters in all the computing threads are synchronized. The scatter and gather process are implemented by ring-style communication. Assume we have N computing threads, its thread ids will be 0, 1, ..., N-1. For each parameter, the id of the main thread is specified in paraMainThread_[pid], where pid is the id of the parameter. Each thread i only sends data to its partner thread (i - 1) % N. For example, for a parameter gradient that is computed in thread 4, and its main thread is 2. Its traveling process would be 4, 5,..., N-1, 0, 1, 2. In each step, the gradient buffer is added to the local gradient, and the local gradient is then copied to the gradient buffer of the next thread. At last, its main thread 2 will get the accumulated parameter gradient. For the same parameter, after its value is updated, the value&#8217;s traveling process would be 2, 1, 0, N-1, ... 3. At the end, all the computing threads would have the updated parameter value.</p>
-<p>A computing thread (<a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span>TrainerThread</span></a>) uses 4 threads to do different jobs:</p>
+<p>A computing thread (<a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span class="std std-ref">TrainerThread</span></a>) uses 4 threads to do different jobs:</p>
 <p><ol class="arabic simple">
-<li>computeThread(): performing <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span>forward()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span>backward()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a7ff6e80ce978e95e0f5736c343d69270"><span>prefetch()</span></a>.</li>
+<li>computeThread(): performing <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span class="std std-ref">forward()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span class="std std-ref">backward()</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a7ff6e80ce978e95e0f5736c343d69270"><span class="std std-ref">prefetch()</span></a>.</li>
 <li>valueDispatchThread(): copying parameter values to partner thread.</li>
 <li>copyGradToBufferThread(): copying parameter gradient to partner thread.</li>
 <li>gradCollectThread(): merging the gradient from step 3 with local gradient and call the callback supplied by the user to update parameter value.</li>
 </ol>
 </p>
-<p>CPU parameter value has only one copy. And their gradients are merged at the end of <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span>backward()</span></a>.</p>
+<p>CPU parameter value has only one copy. And their gradients are merged at the end of <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span class="std std-ref">backward()</span></a>.</p>
 <p><ul class="simple">
 <li>Handling of sparse update Currently, sparse update is only supported for CPU parameters.</li>
 </ul>
@@ -504,21 +504,21 @@
 <p><ol class="arabic">
 <li><p class="first">Local sparse update</p>
 <p>Main parameter value type is MAT_NORMAL. It is a dense matrix.</p>
-<p>Main parameter grad type is MAT_SPARSE_ROW_IDS (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseRowIdsCpuMatrix"><span>SparseRowIdsCpuMatrix</span></a>) It is also a dense matrix, but the updated values are specified by IDS.</p>
+<p>Main parameter grad type is MAT_SPARSE_ROW_IDS (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseRowIdsCpuMatrix"><span class="std std-ref">SparseRowIdsCpuMatrix</span></a>) It is also a dense matrix, but the updated values are specified by IDS.</p>
 <p>Slave parameter value shares with main parameter value.</p>
-<p>Slave parameter grad type is MAT_SPARSE_ROW_AUTO_GROW (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseAutoGrowRowCpuMatrix"><span>SparseAutoGrowRowCpuMatrix</span></a>). It is a sparse row matrix.</p>
-<p>During <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span>backward()</span></a> of each <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span>TrainerThread</span></a>, <a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseAutoGrowRowCpuMatrix"><span>SparseAutoGrowRowCpuMatrix</span></a> will gather all the non-zero gradient. And After <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span>backward()</span></a>, they will be merged into main parameter grad (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseRowIdsCpuMatrix"><span>SparseRowIdsCpuMatrix</span></a>), with indices indicating which rows have nonzero gradient.</p>
+<p>Slave parameter grad type is MAT_SPARSE_ROW_AUTO_GROW (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseAutoGrowRowCpuMatrix"><span class="std std-ref">SparseAutoGrowRowCpuMatrix</span></a>). It is a sparse row matrix.</p>
+<p>During <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span class="std std-ref">backward()</span></a> of each <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span class="std std-ref">TrainerThread</span></a>, <a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseAutoGrowRowCpuMatrix"><span class="std std-ref">SparseAutoGrowRowCpuMatrix</span></a> will gather all the non-zero gradient. And After <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span class="std std-ref">backward()</span></a>, they will be merged into main parameter grad (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseRowIdsCpuMatrix"><span class="std std-ref">SparseRowIdsCpuMatrix</span></a>), with indices indicating which rows have nonzero gradient.</p>
 </li>
 <li><p class="first">Remote sparse update</p>
-<p>Main parameter value type is MAT_SPARSE_ROW_PREFETCH(_FULL_SIZE) (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparsePrefetchRowCpuMatrix"><span>SparsePrefetchRowCpuMatrix</span></a>). MAT_SPARSE_ROW_PREFETCH is a sparse matrix. MAT_SPARSE_ROW_PREFETCH_FULL_SIZE is a dense matrix. However, only the parameter values that are prefetched is up-to-date.</p>
-<p>Main parameter grad type is MAT_SPARSE_ROW (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseRowCpuMatrix"><span>SparseRowCpuMatrix</span></a>). And it shares sparse pattern with value by sharing indexDictHandle_, which is an internal data structure used by SparseRowCpuMatrixto specify the sparsity pattern of Slave parameter value shares with main parameter value.</p>
-<p>Slave parameter grad type is MAT_SPARSE_ROW_AUTO_GROW (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparsePrefetchRowCpuMatrix"><span>SparsePrefetchRowCpuMatrix</span></a>). It is a sparse row matrix</p>
-<p>During <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a7ff6e80ce978e95e0f5736c343d69270"><span>prefetch()</span></a>, all the layers will indicates which rows of each parameter are needed. Then the framework will retrieve those rows from parameter server.</p>
-<p>During <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span>backward()</span></a> of each <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span>TrainerThread</span></a>, <a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseAutoGrowRowCpuMatrix"><span>SparseAutoGrowRowCpuMatrix</span></a> will gather all the non-zero gradient. And After <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span>backward()</span></a>, they will be merged into main parameter grad (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseRowCpuMatrix"><span>SparseRowCpuMatrix</span></a>). And the framework will send the merged gradient to parameter server. </p>
+<p>Main parameter value type is MAT_SPARSE_ROW_PREFETCH(_FULL_SIZE) (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparsePrefetchRowCpuMatrix"><span class="std std-ref">SparsePrefetchRowCpuMatrix</span></a>). MAT_SPARSE_ROW_PREFETCH is a sparse matrix. MAT_SPARSE_ROW_PREFETCH_FULL_SIZE is a dense matrix. However, only the parameter values that are prefetched is up-to-date.</p>
+<p>Main parameter grad type is MAT_SPARSE_ROW (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseRowCpuMatrix"><span class="std std-ref">SparseRowCpuMatrix</span></a>). And it shares sparse pattern with value by sharing indexDictHandle_, which is an internal data structure used by SparseRowCpuMatrixto specify the sparsity pattern of Slave parameter value shares with main parameter value.</p>
+<p>Slave parameter grad type is MAT_SPARSE_ROW_AUTO_GROW (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparsePrefetchRowCpuMatrix"><span class="std std-ref">SparsePrefetchRowCpuMatrix</span></a>). It is a sparse row matrix</p>
+<p>During <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a7ff6e80ce978e95e0f5736c343d69270"><span class="std std-ref">prefetch()</span></a>, all the layers will indicates which rows of each parameter are needed. Then the framework will retrieve those rows from parameter server.</p>
+<p>During <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span class="std std-ref">backward()</span></a> of each <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span class="std std-ref">TrainerThread</span></a>, <a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseAutoGrowRowCpuMatrix"><span class="std std-ref">SparseAutoGrowRowCpuMatrix</span></a> will gather all the non-zero gradient. And After <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span class="std std-ref">backward()</span></a>, they will be merged into main parameter grad (<a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseRowCpuMatrix"><span class="std std-ref">SparseRowCpuMatrix</span></a>). And the framework will send the merged gradient to parameter server. </p>
 </li>
 </ol>
 </p>
-<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine"><span>paddle::GradientMachine</span></a></p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine"><span class="std std-ref">paddle::GradientMachine</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
@@ -568,7 +568,7 @@
 <p>Calculate outputs (outArgs) based the inputs (inArgs)</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>: if passType==PASS_TEST, then <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span>backward()</span></a> should not be called </dd>
+<dd>: if passType==PASS_TEST, then <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span class="std std-ref">backward()</span></a> should not be called </dd>
 </dl>
 </p>
 </dd></dl>
@@ -578,17 +578,17 @@
 <span id="paddle::MultiGradientMachine::backward__UpdateCallbackCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"></span>void <code class="descname">backward</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20MultiGradientMachine8backwardERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Backward propagation. </p>
 <p>Calculate the gradient of inArgs and parameter.</p>
-<p>This function should only be called after a corresponding <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span>forward()</span></a> call. The caller is responsible for filling the correct grad for the outArgs obtained using <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span>forward()</span></a>.</p>
-<p>It may also change the grad field for the inArgs supplied at <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span>forward()</span></a> </p>
+<p>This function should only be called after a corresponding <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span class="std std-ref">forward()</span></a> call. The caller is responsible for filling the correct grad for the outArgs obtained using <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span class="std std-ref">forward()</span></a>.</p>
+<p>It may also change the grad field for the inArgs supplied at <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span class="std std-ref">forward()</span></a> </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20MultiGradientMachine15forwardBackwardERKNSt6vectorI8ArgumentEEPNSt6vectorI8ArgumentEE8PassTypeRK14UpdateCallback">
 <span id="paddle::MultiGradientMachine::forwardBackward__std::vector:Argument:CR.std::vector:Argument:P.PassType.UpdateCallbackCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1MultiGradientMachine_1ac945ff36e0e3817613daf6978836ab83"></span>void <code class="descname">forwardBackward</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>inArgs</em>, std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; *<em>outArgs</em>, PassType <em>passType</em>, <em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20MultiGradientMachine15forwardBackwardERKNSt6vectorI8ArgumentEEPNSt6vectorI8ArgumentEE8PassTypeRK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Combine <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span>forward()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span>backward()</span></a>. For multithread training, this may be faster.</p>
+<dd><p>Combine <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span class="std std-ref">forward()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1acbe5222c8b2b4468e7f39ea598b09bec"><span class="std std-ref">backward()</span></a>. For multithread training, this may be faster.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>: passType PASS_TEST is not allowed for <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1ac945ff36e0e3817613daf6978836ab83"><span>forwardBackward()</span></a>. </dd>
+<dd>: passType PASS_TEST is not allowed for <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1ac945ff36e0e3817613daf6978836ab83"><span class="std std-ref">forwardBackward()</span></a>. </dd>
 </dl>
 </p>
 </dd></dl>
@@ -612,7 +612,7 @@
 <dl class="function">
 <dt id="_CPPv2N6paddle20MultiGradientMachine13makeEvaluatorEv">
 <span id="paddle::MultiGradientMachine::makeEvaluator"></span>virtual <span class="target" id="paddleclasspaddle_1_1MultiGradientMachine_1a814661776f9b7b5c8e6c040ce1faa2ec"></span><a class="reference internal" href="../evaluators/evaluators.html#_CPPv2N6paddle9EvaluatorE" title="paddle::Evaluator">Evaluator</a> *<code class="descname">makeEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20MultiGradientMachine13makeEvaluatorEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create an evaluator which can be used for <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a956574785e025b33bdf9540f5f2607c0"><span>eval()</span></a> </p>
+<dd><p>Create an evaluator which can be used for <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a956574785e025b33bdf9540f5f2607c0"><span class="std std-ref">eval()</span></a> </p>
 </dd></dl>
 
 <dl class="function">
@@ -681,19 +681,19 @@
 <dl class="function">
 <dt id="_CPPv2N6paddle20MultiGradientMachine15waitBeforeMergeEv">
 <span id="paddle::MultiGradientMachine::waitBeforeMerge"></span><span class="target" id="paddleclasspaddle_1_1MultiGradientMachine_1aa25270c11c077dc61c5799304f1ba98a"></span>void <code class="descname">waitBeforeMerge</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20MultiGradientMachine15waitBeforeMergeEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span>TrainerThread</span></a> to wait before merging CPU parameter gradients. </p>
+<dd><p>Called <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span class="std std-ref">TrainerThread</span></a> to wait before merging CPU parameter gradients. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20MultiGradientMachine14waitAfterMergeEv">
 <span id="paddle::MultiGradientMachine::waitAfterMerge"></span><span class="target" id="paddleclasspaddle_1_1MultiGradientMachine_1aff48c3ae2c7239f285375c50c5b066c9"></span>void <code class="descname">waitAfterMerge</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20MultiGradientMachine14waitAfterMergeEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>called by <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span>MultiGradientMachine</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span>TrainerThread</span></a> to wait after merging CPU parameter graidents. </p>
+<dd><p>called by <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span class="std std-ref">MultiGradientMachine</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span class="std std-ref">TrainerThread</span></a> to wait after merging CPU parameter graidents. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20MultiGradientMachine17waitForCopyInArgsEv">
 <span id="paddle::MultiGradientMachine::waitForCopyInArgs"></span><span class="target" id="paddleclasspaddle_1_1MultiGradientMachine_1a928abc9a1a14a8be3adeb233fe0ce60a"></span>void <code class="descname">waitForCopyInArgs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20MultiGradientMachine17waitForCopyInArgsEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>called by <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span>MultiGradientMachine</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span>TrainerThread</span></a> to wait for copyInArgs() finishing </p>
+<dd><p>called by <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span class="std std-ref">MultiGradientMachine</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span class="std std-ref">TrainerThread</span></a> to wait for copyInArgs() finishing </p>
 </dd></dl>
 
 <dl class="function">
@@ -714,7 +714,7 @@
 <dl class="function">
 <dt id="_CPPv2N6paddle20MultiGradientMachine22notifyGradientTransferEi">
 <span id="paddle::MultiGradientMachine::notifyGradientTransfer__i"></span><span class="target" id="paddleclasspaddle_1_1MultiGradientMachine_1adb14f03f60337cf15a674db0d2977910"></span>void <code class="descname">notifyGradientTransfer</code><span class="sig-paren">(</span>int <em>paramId</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20MultiGradientMachine22notifyGradientTransferEi" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called by <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span>TrainerThread</span></a> to notify <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span>MultiGradientMachine</span></a> that the gradient for paramId is ready </p>
+<dd><p>Called by <a class="reference internal" href="#paddleclasspaddle_1_1TrainerThread"><span class="std std-ref">TrainerThread</span></a> to notify <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span class="std std-ref">MultiGradientMachine</span></a> that the gradient for paramId is ready </p>
 </dd></dl>
 
 <dl class="function">
@@ -887,13 +887,13 @@
 <dl class="member">
 <dt id="_CPPv2N6paddle20MultiGradientMachine11allBarrier_E">
 <span id="paddle::MultiGradientMachine::allBarrier___ThreadBarrier"></span><span class="target" id="paddleclasspaddle_1_1MultiGradientMachine_1a6687b5a73445fcde7edbc475e5f950ab"></span><a class="reference internal" href="../../utils/thread.html#_CPPv2N6paddle13ThreadBarrierE" title="paddle::ThreadBarrier">ThreadBarrier</a> <code class="descname">allBarrier_</code><a class="headerlink" href="#_CPPv2N6paddle20MultiGradientMachine11allBarrier_E" title="Permalink to this definition">¶</a></dt>
-<dd><p>barrier for both <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span>MultiGradientMachine</span></a> and threds_ </p>
+<dd><p>barrier for both <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine"><span class="std std-ref">MultiGradientMachine</span></a> and threds_ </p>
 </dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle20MultiGradientMachine13inArgsCopied_E">
 <span id="paddle::MultiGradientMachine::inArgsCopied___b"></span><span class="target" id="paddleclasspaddle_1_1MultiGradientMachine_1ab9854a9e4941edbab7532f15a467adf8"></span>bool <code class="descname">inArgsCopied_</code><a class="headerlink" href="#_CPPv2N6paddle20MultiGradientMachine13inArgsCopied_E" title="Permalink to this definition">¶</a></dt>
-<dd><p>indicate whether inArgs is copied before <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span>forward()</span></a> </p>
+<dd><p>indicate whether inArgs is copied before <a class="reference internal" href="#paddleclasspaddle_1_1MultiGradientMachine_1a5a59dce9a806c890b968116444c1c051"><span class="std std-ref">forward()</span></a> </p>
 </dd></dl>
 
 <dl class="member">
@@ -1013,7 +1013,7 @@
 <dl class="function">
 <dt id="_CPPv2N6paddle13TrainerThread14copyOutputGradEv">
 <span id="paddle::TrainerThread::copyOutputGrad"></span><span class="target" id="paddleclasspaddle_1_1TrainerThread_1a06970cc4cba91ae9b25a84afb7301ed4"></span>void <code class="descname">copyOutputGrad</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13TrainerThread14copyOutputGradEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>copy the output gradient from the main <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine"><span>GradientMachine</span></a>. </p>
+<dd><p>copy the output gradient from the main <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine"><span class="std std-ref">GradientMachine</span></a>. </p>
 </dd></dl>
 
 </div>
@@ -1082,7 +1082,7 @@
 <dl class="function">
 <dt id="_CPPv2N6paddle13TrainerThread10doCallbackEi">
 <span id="paddle::TrainerThread::doCallback__i"></span><span class="target" id="paddleclasspaddle_1_1TrainerThread_1a8b3affe8e691817c3c885ff9611b93f3"></span>void <code class="descname">doCallback</code><span class="sig-paren">(</span>int <em>pid</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13TrainerThread10doCallbackEi" title="Permalink to this definition">¶</a></dt>
-<dd><p>call the actuall callback supplied by the caller of <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a5a6d89a9412849259e07729720c4b2cc"><span>GradientMachine::backward</span></a> </p>
+<dd><p>call the actuall callback supplied by the caller of <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine_1a5a6d89a9412849259e07729720c4b2cc"><span class="std std-ref">GradientMachine::backward</span></a> </p>
 </dd></dl>
 
 </div>
@@ -1247,7 +1247,7 @@
 <dl class="class">
 <dt id="_CPPv2N6paddle24RecurrentGradientMachineE">
 <span id="paddle::RecurrentGradientMachine"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">RecurrentGradientMachine</code><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachineE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork"><span>paddle::NeuralNetwork</span></a></p>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork"><span class="std std-ref">paddle::NeuralNetwork</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
@@ -1262,7 +1262,7 @@
 
 <dl class="type">
 <dt id="_CPPv2N6paddle24RecurrentGradientMachine12DropCallbackE">
-<span id="paddle::RecurrentGradientMachine::DropCallback"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1accd7732ad5b94afc5571bdd98396af1e"></span><em class="property">typedef </em>std::function&lt;bool(int seqId, const std::vector&lt;int&gt;&amp;, const std::vector&lt;real&gt;&amp;)&gt; <code class="descname">DropCallback</code><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine12DropCallbackE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::RecurrentGradientMachine::DropCallback"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1accd7732ad5b94afc5571bdd98396af1e"></span><em class="property">typedef </em>std::function&lt;bool<span class="sig-paren">(</span>int seqId, <em class="property">const</em> std::vector&lt;int&gt;&amp;, <em class="property">const</em> std::vector&lt;real&gt;&amp;<span class="sig-paren">)</span>&gt; <code class="descname">DropCallback</code><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine12DropCallbackE" title="Permalink to this definition">¶</a></dt>
 <dd><p>DropCallback. </p>
 <p>Drop a whole prefix or one candidate in beam search or not.</p>
 <p>The first parameter is sequence index in a batch</p>
@@ -1273,7 +1273,7 @@
 
 <dl class="type">
 <dt id="_CPPv2N6paddle24RecurrentGradientMachine22NormOrDropNodeCallbackE">
-<span id="paddle::RecurrentGradientMachine::NormOrDropNodeCallback"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1a8f7d01809d1118665ec62042b1397379"></span><em class="property">typedef </em>std::function&lt;void(int seqId, const std::vector&lt;int&gt;&amp;, std::vector&lt;real&gt;&amp;, real*)&gt; <code class="descname">NormOrDropNodeCallback</code><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine22NormOrDropNodeCallbackE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::RecurrentGradientMachine::NormOrDropNodeCallback"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1a8f7d01809d1118665ec62042b1397379"></span><em class="property">typedef </em>std::function&lt;void<span class="sig-paren">(</span>int seqId, <em class="property">const</em> std::vector&lt;int&gt;&amp;, std::vector&lt;real&gt;&amp;, real *<span class="sig-paren">)</span>&gt; <code class="descname">NormOrDropNodeCallback</code><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine22NormOrDropNodeCallbackE" title="Permalink to this definition">¶</a></dt>
 <dd><p>NormOrDropNodeCallback. </p>
 <p>Normalize a path&#8217;s probabilities or just drop it by modifying path.logProb</p>
 <p>The first parameter is sequence index in a batch</p>
@@ -1304,7 +1304,7 @@
 
 <dl class="function">
 <dt id="_CPPv2N6paddle24RecurrentGradientMachineaSERK24RecurrentGradientMachine">
-<span id="paddle::RecurrentGradientMachine::assign-operator__RecurrentGradientMachineCR"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1afbc1b24f3ee91fed4cdce699c35a4b37"></span><a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachine24RecurrentGradientMachineERKNSt6stringEP13NeuralNetwork" title="paddle::RecurrentGradientMachine::RecurrentGradientMachine">RecurrentGradientMachine</a> &amp;<code class="descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachine24RecurrentGradientMachineERKNSt6stringEP13NeuralNetwork" title="paddle::RecurrentGradientMachine::RecurrentGradientMachine">RecurrentGradientMachine</a> &amp;<em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachineaSERK24RecurrentGradientMachine" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::RecurrentGradientMachine::assign-operator__RecurrentGradientMachineCR"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1afbc1b24f3ee91fed4cdce699c35a4b37"></span><a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachineE" title="paddle::RecurrentGradientMachine">RecurrentGradientMachine</a> &amp;<code class="descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachineE" title="paddle::RecurrentGradientMachine">RecurrentGradientMachine</a> &amp;<em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachineaSERK24RecurrentGradientMachine" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1330,7 +1330,7 @@
 <p>Calculate outputs (outArgs) based the inputs (inArgs)</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>: if passType==PASS_TEST, then <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1a6557422f374578bea885ed90a4f3e0b8"><span>backward()</span></a> should not be called </dd>
+<dd>: if passType==PASS_TEST, then <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1a6557422f374578bea885ed90a4f3e0b8"><span class="std std-ref">backward()</span></a> should not be called </dd>
 </dl>
 </p>
 </dd></dl>
@@ -1340,17 +1340,17 @@
 <span id="paddle::RecurrentGradientMachine::backward__UpdateCallbackCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1a6557422f374578bea885ed90a4f3e0b8"></span>void <code class="descname">backward</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine8backwardERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Backward propagation. </p>
 <p>Calculate the gradient of inArgs and parameter.</p>
-<p>This function should only be called after a corresponding <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1ab90c1bd4e2a64065d0a0c49870092f00"><span>forward()</span></a> call. The caller is responsible for filling the correct grad for the outArgs obtained using <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1ab90c1bd4e2a64065d0a0c49870092f00"><span>forward()</span></a>.</p>
-<p>It may also change the grad field for the inArgs supplied at <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1ab90c1bd4e2a64065d0a0c49870092f00"><span>forward()</span></a> </p>
+<p>This function should only be called after a corresponding <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1ab90c1bd4e2a64065d0a0c49870092f00"><span class="std std-ref">forward()</span></a> call. The caller is responsible for filling the correct grad for the outArgs obtained using <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1ab90c1bd4e2a64065d0a0c49870092f00"><span class="std std-ref">forward()</span></a>.</p>
+<p>It may also change the grad field for the inArgs supplied at <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1ab90c1bd4e2a64065d0a0c49870092f00"><span class="std std-ref">forward()</span></a> </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle24RecurrentGradientMachine15forwardBackwardERKNSt6vectorI8ArgumentEEPNSt6vectorI8ArgumentEE8PassTypeRK14UpdateCallback">
 <span id="paddle::RecurrentGradientMachine::forwardBackward__std::vector:Argument:CR.std::vector:Argument:P.PassType.UpdateCallbackCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1ac01e7dd17f56bf2f6d7e6138395d76c6"></span>void <code class="descname">forwardBackward</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>inArgs</em>, std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; *<em>outArgs</em>, PassType <em>passType</em>, <em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine15forwardBackwardERKNSt6vectorI8ArgumentEEPNSt6vectorI8ArgumentEE8PassTypeRK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Combine <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1ab90c1bd4e2a64065d0a0c49870092f00"><span>forward()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1a6557422f374578bea885ed90a4f3e0b8"><span>backward()</span></a>. For multithread training, this may be faster.</p>
+<dd><p>Combine <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1ab90c1bd4e2a64065d0a0c49870092f00"><span class="std std-ref">forward()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1a6557422f374578bea885ed90a4f3e0b8"><span class="std std-ref">backward()</span></a>. For multithread training, this may be faster.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>: passType PASS_TEST is not allowed for <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1ac01e7dd17f56bf2f6d7e6138395d76c6"><span>forwardBackward()</span></a>. </dd>
+<dd>: passType PASS_TEST is not allowed for <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine_1ac01e7dd17f56bf2f6d7e6138395d76c6"><span class="std std-ref">forwardBackward()</span></a>. </dd>
 </dl>
 </p>
 </dd></dl>
@@ -1467,8 +1467,8 @@
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle24RecurrentGradientMachine17createInFrameInfoERK8Argument8PassType">
-<span id="paddle::RecurrentGradientMachine::createInFrameInfo__ArgumentCR.PassType"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1a75764b85439b76c65a9d0c29706a927c"></span>void <code class="descname">createInFrameInfo</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>input</em>, PassType <em>passType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine17createInFrameInfoERK8Argument8PassType" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2N6paddle24RecurrentGradientMachine17createInFrameInfoEiRK8Argument8PassType">
+<span id="paddle::RecurrentGradientMachine::createInFrameInfo__i.ArgumentCR.PassType"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1af8481d052b22dfdc4bbdcb15111a93e9"></span>void <code class="descname">createInFrameInfo</code><span class="sig-paren">(</span>int <em>inlinks_id</em>, <em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>input</em>, PassType <em>passType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine17createInFrameInfoEiRK8Argument8PassType" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1511,12 +1511,22 @@
 
 <dl class="member">
 <dt id="_CPPv2N6paddle24RecurrentGradientMachine5info_E">
-<span id="paddle::RecurrentGradientMachine::info___Info"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1a0e93196165a043e2b27485923ff5aaa3"></span><a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachine4InfoE" title="paddle::RecurrentGradientMachine::Info">Info</a> <code class="descname">info_</code><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine5info_E" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::RecurrentGradientMachine::info___std::vector:Info:"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1a63e5674b29029a36e5a22b5ee963f8a8"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachine4InfoE" title="paddle::RecurrentGradientMachine::Info">Info</a>&gt; <code class="descname">info_</code><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine5info_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24RecurrentGradientMachine8numSeqs_E">
+<span id="paddle::RecurrentGradientMachine::numSeqs___std::vector:i:"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1af1498cc72c668e04b9f874f80d032201"></span>std::vector&lt;int&gt; <code class="descname">numSeqs_</code><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine8numSeqs_E" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="member">
 <dt id="_CPPv2N6paddle24RecurrentGradientMachine18seqLengthAndStart_E">
-<span id="paddle::RecurrentGradientMachine::seqLengthAndStart___std::vector:std::tuple:i.i.i.i::"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1a4a31df71603025506ce2882e7352bb72"></span>std::vector&lt;std::tuple&lt;int, int, int, int&gt;&gt; <code class="descname">seqLengthAndStart_</code><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine18seqLengthAndStart_E" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::RecurrentGradientMachine::seqLengthAndStart___std::vector:std::vector:std::tuple:i.i.i.i:::"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1a1b47e83fddf5ad3c6b826c8302799ccb"></span>std::vector&lt;std::vector&lt;std::tuple&lt;int, int, int, int&gt;&gt;&gt; <code class="descname">seqLengthAndStart_</code><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine18seqLengthAndStart_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24RecurrentGradientMachine19targetInfoInlinkId_E">
+<span id="paddle::RecurrentGradientMachine::targetInfoInlinkId___i"></span><span class="target" id="paddleclasspaddle_1_1RecurrentGradientMachine_1a59d12084ac35ba97723ce102b181ade9"></span>int <code class="descname">targetInfoInlinkId_</code><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine19targetInfoInlinkId_E" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="member">
@@ -1801,7 +1811,7 @@
 <dl class="function">
 <dt id="_CPPv2N6paddle24RecurrentGradientMachine4Path4PathEv">
 <span id="paddle::RecurrentGradientMachine::Path::Path"></span><span class="target" id="paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path_1a2304be332692413fb364922535887487"></span><code class="descname">Path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine4Path4PathEv" title="Permalink to this definition">¶</a></dt>
-<dd><p><a class="reference internal" href="#paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path"><span>Path</span></a> default ctor, first logProb is 0. </p>
+<dd><p><a class="reference internal" href="#paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path"><span class="std std-ref">Path</span></a> default ctor, first logProb is 0. </p>
 </dd></dl>
 
 <dl class="function">
@@ -1824,7 +1834,7 @@
 </li>
 <li><code class="first docutils literal"><span class="pre">machineId</span></code> - <p>sample index of a frame in RNN </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">topIndex</span></code> - <p>index of <a class="reference internal" href="../layers/layer.html#paddleclasspaddle_1_1MaxIdLayer"><span>MaxIdLayer</span></a> output in one sample </p>
+<li><code class="first docutils literal"><span class="pre">topIndex</span></code> - <p>index of <a class="reference internal" href="../layers/layer.html#paddleclasspaddle_1_1MaxIdLayer"><span class="std std-ref">MaxIdLayer</span></a> output in one sample </p>
 </li>
 </ul>
 </dd>
@@ -1834,9 +1844,9 @@
 
 <dl class="function">
 <dt id="_CPPv2N6paddle24RecurrentGradientMachine4PathltERK4Path">
-<span id="paddle::RecurrentGradientMachine::Path::lt-operator__PathCR"></span><span class="target" id="paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path_1a0bc8efe89c9103470851efbaa0ac7a96"></span>bool <code class="descname">operator&lt;</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachine4Path4PathEv" title="paddle::RecurrentGradientMachine::Path::Path">Path</a> &amp;<em>other</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine4PathltERK4Path" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::RecurrentGradientMachine::Path::lt-operator__PathCR"></span><span class="target" id="paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path_1a0bc8efe89c9103470851efbaa0ac7a96"></span>bool <code class="descname">operator&lt;</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachine4PathE" title="paddle::RecurrentGradientMachine::Path">Path</a> &amp;<em>other</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine4PathltERK4Path" title="Permalink to this definition">¶</a></dt>
 <dd><p>operator &lt; </p>
-<p><a class="reference internal" href="#paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path"><span>Path</span></a> a &lt; <a class="reference internal" href="#paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path"><span>Path</span></a> b means log probability of a is smaller than that of b </p>
+<p><a class="reference internal" href="#paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path"><span class="std std-ref">Path</span></a> a &lt; <a class="reference internal" href="#paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path"><span class="std std-ref">Path</span></a> b means log probability of a is smaller than that of b </p>
 </dd></dl>
 
 <dl class="function">
@@ -1916,7 +1926,7 @@
 <dd><p>A record of each node&#8217;s probality in a formed path in beam search. </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>It could be empty when history is not recorded. If the history is wanted to be recorded, <a class="reference internal" href="#paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path_1a7dd0d19d344b17ccde5bb9ffd59b70fe"><span>recordHistory()</span></a> MUST be invoked first. </dd>
+<dd>It could be empty when history is not recorded. If the history is wanted to be recorded, <a class="reference internal" href="#paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path_1a7dd0d19d344b17ccde5bb9ffd59b70fe"><span class="std std-ref">recordHistory()</span></a> MUST be invoked first. </dd>
 </dl>
 </p>
 </dd></dl>
@@ -1926,7 +1936,7 @@
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle24RecurrentGradientMachine4Path11greaterPathERK4PathRK4Path">
-<span id="paddle::RecurrentGradientMachine::Path::greaterPath__PathCR.PathCR"></span><span class="target" id="paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path_1afa885405f48dd0935a414d7a5b45dd4f"></span><em class="property">static</em> bool <code class="descname">greaterPath</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachine4Path4PathEv" title="paddle::RecurrentGradientMachine::Path::Path">Path</a> &amp;<em>a</em>, <em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachine4Path4PathEv" title="paddle::RecurrentGradientMachine::Path::Path">Path</a> &amp;<em>b</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine4Path11greaterPathERK4PathRK4Path" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::RecurrentGradientMachine::Path::greaterPath__PathCR.PathCR"></span><span class="target" id="paddlestructpaddle_1_1RecurrentGradientMachine_1_1Path_1afa885405f48dd0935a414d7a5b45dd4f"></span><em class="property">static</em> bool <code class="descname">greaterPath</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachine4PathE" title="paddle::RecurrentGradientMachine::Path">Path</a> &amp;<em>a</em>, <em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle24RecurrentGradientMachine4PathE" title="paddle::RecurrentGradientMachine::Path">Path</a> &amp;<em>b</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24RecurrentGradientMachine4Path11greaterPathERK4PathRK4Path" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1943,8 +1953,8 @@
 <dl class="class">
 <dt id="_CPPv2N6paddle13NeuralNetworkE">
 <span id="paddle::NeuralNetwork"></span><span class="target" id="paddleclasspaddle_1_1NeuralNetwork"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">NeuralNetwork</code><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetworkE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine"><span>paddle::GradientMachine</span></a></p>
-<p>Subclassed by paddle::MultiNetwork, <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork"><span>paddle::ParallelNeuralNetwork</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine"><span>paddle::RecurrentGradientMachine</span></a></p>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1GradientMachine"><span class="std std-ref">paddle::GradientMachine</span></a></p>
+<p>Subclassed by paddle::MultiNetwork, <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork"><span class="std std-ref">paddle::ParallelNeuralNetwork</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentGradientMachine"><span class="std std-ref">paddle::RecurrentGradientMachine</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -1954,7 +1964,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1abd3c7fdc23
 
 <dl class="function">
 <dt id="_CPPv2N6paddle13NeuralNetwork7connectENSt6stringEP13NeuralNetworkNSt6stringE">
-<span id="paddle::NeuralNetwork::connect__ss.NeuralNetworkP.ss"></span><span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1a012563cfb4e8188d6e1e8114338a3306"></span>void <code class="descname">connect</code><span class="sig-paren">(</span>std::string <em>agentLayerName</em>, <a class="reference internal" href="#_CPPv2N6paddle13NeuralNetwork13NeuralNetworkENSt6stringEP13NeuralNetwork" title="paddle::NeuralNetwork::NeuralNetwork">NeuralNetwork</a> *<em>srcNN</em>, std::string <em>realLayerName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetwork7connectENSt6stringEP13NeuralNetworkNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::NeuralNetwork::connect__ss.NeuralNetworkP.ss"></span><span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1a012563cfb4e8188d6e1e8114338a3306"></span>void <code class="descname">connect</code><span class="sig-paren">(</span>std::string <em>agentLayerName</em>, <a class="reference internal" href="#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> *<em>srcNN</em>, std::string <em>realLayerName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetwork7connectENSt6stringEP13NeuralNetworkNSt6stringE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1970,7 +1980,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1abd3c7fdc23
 <p>Calculate outputs (outArgs) based the inputs (inArgs)</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>: if passType==PASS_TEST, then <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork_1a2727fb299c82b8f4d4fca185e4623852"><span>backward()</span></a> should not be called </dd>
+<dd>: if passType==PASS_TEST, then <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork_1a2727fb299c82b8f4d4fca185e4623852"><span class="std std-ref">backward()</span></a> should not be called </dd>
 </dl>
 </p>
 </dd></dl>
@@ -1980,8 +1990,8 @@ virtual <span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1abd3c7fdc23
 <span id="paddle::NeuralNetwork::backward__UpdateCallbackCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1a2727fb299c82b8f4d4fca185e4623852"></span>void <code class="descname">backward</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetwork8backwardERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Backward propagation. </p>
 <p>Calculate the gradient of inArgs and parameter.</p>
-<p>This function should only be called after a corresponding <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork_1a3023ebddb9e3fcba51e823c414a2fb5c"><span>forward()</span></a> call. The caller is responsible for filling the correct grad for the outArgs obtained using <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork_1a3023ebddb9e3fcba51e823c414a2fb5c"><span>forward()</span></a>.</p>
-<p>It may also change the grad field for the inArgs supplied at <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork_1a3023ebddb9e3fcba51e823c414a2fb5c"><span>forward()</span></a> </p>
+<p>This function should only be called after a corresponding <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork_1a3023ebddb9e3fcba51e823c414a2fb5c"><span class="std std-ref">forward()</span></a> call. The caller is responsible for filling the correct grad for the outArgs obtained using <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork_1a3023ebddb9e3fcba51e823c414a2fb5c"><span class="std std-ref">forward()</span></a>.</p>
+<p>It may also change the grad field for the inArgs supplied at <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork_1a3023ebddb9e3fcba51e823c414a2fb5c"><span class="std std-ref">forward()</span></a> </p>
 </dd></dl>
 
 <dl class="function">
@@ -2002,7 +2012,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1abd3c7fdc23
 <dl class="function">
 <dt id="_CPPv2N6paddle13NeuralNetwork13makeEvaluatorEv">
 <span id="paddle::NeuralNetwork::makeEvaluator"></span>virtual <span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1a6b06dbf583d7c82068b29ab1a6001c59"></span><a class="reference internal" href="../evaluators/evaluators.html#_CPPv2N6paddle9EvaluatorE" title="paddle::Evaluator">Evaluator</a> *<code class="descname">makeEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetwork13makeEvaluatorEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create an evaluator which can be used for <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork_1aa465bf280a62ab7248fa6ec445be5086"><span>eval()</span></a> </p>
+<dd><p>Create an evaluator which can be used for <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork_1aa465bf280a62ab7248fa6ec445be5086"><span class="std std-ref">eval()</span></a> </p>
 </dd></dl>
 
 <dl class="function">
@@ -2078,12 +2088,12 @@ virtual <span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1abd3c7fdc23
 
 <dl class="function">
 <dt id="_CPPv2N6paddle13NeuralNetwork6createERK11ModelConfig">
-<span id="paddle::NeuralNetwork::create__ModelConfigCR"></span><span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1ac9c74816576a78de8fe19f7d737a8e58"></span><a class="reference internal" href="#_CPPv2N6paddle13NeuralNetwork13NeuralNetworkENSt6stringEP13NeuralNetwork" title="paddle::NeuralNetwork::NeuralNetwork">NeuralNetwork</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetwork6createERK11ModelConfig" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::NeuralNetwork::create__ModelConfigCR"></span><span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1ac9c74816576a78de8fe19f7d737a8e58"></span><a class="reference internal" href="#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetwork6createERK11ModelConfig" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle13NeuralNetwork16newNeuralNetworkERKNSt6stringEP13NeuralNetwork">
-<span id="paddle::NeuralNetwork::newNeuralNetwork__ssCR.NeuralNetworkP"></span><span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1af68b354d12fdfb4569d406f4c5565f16"></span><a class="reference internal" href="#_CPPv2N6paddle13NeuralNetwork13NeuralNetworkENSt6stringEP13NeuralNetwork" title="paddle::NeuralNetwork::NeuralNetwork">NeuralNetwork</a> *<code class="descname">newNeuralNetwork</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>name</em> = &quot;&quot;, <a class="reference internal" href="#_CPPv2N6paddle13NeuralNetwork13NeuralNetworkENSt6stringEP13NeuralNetwork" title="paddle::NeuralNetwork::NeuralNetwork">NeuralNetwork</a> *<em>rootNetwork</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetwork16newNeuralNetworkERKNSt6stringEP13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::NeuralNetwork::newNeuralNetwork__ssCR.NeuralNetworkP"></span><span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1af68b354d12fdfb4569d406f4c5565f16"></span><a class="reference internal" href="#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> *<code class="descname">newNeuralNetwork</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>name</em> = &quot;&quot;, <a class="reference internal" href="#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> *<em>rootNetwork</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetwork16newNeuralNetworkERKNSt6stringEP13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -2092,7 +2102,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1abd3c7fdc23
 <dl class="function">
 <dt id="_CPPv2N6paddle13NeuralNetwork13NeuralNetworkENSt6stringEP13NeuralNetwork">
 <span id="paddle::NeuralNetwork::NeuralNetwork__ss.NeuralNetworkP"></span><span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1a3594c9d7b8eb9d46ed1153fa36cb9999"></span><code class="descname">NeuralNetwork</code><span class="sig-paren">(</span>std::string <em>subModelName</em> = &quot;&quot;, <a class="reference internal" href="#_CPPv2N6paddle13NeuralNetwork13NeuralNetworkENSt6stringEP13NeuralNetwork" title="paddle::NeuralNetwork::NeuralNetwork">NeuralNetwork</a> *<em>rootNetwork</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetwork13NeuralNetworkENSt6stringEP13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
-<dd><p>The constructor of <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork"><span>NeuralNetwork</span></a>. The sub networks can get parameters_ and parameterMap_ from base <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork"><span>NeuralNetwork</span></a>.</p>
+<dd><p>The constructor of <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork"><span class="std std-ref">NeuralNetwork</span></a>. The sub networks can get parameters_ and parameterMap_ from base <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork"><span class="std std-ref">NeuralNetwork</span></a>.</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last">
@@ -2146,7 +2156,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1abd3c7fdc23
 
 <dl class="member">
 <dt id="_CPPv2N6paddle13NeuralNetwork12rootNetwork_E">
-<span id="paddle::NeuralNetwork::rootNetwork___NeuralNetworkP"></span><span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1a17b253234b7cfe2d88cd02e0c31321c2"></span><a class="reference internal" href="#_CPPv2N6paddle13NeuralNetwork13NeuralNetworkENSt6stringEP13NeuralNetwork" title="paddle::NeuralNetwork::NeuralNetwork">NeuralNetwork</a> *<code class="descname">rootNetwork_</code><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetwork12rootNetwork_E" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::NeuralNetwork::rootNetwork___NeuralNetworkP"></span><span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1a17b253234b7cfe2d88cd02e0c31321c2"></span><a class="reference internal" href="#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> *<code class="descname">rootNetwork_</code><a class="headerlink" href="#_CPPv2N6paddle13NeuralNetwork12rootNetwork_E" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="member">
@@ -2172,8 +2182,8 @@ virtual <span class="target" id="paddleclasspaddle_1_1NeuralNetwork_1abd3c7fdc23
 <dl class="class">
 <dt id="_CPPv2N6paddle21ParallelNeuralNetworkE">
 <span id="paddle::ParallelNeuralNetwork"></span><span class="target" id="paddleclasspaddle_1_1ParallelNeuralNetwork"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ParallelNeuralNetwork</code><a class="headerlink" href="#_CPPv2N6paddle21ParallelNeuralNetworkE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork"><span>ParallelNeuralNetwork</span></a> is capable of calculating a neural network through multiple threads in parallel. </p>
-<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork"><span>paddle::NeuralNetwork</span></a></p>
+<dd><p>A <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork"><span class="std std-ref">ParallelNeuralNetwork</span></a> is capable of calculating a neural network through multiple threads in parallel. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1NeuralNetwork"><span class="std std-ref">paddle::NeuralNetwork</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -2193,7 +2203,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1ParallelNeuralNetwork_1a69
 <p>Calculate outputs (outArgs) based the inputs (inArgs)</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>: if passType==PASS_TEST, then <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1a9305ac4bc0e86e7957e842612caca2f0"><span>backward()</span></a> should not be called </dd>
+<dd>: if passType==PASS_TEST, then <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1a9305ac4bc0e86e7957e842612caca2f0"><span class="std std-ref">backward()</span></a> should not be called </dd>
 </dl>
 </p>
 </dd></dl>
@@ -2203,17 +2213,17 @@ virtual <span class="target" id="paddleclasspaddle_1_1ParallelNeuralNetwork_1a69
 <span id="paddle::ParallelNeuralNetwork::backward__UpdateCallbackCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1ParallelNeuralNetwork_1a9305ac4bc0e86e7957e842612caca2f0"></span>void <code class="descname">backward</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21ParallelNeuralNetwork8backwardERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Backward propagation. </p>
 <p>Calculate the gradient of inArgs and parameter.</p>
-<p>This function should only be called after a corresponding <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1abc398ee055d6aaef479a1b082fc70634"><span>forward()</span></a> call. The caller is responsible for filling the correct grad for the outArgs obtained using <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1abc398ee055d6aaef479a1b082fc70634"><span>forward()</span></a>.</p>
-<p>It may also change the grad field for the inArgs supplied at <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1abc398ee055d6aaef479a1b082fc70634"><span>forward()</span></a> </p>
+<p>This function should only be called after a corresponding <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1abc398ee055d6aaef479a1b082fc70634"><span class="std std-ref">forward()</span></a> call. The caller is responsible for filling the correct grad for the outArgs obtained using <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1abc398ee055d6aaef479a1b082fc70634"><span class="std std-ref">forward()</span></a>.</p>
+<p>It may also change the grad field for the inArgs supplied at <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1abc398ee055d6aaef479a1b082fc70634"><span class="std std-ref">forward()</span></a> </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle21ParallelNeuralNetwork15forwardBackwardERKNSt6vectorI8ArgumentEEPNSt6vectorI8ArgumentEE8PassTypeRK14UpdateCallback">
 <span id="paddle::ParallelNeuralNetwork::forwardBackward__std::vector:Argument:CR.std::vector:Argument:P.PassType.UpdateCallbackCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1ParallelNeuralNetwork_1a4716fcdde3a480e07edd7ee867556fb5"></span>void <code class="descname">forwardBackward</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>inArgs</em>, std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; *<em>outArgs</em>, PassType <em>passType</em>, <em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em> = NULL<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21ParallelNeuralNetwork15forwardBackwardERKNSt6vectorI8ArgumentEEPNSt6vectorI8ArgumentEE8PassTypeRK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Combine <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1abc398ee055d6aaef479a1b082fc70634"><span>forward()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1a9305ac4bc0e86e7957e842612caca2f0"><span>backward()</span></a>. For multithread training, this may be faster.</p>
+<dd><p>Combine <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1abc398ee055d6aaef479a1b082fc70634"><span class="std std-ref">forward()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1a9305ac4bc0e86e7957e842612caca2f0"><span class="std std-ref">backward()</span></a>. For multithread training, this may be faster.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>: passType PASS_TEST is not allowed for <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1a4716fcdde3a480e07edd7ee867556fb5"><span>forwardBackward()</span></a>. </dd>
+<dd>: passType PASS_TEST is not allowed for <a class="reference internal" href="#paddleclasspaddle_1_1ParallelNeuralNetwork_1a4716fcdde3a480e07edd7ee867556fb5"><span class="std std-ref">forwardBackward()</span></a>. </dd>
 </dl>
 </p>
 </dd></dl>
@@ -2310,14 +2320,11 @@ virtual <span class="target" id="paddleclasspaddle_1_1ParallelNeuralNetwork_1a69
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -2339,14 +2346,14 @@ virtual <span class="target" id="paddleclasspaddle_1_1ParallelNeuralNetwork_1a69
         <li class="right" >
           <a href="index.html" title="Gradient Machines Documents"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Gradient Machines Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Gradient Machines Documents</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

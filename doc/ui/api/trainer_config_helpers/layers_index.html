@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Layers &mdash; PaddlePaddle  documentation</title>
+    <title>Layers &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -45,9 +45,9 @@
         <li class="right" >
           <a href="data_sources.html" title="DataSources"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Model Config Interface</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Model Config Interface</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -87,7 +87,6 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="layers.html#norm-layer">Norm Layer</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#img-cmrnorm-layer">img_cmrnorm_layer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="layers.html#img-rnorm-layer">img_rnorm_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#batch-norm-layer">batch_norm_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#sum-to-one-norm-layer">sum_to_one_norm_layer</a></li>
 </ul>
@@ -130,12 +129,13 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="layers.html#math-layers">Math Layers</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#addto-layer">addto_layer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="layers.html#convex-comb-layer">convex_comb_layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layers.html#linear-comb-layer">linear_comb_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#interpolation-layer">interpolation_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#power-layer">power_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#scaling-layer">scaling_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#slope-intercept-layer">slope_intercept_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#tensor-layer">tensor_layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layers.html#cos-sim">cos_sim</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#trans-layer">trans_layer</a></li>
 </ul>
 </li>
@@ -151,7 +151,6 @@
 <li class="toctree-l2"><a class="reference internal" href="layers.html#huber-cost">huber_cost</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#lambda-cost">lambda_cost</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#rank-cost">rank_cost</a></li>
-<li class="toctree-l2"><a class="reference internal" href="layers.html#cos-sim">cos_sim</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#crf-layer">crf_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#crf-decoding-layer">crf_decoding_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="layers.html#ctc-layer">ctc_layer</a></li>
@@ -188,14 +187,11 @@
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -217,14 +213,14 @@
         <li class="right" >
           <a href="data_sources.html" title="DataSources"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>PaddlePaddle快速入门教程 &mdash; PaddlePaddle  documentation</title>
+    <title>PaddlePaddle快速入门教程 &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -24,9 +24,7 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
-    <link rel="next" title="编译与安装" href="../../build_and_install/index.html" />
-    <link rel="prev" title="PaddlePaddle文档" href="../../index.html" /> 
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -35,13 +33,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="../../build_and_install/index.html" title="编译与安装"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="../../index.html" title="PaddlePaddle文档"
-             accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -91,7 +83,7 @@
 <div class="section" id="data-preparation">
 <span id="data-preparation"></span><h2>数据格式准备(Data Preparation)<a class="headerlink" href="#data-preparation" title="Permalink to this headline">¶</a></h2>
 <p>在本问题中，我们使用<a class="reference external" href="http://jmcauley.ucsd.edu/data/amazon/">Amazon电子产品评论数据</a>，
-将评论分为好评(正样本)和差评(负样本)两类。<code class="docutils literal"><span class="pre">demo/quick_start</span></code>里提供了数据下载脚本
+将评论分为好评(正样本)和差评(负样本)两类。<a class="reference external" href="https://github.com/baidu/Paddle">源码</a>的<code class="docutils literal"><span class="pre">demo/quick_start</span></code>里提供了数据下载脚本
 和预处理脚本。</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/quick_start
 ./data/get_data.sh
@@ -203,7 +195,7 @@ PyDataProviderWrapper</a>。</p>
 <center> <img alt="" src="../../_images/PipelineNetwork.jpg" /> </center></p>
 <p>我们将以基本的逻辑回归网络作为起点，并逐渐展示更加深入的功能。更详细的网络配置
 连接请参考<a href = "../../../doc/layer.html">Layer文档</a>。
-所有配置在<code class="docutils literal"><span class="pre">demo/quick_start</span></code>目录，首先列举逻辑回归网络。</p>
+所有配置在<a class="reference external" href="https://github.com/baidu/Paddle">源码</a><code class="docutils literal"><span class="pre">demo/quick_start</span></code>目录，首先列举逻辑回归网络。</p>
 <div class="section" id="logistic-regression">
 <span id="logistic-regression"></span><h3>逻辑回归模型(Logistic Regression)<a class="headerlink" href="#logistic-regression" title="Permalink to this headline">¶</a></h3>
 <p>流程如下：
@@ -258,7 +250,7 @@ PyDataProviderWrapper</a>。</p>
 <span id="word-vector"></span><h3>词向量模型(Word Vector)<a class="headerlink" href="#word-vector" title="Permalink to this headline">¶</a></h3>
 <p>embedding模型需要稍微改变数据提供的脚本，即<code class="docutils literal"><span class="pre">dataprovider_emb.py</span></code>，词向量模型、
 卷积模型、时序模型均使用该脚本。其中文本输入类型定义为整数时序类型integer_value_sequence。</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">initializer</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">initializer</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span> <span class="o">=</span> <span class="n">dictionary</span>
     <span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="p">[</span>
         <span class="c1"># Define the type of the first input as sequence of integer.</span>
@@ -425,15 +417,15 @@ paddle train <span class="se">\</span>
 mv rank-00000 result.txt
 </pre></div>
 </div>
-<p>与训练网络配置不同的是：无需label相关的层，指定outputs输出概率层(softmax输出)，
+<p>这里以<code class="docutils literal"><span class="pre">output/pass-00003</span></code>为例进行预测，用户可以根据训练log选择test结果最好的模型来预测。与训练网络配置不同的是：无需label相关的层，指定outputs输出概率层(softmax输出)，
 指定batch_size=1，数据传输无需label数据，预测数据指定test_list的位置。</p>
 <p>预测结果以文本的形式保存在<code class="docutils literal"><span class="pre">result.txt</span></code>中，一行为一个样本，格式如下：</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>预测ID;ID为0的概率 ID为1的概率
-预测ID;ID为0的概率 ID为1的概率
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">预测ID</span><span class="p">;</span><span class="n">ID为0的概率</span> <span class="n">ID为1的概率</span>
+<span class="n">预测ID</span><span class="p">;</span><span class="n">ID为0的概率</span> <span class="n">ID为1的概率</span>
 </pre></div>
 </div>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">is_predict</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;is_predict&#39;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
-<span class="n">trn</span> <span class="o">=</span> <span class="s1">&#39;data/train.list&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="bp">None</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">is_predict</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;is_predict&#39;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="n">trn</span> <span class="o">=</span> <span class="s1">&#39;data/train.list&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="kc">None</span>
 <span class="n">tst</span> <span class="o">=</span> <span class="s1">&#39;data/test.list&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="s1">&#39;data/pred.list&#39;</span>
 <span class="n">obj</span> <span class="o">=</span> <span class="s1">&#39;process&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="s1">&#39;process_pre&#39;</span>
 <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">128</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="mi">1</span>
@@ -501,7 +493,7 @@ mv rank-00000 result.txt
 </div>
 <div class="section" id="log">
 <span id="log"></span><h3>输出日志(Log)<a class="headerlink" href="#log" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-python"><div class="highlight"><pre><span></span>TrainerInternal.cpp:160]  Batch=20 samples=2560 AvgCost=0.628761 CurrentCost=0.628761 Eval: classification_error_evaluator=0.304297  CurrentEval: classification_error_evaluator=0.304297
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">TrainerInternal</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">160</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">20</span> <span class="n">samples</span><span class="o">=</span><span class="mi">2560</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mf">0.628761</span> <span class="n">CurrentCost</span><span class="o">=</span><span class="mf">0.628761</span> <span class="n">Eval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.304297</span>  <span class="n">CurrentEval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.304297</span>
 </pre></div>
 </div>
 <p>模型训练会看到这样的日志，详细的参数解释如下面表格：
@@ -572,12 +564,6 @@ mv rank-00000 result.txt
 </li>
 </ul>
 
-  <h4>Previous topic</h4>
-  <p class="topless"><a href="../../index.html"
-                        title="previous chapter">PaddlePaddle文档</a></p>
-  <h4>Next topic</h4>
-  <p class="topless"><a href="../../build_and_install/index.html"
-                        title="next chapter">编译与安装</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -588,14 +574,11 @@ mv rank-00000 result.txt
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -608,18 +591,12 @@ mv rank-00000 result.txt
         <li class="right" style="margin-right: 10px">
           <a href="../../genindex.html" title="General Index"
              >index</a></li>
-        <li class="right" >
-          <a href="../../build_and_install/index.html" title="编译与安装"
-             >next</a> |</li>
-        <li class="right" >
-          <a href="../../index.html" title="PaddlePaddle文档"
-             >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

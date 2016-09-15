@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Base &mdash; PaddlePaddle  documentation</title>
+    <title>Base &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -45,10 +45,10 @@
         <li class="right" >
           <a href="layers_index.html" title="Layers"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-3"><a href="layers_index.html" accesskey="U">Layers</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
+          <li class="nav-item nav-item-3"><a href="layers_index.html" accesskey="U">Layers</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -121,18 +121,6 @@ reasons.</p>
 </tr>
 </tbody>
 </table>
-<dl class="method">
-<dt>
-<code class="descname">__repr__</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
-<dd><p>Disable __repr__ for debug reason. Will be implemented when release</p>
-</dd></dl>
-
-<dl class="method">
-<dt>
-<code class="descname">__str__</code><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
-<dd><p>Disable __str__ for debug reason. Will be implemented when release</p>
-</dd></dl>
-
 </dd></dl>
 
 </div>
@@ -503,7 +491,7 @@ MaxPooling.</li>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">img_cmrnorm_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>Convolution cross-map-response-normalize layer.
+<dd><p>Response normalization across feature maps.
 The details please refer to
 <a class="reference external" href="http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf">Alex&#8217;s paper</a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -513,7 +501,7 @@ The details please refer to
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; layer&#8217;s input.</li>
-<li><strong>size</strong> (<em>int</em>) &#8211; cross map response size.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; Normalize in number of <span class="math">\(size\)</span> feature maps.</li>
 <li><strong>scale</strong> (<em>float</em>) &#8211; The hyper-parameter.</li>
 <li><strong>power</strong> (<em>float</em>) &#8211; The hyper-parameter.</li>
 <li><strong>num_channels</strong> &#8211; input layer&#8217;s filers number or channels. If
@@ -527,42 +515,6 @@ num_channels is None, it will be set automatically.</li>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</div>
-<div class="section" id="img-rnorm-layer">
-<h2>img_rnorm_layer<a class="headerlink" href="#img-rnorm-layer" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt>
-<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">img_rnorm_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>Normalize the input in local region, namely response normalization
-across feature maps.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>name</strong> &#8211; The name of this layer.</li>
-<li><strong>input</strong> &#8211; The input of this layer.</li>
-<li><strong>size</strong> &#8211; </li>
-<li><strong>scale</strong> &#8211; </li>
-<li><strong>power</strong> &#8211; </li>
-<li><strong>num_channels</strong> &#8211; </li>
-<li><strong>layer_attr</strong> &#8211; </li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Rtype name:</th><td class="field-body"><p class="first">None|basestring</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
 </td>
 </tr>
 </tbody>
@@ -715,7 +667,7 @@ and <span class="math">\(out\)</span> is a (batchSize x dataDim) output vector.<
 <dd><p>Long Short-term Memory Cell.</p>
 <p>The memory cell was implemented as follow equations.</p>
 <div class="math">
-\[\begin{split}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\end{split}\]\[\begin{split}f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\end{split}\]\[\begin{split}c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\end{split}\]\[\begin{split}o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\end{split}\]\[\begin{split}h_t &amp; = o_t tanh(c_t)\end{split}\]</div>
+\[ \begin{align}\begin{aligned}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\\f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\\c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\\o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\\h_t &amp; = o_t tanh(c_t)\end{aligned}\end{align} \]</div>
 <p>NOTE: In PaddlePaddle&#8217;s implementation, the multiplications
 <span class="math">\(W_{xi}x_{t}\)</span> , <span class="math">\(W_{xf}x_{t}\)</span>,
 <span class="math">\(W_{xc}x_t\)</span>, <span class="math">\(W_{xo}x_{t}\)</span> are not done in the lstmemory layer,
@@ -764,13 +716,13 @@ bias.</li>
 <dd><p>LSTM Step Layer. It used in recurrent_group. The lstm equations are shown
 as follow.</p>
 <div class="math">
-\[\begin{split}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\end{split}\]\[\begin{split}f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\end{split}\]\[\begin{split}c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\end{split}\]\[\begin{split}o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\end{split}\]\[\begin{split}h_t &amp; = o_t tanh(c_t)\end{split}\]</div>
+\[ \begin{align}\begin{aligned}i_t &amp; = \sigma(W_{xi}x_{t} + W_{hi}h_{t-1} + W_{ci}c_{t-1} + b_i)\\f_t &amp; = \sigma(W_{xf}x_{t} + W_{hf}h_{t-1} + W_{cf}c_{t-1} + b_f)\\c_t &amp; = f_tc_{t-1} + i_t tanh (W_{xc}x_t+W_{hc}h_{t-1} + b_c)\\o_t &amp; = \sigma(W_{xo}x_{t} + W_{ho}h_{t-1} + W_{co}c_t + b_o)\\h_t &amp; = o_t tanh(c_t)\end{aligned}\end{align} \]</div>
 <p>The input of lstm step is <span class="math">\(Wx_t + Wh_{t-1}\)</span>, and user should use
 <code class="code docutils literal"><span class="pre">mixed_layer</span></code> and <code class="code docutils literal"><span class="pre">full_matrix_projection</span></code> to calculate these
 input vector.</p>
 <p>The state of lstm step is <span class="math">\(c_{t-1}\)</span>. And lstm step layer will do</p>
 <div class="math">
-\[i_t = \sigma(input + W_{ci}c_{t-1} + b_i)\]\[...\]</div>
+\[ \begin{align}\begin{aligned}i_t = \sigma(input + W_{ci}c_{t-1} + b_i)\\...\end{aligned}\end{align} \]</div>
 <p>This layer contains two outputs. Default output is <span class="math">\(h_t\)</span>. The other
 output is <span class="math">\(o_t\)</span>, which name is &#8216;state&#8217; and can use
 <code class="code docutils literal"><span class="pre">get_output_layer</span></code> to extract this output.</p>
@@ -1549,7 +1501,7 @@ Inputs can be list of LayerOutput or list of projection.</p>
 </dd>
 </dl>
 <div class="math">
-\[outputH = 1 + (2 * padding_y + imgSizeH - block_y + stride_y - 1) / stride_y\]\[outputW = 1 + (2 * padding_x + imgSizeW - block_x + stride_x - 1) / stride_x\]</div>
+\[ \begin{align}\begin{aligned}outputH = 1 + (2 * padding_y + imgSizeH - block_y + stride_y - 1) / stride_y\\outputW = 1 + (2 * padding_x + imgSizeW - block_x + stride_x - 1) / stride_x\end{aligned}\end{align} \]</div>
 <p>The expand method is the same with ExpandConvLayer, but saved the transposed
 value. After expanding, output.sequenceStartPositions will store timeline.
 The number of time steps are outputH * outputW and the dimension of each
@@ -1686,38 +1638,44 @@ bias.</li>
 </dd></dl>
 
 </div>
-<div class="section" id="convex-comb-layer">
-<h2>convex_comb_layer<a class="headerlink" href="#convex-comb-layer" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="linear-comb-layer">
+<h2>linear_comb_layer<a class="headerlink" href="#linear-comb-layer" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">convex_comb_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">linear_comb_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><dl class="docutils">
-<dt>A layer for convex weighted average of vectors takes two inputs.</dt>
+<dt>A layer for weighted sum of vectors takes two inputs.</dt>
 <dd><ul class="first last">
 <li><dl class="first docutils">
-<dt>Input: a vector containing the convex weights (batchSize x weightdim),</dt>
-<dd><p class="first last">and a matrix in a vector form (batchSize x (weightdim * datadim)).</p>
+<dt>Input: size of weights is M</dt>
+<dd><p class="first last">size of vectors is M*N</p>
 </dd>
 </dl>
 </li>
-<li><p class="first">Output: a vector (batchSize * datadim).</p>
+<li><p class="first">Output: a vector of size=N</p>
 </li>
 </ul>
 </dd>
 </dl>
 <div class="math">
-\[y[i][j] = \sum_{j}(x_{1}(i, j) * x_{2}(i,j + i * dataDim)),\]\[            i = 0,1,...,(batchSize-1); j = 0, 1,...,(dataDim-1)\]</div>
+\[z(i) = \sum_{j=0}^{M-1} x(j) y(i+Nj)\]</div>
+<p>where <span class="math">\(0 \le i \le N-1\)</span></p>
+<p>Or in the matrix notation:</p>
+<div class="math">
+\[z = x^\mathrm{T} Y\]</div>
 <dl class="docutils">
 <dt>In this formular:</dt>
 <dd><ul class="first last simple">
-<li><span class="math">\(x_{1}\)</span>: the first input.</li>
-<li><span class="math">\(x_{2}\)</span>: the second input.</li>
-<li><span class="math">\(y\)</span>: the output.</li>
+<li><span class="math">\(x\)</span>: weights</li>
+<li><span class="math">\(y\)</span>: vectors.</li>
+<li><span class="math">\(z\)</span>: the output.</li>
 </ul>
 </dd>
 </dl>
+<p>Note that the above computation is for one sample. Multiple samples are
+processed in one batch.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">convex_comb</span> <span class="o">=</span> <span class="n">convex_comb_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">linear_comb</span> <span class="o">=</span> <span class="n">linear_comb_layer</span><span class="p">(</span><span class="n">weighs</span><span class="o">=</span><span class="n">weight</span><span class="p">,</span> <span class="n">vectors</span><span class="o">=</span><span class="n">vectors</span><span class="p">,</span>
                                 <span class="n">size</span><span class="o">=</span><span class="n">elem_dim</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -1825,11 +1783,13 @@ and <span class="math">\(y\)</span> is a output vector.</p>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">scaling_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>A layer for each row of a matrix, multiplying with a element of a vector.</p>
+<dd><p>A layer for multiplying input vector by weight scalar.</p>
 <div class="math">
-\[y.row[i] = w[i] * x.row[i]\]</div>
-<p>where <span class="math">\(x\)</span> is (batchSize x dataDim) input, <span class="math">\(w\)</span> is
-(batchSize x 1) weight vector, and <span class="math">\(y\)</span> is (batchSize x dataDim) output.</p>
+\[y  = w x\]</div>
+<p>where <span class="math">\(x\)</span> is size=dataDim input, <span class="math">\(w\)</span> is size=1 weight,
+and <span class="math">\(y\)</span> is size=dataDim output.</p>
+<p>Note that the above computation is for one sample. Multiple samples are
+processed in one batch.</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">scale</span> <span class="o">=</span> <span class="n">scaling_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">layer2</span><span class="p">)</span>
 </pre></div>
@@ -1931,6 +1891,45 @@ For example, each sample:</p>
 something not type of ParameterAttribute. None will get a
 default Bias.</li>
 <li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="cos-sim">
+<h2>cos_sim<a class="headerlink" href="#cos-sim" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">cos_sim</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Cosine Similarity Layer. The cosine similarity equation is here.</p>
+<div class="math">
+\[similarity = cos(\theta) = {\mathbf{a} \cdot \mathbf{b}
+\over \|\mathbf{a}\| \|\mathbf{b}\|}\]</div>
+<p>The size of a is M, size of b is M*N,
+Similarity will be calculated N times by step M. The output size is
+N. The scale will be multiplied to similarity.</p>
+<p>Note that the above computation is for one sample. Multiple samples are
+processed in one batch.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
+<li><strong>a</strong> (<em>LayerOutput</em>) &#8211; input layer a</li>
+<li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input layer b</li>
+<li><strong>scale</strong> (<em>float</em>) &#8211; scale for cosine value. default is 5.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; layer size. NOTE size_a * size should equal size_b.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2242,7 +2241,7 @@ to <a class="reference external" href="http://research.microsoft.com/en-us/um/pe
 This layer contains at least three inputs. The weight is an optional
 argument, which affects the cost.</p>
 <div class="math">
-\[\begin{split}C_{i,j} &amp; = -\tilde{P_{ij}} * o_{i,j} + log(1 + e^{o_{i,j}})\end{split}\]\[\begin{split}o_{i,j} &amp; =  o_i - o_j\end{split}\]\[\begin{split}\tilde{P_{i,j}} &amp; = \{0, 0.5, 1\} \ or \ \{0, 1\}\end{split}\]</div>
+\[ \begin{align}\begin{aligned}C_{i,j} &amp; = -\tilde{P_{ij}} * o_{i,j} + log(1 + e^{o_{i,j}})\\o_{i,j} &amp; =  o_i - o_j\\\tilde{P_{i,j}} &amp; = \{0, 0.5, 1\} \ or \ \{0, 1\}\end{aligned}\end{align} \]</div>
 <dl class="docutils">
 <dt>In this formula:</dt>
 <dd><ul class="first last simple">
@@ -2272,43 +2271,6 @@ Their dimension is one.</li>
 It is an optional argument.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</div>
-<div class="section" id="cos-sim">
-<h2>cos_sim<a class="headerlink" href="#cos-sim" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt>
-<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">cos_sim</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>Cosine Similarity Layer. The cosine similarity equation is here.</p>
-<div class="math">
-\[similarity = cos(\theta) = {\mathbf{a} \cdot \mathbf{b}
-\over \|\mathbf{b}\| \|\mathbf{b}\|}\]</div>
-<p>And the input dimension is <span class="math">\(a \in R^M\)</span>, <span class="math">\(b \in R^{MN}\)</span>. The
-similarity will be calculated N times by step M. The output dimension is
-<span class="math">\(R^N\)</span>. The scale will be multiplied to similarity.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
-<li><strong>a</strong> (<em>LayerOutput</em>) &#8211; input layer a</li>
-<li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input layer b</li>
-<li><strong>scale</strong> (<em>float</em>) &#8211; scale for cosine value. default is 5.</li>
-<li><strong>size</strong> (<em>int</em>) &#8211; layer size. NOTE size_a * size should equal size_b.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2404,6 +2366,17 @@ decoding or 0 for correct decoding.</p>
 <dd><p>Connectionist Temporal Classification (CTC) is designed for temporal
 classication task. That is, for sequence labeling problems where the
 alignment between the inputs and the target labels is unknown.</p>
+<p>More details can be found by referring to <a class="reference external" href="http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf">Connectionist Temporal
+Classification: Labelling Unsegmented Sequence Data with Recurrent
+Neural Networks</a></p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Considering the &#8216;blank&#8217; label needed by CTC, you need to use
+(num_classes + 1) as the input size. num_classes is the category number.
+And the &#8216;blank&#8217; is the last category index. So the size of &#8216;input&#8217; layer, such as
+fc_layer with softmax activation, should be num_classes + 1. The size of ctc_layer
+should also be num_classes + 1.</p>
+</div>
 <p>The simple usage:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ctc</span> <span class="o">=</span> <span class="n">ctc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
                 <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
@@ -2418,7 +2391,7 @@ alignment between the inputs and the target labels is unknown.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layers.</li>
 <li><strong>label</strong> (<em>LayerOutput</em>) &#8211; The data layer of label with variable length.</li>
-<li><strong>size</strong> (<em>int</em>) &#8211; category numbers.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; category numbers + 1.</li>
 <li><strong>name</strong> (<em>string|None</em>) &#8211; The name of this layer, which can not specify.</li>
 <li><strong>norm_by_times</strong> (<em>bool</em>) &#8211; Whether to normalization by times. False by default.</li>
 </ul>
@@ -2553,7 +2526,6 @@ It is used by recurrent layer group.</p>
 </li>
 <li><a class="reference internal" href="#norm-layer">Norm Layer</a><ul>
 <li><a class="reference internal" href="#img-cmrnorm-layer">img_cmrnorm_layer</a></li>
-<li><a class="reference internal" href="#img-rnorm-layer">img_rnorm_layer</a></li>
 <li><a class="reference internal" href="#batch-norm-layer">batch_norm_layer</a></li>
 <li><a class="reference internal" href="#sum-to-one-norm-layer">sum_to_one_norm_layer</a></li>
 </ul>
@@ -2596,12 +2568,13 @@ It is used by recurrent layer group.</p>
 </li>
 <li><a class="reference internal" href="#math-layers">Math Layers</a><ul>
 <li><a class="reference internal" href="#addto-layer">addto_layer</a></li>
-<li><a class="reference internal" href="#convex-comb-layer">convex_comb_layer</a></li>
+<li><a class="reference internal" href="#linear-comb-layer">linear_comb_layer</a></li>
 <li><a class="reference internal" href="#interpolation-layer">interpolation_layer</a></li>
 <li><a class="reference internal" href="#power-layer">power_layer</a></li>
 <li><a class="reference internal" href="#scaling-layer">scaling_layer</a></li>
 <li><a class="reference internal" href="#slope-intercept-layer">slope_intercept_layer</a></li>
 <li><a class="reference internal" href="#tensor-layer">tensor_layer</a></li>
+<li><a class="reference internal" href="#cos-sim">cos_sim</a></li>
 <li><a class="reference internal" href="#trans-layer">trans_layer</a></li>
 </ul>
 </li>
@@ -2617,7 +2590,6 @@ It is used by recurrent layer group.</p>
 <li><a class="reference internal" href="#huber-cost">huber_cost</a></li>
 <li><a class="reference internal" href="#lambda-cost">lambda_cost</a></li>
 <li><a class="reference internal" href="#rank-cost">rank_cost</a></li>
-<li><a class="reference internal" href="#cos-sim">cos_sim</a></li>
 <li><a class="reference internal" href="#crf-layer">crf_layer</a></li>
 <li><a class="reference internal" href="#crf-decoding-layer">crf_decoding_layer</a></li>
 <li><a class="reference internal" href="#ctc-layer">ctc_layer</a></li>
@@ -2646,14 +2618,11 @@ It is used by recurrent layer group.</p>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -2675,15 +2644,15 @@ It is used by recurrent layer group.</p>
         <li class="right" >
           <a href="layers_index.html" title="Layers"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &raquo;</li>
-          <li class="nav-item nav-item-3"><a href="layers_index.html" >Layers</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
+          <li class="nav-item nav-item-3"><a href="layers_index.html" >Layers</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

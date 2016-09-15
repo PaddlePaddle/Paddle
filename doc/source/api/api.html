@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>API &mdash; PaddlePaddle  documentation</title>
+    <title>API &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -45,8 +45,8 @@
         <li class="right" >
           <a href="../trainer/trainer.html" title="Trainer"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -122,10 +122,10 @@
 <dt id="_CPPv210initPaddleiPPc">
 <span id="initPaddle__i.cPP"></span><span class="target" id="paddlePaddleAPI_8h_1ac7f8b1e113d71dfa88d5133285ed3de9"></span>void <code class="descname">initPaddle</code><span class="sig-paren">(</span>int <em>argc</em>, char **<em>argv</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv210initPaddleiPPc" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize paddle. </p>
-<p>In python, this method should be invoked as  <div class="highlight-python"><div class="highlight"><pre><span></span>import sys
-import paddle
-paddle.initPaddle(sys.argv)
-or you can change arguments as any list of str.
+<p>In python, this method should be invoked as  <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">paddle</span>
+<span class="n">paddle</span><span class="o">.</span><span class="n">initPaddle</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span>
+<span class="ow">or</span> <span class="n">you</span> <span class="n">can</span> <span class="n">change</span> <span class="n">arguments</span> <span class="k">as</span> <span class="nb">any</span> <span class="nb">list</span> <span class="n">of</span> <span class="nb">str</span><span class="o">.</span>
 </pre></div>
 </div>
 </p>
@@ -281,18 +281,17 @@ or you can change arguments as any list of str.
 <span id="Matrix::toNumpyMatInplace__floatPP.iP.iP"></span><span class="target" id="paddleclassMatrix_1ab0508be720fe746db39144e20b61183d"></span>void <code class="descname">toNumpyMatInplace</code><span class="sig-paren">(</span>float **<em>view_data</em>, int *<em>dim1</em>, int *<em>dim2</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix17toNumpyMatInplaceEPPfPiPi" title="Permalink to this definition">¶</a></dt>
 <dd><p>Cast to numpy matrix.</p>
 <p>
-Example:  <div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">paddle</span>
+Example:  <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">paddle</span>
 <span class="n">m</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">Matrix</span><span class="o">.</span><span class="n">createZero</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
 <span class="n">numpy_mat</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">toNumpyMat</span><span class="p">()</span>
 </pre></div>
 </div>
 <dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>This method take no parameter in python. </dd>
-<dt><strong>Note</strong></dt>
-<dd>This method in python will return a numpy matrix, not void. </dd>
-<dt><strong>Note</strong></dt>
-<dd>Only CpuDenseMatrix is supported.</dd>
+<dd><p class="first">This method take no parameter in python. </p>
+<p>This method in python will return a numpy matrix, not void. </p>
+<p class="last">Only CpuDenseMatrix is supported.</p>
+</dd>
 </dl>
 </p>
 </dd></dl>
@@ -378,14 +377,14 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6Matrix10createZeroE6size_t6size_tb">
-<span id="Matrix::createZero__s.s.b"></span><span class="target" id="paddleclassMatrix_1afba77a25fbc21cb19d5c8f4c5baec8ee"></span><a class="reference internal" href="#_CPPv2N6Matrix6MatrixEv" title="Matrix::Matrix">Matrix</a> *<code class="descname">createZero</code><span class="sig-paren">(</span>size_t <em>height</em>, size_t <em>width</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix10createZeroE6size_t6size_tb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create A <a class="reference internal" href="#paddleclassMatrix"><span>Matrix</span></a> with height,width, which is filled by zero. </p>
+<span id="Matrix::createZero__s.s.b"></span><span class="target" id="paddleclassMatrix_1afba77a25fbc21cb19d5c8f4c5baec8ee"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">createZero</code><span class="sig-paren">(</span>size_t <em>height</em>, size_t <em>width</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix10createZeroE6size_t6size_tb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create A <a class="reference internal" href="#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> with height,width, which is filled by zero. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6Matrix12createSparseE6size_t6size_t6size_tbbb">
-<span id="Matrix::createSparse__s.s.s.b.b.b"></span><span class="target" id="paddleclassMatrix_1acf057b75ac2f0ac2cf6f7a47b874ec0c"></span><a class="reference internal" href="#_CPPv2N6Matrix6MatrixEv" title="Matrix::Matrix">Matrix</a> *<code class="descname">createSparse</code><span class="sig-paren">(</span>size_t <em>height</em>, size_t <em>width</em>, size_t <em>nnz</em>, bool <em>isNonVal</em> = true, bool <em>trans</em> = false, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix12createSparseE6size_t6size_t6size_tbbb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create Sparse <a class="reference internal" href="#paddleclassMatrix"><span>Matrix</span></a>.</p>
+<span id="Matrix::createSparse__s.s.s.b.b.b"></span><span class="target" id="paddleclassMatrix_1acf057b75ac2f0ac2cf6f7a47b874ec0c"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">createSparse</code><span class="sig-paren">(</span>size_t <em>height</em>, size_t <em>width</em>, size_t <em>nnz</em>, bool <em>isNonVal</em> = true, bool <em>trans</em> = false, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix12createSparseE6size_t6size_t6size_tbbb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create Sparse <a class="reference internal" href="#paddleclassMatrix"><span class="std std-ref">Matrix</span></a>.</p>
 <p>After create sparse, sparseCopyFrom can be used to fill matrix.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -402,8 +401,8 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N6Matrix11createDenseERKNSt6vectorIfEE6size_t6size_tb">
-<span id="Matrix::createDense__std::vector:float:CR.s.s.b"></span><span class="target" id="paddleclassMatrix_1a1d45ac052cac4f2edb0feb219f7294fe"></span><a class="reference internal" href="#_CPPv2N6Matrix6MatrixEv" title="Matrix::Matrix">Matrix</a> *<code class="descname">createDense</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;float&gt; &amp;<em>data</em>, size_t <em>height</em>, size_t <em>width</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix11createDenseERKNSt6vectorIfEE6size_t6size_tb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create Dense <a class="reference internal" href="#paddleclassMatrix"><span>Matrix</span></a>.</p>
+<span id="Matrix::createDense__std::vector:float:CR.s.s.b"></span><span class="target" id="paddleclassMatrix_1a1d45ac052cac4f2edb0feb219f7294fe"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">createDense</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;float&gt; &amp;<em>data</em>, size_t <em>height</em>, size_t <em>width</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix11createDenseERKNSt6vectorIfEE6size_t6size_tb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create Dense <a class="reference internal" href="#paddleclassMatrix"><span class="std std-ref">Matrix</span></a>.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>the value will be copy into a new matrix. </dd>
@@ -419,8 +418,8 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N6Matrix23createCpuDenseFromNumpyEPfiib">
-<span id="Matrix::createCpuDenseFromNumpy__floatP.i.i.b"></span><span class="target" id="paddleclassMatrix_1af65d4fe9986121e5eed7aa3da0d654d7"></span><a class="reference internal" href="#_CPPv2N6Matrix6MatrixEv" title="Matrix::Matrix">Matrix</a> *<code class="descname">createCpuDenseFromNumpy</code><span class="sig-paren">(</span>float *<em>data</em>, int <em>dim1</em>, int <em>dim2</em>, bool <em>copy</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix23createCpuDenseFromNumpyEPfiib" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create Cpu Dense <a class="reference internal" href="#paddleclassMatrix"><span>Matrix</span></a> from numpy matrix, dtype=float32</p>
+<span id="Matrix::createCpuDenseFromNumpy__floatP.i.i.b"></span><span class="target" id="paddleclassMatrix_1af65d4fe9986121e5eed7aa3da0d654d7"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">createCpuDenseFromNumpy</code><span class="sig-paren">(</span>float *<em>data</em>, int <em>dim1</em>, int <em>dim2</em>, bool <em>copy</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix23createCpuDenseFromNumpyEPfiib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create Cpu Dense <a class="reference internal" href="#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> from numpy matrix, dtype=float32</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last">
@@ -440,8 +439,8 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N6Matrix23createGpuDenseFromNumpyEPfii">
-<span id="Matrix::createGpuDenseFromNumpy__floatP.i.i"></span><span class="target" id="paddleclassMatrix_1a16d874f6488ed932ec7eb06d786ba32f"></span><a class="reference internal" href="#_CPPv2N6Matrix6MatrixEv" title="Matrix::Matrix">Matrix</a> *<code class="descname">createGpuDenseFromNumpy</code><span class="sig-paren">(</span>float *<em>data</em>, int <em>dim1</em>, int <em>dim2</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix23createGpuDenseFromNumpyEPfii" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create Gpu Dense <a class="reference internal" href="#paddleclassMatrix"><span>Matrix</span></a> from numpy matrix, dtype=float32. </p>
+<span id="Matrix::createGpuDenseFromNumpy__floatP.i.i"></span><span class="target" id="paddleclassMatrix_1a16d874f6488ed932ec7eb06d786ba32f"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">createGpuDenseFromNumpy</code><span class="sig-paren">(</span>float *<em>data</em>, int <em>dim1</em>, int <em>dim2</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix23createGpuDenseFromNumpyEPfii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create Gpu Dense <a class="reference internal" href="#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> from numpy matrix, dtype=float32. </p>
 </dd></dl>
 
 </div>
@@ -454,7 +453,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N6Matrix23DISABLE_COPY_AND_ASSIGNE6Matrix">
-<span id="Matrix::DISABLE_COPY_AND_ASSIGN__Matrix"></span><span class="target" id="paddleclassMatrix_1acaecf87b490aa3ccde53ca4fbf1e00e1"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6Matrix6MatrixEv" title="Matrix::Matrix">Matrix</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix23DISABLE_COPY_AND_ASSIGNE6Matrix" title="Permalink to this definition">¶</a></dt>
+<span id="Matrix::DISABLE_COPY_AND_ASSIGN__Matrix"></span><span class="target" id="paddleclassMatrix_1acaecf87b490aa3ccde53ca4fbf1e00e1"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix23DISABLE_COPY_AND_ASSIGNE6Matrix" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -475,7 +474,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6Matrix23createByPaddleMatrixPtrEPv">
-<span id="Matrix::createByPaddleMatrixPtr__voidP"></span><span class="target" id="paddleclassMatrix_1a12f399b64a77b777d4a7d5e2feff090f"></span><a class="reference internal" href="#_CPPv2N6Matrix6MatrixEv" title="Matrix::Matrix">Matrix</a> *<code class="descname">createByPaddleMatrixPtr</code><span class="sig-paren">(</span>void *<em>sharedPtr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix23createByPaddleMatrixPtrEPv" title="Permalink to this definition">¶</a></dt>
+<span id="Matrix::createByPaddleMatrixPtr__voidP"></span><span class="target" id="paddleclassMatrix_1a12f399b64a77b777d4a7d5e2feff090f"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">createByPaddleMatrixPtr</code><span class="sig-paren">(</span>void *<em>sharedPtr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix23createByPaddleMatrixPtrEPv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -556,28 +555,28 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6Vector10createZeroE6size_tb">
-<span id="Vector::createZero__s.b"></span><span class="target" id="paddleclassVector_1a61bec1252f099cc49ea42e9ce0223b98"></span><a class="reference internal" href="#_CPPv2N6Vector6VectorEv" title="Vector::Vector">Vector</a> *<code class="descname">createZero</code><span class="sig-paren">(</span>size_t <em>sz</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector10createZeroE6size_tb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create <a class="reference internal" href="#paddleclassVector"><span>Vector</span></a> filled with zero. </p>
+<span id="Vector::createZero__s.b"></span><span class="target" id="paddleclassVector_1a61bec1252f099cc49ea42e9ce0223b98"></span><a class="reference internal" href="#_CPPv26Vector" title="Vector">Vector</a> *<code class="descname">createZero</code><span class="sig-paren">(</span>size_t <em>sz</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector10createZeroE6size_tb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create <a class="reference internal" href="#paddleclassVector"><span class="std std-ref">Vector</span></a> filled with zero. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6Vector6createERKNSt6vectorIfEEb">
-<span id="Vector::create__std::vector:float:CR.b"></span><span class="target" id="paddleclassVector_1a191c29867060da84f711debb8aa0dd6e"></span><a class="reference internal" href="#_CPPv2N6Vector6VectorEv" title="Vector::Vector">Vector</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;float&gt; &amp;<em>data</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector6createERKNSt6vectorIfEEb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create <a class="reference internal" href="#paddleclassVector"><span>Vector</span></a> from list of float.</p>
+<span id="Vector::create__std::vector:float:CR.b"></span><span class="target" id="paddleclassVector_1a191c29867060da84f711debb8aa0dd6e"></span><a class="reference internal" href="#_CPPv26Vector" title="Vector">Vector</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;float&gt; &amp;<em>data</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector6createERKNSt6vectorIfEEb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create <a class="reference internal" href="#paddleclassVector"><span class="std std-ref">Vector</span></a> from list of float.</p>
 <p>It will create a new vector, and copy data into it. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6Vector24createCpuVectorFromNumpyEPfib">
-<span id="Vector::createCpuVectorFromNumpy__floatP.i.b"></span><span class="target" id="paddleclassVector_1a219db1f4a107683721835170f76753dd"></span><a class="reference internal" href="#_CPPv2N6Vector6VectorEv" title="Vector::Vector">Vector</a> *<code class="descname">createCpuVectorFromNumpy</code><span class="sig-paren">(</span>float *<em>data</em>, int <em>dim</em>, bool <em>copy</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector24createCpuVectorFromNumpyEPfib" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create Cpu <a class="reference internal" href="#paddleclassVector"><span>Vector</span></a> from numpy array, which dtype=float32</p>
+<span id="Vector::createCpuVectorFromNumpy__floatP.i.b"></span><span class="target" id="paddleclassVector_1a219db1f4a107683721835170f76753dd"></span><a class="reference internal" href="#_CPPv26Vector" title="Vector">Vector</a> *<code class="descname">createCpuVectorFromNumpy</code><span class="sig-paren">(</span>float *<em>data</em>, int <em>dim</em>, bool <em>copy</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector24createCpuVectorFromNumpyEPfib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create Cpu <a class="reference internal" href="#paddleclassVector"><span class="std std-ref">Vector</span></a> from numpy array, which dtype=float32</p>
 <p>If copy is false, it will create vector inplace. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6Vector24createGpuVectorFromNumpyEPfi">
-<span id="Vector::createGpuVectorFromNumpy__floatP.i"></span><span class="target" id="paddleclassVector_1a17f51bdac45de0c34f8c74afd4a33195"></span><a class="reference internal" href="#_CPPv2N6Vector6VectorEv" title="Vector::Vector">Vector</a> *<code class="descname">createGpuVectorFromNumpy</code><span class="sig-paren">(</span>float *<em>data</em>, int <em>dim</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector24createGpuVectorFromNumpyEPfi" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create Gpu <a class="reference internal" href="#paddleclassVector"><span>Vector</span></a> from numpy array, which dtype=float32. </p>
+<span id="Vector::createGpuVectorFromNumpy__floatP.i"></span><span class="target" id="paddleclassVector_1a17f51bdac45de0c34f8c74afd4a33195"></span><a class="reference internal" href="#_CPPv26Vector" title="Vector">Vector</a> *<code class="descname">createGpuVectorFromNumpy</code><span class="sig-paren">(</span>float *<em>data</em>, int <em>dim</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector24createGpuVectorFromNumpyEPfi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create Gpu <a class="reference internal" href="#paddleclassVector"><span class="std std-ref">Vector</span></a> from numpy array, which dtype=float32. </p>
 </dd></dl>
 
 </div>
@@ -585,7 +584,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6Vector23DISABLE_COPY_AND_ASSIGNE6Vector">
-<span id="Vector::DISABLE_COPY_AND_ASSIGN__Vector"></span><span class="target" id="paddleclassVector_1ad118d7d920592c1e6e2159e4d4a2e1e2"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6Vector6VectorEv" title="Vector::Vector">Vector</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector23DISABLE_COPY_AND_ASSIGNE6Vector" title="Permalink to this definition">¶</a></dt>
+<span id="Vector::DISABLE_COPY_AND_ASSIGN__Vector"></span><span class="target" id="paddleclassVector_1ad118d7d920592c1e6e2159e4d4a2e1e2"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv26Vector" title="Vector">Vector</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector23DISABLE_COPY_AND_ASSIGNE6Vector" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -611,7 +610,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6Vector23createByPaddleVectorPtrEPv">
-<span id="Vector::createByPaddleVectorPtr__voidP"></span><span class="target" id="paddleclassVector_1a789b71bb11350f5a7f913a65791307c0"></span><a class="reference internal" href="#_CPPv2N6Vector6VectorEv" title="Vector::Vector">Vector</a> *<code class="descname">createByPaddleVectorPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector23createByPaddleVectorPtrEPv" title="Permalink to this definition">¶</a></dt>
+<span id="Vector::createByPaddleVectorPtr__voidP"></span><span class="target" id="paddleclassVector_1a789b71bb11350f5a7f913a65791307c0"></span><a class="reference internal" href="#_CPPv26Vector" title="Vector">Vector</a> *<code class="descname">createByPaddleVectorPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Vector23createByPaddleVectorPtrEPv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -677,7 +676,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N7IVectorixEK6size_t">
-<span id="IVector::subscript-operator__sC"></span><span class="target" id="paddleclassIVector_1a21a07a945227d53ff5a120bab2a3ba9c"></span><em class="property">const</em> int &amp;<code class="descname">operator[]</code><span class="sig-paren">(</span><em class="property">const</em> size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N7IVectorixEK6size_t" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="paddleclassIVector_1a21a07a945227d53ff5a120bab2a3ba9c"></span><em class="property">const</em> int &amp;<code class="descname">operator[]</code><span class="sig-paren">(</span><em class="property">const</em> size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N7IVectorixEK6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -707,27 +706,27 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N7IVector10createZeroE6size_tb">
-<span id="IVector::createZero__s.b"></span><span class="target" id="paddleclassIVector_1aa7f6906bb3cf6137920ab5818c2a9b1f"></span><a class="reference internal" href="#_CPPv2N7IVector7IVectorEv" title="IVector::IVector">IVector</a> *<code class="descname">createZero</code><span class="sig-paren">(</span>size_t <em>sz</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector10createZeroE6size_tb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create <a class="reference internal" href="#paddleclassIVector"><span>IVector</span></a> filled with zero. </p>
+<span id="IVector::createZero__s.b"></span><span class="target" id="paddleclassIVector_1aa7f6906bb3cf6137920ab5818c2a9b1f"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">createZero</code><span class="sig-paren">(</span>size_t <em>sz</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector10createZeroE6size_tb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create <a class="reference internal" href="#paddleclassIVector"><span class="std std-ref">IVector</span></a> filled with zero. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N7IVector6createERKNSt6vectorIiEEb">
-<span id="IVector::create__std::vector:i:CR.b"></span><span class="target" id="paddleclassIVector_1a534c99a8c386470c18bb9f9bf9ca794e"></span><a class="reference internal" href="#_CPPv2N7IVector7IVectorEv" title="IVector::IVector">IVector</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;int&gt; &amp;<em>data</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector6createERKNSt6vectorIiEEb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create <a class="reference internal" href="#paddleclassIVector"><span>IVector</span></a> from list of int. It will create a new vector, and copy data into it. </p>
+<span id="IVector::create__std::vector:i:CR.b"></span><span class="target" id="paddleclassIVector_1a534c99a8c386470c18bb9f9bf9ca794e"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;int&gt; &amp;<em>data</em>, bool <em>useGpu</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector6createERKNSt6vectorIiEEb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create <a class="reference internal" href="#paddleclassIVector"><span class="std std-ref">IVector</span></a> from list of int. It will create a new vector, and copy data into it. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N7IVector24createCpuVectorFromNumpyEPiib">
-<span id="IVector::createCpuVectorFromNumpy__iP.i.b"></span><span class="target" id="paddleclassIVector_1af0c2b9b9296984a6d09607563830281d"></span><a class="reference internal" href="#_CPPv2N7IVector7IVectorEv" title="IVector::IVector">IVector</a> *<code class="descname">createCpuVectorFromNumpy</code><span class="sig-paren">(</span>int *<em>data</em>, int <em>dim</em>, bool <em>copy</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector24createCpuVectorFromNumpyEPiib" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create Cpu <a class="reference internal" href="#paddleclassIVector"><span>IVector</span></a> from numpy array, which dtype=int32</p>
+<span id="IVector::createCpuVectorFromNumpy__iP.i.b"></span><span class="target" id="paddleclassIVector_1af0c2b9b9296984a6d09607563830281d"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">createCpuVectorFromNumpy</code><span class="sig-paren">(</span>int *<em>data</em>, int <em>dim</em>, bool <em>copy</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector24createCpuVectorFromNumpyEPiib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create Cpu <a class="reference internal" href="#paddleclassIVector"><span class="std std-ref">IVector</span></a> from numpy array, which dtype=int32</p>
 <p>If copy is false, it will create vector inplace </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N7IVector23createGpuVectorFromNumyEPii">
-<span id="IVector::createGpuVectorFromNumy__iP.i"></span><span class="target" id="paddleclassIVector_1a4948a6870a1489880f9e35a94b4ad02d"></span><a class="reference internal" href="#_CPPv2N7IVector7IVectorEv" title="IVector::IVector">IVector</a> *<code class="descname">createGpuVectorFromNumy</code><span class="sig-paren">(</span>int *<em>data</em>, int <em>dim</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector23createGpuVectorFromNumyEPii" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create Gpu <a class="reference internal" href="#paddleclassIVector"><span>IVector</span></a> from numpy array, which dtype=int32 </p>
+<span id="IVector::createGpuVectorFromNumy__iP.i"></span><span class="target" id="paddleclassIVector_1a4948a6870a1489880f9e35a94b4ad02d"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">createGpuVectorFromNumy</code><span class="sig-paren">(</span>int *<em>data</em>, int <em>dim</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector23createGpuVectorFromNumyEPii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create Gpu <a class="reference internal" href="#paddleclassIVector"><span class="std std-ref">IVector</span></a> from numpy array, which dtype=int32 </p>
 </dd></dl>
 
 </div>
@@ -740,7 +739,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N7IVector23DISABLE_COPY_AND_ASSIGNE7IVector">
-<span id="IVector::DISABLE_COPY_AND_ASSIGN__IVector"></span><span class="target" id="paddleclassIVector_1a6668cac7202d206e97d8dcdc32970478"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N7IVector7IVectorEv" title="IVector::IVector">IVector</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector23DISABLE_COPY_AND_ASSIGNE7IVector" title="Permalink to this definition">¶</a></dt>
+<span id="IVector::DISABLE_COPY_AND_ASSIGN__IVector"></span><span class="target" id="paddleclassIVector_1a6668cac7202d206e97d8dcdc32970478"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector23DISABLE_COPY_AND_ASSIGNE7IVector" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -761,7 +760,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N7IVector23createByPaddleVectorPtrEPv">
-<span id="IVector::createByPaddleVectorPtr__voidP"></span><span class="target" id="paddleclassIVector_1aaae14f9e9818af49c1cd90a3d3779e09"></span><a class="reference internal" href="#_CPPv2N7IVector7IVectorEv" title="IVector::IVector">IVector</a> *<code class="descname">createByPaddleVectorPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector23createByPaddleVectorPtrEPv" title="Permalink to this definition">¶</a></dt>
+<span id="IVector::createByPaddleVectorPtr__voidP"></span><span class="target" id="paddleclassIVector_1aaae14f9e9818af49c1cd90a3d3779e09"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">createByPaddleVectorPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVector23createByPaddleVectorPtrEPv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -778,7 +777,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <dl class="class">
 <dt id="_CPPv29Arguments">
 <span id="Arguments"></span><span class="target" id="paddleclassArguments"></span><em class="property">class </em><code class="descname">Arguments</code><a class="headerlink" href="#_CPPv29Arguments" title="Permalink to this definition">¶</a></dt>
-<dd><em>#include &lt;PaddleAPI.h&gt;</em><p>The <a class="reference internal" href="#paddleclassArguments"><span>Arguments</span></a> is actual a std::vector&lt;paddle::Argument&gt; in paddle. </p>
+<dd><em>#include &lt;PaddleAPI.h&gt;</em><p>The <a class="reference internal" href="#paddleclassArguments"><span class="std std-ref">Arguments</span></a> is actual a std::vector&lt;paddle::Argument&gt; in paddle. </p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -801,7 +800,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <dl class="function">
 <dt id="_CPPv2N9Arguments12getSlotValueE6size_t">
 <span id="Arguments::getSlotValue__s"></span><span class="target" id="paddleclassArguments_1aadcfc5dd6bbdd89af60a62190796ea1e"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">getSlotValue</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Arguments12getSlotValueE6size_t" title="Permalink to this definition">¶</a></dt>
-<dd><p>The get functions of <a class="reference internal" href="#paddleclassArguments"><span>Arguments</span></a></p>
+<dd><p>The get functions of <a class="reference internal" href="#paddleclassArguments"><span class="std std-ref">Arguments</span></a></p>
 <p>the param idx is the slot id </p>
 </dd></dl>
 
@@ -838,8 +837,8 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <dl class="function">
 <dt id="_CPPv2N9Arguments12setSlotValueE6size_tP6Matrix">
 <span id="Arguments::setSlotValue__s.MatrixP"></span><span class="target" id="paddleclassArguments_1a46a52f5667d4c56a68cd99f88e9f72f9"></span>void <code class="descname">setSlotValue</code><span class="sig-paren">(</span>size_t <em>idx</em>, <a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<em>mat</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Arguments12setSlotValueE6size_tP6Matrix" title="Permalink to this definition">¶</a></dt>
-<dd><p>The set functions of <a class="reference internal" href="#paddleclassArguments"><span>Arguments</span></a>.</p>
-<p>The param idx is the slot id. The other param is the input <a class="reference internal" href="#paddleclassMatrix"><span>Matrix</span></a> or vector. </p>
+<dd><p>The set functions of <a class="reference internal" href="#paddleclassArguments"><span class="std std-ref">Arguments</span></a>.</p>
+<p>The param idx is the slot id. The other param is the input <a class="reference internal" href="#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> or vector. </p>
 </dd></dl>
 
 <dl class="function">
@@ -872,7 +871,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N9Arguments15createArgumentsE6size_t">
-<span id="Arguments::createArguments__s"></span><span class="target" id="paddleclassArguments_1a5d908b4750be672fa6c1e4ea79403933"></span><a class="reference internal" href="#_CPPv2N9Arguments9ArgumentsEv" title="Arguments::Arguments">Arguments</a> *<code class="descname">createArguments</code><span class="sig-paren">(</span>size_t <em>slotNum</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Arguments15createArgumentsE6size_t" title="Permalink to this definition">¶</a></dt>
+<span id="Arguments::createArguments__s"></span><span class="target" id="paddleclassArguments_1a5d908b4750be672fa6c1e4ea79403933"></span><a class="reference internal" href="#_CPPv29Arguments" title="Arguments">Arguments</a> *<code class="descname">createArguments</code><span class="sig-paren">(</span>size_t <em>slotNum</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Arguments15createArgumentsE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a arguments with size. Note that it can be zero. </p>
 </dd></dl>
 
@@ -886,7 +885,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N9Arguments23DISABLE_COPY_AND_ASSIGNE9Arguments">
-<span id="Arguments::DISABLE_COPY_AND_ASSIGN__Arguments"></span><span class="target" id="paddleclassArguments_1a0340696d30f470a4fc49ab5bb21b447f"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N9Arguments9ArgumentsEv" title="Arguments::Arguments">Arguments</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Arguments23DISABLE_COPY_AND_ASSIGNE9Arguments" title="Permalink to this definition">¶</a></dt>
+<span id="Arguments::DISABLE_COPY_AND_ASSIGN__Arguments"></span><span class="target" id="paddleclassArguments_1a0340696d30f470a4fc49ab5bb21b447f"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv29Arguments" title="Arguments">Arguments</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Arguments23DISABLE_COPY_AND_ASSIGNE9Arguments" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -907,7 +906,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N9Arguments28createByPaddleArgumentVectorEPv">
-<span id="Arguments::createByPaddleArgumentVector__voidP"></span><span class="target" id="paddleclassArguments_1a535d7939957a3a3600cc485b8c8a134e"></span><a class="reference internal" href="#_CPPv2N9Arguments9ArgumentsEv" title="Arguments::Arguments">Arguments</a> *<code class="descname">createByPaddleArgumentVector</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Arguments28createByPaddleArgumentVectorEPv" title="Permalink to this definition">¶</a></dt>
+<span id="Arguments::createByPaddleArgumentVector__voidP"></span><span class="target" id="paddleclassArguments_1a535d7939957a3a3600cc485b8c8a134e"></span><a class="reference internal" href="#_CPPv29Arguments" title="Arguments">Arguments</a> *<code class="descname">createByPaddleArgumentVector</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Arguments28createByPaddleArgumentVectorEPv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -952,7 +951,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Functions</p>
 <dl class="function">
 <dt id="_CPPv2N15ParameterConfig23DISABLE_COPY_AND_ASSIGNE15ParameterConfig">
-<span id="ParameterConfig::DISABLE_COPY_AND_ASSIGN__ParameterConfig"></span><span class="target" id="paddleclassParameterConfig_1a363e50542a55bc7f30be9e5565c9c393"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N15ParameterConfig15ParameterConfigEv" title="ParameterConfig::ParameterConfig">ParameterConfig</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15ParameterConfig23DISABLE_COPY_AND_ASSIGNE15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<span id="ParameterConfig::DISABLE_COPY_AND_ASSIGN__ParameterConfig"></span><span class="target" id="paddleclassParameterConfig_1a363e50542a55bc7f30be9e5565c9c393"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15ParameterConfig23DISABLE_COPY_AND_ASSIGNE15ParameterConfig" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -978,13 +977,13 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N15ParameterConfig43createParameterConfigFromParameterSharedPtrEPv">
-<span id="ParameterConfig::createParameterConfigFromParameterSharedPtr__voidP"></span><span class="target" id="paddleclassParameterConfig_1af790b10c1ca0f81f26d78d3c52d464f3"></span><a class="reference internal" href="#_CPPv2N15ParameterConfig15ParameterConfigEv" title="ParameterConfig::ParameterConfig">ParameterConfig</a> *<code class="descname">createParameterConfigFromParameterSharedPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15ParameterConfig43createParameterConfigFromParameterSharedPtrEPv" title="Permalink to this definition">¶</a></dt>
+<span id="ParameterConfig::createParameterConfigFromParameterSharedPtr__voidP"></span><span class="target" id="paddleclassParameterConfig_1af790b10c1ca0f81f26d78d3c52d464f3"></span><a class="reference internal" href="#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> *<code class="descname">createParameterConfigFromParameterSharedPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15ParameterConfig43createParameterConfigFromParameterSharedPtrEPv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Internal methods </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N15ParameterConfig37createParameterConfigFromParameterPtrEPv">
-<span id="ParameterConfig::createParameterConfigFromParameterPtr__voidP"></span><span class="target" id="paddleclassParameterConfig_1a26b7198a73dbd871705b59d18ad93fbe"></span><a class="reference internal" href="#_CPPv2N15ParameterConfig15ParameterConfigEv" title="ParameterConfig::ParameterConfig">ParameterConfig</a> *<code class="descname">createParameterConfigFromParameterPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15ParameterConfig37createParameterConfigFromParameterPtrEPv" title="Permalink to this definition">¶</a></dt>
+<span id="ParameterConfig::createParameterConfigFromParameterPtr__voidP"></span><span class="target" id="paddleclassParameterConfig_1a26b7198a73dbd871705b59d18ad93fbe"></span><a class="reference internal" href="#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> *<code class="descname">createParameterConfigFromParameterPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15ParameterConfig37createParameterConfigFromParameterPtrEPv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1029,7 +1028,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N18OptimizationConfig21createFromProtoStringERKNSt6stringE">
-<span id="OptimizationConfig::createFromProtoString__ssCR"></span><span class="target" id="paddleclassOptimizationConfig_1a964b181abf272089ce9423bdf57070df"></span><a class="reference internal" href="#_CPPv2N18OptimizationConfig18OptimizationConfigEv" title="OptimizationConfig::OptimizationConfig">OptimizationConfig</a> *<code class="descname">createFromProtoString</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>str</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N18OptimizationConfig21createFromProtoStringERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<span id="OptimizationConfig::createFromProtoString__ssCR"></span><span class="target" id="paddleclassOptimizationConfig_1a964b181abf272089ce9423bdf57070df"></span><a class="reference internal" href="#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> *<code class="descname">createFromProtoString</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>str</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N18OptimizationConfig21createFromProtoStringERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1037,7 +1036,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Functions</p>
 <dl class="function">
 <dt id="_CPPv2N18OptimizationConfig23DISABLE_COPY_AND_ASSIGNE18OptimizationConfig">
-<span id="OptimizationConfig::DISABLE_COPY_AND_ASSIGN__OptimizationConfig"></span><span class="target" id="paddleclassOptimizationConfig_1a40822345784a8e6c395782323c275b36"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N18OptimizationConfig18OptimizationConfigEv" title="OptimizationConfig::OptimizationConfig">OptimizationConfig</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N18OptimizationConfig23DISABLE_COPY_AND_ASSIGNE18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<span id="OptimizationConfig::DISABLE_COPY_AND_ASSIGN__OptimizationConfig"></span><span class="target" id="paddleclassOptimizationConfig_1a40822345784a8e6c395782323c275b36"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N18OptimizationConfig23DISABLE_COPY_AND_ASSIGNE18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1093,7 +1092,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <dl class="function">
 <dt id="_CPPv2N9Parameter6getBufE13ParameterType">
 <span id="Parameter::getBuf__ParameterType"></span><span class="target" id="paddleclassParameter_1a707a3e62db9312aa9c23bc8670f2b8eb"></span><a class="reference internal" href="#_CPPv26Vector" title="Vector">Vector</a> *<code class="descname">getBuf</code><span class="sig-paren">(</span>ParameterType <em>type</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter6getBufE13ParameterType" title="Permalink to this definition">¶</a></dt>
-<dd><p>get buf in <a class="reference internal" href="#paddleclassParameter"><span>Parameter</span></a> </p>
+<dd><p>get buf in <a class="reference internal" href="#paddleclassParameter"><span class="std std-ref">Parameter</span></a> </p>
 </dd></dl>
 
 <dl class="function">
@@ -1117,7 +1116,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N9Parameter23DISABLE_COPY_AND_ASSIGNE9Parameter">
-<span id="Parameter::DISABLE_COPY_AND_ASSIGN__Parameter"></span><span class="target" id="paddleclassParameter_1afbdb2d2a969eb721691b1dea6fe9692c"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N9Parameter9ParameterEv" title="Parameter::Parameter">Parameter</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter23DISABLE_COPY_AND_ASSIGNE9Parameter" title="Permalink to this definition">¶</a></dt>
+<span id="Parameter::DISABLE_COPY_AND_ASSIGN__Parameter"></span><span class="target" id="paddleclassParameter_1afbdb2d2a969eb721691b1dea6fe9692c"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv29Parameter" title="Parameter">Parameter</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter23DISABLE_COPY_AND_ASSIGNE9Parameter" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1133,12 +1132,12 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N9Parameter16createFromRawPtrEPv">
-<span id="Parameter::createFromRawPtr__voidP"></span><span class="target" id="paddleclassParameter_1a608119cec240fc1522adb4371710b477"></span><a class="reference internal" href="#_CPPv2N9Parameter9ParameterEv" title="Parameter::Parameter">Parameter</a> *<code class="descname">createFromRawPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter16createFromRawPtrEPv" title="Permalink to this definition">¶</a></dt>
+<span id="Parameter::createFromRawPtr__voidP"></span><span class="target" id="paddleclassParameter_1a608119cec240fc1522adb4371710b477"></span><a class="reference internal" href="#_CPPv29Parameter" title="Parameter">Parameter</a> *<code class="descname">createFromRawPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter16createFromRawPtrEPv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N9Parameter19createFromSharedPtrEPv">
-<span id="Parameter::createFromSharedPtr__voidP"></span><span class="target" id="paddleclassParameter_1ac02845aa3e1b56c928c9dfd9c2103636"></span><a class="reference internal" href="#_CPPv2N9Parameter9ParameterEv" title="Parameter::Parameter">Parameter</a> *<code class="descname">createFromSharedPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter19createFromSharedPtrEPv" title="Permalink to this definition">¶</a></dt>
+<span id="Parameter::createFromSharedPtr__voidP"></span><span class="target" id="paddleclassParameter_1ac02845aa3e1b56c928c9dfd9c2103636"></span><a class="reference internal" href="#_CPPv29Parameter" title="Parameter">Parameter</a> *<code class="descname">createFromSharedPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter19createFromSharedPtrEPv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1160,8 +1159,8 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <dl class="class">
 <dt id="_CPPv211ModelConfig">
 <span id="ModelConfig"></span><span class="target" id="paddleclassModelConfig"></span><em class="property">class </em><code class="descname">ModelConfig</code><a class="headerlink" href="#_CPPv211ModelConfig" title="Permalink to this definition">¶</a></dt>
-<dd><em>#include &lt;PaddleAPI.h&gt;</em><p>You can only get model config from <a class="reference internal" href="#paddleclassTrainerConfig"><span>TrainerConfig</span></a>.</p>
-<p>It is used by <a class="reference internal" href="#paddleclassGradientMachine"><span>GradientMachine</span></a>. </p>
+<dd><em>#include &lt;PaddleAPI.h&gt;</em><p>You can only get model config from <a class="reference internal" href="#paddleclassTrainerConfig"><span class="std std-ref">TrainerConfig</span></a>.</p>
+<p>It is used by <a class="reference internal" href="#paddleclassGradientMachine"><span class="std std-ref">GradientMachine</span></a>. </p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -1179,7 +1178,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N11ModelConfig23DISABLE_COPY_AND_ASSIGNE11ModelConfig">
-<span id="ModelConfig::DISABLE_COPY_AND_ASSIGN__ModelConfig"></span><span class="target" id="paddleclassModelConfig_1a3509bd28ab5633ad2d182d588c4f707c"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N11ModelConfig11ModelConfigEv" title="ModelConfig::ModelConfig">ModelConfig</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N11ModelConfig23DISABLE_COPY_AND_ASSIGNE11ModelConfig" title="Permalink to this definition">¶</a></dt>
+<span id="ModelConfig::DISABLE_COPY_AND_ASSIGN__ModelConfig"></span><span class="target" id="paddleclassModelConfig_1a3509bd28ab5633ad2d182d588c4f707c"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N11ModelConfig23DISABLE_COPY_AND_ASSIGNE11ModelConfig" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1219,8 +1218,8 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <dl class="class">
 <dt id="_CPPv213TrainerConfig">
 <span id="TrainerConfig"></span><span class="target" id="paddleclassTrainerConfig"></span><em class="property">class </em><code class="descname">TrainerConfig</code><a class="headerlink" href="#_CPPv213TrainerConfig" title="Permalink to this definition">¶</a></dt>
-<dd><em>#include &lt;PaddleAPI.h&gt;</em><p>To get <a class="reference internal" href="#paddleclassTrainerConfig"><span>TrainerConfig</span></a> from file.</p>
-<p>It is used by <a class="reference internal" href="#paddleclassGradientMachine"><span>GradientMachine</span></a>. </p>
+<dd><em>#include &lt;PaddleAPI.h&gt;</em><p>To get <a class="reference internal" href="#paddleclassTrainerConfig"><span class="std std-ref">TrainerConfig</span></a> from file.</p>
+<p>It is used by <a class="reference internal" href="#paddleclassGradientMachine"><span class="std std-ref">GradientMachine</span></a>. </p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -1243,7 +1242,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N13TrainerConfig27createFromTrainerConfigFileERKNSt6stringE">
-<span id="TrainerConfig::createFromTrainerConfigFile__ssCR"></span><span class="target" id="paddleclassTrainerConfig_1af86151255ec8119eef3d280da7c727c7"></span><a class="reference internal" href="#_CPPv2N13TrainerConfig13TrainerConfigEv" title="TrainerConfig::TrainerConfig">TrainerConfig</a> *<code class="descname">createFromTrainerConfigFile</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>configPath</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N13TrainerConfig27createFromTrainerConfigFileERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<span id="TrainerConfig::createFromTrainerConfigFile__ssCR"></span><span class="target" id="paddleclassTrainerConfig_1af86151255ec8119eef3d280da7c727c7"></span><a class="reference internal" href="#_CPPv213TrainerConfig" title="TrainerConfig">TrainerConfig</a> *<code class="descname">createFromTrainerConfigFile</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>configPath</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N13TrainerConfig27createFromTrainerConfigFileERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1256,7 +1255,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N13TrainerConfig23DISABLE_COPY_AND_ASSIGNE13TrainerConfig">
-<span id="TrainerConfig::DISABLE_COPY_AND_ASSIGN__TrainerConfig"></span><span class="target" id="paddleclassTrainerConfig_1a4dff02a98cae696db1c2284231a40c0b"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N13TrainerConfig13TrainerConfigEv" title="TrainerConfig::TrainerConfig">TrainerConfig</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N13TrainerConfig23DISABLE_COPY_AND_ASSIGNE13TrainerConfig" title="Permalink to this definition">¶</a></dt>
+<span id="TrainerConfig::DISABLE_COPY_AND_ASSIGN__TrainerConfig"></span><span class="target" id="paddleclassTrainerConfig_1a4dff02a98cae696db1c2284231a40c0b"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv213TrainerConfig" title="TrainerConfig">TrainerConfig</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N13TrainerConfig23DISABLE_COPY_AND_ASSIGNE13TrainerConfig" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1275,7 +1274,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <span id="UpdateCallback"></span><span class="target" id="paddleclassUpdateCallback"></span><em class="property">class </em><code class="descname">UpdateCallback</code><a class="headerlink" href="#_CPPv214UpdateCallback" title="Permalink to this definition">¶</a></dt>
 <dd><em>#include &lt;PaddleAPI.h&gt;</em><p>The callback in backword.</p>
 <p>You can inherit this class in python.</p>
-<p> <div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">UpdateCallbackInPython</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">UpdateCallback</span><span class="p">):</span>
+<p> <div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">UpdateCallbackInPython</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">UpdateCallback</span><span class="p">):</span>
   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="n">paddle</span><span class="o">.</span><span class="n">UpdateCallback</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
@@ -1319,7 +1318,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Functions</p>
 <dl class="function">
 <dt id="_CPPv2N25ParameterTraverseCallback23DISABLE_COPY_AND_ASSIGNE25ParameterTraverseCallback">
-<span id="ParameterTraverseCallback::DISABLE_COPY_AND_ASSIGN__ParameterTraverseCallback"></span><span class="target" id="paddleclassParameterTraverseCallback_1a1003490942dda1af39cd327a6ba2ac1c"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N25ParameterTraverseCallback25ParameterTraverseCallbackEv" title="ParameterTraverseCallback::ParameterTraverseCallback">ParameterTraverseCallback</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N25ParameterTraverseCallback23DISABLE_COPY_AND_ASSIGNE25ParameterTraverseCallback" title="Permalink to this definition">¶</a></dt>
+<span id="ParameterTraverseCallback::DISABLE_COPY_AND_ASSIGN__ParameterTraverseCallback"></span><span class="target" id="paddleclassParameterTraverseCallback_1a1003490942dda1af39cd327a6ba2ac1c"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv225ParameterTraverseCallback" title="ParameterTraverseCallback">ParameterTraverseCallback</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N25ParameterTraverseCallback23DISABLE_COPY_AND_ASSIGNE25ParameterTraverseCallback" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1401,7 +1400,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N18ParameterOptimizer6createEP18OptimizationConfig">
-<span id="ParameterOptimizer::create__OptimizationConfigP"></span><span class="target" id="paddleclassParameterOptimizer_1a4b9220d6d8defb8410a65b5f3cbf040d"></span><a class="reference internal" href="#_CPPv2N18ParameterOptimizer18ParameterOptimizerEv" title="ParameterOptimizer::ParameterOptimizer">ParameterOptimizer</a> *<code class="descname">create</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> *<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N18ParameterOptimizer6createEP18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
+<span id="ParameterOptimizer::create__OptimizationConfigP"></span><span class="target" id="paddleclassParameterOptimizer_1a4b9220d6d8defb8410a65b5f3cbf040d"></span><a class="reference internal" href="#_CPPv218ParameterOptimizer" title="ParameterOptimizer">ParameterOptimizer</a> *<code class="descname">create</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> *<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N18ParameterOptimizer6createEP18OptimizationConfig" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1409,7 +1408,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Functions</p>
 <dl class="function">
 <dt id="_CPPv2N18ParameterOptimizer23DISABLE_COPY_AND_ASSIGNE18ParameterOptimizer">
-<span id="ParameterOptimizer::DISABLE_COPY_AND_ASSIGN__ParameterOptimizer"></span><span class="target" id="paddleclassParameterOptimizer_1a05654f9683db19ad240a2ef34e1dbc99"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N18ParameterOptimizer18ParameterOptimizerEv" title="ParameterOptimizer::ParameterOptimizer">ParameterOptimizer</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N18ParameterOptimizer23DISABLE_COPY_AND_ASSIGNE18ParameterOptimizer" title="Permalink to this definition">¶</a></dt>
+<span id="ParameterOptimizer::DISABLE_COPY_AND_ASSIGN__ParameterOptimizer"></span><span class="target" id="paddleclassParameterOptimizer_1a05654f9683db19ad240a2ef34e1dbc99"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv218ParameterOptimizer" title="ParameterOptimizer">ParameterOptimizer</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N18ParameterOptimizer23DISABLE_COPY_AND_ASSIGNE18ParameterOptimizer" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1441,12 +1440,12 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <dl class="function">
 <dt id="_CPPv2N15GradientMachine7forwardERK9ArgumentsP9Arguments8PassType">
 <span id="GradientMachine::forward__ArgumentsCR.ArgumentsP.PassType"></span><span class="target" id="paddleclassGradientMachine_1adf9f7521b780136a8c75724dd60538c5"></span>void <code class="descname">forward</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv29Arguments" title="Arguments">Arguments</a> &amp;<em>inArgs</em>, <a class="reference internal" href="#_CPPv29Arguments" title="Arguments">Arguments</a> *<em>outArgs</em>, PassType <em>passType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine7forwardERK9ArgumentsP9Arguments8PassType" title="Permalink to this definition">¶</a></dt>
-<dd><p>The forward stage of <a class="reference internal" href="#paddleclassGradientMachine"><span>GradientMachine</span></a>.</p>
+<dd><p>The forward stage of <a class="reference internal" href="#paddleclassGradientMachine"><span class="std std-ref">GradientMachine</span></a>.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>the outArgs could be zero length arguemnts. </dd>
-<dt><strong>Note</strong></dt>
-<dd>THIS METHOD IS VERY USEFULL FOR PREDICT FROM TRAINED MODEL. </dd>
+<dd><p class="first">the outArgs could be zero length arguemnts. </p>
+<p class="last">THIS METHOD IS VERY USEFULL FOR PREDICT FROM TRAINED MODEL. </p>
+</dd>
 </dl>
 </p>
 </dd></dl>
@@ -1454,7 +1453,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <dl class="function">
 <dt id="_CPPv2N15GradientMachine8backwardERK14UpdateCallback">
 <span id="GradientMachine::backward__UpdateCallbackCR"></span><span class="target" id="paddleclassGradientMachine_1a5f6f355815d029a66868d3f955fade0c"></span>void <code class="descname">backward</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv214UpdateCallback" title="UpdateCallback">UpdateCallback</a> &amp;<em>callback</em> = UpdateCallback ()<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine8backwardERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
-<dd><p>The backward stage of <a class="reference internal" href="#paddleclassGradientMachine"><span>GradientMachine</span></a>.</p>
+<dd><p>The backward stage of <a class="reference internal" href="#paddleclassGradientMachine"><span class="std std-ref">GradientMachine</span></a>.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>Currently the ParameterUpdater is not wrapped in SWIG, so backward cannot actually train a network. But you can write a update callback to change the parameter or implement a ParameterUpdater in python side. </dd>
@@ -1509,16 +1508,16 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N15GradientMachine22createByConfigProtoStrERKNSt6stringE26GradientMatchineCreateModeRKNSt6vectorIiEE">
-<span id="GradientMachine::createByConfigProtoStr__ssCR.GradientMatchineCreateMode.std::vector:i:CR"></span><span class="target" id="paddleclassGradientMachine_1afdbbf4112a6d2e5c63aa71f932007004"></span><a class="reference internal" href="#_CPPv2N15GradientMachine15GradientMachineEv" title="GradientMachine::GradientMachine">GradientMachine</a> *<code class="descname">createByConfigProtoStr</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>protoStr</em>, <a class="reference internal" href="#_CPPv226GradientMatchineCreateMode" title="GradientMatchineCreateMode">GradientMatchineCreateMode</a> <em>mode</em> = CREATE_MODE_NORMAL, <em class="property">const</em> std::vector&lt;int&gt; &amp;<em>parameterTypes</em> = defaultParamTypes<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine22createByConfigProtoStrERKNSt6stringE26GradientMatchineCreateModeRKNSt6vectorIiEE" title="Permalink to this definition">¶</a></dt>
+<span id="GradientMachine::createByConfigProtoStr__ssCR.GradientMatchineCreateMode.std::vector:i:CR"></span><span class="target" id="paddleclassGradientMachine_1afdbbf4112a6d2e5c63aa71f932007004"></span><a class="reference internal" href="#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a> *<code class="descname">createByConfigProtoStr</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>protoStr</em>, <a class="reference internal" href="#_CPPv226GradientMatchineCreateMode" title="GradientMatchineCreateMode">GradientMatchineCreateMode</a> <em>mode</em> = CREATE_MODE_NORMAL, <em class="property">const</em> std::vector&lt;int&gt; &amp;<em>parameterTypes</em> = defaultParamTypes<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine22createByConfigProtoStrERKNSt6stringE26GradientMatchineCreateModeRKNSt6vectorIiEE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create By ProtoStr.</p>
 <p>The ProtoStr can be generate by python&#8217;s protobuf code. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N15GradientMachine19createByModelConfigEP11ModelConfig26GradientMatchineCreateModeRKNSt6vectorIiEE">
-<span id="GradientMachine::createByModelConfig__ModelConfigP.GradientMatchineCreateMode.std::vector:i:CR"></span><span class="target" id="paddleclassGradientMachine_1a18e83542198df7f755efdf4cc98046d2"></span><a class="reference internal" href="#_CPPv2N15GradientMachine15GradientMachineEv" title="GradientMachine::GradientMachine">GradientMachine</a> *<code class="descname">createByModelConfig</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> *<em>conf</em>, <a class="reference internal" href="#_CPPv226GradientMatchineCreateMode" title="GradientMatchineCreateMode">GradientMatchineCreateMode</a> <em>mode</em> = CREATE_MODE_NORMAL, <em class="property">const</em> std::vector&lt;int&gt; &amp;<em>parameterTypes</em> = defaultParamTypes<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine19createByModelConfigEP11ModelConfig26GradientMatchineCreateModeRKNSt6vectorIiEE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create by <a class="reference internal" href="#paddleclassModelConfig"><span>ModelConfig</span></a> object.</p>
-<p>To get <a class="reference internal" href="#paddleclassModelConfig"><span>ModelConfig</span></a>, you can get <a class="reference internal" href="#paddleclassTrainerConfig"><span>TrainerConfig</span></a> from config file, then get model config by <a class="reference internal" href="#paddleclassTrainerConfig"><span>TrainerConfig</span></a> </p>
+<span id="GradientMachine::createByModelConfig__ModelConfigP.GradientMatchineCreateMode.std::vector:i:CR"></span><span class="target" id="paddleclassGradientMachine_1a18e83542198df7f755efdf4cc98046d2"></span><a class="reference internal" href="#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a> *<code class="descname">createByModelConfig</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> *<em>conf</em>, <a class="reference internal" href="#_CPPv226GradientMatchineCreateMode" title="GradientMatchineCreateMode">GradientMatchineCreateMode</a> <em>mode</em> = CREATE_MODE_NORMAL, <em class="property">const</em> std::vector&lt;int&gt; &amp;<em>parameterTypes</em> = defaultParamTypes<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine19createByModelConfigEP11ModelConfig26GradientMatchineCreateModeRKNSt6vectorIiEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create by <a class="reference internal" href="#paddleclassModelConfig"><span class="std std-ref">ModelConfig</span></a> object.</p>
+<p>To get <a class="reference internal" href="#paddleclassModelConfig"><span class="std std-ref">ModelConfig</span></a>, you can get <a class="reference internal" href="#paddleclassTrainerConfig"><span class="std std-ref">TrainerConfig</span></a> from config file, then get model config by <a class="reference internal" href="#paddleclassTrainerConfig"><span class="std std-ref">TrainerConfig</span></a> </p>
 </dd></dl>
 
 </div>
@@ -1531,7 +1530,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N15GradientMachine23DISABLE_COPY_AND_ASSIGNE15GradientMachine">
-<span id="GradientMachine::DISABLE_COPY_AND_ASSIGN__GradientMachine"></span><span class="target" id="paddleclassGradientMachine_1a3f0ac25f9cc26793ebdffdadf83443a8"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N15GradientMachine15GradientMachineEv" title="GradientMachine::GradientMachine">GradientMachine</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine23DISABLE_COPY_AND_ASSIGNE15GradientMachine" title="Permalink to this definition">¶</a></dt>
+<span id="GradientMachine::DISABLE_COPY_AND_ASSIGN__GradientMachine"></span><span class="target" id="paddleclassGradientMachine_1a3f0ac25f9cc26793ebdffdadf83443a8"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine23DISABLE_COPY_AND_ASSIGNE15GradientMachine" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1547,7 +1546,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N15GradientMachine24createFromPaddleModelPtrEPv26GradientMatchineCreateModeRKNSt6vectorIiEE">
-<span id="GradientMachine::createFromPaddleModelPtr__voidP.GradientMatchineCreateMode.std::vector:i:CR"></span><span class="target" id="paddleclassGradientMachine_1a23ea09b4a0679e02b6fd8130c00dd5c4"></span><a class="reference internal" href="#_CPPv2N15GradientMachine15GradientMachineEv" title="GradientMachine::GradientMachine">GradientMachine</a> *<code class="descname">createFromPaddleModelPtr</code><span class="sig-paren">(</span>void *<em>confPtr</em>, <a class="reference internal" href="#_CPPv226GradientMatchineCreateMode" title="GradientMatchineCreateMode">GradientMatchineCreateMode</a> <em>mode</em>, <em class="property">const</em> std::vector&lt;int&gt; &amp;<em>types</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine24createFromPaddleModelPtrEPv26GradientMatchineCreateModeRKNSt6vectorIiEE" title="Permalink to this definition">¶</a></dt>
+<span id="GradientMachine::createFromPaddleModelPtr__voidP.GradientMatchineCreateMode.std::vector:i:CR"></span><span class="target" id="paddleclassGradientMachine_1a23ea09b4a0679e02b6fd8130c00dd5c4"></span><a class="reference internal" href="#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a> *<code class="descname">createFromPaddleModelPtr</code><span class="sig-paren">(</span>void *<em>confPtr</em>, <a class="reference internal" href="#_CPPv226GradientMatchineCreateMode" title="GradientMatchineCreateMode">GradientMatchineCreateMode</a> <em>mode</em>, <em class="property">const</em> std::vector&lt;int&gt; &amp;<em>types</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine24createFromPaddleModelPtrEPv26GradientMatchineCreateModeRKNSt6vectorIiEE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1645,8 +1644,8 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N7Trainer19createByCommandLineEv">
-<span id="Trainer::createByCommandLine"></span><span class="target" id="paddleclassTrainer_1a48c39be2006b3fb010d2990a191e52cf"></span><a class="reference internal" href="#_CPPv2N7Trainer7TrainerEv" title="Trainer::Trainer">Trainer</a> *<code class="descname">createByCommandLine</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer19createByCommandLineEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create A <a class="reference internal" href="#paddleclassTrainer"><span>Trainer</span></a> By <a class="reference internal" href="#paddleclassTrainerConfig"><span>TrainerConfig</span></a>. using paddle command line. </p>
+<span id="Trainer::createByCommandLine"></span><span class="target" id="paddleclassTrainer_1a48c39be2006b3fb010d2990a191e52cf"></span><a class="reference internal" href="#_CPPv27Trainer" title="Trainer">Trainer</a> *<code class="descname">createByCommandLine</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer19createByCommandLineEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create A <a class="reference internal" href="#paddleclassTrainer"><span class="std std-ref">Trainer</span></a> By <a class="reference internal" href="#paddleclassTrainerConfig"><span class="std std-ref">TrainerConfig</span></a>. using paddle command line. </p>
 </dd></dl>
 
 </div>
@@ -1659,7 +1658,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N7Trainer23DISABLE_COPY_AND_ASSIGNE7Trainer">
-<span id="Trainer::DISABLE_COPY_AND_ASSIGN__Trainer"></span><span class="target" id="paddleclassTrainer_1a5ac92d995bd64769ae9e76aa0c3e0954"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N7Trainer7TrainerEv" title="Trainer::Trainer">Trainer</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer23DISABLE_COPY_AND_ASSIGNE7Trainer" title="Permalink to this definition">¶</a></dt>
+<span id="Trainer::DISABLE_COPY_AND_ASSIGN__Trainer"></span><span class="target" id="paddleclassTrainer_1a5ac92d995bd64769ae9e76aa0c3e0954"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv27Trainer" title="Trainer">Trainer</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer23DISABLE_COPY_AND_ASSIGNE7Trainer" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1687,13 +1686,13 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N16ISequenceResults7getSizeEv">
-<span id="ISequenceResults::getSize"></span>virtual <span class="target" id="paddleclassISequenceResults_1a2801fcdc751a2be99d5c1d794f18644c"></span>size_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<span id="ISequenceResults::getSize"></span>virtual <span class="target" id="paddleclassISequenceResults_1a9919a8675c89efa544d9275d3d436a16"></span>size_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults7getSizeEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of result. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N16ISequenceResults11getSentenceE6size_tb">
-<span id="ISequenceResults::getSentence__s.b"></span>virtual <span class="target" id="paddleclassISequenceResults_1ad0979f34e7b1c1b612ad737fb07f0975"></span>std::string <code class="descname">getSentence</code><span class="sig-paren">(</span>size_t <em>id</em>, bool <em>split</em> = false<span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults11getSentenceE6size_tb" title="Permalink to this definition">¶</a></dt>
+<span id="ISequenceResults::getSentence__s.b"></span>virtual <span class="target" id="paddleclassISequenceResults_1a9b54de2900aa94d68202787b2227341c"></span>std::string <code class="descname">getSentence</code><span class="sig-paren">(</span>size_t <em>id</em>, bool <em>split</em> = false<span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults11getSentenceE6size_tb" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get sentence from dictionary.</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
@@ -1710,12 +1709,12 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 
 <dl class="function">
 <dt id="_CPPv2N16ISequenceResults11getSequenceE6size_t">
-<span id="ISequenceResults::getSequence__s"></span>virtual <span class="target" id="paddleclassISequenceResults_1a5574895cae75a629618c57f5a7d9fe2a"></span>std::vector&lt;int&gt; <code class="descname">getSequence</code><span class="sig-paren">(</span>size_t <em>id</em><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults11getSequenceE6size_t" title="Permalink to this definition">¶</a></dt>
+<span id="ISequenceResults::getSequence__s"></span>virtual <span class="target" id="paddleclassISequenceResults_1aa6b23f4cfb4133f8df2c689bab7ceac9"></span>std::vector&lt;int&gt; <code class="descname">getSequence</code><span class="sig-paren">(</span>size_t <em>id</em><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults11getSequenceE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N16ISequenceResults8getScoreE6size_t">
-<span id="ISequenceResults::getScore__s"></span>virtual <span class="target" id="paddleclassISequenceResults_1ad8af39cd20e29a9ea956acf2faa6b94a"></span>float <code class="descname">getScore</code><span class="sig-paren">(</span>size_t <em>id</em><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults8getScoreE6size_t" title="Permalink to this definition">¶</a></dt>
+<span id="ISequenceResults::getScore__s"></span>virtual <span class="target" id="paddleclassISequenceResults_1a9adebfbe9db63aaabba10f7448fdab49"></span>float <code class="descname">getScore</code><span class="sig-paren">(</span>size_t <em>id</em><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults8getScoreE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1737,9 +1736,9 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <dd><p>Generate Sequence by input.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>The inArgs is just one sequence of data. </dd>
-<dt><strong>Note</strong></dt>
-<dd>The return will get a N-best generate result by inArgs. Sort by score. </dd>
+<dd><p class="first">The inArgs is just one sequence of data. </p>
+<p class="last">The return will get a N-best generate result by inArgs. Sort by score. </p>
+</dd>
 </dl>
 </p>
 </dd></dl>
@@ -1774,7 +1773,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Functions</p>
 <dl class="function">
 <dt id="_CPPv2N17SequenceGenerator23DISABLE_COPY_AND_ASSIGNE17SequenceGenerator">
-<span id="SequenceGenerator::DISABLE_COPY_AND_ASSIGN__SequenceGenerator"></span><span class="target" id="paddleclassSequenceGenerator_1a422711c0f41d9c72087747c0423199e0"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N17SequenceGenerator17SequenceGeneratorEv" title="SequenceGenerator::SequenceGenerator">SequenceGenerator</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N17SequenceGenerator23DISABLE_COPY_AND_ASSIGNE17SequenceGenerator" title="Permalink to this definition">¶</a></dt>
+<span id="SequenceGenerator::DISABLE_COPY_AND_ASSIGN__SequenceGenerator"></span><span class="target" id="paddleclassSequenceGenerator_1a422711c0f41d9c72087747c0423199e0"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv217SequenceGenerator" title="SequenceGenerator">SequenceGenerator</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N17SequenceGenerator23DISABLE_COPY_AND_ASSIGNE17SequenceGenerator" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1795,7 +1794,7 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <p class="breathe-sectiondef-title rubric">Private Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N17SequenceGenerator32createByGradientMachineSharedPtrEPv">
-<span id="SequenceGenerator::createByGradientMachineSharedPtr__voidP"></span><span class="target" id="paddleclassSequenceGenerator_1a7febda20d77a9f7a78718613d6c0c896"></span><a class="reference internal" href="#_CPPv2N17SequenceGenerator17SequenceGeneratorEv" title="SequenceGenerator::SequenceGenerator">SequenceGenerator</a> *<code class="descname">createByGradientMachineSharedPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N17SequenceGenerator32createByGradientMachineSharedPtrEPv" title="Permalink to this definition">¶</a></dt>
+<span id="SequenceGenerator::createByGradientMachineSharedPtr__voidP"></span><span class="target" id="paddleclassSequenceGenerator_1a7febda20d77a9f7a78718613d6c0c896"></span><a class="reference internal" href="#_CPPv217SequenceGenerator" title="SequenceGenerator">SequenceGenerator</a> *<code class="descname">createByGradientMachineSharedPtr</code><span class="sig-paren">(</span>void *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N17SequenceGenerator32createByGradientMachineSharedPtrEPv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1843,14 +1842,11 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -1872,13 +1868,13 @@ Example:  <div class="highlight-python"><div class="highlight"><pre><span></span
         <li class="right" >
           <a href="../trainer/trainer.html" title="Trainer"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

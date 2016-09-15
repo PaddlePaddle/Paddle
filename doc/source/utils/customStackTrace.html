@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>CustomStackTrace &mdash; PaddlePaddle  documentation</title>
+    <title>CustomStackTrace &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -45,8 +45,8 @@
         <li class="right" >
           <a href="../api/api.html" title="API"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -65,63 +65,67 @@
 <dt id="_CPPv2N6paddle16CustomStackTraceE">
 <span id="paddle::CustomStackTrace"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CustomStackTrace</code><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTraceE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A ThreadLocal stack for tracing train/test process. (More details of ThreadLocal can be find in the comments of ThreadLocal class.)</p>
-<p>For example.  <div class="highlight-python"><div class="highlight"><pre><span></span>paddle::CustomStackTrace&lt;std::string&gt; stack;
-PASS_TEST=0;
-for (auto&amp; layer : layers){
-  stack.push(layer-&gt;getName());
-  layer-&gt;forward(passType);
-}
-for (auto&amp; layer : layers){
-  layer-&gt;backward(passType);
-  stack.pop(layer-&gt;getName());
-}
+<p>For example.  <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span><span class="p">::</span><span class="n">CustomStackTrace</span><span class="o">&lt;</span><span class="n">std</span><span class="p">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">stack</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="n">auto</span><span class="o">&amp;</span> <span class="n">layer</span> <span class="p">:</span> <span class="n">layers</span><span class="p">){</span>
+  <span class="n">stack</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">layer</span><span class="o">-&gt;</span><span class="n">getName</span><span class="p">());</span>
+  <span class="n">layer</span><span class="o">-&gt;</span><span class="n">forward</span><span class="p">();</span>
+<span class="p">}</span>
 
-if(passType == PASS_TEST) {
-  stack.clear();
-}
-else {
-  stack.dump([](const std::string&amp; layername){
-    LOG(INFO) &lt;&lt; &quot;LayerName: &quot; &lt;&lt; layername;
-  })
-}
+<span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">);</span>  <span class="o">//</span> <span class="n">mark</span> <span class="n">under</span> <span class="n">pop</span> <span class="n">stage</span><span class="o">.</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="n">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">layers</span><span class="o">.</span><span class="n">rbegin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">layers</span><span class="o">.</span><span class="n">rend</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">){</span>
+  <span class="n">auto</span><span class="o">&amp;</span> <span class="n">layer</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
+  <span class="n">layer</span><span class="o">-&gt;</span><span class="n">backward</span><span class="p">(</span><span class="n">passType</span><span class="p">);</span>
+  <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">layer</span><span class="o">-&gt;</span><span class="n">getName</span><span class="p">());</span>
+<span class="p">}</span>
 </pre></div>
 </div>
 </p>
 <div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle16CustomStackTrace12DumpCallbackE">
+<span id="paddle::CustomStackTrace::DumpCallback"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1a20aa01a42317e892007a44f79da691ee"></span><em class="property">typedef </em>std::function&lt;void<span class="sig-paren">(</span><em class="property">const</em> std::thread::id&amp;, bool *, <em class="property">const</em> T&amp;<span class="sig-paren">)</span>&gt; <code class="descname">DumpCallback</code><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace12DumpCallbackE" title="Permalink to this definition">¶</a></dt>
+<dd><p>DumpCallback Type. It will be invoked many times by dump method. </p>
+<p>The first parameter is stack thread id. The second parameter is the last action of stack is push or not. The third parameter is the item in stack. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16CustomStackTrace3popERK1T">
-<span id="paddle::CustomStackTrace::pop__TCR"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1a909f7e09c7b2a72231f05901f875164e"></span>void <code class="descname">pop</code><span class="sig-paren">(</span><em class="property">const</em> T &amp;<em>ip</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace3popERK1T" title="Permalink to this definition">¶</a></dt>
-<dd><p>Pop out an item from the top of the stack. For safety the item will be poped should equal to ip. </p>
-</dd></dl>
-
-<dl class="function">
-<dt>
-<em class="property">template </em>&lt;<em class="property">typename</em> Callback&gt;</dt>
-<dt id="_CPPv2N6paddle16CustomStackTrace4dumpE8Callback">
-<span id="paddle::CustomStackTrace::dump__Callback"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1aa7d21ed7ba9663459026e94058da9278"></span>void <code class="descname">dump</code><span class="sig-paren">(</span>Callback <em>callback</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace4dumpE8Callback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Empty the stack by sequence from top to button. </p>
-<p><dl class="docutils">
-<dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">callback</span></code> - <p>A function deal with each item while dumping. It must have and only have a in parameter which is the stack item. </p>
-</li>
-</ul>
-</dd>
-</dl>
-</p>
+<span id="paddle::CustomStackTrace::pop__TCR"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1a1667d0cc62656c2b5503d1b4e2b5b1e9"></span>void <code class="descname">pop</code><span class="sig-paren">(</span><em class="property">const</em> T &amp;<em>item</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace3popERK1T" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pop out an item from the top of the stack if item == top. Else, just set status to popping. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle16CustomStackTrace5clearEv">
 <span id="paddle::CustomStackTrace::clear"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1af2c8f589407dc9b154c0b23d13547308"></span>void <code class="descname">clear</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace5clearEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Only empty the stack. </p>
+<dd><p>clear current thread stack. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16CustomStackTrace5emptyEv">
+<span id="paddle::CustomStackTrace::empty"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1a7ca345481c51b1d161d17e96dd781fe6"></span>bool <code class="descname">empty</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace5emptyEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>return true if all thread&#8217;s stack is empty. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>true if empty </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16CustomStackTrace4dumpERK12DumpCallbackb">
+<span id="paddle::CustomStackTrace::dump__DumpCallbackCR.b"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1ad9ca1717c54c24c13f9accc21a02f9f5"></span>void <code class="descname">dump</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle16CustomStackTrace12DumpCallbackE" title="paddle::CustomStackTrace::DumpCallback">DumpCallback</a> &amp;<em>callback</em>, bool <em>onlyCurrentThread</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace4dumpERK12DumpCallbackb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dump all thread stack, and all stack will be cleared. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle16CustomStackTrace4pushERK1T">
-<span id="paddle::CustomStackTrace::push__TCR"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1aff95af48dce604eb7006401cbce54459"></span>void <code class="descname">push</code><span class="sig-paren">(</span><em class="property">const</em> T &amp;<em>ip</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace4pushERK1T" title="Permalink to this definition">¶</a></dt>
-<dd><p>Push item ip to the top of the stack. </p>
+<span id="paddle::CustomStackTrace::push__TCR"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1ac6bbb68065cf534f66b8bf747151eebf"></span>void <code class="descname">push</code><span class="sig-paren">(</span><em class="property">const</em> T &amp;<em>item</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace4pushERK1T" title="Permalink to this definition">¶</a></dt>
+<dd><p>Push item to current thread stack. </p>
 </dd></dl>
 
 </div>
@@ -160,14 +164,11 @@ else {
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -189,13 +190,13 @@ else {
         <li class="right" >
           <a href="../api/api.html" title="API"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

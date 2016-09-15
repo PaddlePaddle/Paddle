@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Network &mdash; PaddlePaddle  documentation</title>
+    <title>Network &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -45,9 +45,9 @@
         <li class="right" >
           <a href="index.html" title="Network Documents"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Network Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Network Documents</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -69,13 +69,13 @@
 <dd>each parameter server inherits from one socket server, each server contains serveral woker threads which are to parallelize the processing of computation, but share some common datas stored in child class of socketserver. </dd>
 </dl>
 </p>
-<p>Inherits from <a class="reference internal" href="../../utils/lock.html#paddleclasspaddle_1_1Thread"><span>paddle::Thread</span></a></p>
-<p>Subclassed by <a class="reference internal" href="../server/server.html#paddleclasspaddle_1_1ProtoServer"><span>paddle::ProtoServer</span></a></p>
+<p>Inherits from <a class="reference internal" href="../../utils/lock.html#paddleclasspaddle_1_1Thread"><span class="std std-ref">paddle::Thread</span></a></p>
+<p>Subclassed by <a class="reference internal" href="../server/server.html#paddleclasspaddle_1_1ProtoServer"><span class="std std-ref">paddle::ProtoServer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle12SocketServer16ResponseCallbackE">
-<span id="paddle::SocketServer::ResponseCallback"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a0696d2bda6e0e3890fdaedad9e3f423f"></span><em class="property">typedef </em>std::function&lt;void(const std::vector&lt;iovec&gt;&amp; outputIovs)&gt; <code class="descname">ResponseCallback</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer16ResponseCallbackE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SocketServer::ResponseCallback"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a0696d2bda6e0e3890fdaedad9e3f423f"></span><em class="property">typedef </em>std::function&lt;void<span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;iovec&gt; &amp;outputIovs<span class="sig-paren">)</span>&gt; <code class="descname">ResponseCallback</code><a class="headerlink" href="#_CPPv2N6paddle12SocketServer16ResponseCallbackE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -84,7 +84,7 @@
 <dl class="function">
 <dt id="_CPPv2N6paddle12SocketServer12SocketServerERKNSt6stringEii">
 <span id="paddle::SocketServer::SocketServer__ssCR.i.i"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1ab9048916a170534c7e4fb106949f52dd"></span><code class="descname">SocketServer</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>addr</em>, int <em>port</em>, int <em>rdmaCpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketServer12SocketServerERKNSt6stringEii" title="Permalink to this definition">¶</a></dt>
-<dd><p>class constructor for <a class="reference internal" href="#paddleclasspaddle_1_1SocketServer"><span>SocketServer</span></a> </p>
+<dd><p>class constructor for <a class="reference internal" href="#paddleclasspaddle_1_1SocketServer"><span class="std std-ref">SocketServer</span></a> </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>start one socket server which hosts parameter server process. rdmaCpu is passed to rdma deamon for better performance, and start tcp socket instead of rdma socket if rdmaCpu is equal to -1. Each trainer process starts one connection to one socket server, and use ports_num to build more connections to harness fat communication channel if necessary. each connection is controlled by single thread with blocking read and write. </dd>
@@ -237,7 +237,7 @@
 <dd>all parameter processing will run in the context of this worker </dd>
 </dl>
 </p>
-<p>Inherits from <a class="reference internal" href="../../utils/lock.html#paddleclasspaddle_1_1Thread"><span>paddle::Thread</span></a></p>
+<p>Inherits from <a class="reference internal" href="../../utils/lock.html#paddleclasspaddle_1_1Thread"><span class="std std-ref">paddle::Thread</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -298,8 +298,8 @@
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
-<dt>
-<span class="target" id="paddleclasspaddle_1_1SocketClient_1a5b2b40728685ed7f88e1bdcd99fb699e"></span><code class="descname">paddle::SocketClient::SocketClient(const std::string &amp; serverAddr, int serverPort, enum ChannelType channelType)</code></dt>
+<dt id="_CPPv2N6paddle12SocketClient12SocketClientERKNSt6stringEi11ChannelType">
+<span id="paddle::SocketClient::SocketClient__ssCR.i.ChannelType"></span><span class="target" id="paddleclasspaddle_1_1SocketClient_1a5b2b40728685ed7f88e1bdcd99fb699e"></span><code class="descname">SocketClient</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>serverAddr</em>, int <em>serverPort</em>, <em class="property">enum</em> ChannelType <em>channelType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketClient12SocketClientERKNSt6stringEi11ChannelType" title="Permalink to this definition">¶</a></dt>
 <dd><p>class constructor </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -532,7 +532,7 @@ rdma::readv and rdma::writev can take advantage of RDMA blocking offload transfe
 <dl class="class">
 <dt id="_CPPv2N6paddle9MsgReaderE">
 <span id="paddle::MsgReader"></span><span class="target" id="paddleclasspaddle_1_1MsgReader"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MsgReader</code><a class="headerlink" href="#_CPPv2N6paddle9MsgReaderE" title="Permalink to this definition">¶</a></dt>
-<dd><p>reading a set of blocks of data from <a class="reference internal" href="#paddleclasspaddle_1_1SocketChannel"><span>SocketChannel</span></a>. </p>
+<dd><p>reading a set of blocks of data from <a class="reference internal" href="#paddleclasspaddle_1_1SocketChannel"><span class="std std-ref">SocketChannel</span></a>. </p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -638,14 +638,11 @@ rdma::readv and rdma::writev can take advantage of RDMA blocking offload transfe
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -667,14 +664,14 @@ rdma::readv and rdma::writev can take advantage of RDMA blocking offload transfe
         <li class="right" >
           <a href="index.html" title="Network Documents"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Network Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Network Documents</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

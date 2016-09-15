@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Build and Install &mdash; PaddlePaddle  documentation</title>
+    <title>Build and Install &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -45,8 +45,8 @@
         <li class="right" >
           <a href="index.html" title="Build And Install PaddlePaddle"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Build And Install PaddlePaddle</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Build And Install PaddlePaddle</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -98,11 +98,12 @@
 </ul>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># necessary</span>
 sudo apt-get update
-sudo apt-get install -y g++ make cmake build-essential libatlas-base-dev python python-pip libpython-dev m4 libprotobuf-dev protobuf-compiler python-protobuf python-numpy git 
+sudo apt-get install -y g++ make cmake build-essential libatlas-base-dev python python-pip libpython-dev m4 libprotobuf-dev protobuf-compiler python-protobuf python-numpy git
 <span class="c1"># optional</span>
 sudo apt-get install libgoogle-glog-dev
 sudo apt-get install libgflags-dev
 sudo apt-get install libgtest-dev
+sudo pip install wheel
 <span class="nb">pushd</span> /usr/src/gtest
 cmake .
 make
@@ -171,6 +172,8 @@ mkdir build
 <span class="nb">cd</span> build
 <span class="c1"># you can add build option here, such as:    </span>
 cmake -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>OFF -DCMAKE_INSTALL_PREFIX<span class="o">=</span>&lt;path to install&gt; ..
+<span class="c1"># please use sudo make install, if you want</span>
+<span class="c1"># to install PaddlePaddle into the system</span>
 make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">&amp;&amp;</span> make install
 <span class="c1"># PaddlePaddle installation path</span>
 <span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>&lt;path to install&gt;/bin:<span class="nv">$PATH</span>
@@ -224,14 +227,11 @@ make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -253,13 +253,13 @@ make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">
         <li class="right" >
           <a href="index.html" title="Build And Install PaddlePaddle"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="index.html" >Build And Install PaddlePaddle</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Build And Install PaddlePaddle</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

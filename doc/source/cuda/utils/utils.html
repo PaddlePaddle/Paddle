@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Utilities &mdash; PaddlePaddle  documentation</title>
+    <title>Utilities &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -45,9 +45,9 @@
         <li class="right" >
           <a href="index.html" title="Utils"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Utils</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Utils</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -603,6 +603,183 @@
 <h2>Thread Resource<a class="headerlink" href="#thread-resource" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="hl-thread-ph">
 <h3>hl_thread.ph<a class="headerlink" href="#hl-thread-ph" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Defines</p>
+<dl class="macro">
+<dt id="c.HL_THREAD_PH_">
+<span class="target" id="paddlehl__thread_8ph_1a8135369d2b3c89edd811ba0a8803b61a"></span><code class="descname">HL_THREAD_PH_</code><a class="headerlink" href="#c.HL_THREAD_PH_" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv218hl_thread_resource">
+<span id="hl_thread_resource"></span><span class="target" id="paddlehl__thread_8ph_1acc8b7fa9703382260a0050593e5718e0"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv219_hl_thread_resource" title="_hl_thread_resource">_hl_thread_resource</a> *<code class="descname">hl_thread_resource</code><a class="headerlink" href="#_CPPv218hl_thread_resource" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv213hl_cudnn_initP13cudnnHandle_t12cudaStream_t">
+<span id="hl_cudnn_init__cudnnHandle_tP.cudaStream_t"></span><span class="target" id="paddlehl__thread_8ph_1ace7cbc335b3d90b295aacf73688e503d"></span>void <code class="descname">hl_cudnn_init</code><span class="sig-paren">(</span>cudnnHandle_t *<em>cudnn_handle</em>, cudaStream_t <em>stream</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv213hl_cudnn_initP13cudnnHandle_t12cudaStream_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize cudnn. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">cudnn_handle</span></code> - <p>Cudnn handle. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>Cudnn stream. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv214hl_cublas_initP14cublasHandle_t12cudaStream_t">
+<span id="hl_cublas_init__cublasHandle_tP.cudaStream_t"></span><span class="target" id="paddlehl__thread_8ph_1ab6ee693cba0443e435f341d222f3e5b2"></span>void <code class="descname">hl_cublas_init</code><span class="sig-paren">(</span>cublasHandle_t *<em>cublas_handle</em>, cudaStream_t <em>stream</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv214hl_cublas_initP14cublasHandle_t12cudaStream_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize cublas. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">cublas_handle</span></code> - <p>Cublas handle. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>Cuda stream. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv218hl_cudnn_desc_initP23cudnnTensorDescriptor_t">
+<span id="hl_cudnn_desc_init__cudnnTensorDescriptor_tP"></span><span class="target" id="paddlehl__thread_8ph_1aa4ef8db77d30effcc7a02ee181001438"></span>void <code class="descname">hl_cudnn_desc_init</code><span class="sig-paren">(</span>cudnnTensorDescriptor_t *<em>cudnn_desc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_cudnn_desc_initP23cudnnTensorDescriptor_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize cudnn tensor descriptor. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">cudnn_desc</span></code> - <p>Cudnn tensor descriptor. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Variables</p>
+<dl class="member">
+<dt>
+<span class="target" id="paddlehl__thread_8ph_1a1e2209c7d024f0ab59b8a00e26e518a4"></span><code class="descname">__thread _hl_thread_resource t_resource</code></dt>
+<dd><p>thread resource. </p>
+</dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv219_hl_thread_resource">
+<span id="_hl_thread_resource"></span><span class="target" id="paddlestruct__hl__thread__resource"></span><em class="property">struct </em><code class="descname">_hl_thread_resource</code><a class="headerlink" href="#_CPPv219_hl_thread_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Thread resource structure. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">stream[HPPL_STREAM_END]</span></code> - <p>Stream for thread. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">handle</span></code> - <p>Cublas Handle. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">gen</span></code> - <p>Curand Generator. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">cudnn_handle</span></code> - <p>Cudnn handle. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">cudnn_desc</span></code> - <p>Cudnn image descriptor. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">*gen_mutex</span></code> - <p>Gen lock. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">*gpu_mem</span></code> - <p>HPPL GPU Memory. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">*cpu_mem</span></code> - <p>HPPL CPU Memory. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">event</span></code> - <p>gpu_mem event. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">device</span></code> - <p>Thread device context. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">major</span></code> - <p>Compute capability. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">is_init</span></code> - <p>Thread init or not. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource6streamE">
+<span id="_hl_thread_resource::stream__cudaStream_tA"></span><span class="target" id="paddlestruct__hl__thread__resource_1a95a6c3e8343b483b7caf736c1dc826db"></span>cudaStream_t <code class="descname">stream</code>[HPPL_STREAM_END]<a class="headerlink" href="#_CPPv2N19_hl_thread_resource6streamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource6handleE">
+<span id="_hl_thread_resource::handle__cublasHandle_t"></span><span class="target" id="paddlestruct__hl__thread__resource_1abf8160b9ad45bcaae5ee6ffd7cce9e8a"></span>cublasHandle_t <code class="descname">handle</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource6handleE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource3genE">
+<span id="_hl_thread_resource::gen__curandGenerator_t"></span><span class="target" id="paddlestruct__hl__thread__resource_1a7f8f1b12e292b0b9a3bb50c9e3d63ee4"></span>curandGenerator_t <code class="descname">gen</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource3genE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource12cudnn_handleE">
+<span id="_hl_thread_resource::cudnn_handle__cudnnHandle_t"></span><span class="target" id="paddlestruct__hl__thread__resource_1ac44cd6d4ed2f5c0e0fbda3741accda31"></span>cudnnHandle_t <code class="descname">cudnn_handle</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource12cudnn_handleE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource10cudnn_descE">
+<span id="_hl_thread_resource::cudnn_desc__cudnnTensorDescriptor_t"></span><span class="target" id="paddlestruct__hl__thread__resource_1a1092b26e6ce754f2a1e4890185141a4d"></span>cudnnTensorDescriptor_t <code class="descname">cudnn_desc</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource10cudnn_descE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource9gen_mutexE">
+<span id="_hl_thread_resource::gen_mutex__pthread_mutex_tP"></span><span class="target" id="paddlestruct__hl__thread__resource_1acfb4edfc27ea3bf3d4718d07f990b86d"></span>pthread_mutex_t *<code class="descname">gen_mutex</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource9gen_mutexE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource7gpu_memE">
+<span id="_hl_thread_resource::gpu_mem__realP"></span><span class="target" id="paddlestruct__hl__thread__resource_1a43cb1847444dd5417809e7818de202bc"></span>real *<code class="descname">gpu_mem</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource7gpu_memE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource7cpu_memE">
+<span id="_hl_thread_resource::cpu_mem__realP"></span><span class="target" id="paddlestruct__hl__thread__resource_1a4c6431877c05c7579843fbf0166d3691"></span>real *<code class="descname">cpu_mem</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource7cpu_memE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource5eventE">
+<span id="_hl_thread_resource::event__cudaEvent_t"></span><span class="target" id="paddlestruct__hl__thread__resource_1a8f425ef27b458ee79ba1024bb337481b"></span>cudaEvent_t <code class="descname">event</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource5eventE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource6deviceE">
+<span id="_hl_thread_resource::device__i"></span><span class="target" id="paddlestruct__hl__thread__resource_1a428c54baa3ebd53c9d3163978007f369"></span>int <code class="descname">device</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource6deviceE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource5majorE">
+<span id="_hl_thread_resource::major__i"></span><span class="target" id="paddlestruct__hl__thread__resource_1ad6cb28493f55db83ea03141ed35aa8e7"></span>int <code class="descname">major</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource5majorE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N19_hl_thread_resource7is_initE">
+<span id="_hl_thread_resource::is_init__b"></span><span class="target" id="paddlestruct__hl__thread__resource_1a0a88327b2fe51bdf2c3bdb07b081181e"></span>bool <code class="descname">is_init</code><a class="headerlink" href="#_CPPv2N19_hl_thread_resource7is_initE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
 </div>
 </div>
 </div>
@@ -648,14 +825,11 @@
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -677,14 +851,14 @@
         <li class="right" >
           <a href="index.html" title="Utils"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Utils</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Utils</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Cuda &mdash; PaddlePaddle  documentation</title>
+    <title>Cuda &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -45,9 +45,9 @@
         <li class="right" >
           <a href="index.html" title="CUDA"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">CUDA</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">CUDA</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -131,6 +131,219 @@
 <h2>GPU Resources<a class="headerlink" href="#gpu-resources" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="hl-cuda-ph">
 <h3>hl_cuda.ph<a class="headerlink" href="#hl-cuda-ph" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Defines</p>
+<dl class="macro">
+<dt id="c.HL_CUDA_PH_">
+<span class="target" id="paddlehl__cuda_8ph_1ab9113fecc49bd70882bbbb6478381253"></span><code class="descname">HL_CUDA_PH_</code><a class="headerlink" href="#c.HL_CUDA_PH_" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv223global_device_resources">
+<span id="global_device_resources"></span><span class="target" id="paddlehl__cuda_8ph_1acd58697e55a96ced8da0252c5a6884a6"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv224_global_device_resources" title="_global_device_resources">_global_device_resources</a> *<code class="descname">global_device_resources</code><a class="headerlink" href="#_CPPv223global_device_resources" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv223thread_device_resources">
+<span id="thread_device_resources"></span><span class="target" id="paddlehl__cuda_8ph_1a95caa4662f824a6764e2ce970255ee3e"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv224_thread_device_resources" title="_thread_device_resources">_thread_device_resources</a> *<code class="descname">thread_device_resources</code><a class="headerlink" href="#_CPPv223thread_device_resources" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv214hl_device_prop">
+<span id="hl_device_prop"></span><span class="target" id="paddlehl__cuda_8ph_1aa827d4daf2dfe66f8c7a7b7ea567a196"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv215_hl_device_prop" title="_hl_device_prop">_hl_device_prop</a> *<code class="descname">hl_device_prop</code><a class="headerlink" href="#_CPPv214hl_device_prop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Functions</p>
+<dl class="function">
+<dt id="_CPPv226hl_create_thread_resourcesi23thread_device_resources">
+<span id="hl_create_thread_resources__i.thread_device_resources"></span><span class="target" id="paddlehl__cuda_8ph_1a97fb5d83c1ad727771f4941e7ac75869"></span>void <code class="descname">hl_create_thread_resources</code><span class="sig-paren">(</span>int <em>device</em>, <a class="reference internal" href="#_CPPv223thread_device_resources" title="thread_device_resources">thread_device_resources</a> <em>device_res</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv226hl_create_thread_resourcesi23thread_device_resources" title="Permalink to this definition">¶</a></dt>
+<dd><p>thread device resource allocation. </p>
+<p>create cuda stream and cuda event, allocate gpu memory and host page-lock memory for threads.</p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">device</span></code> - <p>device number. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">device_res</span></code> - <p>device properties. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv226hl_create_global_resources14hl_device_prop">
+<span id="hl_create_global_resources__hl_device_prop"></span><span class="target" id="paddlehl__cuda_8ph_1adc525db9497d94d6b2bcc14cdd4ffd3f"></span>void <code class="descname">hl_create_global_resources</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv214hl_device_prop" title="hl_device_prop">hl_device_prop</a> <em>device_prop</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv226hl_create_global_resources14hl_device_prop" title="Permalink to this definition">¶</a></dt>
+<dd><p>global device resource allocation. </p>
+<p>create cuda stream, initialize cublas, curand and cudnn.</p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">device_prop</span></code> - <p>device properties. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv212_hl_event_st">
+<span id="_hl_event_st"></span><span class="target" id="paddlestruct__hl__event__st"></span><em class="property">struct </em><code class="descname">_hl_event_st</code><a class="headerlink" href="#_CPPv212_hl_event_st" title="Permalink to this definition">¶</a></dt>
+<dd><p>hppl event. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">cuda</span></code> - <p>event. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N12_hl_event_st8cu_eventE">
+<span id="_hl_event_st::cu_event__cudaEvent_t"></span><span class="target" id="paddlestruct__hl__event__st_1a7b4a06d4c5bd36fe392e6fe08fd461f3"></span>cudaEvent_t <code class="descname">cu_event</code><a class="headerlink" href="#_CPPv2N12_hl_event_st8cu_eventE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv224_global_device_resources">
+<span id="_global_device_resources"></span><span class="target" id="paddlestruct__global__device__resources"></span><em class="property">struct </em><code class="descname">_global_device_resources</code><a class="headerlink" href="#_CPPv224_global_device_resources" title="Permalink to this definition">¶</a></dt>
+<dd><p>global device resources. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">*stream</span></code> - <p>device global stream. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">handle</span></code> - <p>devcie cublas handle. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">gen</span></code> - <p>device curand generator. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">cudnn_handle</span></code> - <p>cudnn handle. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">*gen_mutex</span></code> - <p>gen lock. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N24_global_device_resources6streamE">
+<span id="_global_device_resources::stream__cudaStream_tP"></span><span class="target" id="paddlestruct__global__device__resources_1a58e5b4e1d528664e6e950c2419f9da48"></span>cudaStream_t *<code class="descname">stream</code><a class="headerlink" href="#_CPPv2N24_global_device_resources6streamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_global_device_resources6handleE">
+<span id="_global_device_resources::handle__cublasHandle_t"></span><span class="target" id="paddlestruct__global__device__resources_1ae875afe02169ebc8db855729cc9cd725"></span>cublasHandle_t <code class="descname">handle</code><a class="headerlink" href="#_CPPv2N24_global_device_resources6handleE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_global_device_resources3genE">
+<span id="_global_device_resources::gen__curandGenerator_t"></span><span class="target" id="paddlestruct__global__device__resources_1a3452656c163b5b1464760aa790614f6a"></span>curandGenerator_t <code class="descname">gen</code><a class="headerlink" href="#_CPPv2N24_global_device_resources3genE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_global_device_resources12cudnn_handleE">
+<span id="_global_device_resources::cudnn_handle__cudnnHandle_t"></span><span class="target" id="paddlestruct__global__device__resources_1a5ae725d1d276bbfa600e1ffeaf3ed48d"></span>cudnnHandle_t <code class="descname">cudnn_handle</code><a class="headerlink" href="#_CPPv2N24_global_device_resources12cudnn_handleE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_global_device_resources9gen_mutexE">
+<span id="_global_device_resources::gen_mutex__pthread_mutex_tP"></span><span class="target" id="paddlestruct__global__device__resources_1aecf8a0607a1670407bb349b504377843"></span>pthread_mutex_t *<code class="descname">gen_mutex</code><a class="headerlink" href="#_CPPv2N24_global_device_resources9gen_mutexE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv224_thread_device_resources">
+<span id="_thread_device_resources"></span><span class="target" id="paddlestruct__thread__device__resources"></span><em class="property">struct </em><code class="descname">_thread_device_resources</code><a class="headerlink" href="#_CPPv224_thread_device_resources" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N24_thread_device_resources6streamE">
+<span id="_thread_device_resources::stream__cudaStream_tP"></span><span class="target" id="paddlestruct__thread__device__resources_1a01eb8e8192db1d0d2b0b084e1c8dd47f"></span>cudaStream_t *<code class="descname">stream</code><a class="headerlink" href="#_CPPv2N24_thread_device_resources6streamE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_thread_device_resources7gpu_memE">
+<span id="_thread_device_resources::gpu_mem__realP"></span><span class="target" id="paddlestruct__thread__device__resources_1a0a8d7af9306a50996c26f4df22ee0968"></span>real *<code class="descname">gpu_mem</code><a class="headerlink" href="#_CPPv2N24_thread_device_resources7gpu_memE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_thread_device_resources7cpu_memE">
+<span id="_thread_device_resources::cpu_mem__realP"></span><span class="target" id="paddlestruct__thread__device__resources_1a89b759c163d25238379a5dd973c72b30"></span>real *<code class="descname">cpu_mem</code><a class="headerlink" href="#_CPPv2N24_thread_device_resources7cpu_memE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_thread_device_resources9mem_eventE">
+<span id="_thread_device_resources::mem_event__cudaEvent_t"></span><span class="target" id="paddlestruct__thread__device__resources_1a51aabd8937bd2c0507e0b8eef55f1711"></span>cudaEvent_t <code class="descname">mem_event</code><a class="headerlink" href="#_CPPv2N24_thread_device_resources9mem_eventE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv215_hl_device_prop">
+<span id="_hl_device_prop"></span><span class="target" id="paddlestruct__hl__device__prop"></span><em class="property">struct </em><code class="descname">_hl_device_prop</code><a class="headerlink" href="#_CPPv215_hl_device_prop" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop6deviceE">
+<span id="_hl_device_prop::device__i"></span><span class="target" id="paddlestruct__hl__device__prop_1a2fd3eb125032d77dd0d051fc61cc508e"></span>int <code class="descname">device</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop6deviceE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop11device_typeE">
+<span id="_hl_device_prop::device_type__i"></span><span class="target" id="paddlestruct__hl__device__prop_1a095711453d6d00375e825e3a412f09b1"></span>int <code class="descname">device_type</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop11device_typeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop11device_nameE">
+<span id="_hl_device_prop::device_name__cA"></span><span class="target" id="paddlestruct__hl__device__prop_1af1f1486578aa13303a9fd467a815959f"></span>char <code class="descname">device_name</code>[256]<a class="headerlink" href="#_CPPv2N15_hl_device_prop11device_nameE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop10device_memE">
+<span id="_hl_device_prop::device_mem__s"></span><span class="target" id="paddlestruct__hl__device__prop_1a6861e80dd85370370203a975b949a84e"></span>size_t <code class="descname">device_mem</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop10device_memE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop5majorE">
+<span id="_hl_device_prop::major__i"></span><span class="target" id="paddlestruct__hl__device__prop_1a253d35c030e45aa440aacb0f47bb161e"></span>int <code class="descname">major</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop5majorE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop5minorE">
+<span id="_hl_device_prop::minor__i"></span><span class="target" id="paddlestruct__hl__device__prop_1a86ec1f025e9d53cc58a99d6d7b6986e6"></span>int <code class="descname">minor</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop5minorE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop8is_localE">
+<span id="_hl_device_prop::is_local__b"></span><span class="target" id="paddlestruct__hl__device__prop_1a65427da7c88dd42a45add36e5bb36ed9"></span>bool <code class="descname">is_local</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop8is_localE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N15_hl_device_prop16device_resourcesE">
+<span id="_hl_device_prop::device_resources__global_device_resources"></span><span class="target" id="paddlestruct__hl__device__prop_1a6fcf40e5bd6ccaa80b654bb69336d8f8"></span><a class="reference internal" href="#_CPPv223global_device_resources" title="global_device_resources">global_device_resources</a> <code class="descname">device_resources</code><a class="headerlink" href="#_CPPv2N15_hl_device_prop16device_resourcesE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
 </div>
 <div class="section" id="hl-cuda-h">
 <h3>hl_cuda.h<a class="headerlink" href="#hl-cuda-h" title="Permalink to this headline">¶</a></h3>
@@ -138,7 +351,7 @@
 <p class="breathe-sectiondef-title rubric">Typedefs</p>
 <dl class="type">
 <dt id="_CPPv210hl_event_t">
-<span id="hl_event_t"></span><span class="target" id="paddlehl__cuda_8h_1a715cad0fd0a065d74069fe27e3e08059"></span><em class="property">typedef </em><em class="property">struct</em> _hl_event_st *<code class="descname">hl_event_t</code><a class="headerlink" href="#_CPPv210hl_event_t" title="Permalink to this definition">¶</a></dt>
+<span id="hl_event_t"></span><span class="target" id="paddlehl__cuda_8h_1a715cad0fd0a065d74069fe27e3e08059"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv212_hl_event_st" title="_hl_event_st">_hl_event_st</a> *<code class="descname">hl_event_t</code><a class="headerlink" href="#_CPPv210hl_event_t" title="Permalink to this definition">¶</a></dt>
 <dd><p>HPPL event. </p>
 </dd></dl>
 
@@ -662,15 +875,15 @@
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv219hl_cuda_event_query10hl_event_tRb">
-<span id="hl_cuda_event_query__hl_event_t.bR"></span><span class="target" id="paddlehl__cuda_8h_1a49efbd40a159f7d83f1bfe522b6c4fbb"></span>void <code class="descname">hl_cuda_event_query</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv210hl_event_t" title="hl_event_t">hl_event_t</a> <em>event</em>, bool &amp;<em>isNotReady</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_cuda_event_query10hl_event_tRb" title="Permalink to this definition">¶</a></dt>
-<dd><p>hppl query event. </p>
+<dt id="_CPPv222hl_cuda_event_is_ready10hl_event_t">
+<span id="hl_cuda_event_is_ready__hl_event_t"></span><span class="target" id="paddlehl__cuda_8h_1a3b39053ef49ad16ff443c45f6ab7f456"></span>bool <code class="descname">hl_cuda_event_is_ready</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv210hl_event_t" title="hl_event_t">hl_event_t</a> <em>event</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv222hl_cuda_event_is_ready10hl_event_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>check cuda event is ready </p>
 <p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>true cuda event is ready. false cuda event is not ready. </dd>
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">event</span></code> - <p>cuda event to query. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">isNotReady</span></code> - <p>this work under device has not yet been completed, vice versa. </p>
+<li><code class="first docutils literal"><span class="pre">event</span></code> - <p>cuda event to query.</p>
 </li>
 </ul>
 </dd>
@@ -696,7 +909,7 @@
 <dl class="function">
 <dt id="_CPPv219hl_matrix_transposeP4realP4realiiii">
 <span id="hl_matrix_transpose__realP.realP.i.i.i.i"></span><span class="target" id="paddlehl__cuda__cublas_8h_1ac973bad16dc03aa3f82273f4bcf99aa9"></span>void <code class="descname">hl_matrix_transpose</code><span class="sig-paren">(</span>real *<em>A_d</em>, real *<em>C_d</em>, int <em>dimM</em>, int <em>dimN</em>, int <em>lda</em>, int <em>ldc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_matrix_transposeP4realP4realiiii" title="Permalink to this definition">¶</a></dt>
-<dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span>Matrix</span></a> transpose: C_d = T(A_d) </p>
+<dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> transpose: C_d = T(A_d) </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last">
@@ -1546,6 +1759,229 @@
 </div>
 <div class="section" id="id1">
 <h3>hl_cuda_cudnn.h<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Defines</p>
+<dl class="macro">
+<dt id="c.HL_CUDA_CUDNN_PH_">
+<span class="target" id="paddlehl__cuda__cudnn_8ph_1af37ad83432f635a5c14c1296fb821d61"></span><code class="descname">HL_CUDA_CUDNN_PH_</code><a class="headerlink" href="#c.HL_CUDA_CUDNN_PH_" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="macro">
+<dt id="c.GET_TENSOR_DESCRIPTOR">
+<span class="target" id="paddlehl__cuda__cudnn_8ph_1a29ea1b2806c24cc162ad70babe865bfe"></span><code class="descname">GET_TENSOR_DESCRIPTOR</code><span class="sig-paren">(</span>image<span class="sig-paren">)</span><a class="headerlink" href="#c.GET_TENSOR_DESCRIPTOR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="macro">
+<dt id="c.GET_FILTER_DESCRIPTOR">
+<span class="target" id="paddlehl__cuda__cudnn_8ph_1a705be45e61a86199b3a8b7194f24b360"></span><code class="descname">GET_FILTER_DESCRIPTOR</code><span class="sig-paren">(</span>filter<span class="sig-paren">)</span><a class="headerlink" href="#c.GET_FILTER_DESCRIPTOR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="macro">
+<dt id="c.GET_CONVOLUTION_DESCRIPTOR">
+<span class="target" id="paddlehl__cuda__cudnn_8ph_1a03bc673123b7730e7ee50f7d249a2110"></span><code class="descname">GET_CONVOLUTION_DESCRIPTOR</code><span class="sig-paren">(</span>conv<span class="sig-paren">)</span><a class="headerlink" href="#c.GET_CONVOLUTION_DESCRIPTOR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv223cudnn_tensor_descriptor">
+<span id="cudnn_tensor_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8ph_1a2841ccdea77e5afec084deb7f2603c1b"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv224_cudnn_tensor_descriptor" title="_cudnn_tensor_descriptor">_cudnn_tensor_descriptor</a> *<code class="descname">cudnn_tensor_descriptor</code><a class="headerlink" href="#_CPPv223cudnn_tensor_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv224cudnn_pooling_descriptor">
+<span id="cudnn_pooling_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8ph_1a4ea1eb980c037f28c532f89f1e5d177d"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv225_cudnn_pooling_descriptor" title="_cudnn_pooling_descriptor">_cudnn_pooling_descriptor</a> *<code class="descname">cudnn_pooling_descriptor</code><a class="headerlink" href="#_CPPv224cudnn_pooling_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv223cudnn_filter_descriptor">
+<span id="cudnn_filter_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8ph_1a595dbce8b5cb023552af619ee182a3b7"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv224_cudnn_filter_descriptor" title="_cudnn_filter_descriptor">_cudnn_filter_descriptor</a> *<code class="descname">cudnn_filter_descriptor</code><a class="headerlink" href="#_CPPv223cudnn_filter_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv228cudnn_convolution_descriptor">
+<span id="cudnn_convolution_descriptor"></span><span class="target" id="paddlehl__cuda__cudnn_8ph_1a7b3131a2ecb5bde7e4655be0ae50dad6"></span><em class="property">typedef </em><em class="property">struct</em> <a class="reference internal" href="#_CPPv229_cudnn_convolution_descriptor" title="_cudnn_convolution_descriptor">_cudnn_convolution_descriptor</a> *<code class="descname">cudnn_convolution_descriptor</code><a class="headerlink" href="#_CPPv228cudnn_convolution_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv224_cudnn_tensor_descriptor">
+<span id="_cudnn_tensor_descriptor"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor"></span><em class="property">struct </em><code class="descname">_cudnn_tensor_descriptor</code><a class="headerlink" href="#_CPPv224_cudnn_tensor_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor4descE">
+<span id="_cudnn_tensor_descriptor::desc__cudnnTensorDescriptor_t"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1a4846bba1f4bb6b7d8f9abd6ef3f99732"></span>cudnnTensorDescriptor_t <code class="descname">desc</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor4descE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor6formatE">
+<span id="_cudnn_tensor_descriptor::format__cudnnTensorFormat_t"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1ae89a67416913f78bcae4e3439c9196f6"></span>cudnnTensorFormat_t <code class="descname">format</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor6formatE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor9data_typeE">
+<span id="_cudnn_tensor_descriptor::data_type__cudnnDataType_t"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1a2fbe556caa9c265a5c0c3dd86c88d379"></span>cudnnDataType_t <code class="descname">data_type</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor9data_typeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor10batch_sizeE">
+<span id="_cudnn_tensor_descriptor::batch_size__i"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1ac95fc5b390748557ff57b845661907fe"></span>int <code class="descname">batch_size</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor10batch_sizeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor12feature_mapsE">
+<span id="_cudnn_tensor_descriptor::feature_maps__i"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1a6460e7a8569f3cb5b8ecd0252f11df57"></span>int <code class="descname">feature_maps</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor12feature_mapsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor6heightE">
+<span id="_cudnn_tensor_descriptor::height__i"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1a90971d849eb498b59d43da6c938e305c"></span>int <code class="descname">height</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor6heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_tensor_descriptor5widthE">
+<span id="_cudnn_tensor_descriptor::width__i"></span><span class="target" id="paddlestruct__cudnn__tensor__descriptor_1aa715d6243ff0d388aeabfb9f45c4b30f"></span>int <code class="descname">width</code><a class="headerlink" href="#_CPPv2N24_cudnn_tensor_descriptor5widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv225_cudnn_pooling_descriptor">
+<span id="_cudnn_pooling_descriptor"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor"></span><em class="property">struct </em><code class="descname">_cudnn_pooling_descriptor</code><a class="headerlink" href="#_CPPv225_cudnn_pooling_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor4descE">
+<span id="_cudnn_pooling_descriptor::desc__cudnnPoolingDescriptor_t"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1a31f6c941880c8e2f40052d241533bdd1"></span>cudnnPoolingDescriptor_t <code class="descname">desc</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor4descE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor4modeE">
+<span id="_cudnn_pooling_descriptor::mode__cudnnPoolingMode_t"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1a6bee776bf2d1d25a31aefeab088c81b7"></span>cudnnPoolingMode_t <code class="descname">mode</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor4modeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor13window_heightE">
+<span id="_cudnn_pooling_descriptor::window_height__i"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1afb666077c484bf19df0f622a3a942074"></span>int <code class="descname">window_height</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor13window_heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor12window_widthE">
+<span id="_cudnn_pooling_descriptor::window_width__i"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1a8e496ed6e649530ea0ea907584c7f74c"></span>int <code class="descname">window_width</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor12window_widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor13stride_heightE">
+<span id="_cudnn_pooling_descriptor::stride_height__i"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1af00e9c1d08c6e855606107d9582cd280"></span>int <code class="descname">stride_height</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor13stride_heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N25_cudnn_pooling_descriptor12stride_widthE">
+<span id="_cudnn_pooling_descriptor::stride_width__i"></span><span class="target" id="paddlestruct__cudnn__pooling__descriptor_1a12cc17e09a438c8308d8c2086994e3c4"></span>int <code class="descname">stride_width</code><a class="headerlink" href="#_CPPv2N25_cudnn_pooling_descriptor12stride_widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv224_cudnn_filter_descriptor">
+<span id="_cudnn_filter_descriptor"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor"></span><em class="property">struct </em><code class="descname">_cudnn_filter_descriptor</code><a class="headerlink" href="#_CPPv224_cudnn_filter_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor4descE">
+<span id="_cudnn_filter_descriptor::desc__cudnnFilterDescriptor_t"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1a570059f98b1c7b83bfc650aaa79ed817"></span>cudnnFilterDescriptor_t <code class="descname">desc</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor4descE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor9data_typeE">
+<span id="_cudnn_filter_descriptor::data_type__cudnnDataType_t"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1a7e7aabcc5d5700590f01e0faba969eea"></span>cudnnDataType_t <code class="descname">data_type</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor9data_typeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor19output_feature_mapsE">
+<span id="_cudnn_filter_descriptor::output_feature_maps__i"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1a1f4b2e2d0482c6c88336e709950bbb9e"></span>int <code class="descname">output_feature_maps</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor19output_feature_mapsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor18input_feature_mapsE">
+<span id="_cudnn_filter_descriptor::input_feature_maps__i"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1a0b3a3665f7a095a76d010d0ae0fba281"></span>int <code class="descname">input_feature_maps</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor18input_feature_mapsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor13filter_heightE">
+<span id="_cudnn_filter_descriptor::filter_height__i"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1a69bb3c6a688f2a638d3d75856b200864"></span>int <code class="descname">filter_height</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor13filter_heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N24_cudnn_filter_descriptor12filter_widthE">
+<span id="_cudnn_filter_descriptor::filter_width__i"></span><span class="target" id="paddlestruct__cudnn__filter__descriptor_1ac43f7049100384036c68b65f1d1af994"></span>int <code class="descname">filter_width</code><a class="headerlink" href="#_CPPv2N24_cudnn_filter_descriptor12filter_widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv229_cudnn_convolution_descriptor">
+<span id="_cudnn_convolution_descriptor"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor"></span><em class="property">struct </em><code class="descname">_cudnn_convolution_descriptor</code><a class="headerlink" href="#_CPPv229_cudnn_convolution_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor4descE">
+<span id="_cudnn_convolution_descriptor::desc__cudnnConvolutionDescriptor_t"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a3087b08e2fdaba39fbea354224eb24cc"></span>cudnnConvolutionDescriptor_t <code class="descname">desc</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor4descE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor11input_imageE">
+<span id="_cudnn_convolution_descriptor::input_image__hl_tensor_descriptor"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a3164eb48f55c64b86315f8c2373a3bc4"></span><a class="reference internal" href="#_CPPv220hl_tensor_descriptor" title="hl_tensor_descriptor">hl_tensor_descriptor</a> <code class="descname">input_image</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor11input_imageE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor6filterE">
+<span id="_cudnn_convolution_descriptor::filter__hl_filter_descriptor"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a3896c7a4346835d71c39238b8b4c89a6"></span><a class="reference internal" href="#_CPPv220hl_filter_descriptor" title="hl_filter_descriptor">hl_filter_descriptor</a> <code class="descname">filter</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor6filterE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor14padding_heightE">
+<span id="_cudnn_convolution_descriptor::padding_height__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a966c70c01347a97cd8e255dcfb758a57"></span>int <code class="descname">padding_height</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor14padding_heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor13padding_widthE">
+<span id="_cudnn_convolution_descriptor::padding_width__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a45915ee2f8afb379beaf1a3310b0e5bf"></span>int <code class="descname">padding_width</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor13padding_widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor13stride_heightE">
+<span id="_cudnn_convolution_descriptor::stride_height__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1abd68fb7979c541852ee0ed5856b6ccd5"></span>int <code class="descname">stride_height</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor13stride_heightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor12stride_widthE">
+<span id="_cudnn_convolution_descriptor::stride_width__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1ac7215348bab9bcf056bcee0945433e3d"></span>int <code class="descname">stride_width</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor12stride_widthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor8upscalexE">
+<span id="_cudnn_convolution_descriptor::upscalex__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1aebb269723341fe5f4ce9d1885eeca817"></span>int <code class="descname">upscalex</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor8upscalexE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor8upscaleyE">
+<span id="_cudnn_convolution_descriptor::upscaley__i"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1a1364c8764eb7efdd776975fb7af18616"></span>int <code class="descname">upscaley</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor8upscaleyE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N29_cudnn_convolution_descriptor4modeE">
+<span id="_cudnn_convolution_descriptor::mode__cudnnConvolutionMode_t"></span><span class="target" id="paddlestruct__cudnn__convolution__descriptor_1abab3c0bd9fe05c09f6f78cb2cac86f87"></span>cudnnConvolutionMode_t <code class="descname">mode</code><a class="headerlink" href="#_CPPv2N29_cudnn_convolution_descriptor4modeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
 </div>
 </div>
 </div>
@@ -1594,14 +2030,11 @@
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -1623,14 +2056,14 @@
         <li class="right" >
           <a href="index.html" title="CUDA"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &raquo;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >CUDA</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >CUDA</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

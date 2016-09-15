@@ -116,8 +116,6 @@ DataProvider创建的时候执行。这个初始化函数具有如下参数:
 参考(Reference)
 ---------------
 
-..  _@provider::
-
 @provider
 +++++++++
 
@@ -133,9 +131,6 @@ DataProvider创建的时候执行。这个初始化函数具有如下参数:
    是一个batch size，但是有时为了计算均衡性，可以将一条数据设置成多个batch size
 *  cache 是数据缓存的策略，参考 `cache`_
 *  init_hook 是初始化时调用的函数，参考 `init_hook`_
-
-
-..  _input_types::
 
 input_types
 +++++++++++
@@ -169,15 +164,10 @@ PaddlePaddle的数据包括四种主要类型，和三种序列模式。其中�
 
 其中，f代表一个浮点数，i代表一个整数。
 
-..  _init_hook::
-..  _settings::
-
 init_hook
 +++++++++
 
 init_hook可以传入一个函数。这个函数在初始化的时候会被调用。这个函数的参数是:
-
-
 
 * 第一个参数是 settings 对象。这个对象和process的第一个参数一致。具有的属性有
     * settings.input_types 设置输入类型。参考 `input_types`_
@@ -191,8 +181,6 @@ init_hook可以传入一个函数。这个函数在初始化的时候会被调�
 
 注意，PaddlePaddle保留添加参数的权力，所以init_hook尽量使用 :code:`**kwargs` , 来接受不使用的
 函数来保证兼容性。
-
-..  _cache::
 
 cache
 +++++

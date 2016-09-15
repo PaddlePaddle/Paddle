@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Thread &mdash; PaddlePaddle  documentation</title>
+    <title>Thread &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -45,8 +45,8 @@
         <li class="right" >
           <a href="enum.html" title="enumeration_wrapper"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -63,7 +63,7 @@
 <dt id="_CPPv2N6paddle6ThreadE">
 <span id="paddle::Thread"></span><span class="target" id="paddleclasspaddle_1_1Thread"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Thread</code><a class="headerlink" href="#_CPPv2N6paddle6ThreadE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A simple wrapper for std::thread </p>
-<p>Subclassed by <a class="reference internal" href="../pserver/network/network.html#paddleclasspaddle_1_1SocketServer"><span>paddle::SocketServer</span></a>, <a class="reference internal" href="../pserver/network/network.html#paddleclasspaddle_1_1SocketWorker"><span>paddle::SocketWorker</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ThreadWorker"><span>paddle::ThreadWorker</span></a></p>
+<p>Subclassed by <a class="reference internal" href="../pserver/network/network.html#paddleclasspaddle_1_1SocketServer"><span class="std std-ref">paddle::SocketServer</span></a>, <a class="reference internal" href="../pserver/network/network.html#paddleclasspaddle_1_1SocketWorker"><span class="std std-ref">paddle::SocketWorker</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ThreadWorker"><span class="std std-ref">paddle::ThreadWorker</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -80,7 +80,7 @@
 <dl class="function">
 <dt id="_CPPv2N6paddle6Thread5startEv">
 <span id="paddle::Thread::start"></span><span class="target" id="paddleclasspaddle_1_1Thread_1a04bafecee1ed7de41b97dbc629b115a7"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Thread5startEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creat a new thread and call <em><a class="reference internal" href="#paddleclasspaddle_1_1Thread_1ad05b338f3732cfd1969a0c9e74f74f90"><span>run()</span></a></em> function. </p>
+<dd><p>Creat a new thread and call <em><a class="reference internal" href="#paddleclasspaddle_1_1Thread_1ad05b338f3732cfd1969a0c9e74f74f90"><span class="std std-ref">run()</span></a></em> function. </p>
 </dd></dl>
 
 <dl class="function">
@@ -118,9 +118,9 @@
 <dl class="class">
 <dt id="_CPPv2N6paddle12ThreadWorkerE">
 <span id="paddle::ThreadWorker"></span><span class="target" id="paddleclasspaddle_1_1ThreadWorker"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ThreadWorker</code><a class="headerlink" href="#_CPPv2N6paddle12ThreadWorkerE" title="Permalink to this definition">¶</a></dt>
-<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1ThreadWorker"><span>ThreadWorker</span></a> maintains a job queue. It executes the jobs in the job queue sequentianlly in a separate thread.</p>
-<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1ThreadWorker_1ac45663002b966b417524ccac3dd95b38"><span>addJob()</span></a> to add a new job to the job queue. </p>
-<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Thread"><span>paddle::Thread</span></a></p>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1ThreadWorker"><span class="std std-ref">ThreadWorker</span></a> maintains a job queue. It executes the jobs in the job queue sequentianlly in a separate thread.</p>
+<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1ThreadWorker_1ac45663002b966b417524ccac3dd95b38"><span class="std std-ref">addJob()</span></a> to add a new job to the job queue. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Thread"><span class="std std-ref">paddle::Thread</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
@@ -207,14 +207,14 @@
 <dl class="class">
 <dt id="_CPPv2N6paddle14SyncThreadPoolE">
 <span id="paddle::SyncThreadPool"></span><span class="target" id="paddleclasspaddle_1_1SyncThreadPool"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SyncThreadPool</code><a class="headerlink" href="#_CPPv2N6paddle14SyncThreadPoolE" title="Permalink to this definition">¶</a></dt>
-<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool"><span>SyncThreadPool</span></a> maintains a pool of threads. It executes the job use all workers in the pool.</p>
-<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool_1aa477a8f126ba9433b7b7fe7e7fcd52e5"><span>exec()</span></a> to run a new job, job complete when exec returned. Only one job can exec simultaneously.</p>
-<p>Each worker has an tid whose range is [0, <a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool_1a137196ab4b87c59ba001b127ca197ed3"><span>getNumThreads()</span></a>). JobFunc can use tid to divide input data. </p>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool"><span class="std std-ref">SyncThreadPool</span></a> maintains a pool of threads. It executes the job use all workers in the pool.</p>
+<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool_1aa477a8f126ba9433b7b7fe7e7fcd52e5"><span class="std std-ref">exec()</span></a> to run a new job, job complete when exec returned. Only one job can exec simultaneously.</p>
+<p>Each worker has an tid whose range is [0, <a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool_1a137196ab4b87c59ba001b127ca197ed3"><span class="std std-ref">getNumThreads()</span></a>). JobFunc can use tid to divide input data. </p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle14SyncThreadPool7JobFuncE">
-<span id="paddle::SyncThreadPool::JobFunc"></span><span class="target" id="paddleclasspaddle_1_1SyncThreadPool_1a1b6a06a92f7253e712407658e17072e9"></span><em class="property">typedef </em>std::function&lt;void(int tid, size_t numThreads)&gt; <code class="descname">JobFunc</code><a class="headerlink" href="#_CPPv2N6paddle14SyncThreadPool7JobFuncE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SyncThreadPool::JobFunc"></span><span class="target" id="paddleclasspaddle_1_1SyncThreadPool_1a1b6a06a92f7253e712407658e17072e9"></span><em class="property">typedef </em>std::function&lt;void<span class="sig-paren">(</span>int tid, size_t numThreads<span class="sig-paren">)</span>&gt; <code class="descname">JobFunc</code><a class="headerlink" href="#_CPPv2N6paddle14SyncThreadPool7JobFuncE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -260,7 +260,7 @@
 <dd><p>Execute a job using all the theads in the pool. </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>For the ownerFunc, tid=<a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool_1a137196ab4b87c59ba001b127ca197ed3"><span>getNumThreads()</span></a>. </dd>
+<dd>For the ownerFunc, tid=<a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool_1a137196ab4b87c59ba001b127ca197ed3"><span class="std std-ref">getNumThreads()</span></a>. </dd>
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last">
 <li><code class="first docutils literal"><span class="pre">jobFunc</span></code> - <p>The function to be executed. </p>
@@ -295,7 +295,7 @@
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14SyncThreadPool10execHelperEP14SyncThreadPool7JobFunc">
-<span id="paddle::SyncThreadPool::execHelper__SyncThreadPoolP.JobFunc"></span><span class="target" id="paddleclasspaddle_1_1SyncThreadPool_1ad9327ef4de308b63db44290dc85cf111"></span><em class="property">static</em> void <code class="descname">execHelper</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle14SyncThreadPool14SyncThreadPoolEv" title="paddle::SyncThreadPool::SyncThreadPool">SyncThreadPool</a> *<em>pool</em>, <a class="reference internal" href="#_CPPv2N6paddle14SyncThreadPool7JobFuncE" title="paddle::SyncThreadPool::JobFunc">JobFunc</a> <em>jobFunc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14SyncThreadPool10execHelperEP14SyncThreadPool7JobFunc" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SyncThreadPool::execHelper__SyncThreadPoolP.JobFunc"></span><span class="target" id="paddleclasspaddle_1_1SyncThreadPool_1ad9327ef4de308b63db44290dc85cf111"></span><em class="property">static</em> void <code class="descname">execHelper</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle14SyncThreadPoolE" title="paddle::SyncThreadPool">SyncThreadPool</a> *<em>pool</em>, <a class="reference internal" href="#_CPPv2N6paddle14SyncThreadPool7JobFuncE" title="paddle::SyncThreadPool::JobFunc">JobFunc</a> <em>jobFunc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14SyncThreadPool10execHelperEP14SyncThreadPool7JobFunc" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute a job if has pool, else use caller thread as a worker. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
@@ -316,7 +316,7 @@
 <dl class="function">
 <dt id="_CPPv2N6paddle14SyncThreadPool5startEv">
 <span id="paddle::SyncThreadPool::start"></span><span class="target" id="paddleclasspaddle_1_1SyncThreadPool_1abdccf7b85b5a46616ad649a09cce33cd"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14SyncThreadPool5startEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Start all the workers in the pool, call their <a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool_1a9ac0551861a9ee8af8d7376ab8666aa2"><span>run()</span></a> function. </p>
+<dd><p>Start all the workers in the pool, call their <a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool_1a9ac0551861a9ee8af8d7376ab8666aa2"><span class="std std-ref">run()</span></a> function. </p>
 </dd></dl>
 
 <dl class="function">
@@ -380,14 +380,14 @@
 <span class="target" id="paddleclasspaddle_1_1MultiThreadWorker"></span><em class="property">template </em>&lt;class <em>T</em>&gt;</dt>
 <dt id="_CPPv2N6paddle17MultiThreadWorkerE">
 <span id="paddle::MultiThreadWorker"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MultiThreadWorker</code><a class="headerlink" href="#_CPPv2N6paddle17MultiThreadWorkerE" title="Permalink to this definition">¶</a></dt>
-<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker"><span>MultiThreadWorker</span></a> maintains a job queue and a result queue. It executes the jobs in the job queue and puts the results into the result queue sequentially in multi separate threads.</p>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker"><span class="std std-ref">MultiThreadWorker</span></a> maintains a job queue and a result queue. It executes the jobs in the job queue and puts the results into the result queue sequentially in multi separate threads.</p>
 <p>Add jobs:</p>
-<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a9331287602f25bc79438cdd71b0fa4a3"><span>addJob()</span></a> to add a new job to the job queue (the user added jobs should not return nullptr).</p>
-<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span>stopAddJob()</span></a> to stop adding new jobs to the job queue (<a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a9331287602f25bc79438cdd71b0fa4a3"><span>addJob()</span></a> can not be called after <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span>stopAddJob()</span></a>).</p>
+<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a9331287602f25bc79438cdd71b0fa4a3"><span class="std std-ref">addJob()</span></a> to add a new job to the job queue (the user added jobs should not return nullptr).</p>
+<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span class="std std-ref">stopAddJob()</span></a> to stop adding new jobs to the job queue (<a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a9331287602f25bc79438cdd71b0fa4a3"><span class="std std-ref">addJob()</span></a> can not be called after <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span class="std std-ref">stopAddJob()</span></a>).</p>
 <p>Normal stop:</p>
-<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a9bee7e6b08a88a8e9596703796b384d2"><span>waitResult()</span></a> to get the results until nullptr is returned. Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a2a428608cfaf40492996951e6bf3ce15"><span>stop()</span></a> to exit normally (<a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span>stopAddJob()</span></a> should be called first).</p>
+<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a9bee7e6b08a88a8e9596703796b384d2"><span class="std std-ref">waitResult()</span></a> to get the results until nullptr is returned. Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a2a428608cfaf40492996951e6bf3ce15"><span class="std std-ref">stop()</span></a> to exit normally (<a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span class="std std-ref">stopAddJob()</span></a> should be called first).</p>
 <p>Force stop:</p>
-<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a9eeba6482826c48450a5694c64164ac4"><span>forceStop()</span></a> to exit forcibly even though there are remaining jobs in the job queue. </p>
+<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a9eeba6482826c48450a5694c64164ac4"><span class="std std-ref">forceStop()</span></a> to exit forcibly even though there are remaining jobs in the job queue. </p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
@@ -437,7 +437,7 @@
 <dd><p>Stop all the workers normally. </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd><a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span>stopAddJob()</span></a> should be called before it. </dd>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span class="std std-ref">stopAddJob()</span></a> should be called before it. </dd>
 </dl>
 </p>
 </dd></dl>
@@ -448,7 +448,7 @@
 <dd><p>Stop all the workers forcibly. </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>This function will call <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span>stopAddJob()</span></a> first and empty the result queue. </dd>
+<dd>This function will call <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span class="std std-ref">stopAddJob()</span></a> first and empty the result queue. </dd>
 </dl>
 </p>
 </dd></dl>
@@ -459,7 +459,7 @@
 <dd><p>Add a job to the job queue. </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd>Job can not be added after calling <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span>stopAddJob()</span></a>. </dd>
+<dd>Job can not be added after calling <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span class="std std-ref">stopAddJob()</span></a>. </dd>
 </dl>
 </p>
 </dd></dl>
@@ -553,12 +553,12 @@
 <dl class="class">
 <dt id="_CPPv2N6paddle15AsyncThreadPoolE">
 <span id="paddle::AsyncThreadPool"></span><span class="target" id="paddleclasspaddle_1_1AsyncThreadPool"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">AsyncThreadPool</code><a class="headerlink" href="#_CPPv2N6paddle15AsyncThreadPoolE" title="Permalink to this definition">¶</a></dt>
-<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool"><span>AsyncThreadPool</span></a> maintains a job queue and threads pool. It executes the jobs from queue asynchronously.</p>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool"><span class="std std-ref">AsyncThreadPool</span></a> maintains a job queue and threads pool. It executes the jobs from queue asynchronously.</p>
 <p>Add jobs:</p>
-<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a7389d5d38028ca8cd9cc07071f5d98b7"><span>addJob()</span></a> to add a new job to the job queue and get a std::future result. The caller&#8217;s thread continues running. Call std::future::get() when the result&#8217;s value is needed, and the caller&#8217;s thread may be blocked until thread-pool finished the job.</p>
-<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a4848df09be835a672e9351ef5a544c81"><span>addBatchJobs()</span></a> to add a batch of jobs. Unlike <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a7389d5d38028ca8cd9cc07071f5d98b7"><span>addJob()</span></a>&#8216;s asynchronization, addBatchJobs will block caller&#8217;s thread until all jobs in the batch are finished.</p>
-<p>Stop: Use <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a7b5bbc8fd15e5f7ed52272a346f3f0d9"><span>stop()</span></a> to stop the thread pool. Job can be added once stopped.</p>
-<p>Process-wide Singleton: Use AsyncThreadPool::ProcessChannel(N) first to create N threads. Then call <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a95be04dd6f37d66b4199cf2b1700444d"><span>AsyncThreadPool::ProcessChannel()</span></a> to get the process-wide global thread pool. </p>
+<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a7389d5d38028ca8cd9cc07071f5d98b7"><span class="std std-ref">addJob()</span></a> to add a new job to the job queue and get a std::future result. The caller&#8217;s thread continues running. Call std::future::get() when the result&#8217;s value is needed, and the caller&#8217;s thread may be blocked until thread-pool finished the job.</p>
+<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a4848df09be835a672e9351ef5a544c81"><span class="std std-ref">addBatchJobs()</span></a> to add a batch of jobs. Unlike <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a7389d5d38028ca8cd9cc07071f5d98b7"><span class="std std-ref">addJob()</span></a>&#8216;s asynchronization, addBatchJobs will block caller&#8217;s thread until all jobs in the batch are finished.</p>
+<p>Stop: Use <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a7b5bbc8fd15e5f7ed52272a346f3f0d9"><span class="std std-ref">stop()</span></a> to stop the thread pool. Job can be added once stopped.</p>
+<p>Process-wide Singleton: Use AsyncThreadPool::ProcessChannel(N) first to create N threads. Then call <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a95be04dd6f37d66b4199cf2b1700444d"><span class="std std-ref">AsyncThreadPool::ProcessChannel()</span></a> to get the process-wide global thread pool. </p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
@@ -621,7 +621,7 @@
 <dd><p>Add a batch of jobs to the queue. The main thread will be blocked until these jobs are finished. The results will be stored in <code class="docutils literal"><span class="pre">results</span></code> according to <code class="docutils literal"><span class="pre">jobs</span></code> order. </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
-<dd><em>results</em> may need to be carefully cleared before <em><a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a4848df09be835a672e9351ef5a544c81"><span>addBatchJobs()</span></a></em>. </dd>
+<dd><em>results</em> may need to be carefully cleared before <em><a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a4848df09be835a672e9351ef5a544c81"><span class="std std-ref">addBatchJobs()</span></a></em>. </dd>
 <dt><strong>Template Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last">
 <li><code class="first docutils literal"><span class="pre">F</span></code> - <p>should have a return value.</p>
@@ -668,8 +668,8 @@
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15AsyncThreadPool14ProcessChannelE6size_t">
-<span id="paddle::AsyncThreadPool::ProcessChannel__s"></span><span class="target" id="paddleclasspaddle_1_1AsyncThreadPool_1a95be04dd6f37d66b4199cf2b1700444d"></span><em class="property">static</em> <a class="reference internal" href="#_CPPv2N6paddle15AsyncThreadPool15AsyncThreadPoolEv" title="paddle::AsyncThreadPool::AsyncThreadPool">AsyncThreadPool</a> &amp;<code class="descname">ProcessChannel</code><span class="sig-paren">(</span>size_t <em>initThreadNum</em> = 0<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15AsyncThreadPool14ProcessChannelE6size_t" title="Permalink to this definition">¶</a></dt>
-<dd><p>A process-wide singleton. Used as a global thread pool It should be initialized by calling AsyncThreadPool::ProcessChannel(N) first to create N threads, then call <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a95be04dd6f37d66b4199cf2b1700444d"><span>AsyncThreadPool::ProcessChannel()</span></a> will get the thread pool. </p>
+<span id="paddle::AsyncThreadPool::ProcessChannel__s"></span><span class="target" id="paddleclasspaddle_1_1AsyncThreadPool_1a95be04dd6f37d66b4199cf2b1700444d"></span><em class="property">static</em> <a class="reference internal" href="#_CPPv2N6paddle15AsyncThreadPoolE" title="paddle::AsyncThreadPool">AsyncThreadPool</a> &amp;<code class="descname">ProcessChannel</code><span class="sig-paren">(</span>size_t <em>initThreadNum</em> = 0<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15AsyncThreadPool14ProcessChannelE6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>A process-wide singleton. Used as a global thread pool It should be initialized by calling AsyncThreadPool::ProcessChannel(N) first to create N threads, then call <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a95be04dd6f37d66b4199cf2b1700444d"><span class="std std-ref">AsyncThreadPool::ProcessChannel()</span></a> will get the thread pool. </p>
 </dd></dl>
 
 </div>
@@ -721,14 +721,11 @@
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -750,13 +747,13 @@
         <li class="right" >
           <a href="enum.html" title="enumeration_wrapper"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Quick Start Tutorial &mdash; PaddlePaddle  documentation</title>
+    <title>Quick Start Tutorial &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -44,7 +44,7 @@
         <li class="right" >
           <a href="../../index.html" title="PaddlePaddle Documentation"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -72,11 +72,11 @@
 <span id="overview"></span><h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
 <p>For the first step, you will use PaddlePaddle to build a <strong>text classification</strong> system. For example, suppose you run an e-commence  website, and you want to analyze the sentiment of user reviews to evaluate product quality.</p>
 <p>For example, given the input</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>This monitor is fantastic.
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">This</span> <span class="n">monitor</span> <span class="ow">is</span> <span class="n">fantastic</span><span class="o">.</span>
 </pre></div>
 </div>
 <p>Your classifier should output “positive”, since this text snippet shows that the user is satisfied with the product. Given this input:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>The monitor breaks down two months after purchase.
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">The</span> <span class="n">monitor</span> <span class="n">breaks</span> <span class="n">down</span> <span class="n">two</span> <span class="n">months</span> <span class="n">after</span> <span class="n">purchase</span><span class="o">.</span>
 </pre></div>
 </div>
 <p>the classifier should output “negative“.</p>
@@ -114,7 +114,7 @@
 <div class="section" id="preprocess-data-into-standardized-format">
 <span id="preprocess-data-into-standardized-format"></span><h2>Preprocess data into standardized format<a class="headerlink" href="#preprocess-data-into-standardized-format" title="Permalink to this headline">¶</a></h2>
 <p>In this example, you are going to use <a class="reference external" href="http://jmcauley.ucsd.edu/data/amazon/">Amazon electronic product review dataset</a> to build a bunch of deep neural network models for text classification. Each text in this dataset is a product review. This dataset has two categories: “positive” and “negative”. Positive means the reviewer likes the product, while negative means the reviewer does not like the product.</p>
-<p><code class="docutils literal"><span class="pre">demo/quick_start</span></code> provides scripts for downloading data and preprocessing data as shown below. The data process takes several minutes (about 3 minutes in our machine).</p>
+<p><code class="docutils literal"><span class="pre">demo/quick_start</span></code> in the <a class="reference external" href="https://github.com/baidu/Paddle">source code</a> provides scripts for downloading data and preprocessing data as shown below. The data process takes several minutes (about 3 minutes in our machine).</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/quick_start
 ./data/get_data.sh
 ./preprocess.sh
@@ -214,8 +214,7 @@
                         <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;dictionary&quot;</span><span class="p">:</span> <span class="n">word_dict</span><span class="p">})</span>
 </pre></div>
 </div>
-<p>You can refer to the following link for more detailed examples
-: <a href = "../../ui/data_provider/python_case.html">Python Use Case</a>，The detailed documentation on data format is: <a href = "../../ui/api/py_data_provider_wrapper.html"> PyDataProviderWrapper</a>。</p>
+<p>You can refer to the following link for more detailed examples and data formats: <a href = "../../ui/data_provider/pydataprovider2.html">PyDataProvider2</a>.</p>
 </div>
 </div>
 <div class="section" id="network-architecture">
@@ -443,7 +442,7 @@ paddle train <span class="se">\</span>
 mv rank-00000 result.txt
 </pre></div>
 </div>
-<p>There are several differences between training and inference network configurations.</p>
+<p>User can choose the best model base on the training log instead of model <code class="docutils literal"><span class="pre">output/pass-00003</span></code>. There are several differences between training and inference network configurations.</p>
 <ul class="simple">
 <li>You do not need labels during inference.</li>
 <li>Outputs need to be specified to the classification probability layer (the output of softmax layer), or the id of maximum probability (<code class="docutils literal"><span class="pre">max_id</span></code> layer). An example to output the id and probability is given in the code snippet.</li>
@@ -451,8 +450,8 @@ mv rank-00000 result.txt
 <li>You need to specify the location of <code class="docutils literal"><span class="pre">test_list</span></code> in the test data.</li>
 </ul>
 <p>The results in <code class="docutils literal"><span class="pre">result.txt</span></code> is as follows, each line is one sample.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>predicted_label_id;probability_of_label_0 probability_of_label_1  # the first sample
-predicted_label_id;probability_of_label_0 probability_of_label_1  # the second sample
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">predicted_label_id</span><span class="p">;</span><span class="n">probability_of_label_0</span> <span class="n">probability_of_label_1</span>  <span class="c1"># the first sample</span>
+<span class="n">predicted_label_id</span><span class="p">;</span><span class="n">probability_of_label_0</span> <span class="n">probability_of_label_1</span>  <span class="c1"># the second sample</span>
 </pre></div>
 </div>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">is_predict</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;is_predict&#39;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
@@ -520,7 +519,7 @@ predicted_label_id;probability_of_label_0 probability_of_label_1  # the second s
 </div>
 <div class="section" id="log">
 <span id="log"></span><h3>Log<a class="headerlink" href="#log" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-python"><div class="highlight"><pre><span></span>TrainerInternal.cpp:160]  Batch=20 samples=2560 AvgCost=0.628761 CurrentCost=0.628761 Eval: classification_error_evaluator=0.304297  CurrentEval: classification_error_evaluator=0.304297
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">TrainerInternal</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">160</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">20</span> <span class="n">samples</span><span class="o">=</span><span class="mi">2560</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mf">0.628761</span> <span class="n">CurrentCost</span><span class="o">=</span><span class="mf">0.628761</span> <span class="n">Eval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.304297</span>  <span class="n">CurrentEval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.304297</span>
 </pre></div>
 </div>
 <p>During model training, you will see the log like the examples above:
@@ -607,14 +606,11 @@ predicted_label_id;probability_of_label_0 probability_of_label_1  # the second s
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -636,12 +632,12 @@ predicted_label_id;probability_of_label_0 probability_of_label_1  # the second s
         <li class="right" >
           <a href="../../index.html" title="PaddlePaddle Documentation"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>

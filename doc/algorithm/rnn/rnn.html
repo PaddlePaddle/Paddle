@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Recurrent Neural Network Configuration &mdash; PaddlePaddle  documentation</title>
+    <title>Recurrent Neural Network Configuration &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -40,7 +40,7 @@
         <li class="right" >
           <a href="../../source/utils/thread.html" title="Lock"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -71,7 +71,7 @@
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">yield</span> <span class="n">src_ids</span><span class="p">,</span> <span class="n">trg_ids</span><span class="p">,</span> <span class="n">trg_ids_next</span>
 </pre></div>
 </div>
-<p>For more details description of how to write a data provider, please refer to <code class="xref doc docutils literal"><span class="pre">Python</span> <span class="pre">Data</span> <span class="pre">Provider</span></code>. The full data provider file is located at <code class="code docutils literal"><span class="pre">demo/seqToseq/dataprovider.py</span></code>.</p>
+<p>For more details description of how to write a data provider, please refer to <a class="reference external" href="../../ui/data_provider/index.html">PyDataProvider2</a>. The full data provider file is located at <code class="code docutils literal"><span class="pre">demo/seqToseq/dataprovider.py</span></code>.</p>
 </div>
 <div class="section" id="configure-recurrent-neural-network-architecture">
 <h2>Configure Recurrent Neural Network Architecture<a class="headerlink" href="#configure-recurrent-neural-network-architecture" title="Permalink to this headline">¶</a></h2>
@@ -121,7 +121,7 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
 <p>We will use the sequence to sequence model with attention as an example to demonstrate how you can configure complex recurrent neural network models. An illustration of the sequence to sequence model with attention is shown in the following figure.</p>
 <img alt="../../_images/encoder-decoder-attention-model.png" class="align-center" src="../../_images/encoder-decoder-attention-model.png" />
 <p>In this model, the source sequence <span class="math">\(S = \{s_1, \dots, s_T\}\)</span> is encoded with a bidirectional gated recurrent neural networks. The hidden states of the bidirectional gated recurrent neural network <span class="math">\(H_S = \{H_1, \dots, H_T\}\)</span> is called <em>encoder vector</em> The decoder is a gated recurrent neural network. When decoding each token <span class="math">\(y_t\)</span>, the gated recurrent neural network generates a set of weights <span class="math">\(W_S^t = \{W_1^t, \dots, W_T^t\}\)</span>, which are used to compute a weighted sum of the encoder vector. The weighted sum of the encoder vector is utilized to condition the generation of the token <span class="math">\(y_t\)</span>.</p>
-<p>The encoder part of the model is listed below. It calls <code class="code docutils literal"><span class="pre">grumemory</span></code> to represent gated recurrent neural network. It is the recommended way of using recurrent neural network if the network architecture is simple, because it is faster than <code class="code docutils literal"><span class="pre">recurrent_group</span></code>. We have implemented most of the commonly used recurrent neural network architectures, you can refer to <code class="xref doc docutils literal"><span class="pre">Layers</span></code>  for more details.</p>
+<p>The encoder part of the model is listed below. It calls <code class="code docutils literal"><span class="pre">grumemory</span></code> to represent gated recurrent neural network. It is the recommended way of using recurrent neural network if the network architecture is simple, because it is faster than <code class="code docutils literal"><span class="pre">recurrent_group</span></code>. We have implemented most of the commonly used recurrent neural network architectures, you can refer to <a class="reference external" href="../../ui/api/trainer_config_helpers/layers_index.html">Layers</a>  for more details.</p>
 <p>We also project the encoder vector to <code class="code docutils literal"><span class="pre">decoder_size</span></code> dimensional space, get the first instance of the backward recurrent network, and project it to <code class="code docutils literal"><span class="pre">decoder_size</span></code> dimensional space:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Define the data layer of the source sentence.</span>
 <span class="n">src_word_id</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;source_language_word&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">source_dict_dim</span><span class="p">)</span>
@@ -250,7 +250,7 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
 <span class="n">outputs</span><span class="p">(</span><span class="n">beam_gen</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to <code class="xref doc docutils literal"><span class="pre">Semantic</span> <span class="pre">Role</span> <span class="pre">Labeling</span> <span class="pre">Demo</span></code> for more details.</p>
+<p>Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to <a class="reference external" href="../../demo/semantic_role_labeling/index.html">Semantic Role Labeling Demo</a> for more details.</p>
 <p>The full configuration file is located at <code class="code docutils literal"><span class="pre">demo/seqToseq/seqToseq_net.py</span></code>.</p>
 </div>
 </div>
@@ -288,14 +288,11 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -314,12 +311,12 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
         <li class="right" >
           <a href="../../source/utils/thread.html" title="Lock"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
     </div>
   </body>
 </html>
