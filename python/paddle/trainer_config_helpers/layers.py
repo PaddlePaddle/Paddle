@@ -52,7 +52,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'cross_entropy_with_selfnorm', 'cross_entropy',
            'multi_binary_label_cross_entropy',
            'rank_cost', 'lambda_cost', 'huber_cost',
-           'block_expand_layer',
+           'block_expand_layer', 'out_prod_layer',
            ]
 
 
@@ -93,6 +93,7 @@ class LayerType(object):
     POWER_LAYER = 'power'
     SCALING_LAYER = 'scaling'
     TRANS_LAYER = 'trans'
+    OUT_PROD_LAYER = 'out_prod'
 
     MEMORY = 'memory'
     MAXID_LAYER = 'maxid'
@@ -2345,6 +2346,39 @@ def maxid_layer(input, name=None, layer_attr=None):
                        layer_type=LayerType.MAXID_LAYER,
                        parents=[input])
 
+@wrap_name_default()
+def out_prod_layer(input1, input2, name=None, layer_attr=None):
+    """
+    A layer for computing the outer product of two vectors
+    The result is a matrix of size(input1) x size(input2)
+
+    The example usage is:
+
+    .. code-block:: python
+
+       out_prod = out_prod_layer(input1=vec1, input2=vec2)
+
+    :param name: Layer name.
+    :type name: basestring
+    :param input1: The first input layer name.
+    :type input: LayerOutput
+    :param input2: The second input layer name.
+    :type input2: LayerOutput
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(input1, LayerOutput)
+    assert isinstance(input2, LayerOutput)
+    Layer(name=name,
+          type="out_prod",
+          inputs=[input1.name, input2.name],
+          **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(name=name,
+                       layer_type=LayerType.OUT_PROD_LAYER,
+                       parents=[input1,input2])
 
 @wrap_name_default()
 def eos_layer(input, eos_id, name=None, layer_attr=None):
