@@ -19,6 +19,8 @@ num_classes = 5
 x = data_layer(name="input1", size=3)
 y = data_layer(name="input2", size=5)
 
+z = out_prod_layer(input1=x, input2=y)
+
 x1 = fc_layer(input=x, size=5)
 y1 = fc_layer(input=y, size=5)
 y2 = fc_layer(input=y, size=15)
@@ -28,7 +30,7 @@ cos3 = cos_sim(a=x1, b=y2, size=3)
 
 linear_comb = linear_comb_layer(weights=x1, vectors=y2, size=3)
 
-out = fc_layer(input=[cos1, cos3, linear_comb],
+out = fc_layer(input=[cos1, cos3, linear_comb, z],
                size=num_classes,
                act=SoftmaxActivation())
 
