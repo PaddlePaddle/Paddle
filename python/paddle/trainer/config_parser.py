@@ -2430,7 +2430,6 @@ class MixedLayer(LayerBase):
         config_assert(inputs, 'inputs cannot be empty')
         super(MixedLayer, self).__init__(
             name, 'mixed', size, inputs=inputs, **xargs)
-
         operator_input_index = []
         for operator in self.operators:
             operator_conf = operator.operator_conf
@@ -2449,16 +2448,28 @@ class MixedLayer(LayerBase):
                 size = operator.calc_output_size(operator_conf.input_sizes)
                 if size != 0:
                     self.set_layer_size(size)
+            else:
+                size = operator.calc_output_size(operator_conf.input_sizes)
+                if size != 0:
+                	config_assert(size == self.config.size,
+                		"different inputs have different size: %s vs. %s" %
+                		(size, self.config.size))
 
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             input = self.inputs[input_index]
             if input_index not in operator_input_index:
                 config_assert(isinstance(input, Projection), "input should be projection or operation")
-            if self.config.size ==  0 and isinstance(input, Projection):
+            if self.config.size == 0 and isinstance(input, Projection):
                 size = input.calc_output_size(input_layer)
                 if size != 0:
                     self.set_layer_size(size)
+            elif isinstance(input, Projection):
+                size = input.calc_output_size(input_layer)
+                if size != 0:
+                	config_assert(size == self.config.size,
+                		"different inputs have different size: %s vs. %s" %
+                		(size, self.config.size))
 
         config_assert(size != 0, "size is not set")
 
