@@ -21,7 +21,6 @@ from .evaluators import *
 from .poolings import MaxPooling, AvgPooling, BasePoolingType
 from .attrs import *
 from .default_decorators import *
-
 try:
     import cPickle as pickle
 except ImportError:
@@ -52,7 +51,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'cross_entropy_with_selfnorm', 'cross_entropy',
            'multi_binary_label_cross_entropy',
            'rank_cost', 'lambda_cost', 'huber_cost',
-           'block_expand_layer', 'out_prod_layer',
+           'block_expand_layer', 'out_prod_layer', 'print_layer'
            ]
 
 
@@ -107,6 +106,8 @@ class LayerType(object):
     SLOPE_INTERCEPT_LAYER = "slope_intercept"
     LINEAR_COMBINATION_LAYER = "convex_comb"
     BLOCK_EXPAND = "blockexpand"
+
+    PRINT_LAYER = "print"
 
     CTC_LAYER = "ctc"
     CRF_LAYER = "crf"
@@ -200,6 +201,25 @@ class LayerOutput(object):
 
 ERROR_CLIPPING = 'error_clipping_threshold'
 DROPOUT = 'drop_rate'
+
+
+def check_input(input):
+    """
+    Check input is a LayerOutput or list of LayerOutput or tuple of LayerOutput
+    if is a LayerOutput,
+
+    :param input: The input layer. Could be a list/tuple of input layer.
+    :type input: LayerOutput|list|tuple
+    :return: list of LayerOutput
+    :rtype: list of LayerOutput
+    """
+
+    if isinstance(input, LayerOutput):
+        return [LayerOutput]
+    assert isinstance(input, list)
+    for inp in input:
+        assert isinstance(inp, LayerOutput)
+    return list(input)
 
 
 def layer_support(*attrs):
@@ -728,6 +748,27 @@ def fc_layer(input, size, act=None, name=None,
     )
     return LayerOutput(name, LayerType.FC_LAYER, input, activation=act,
                        size=size)
+
+
+@wrap_name_default("print")
+def print_layer(input, name=None):
+    """
+    Print the output value of input layers. This layer is useful for debugging.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer. Could be a list/tuple of input layer.
+    :type input: LayerOutput|list|tuple
+    :return: No return
+    """
+    check_input(input)
+
+    Layer(
+        name=name,
+        type=LayerType.PRINT_LAYER,
+        inputs=[l.name for l in input],
+    )
+    LayerOutput(name, LayerType.PRINT_LAYER, input)
 
 
 @wrap_name_default("seq_pooling")

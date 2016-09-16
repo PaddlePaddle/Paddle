@@ -337,11 +337,7 @@ protected:
   // data) or has more than i subsequences (for subsequence data)
   std::vector<int> numSeqs_;
 
-  // each inlinks has a "std::vector<std::tuple<int, int, int, int>>" denotes
-  // its sequence info:
-  //  if hasSubSeq, tuple of (subSeqLength, subSeqStart, seqIndex, subSeqIndex)
-  //  else, tuple of (seqLength, seqStart, seqIndex, seqIndex)
-  std::vector<std::vector<std::tuple<int, int, int, int>>> seqLengthAndStart_;
+  std::vector<std::vector<Argument::SeqInfo>> seqInfos_;
 
   // the id of inlink which share info with outlinks
   int targetInfoInlinkId_;

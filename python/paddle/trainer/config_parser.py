@@ -1408,6 +1408,14 @@ class SelectiveFCLayer(LayerBase):
                 input_index, psize, dims, sparse, format)
         self.create_bias_parameter(bias, self.config.size)
 
+@config_layer('print')
+class PrintLayer(LayerBase):
+    def __init__(
+            self,
+            name,
+            inputs):
+        super(PrintLayer, self).__init__(name, 'print', 0, inputs)
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(

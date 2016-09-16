@@ -34,6 +34,8 @@ out = fc_layer(input=[cos1, cos3, linear_comb, z],
                size=num_classes,
                act=SoftmaxActivation())
 
+print_layer(input=[out])
+
 outputs(classification_cost(out, data_layer(name="label", size=num_classes)))
 
 # for ctc
