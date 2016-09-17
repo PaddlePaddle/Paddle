@@ -9,7 +9,11 @@ Note: The intallation packages are still in pre-release state and your experienc
 
 .. toctree::
    :maxdepth: 1
+   :glob:
    
+   源码下载(对内) <../build/internal/download_paddle_source_zh_cn.rst>
+   使用Jumbo安装(对内) <../build/internal/install_from_jumbo.rst>
+   从源码编译安装(对内)  <../build/internal/build_from_source_zh_cn.rst>
    install/docker_install.rst 
    install/ubuntu_install.rst
    cmake/index.rst

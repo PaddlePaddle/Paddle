@@ -25,6 +25,7 @@ static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src, bool useGpu,
     if (!dest) {
       dest = src->clone(0, 0, useGpu);
     } else {
+      CHECK_EQ(dest->useGpu(), useGpu);
       dest->resize(src->getHeight(), src->getWidth());
     }
     dest->copyFrom(*src, stream);
@@ -60,12 +61,12 @@ static void resizeAndCopy(MatrixPtr& dest, const MatrixPtr& src,
                           hl_stream_t stream = HPPL_STREAM_DEFAULT) {
   if (src) {
     CHECK_LE((size_t)startRow + copySize, src->getHeight());
-
     int height = copySize;
     int width = src->getWidth();
     if (!dest) {
       dest = src->clone(height, width, useGpu);
     } else {
+      CHECK_EQ(dest->useGpu(), useGpu);
       dest->resize(height, width);
     }
     MatrixPtr submat = src->subMatrix(startRow, copySize);
@@ -182,6 +183,11 @@ static void resizeAndCopy(SVectorPtr& dest, const SVectorPtr& src,
   }
 }
 
+void Argument::resizeAndCopyFrom(const Argument& src, bool useGpu) {
+   resizeAndCopyFrom(src, useGpu, HPPL_STREAM_DEFAULT);
+   hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+}
+
 void Argument::resizeAndCopyFrom(const Argument& src, bool useGpu,
                                  hl_stream_t stream) {
   dataId = src.dataId;
@@ -197,6 +203,14 @@ void Argument::resizeAndCopyFrom(const Argument& src, bool useGpu,
   }
   resizeAndCopy(udp, src.udp, useGpu, stream);
   resizeAndCopy(strs, src.strs, useGpu, stream);
+}
+
+int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,
+                                    int32_t copySize, bool useGpu) {
+    int32_t size = resizeAndCopyFrom(src, startSeq, copySize, useGpu,
+                                     HPPL_STREAM_DEFAULT);
+    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+    return size;
 }
 
 int32_t Argument::resizeAndCopyFrom(const Argument& src, int32_t startSeq,
@@ -463,51 +477,34 @@ void Argument::splitByDataId(const std::vector<Argument>& argus,
   }
 }
 
-void Argument::getSeqLengthAndStart(
-    std::vector<std::tuple<int, int, int, int>>* seqLengthAndStart,
-    int* maxSequenceLength) const {
+void Argument::getSeqInfo(std::vector<SeqInfo>* seqInfo) const {
   const int* starts = sequenceStartPositions->getData(false);
-  if (hasSubseq()) {
-    size_t numSubSequences = getNumSubSequences();
-    (*seqLengthAndStart).reserve(numSubSequences);
-    const int* subStarts = subSequenceStartPositions->getData(false);
-    int seqIndex = 0;
-    int subSeqIndex = 0;
-    *maxSequenceLength = 0;
-    for (size_t i = 0; i < numSubSequences; ++i) {
-      if (subStarts[i] == starts[seqIndex]) {
-        subSeqIndex = 0;
-        (*seqLengthAndStart)
-            .push_back(std::make_tuple<int, int, int, int>(
-                subStarts[i + 1] - subStarts[i], (int)subStarts[i],
-                (int)seqIndex, (int)subSeqIndex));
-        ++subSeqIndex;
-        ++seqIndex;
-      } else if (subStarts[i] < starts[seqIndex]) {
-        (*seqLengthAndStart)
-            .push_back(std::make_tuple<int, int, int, int>(
-                subStarts[i + 1] - subStarts[i], (int)subStarts[i],
-                (int)seqIndex - 1, (int)subSeqIndex));
-        ++subSeqIndex;
+  const int* subStarts = hasSubseq()
+      ? subSequenceStartPositions->getData(false) : nullptr;
+  size_t numSequences = getNumSequences();
+  seqInfo->reserve(numSequences);
+  int subSeqEnd = 0;
+  for (size_t i = 0; i < numSequences; ++i) {
+    SeqInfo info;
+    info.seqStart = starts[i];
+    info.subLevelLength = starts[i + 1] - starts[i];
+    info.seqId = i;
+    if (hasSubseq()) {
+      info.subSeqStart = subSeqEnd;
+      while (subStarts[subSeqEnd] < starts[i + 1]) {
+        ++subSeqEnd;
       }
-      // maxSequenceLength_ = 1 + max(subSeqIndex) in each Seq.
-      if (*maxSequenceLength < std::get<3>((*seqLengthAndStart)[i]))
-        *maxSequenceLength = std::get<3>((*seqLengthAndStart)[i]);
+      info.topLevelLength = subSeqEnd - info.subSeqStart;
+    } else {
+      info.topLevelLength = info.subLevelLength;
+      info.subSeqStart = 0;  // not used
     }
-    *maxSequenceLength += 1;
-  } else {
-    size_t numSequences = getNumSequences();
-    (*seqLengthAndStart).reserve(numSequences);
-    for (size_t i = 0; i < numSequences; ++i) {
-      (*seqLengthAndStart)
-          .push_back(std::make_tuple<int, int, int, int>(
-              starts[i + 1] - starts[i], (int)starts[i], (int)i, (int)i));
-    }
-    std::sort((*seqLengthAndStart).begin(), (*seqLengthAndStart).end(),
-              std::greater<std::tuple<int, int, int, int>>());
-
-    *maxSequenceLength = std::get<0>((*seqLengthAndStart)[0]);
+    seqInfo->push_back(info);
   }
+  std::sort(seqInfo->begin(), seqInfo->end(),
+            [](const SeqInfo& a, const SeqInfo& b) {
+              return a.topLevelLength > b.topLevelLength;
+            });
 }
 
 void Argument::checkSubset() const {

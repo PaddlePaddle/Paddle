@@ -9,6 +9,7 @@ Install PaddlePaddle
     :glob:
 
     install_*
+    internal/install_from_jumbo.md
 
 Build from Source
 -----------------

@@ -115,28 +115,10 @@ void CudnnBatchNormLayer::backward(const UpdateCallback& callback) {
     create(tmpBiasGrad_, 1, channels_, &betaGrad);
   }
 
-  // because of the different api of cudnn v4 and v5.
-  if (hl_get_cudnn_lib_version() < 5000) {
-    if (weight_->getWGrad()) {
-      create(tmpWGrad_, 1, channels_, &gammaGrad);
-    }
-    if (biases_ && biases_->getWGrad()) {
-      create(tmpBiasGrad_, 1, channels_, &betaGrad);
-    }
-  }
-
   hl_batch_norm_backward(ioDesc_, input, ioDesc_, outGrad,
                          ioDesc_, inGrad, bnParamDesc_,
                          gamma, gammaGrad, betaGrad,
                          EPS, savedMean, savedInvVar);
-
-  // because of the different api of cudnn v4 and v5.
-  if (hl_get_cudnn_lib_version() < 5000) {
-    if (weight_->getWGrad() && biases_->getWGrad()) {
-      weight_->getWGrad()->add(*tmpWGrad_);
-      biases_->getWGrad()->add(*tmpBiasGrad_);
-    }
-  }
 
   {
     REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());

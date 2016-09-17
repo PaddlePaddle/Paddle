@@ -92,7 +92,6 @@ void testState(LayerPtr testLayer, vector<DataLayerPtr>& dataLayers,
     testLayer->forward(PASS_TEST);
     Argument out;
     out.resizeAndCopyFrom(testLayer->getOutput(), /* useGpu= */ false);
-    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
     if (batchOut.value) {
       size_t dim = batchOut.value->getWidth();
       ASSERT_TRUE((bool)out.value);
@@ -220,7 +219,6 @@ void testBatchState(LayerPtr testLayer, vector<DataLayerPtr>& dataLayers,
     testLayer->forward(PASS_TEST);
     Argument out;
     out.resizeAndCopyFrom(testLayer->getOutput(), /* useGpu= */ false);
-    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
     if (batchOut.value) {
       size_t dim = batchOut.value->getWidth();
       ASSERT_TRUE((bool)out.value);

@@ -25,7 +25,7 @@ repo or just head straight to the command line:
  
 ```shell
 # Clone your fork to your local machine
-git clone git@github.com:USERNAME/paddle.git
+git clone git@github.com:USERNAME/Paddle.git
 ```
 Then you can start to develop. 
 
@@ -52,7 +52,7 @@ To do this, you'll need to add a remote at first:
 # see the current configured remote repository
 git remote -v
 # add upstream repository
-git remote add upstream https://github.com/paddle/paddle.git
+git remote add upstream https://github.com/baidu/Paddle.git
 # verify the new upstream
 git remote -v
 ```

@@ -303,7 +303,8 @@ def MakeLayerNameInSubmodel(name, submodel_name = None):
 @config_func
 def RecurrentLayerGroupWithoutOutLinksBegin(name,
                                             in_links,
-                                            seq_reversed=False):
+                                            seq_reversed=False,
+                                            target_inlinkname=""):
     global g_current_submodel
     config_assert(g_config.model_config.type == "recurrent_nn",
                   "RecurrentLayerGroup should be used only in recurrent_nn")
@@ -311,14 +312,19 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
     SubModelBegin(name)
     g_current_submodel.is_recurrent_layer_group = True
     g_current_submodel.reversed = seq_reversed
+    g_current_submodel.target_inlinkid = -1
     in_links_count = 0
-    for link in in_links:
+    for linkid, link in enumerate(in_links):
         if isinstance(link, basestring):
             name = link
             has_subseq = False
         else:
             name = link.link_name
             has_subseq = link.has_subseq
+        # assign target_inlinkid according to target_inlinkname
+        if target_inlinkname == name:
+            g_current_submodel.target_inlinkid = linkid
+
         if in_links_count == 0:
             in_links_has_subseq = has_subseq
         else:
@@ -331,6 +337,7 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
             SequenceScatterAgentLayer(name=name, size=layer.size)
         else:
             ScatterAgentLayer(name=name, size=layer.size)
+
         pair = g_current_submodel.in_links.add()
         pair.layer_name = layer_name
         pair.link_name = MakeLayerNameInSubmodel(name)
@@ -362,10 +369,12 @@ def RecurrentLayerGroupBegin(name,
                              in_links,
                              out_links,
                              generator=None,
+                             target_inlinkname="",
                              seq_reversed=False):
     RecurrentLayerGroupWithoutOutLinksBegin(name,
                                             in_links,
-                                            seq_reversed)
+                                            seq_reversed,
+                                            target_inlinkname)
     for link in out_links:
         RecurrentLayerGroupSetOutLink(link)
 
@@ -1399,6 +1408,14 @@ class SelectiveFCLayer(LayerBase):
                 input_index, psize, dims, sparse, format)
         self.create_bias_parameter(bias, self.config.size)
 
+@config_layer('print')
+class PrintLayer(LayerBase):
+    def __init__(
+            self,
+            name,
+            inputs):
+        super(PrintLayer, self).__init__(name, 'print', 0, inputs)
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(
@@ -1614,7 +1631,7 @@ class BatchNormLayer(LayerBase):
         # Also based on cudnn version.
         use_cudnn = use_gpu and batch_norm_type != "batch_norm" and \
             ((not parallel_nn) or self.config.device > -1) and \
-            cudnn_version >= 4000
+            cudnn_version >= 4007
         self.layer_type = "cudnn_batch_norm" if use_cudnn else "batch_norm"
         super(BatchNormLayer, self).__init__(name, self.layer_type, 0,
                                              active_type=active_type,
@@ -2264,6 +2281,9 @@ class ConvexCombinationLayer(LayerBase):
            name, 'convex_comb', size, inputs=inputs, device=device)
         config_assert(len(self.inputs) == 2,
           'ConvexCombinationLayer must have 2 inputs')
+        config_assert(
+            size * self.get_input_layer(0).size == self.get_input_layer(1).size,
+            'Wrong input size for ConvexCombinationLayer')
         self.set_layer_size(size)
 
 @config_layer('interpolation')
@@ -2313,6 +2333,9 @@ class CosSimVecMatLayer(LayerBase):
         self.config.cos_scale = cos_scale
         config_assert(len(self.inputs) == 2,
           'CosSimVecMatLayer must have 2 inputs')
+        config_assert(
+            size * self.get_input_layer(0).size == self.get_input_layer(1).size,
+            'Wrong input size for CosSimVecMatLayer')
 
 @config_layer('sampling_id')
 class SamplingIdLayer(LayerBase):
@@ -2361,6 +2384,7 @@ class CosSimLayer(LayerBase):
             self,
             name,
             inputs,
+            cos_scale=5,
             device=None):
         super(CosSimLayer, self).__init__(
             name, 'cos', 1, inputs=inputs, device=device)
@@ -2368,6 +2392,7 @@ class CosSimLayer(LayerBase):
         config_assert(
             self.get_input_layer(0).size == self.get_input_layer(1).size,
             'inputs of CosSimLayer must have same dim')
+        self.config.cos_scale = cos_scale
 
 
 @config_layer('tensor')
