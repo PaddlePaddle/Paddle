@@ -676,7 +676,8 @@ void RecurrentGradientMachine::createInFrameInfo(int inlinkId,
   if (hasSubseq) {
     // inFrameLine create sequenceStartPositions one time
     CHECK_EQ(sequenceStartPositions.size(),
-             maxSequenceLength_ + input.getNumSubSequences());
+             static_cast<size_t>(maxSequenceLength_ +
+                                 input.getNumSubSequences()));
     CHECK_EQ(inlinkInfo->seqStartPosIndex.size(),
              static_cast<size_t>(maxSequenceLength_ + 1));
     createSeqPos(sequenceStartPositions, &inlinkInfo->sequenceStartPositions);
