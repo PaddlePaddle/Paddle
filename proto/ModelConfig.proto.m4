@@ -299,7 +299,7 @@ sinclude(`ModelConfigLayer.proto.m4')
   optional bool norm_by_times = 25;
 
   // for CostLayers
-  optional real coeff = 26;
+  optional real coeff = 26 [default = 1.0];
 
   // for AverageLayer
   // can be set to: 'average', 'sum' or 'squarerootn'

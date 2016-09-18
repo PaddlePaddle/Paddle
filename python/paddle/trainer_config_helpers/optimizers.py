@@ -79,7 +79,7 @@ class MomentumOptimizer(BaseSGDOptimizer):
             'learning_method': 'momentum'
         }
 
-    def __init__(self, momentum=1e-3):
+    def __init__(self, momentum=None):
         self.momentum = momentum
 
 

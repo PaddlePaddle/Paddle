@@ -65,12 +65,12 @@ def evaluator_base(
         name=None,
         chunk_scheme=None,
         num_chunk_types=None,
-        classification_threshold=0.5,
-        positive_label=-1,
-        dict_file="",
-        result_file="",
-        num_results=1,
-        delimited=True):
+        classification_threshold=None,
+        positive_label=None,
+        dict_file=None,
+        result_file=None,
+        num_results=None,
+        delimited=None):
     """
     Evaluator will evaluate the network status while training/testing.
 
@@ -105,9 +105,10 @@ def evaluator_base(
     :type weight: LayerOutput.
     """
     # inputs type assertions.
-    assert isinstance(classification_threshold, float)
-    assert isinstance(positive_label, int)
-    assert isinstance(num_results, int)
+    assert classification_threshold is None or isinstance(
+        classification_threshold, float)
+    assert positive_label is None or isinstance(positive_label, int)
+    assert num_results is None or isinstance(num_results, int)
 
     if not isinstance(input, list):
         input = [input]
@@ -136,7 +137,7 @@ def classification_error_evaluator(
         label,
         name=None,
         weight=None,
-        threshold=0.5):
+        threshold=None):
     """
     Classification Error Evaluator. It will print error rate for classification.
 
@@ -253,7 +254,7 @@ def pnpair_evaluator(
 def precision_recall_evaluator(
         input,
         label,
-        positive_label=-1,
+        positive_label=None,
         weight=None,
         name=None,
         ):
@@ -494,7 +495,7 @@ def gradient_printer_evaluator(
 @wrap_name_default()
 def maxid_printer_evaluator(
         input,
-        num_results=1,
+        num_results=None,
         name=None,
         ):
     """
@@ -518,13 +519,14 @@ def maxid_printer_evaluator(
     """
     evaluator_base(name=name,
                    type="max_id_printer",
-                   input=input)
+                   input=input,
+                   num_results=num_results)
 
 @evaluator(EvaluatorAttribute.FOR_PRINT)
 @wrap_name_default()
 def maxframe_printer_evaluator(
         input,
-        num_results=1,
+        num_results=None,
         name=None,
         ):
     """
@@ -556,9 +558,9 @@ def maxframe_printer_evaluator(
 @wrap_name_default()
 def seqtext_printer_evaluator(
         input,
-        dict_file="",
-        result_file="",
-        delimited=True,
+        result_file,
+        dict_file=None,
+        delimited=None,
         name=None,
         ):
     """
@@ -616,6 +618,7 @@ def seqtext_printer_evaluator(
     :param name: Evaluator name.
     :type name: None|basestring
     """
+    assert isinstance(result_file, basestring)
     evaluator_base(name=name,
                    type="seq_text_printer",
                    input=input,
