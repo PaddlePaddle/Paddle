@@ -17,6 +17,7 @@ limitations under the License. */
 #include <dispatch/dispatch.h>
 #include <libkern/OSAtomic.h>
 namespace paddle {
+
 class SemaphorePrivate {
 public:
   ~SemaphorePrivate() {
@@ -69,20 +70,20 @@ void SpinLock::unlock() {
 
 class ThreadBarrierPrivate {
 public:
-  pthread_mutex_t mutex;
-  pthread_cond_t cond;
-  int count;
-  int tripCount;
+  pthread_mutex_t mutex_;
+  pthread_cond_t cond_;
+  int count_;
+  int tripCount_;
 
-  inline explicit ThreadBarrierPrivate(int cnt):count(0), tripCount(cnt) {
+  inline explicit ThreadBarrierPrivate(int cnt):count_(0), tripCount_(cnt) {
     CHECK_NE(cnt, 0);
-    CHECK_GE(pthread_mutex_init(&mutex, 0), 0);
-    CHECK_GE(pthread_cond_init(&cond, 0), 0);
+    CHECK_GE(pthread_mutex_init(&mutex_, 0), 0);
+    CHECK_GE(pthread_cond_init(&cond_, 0), 0);
   }
 
   inline ~ThreadBarrierPrivate() {
-    pthread_cond_destroy(&cond);
-    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&cond_);
+    pthread_mutex_destroy(&mutex_);
   }
 
   /**
@@ -90,16 +91,16 @@ public:
    * @return true if the last wait
    */
   inline bool wait() {
-    pthread_mutex_lock(&mutex);
-    ++count;
-    if (count >= tripCount) {
-      count = 0;
-      pthread_cond_broadcast(&cond);
-      pthread_mutex_unlock(&mutex);
+    pthread_mutex_lock(&mutex_);
+    ++count_;
+    if (count_ >= tripCount_) {
+      count_ = 0;
+      pthread_cond_broadcast(&cond_);
+      pthread_mutex_unlock(&mutex_);
       return true;
     } else {
-      pthread_cond_wait(&cond, &mutex);
-      pthread_mutex_unlock(&mutex);
+      pthread_cond_wait(&cond_, &mutex_);
+      pthread_mutex_unlock(&mutex_);
       return false;
     }
   }
