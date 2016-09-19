@@ -516,7 +516,6 @@ class Projection(Input):
     # calculate the output_size given input_size. return 0
     # to indicate using the size from Layer config
     def calc_output_size(self, input_layer_config):
-        print("inner output size %s" %(self.size))
         return self.size
     def calc_parameter_size(self, input_size, output_size):
         raise NotimplementedError
@@ -2431,8 +2430,6 @@ class MixedLayer(LayerBase):
         config_assert(inputs, 'inputs cannot be empty')
         super(MixedLayer, self).__init__(
             name, 'mixed', size, inputs=inputs, **xargs)
-        print("+++++++++++++++++++")
-        print(size)
         operator_input_index = []
         for operator in self.operators:
             operator_conf = operator.operator_conf
@@ -2457,12 +2454,7 @@ class MixedLayer(LayerBase):
                     config_assert(size == self.config.size,
                                   "different inputs have different size: %s vs. %s" %
                                   (size, self.config.size))
-        print(size)
-        print("==========================%s" %(name))
-        print(operator_input_index)
-        print(self.config.size)
         for input_index in xrange(len(self.inputs)):
-            print("input_index %s" %(input_index))
             input_layer = self.get_input_layer(input_index)
             input = self.inputs[input_index]
             if input_index not in operator_input_index:
@@ -2472,14 +2464,11 @@ class MixedLayer(LayerBase):
                 if size != 0:
                     self.set_layer_size(size)
             elif isinstance(input, Projection):
-                print("before------%s" %(size))
             	sz = input.calc_output_size(input_layer)
-            	print("after------%s" %(size))
             	if sz != 0:
             		config_assert(sz == self.config.size,
             		"different inputs have different size: %s vs. %s" %
             		(sz, self.config.size))
-        print(size)
         config_assert(size != 0, "size is not set")
 
         for input_index in xrange(len(self.inputs)):
