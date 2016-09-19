@@ -1130,7 +1130,7 @@ for details.</li>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">dotmul_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>1. DotMulProjection if input is a layer.
+<dd><p>DotMulProjection with a layer as input.
 It performs element-wise multiplication with weight.</p>
 <div class="math">
 \[out.row[i] += in.row[i] .* weight\]</div>
@@ -1139,32 +1139,21 @@ It performs element-wise multiplication with weight.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">proj</span> <span class="o">=</span> <span class="n">dotmul_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>2. DotMulOperator if input is a list or tuple.
-It takes two inputs, performs element-wise multiplication:</p>
-<div class="math">
-\[out.row[i] += scale * (in1.row[i] .* in2.row[i])\]</div>
-<p>where <span class="math">\(.*\)</span> means element-wise multiplication, and
-scale is a config scalar, its default value is one.</p>
-<p>The example usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">op</span> <span class="o">=</span> <span class="n">dotmul_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">],</span>
-                       <span class="n">scale</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
-</pre></div>
-</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>input</strong> (<em>LayerOutput|list|tuple</em>) &#8211; Input layer.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter config, None if use default.</li>
 <li><strong>scale</strong> (<em>float</em>) &#8211; config scalar, default value is one.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A DotMulProjection or DotMulOperator Object.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A DotMulProjection Object.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DotMulProjection or DotMulOperator</p>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DotMulProjection</p>
 </td>
 </tr>
 </tbody>
