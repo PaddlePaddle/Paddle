@@ -164,16 +164,22 @@
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
-<dt id="_CPPv2N6paddle12DataProvider6createERK10DataConfigb">
-<span id="paddle::DataProvider::create__DataConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ae6b6c293f49094fa37e06504da998248"></span><a class="reference internal" href="#_CPPv2N6paddle12DataProviderE" title="paddle::DataProvider">DataProvider</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, bool <em>useGpu</em> = FLAGS_use_gpu<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider6createERK10DataConfigb" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2N6paddle12DataProvider6createERK10DataConfigRK11ModelConfigb">
+<span id="paddle::DataProvider::create__DataConfigCR.ModelConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a761ef962e6ef45b14562632db6be39c9"></span><a class="reference internal" href="#_CPPv2N6paddle12DataProviderE" title="paddle::DataProvider">DataProvider</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> &amp;<em>modelConfig</em>, bool <em>useGpu</em> = FLAGS_use_gpu<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider6createERK10DataConfigRK11ModelConfigb" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider6createERK10DataConfigb">
+<span id="paddle::DataProvider::create__DataConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ad782dc59f7366c19ba4375101159ba95"></span><em class="property">static</em> <a class="reference internal" href="#_CPPv2N6paddle12DataProviderE" title="paddle::DataProvider">DataProvider</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider6createERK10DataConfigb" title="Permalink to this definition">¶</a></dt>
+<dd><p>create only used for unittest. </p>
+</dd></dl>
 
 </div>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Static Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle12DataProvider10registrar_E">
-<span id="paddle::DataProvider::registrar___ClassRegistrar:DataProvider.DataConfig.b:"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1acc7ff8754097b2ecdd6c85ba98e78e18"></span>ClassRegistrar&lt;<a class="reference internal" href="#_CPPv2N6paddle12DataProviderE" title="paddle::DataProvider">DataProvider</a>, DataConfig, bool&gt; <code class="descname">registrar_</code><a class="headerlink" href="#_CPPv2N6paddle12DataProvider10registrar_E" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DataProvider::registrar___ClassRegistrar:DataProvider.DataConfig.ModelConfig.b:"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ae40e5169aa51da3fb0e903ff75b8ab01"></span>ClassRegistrar&lt;<a class="reference internal" href="#_CPPv2N6paddle12DataProviderE" title="paddle::DataProvider">DataProvider</a>, DataConfig, <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a>, bool&gt; <code class="descname">registrar_</code><a class="headerlink" href="#_CPPv2N6paddle12DataProvider10registrar_E" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -357,8 +363,8 @@
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
-<dt id="_CPPv2N6paddle17MultiDataProvider17MultiDataProviderERK10DataConfigb">
-<span id="paddle::MultiDataProvider::MultiDataProvider__DataConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a9335b9b57d19fccd0b374746b0e28336"></span><code class="descname">MultiDataProvider</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider17MultiDataProviderERK10DataConfigb" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2N6paddle17MultiDataProvider17MultiDataProviderERK10DataConfigRK11ModelConfigb">
+<span id="paddle::MultiDataProvider::MultiDataProvider__DataConfigCR.ModelConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1acd993858e31a0f829e7ca3034bcdb655"></span><code class="descname">MultiDataProvider</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> &amp;<em>modelConfig</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider17MultiDataProviderERK10DataConfigRK11ModelConfigb" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -977,8 +983,8 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
-<dt id="_CPPv2N6paddle15PyDataProvider215PyDataProvider2ERK10DataConfigb">
-<span id="paddle::PyDataProvider2::PyDataProvider2__DataConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a493a2635a8b83aeb9be3ce6db0d3aa55"></span><code class="descname">PyDataProvider2</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider215PyDataProvider2ERK10DataConfigb" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2N6paddle15PyDataProvider215PyDataProvider2ERK10DataConfigRK11ModelConfigb">
+<span id="paddle::PyDataProvider2::PyDataProvider2__DataConfigCR.ModelConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a2281a7aca7c68247414746864688e7bb"></span><code class="descname">PyDataProvider2</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> &amp;<em>modelConfig</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider215PyDataProvider2ERK10DataConfigRK11ModelConfigb" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ctor </p>
 </dd></dl>
 
