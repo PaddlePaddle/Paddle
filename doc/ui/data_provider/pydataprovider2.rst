@@ -24,7 +24,7 @@ A small part of the original data as an example is shown as below:
 
 .. literalinclude:: ../../../doc_cn/ui/data_provider/mnist_train.txt
 
-Each line of the data contains two parts, separated by ';'. The first part is
+Each line of the data contains two parts, separated by :code:`;`. The first part is
 label of an image. The second part contains 28x28 pixel float values.
 
 Just write path of the above data into train.list. It looks like this:
@@ -74,7 +74,20 @@ you can take this as an example.
 
 .. literalinclude:: ../../../doc_cn/ui/data_provider/mnist_config.py
 
-Here we specify training data by 'train.list', and no testing data is specified.
+Here we specify training data by :code:`train.list`, and no testing data is specified.
+The method which actually provide data is :code:`process`.
+
+User also can use another style to provide data, which defines the
+:code:`data_layer`'s name explicitly when `yield`. For example,
+the :code:`dataprovider` is shown as below.
+
+.. literalinclude:: ../../../doc_cn/ui/data_provider/mnist_provider.dict.py
+   :linenos:
+
+If user did't give the :code:`data_layer`'s name, PaddlePaddle will use
+the order of :code:`data_layer` definition roughly to determine which feature to
+which :code:`data_layer`. This order may be not correct, so TO DEFINE THE
+:code:`data_layer`'s NAMES EXPLICITLY IS THE RECOMMANDED WAY TO PROVIDER DATA.
 
 Now, this simple example of using PyDataProvider is finished.
 The only thing that the user should know is how to generte **one sample** from
@@ -93,7 +106,7 @@ DataProvider for the sequential model
 -------------------------------------
 A sequence model takes sequences as its input. A sequence is made up of several
 timesteps. The so-called timestep, is not necessary to have something to do
-with 'time'. It can also be explained to that the order of data are taken into
+with time. It can also be explained to that the order of data are taken into
 consideration into model design and training.
 For example, the sentence can be interpreted as a kind of sequence data in NLP
 tasks.
@@ -155,23 +168,7 @@ Reference
 @provider
 +++++++++
 
-'@provider' is a Python `Decorator`_, it can construct a PyDataProvider in
-PaddlePaddle from a user defined function. Its parameters are:
-
-* `input_types`_ defines format of the data input.
-* should_shuffle defines whether to shuffle data or not. By default, it is set
-  true during training, and false during testing.
-* pool_size is the memory pool size (in sample number) in DataProvider.
-  -1 means no limit.
-* can_over_batch_size defines whether PaddlePaddle can store little more
-  samples than pool_size. It is better to set True to avoid some deadlocks.
-* calc_batch_size is a function define how to calculate batch size. This is
-  usefull in sequential model, that defines batch size is counted upon sequence
-  or token. By default, each sample or sequence counts to 1 when calculating
-  batch size.
-* cache is a data cache strategy, see `cache`_.
-* Init_hook function is invoked once the data provider is initialized,
-  see `init_hook`_.
+.. autofunction:: paddle.trainer.PyDataProvider2.provider
 
 input_types
 +++++++++++
