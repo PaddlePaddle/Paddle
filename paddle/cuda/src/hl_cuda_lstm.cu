@@ -564,11 +564,11 @@ __global__ void KeLstmBackward(real *gateValue,
 
   /* TODO: Temporary save & merger in another kernel */
   if (frameIdy == 1) {
-    if (checkIgGrad) atomicAdd(checkIgGrad+frameIdx, rCheckGrad);
+    if (checkIgGrad) paddle::paddleAtomicAdd(checkIgGrad+frameIdx, rCheckGrad);
   } else if (frameIdy == 2) {
-    if (checkFgGrad) atomicAdd(checkFgGrad+frameIdx, rCheckGrad);
+    if (checkFgGrad) paddle::paddleAtomicAdd(checkFgGrad+frameIdx, rCheckGrad);
   } else if (frameIdy == 3) {
-    if (checkOgGrad) atomicAdd(checkOgGrad+frameIdx, rCheckGrad);
+    if (checkOgGrad) paddle::paddleAtomicAdd(checkOgGrad+frameIdx, rCheckGrad);
   }
 }
 

@@ -192,10 +192,10 @@ __global__ void KeLstmBackward(Op op,
 
   if (isBatch) {
     if (value.prevStateValue) {
-      if (grad.checkIgGrad) atomicAdd(grad.checkIgGrad+frameIdx, rCheckIGrad);
-      if (grad.checkFgGrad) atomicAdd(grad.checkFgGrad+frameIdx, rCheckFGrad);
+      if (grad.checkIgGrad) paddle::paddleAtomicAdd(grad.checkIgGrad+frameIdx, rCheckIGrad);
+      if (grad.checkFgGrad) paddle::paddleAtomicAdd(grad.checkFgGrad+frameIdx, rCheckFGrad);
     }
-    if (grad.checkOgGrad) atomicAdd(grad.checkOgGrad+frameIdx, rCheckOGrad);
+    if (grad.checkOgGrad) paddle::paddleAtomicAdd(grad.checkOgGrad+frameIdx, rCheckOGrad);
   } else {
     if (value.prevStateValue) {
       if (grad.checkIgGrad) grad.checkIgGrad[frameIdx] += rCheckIGrad;
