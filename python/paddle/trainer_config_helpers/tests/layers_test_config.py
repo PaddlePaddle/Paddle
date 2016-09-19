@@ -38,8 +38,11 @@ print_layer(input=[out])
 
 outputs(classification_cost(out, data_layer(name="label", size=num_classes)))
 
+dotmul = mixed_layer(input=[dotmul_operator(x=x1, y=y1),
+	                        dotmul_projection(input=y1)])
+
 # for ctc
-tmp = fc_layer(input=x1,
+tmp = fc_layer(input=[x1, dotmul],
                size=num_classes + 1,
                act=SoftmaxActivation())
 ctc = ctc_layer(input=tmp,
