@@ -28,7 +28,7 @@ except ImportError:
 import copy
 
 __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
-           "identity_projection", "dotmul_projection",
+           "identity_projection", "dotmul_projection", "dotmul_operator",
            "table_projection", "mixed_layer", "data_layer",
            "embedding_layer", "fc_layer", "grumemory",
            "pooling_layer", "lstmemory", "last_seq", "first_seq",
@@ -119,8 +119,7 @@ class LayerType(object):
     CROSS_ENTROPY = "multi-class-cross-entropy"
     CROSS_ENTROPY_WITH_SELFNORM = "multi_class_cross_entropy_with_selfnorm"
     SOFT_BIN_CLASS_CROSS_ENTROPY = "soft_binary_class_cross_entropy"
-    MULTI_BIN_LABEL_CROSS_ENTROPY = "multi_binary_label_cross_entropy"
-
+    MULTI_BIN_LABEL_CROSS_ENTROPY = "multi_binary_label_cross_entropy"    
     @staticmethod
     def is_layer_type(type_name):
         """
@@ -246,7 +245,6 @@ def layer_support(*attrs):
         return wrapper
 
     return decorator
-
 
 @wrap_param_attr_default()
 def full_matrix_projection(input, size=0, param_attr=None):
@@ -428,22 +426,22 @@ def dotmul_projection(input, param_attr=None, scale=1):
     :return: A DotMulProjection or DotMulOperator Object.
     :rtype: DotMulProjection or DotMulOperator
     """
-    if isinstance(input, LayerOutput):
-        proj = DotMulProjection(input_layer_name=input.name,
+    proj = DotMulProjection(input_layer_name=input.name,
                                 size=input.size,
                                 **param_attr.attr)
-        proj.origin = input
-        proj.origin.projection = "dot_mul"
-        return proj
-    else:
-        assert isinstance(input, list) or isinstance(input, tuple)
-        assert len(input) == 2
-        assert param_attr is None
-        op = DotMulOperator(input_layer_name=[x.name for x in input],
-                            scale=scale)
-        op.origin = input
-        op.origin.operator = "dot_mul"
-        return op
+    proj.origin = input
+    return proj
+
+def dotmul_operator(x, y, scale=1):
+    assert isinstance(x, LayerOutput)
+    assert isinstance(y, LayerOutput)
+    input_layer_name=[x.name, y.name]
+    print(input_layer_name)
+    print scale
+    op = DotMulOperator(input_layer_names=[x.name, y.name],
+                        scale=scale)
+    op.origin = [x, y]
+    return op
 
 
 @wrap_bias_attr_default(['padding_attr'])
@@ -539,7 +537,10 @@ class MixedLayerType(LayerOutput):
         if not self.finalized:
             assert isinstance(other, Projection) or isinstance(other, Operator)
             self.inputs.append(other)
-            self.parents.append(other.origin)
+            if isinstance(other, Projection):
+            	self.parents.append(other.origin)
+            else:
+            	self.parents.extend(other.origin)
             return self
         else:
             raise MixedLayerType.AddToSealedMixedLayerException()
@@ -565,7 +566,7 @@ class MixedLayerType(LayerOutput):
 @wrap_act_default(act=LinearActivation())
 @wrap_bias_attr_default(has_bias=False)
 @layer_support(ERROR_CLIPPING, DROPOUT)
-def mixed_layer(size, input=None, name=None, act=None, bias_attr=False,
+def mixed_layer(size=0, input=None, name=None, act=None, bias_attr=False,
                 layer_attr=None):
     """
     Mixed Layer. A mixed layer will add all inputs together, then activate.
