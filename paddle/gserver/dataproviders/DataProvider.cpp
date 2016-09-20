@@ -149,9 +149,13 @@ void DoubleBuffer::startAsyncLoad() {
   taskReadySem_.post();
 }
 
-ClassRegistrar<DataProvider, DataConfig, bool> DataProvider::registrar_;
-DataProvider* DataProvider::create(const DataConfig& config, bool useGpu) {
-  return registrar_.createByType(config.type(), config, useGpu);
+ClassRegistrar<DataProvider, DataConfig, ModelConfig, bool>
+DataProvider::registrar_;
+
+DataProvider* DataProvider::create(const DataConfig& config,
+                                   const ModelConfig& modelConfig,
+                                   bool useGpu) {
+  return registrar_.createByType(config.type(), config, modelConfig, useGpu);
 }
 
 REGISTER_DATA_PROVIDER(simple, SimpleDataProvider);

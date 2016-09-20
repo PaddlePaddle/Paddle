@@ -28,7 +28,7 @@ except ImportError:
 import copy
 
 __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
-           "identity_projection", "dotmul_projection",
+           "identity_projection", "dotmul_projection", "dotmul_operator",
            "table_projection", "mixed_layer", "data_layer",
            "embedding_layer", "fc_layer", "grumemory",
            "pooling_layer", "lstmemory", "last_seq", "first_seq",
@@ -389,7 +389,7 @@ def identity_projection(input, offset=None):
 @wrap_param_attr_default()
 def dotmul_projection(input, param_attr=None, scale=1):
     """
-    1. DotMulProjection if input is a layer.
+    DotMulProjection with a layer as input.
     It performs element-wise multiplication with weight.
 
     ..  math::
@@ -403,48 +403,45 @@ def dotmul_projection(input, param_attr=None, scale=1):
 
        proj = dotmul_projection(input=layer)
 
-    2. DotMulOperator if input is a list or tuple.
-    It takes two inputs, performs element-wise multiplication:
-
-    .. math::
-       out.row[i] += scale * (in1.row[i] .* in2.row[i])
-
-    where :math:`.*` means element-wise multiplication, and
-    scale is a config scalar, its default value is one.
-
-    The example usage is:
-
-    .. code-block:: python
-
-       op = dotmul_projection(input=[layer1, layer2],
-                              scale=2.0)
-
     :param input: Input layer.
-    :type input: LayerOutput|list|tuple
+    :type input: LayerOutput
     :param param_attr: Parameter config, None if use default.
     :type param_attr: ParameterAttribute
     :param scale: config scalar, default value is one.
     :type scale: float
-    :return: A DotMulProjection or DotMulOperator Object.
-    :rtype: DotMulProjection or DotMulOperator
+    :return: A DotMulProjection Object.
+    :rtype: DotMulProjection
     """
-    if isinstance(input, LayerOutput):
-        proj = DotMulProjection(input_layer_name=input.name,
+    proj = DotMulProjection(input_layer_name=input.name,
                                 size=input.size,
                                 **param_attr.attr)
-        proj.origin = input
-        proj.origin.projection = "dot_mul"
-        return proj
-    else:
-        assert isinstance(input, list) or isinstance(input, tuple)
-        assert len(input) == 2
-        assert param_attr is None
-        op = DotMulOperator(input_layer_name=[x.name for x in input],
-                            scale=scale)
-        op.origin = input
-        op.origin.operator = "dot_mul"
-        return op
+    proj.origin = input
+    return proj
 
+def dotmul_operator(x, y, scale=1):
+    """
+    DotMulOperator takes two inputs and performs element-wise multiplication:
+    .. math::
+       out.row[i] += scale * (in1.row[i] .* in2.row[i])
+    where :math:`.*` means element-wise multiplication, and
+    scale is a config scalar, its default value is one.
+    The example usage is:
+    .. code-block:: python
+       op = dotmul_operator(x, y,
+                              scale=1)
+    :param input: Input layer
+    :type input: LayerOutput
+    :param scale: config scalar, default value is one.
+    :type scale: float
+    :return: A DotMulOperator Object.
+    :rtype: DotMulOperator
+    """
+    assert isinstance(x, LayerOutput)
+    assert isinstance(y, LayerOutput)
+    op = DotMulOperator(input_layer_names=[x.name, y.name],
+                        scale=scale)
+    op.origin = [x, y]
+    return op
 
 @wrap_bias_attr_default(['padding_attr'])
 def context_projection(input, context_len, context_start=None,
@@ -539,7 +536,10 @@ class MixedLayerType(LayerOutput):
         if not self.finalized:
             assert isinstance(other, Projection) or isinstance(other, Operator)
             self.inputs.append(other)
-            self.parents.append(other.origin)
+            if isinstance(other, Projection):
+                self.parents.append(other.origin)
+            else:
+                self.parents.extend(other.origin)
             return self
         else:
             raise MixedLayerType.AddToSealedMixedLayerException()
@@ -565,7 +565,7 @@ class MixedLayerType(LayerOutput):
 @wrap_act_default(act=LinearActivation())
 @wrap_bias_attr_default(has_bias=False)
 @layer_support(ERROR_CLIPPING, DROPOUT)
-def mixed_layer(size, input=None, name=None, act=None, bias_attr=False,
+def mixed_layer(size=0, input=None, name=None, act=None, bias_attr=False,
                 layer_attr=None):
     """
     Mixed Layer. A mixed layer will add all inputs together, then activate.
