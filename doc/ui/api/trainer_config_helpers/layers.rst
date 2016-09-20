@@ -169,6 +169,12 @@ dotmul_projection
     :members: dotmul_projection
     :noindex:
 
+dotmul_operator
+---------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: dotmul_operator
+    :noindex:
+
 full_matrix_projection
 ----------------------
 ..  automodule:: paddle.trainer_config_helpers.layers
