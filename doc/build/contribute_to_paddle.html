@@ -81,10 +81,13 @@ It&#8217;s just that simple.</p>
 <p>Once you&#8217;ve created a fork, you can use your favorite git client to clone your
 repo or just head straight to the command line:</p>
 <div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># Clone your fork to your local machine</span>
-git clone git@github.com:USERNAME/Paddle.git
+git clone https://github.com/USERNAME/Paddle.git
 </pre></div>
 </div>
-<p>Then you can start to develop.</p>
+<p>Then you can start to develop by making a local developement branch</p>
+<div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout -b MY_COOL_STUFF_BRANCH origin/master
+</pre></div>
+</div>
 </div>
 <div class="section" id="commit">
 <span id="commit"></span><h2>Commit<a class="headerlink" href="#commit" title="Permalink to this headline">¶</a></h2>
@@ -101,7 +104,7 @@ are the details if any.</p>
 </div>
 <div class="section" id="keeping-fork-up-to-date">
 <span id="keeping-fork-up-to-date"></span><h2>Keeping Fork Up to Date<a class="headerlink" href="#keeping-fork-up-to-date" title="Permalink to this headline">¶</a></h2>
-<p>Before pull your request, you shold sync you code from the latest PaddlePaddle.
+<p>Before pull your request, you should sync your code from the latest PaddlePaddle.
 To do this, you&#8217;ll need to add a remote at first:</p>
 <div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># see the current configured remote repository</span>
 git remote -v
@@ -112,8 +115,7 @@ git remote -v
 </pre></div>
 </div>
 <p>Update your fork with the latest upstream changes:</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git fetch upstream
-git pull upstream master
+<div class="highlight-shell"><div class="highlight"><pre><span></span>git pull --rebase upstream HEAD
 </pre></div>
 </div>
 <p>If there are no unique commits locally, git will simply perform a fast-forward.
@@ -124,7 +126,7 @@ probably shouldn&#8217;t be), you may have to deal with conflicts.</p>
 <div class="section" id="push-to-github">
 <span id="push-to-github"></span><h2>Push to GitHub<a class="headerlink" href="#push-to-github" title="Permalink to this headline">¶</a></h2>
 <div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># push to your repository in Github</span>
-git push origin master
+git push origin HEAD
 </pre></div>
 </div>
 </div>
@@ -132,6 +134,22 @@ git push origin master
 <span id="pull-request"></span><h2>Pull Request<a class="headerlink" href="#pull-request" title="Permalink to this headline">¶</a></h2>
 <p>Go to the page for your fork on GitHub, select your development branch,
 and click the <strong>pull request button</strong>.</p>
+</div>
+<div class="section" id="update-your-pull-request-with-the-lastest-version">
+<span id="update-your-pull-request-with-the-lastest-version"></span><h2>Update your pull request with the lastest version<a class="headerlink" href="#update-your-pull-request-with-the-lastest-version" title="Permalink to this headline">¶</a></h2>
+<p>During the code review, your pull request may become stale because new commits in
+baidu/Paddle. GitHub allows autmotic update if there is no conflict. You can do this
+by clicking the &#8220;Update Branch&#8221; button in your pull request page. However, in the case
+of conflict, you need to do the update manually. You need to do the following on
+your local repository:</p>
+<div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout MY_COOL_STUFF_BRANCH
+git pull --rebase upstream HEAD
+<span class="c1"># You may need to resolve the conflict according to the git prompt.</span>
+<span class="c1"># Make and test your code.</span>
+git push -f origin HEAD
+</pre></div>
+</div>
+<p>Now your Pull Request is updated with the latest version.</p>
 </div>
 </div>
 
@@ -151,6 +169,7 @@ and click the <strong>pull request button</strong>.</p>
 <li><a class="reference internal" href="#keeping-fork-up-to-date">Keeping Fork Up to Date</a></li>
 <li><a class="reference internal" href="#push-to-github">Push to GitHub</a></li>
 <li><a class="reference internal" href="#pull-request">Pull Request</a></li>
+<li><a class="reference internal" href="#update-your-pull-request-with-the-lastest-version">Update your pull request with the lastest version</a></li>
 </ul>
 </li>
 </ul>
