@@ -61,7 +61,7 @@
 <h1>Base<a class="headerlink" href="#base" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">evaluator_base</code><span class="sig-paren">(</span><em>input</em>, <em>type</em>, <em>label=None</em>, <em>weight=None</em>, <em>name=None</em>, <em>chunk_scheme=None</em>, <em>num_chunk_types=None</em>, <em>classification_threshold=0.5</em>, <em>positive_label=-1</em>, <em>dict_file=''</em>, <em>result_file=''</em>, <em>num_results=1</em>, <em>delimited=True</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">evaluator_base</code><span class="sig-paren">(</span><em>input</em>, <em>type</em>, <em>label=None</em>, <em>weight=None</em>, <em>name=None</em>, <em>chunk_scheme=None</em>, <em>num_chunk_types=None</em>, <em>classification_threshold=None</em>, <em>positive_label=None</em>, <em>dict_file=None</em>, <em>result_file=None</em>, <em>num_results=None</em>, <em>delimited=None</em><span class="sig-paren">)</span></dt>
 <dd><p>Evaluator will evaluate the network status while training/testing.</p>
 <p>User can use evaluator by classify/regression job. For example.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">classify</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">evaluator</span><span class="o">=</span><span class="n">classification_error_evaluator</span><span class="p">)</span>
