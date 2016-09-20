@@ -26,11 +26,7 @@ namespace paddle {
 bool CostLayer::init(const LayerMap& layerMap,
                      const ParameterMap& parameterMap) {
   bool ret = Layer::init(layerMap, parameterMap);
-  if (config_.has_coeff()) {
-    coeff_ = config_.coeff();  // coeff only affact bp
-  } else {
-    coeff_ = real(1.0);
-  }
+  coeff_ = config_.coeff();
   if (!ret) return ret;
   CHECK_GE(inputLayers_.size(), 2UL);
   CHECK_LE(inputLayers_.size(), 3UL);

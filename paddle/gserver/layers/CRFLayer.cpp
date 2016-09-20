@@ -31,7 +31,7 @@ bool CRFLayer::init(const LayerMap& layerMap,
   }
 
   // coeff only affect bp, keep consistent with CostLayer
-  coeff_ = config_.has_coeff() ? config_.coeff() : real(1.0);
+  coeff_ = config_.coeff();
   if (inputLayers_.size() == 3) {
     weightLayer_ = inputLayers_[2];
   }
