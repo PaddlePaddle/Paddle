@@ -1,7 +1,11 @@
 Build and Install
 =================
 
-## Requirement
+* [1. Requirement](#Requirement)
+* [2. Build on Ubuntu](#ubuntu)
+* [3. Build on Mac OS X](#mac)
+
+## <span id="Requirement">Requirement</span>
 
 ### Dependents
 
@@ -28,7 +32,7 @@ PaddlePaddle also support some build options, you have to install related librar
 - **WITH_STYLE_CHECK**: Style check for source code
 
 
-## Building on Ubuntu14.04
+## <span id="ubuntu">Building on Ubuntu14.04</span>
 
 ### Install Dependencies
 
@@ -44,7 +48,7 @@ sudo apt-get install libgflags-dev
 sudo apt-get install libgtest-dev
 sudo pip install wheel
 pushd /usr/src/gtest
-cmake .
+cmake ..
 make
 sudo cp *.a /usr/lib
 popd
@@ -102,19 +106,19 @@ Here are some examples of cmake command with different options:
 **only cpu**
 
 ```bash
-cmake -DWITH_GPU=OFF -DWITH_DOC=OFF
+cmake -DWITH_GPU=OFF -DWITH_DOC=OFF ..
 ```
 
 **gpu**
 
 ```bash
-cmake -DWITH_GPU=ON -DWITH_DOC=OFF
+cmake -DWITH_GPU=ON -DWITH_DOC=OFF ..
 ```
 
 **gpu with doc and swig**
 
 ```bash
-cmake -DWITH_GPU=ON -DWITH_DOC=ON -DWITH_SWIG_PY=ON
+cmake -DWITH_GPU=ON -DWITH_DOC=ON -DWITH_SWIG_PY=ON ..
 ``` 
 
 Finally, you can download source code and build:
@@ -138,4 +142,130 @@ And if you set WITH_SWIG_PY=ON, you have to install related python predict api a
 
 ```bash
 pip install <path to install>/opt/paddle/share/wheels/*.whl
+```
+## <span id="mac">Building on Mac OS X</span>
+
+### Prerequisites
+This guide is based on Mac OS X 10.11 (El Capitan). Note that if you are running an up to date version of OS X, 
+you will already have Python 2.7.10 and Numpy 1.8 installed.
+
+The best option is to use the package manager homebrew to handle installations and upgrades for you.
+To install homebrew, first open a terminal window (you can find Terminal in the Utilities folder in Applications), and issue the command:
+
+```bash
+# install brew
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+# install pip
+easy_install pip
+```
+
+### Install Dependencies
+
+- **CPU Dependencies**
+
+```bash
+# Install fundamental dependents 
+brew install glog gflags cmake protobuf openblas
+
+# Install google test on Mac OS X
+# Download gtest 1.7.0
+wget https://github.com/google/googletest/archive/release-1.7.0.tar.gz
+tar -xvf googletest-release-1.7.0.tar.gz && cd googletest-release-1.7.0
+# Build gtest
+mkdir build && cmake ..
+make
+# Install gtest library
+sudo cp -r ../include/gtest /usr/local/include/
+sudo cp lib*.a /usr/local/lib
+```
+    
+  
+- **GPU Dependencies(optional)**
+
+If you need to build GPU version, the first thing you need is a machine that has NVIDIA GPU and CUDA installed.
+And you also need to install cuDNN.
+
+You can download CUDA toolkit and cuDNN from nvidia website:
+    
+```bash
+https://developer.nvidia.com/cuda-downloads
+https://developer.nvidia.com/cudnn
+```
+You can copy cuDNN files into the CUDA toolkit directory, for instance:
+
+```bash
+sudo tar -xzf cudnn-7.5-osx-x64-v5.0-ga.tgz -C /usr/local
+sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
+```
+Then you need to set DYLD\_LIBRARY\_PATH, CUDA\_HOME and PATH environment variables in ~/.bashrc.
+
+```bash
+export DYLD_LIBRARY_PATH=/usr/local/cuda/lib:$DYLD_LIBRARY_PATH
+export PATH=/usr/local/cuda/bin:$PATH
+```
+- **Python Dependencies(optional)**
+
+If you want to compile PaddlePaddle with python predict API, you need to add -DWITH_SWIG_PY=ON in cmake command and install these first:
+
+```bash
+brew install swig
+```
+
+- **Doc Dependencies(optional)**
+
+If you want to compile PaddlePaddle with doc, you need to add -DWITH_DOC=ON in cmake command and install these first:
+
+```bash
+pip install 'sphinx>=1.4.0'
+pip install sphinx_rtd_theme breathe recommonmark
+brew install doxygen 
+```
+
+### Build and Install
+
+CMake can find dependent libraries in system default paths firstly.
+After installing some optional libraries, corresponding build option will be on automatically (for instance, glog, gtest and gflags).
+If not found, you have to set following variables manually via CMake command (CUDNN_ROOT, ATLAS_ROOT, MKL_ROOT, OPENBLAS_ROOT).
+
+Here are some examples of CMake command with different options:
+
+**only cpu**
+
+```bash
+cmake -DWITH_GPU=OFF -DWITH_DOC=OFF ..
+```
+
+**gpu**
+
+```bash
+cmake -DWITH_GPU=ON -DWITH_DOC=OFF ..
+```
+
+**gpu with doc and swig**
+
+```bash
+cmake -DWITH_GPU=ON -DWITH_DOC=ON -DWITH_SWIG_PY=ON ..
+``` 
+
+Finally, you can download source code and build:
+
+```bash
+git clone https://github.com/baidu/Paddle paddle
+cd paddle
+mkdir build
+cd build
+# you can add build option here, such as:    
+cmake -DWITH_GPU=ON -DWITH_DOC=OFF -DCMAKE_INSTALL_PREFIX=<path to install> ..
+# please use sudo make install, if you want
+# to install PaddlePaddle into the system
+make -j `nproc` && make install
+# PaddlePaddle installation path
+export PATH=<path to install>/bin:$PATH
+```
+**Note**
+
+And if you set WITH_SWIG_PY=ON, you have to install related python predict api at the same time:
+
+```bash
+sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
 ```
