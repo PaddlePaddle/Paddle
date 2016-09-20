@@ -14,7 +14,7 @@
 
 __all__ = ["TanhActivation", "SigmoidActivation",
            "SoftmaxActivation", "IdentityActivation", "LinearActivation",
-           'SequenceSoftmaxActivation',
+           'SequenceSoftmaxActivation', 'ExpActivation',
            "ReluActivation", "BReluActivation", "SoftReluActivation", "STanhActivation",
            "AbsActivation", "SquareActivation", "BaseActivation"]
 
@@ -185,3 +185,12 @@ class SquareActivation(BaseActivation):
     """
 
     def __init__(self): BaseActivation.__init__(self, 'square', False)
+
+class ExpActivation(BaseActivation):
+    """
+    Exponential Activation.
+    
+    .. math::
+       f(z) = e^z.
+    """
+    def __init__(self): BaseActivation.__init__(self, 'exponential', False)
