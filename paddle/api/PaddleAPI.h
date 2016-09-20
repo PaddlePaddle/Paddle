@@ -56,10 +56,10 @@ class UnsupportError {};
 
 /// This type will map to python's list of float.
 struct FloatArray {
-  const real* buf;
+  const float* buf;
   const size_t length;
   bool needFree;  // true if the buf is dynamic alloced.
-  FloatArray(const real* b, const size_t l);
+  FloatArray(const float* b, const size_t l);
 };
 
 /// This type will map to python's list of int
@@ -72,11 +72,11 @@ struct IntArray {
 
 /// This type will map to python's list of (int, float)
 struct IntWithFloatArray {
-  const real* valBuf;
+  const float* valBuf;
   const int* idxBuf;
   const size_t length;
   bool needFree;
-  IntWithFloatArray(const real* v, const int* i, size_t l, bool f = false);
+  IntWithFloatArray(const float* v, const int* i, size_t l, bool f = false);
 };
 
 enum SparseValueType { SPARSE_NON_VALUE = 0, SPARSE_VALUE = 1 };
@@ -122,7 +122,7 @@ public:
    * @param data  list of float should be passed in python.
    * @note        the value will be copy into a new matrix.
    */
-  static Matrix* createDense(const std::vector<real>& data, size_t height,
+  static Matrix* createDense(const std::vector<float>& data, size_t height,
                              size_t width, bool useGpu = false);
 
   /**
@@ -134,11 +134,11 @@ public:
    *  @param copy  true if copy into a new matrix, false will create
    *               matrix inplace.
    */
-  static Matrix* createCpuDenseFromNumpy(real* data, int dim1, int dim2,
+  static Matrix* createCpuDenseFromNumpy(float* data, int dim1, int dim2,
                                          bool copy = false);
 
   /// Create Gpu Dense Matrix from numpy matrix, dtype=float32
-  static Matrix* createGpuDenseFromNumpy(real* data, int dim1, int dim2);
+  static Matrix* createGpuDenseFromNumpy(float* data, int dim1, int dim2);
 
   /**
    * Cast to numpy matrix.
@@ -154,15 +154,15 @@ public:
    * numpy_mat = m.toNumpyMat()
    * @endcode
    */
-  void toNumpyMatInplace(real** view_data, int* dim1,
+  void toNumpyMatInplace(float** view_data, int* dim1,
                          int* dim2) throw(UnsupportError);
 
   /// Copy To numpy mat.
-  void copyToNumpyMat(real** view_m_data, int* dim1,
+  void copyToNumpyMat(float** view_m_data, int* dim1,
                       int* dim2) throw(UnsupportError);
 
   /// Copy From Numpy Mat
-  void copyFromNumpyMat(real* data, int dim1, int dim2) throw(UnsupportError,
+  void copyFromNumpyMat(float* data, int dim1, int dim2) throw(UnsupportError,
                                                                RangeError);
 
   /// return true if this matrix is sparse.
@@ -181,9 +181,9 @@ public:
 
   size_t getWidth() const;
 
-  real get(size_t x, size_t y) const throw(RangeError);
+  float get(size_t x, size_t y) const throw(RangeError);
 
-  void set(size_t x, size_t y, real val) throw(RangeError, UnsupportError);
+  void set(size_t x, size_t y, float val) throw(RangeError, UnsupportError);
 
   /// return type is list of float
   FloatArray getData() const;
@@ -195,8 +195,8 @@ public:
    */
   void sparseCopyFrom(const std::vector<int>& rows,
                       const std::vector<int>& cols,
-                      const std::vector<real>& values =
-                          std::vector<real>()) throw(UnsupportError);
+                      const std::vector<float>& values =
+                          std::vector<float>()) throw(UnsupportError);
 
   bool isGpu() const;
 
@@ -228,33 +228,33 @@ public:
    *
    * It will create a new vector, and copy data into it.
    */
-  static Vector* create(const std::vector<real>& data, bool useGpu = false);
+  static Vector* create(const std::vector<float>& data, bool useGpu = false);
 
   /**
    * Create Cpu Vector from numpy array, which dtype=float32
    *
    * If copy is false, it will create vector inplace.
    */
-  static Vector* createCpuVectorFromNumpy(real* data, int dim,
+  static Vector* createCpuVectorFromNumpy(float* data, int dim,
                                           bool copy = false);
 
   /// Create Gpu Vector from numpy array, which dtype=float32
-  static Vector* createGpuVectorFromNumpy(real* data, int dim);
+  static Vector* createGpuVectorFromNumpy(float* data, int dim);
 
   /// Cast to numpy array inplace.
-  void toNumpyArrayInplace(real** view_data, int* dim1) throw(UnsupportError);
+  void toNumpyArrayInplace(float** view_data, int* dim1) throw(UnsupportError);
 
   /// Copy to numpy array.
-  void copyToNumpyArray(real** view_m_data, int* dim1);
+  void copyToNumpyArray(float** view_m_data, int* dim1);
 
   /// Copy from numpy array.
-  void copyFromNumpyArray(real* data, int dim);
+  void copyFromNumpyArray(float* data, int dim);
 
   /// __getitem__ in python
-  real get(const size_t idx) const throw(RangeError, UnsupportError);
+  float get(const size_t idx) const throw(RangeError, UnsupportError);
 
   /// __setitem__ in python
-  void set(const size_t idx, real val) throw(RangeError, UnsupportError);
+  void set(const size_t idx, float val) throw(RangeError, UnsupportError);
 
   /// Return is GPU vector or not.
   bool isGpu() const;

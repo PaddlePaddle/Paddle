@@ -44,7 +44,7 @@ Matrix* Matrix::createZero(size_t height, size_t width, bool useGpu) {
   return m;
 }
 
-Matrix* Matrix::createDense(const std::vector<real>& data, size_t height,
+Matrix* Matrix::createDense(const std::vector<float>& data, size_t height,
                             size_t width, bool useGpu) {
   auto m = new Matrix();
   m->m->mat = paddle::Matrix::create(height, width, useGpu);
@@ -52,7 +52,7 @@ Matrix* Matrix::createDense(const std::vector<real>& data, size_t height,
   return m;
 }
 
-Matrix* Matrix::createCpuDenseFromNumpy(real* data, int dim1, int dim2,
+Matrix* Matrix::createCpuDenseFromNumpy(float* data, int dim1, int dim2,
                                         bool copy) {
   auto m = new Matrix();
   if (copy) {
@@ -64,7 +64,7 @@ Matrix* Matrix::createCpuDenseFromNumpy(real* data, int dim1, int dim2,
   return m;
 }
 
-Matrix* Matrix::createGpuDenseFromNumpy(real* data, int dim1, int dim2) {
+Matrix* Matrix::createGpuDenseFromNumpy(float* data, int dim1, int dim2) {
   auto m = new Matrix();
   m->m->mat = paddle::Matrix::create(dim1, dim2, false, true);
   m->m->mat->copyFrom(data, dim1 * dim2);
@@ -86,7 +86,7 @@ size_t Matrix::getHeight() const { return m->mat->getHeight(); }
 
 size_t Matrix::getWidth() const { return m->mat->getWidth(); }
 
-real Matrix::get(size_t x, size_t y) const throw(RangeError) {
+float Matrix::get(size_t x, size_t y) const throw(RangeError) {
   if (x > this->getWidth() || y > this->getHeight()) {
     RangeError e;
     throw e;
@@ -94,7 +94,7 @@ real Matrix::get(size_t x, size_t y) const throw(RangeError) {
   return m->mat->getElement(x, y);
 }
 
-void Matrix::set(size_t x, size_t y, real val) throw(RangeError,
+void Matrix::set(size_t x, size_t y, float val) throw(RangeError,
                                                      UnsupportError) {
   if (x > this->getWidth() || y > this->getHeight()) {
     RangeError e;
@@ -193,10 +193,10 @@ FloatArray Matrix::getData() const {
   auto rawMat = m->mat.get();
   if (dynamic_cast<paddle::GpuMemoryHandle*>(rawMat->getMemoryHandle().get())) {
     // is gpu. then copy data
-    real* data = rawMat->getData();
+    float* data = rawMat->getData();
     size_t len = rawMat->getElementCnt();
-    real* cpuData = new real[len];
-    hl_memcpy_device2host(cpuData, data, len * sizeof(real));
+    float* cpuData = new float[len];
+    hl_memcpy_device2host(cpuData, data, len * sizeof(float));
     FloatArray ret_val(cpuData, len);
     ret_val.needFree = true;
     return ret_val;
@@ -208,7 +208,7 @@ FloatArray Matrix::getData() const {
 
 void Matrix::sparseCopyFrom(
     const std::vector<int>& rows, const std::vector<int>& cols,
-    const std::vector<real>& vals) throw(UnsupportError) {
+    const std::vector<float>& vals) throw(UnsupportError) {
   auto cpuSparseMat =
       std::dynamic_pointer_cast<paddle::CpuSparseMatrix>(m->mat);
   if (cpuSparseMat != nullptr) {
@@ -217,7 +217,7 @@ void Matrix::sparseCopyFrom(
     //  <<" ValSize = "<<vals.size();
     cpuSparseMat->copyFrom(const_cast<std::vector<int>&>(rows),
                            const_cast<std::vector<int>&>(cols),
-                           const_cast<std::vector<real>&>(vals));
+                           const_cast<std::vector<float>&>(vals));
   } else {
     UnsupportError e;
     throw e;
@@ -226,7 +226,7 @@ void Matrix::sparseCopyFrom(
 
 void* Matrix::getSharedPtr() const { return &m->mat; }
 
-void Matrix::toNumpyMatInplace(real** view_data, int* dim1,
+void Matrix::toNumpyMatInplace(float** view_data, int* dim1,
                                int* dim2) throw(UnsupportError) {
   auto cpuMat = std::dynamic_pointer_cast<paddle::CpuMatrix>(m->mat);
   if (cpuMat) {
@@ -237,9 +237,9 @@ void Matrix::toNumpyMatInplace(real** view_data, int* dim1,
     throw UnsupportError();
   }
 }
-void Matrix::copyToNumpyMat(real** view_m_data, int* dim1,
+void Matrix::copyToNumpyMat(float** view_m_data, int* dim1,
                             int* dim2) throw(UnsupportError) {
-  static_assert(sizeof(paddle::real) == sizeof(real),
+  static_assert(sizeof(float) == sizeof(float),
                 "Currently PaddleAPI only support for single "
                 "precision version of paddle.");
   if (this->isSparse()) {
@@ -247,16 +247,16 @@ void Matrix::copyToNumpyMat(real** view_m_data, int* dim1,
   } else {
     *dim1 = m->mat->getHeight();
     *dim2 = m->mat->getWidth();
-    *view_m_data = new real[(*dim1) * (*dim2)];
+    *view_m_data = new float[(*dim1) * (*dim2)];
     if (auto cpuMat = dynamic_cast<paddle::CpuMatrix*>(m->mat.get())) {
       auto src = cpuMat->getData();
       auto dest = *view_m_data;
-      std::memcpy(dest, src, sizeof(paddle::real) * (*dim1) * (*dim2));
+      std::memcpy(dest, src, sizeof(float) * (*dim1) * (*dim2));
     } else if (auto gpuMat = dynamic_cast<paddle::GpuMatrix*>(m->mat.get())) {
       auto src = gpuMat->getData();
       auto dest = *view_m_data;
       hl_memcpy_device2host(dest, src,
-                            sizeof(paddle::real) * (*dim1) * (*dim2));
+                            sizeof(float) * (*dim1) * (*dim2));
     } else {
       LOG(WARNING) << "Unexpected Situation";
       throw UnsupportError();
@@ -264,7 +264,7 @@ void Matrix::copyToNumpyMat(real** view_m_data, int* dim1,
   }
 }
 
-void Matrix::copyFromNumpyMat(real* data, int dim1,
+void Matrix::copyFromNumpyMat(float* data, int dim1,
                               int dim2) throw(UnsupportError, RangeError) {
   if (isSparse()) {
     throw UnsupportError();
