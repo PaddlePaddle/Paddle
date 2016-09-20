@@ -141,7 +141,7 @@ void SgdThreadUpdater::traverse(GetTraverseCallback getTraverseCallback) {
   } else if (hasCpuPara) {
     getGlobalSyncThreadPool()->exec(cpuTraverse);
   } else if (hasGpuPara) {
-    cpuTraverse(0, 0);
+      gpuTraverse(0, 0);
   }
 }
 
