@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <vector>
+#include <stdlib.h>
 
 #undef PADDLE_DISABLE_TIMER
 #include "paddle/utils/Stat.h"
@@ -41,7 +42,6 @@ public:
 TEST(MultinomialSampler, gen) {
   int numGrids = 1024 * 1024;
   int size = 1024 * 4;
-
   default_random_engine reng;
   uniform_int_distribution<int> rand(1, numGrids / size * 1.8);
   vector<real> prob;
@@ -50,6 +50,7 @@ TEST(MultinomialSampler, gen) {
     prob.push_back(rand(reng));
     sum += prob.back();
   }
+
   CHECK_LE(sum, numGrids);
   prob.back() += numGrids - sum;
 
@@ -72,9 +73,36 @@ TEST(MultinomialSampler, gen) {
   for (int i = 0; i < size; ++i) {
     if (prob[i] != counts[i]) {
       EXPECT_EQ(prob[i], counts[i]);
-      LOG(INFO) << "i=" << i;
       break;
     }
+  }
+}
+
+
+TEST(MultinomialSampler, larger_then_1) {
+  std::vector<int> probs = { 1, 100, 100, 1, 1};
+  std::vector<real> fProbs;
+  std::transform(probs.begin(), probs.end(),
+                 std::back_insert_iterator<std::vector<real>>(fProbs),
+                 [](int a){
+    return (real)a;
+  });
+
+  MultinomialSamplerTester sampler(fProbs.data(), probs.size());
+
+  int sum = std::accumulate(probs.begin(), probs.end(), 0);
+
+  std::vector<int> cnt(probs.size(), 0);
+
+
+  double divides = (double)probs.size() / (double) sum;
+
+  for (int i = 0; i < sum; ++i) {
+    ++cnt[sampler.testGen([&] {return i * divides;})];
+  }
+
+  for (size_t i=0; i < probs.size(); ++i) {
+    CHECK_LE(std::abs(cnt[i] - probs[i]), 1);
   }
 }
 
@@ -134,6 +162,7 @@ void benchmarkRandom() {
   }
   LOG(INFO) << "sum1=" << sum1;
 }
+
 
 int main(int argc, char** argv) {
   initMain(argc, argv);
