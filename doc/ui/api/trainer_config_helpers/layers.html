@@ -257,7 +257,7 @@ default Bias.</li>
 <h2>conv_operator<a class="headerlink" href="#conv-operator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_operator</code><span class="sig-paren">(</span><em>input</em>, <em>filter_size</em>, <em>num_filters</em>, <em>num_channel=None</em>, <em>stride=1</em>, <em>padding=0</em>, <em>filter_size_y=None</em>, <em>stride_y=None</em>, <em>padding_y=None</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_operator</code><span class="sig-paren">(</span><em>input</em>, <em>filter_size</em>, <em>num_filters</em>, <em>num_channel=None</em>, <em>stride=1</em>, <em>padding=0</em>, <em>groups=1</em>, <em>filter_size_y=None</em>, <em>stride_y=None</em>, <em>padding_y=None</em><span class="sig-paren">)</span></dt>
 <dd><p>Different from img_conv_layer, conv_op is an Operator, which can be used
 in mixed_layer. And conv_op takes two inputs to perform convolution.
 The first input is the image and the second is filter kernel. It only
