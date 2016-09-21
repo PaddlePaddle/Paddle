@@ -2457,11 +2457,13 @@ class MixedLayer(LayerBase):
                 input_layer = self.get_input_layer(input_index)
                 operator_conf.input_sizes.append(input_layer.size)
                 operator_input_index.append(input_index)
-            size = operator.calc_output_size(operator_conf.input_sizes)
-            if size != 0:
-                if self.config.size == 0:
+            if self.config.size == 0:
+                size = operator.calc_output_size(operator_conf.input_sizes)
+                if size != 0:
                     self.set_layer_size(size)
-                else:
+            else:
+                size = operator.calc_output_size()
+                if size != 0:
                     config_assert(size == self.config.size,
                                   "different inputs have different size: %s vs. %s" %
                                   (size, self.config.size))
