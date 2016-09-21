@@ -53,11 +53,7 @@ private:
   void printAll();
   std::unique_ptr<Allocator> allocator_;
   std::mutex mutex_;
-#if defined(__APPLE__) || defined(__OSX__)
-  std::map<size_t, std::vector<void*>> pool_;
-#else
   std::unordered_map<size_t, std::vector<void*>> pool_;
-#endif
   size_t sizeLimit_;
   size_t poolMemorySize_;
   std::string name_;
