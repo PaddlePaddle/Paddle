@@ -286,7 +286,6 @@ def full_matrix_projection(input, size=0, param_attr=None):
                                 size=size,
                                 **param_attr.attr)
     proj.origin = input
-    proj.origin.projection = "matrix"
     return proj
 
 
@@ -333,7 +332,6 @@ def table_projection(input, size=0, param_attr=None):
                            size=size,
                            **param_attr.attr)
     proj.origin = input
-    proj.origin.projection = "table"
     return proj
 
 
@@ -377,12 +375,10 @@ def identity_projection(input, offset=None):
     if offset is None:
         proj = IdentityProjection(input_layer_name=input.name)
         proj.origin = input
-        proj.origin.projection = 'identity'
     else:
         proj = IdentityOffsetProjection(input_layer_name=input.name,
                                         offset=offset)
         proj.origin = input
-        proj.origin.projection = 'identity_offset'
     return proj
 
 
@@ -414,7 +410,6 @@ def dotmul_projection(input, param_attr=None):
                             size=input.size,
                             **param_attr.attr)
     proj.origin = input 
-    proj.origin.projection = 'dot_mul'
     return proj
 
 def dotmul_operator(x, y, scale=1):
@@ -493,7 +488,6 @@ def context_projection(input, context_len, context_start=None,
                              trainable_padding=trainable,
                              **extra_dict)
     proj.origin = input
-    proj.origin.projection = 'context'
     return proj
 
 
@@ -2732,7 +2726,6 @@ def conv_operator(input, filter_size, num_filters,
                                      stride_y=stride_y,
                                      groups=groups))
     op.origin = input
-    op.origin.operator = "conv_op"
     return op
 
 
