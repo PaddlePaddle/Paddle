@@ -2668,7 +2668,7 @@ def classification_cost(input, label, name=None,
     return LayerOutput(name, LayerType.COST, parents=[input, label])
 
 def conv_operator(input, filter_size, num_filters,
-                  num_channel=None, stride=1, padding=0,
+                  num_channel=None, stride=1, padding=0, groups=1,
                   filter_size_y=None, stride_y=None, padding_y=None):
     """
     Different from img_conv_layer, conv_op is an Operator, which can be used
@@ -2715,7 +2715,7 @@ def conv_operator(input, filter_size, num_filters,
         stride_y = stride
     if padding_y is None:
         padding_y = padding
-    op = ConvOperator(input_layer_name=[x.name for x in input],
+    op = ConvOperator(input_layer_names=[x.name for x in input],
                       num_filters = num_filter,
                       conv_conf=Conv(filter_size=filter_size,
                                      padding=padding,
@@ -2723,7 +2723,8 @@ def conv_operator(input, filter_size, num_filters,
                                      channels=num_channel,
                                      filter_size_y=filter_size_y,
                                      padding_y=padding_y,
-                                     stride_y=stride_y))
+                                     stride_y=stride_y,
+                                     groups=groups))
     op.origin = input
     op.origin.operator = "conv_op"
     return op
