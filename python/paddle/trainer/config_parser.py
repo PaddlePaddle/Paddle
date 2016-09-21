@@ -636,7 +636,6 @@ class Operator(Cfg):
             input_layer_names,
             ):
         self.add_keys(locals())
-
         self.operator_conf = OperatorConfig()
         self.operator_conf.type = self.type
 
@@ -686,12 +685,15 @@ class ConvOperator(Operator):
         if num_filters is not None:
             self.operator_conf.num_filters = num_filters
 
-        parse_conv(conv_conf, input_layer_names[0], self.operator_conf.conv_conf, True)
+        parse_conv(conv_conf,
+                   MakeLayerNameInSubmodel(input_layer_names[0]),
+                   self.operator_conf.conv_conf)
         self.operator_conf.output_size = (self.operator_conf.conv_conf.output_x  ** 2) * num_filters
 
         config_assert(len(input_layer_names) == 2, "Conv is binary operator")
 
-
+    def calc_output_size(self, input_sizes):
+        return self.operator_conf.output_size
 
 
 # please refer to the comments in proto/ModelConfig.proto
