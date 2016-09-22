@@ -151,28 +151,6 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
 </pre></div>
 </div>
 <p>The decoder uses <code class="code docutils literal"><span class="pre">recurrent_group</span></code> to define the recurrent neural network. The step and output functions are defined in <code class="code docutils literal"><span class="pre">gru_decoder_with_attention</span></code>:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">trg_embedding</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span>
-    <span class="nb">input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;target_language_word&#39;</span><span class="p">,</span>
-                     <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">),</span>
-    <span class="n">size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">,</span>
-    <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;_target_language_embedding&#39;</span><span class="p">))</span>
-<span class="c1"># For decoder equipped with attention mechanism, in training,</span>
-<span class="c1"># target embedding (the groudtruth) is the data input,</span>
-<span class="c1"># while encoded source sequence is accessed to as an unbounded memory.</span>
-<span class="c1"># StaticInput means the same value is utilized at different time steps.</span>
-<span class="c1"># Otherwise, it is a sequence input. Inputs at different time steps are different.</span>
-<span class="c1"># All sequence inputs should have the same length.</span>
-<span class="n">decoder</span> <span class="o">=</span> <span class="n">recurrent_group</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">decoder_group_name</span><span class="p">,</span>
-                          <span class="n">step</span><span class="o">=</span><span class="n">gru_decoder_with_attention</span><span class="p">,</span>
-                          <span class="nb">input</span><span class="o">=</span><span class="p">[</span>
-                              <span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_vector</span><span class="p">,</span>
-                                          <span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
-                              <span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_proj</span><span class="p">,</span>
-                                          <span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
-                              <span class="n">trg_embedding</span>
-                          <span class="p">])</span>
-</pre></div>
-</div>
 <p>The implementation of the step function is listed as below. First, it defines the <strong>memory</strong> of the decoder network. Then it defines attention, gated recurrent unit step function, and the output function:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">gru_decoder_with_attention</span><span class="p">(</span><span class="n">enc_vec</span><span class="p">,</span> <span class="n">enc_proj</span><span class="p">,</span> <span class="n">current_word</span><span class="p">):</span>
     <span class="c1"># Defines the memory of the decoder.</span>
@@ -221,10 +199,8 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
 </li>
 </ul>
 <p>The code is listed below:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">gen_inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_vector</span><span class="p">,</span>
-                          <span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
-              <span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_proj</span><span class="p">,</span>
-                          <span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span> <span class="p">]</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">group_inputs</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_vector</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
+              <span class="n">StaticInput</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">encoded_proj</span><span class="p">,</span><span class="n">is_seq</span><span class="o">=</span><span class="bp">True</span><span class="p">)]</span>
 <span class="c1"># In generation, decoder predicts a next target word based on</span>
 <span class="c1"># the encoded source sequence and the last generated target word.</span>
 <span class="c1"># The encoded source sequence (encoder&#39;s output) must be specified by</span>
@@ -235,10 +211,10 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
     <span class="n">size</span><span class="o">=</span><span class="n">target_dict_dim</span><span class="p">,</span>
     <span class="n">embedding_name</span><span class="o">=</span><span class="s1">&#39;_target_language_embedding&#39;</span><span class="p">,</span>
     <span class="n">embedding_size</span><span class="o">=</span><span class="n">word_vector_dim</span><span class="p">)</span>
-<span class="n">gen_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trg_embedding</span><span class="p">)</span>
+<span class="n">group_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trg_embedding</span><span class="p">)</span>
 <span class="n">beam_gen</span> <span class="o">=</span> <span class="n">beam_search</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">decoder_group_name</span><span class="p">,</span>
                        <span class="n">step</span><span class="o">=</span><span class="n">gru_decoder_with_attention</span><span class="p">,</span>
-                       <span class="nb">input</span><span class="o">=</span><span class="n">gen_inputs</span><span class="p">,</span>
+                       <span class="nb">input</span><span class="o">=</span><span class="n">group_inputs</span><span class="p">,</span>
                        <span class="n">id_input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;sent_id&quot;</span><span class="p">,</span>
                                            <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
                        <span class="n">dict_file</span><span class="o">=</span><span class="n">trg_dict_path</span><span class="p">,</span>

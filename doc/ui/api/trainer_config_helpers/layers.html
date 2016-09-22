@@ -1148,7 +1148,6 @@ It performs element-wise multiplication with weight.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter config, None if use default.</li>
-<li><strong>scale</strong> (<em>float</em>) &#8211; config scalar, default value is one.</li>
 </ul>
 </td>
 </tr>
@@ -1156,6 +1155,42 @@ It performs element-wise multiplication with weight.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DotMulProjection</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="dotmul-operator">
+<h2>dotmul_operator<a class="headerlink" href="#dotmul-operator" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">dotmul_operator</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>scale=1</em><span class="sig-paren">)</span></dt>
+<dd><p>DotMulOperator takes two inputs and performs element-wise multiplication:</p>
+<div class="math">
+\[out.row[i] += scale * (x.row[i] .* y.row[i])\]</div>
+<p>where <span class="math">\(.*\)</span> means element-wise multiplication, and
+scale is a config scalar, its default value is one.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">op</span> <span class="o">=</span> <span class="n">dotmul_operator</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>x</strong> (<em>LayerOutput</em>) &#8211; Input layer1</li>
+<li><strong>y</strong> (<em>LayerOutput</em>) &#8211; Input layer2</li>
+<li><strong>scale</strong> (<em>float</em>) &#8211; config scalar, default value is one.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A DotMulOperator Object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DotMulOperator</p>
 </td>
 </tr>
 </tbody>
@@ -2539,6 +2574,7 @@ It is used by recurrent layer group.</p>
 <li><a class="reference internal" href="#id2">mixed_layer</a></li>
 <li><a class="reference internal" href="#embedding-layer">embedding_layer</a></li>
 <li><a class="reference internal" href="#dotmul-projection">dotmul_projection</a></li>
+<li><a class="reference internal" href="#dotmul-operator">dotmul_operator</a></li>
 <li><a class="reference internal" href="#full-matrix-projection">full_matrix_projection</a></li>
 <li><a class="reference internal" href="#identity-projection">identity_projection</a></li>
 <li><a class="reference internal" href="#table-projection">table_projection</a></li>
