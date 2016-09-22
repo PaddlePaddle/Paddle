@@ -58,10 +58,10 @@ MultinomialSampler::MultinomialSampler(const real* prob, int size)
     }
 
     if (intervals_[bigPos].thresh < 1) {
-      bigPos = nextBigPos(0);
-    } else {  // the big interval becomes a small interval.
-      smallPos = nextSmallPos(0);
+      // the big interval becomes a small interval.
+      bigPos = nextBigPos(bigPos + 1);
     }
+    smallPos = nextSmallPos(0);
   }
 
   // Handle the inaccuracy caused by finite-precision arithmetic which
