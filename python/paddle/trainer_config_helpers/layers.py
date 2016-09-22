@@ -286,7 +286,6 @@ def full_matrix_projection(input, size=0, param_attr=None):
                                 size=size,
                                 **param_attr.attr)
     proj.origin = input
-    proj.origin.projection = "matrix"
     return proj
 
 
@@ -333,7 +332,6 @@ def table_projection(input, size=0, param_attr=None):
                            size=size,
                            **param_attr.attr)
     proj.origin = input
-    proj.origin.projection = "table"
     return proj
 
 
@@ -377,17 +375,15 @@ def identity_projection(input, offset=None):
     if offset is None:
         proj = IdentityProjection(input_layer_name=input.name)
         proj.origin = input
-        proj.origin.projection = 'identity'
     else:
         proj = IdentityOffsetProjection(input_layer_name=input.name,
                                         offset=offset)
         proj.origin = input
-        proj.origin.projection = 'identity_offset'
     return proj
 
 
 @wrap_param_attr_default()
-def dotmul_projection(input, param_attr=None, scale=1):
+def dotmul_projection(input, param_attr=None):
     """
     DotMulProjection with a layer as input.
     It performs element-wise multiplication with weight.
@@ -407,30 +403,35 @@ def dotmul_projection(input, param_attr=None, scale=1):
     :type input: LayerOutput
     :param param_attr: Parameter config, None if use default.
     :type param_attr: ParameterAttribute
-    :param scale: config scalar, default value is one.
-    :type scale: float
     :return: A DotMulProjection Object.
     :rtype: DotMulProjection
     """
     proj = DotMulProjection(input_layer_name=input.name,
-                                size=input.size,
-                                **param_attr.attr)
-    proj.origin = input
+                            size=input.size,
+                            **param_attr.attr)
+    proj.origin = input 
     return proj
 
 def dotmul_operator(x, y, scale=1):
     """
     DotMulOperator takes two inputs and performs element-wise multiplication:
+
     .. math::
-       out.row[i] += scale * (in1.row[i] .* in2.row[i])
+       out.row[i] += scale * (x.row[i] .* y.row[i])
+
     where :math:`.*` means element-wise multiplication, and
     scale is a config scalar, its default value is one.
+
     The example usage is:
+
     .. code-block:: python
-       op = dotmul_operator(x, y,
-                              scale=1)
-    :param input: Input layer
-    :type input: LayerOutput
+
+       op = dotmul_operator(x=layer1, y=layer2, scale=0.5)
+
+    :param x: Input layer1
+    :type x: LayerOutput
+    :param y: Input layer2
+    :type y: LayerOutput
     :param scale: config scalar, default value is one.
     :type scale: float
     :return: A DotMulOperator Object.
@@ -487,7 +488,6 @@ def context_projection(input, context_len, context_start=None,
                              trainable_padding=trainable,
                              **extra_dict)
     proj.origin = input
-    proj.origin.projection = 'context'
     return proj
 
 
@@ -2728,7 +2728,6 @@ def conv_operator(img, filter, filter_size, num_filters,
                                      stride_y=stride_y,
                                      groups=groups))
     op.origin = [img, filter]
-    op.origin.operator = "conv_op"
     return op
 
 
