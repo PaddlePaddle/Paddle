@@ -85,6 +85,7 @@ bool CudnnConvLayer::init(const LayerMap &layerMap,
     biasOffset_ = numFilters_ / groups_[0];
   }
 
+  batchNum_ = 0;
   isSelectAlgo_ = false;
   return true;
 }
@@ -132,6 +133,9 @@ void CudnnConvLayer::reshape(int batchSize) {
   getOutput().setFrameHeight(outputH_);
   getOutput().setFrameWidth(outputW_);
 
+  isSelectAlgo_ = (batchSize == batchNum_);
+  batchNum_ = batchSize;
+
   size_t maxWorkSpace = 0;
   for (size_t i = 0; i < inputLayers_.size(); i++) {
     CHECK_EQ(inputLayers_[i]->getOutput().value->getWidth(),
@@ -160,6 +164,10 @@ void CudnnConvLayer::reshape(int batchSize) {
 
       maxWorkSpace = std::max(fwdLimitBytes_[i], bwdDataLimitBytes_[i]);
       maxWorkSpace = std::max(maxWorkSpace, bwdFilterLimitBytes_[i]);
+
+      VLOG(3) << getName() << " Fwd / BwdData / BwdFilter algo: " << fwdAlgo_[i]
+                           << " / " << bwdDataAlgo_[i]
+                           << " / " << bwdFilterAlgo_[i];
     }
   }
 
