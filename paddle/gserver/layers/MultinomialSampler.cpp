@@ -14,7 +14,6 @@ limitations under the License. */
 
 
 #include "MultinomialSampler.h"
-#include "paddle/utils/Logging.h"
 
 namespace paddle {
 
@@ -50,19 +49,27 @@ MultinomialSampler::MultinomialSampler(const real* prob, int size)
   int smallPos = nextSmallPos(0);
   int bigPos = nextBigPos(0);
 
-  while (smallPos < size && bigPos < size) {
-    while (intervals_[bigPos].thresh >= 1 && smallPos < size) {
-      intervals_[smallPos].otherId = bigPos;
-      intervals_[bigPos].thresh -= 1 - intervals_[smallPos].thresh;
-      smallPos = nextSmallPos(smallPos + 1);
-    }
-
-    if (intervals_[bigPos].thresh < 1) {
-      // the big interval becomes a small interval.
+  auto fillIntervals = [&]() {
+    while (bigPos < size) {
+      while (intervals_[bigPos].thresh > 1 && smallPos < size) {
+        intervals_[smallPos].otherId = bigPos;
+        intervals_[bigPos].thresh -= 1 - intervals_[smallPos].thresh;
+        smallPos = nextSmallPos(smallPos + 1);
+      }
+      if (smallPos >= size) break;
       bigPos = nextBigPos(bigPos + 1);
+      // If intervals_[bigPos].thresh < 1, it becomes a small interval
     }
-    smallPos = nextSmallPos(0);
-  }
+  };
+
+  fillIntervals();
+
+  smallPos = nextSmallPos(0);
+
+  // At this point there is no small intervals after bigPos. And this condition
+  // will remain true during the next fillIntervals()
+
+  fillIntervals();
 
   // Handle the inaccuracy caused by finite-precision arithmetic which
   // may results in some unprocessed small or big intervals at this point.
