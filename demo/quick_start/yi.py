@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+
+import sys
+import os
 import json
 import random
 from StringIO import StringIO
@@ -8,12 +11,12 @@ from optparse import OptionParser
 
 defaultFile = 'http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Electronics_5.json.gz'
 
-def parse(inputFile, topN, trainFile, testFile):
+def parse(inputFile, topN, outputDir):
     """
-    Parse Amazon Reviews JSON file and generate train.txt and test.txt.
+    Parse Amazon Reviews as a Gzip-ed JSON file and generate train.txt and test.txt.
     """
-    train = open(trainFile, 'w')
-    test = open(testFile, 'w')
+    train = open(os.path.join(outputDir, 'train.txt'), 'w')
+    test = open(os.path.join(outputDir, 'test.txt'), 'w')
 
     if inputFile.startswith("http"):
         request = urllib2.Request(inputFile)
@@ -60,4 +63,4 @@ if __name__ == '__main__':
     print "Downloading and processing the first %d records from %s ..." % (options.firstN, inputFile)
 
     random.seed(1)
-    parse(inputFile, options.firstN, '/tmp/train.txt', '/tmp/test.txt')
+    parse(inputFile, options.firstN, os.path.dirname(sys.argv[0]) or './')
