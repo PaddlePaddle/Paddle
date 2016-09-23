@@ -3,6 +3,7 @@ add_simple_unittest(test_Logging)
 add_simple_unittest(test_Thread)
 add_simple_unittest(test_StringUtils)
 add_simple_unittest(test_CustomStackTrace)
+add_simple_unittest(test_ThreadBarrier)
 
 add_executable(
     test_CustomStackTracePrint
