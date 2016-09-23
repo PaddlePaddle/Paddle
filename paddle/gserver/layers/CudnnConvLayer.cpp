@@ -133,6 +133,8 @@ void CudnnConvLayer::reshape(int batchSize) {
   getOutput().setFrameHeight(outputH_);
   getOutput().setFrameWidth(outputW_);
 
+  // if the batchSize remains the same, set isSelectAlgo_ true.
+  // Otherwise, set isSelectAlgo_ false and select algo again.
   isSelectAlgo_ = (batchSize == batchNum_);
   batchNum_ = batchSize;
 
