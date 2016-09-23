@@ -1,15 +1,28 @@
 # -*- coding: utf-8 -*-
 import json
 import random
+from StringIO import StringIO
+import gzip
+import urllib2
+from optparse import OptionParser
 
-def parse(jsonFile, topN, trainFile, testFile):
+defaultFile = 'http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Electronics_5.json.gz'
+
+def parse(inputFile, topN, trainFile, testFile):
     """
     Parse Amazon Reviews JSON file and generate train.txt and test.txt.
     """
     train = open(trainFile, 'w')
     test = open(testFile, 'w')
 
-    g = open(jsonFile, 'r')
+    if inputFile.startswith("http"):
+        request = urllib2.Request(inputFile)
+        response = urllib2.urlopen(request)
+        buf = StringIO(response.read())
+        g = gzip.GzipFile(fileobj=buf)
+    else:
+        g = gzip.open(inputFile, 'r')
+
     lines = 0
     for l in g:
         lines = lines + 1
@@ -33,5 +46,18 @@ def parse(jsonFile, topN, trainFile, testFile):
     test.close()
 
 if __name__ == '__main__':
+    parser = OptionParser(usage="usage: %prog [options] filename",
+                          version="%prog 1.0")
+    parser.add_option("-n", "--firstn",
+                      type="int",
+                      action="store",
+                      dest="firstN",
+                      default=100,
+                      help="Use the first N number of instances",)
+    (options, args) = parser.parse_args()
+
+    inputFile = args[0] if len(args) > 0 else defaultFile
+    print "Downloading and processing the first %d records from %s ..." % (options.firstN, inputFile)
+
     random.seed(1)
-    parse('data/reviews.json', 1000, '/tmp/train.txt', '/tmp/test.txt')
+    parse(inputFile, options.firstN, '/tmp/train.txt', '/tmp/test.txt')
