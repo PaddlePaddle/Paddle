@@ -201,6 +201,7 @@ class LayerOutput(object):
 
 ERROR_CLIPPING = 'error_clipping_threshold'
 DROPOUT = 'drop_rate'
+DEVICE = 'device'
 
 
 def check_input(input):
@@ -223,10 +224,12 @@ def check_input(input):
 
 
 def layer_support(*attrs):
+    attrs_list = list(attrs) 
+    attrs_list.append(DEVICE)
     def decorator(method):
         @functools.wraps(method)
         def wrapper(*args, **kwargs):
-            for attr in attrs:
+            for attr in attrs_list:
                 for each in args:
                     if isinstance(each, ExtraLayerAttribute):
                         setattr(each, '_'.join(['can', attr]), True)
@@ -2625,9 +2628,11 @@ def regression_cost(input, label, cost='square_error', name=None):
 
 
 @wrap_name_default("cost")
+@layer_support()
 def classification_cost(input, label, name=None,
                         cost="multi-class-cross-entropy",
-                        evaluator=classification_error_evaluator):
+                        evaluator=classification_error_evaluator,
+                        layer_attr=None):
     """
     classification cost Layer.
 
@@ -2640,13 +2645,16 @@ def classification_cost(input, label, name=None,
     :param cost: cost method.
     :type cost: basestring
     :param evaluator: Evaluator method.
+    :param layer_attr: layer's extra attribute.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
     assert input.layer_type != LayerType.DATA
     assert isinstance(input.activation, SoftmaxActivation)
     assert label.layer_type == LayerType.DATA
-    Layer(name=name, type=cost, inputs=[Input(input.name), Input(label.name)])
+    Layer(name=name, type=cost, inputs=[Input(input.name), Input(label.name)],
+          **ExtraLayerAttribute.to_kwargs(layer_attr))
 
     def __add_evaluator__(e):
         assert callable(e)
