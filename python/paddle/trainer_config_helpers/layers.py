@@ -286,7 +286,6 @@ def full_matrix_projection(input, size=0, param_attr=None):
                                 size=size,
                                 **param_attr.attr)
     proj.origin = input
-    proj.origin.projection = "matrix"
     return proj
 
 
@@ -333,7 +332,6 @@ def table_projection(input, size=0, param_attr=None):
                            size=size,
                            **param_attr.attr)
     proj.origin = input
-    proj.origin.projection = "table"
     return proj
 
 
@@ -377,17 +375,15 @@ def identity_projection(input, offset=None):
     if offset is None:
         proj = IdentityProjection(input_layer_name=input.name)
         proj.origin = input
-        proj.origin.projection = 'identity'
     else:
         proj = IdentityOffsetProjection(input_layer_name=input.name,
                                         offset=offset)
         proj.origin = input
-        proj.origin.projection = 'identity_offset'
     return proj
 
 
 @wrap_param_attr_default()
-def dotmul_projection(input, param_attr=None, scale=1):
+def dotmul_projection(input, param_attr=None):
     """
     DotMulProjection with a layer as input.
     It performs element-wise multiplication with weight.
@@ -407,30 +403,35 @@ def dotmul_projection(input, param_attr=None, scale=1):
     :type input: LayerOutput
     :param param_attr: Parameter config, None if use default.
     :type param_attr: ParameterAttribute
-    :param scale: config scalar, default value is one.
-    :type scale: float
     :return: A DotMulProjection Object.
     :rtype: DotMulProjection
     """
     proj = DotMulProjection(input_layer_name=input.name,
-                                size=input.size,
-                                **param_attr.attr)
-    proj.origin = input
+                            size=input.size,
+                            **param_attr.attr)
+    proj.origin = input 
     return proj
 
 def dotmul_operator(x, y, scale=1):
     """
     DotMulOperator takes two inputs and performs element-wise multiplication:
+
     .. math::
-       out.row[i] += scale * (in1.row[i] .* in2.row[i])
+       out.row[i] += scale * (x.row[i] .* y.row[i])
+
     where :math:`.*` means element-wise multiplication, and
     scale is a config scalar, its default value is one.
+
     The example usage is:
+
     .. code-block:: python
-       op = dotmul_operator(x, y,
-                              scale=1)
-    :param input: Input layer
-    :type input: LayerOutput
+
+       op = dotmul_operator(x=layer1, y=layer2, scale=0.5)
+
+    :param x: Input layer1
+    :type x: LayerOutput
+    :param y: Input layer2
+    :type y: LayerOutput
     :param scale: config scalar, default value is one.
     :type scale: float
     :return: A DotMulOperator Object.
@@ -487,7 +488,6 @@ def context_projection(input, context_len, context_start=None,
                              trainable_padding=trainable,
                              **extra_dict)
     proj.origin = input
-    proj.origin.projection = 'context'
     return proj
 
 
@@ -2667,8 +2667,8 @@ def classification_cost(input, label, name=None,
 
     return LayerOutput(name, LayerType.COST, parents=[input, label])
 
-def conv_operator(input, filter_size, num_filters,
-                  num_channel=None, stride=1, padding=0,
+def conv_operator(img, filter, filter_size, num_filters,
+                  num_channel=None, stride=1, padding=0, groups=1,
                   filter_size_y=None, stride_y=None, padding_y=None):
     """
     Different from img_conv_layer, conv_op is an Operator, which can be used
@@ -2680,13 +2680,16 @@ def conv_operator(input, filter_size, num_filters,
 
     .. code-block:: python
 
-       op = conv_operator(input=[layer1, layer2],
+       op = conv_operator(img=input1,
+                          filter=input2,
                           filter_size=3.0,
                           num_filters=64,
                           num_channels=64)
 
-    :param input: Input layer.
-    :type input: LayerOutput|list|tuple
+    :param img: input image
+    :type img: LayerOutput
+    :param filter: input filter
+    :type filter: LayerOutput
     :param filter_size: The x dimension of a filter kernel.
     :type filter_size: int
     :param filter_size_y: The y dimension of a filter kernel. Since
@@ -2708,14 +2711,13 @@ def conv_operator(input, filter_size, num_filters,
     :return: A ConvOperator Object.
     :rtype: ConvOperator
     """
-    assert isinstance(input, list) or isinstance(input, tuple)
     if filter_size_y is None:
         filter_size_y = filter_size
     if stride_y is None:
         stride_y = stride
     if padding_y is None:
         padding_y = padding
-    op = ConvOperator(input_layer_name=[x.name for x in input],
+    op = ConvOperator(input_layer_names=[img.name, filter.name],
                       num_filters = num_filter,
                       conv_conf=Conv(filter_size=filter_size,
                                      padding=padding,
@@ -2723,9 +2725,9 @@ def conv_operator(input, filter_size, num_filters,
                                      channels=num_channel,
                                      filter_size_y=filter_size_y,
                                      padding_y=padding_y,
-                                     stride_y=stride_y))
-    op.origin = input
-    op.origin.operator = "conv_op"
+                                     stride_y=stride_y,
+                                     groups=groups))
+    op.origin = [img, filter]
     return op
 
 

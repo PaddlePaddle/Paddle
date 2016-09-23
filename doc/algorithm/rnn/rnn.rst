@@ -142,12 +142,15 @@ We also project the encoder vector to :code:`decoder_size` dimensional space, ge
 The decoder uses :code:`recurrent_group` to define the recurrent neural network. The step and output functions are defined in :code:`gru_decoder_with_attention`:
 
 .. code-block:: python
-
+    group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
+                  StaticInput(input=encoded_proj,is_seq=True)]
     trg_embedding = embedding_layer(
         input=data_layer(name='target_language_word',
                          size=target_dict_dim),
         size=word_vector_dim,
         param_attr=ParamAttr(name='_target_language_embedding'))
+    group_inputs.append(trg_embedding)
+
     # For decoder equipped with attention mechanism, in training,
     # target embedding (the groudtruth) is the data input,
     # while encoded source sequence is accessed to as an unbounded memory.
@@ -156,13 +159,7 @@ The decoder uses :code:`recurrent_group` to define the recurrent neural network.
     # All sequence inputs should have the same length.
     decoder = recurrent_group(name=decoder_group_name,
                               step=gru_decoder_with_attention,
-                              input=[
-                                  StaticInput(input=encoded_vector,
-                                              is_seq=True),
-                                  StaticInput(input=encoded_proj,
-                                              is_seq=True),
-                                  trg_embedding
-                              ])
+                              input=group_inputs)
 
 
 The implementation of the step function is listed as below. First, it defines the **memory** of the decoder network. Then it defines attention, gated recurrent unit step function, and the output function:
@@ -217,10 +214,8 @@ The code is listed below:
 
 .. code-block:: python
 
-    gen_inputs = [StaticInput(input=encoded_vector,
-                              is_seq=True),
-                  StaticInput(input=encoded_proj,
-                              is_seq=True), ]
+    group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
+                  StaticInput(input=encoded_proj,is_seq=True)]
     # In generation, decoder predicts a next target word based on
     # the encoded source sequence and the last generated target word.
     # The encoded source sequence (encoder's output) must be specified by
@@ -231,10 +226,10 @@ The code is listed below:
         size=target_dict_dim,
         embedding_name='_target_language_embedding',
         embedding_size=word_vector_dim)
-    gen_inputs.append(trg_embedding)
+    group_inputs.append(trg_embedding)
     beam_gen = beam_search(name=decoder_group_name,
                            step=gru_decoder_with_attention,
-                           input=gen_inputs,
+                           input=group_inputs,
                            id_input=data_layer(name="sent_id",
                                                size=1),
                            dict_file=trg_dict_path,
