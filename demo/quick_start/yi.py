@@ -83,7 +83,9 @@ if __name__ == '__main__':
     (options, args) = parser.parse_args()
 
     inputFile = args[0] if len(args) > 0 else defaultFile
-    outputDir = os.path.dirname(sys.argv[0]) or './'
+    outputDir = os.path.join(os.path.dirname(sys.argv[0]) or './', 'data')
+    if not os.path.exists(outputDir):
+        os.makedirs(outputDir)
     print "Processing the first %d records in %s. Writing to %s." % (options.firstN, inputFile, outputDir)
 
     random.seed(1)
