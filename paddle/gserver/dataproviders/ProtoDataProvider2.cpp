@@ -166,15 +166,14 @@ void ProtoDataProvider2::loadDataFile(const std::string& fileName) {
   initDataHeader(header);
 
 
-  do {
+  while (true) {
     DataSample2* samplePtr = new DataSample2();
-    DataSample2& sample = *samplePtr;
-    if (!reader->read(&sample)) {
+    if (!reader->read(samplePtr)) {
       break;
     }
     sample_.push_back(std::shared_ptr<DataSample2>(samplePtr));
     ++sampleNums_;
-  } while (true);
+  }
 
   CHECK(is.eof()) << "Fail to read file";
   reader.reset(nullptr);
@@ -185,7 +184,7 @@ void ProtoDataProvider2::loadDataFile(const std::string& fileName) {
 int64_t ProtoDataProvider2::getNextBatchInternal(int64_t size,
                                                  DataBatch *batchOut) {
   int64_t actualSize = 0;
-  std::unique_lock<std::mutex> guard(lock_);
+  std::lock_guard<std::mutex> guard(lock_);
   std::vector<std::shared_ptr<DataSample2>> buf;
   buf.reserve(size);
   for (; actualSize < size &&
@@ -207,7 +206,7 @@ int64_t ProtoDataProvider2::getNextBatchInternal(int64_t size,
         gpuArgs[i].resizeAndCopyFrom(cpuArgs[i], useGpu_, HPPL_STREAM_1);
       }
       hl_stream_synchronize(HPPL_STREAM_1);
-       *batchOut = gpuBatch;
+      *batchOut = gpuBatch;
     } else {
       *batchOut = cpuBatch;
     }
@@ -216,7 +215,7 @@ int64_t ProtoDataProvider2::getNextBatchInternal(int64_t size,
 }
 
 void ProtoDataProvider2::shuffle() {
-  std::random_shuffle(sample_.begin(), sample_.end());
+  std::shuffle(sample_.begin(), sample_.end(), ThreadLocalRandomEngine::get());
 }
 
 void ProtoDataProvider2::reset() {
