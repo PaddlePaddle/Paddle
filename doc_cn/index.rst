@@ -17,3 +17,4 @@ PaddlePaddle文档
 算法教程
 --------
 * `RNN配置 <../doc/algorithm/rnn/rnn.html>`_
+* `双层RNN配置 <algorithm/rnn/hierarchical-rnn.html>`_

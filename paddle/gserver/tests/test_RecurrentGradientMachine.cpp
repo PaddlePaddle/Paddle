@@ -124,6 +124,11 @@ TEST(RecurrentGradientMachine, rnn) {
        0);
 }
 
+TEST(RecurrentGradientMachine, rnn2) {
+  test("gserver/tests/sequence_rnn.conf",
+       "gserver/tests/sequence_nest_rnn_readonly_memory.conf",
+       0);
+}
 
 int main(int argc, char** argv) {
   if (paddle::version::isWithPyDataProvider()) {
