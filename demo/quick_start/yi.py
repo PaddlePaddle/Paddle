@@ -2,6 +2,7 @@
 
 import sys
 import os
+import operator
 import json
 import random
 from StringIO import StringIO
@@ -11,12 +12,13 @@ from optparse import OptionParser
 
 defaultFile = 'http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Electronics_5.json.gz'
 
-def parse(inputFile, topN, outputDir):
+def parse(inputFile, firstNRecords, outputDir, topNWords):
     """
     Parse Amazon Reviews as a Gzip-ed JSON file and generate train.txt and test.txt.
     """
     train = open(os.path.join(outputDir, 'train.txt'), 'w')
     test = open(os.path.join(outputDir, 'test.txt'), 'w')
+    dict = open(os.path.join(outputDir, 'dict.txt'), 'w')
 
     if inputFile.startswith("http"):
         request = urllib2.Request(inputFile)
@@ -27,9 +29,11 @@ def parse(inputFile, topN, outputDir):
         g = gzip.open(inputFile, 'r')
 
     lines = 0
+    wc = {}
+
     for l in g:
         lines = lines + 1
-        if lines > topN:
+        if lines > firstNRecords:
             break
 
         o = train
@@ -37,30 +41,47 @@ def parse(inputFile, topN, outputDir):
             o = test
 
         j = json.loads(l)
-        text = " ".join(j["reviewText"].lower().split())
+        words = j["reviewText"].lower().split()
+        for w in words:
+            if w not in wc:
+                wc[w] = 1
+            else:
+                wc[w] += 1
+
+        text = " ".join(words)
         rate = j["overall"]
         if text:
             if rate == 5.0:
                 o.write('1\t%s\n' % text)
             elif rate < 3.0:
                 o.write('0\t%s\n' % text)
+
     g.close()
     train.close()
     test.close()
 
+    dict.write('%s\t%s\n' % ('unk', '-1'))
+    c = 0
+    for k, v in sorted(wc.items(), key=operator.itemgetter(1), reverse=True):
+        dict.write('%s\t%s\n' % (k, v))
+        c = c + 1
+        if c > topNWords:
+            break
+    dict.close()
+
+
 if __name__ == '__main__':
     parser = OptionParser(usage="usage: %prog [options] filename",
                           version="%prog 1.0")
-    parser.add_option("-n", "--firstn",
-                      type="int",
-                      action="store",
-                      dest="firstN",
-                      default=100,
-                      help="Use the first N number of instances",)
+    parser.add_option("-n", "--firstn", type="int", dest="firstN", default=100,
+                      help="Use the first N number of instances")
+    parser.add_option("-t", "--topn", type="int", dest="topN", default=30001,
+                      help="Save the top N frequent words into dict.txt",)
     (options, args) = parser.parse_args()
 
     inputFile = args[0] if len(args) > 0 else defaultFile
-    print "Downloading and processing the first %d records from %s ..." % (options.firstN, inputFile)
+    outputDir = os.path.dirname(sys.argv[0]) or './'
+    print "Processing the first %d records in %s. Writing to %s ..." % (options.firstN, inputFile, outputDir)
 
     random.seed(1)
-    parse(inputFile, options.firstN, os.path.dirname(sys.argv[0]) or './')
+    parse(inputFile, options.firstN, outputDir, max(1, options.topN))
