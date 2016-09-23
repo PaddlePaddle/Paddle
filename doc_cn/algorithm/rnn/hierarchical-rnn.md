@@ -77,13 +77,15 @@ Python API见beam_search。
 ```
 其次，我们看一下单测中使用的单双层seq的不同dataprovider（见`sequenceGen.py`）：
 
-- 单层seq的dataprovider如下。每个input都是integer_value_sequence类型，代表单层seq。
+- 单层seq的dataprovider如下：
+  - word_slot是integer_value_sequence类型，代表单层seq。
+  - label是integer_value类型，代表一个向量。
 
 ```python
 def hook(settings, dict_file, **kwargs):
     settings.word_dict = dict_file
     settings.input_types = [integer_value_sequence(len(settings.word_dict)), 
-                            integer_value_sequence(3)]
+                            integer_value(3)]
 
 @provider(init_hook=hook)
 def process(settings, file_name):
@@ -93,16 +95,19 @@ def process(settings, file_name):
             label = int(''.join(label.split()))
             words = comment.split()
             word_slot = [settings.word_dict[w] for w in words if w in settings.word_dict]
-            yield word_slot, [label]
+            yield word_slot, label
 ```
 
-- 双层seq的dataprovider如下。每个input都是integer_value_sub_sequence类型，代表双层seq。
+- 双层seq的dataprovider如下：
+  - word_slot是integer_value_sub_sequence类型，代表双层seq。
+  - label是integer_value_sequence类型，代表单层seq，即一个子句一个label。注意：也可以为integer_value类型，代表一个向量，即一个句子一个label。通常根据任务需求进行不同设置。
+  - 关于dataprovider中input_types的详细用法，参见PyDataProvider2。
 
 ```python
 def hook2(settings, dict_file, **kwargs):
     settings.word_dict = dict_file
     settings.input_types = [integer_value_sub_sequence(len(settings.word_dict)),
-                            integer_value_sub_sequence(3)]
+                            integer_value_sequence(3)]
 
 @provider(init_hook=hook2)
 def process2(settings, file_name):
@@ -115,15 +120,13 @@ def process2(settings, file_name):
                 label = int(''.join(label.split()))
                 words = comment.split()
                 word_slot = [settings.word_dict[w] for w in words if w in settings.word_dict]
-                label_list.append([label])
+                label_list.append(label)
                 word_slot_list.append(word_slot)
             else:
                 yield word_slot_list, label_list
                 label_list = []
                 word_slot_list = []
 ```
-
-注意：1）其中label的input_types可以为integer_value类型，代表0层seq。2）关于dataprovider中input_types的详细用法，参加PyDataProvider2。
 
 #### 模型中的配置
 
