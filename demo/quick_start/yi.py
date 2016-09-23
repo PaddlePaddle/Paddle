@@ -14,10 +14,11 @@ defaultFile = 'http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/r
 
 def parse(inputFile, firstNRecords, outputDir, topNWords):
     """
-    Parse Amazon Reviews as a Gzip-ed JSON file and generate train.txt and test.txt.
+    Parse Amazon Reviews data and generate {train,test,pred,dict}.{txt,list}.
     """
     train = open(os.path.join(outputDir, 'train.txt'), 'w')
     test = open(os.path.join(outputDir, 'test.txt'), 'w')
+    pred = open(os.path.join(outputDir, 'pred.txt'), 'w')
 
     if inputFile.startswith("http"):
         request = urllib2.Request(inputFile)
@@ -35,7 +36,10 @@ def parse(inputFile, firstNRecords, outputDir, topNWords):
             break
 
         o = train
-        if random.random() < 0.1:
+        u = random.random()
+        if u < 0.01:
+            o = pred
+        elif u < 0.1:
             o = test
 
         j = json.loads(l)
@@ -84,3 +88,15 @@ if __name__ == '__main__':
 
     random.seed(1)
     parse(inputFile, options.firstN, outputDir, max(1, options.topN))
+
+    with open(os.path.join(outputDir, 'train.list'), 'w') as l:
+        l.write('%s\n' % os.path.join(outputDir, 'train.txt'))
+
+    with open(os.path.join(outputDir, 'test.list'), 'w') as l:
+        l.write('%s\n' % os.path.join(outputDir, 'test.txt'))
+
+    with open(os.path.join(outputDir, 'pred.list'), 'w') as l:
+        l.write('%s\n' % os.path.join(outputDir, 'pred.txt'))
+
+    with open(os.path.join(outputDir, 'labels.list'), 'w') as l:
+        l.write('neg\t0\npos\t1\n')
