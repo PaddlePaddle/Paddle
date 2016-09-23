@@ -67,3 +67,23 @@ message DataSample {
   repeated SubseqSlot subseq_slots = 5;
 };
 
+message DataHeader2 {
+  enum SeqType {
+    NON_SEQ = 0;
+    SEQ = 1;
+    SUB_SEQ = 2;
+  }
+  repeated SlotDef slot_defs = 1;
+  repeated SeqType seq_type = 2;
+}
+
+message SlotSample {
+  required uint32 slot_id = 1;
+  repeated VectorSlot vector_slots = 2;
+  repeated uint32 subseq_start_positions = 3;
+}
+
+message DataSample2 {
+  repeated SlotSample slots_data = 1;
+}
+

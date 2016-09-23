@@ -12,6 +12,13 @@ add_test(NAME test_ProtoDataProvider
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_ProtoDataProvider
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
 
+add_unittest_without_exec(test_ProtoDataProvider2
+    test_ProtoDataProvider2.cpp
+    TestUtil.cpp)
+
+add_test(NAME test_ProtoDataProvider2
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_ProtoDataProvider2)
+
 ################# test_LayerGrad #######################
 add_unittest_without_exec(test_LayerGrad
     test_LayerGrad.cpp
