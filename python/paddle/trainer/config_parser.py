@@ -961,10 +961,6 @@ def parse_pool(pool, input_layer_name, pool_conf):
                   "['max-projection', 'avg-projection', "
                   "'cudnn-max-pool', 'cudnn-avg-pool']"
                   % pool.pool_type)
-    if pool.size_y or pool.stride_y or pool.img_width or pool.padding_y:
-        config_assert(pool.pool_type.startswith('cudnn'),
-                      "'size_y', 'stride_y' and 'img_width' and 'padding_y'"
-                      "can only be used for cudnn")
 
     pool_conf.channels = pool.channels
     pool_conf.size_x = pool.size_x

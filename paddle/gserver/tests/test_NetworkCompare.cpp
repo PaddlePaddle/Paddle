@@ -116,7 +116,15 @@ void calcGradient(DataIn& in, DataOut& out, const std::string& configPath) {
   gradientMachine->start(trainer.getConfig(), nullptr);
   gradientMachine->forward(in.inArgs, &outArgs, PASS_TRAIN);
   for (size_t i = 0; i < in.outGrads.size(); i++) {
-    outArgs[i].grad->copyFrom(*in.outGrads[i]);
+    if (outArgs[i].grad) {
+      outArgs[i].grad->copyFrom(*in.outGrads[i]);
+    } else {
+      Matrix::resizeOrCreate(outArgs[i].grad,
+              in.outGrads[i]->getHeight(),
+              in.outGrads[i]->getWidth(),
+              false, false);
+      outArgs[i].grad->copyFrom(*in.outGrads[i]);
+    }
   }
   gradientMachine->backward();
   for (size_t i = 0; i < in.outGrads.size(); i++) {
@@ -224,6 +232,16 @@ TEST(Compare, concat_table) {
   std::string config_file_b = "./gserver/tests/concat_table_b.conf";
   compareNetwork(config_file_a, config_file_b);
 }
+
+#ifndef PADDLE_ONLY_CPU
+TEST(Compare, img_pool) {
+  std::string config_file_a = "./gserver/tests/img_pool_a.conf";
+  std::string config_file_b = "./gserver/tests/img_pool_b.conf";
+  FLAGS_use_gpu = 1;
+  compareNetwork(config_file_a, config_file_b);
+}
+#endif
+
 
 P_DEFINE_string(config_file_a, "", "config of one network to compare");
 P_DEFINE_string(config_file_b, "", "config of another network to compare");

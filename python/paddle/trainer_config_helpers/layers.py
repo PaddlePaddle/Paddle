@@ -210,7 +210,7 @@ DEVICE = 'device'
 
 
 def layer_support(*attrs):
-    attrs_list = list(attrs) 
+    attrs_list = list(attrs)
     attrs_list.append(DEVICE)
     def decorator(method):
         @functools.wraps(method)
@@ -1627,7 +1627,9 @@ def img_conv_layer(input, filter_size, num_filters,
 @layer_support()
 def img_pool_layer(input, pool_size, name=None,
                    num_channels=None, pool_type=None,
-                   stride=1, start=None, padding=0, layer_attr=None):
+                   stride=1, start=None, padding=0, layer_attr=None,
+                   pool_size_y=None, stride_y=None, padding_y=None,
+                   img_width=None):
     """
     Image pooling Layer.
 
@@ -1635,25 +1637,34 @@ def img_pool_layer(input, pool_size, name=None,
 
     .. _pooling: http://ufldl.stanford.edu/tutorial/supervised/Pooling/
 
-    :param padding: pooling padding
+    :param padding: pooling padding width.
     :type padding: int
+    :param padding_y: pooling padding height. It's equal to padding by default.
+    :type padding_y: int|None
     :param name: name of pooling layer
     :type name: basestring.
     :param input: layer's input
     :type input: LayerOutput
-    :param pool_size: pooling size
+    :param pool_size: pooling window width
     :type pool_size: int
+    :param pool_size_y: pooling window height. It's eaqual to pool_size by default.
+    :type pool_size_y: int|None
     :param num_channels: number of input channel.
     :type num_channels: int
     :param pool_type: pooling type. MaxPooling or AveragePooling. Default is
                       MaxPooling.
     :type pool_type: BasePoolingType
-    :param stride: stride of pooling.
+    :param stride: stride width of pooling.
     :type stride: int
+    :param stride_y: stride height of pooling. It is equal to stride by default.
+    :type stride_y: int|None
     :param start: start position of pooling operation.
     :type start: int
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param img_width: the width of input feature map. If it is None, the input feature
+                      map should be square.
+    :type img_width: int|None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -1666,17 +1677,29 @@ def img_pool_layer(input, pool_size, name=None,
     elif isinstance(pool_type, AvgPooling):
         pool_type.name = 'avg'
 
+    type_name = pool_type.name + '-projection' \
+      if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+      else pool_type.name
+
+    pool_size_y = pool_size if pool_size_y is None else pool_size_y
+    stride_y = stride if stride_y is None else stride_y
+    padding_y = padding if padding_y is None else padding_y
+
     Layer(
         name=name,
         type=LayerType.POOL_LAYER,
         inputs=[Input(input.name,
                       pool=Pool(
-                          pool_type=''.join([pool_type.name, '-projection']),
+                          pool_type=type_name,
                           channels=num_channels,
                           size_x=pool_size,
                           start=start,
                           stride=stride,
-                          padding=padding
+                          padding=padding,
+                          size_y=pool_size_y,
+                          stride_y=stride_y,
+                          padding_y=padding_y,
+                          img_width=img_width
                       ))],
         **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
@@ -2725,7 +2748,7 @@ def beam_search(step, input, bos_id, eos_id, beam_size,
 
     tmp = recurrent_group(step=__real_step__, input=real_input, reverse=False,
                           name=name)
-    
+
     return tmp
 
 
