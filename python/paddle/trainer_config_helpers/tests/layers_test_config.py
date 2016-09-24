@@ -39,10 +39,20 @@ print_layer(input=[out])
 outputs(classification_cost(out, data_layer(name="label", size=num_classes)))
 
 dotmul = mixed_layer(input=[dotmul_operator(x=x1, y=y1),
-	                        dotmul_projection(input=y1)])
+                            dotmul_projection(input=y1)])
+
+proj_with_attr_init = mixed_layer(input=full_matrix_projection(input=y1,
+                                                               param_attr=ParamAttr(learning_rate = 0,
+                                                                                 initial_mean = 0,
+                                                                                 initial_std = 0)),
+                               bias_attr = ParamAttr(initial_mean=0, initial_std=0, learning_rate=0),
+                               act = LinearActivation(),
+                               size = 5,
+                               name='proj_with_attr_init')
+
 
 # for ctc
-tmp = fc_layer(input=[x1, dotmul],
+tmp = fc_layer(input=[x1, dotmul, proj_with_attr_init],
                size=num_classes + 1,
                act=SoftmaxActivation())
 ctc = ctc_layer(input=tmp,
