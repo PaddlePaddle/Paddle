@@ -144,12 +144,18 @@ void ScatterAgentLayer::forward(PassType passType) {
     output_.subArgFrom(realOutArg_, /* offset */ idIndex_, idSize_,
                        width, useGpu_);
   } else {  // used in generation
-    int height = ids_->getSize();
-    resetOutput(height, width);
+    if (realLayer_->getOutput().ids) {
+      IVector::resizeOrCreate(output_.ids, ids_->getSize(), useGpu_);
+      output_.ids->selectFrom(*realLayer_->getOutput().ids, *ids_);
+    }
+    if (realLayer_->getOutput().value) {
+      int height = ids_->getSize();
+      resetOutput(height, width);
 
-    const MatrixPtr& outV = getOutputValue();
-    const MatrixPtr& realV = realLayer_->getOutputValue();
-    outV->selectRows(*realV, *ids_);
+      const MatrixPtr& outV = getOutputValue();
+      const MatrixPtr& realV = realLayer_->getOutputValue();
+      outV->selectRows(*realV, *ids_);
+    }
   }
 }
 
