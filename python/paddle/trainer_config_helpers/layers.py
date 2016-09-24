@@ -215,7 +215,7 @@ def check_input(input):
     """
 
     if isinstance(input, LayerOutput):
-        return [LayerOutput]
+        return [input]
     assert isinstance(input, list)
     for inp in input:
         assert isinstance(inp, LayerOutput)
@@ -761,7 +761,7 @@ def print_layer(input, name=None):
     :type input: LayerOutput|list|tuple
     :return: No return
     """
-    check_input(input)
+    input = check_input(input)
 
     Layer(
         name=name,

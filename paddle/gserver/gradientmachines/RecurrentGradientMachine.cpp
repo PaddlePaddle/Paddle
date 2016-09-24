@@ -497,20 +497,21 @@ void RecurrentGradientMachine::forward(const std::vector<Argument>& inArgs,
     int idSize = 0;
     // connect in_links
     for (size_t j = 0; j < inFrameLines_.size(); ++j) {
+      Info& info = info_[shareInlinkInfo ? 0 : j];
       // idSize denotes the sum number of tokens in each length i
-      idSize = info_[j].idIndex[i + 1] - info_[j].idIndex[i];
+      idSize = info.idIndex[i + 1] - info.idIndex[i];
       InFrameLine inFrameLine = inFrameLines_[j];
       auto scatterAgent =
           dynamic_cast<ScatterAgentLayer*>(inFrameLine.agents[i].get());
       scatterAgent->setRealLayerAndOutput(inFrameLine.inLayer,
-                                          inFrameLine.outArg, info_[j].allIds,
-                                          info_[j].idIndex[i], idSize);
+                                          inFrameLine.outArg, info.allIds,
+                                          info.idIndex[i], idSize);
       if (hasSubseq) {
         // size: the length of subsequence
         int size =
-            info_[j].seqStartPosIndex[i + 1] - info_[j].seqStartPosIndex[i];
-        scatterAgent->setSequenceStartPositions(info_[j].sequenceStartPositions,
-                                                info_[j].seqStartPosIndex[i],
+            info.seqStartPosIndex[i + 1] - info.seqStartPosIndex[i];
+        scatterAgent->setSequenceStartPositions(info.sequenceStartPositions,
+                                                info.seqStartPosIndex[i],
                                                 size);
       }
     }
@@ -744,16 +745,24 @@ void RecurrentGradientMachine::selectRowsOneTime(LayerPtr layer,
                                                  const IVectorPtr& allIds,
                                                  Argument* arg,
                                                  PassType passType) {
-  const MatrixPtr& realV = layer->getOutputValue();
-  int height = realV->getHeight();
-  int width = realV->getWidth();
-  Matrix::resizeOrCreate(arg->value, height, width, /* trans */ false, useGpu_);
-  arg->value->zeroMem();
-  arg->value->selectRows(*realV, *allIds);
-  if (passType != PASS_TEST) {
-    Matrix::resizeOrCreate(arg->grad, height, width, /* trans */ false,
-                           useGpu_);
-    arg->grad->zeroMem();
+  Argument& src = layer->getOutput();
+  if (src.value) {
+    const MatrixPtr& realV = src.value;
+    int height = realV->getHeight();
+    int width = realV->getWidth();
+    Matrix::resizeOrCreate(
+      arg->value, height, width, /* trans */ false, useGpu_);
+    arg->value->zeroMem();
+    arg->value->selectRows(*realV, *allIds);
+    if (passType != PASS_TEST) {
+      Matrix::resizeOrCreate(arg->grad, height, width, /* trans */ false,
+                             useGpu_);
+      arg->grad->zeroMem();
+    }
+  }
+  if (src.ids) {
+    IVector::resizeOrCreate(arg->ids, src.ids->getSize(), useGpu_);
+    arg->ids->selectFrom(*src.ids, *allIds);
   }
 }
 
