@@ -105,14 +105,14 @@ class ParameterAttribute(object):
              is_compatible_with(initial_mean, float):
             self.attr = dict()
             if initial_std is not None:
-                self.attr['initial_std'] = float(initial_std)
+                self.attr['initial_std'] = initial_std
             if initial_mean is not None:
                 self.attr['initial_mean'] = initial_mean
             self.attr['initial_strategy'] = 0  # Gauss Random
         elif is_compatible_with(initial_max, float) and \
              is_compatible_with(initial_min, float):
-            initial_max = float(initial_max)
-            initial_min = float(initial_min)
+            initial_max = initial_max
+            initial_min = initial_min
             assert initial_min < initial_max
             initial_mean = (initial_max + initial_min) / 2
             initial_std = initial_mean - initial_min
@@ -124,16 +124,16 @@ class ParameterAttribute(object):
             raise RuntimeError("Unexpected branch.")
 
         if not is_static and is_compatible_with(l1_rate, float):
-            self.attr['decay_rate_l1'] = float(l1_rate)
+            self.attr['decay_rate_l1'] = l1_rate
 
         if not is_static and is_compatible_with(l2_rate, float):
-            self.attr['decay_rate'] = float(l2_rate)
+            self.attr['decay_rate'] = l2_rate
 
         if not is_static and is_compatible_with(learning_rate, float):
-            self.attr['learning_rate'] = float(learning_rate)
+            self.attr['learning_rate'] = learning_rate
 
         if not is_static and is_compatible_with(momentum, float):
-            self.attr['momentum'] = float(momentum)
+            self.attr['momentum'] = momentum
 
         if name is not None:
             self.attr['parameter_name'] = name
