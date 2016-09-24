@@ -127,15 +127,23 @@ class ParameterAttribute(object):
 
     @staticmethod
     def convert_and_compare(x, Type):
-        """                                                                                                                                                                                                 
-        Convert y to be the same type as x and then convert back to check the loss of information                                                                                                           
-        :param x: object to be checked                                                                                                                                                                      
-        :param Type: target type to check x over                                                                                                                                                            
+        """                                                                                                                                                                                                
+        Convert x to be the same type as Type and then convert back to 
+        check whether there is a loss of information                                                                                                           
+        :param x: object to be checked                                                                                               
+        :param Type: target type to check x over                                                                                                                                                           
+
         """
         return type(x)(Type(x))==x
 
     @staticmethod
     def is_compatible_with(x, Type):
+        """                                                                                                                                                                                                
+        Check if x has a type compatible with Type
+        :param x: object to be checked                                                                                                                                                                     
+        :param Type: target type to check x over                                                                                                                                                           
+                                                                                                                                                                                                           
+        """
         if type(x) == Type:
             return True
         try:
