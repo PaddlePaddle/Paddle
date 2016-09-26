@@ -7339,7 +7339,7 @@ Input1: a vector (batchSize * dataDim)<dl class="docutils">
 <dl class="class">
 <dt id="_CPPv2N6paddle8CRFLayerE">
 <span id="paddle::CRFLayer"></span><span class="target" id="paddleclasspaddle_1_1CRFLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CRFLayer</code><a class="headerlink" href="#_CPPv2N6paddle8CRFLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A layer for calculating the cost of sequential conditional random field model. See LinearChainCRF.h for the detail of the CRF formulation. </p>
+<dd><p>A layer for calculating the cost of sequential conditional random field model. See class <a class="reference internal" href="#paddleclasspaddle_1_1LinearChainCRF"><span class="std std-ref">LinearChainCRF</span></a> for the detail of the CRF formulation. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1CRFDecodingLayer"><span class="std std-ref">paddle::CRFDecodingLayer</span></a></p>
 <div class="breathe-sectiondef container">
@@ -7585,22 +7585,31 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14LinearChainCRF14LinearChainCRFEiP4realP4real">
 <span id="paddle::LinearChainCRF::LinearChainCRF__i.realP.realP"></span><span class="target" id="paddleclasspaddle_1_1LinearChainCRF_1a091bf516302972b9259d77bcb3667783"></span><code class="descname">LinearChainCRF</code><span class="sig-paren">(</span>int <em>numClasses</em>, real *<em>para</em>, real *<em>grad</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14LinearChainCRF14LinearChainCRFEiP4realP4real" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The size of para and grad must be <span class="math">\((numClasses + 2) * numClasses\)</span>. The first numClasses values of para are for starting weights ( <span class="math">\(a\)</span>). The next numClasses values of para are for ending weights ( <span class="math">\(b\)</span>), The remaning values are for transition weights ( <span class="math">\(w\)</span>).</p>
+<p>The probability of a state sequence s of length <span class="math">\(L\)</span> is defined as: <span class="math">\(P(s) = (1/Z) exp(a_{s_1} + b_{s_L} + \sum_{l=1}^L x_{s_l} + \sum_{l=2}^L w_{s_{l-1},s_l})\)</span> where <span class="math">\(Z\)</span> is a normalization value so that the sum of <span class="math">\(P(s)\)</span> over all possible sequences is <span class="math">\(1\)</span>, and <span class="math">\(x\)</span> is the input feature to the CRF. </p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle14LinearChainCRF7forwardEP4realPii">
 <span id="paddle::LinearChainCRF::forward__realP.iP.i"></span><span class="target" id="paddleclasspaddle_1_1LinearChainCRF_1a1273df7f4b9bceb6eda9a5cf84825af3"></span>real <code class="descname">forward</code><span class="sig-paren">(</span>real *<em>x</em>, int *<em>s</em>, int <em>length</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14LinearChainCRF7forwardEP4realPii" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Calculate the negative log likelihood of s given x. The size of x must be length * numClasses. Each consecutive numClasses values are the features for one time step. </p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle14LinearChainCRF8backwardEP4realP4realPii">
 <span id="paddle::LinearChainCRF::backward__realP.realP.iP.i"></span><span class="target" id="paddleclasspaddle_1_1LinearChainCRF_1a64da4f29ca7f1bbc47e754ce76dd54db"></span>void <code class="descname">backward</code><span class="sig-paren">(</span>real *<em>x</em>, real *<em>dx</em>, int *<em>s</em>, int <em>length</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14LinearChainCRF8backwardEP4realP4realPii" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Calculate the gradient with respect to x, a, b, and w. The gradient of x will be stored in dx. <a class="reference internal" href="#paddleclasspaddle_1_1LinearChainCRF_1a64da4f29ca7f1bbc47e754ce76dd54db"><span class="std std-ref">backward()</span></a> can only be called after a corresponding call to <a class="reference internal" href="#paddleclasspaddle_1_1LinearChainCRF_1a1273df7f4b9bceb6eda9a5cf84825af3"><span class="std std-ref">forward()</span></a> with the same x, s and length. <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>The gradient is added to dx and grad (provided at constructor). </dd>
+</dl>
+</p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle14LinearChainCRF6decodeEP4realPii">
 <span id="paddle::LinearChainCRF::decode__realP.iP.i"></span><span class="target" id="paddleclasspaddle_1_1LinearChainCRF_1af1c5bb033d8709ae5e3e1ce36e367bd7"></span>void <code class="descname">decode</code><span class="sig-paren">(</span>real *<em>x</em>, int *<em>s</em>, int <em>length</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14LinearChainCRF6decodeEP4realPii" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Find the most probable sequence given x. The result will be stored in s. </p>
+</dd></dl>
 
 </div>
 <div class="breathe-sectiondef container">
