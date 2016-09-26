@@ -67,6 +67,11 @@ message DataSample {
   repeated SubseqSlot subseq_slots = 5;
 };
 
+/*
+ DataHeader2 describes the format and type of input data. Input data consists of a couple of slots.
+ For each slot, a SlotDef and a SeqType type must be appointed. For example, if input data contains
+ 3 kinds of slot, the size of slot_defs and seq_type will both be 3.
+*/
 message DataHeader2 {
   enum SeqType {
     NON_SEQ = 0;
@@ -77,12 +82,26 @@ message DataHeader2 {
   repeated SeqType seq_type = 2;
 }
 
+/*
+ SlotSample describes the content of each slot. The unique slot id of input data is identified by slot_id.
+ A repeated field vector_slots is defined for the content of slot data. SeqType and SlotDef is orthogonal.
+ NON_SEQ : size of vector_slots is 1.
+ SEQ : size of vector_slots is the length of sequence.
+ SUB_SEQ : subseq_start_positions is defined to record start positions of the subsequence in a sequence.
+ INDEX : size of ids in VectorSlot is 1.
+ VECTOR_DENSE : a dense vector.
+ VECTOR_SPARSE_NON_VALUE : size of ids in VectorSlot >= 1.
+ VECTOR_SPARSE_VALUE : a sparse vector.
+*/
 message SlotSample {
   required uint32 slot_id = 1;
   repeated VectorSlot vector_slots = 2;
   repeated uint32 subseq_start_positions = 3;
 }
-
+/*
+ A DataSample2 represents a sample of input data, which contains a repeated field SlotSample.
+ For example, if input data contains 3 kinds of slot, the size of slots_data is 3.
+*/
 message DataSample2 {
   repeated SlotSample slots_data = 1;
 }
