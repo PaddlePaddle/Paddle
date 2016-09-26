@@ -132,6 +132,13 @@ TEST(RecurrentGradientMachine, rnn) {
   }
 }
 
+TEST(RecurrentGradientMachine, rnn_multi_input) {
+  for (bool useGpu : {false, true}) {
+    test("gserver/tests/sequence_rnn_multi_input.conf",
+         "gserver/tests/sequence_nest_rnn_multi_input.conf",
+         1e-6, useGpu);
+  }
+}
 
 int main(int argc, char** argv) {
   if (paddle::version::isWithPyDataProvider()) {
