@@ -18,7 +18,18 @@ limitations under the License. */
 
 #include <sys/syscall.h>
 #include <unistd.h>
-inline pid_t gettid() { return syscall(SYS_gettid); }
+inline pid_t gettid() {
+#if defined(__APPLE__) || defined(__OSX__)
+  pid_t tid = syscall(SYS_thread_selfid);
+#else
+  #ifndef __NR_gettid
+  #define __NR_gettid 224
+  #endif
+  pid_t tid = syscall(__NR_gettid);
+#endif
+  CHECK_NE(tid, -1);
+  return tid;
+}
 
 #include "Queue.h"
 #include "ThreadLocal.h"
