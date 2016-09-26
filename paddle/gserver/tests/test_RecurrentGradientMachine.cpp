@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <gtest/gtest.h>
 #include <paddle/utils/Util.h>
 #include <paddle/utils/Version.h>
@@ -24,7 +23,7 @@ limitations under the License. */
 P_DECLARE_int32(seed);
 
 using namespace paddle;  // NOLINT
-using namespace std;  // NOLINT
+using namespace std;     // NOLINT
 class TrainerForTest : public paddle::Trainer {
 public:
   void startTrain() {
@@ -44,11 +43,10 @@ public:
    */
   size_t getTotalParameterSize() const {
     auto p = const_cast<TrainerForTest*>(this);
-    auto & params = p->getGradientMachine()->getParameters();
-    return std::accumulate(params.begin(), params.end(), 0UL,
-                           [](size_t a, const ParameterPtr& p){
-      return a+p->getSize();
-    });
+    auto& params = p->getGradientMachine()->getParameters();
+    return std::accumulate(
+        params.begin(), params.end(), 0UL,
+        [](size_t a, const ParameterPtr& p) { return a + p->getSize(); });
   }
 };
 
@@ -114,14 +112,12 @@ void test(const string& conf1, const string& conf2, double eps) {
 
 TEST(RecurrentGradientMachine, HasSubSequence) {
   test("gserver/tests/sequence_layer_group.conf",
-       "gserver/tests/sequence_nest_layer_group.conf",
-       1e-5);
+       "gserver/tests/sequence_nest_layer_group.conf", 1e-5);
 }
 
 TEST(RecurrentGradientMachine, rnn) {
   test("gserver/tests/sequence_rnn.conf",
-       "gserver/tests/sequence_nest_rnn.conf",
-       0);
+       "gserver/tests/sequence_nest_rnn.conf", 0);
 }
 
 TEST(RecurrentGradientMachine, rnn2) {

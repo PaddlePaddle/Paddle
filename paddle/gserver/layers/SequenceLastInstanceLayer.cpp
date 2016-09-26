@@ -91,6 +91,11 @@ void SequenceLastInstanceLayer::forward(PassType passType) {
   const Argument& input = getInput(0);
 
   // check
+  CHECK(input.sequenceStartPositions);
+  if (type_) {
+    CHECK(input.subSequenceStartPositions)
+      << "when trans_type = seq, input must hasSubseq";
+  }
   auto startPositions =
       type_ ? input.subSequenceStartPositions->getVector(false)
             : input.sequenceStartPositions->getVector(false);
@@ -98,10 +103,6 @@ void SequenceLastInstanceLayer::forward(PassType passType) {
   CHECK_EQ(dim, input.value->getWidth());
   CHECK_EQ(startPositions->getData()[height], input.getBatchSize());
   CHECK_EQ(height, startPositions->getSize() - 1);
-  if (type_) {
-    // when trans_type = seq, input must hasSubseq
-    CHECK_EQ(input.hasSubseq(), 1UL);
-  }
 
   reserveOutput(height, dim);
   const int* starts = startPositions->getData();

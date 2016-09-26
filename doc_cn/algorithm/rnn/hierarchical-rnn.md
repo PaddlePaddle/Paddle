@@ -20,6 +20,7 @@
   - 输出seq的subseq数、word数和指定共享的输入seq（默认为第一个输入）的一样。
   - memory：用来记录上一个subseq的状态，可以为单层seq（只作为read-only memory）或一个向量；也可以不设置，即两个subseq间无关联。
   - boot_layer：memory初始状态，可以为单层seq（只作为read-only memory）或一个向量。默认不设置，即初始状态为0。
+- **双进单出**：目前还未支持，会报错"In hierachical RNN, all out links should be from sequences now"。
   
 Python API见recurrent_group。
 
@@ -40,7 +41,7 @@ Python API见beam_search。
 
 #### 读取双层seq的方法
 
-首先，我们看一下单测中使用的单双层seq的不同数据组织形式（您也可以采用别的的组织形式）：
+首先，我们看一下单测中使用的单双层seq的不同数据组织形式（您也可以采用别的组织形式）：
 
 - 单层seq的数据（`Sequence/tour_train_wdseg`）如下，一共有10个样本。每个样本由两部分组成，一个label（此处都为2）和一个已经分词后的句子。
 
@@ -260,7 +261,7 @@ def step(y):
 
 out = recurrent_group(step=step, input=emb)
 ```
-- 双层seq，memory是一个向量：
+- 双层seq，外层memory是一个向量：
   - 内层inner_step的recurrent_group和单层seq的几乎一样。除了boot_layer=outer_mem，表示将外层的outer_mem作为内层memory的初始状态。外层outer_step中，outer_mem是一个子句的最后一个向量，即整个双层group是将前一个子句的最后一个向量，作为下一个子句memory的初始状态。
   - 从输入数据上看，单层seq和双层seq的句子是一样的，只是双层seq将其又做了子句划分。因此双层seq的配置中，必须将前一个子句的最后一个向量，作为boot_layer传给下一个子句的memory，才能保证和单层seq的配置中“每一个时间步都用了上一个时间步的输出结果”一致。
 
@@ -286,9 +287,9 @@ def outer_step(x):
 
 out = recurrent_group(step=outer_step, input=SubsequenceInput(emb))
 ```
-- 双层seq，memory是单层seq：
-  - 由于外层每个时间步返回的是一个子句，这些子句的长度往往不等长。因此当外层有is_seq=True的memory时，内层是无法直接使用它的，即内层memory的boot_layer不能链接外层的这个memory。
-  - 如果内层memory想使用单层seq的外层memory，只能通过`pooling_layer`、`last_seq`或`first_seq`将它先变成一个向量。但这种情况下，外层memory必须有boot_layer，否则在第0个时间步时，外层memory全部为0且没有任何seq信息，会出段错误。
+- 双层seq，外层memory是单层seq：
+  - 由于外层每个时间步返回的是一个子句，这些子句的长度往往不等长。因此当外层有is_seq=True的memory时，内层是**无法直接使用**它的，即内层memory的boot_layer不能链接外层的这个memory。
+  - 如果内层memory想**间接使用**这个外层memory，只能通过`pooling_layer`、`last_seq`或`first_seq`这三个layer将它先变成一个向量。但这种情况下，外层memory必须有boot_layer，否则在第0个时间步时，由于外层memory没有任何seq信息，因此上述三个layer的前向会报出“**Check failed: input.sequenceStartPositions**”的错误。
   - `sequence_nest_rnn_readonly_memory.conf`中的`readonly_mem`是一个单层seq，目前是作为只读memory，即对output没有任何贡献。
 
 ```python
@@ -328,56 +329,3 @@ TBD
 ### 示例4：beam_search的生成
 
 TBD
-
-## 支持双层RNN的Layer介绍
-
-### pooling_layer
-
-pooling_layer的使用示例如下，详细见配置API。
-```python
-seq_pool = pooling_layer(input=layer,
-                         pooling_type=AvgPooling(),
-                         agg_level=AggregateLevel.EACH_SEQUENCE)
-```
-- `pooling_type`有两种，分别是MaxPooling()和AvgPooling。
-- `agg_level=AggregateLevel.TIMESTEP`时（默认值）：
-  - 作用：双层变0层，或单层变0层
-  - 输入：双层seq或单层seq
-  - 输出：0层seq（一个向量），即整个seq的平均值（或最大值）
-- `agg_level=AggregateLevel.EACH_SEQUENCE`时：
-  - 作用：双层变单层
-  - 输入：必须是双层seq
-  - 输出：单层seq，其中每个向量是原来双层seq中每个subseq的平均值（或最大值）
-
-### last_seq和first_seq
-
-last_seq的使用示例如下（first_seq类似），详细见配置API。
-```python
-last = last_seq(input=layer,
-                agg_level=AggregateLevel.EACH_SEQUENCE)
-```
-- `agg_level=AggregateLevel.TIMESTEP`时（默认值）：
-  - 作用：双层变0层，或单层变0层
-  - 输入：双层seq或单层seq
-  - 输出：0层seq（一个向量），即整个seq最后（或最开始）的一个向量。
-- `agg_level=AggregateLevel.EACH_SEQUENCE`时：
-  - 作用：双层变单层
-  - 输入：必须是双层seq
-  - 输出：单层seq，其中每个向量是原来双层seq中每个subseq最后（或最开始）的一个向量。
-
-### expand_layer
-
-expand_layer的使用示例如下，详细见配置API。
-```python
-expand = expand_layer(input=layer1,
-                      expand_as=layer2,
-                      expand_level=ExpandLevel.FROM_TIMESTEP)
-```
-- `expand_level=ExpandLevel.FROM_TIMESTEP`时（默认值）：
-  - 作用：0层变双层，或单层变双层
-  - 输入：layer1必须是0层seq，layer2可以是双层seq或单层seq
-  - 输出：单或双层seq（和layer2的一样），其中第i个seq中每个向量的值均为layer1中第i个向量的值
-- `expand_level=ExpandLevel.FROM_SEQUENCE`时：
-  - 作用：单层变双层
-  - 输入：layer1必须是单层seq，layer2必须是双层seq
-  - 输出：双层seq（和layer2的一样），其中第i个subseq中每个向量的值均为layer1中第i个向量的值 
