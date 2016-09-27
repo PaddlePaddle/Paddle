@@ -217,7 +217,7 @@ void hl_matrix_mul(real *A_d, hl_trans_op_t transa,
   } else {
     LOG(FATAL) << "parameter transa error!";
   }
-  CHECK_EQ(stat, CUBLAS_STATUS_SUCCESS);
+  CHECK_EQ(stat, CUBLAS_STATUS_SUCCESS) << hl_cublas_get_error_string(stat);
   CHECK_SYNC("hl_matrix_mul failed");
 }
 
@@ -266,7 +266,7 @@ void hl_matrix_mul_vector(real *A_d, hl_trans_op_t trans,
     LOG(FATAL) << "parameter transa error!";
   }
 
-  CHECK_EQ(stat, CUBLAS_STATUS_SUCCESS);
+  CHECK_EQ(stat, CUBLAS_STATUS_SUCCESS) << hl_cublas_get_error_string(stat);
   CHECK_SYNC("hl_matrix_mul_vector");
 }
 

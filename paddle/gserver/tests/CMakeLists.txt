@@ -56,7 +56,6 @@ add_test(NAME test_RecurrentGradientMachine
     COMMAND .set_python_path.sh -d
             ${PROJ_ROOT}/python:${PROJ_ROOT}/paddle/gserver/tests
             ${CMAKE_CURRENT_BINARY_DIR}/test_RecurrentGradientMachine
-            --use_gpu=false
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
 
 add_unittest_without_exec(test_NetworkCompare
