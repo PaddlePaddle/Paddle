@@ -55,8 +55,8 @@ def define_py_data_source(file_list, cls, module,
     :param obj: python object name. May be a function name if using
                 PyDataProviderWrapper.
     :type obj: basestring
-    :param args: The best practice is using dict to pass arguments into 
-                 DataProvider, and use :code:`@init_hook_wrapper` to 
+    :param args: The best practice is using dict to pass arguments into
+                 DataProvider, and use :code:`@init_hook_wrapper` to
                  receive arguments.
     :type args: string or picklable object
     :param async: Load Data asynchronously or not.
@@ -95,12 +95,12 @@ def define_py_data_source(file_list, cls, module,
 
 
 def define_py_data_sources(train_list, test_list, module, obj, args=None,
-                           train_async=False, data_cls=PyData):
+                           train_async=True, data_cls=PyData):
     """
     The annotation is almost the same as define_py_data_sources2, except that
     it can specific train_async and data_cls.
 
-    :param data_cls: 
+    :param data_cls:
     :param train_list: Train list name.
     :type train_list: basestring
     :param test_list: Test list name.
@@ -113,8 +113,8 @@ def define_py_data_sources(train_list, test_list, module, obj, args=None,
                 a tuple or list to this argument.
     :type obj: basestring or tuple or list
     :param args: The best practice is using dict() to pass arguments into
-                 DataProvider, and use :code:`@init_hook_wrapper` to receive 
-                 arguments. If train and test is different, then pass a tuple 
+                 DataProvider, and use :code:`@init_hook_wrapper` to receive
+                 arguments. If train and test is different, then pass a tuple
                  or list to this argument.
     :type args: string or picklable object or list or tuple.
     :param train_async: Is training data load asynchronously or not.
@@ -165,15 +165,15 @@ def define_py_data_sources2(train_list, test_list, module, obj, args=None):
 
     ..  code-block:: python
 
-        define_py_data_sources2(train_list="train.list", 
-                                test_list="test.list", 
+        define_py_data_sources2(train_list="train.list",
+                                test_list="test.list",
                                 module="data_provider"
                                 # if train/test use different configurations,
                                 # obj=["process_train", "process_test"]
-                                obj="process", 
+                                obj="process",
                                 args={"dictionary": dict_name})
 
-    The related data provider can refer to 
+    The related data provider can refer to
     `here <../../data_provider/pydataprovider2.html#dataprovider-for-the-sequential-model>`__.
 
     :param train_list: Train list name.
@@ -188,8 +188,8 @@ def define_py_data_sources2(train_list, test_list, module, obj, args=None):
                 a tuple or list to this argument.
     :type obj: basestring or tuple or list
     :param args: The best practice is using dict() to pass arguments into
-                 DataProvider, and use :code:`@init_hook_wrapper` to receive 
-                 arguments. If train and test is different, then pass a tuple 
+                 DataProvider, and use :code:`@init_hook_wrapper` to receive
+                 arguments. If train and test is different, then pass a tuple
                  or list to this argument.
     :type args: string or picklable object or list or tuple.
     :return: None
