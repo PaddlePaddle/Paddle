@@ -16,13 +16,40 @@ https://github.com/baidu/Paddle/releases/tag/V0.8.0b0
 
 ..  code-block:: shell
 
-    dpkg -i paddle-0.8.0b-cpu.deb
+    dpkg -i paddle-*-cpu.deb
     apt-get install -f
 
 在 :code:`dpkg -i` 的时候如果报一些依赖未找到的错误是正常的，
 在 :code:`apt-get install -f` 里会继续安装 PaddlePaddle。
+
+或者使用下面一条命令安装.
+
+..  code-block:: shell
+
+    gdebi paddle-*-cpu.deb
+
+如果 :code:`gdebi` 没有安装,则需要使用 :code:`sudo apt-get install gdebi`, 来安装 :code:`gdebi`
+
+
 需要注意的是，如果使用GPU版本的PaddlePaddle，请安装CUDA 7.5 和CUDNN 5到本地环境中，
 并设置好对应的环境变量(LD_LIBRARY_PATH等等)。
+
+安装完成后,可以使用命令 :code:`paddle version` 查看安装后的paddle 版本。可能的输出为
+
+..  code-block:: text
+
+    PaddlePaddle 0.8.0b1, compiled with
+    with_avx: ON
+    with_gpu: OFF
+    with_double: OFF
+    with_python: ON
+    with_rdma: OFF
+    with_glog: ON
+    with_gflags: ON
+    with_metric_learning:
+    with_timer: OFF
+    with_predict_sdk:
+
 
 可能遇到的问题
 --------------
