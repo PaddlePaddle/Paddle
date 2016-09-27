@@ -3,6 +3,7 @@ PaddlePaddle文档
 
 使用指南
 --------
+
 * `快速入门 <demo/quick_start/index.html>`_
 * `编译与安装 <build_and_install/index.html>`_
 * `用户接口 <ui/index.html>`_
@@ -17,3 +18,8 @@ PaddlePaddle文档
 算法教程
 --------
 * `RNN配置 <../doc/algorithm/rnn/rnn.html>`_
+
+常见问题
+--------
+
+* `常见问题 <faq/index.html>`_
