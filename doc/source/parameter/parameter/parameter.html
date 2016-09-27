@@ -375,13 +375,13 @@
 <dl class="function">
 <dt id="_CPPv2N6paddle8Argument10subArgFromERK8Argument6size_t6size_t6size_tbbb6size_t6size_t">
 <span id="paddle::Argument::subArgFrom__ArgumentCR.s.s.s.b.b.b.s.s"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a9c4aa318d57eeb85bbc36e3deb95a534"></span>void <code class="descname">subArgFrom</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>input</em>, size_t <em>offset</em>, size_t <em>height</em>, size_t <em>width</em>, bool <em>useGpu</em>, bool <em>trans</em> = false, bool <em>seqFlag</em> = false, size_t <em>seqStart</em> = 0, size_t <em>seqSize</em> = 0<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument10subArgFromERK8Argument6size_t6size_t6size_tbbb6size_t6size_t" title="Permalink to this definition">¶</a></dt>
-<dd><p>(value, grad, sequenceStartPositions) of output are subset of input. Note that, output share the same memory of input. </p>
+<dd><p>(value, ids, grad, sequenceStartPositions) of output are subset of input. Note that, output share the same memory of input. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last">
 <li><code class="first docutils literal"><span class="pre">input[in]</span></code> - <p>input </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">offset[in]</span></code> - <p>offset of input.value </p>
+<li><code class="first docutils literal"><span class="pre">offset[in]</span></code> - <p>offset in terms of rows </p>
 </li>
 <li><code class="first docutils literal"><span class="pre">height[in]</span></code> - <p>height of output.value </p>
 </li>
