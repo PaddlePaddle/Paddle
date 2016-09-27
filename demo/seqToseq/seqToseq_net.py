@@ -171,12 +171,13 @@ def gru_encoder_decoder(data_conf,
         beam_gen = beam_search(name=decoder_group_name,
                                step=gru_decoder_with_attention,
                                input=group_inputs,
-                               id_input=data_layer(name="sent_id",
-                                                   size=1),
-                               dict_file=trg_dict_path,
                                bos_id=0,
                                eos_id=1,
                                beam_size=beam_size,
-                               max_length=max_length,
-                               result_file=gen_trans_file)
+                               max_length=max_length)
+
+        seqtext_printer_evaluator(input=beam_gen,
+                                  id_input=data_layer(name="sent_id", size=1),
+                                  dict_file=trg_dict_path,
+                                  result_file=gen_trans_file)
         outputs(beam_gen)

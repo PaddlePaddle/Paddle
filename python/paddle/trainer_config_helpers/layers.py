@@ -2461,7 +2461,6 @@ def eos_layer(input, eos_id, name=None, layer_attr=None):
 
 @wrap_name_default()
 def beam_search(step, input, bos_id, eos_id, beam_size,
-                result_file, dict_file="", id_input=None,
                 max_length=500, name=None,
                 num_results_per_sample=None):
     """
@@ -2485,8 +2484,7 @@ def beam_search(step, input, bos_id, eos_id, beam_size,
                                input=[StaticInput("encoder_last")],
                                bos_id=0,
                                eos_id=1,
-                               beam_size=5,
-                               result_file="./generated_sequences.txt")
+                               beam_size=5)
 
     Please see the following demo for more details:
 
@@ -2522,24 +2520,12 @@ def beam_search(step, input, bos_id, eos_id, beam_size,
                       of the most promising next words. The greater the beam
                       size, the fewer candidate words are pruned.
     :type beam_size: int
-    :param result_file: Path of the file to store the generated results.
-    :type result_file: basestring
-    :param dict_file: Path of dictionary. This is an optional parameter.
-                      Every line is a word in the dictionary with
-                      (line number - 1) as the word index.
-                      If this parameter is set to None, or to an empty string,
-                      only word index are printed in the generated results.
-    :type dict_file: basestring
     :param num_results_per_sample: Number of the generated results per input
                                   sequence. This number must always be less than
                                   beam size.
     :type num_results_per_sample: int
-    :param id_input: Index of the input sequence, and the specified index will
-                     be prited in the gereated results. This an optional
-                     parameter.
-    :type id_input: LayerOutput
-    :return: The seq_text_printer that prints the generated sequence to a file.
-    :rtype: evaluator
+    :return: The generated word index.
+    :rtype: LayerOutput
     """
 
     if num_results_per_sample is None:
@@ -2555,7 +2541,6 @@ def beam_search(step, input, bos_id, eos_id, beam_size,
 
     real_input = []
     for i, each_input in enumerate(input):
-        # print type(each_input)
         assert isinstance(each_input, StaticInput) or isinstance(each_input,
                                                           BaseGeneratedInput)
         if isinstance(each_input, BaseGeneratedInput):
@@ -2591,20 +2576,7 @@ def beam_search(step, input, bos_id, eos_id, beam_size,
 
     tmp = recurrent_group(step=__real_step__, input=real_input, reverse=False,
                           name=name)
-
-    if id_input is None:
-        inputs = [tmp.name]
-    else:
-        assert isinstance(id_input, LayerOutput)
-        inputs = [id_input.name, tmp.name]
-        tmp.parents.append(id_input)
-
-    Evaluator(name='target_printer',
-              type='seq_text_printer',
-              dict_file=dict_file,
-              result_file=result_file,
-              inputs=inputs
-              )
+    
     return tmp
 
 
