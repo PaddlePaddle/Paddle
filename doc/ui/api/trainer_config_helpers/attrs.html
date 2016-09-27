@@ -110,7 +110,7 @@ parameter name.</p>
 
 <dl class="class">
 <dt id="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute">
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.attrs.</code><code class="descname">ExtraLayerAttribute</code><span class="sig-paren">(</span><em>error_clipping_threshold=None</em>, <em>drop_rate=None</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.attrs.</code><code class="descname">ExtraLayerAttribute</code><span class="sig-paren">(</span><em>error_clipping_threshold=None</em>, <em>drop_rate=None</em>, <em>device=None</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="Permalink to this definition">¶</a></dt>
 <dd><p>Some high level layer attributes config. You can set all attributes here,
 but some layer doesn&#8217;t support all attributes. If you set an attribute to a
 layer that not support this attribute, paddle will print an error and core.</p>
@@ -122,7 +122,10 @@ layer that not support this attribute, paddle will print an error and core.</p>
 <li><strong>error_clipping_threshold</strong> (<em>float</em>) &#8211; Error clipping threshold.</li>
 <li><strong>drop_rate</strong> (<em>float</em>) &#8211; Dropout rate. Dropout will create a mask on layer output.
 The dropout rate is the zero rate of this mask. The
-details of what dropout is please refer to <a class="reference external" href="https://www.cs.toronto.edu/~hinton/absps/JMLRdropout.pdf">here</a></li>
+details of what dropout is please refer to <a class="reference external" href="https://www.cs.toronto.edu/~hinton/absps/JMLRdropout.pdf">here</a>.</li>
+<li><strong>device</strong> (<em>int</em>) &#8211; <p>device ID of layer. device=-1, use CPU. device&gt;0, use GPU.
+The details allocation in parallel_nn please refer to <a class="reference external" href="http://www.paddlepaddle.org/doc/ui/cmd_argument/use_case.html#case-2-specify-layers-in-different-devices">here</a>.</p>
+</li>
 </ul>
 </td>
 </tr>
