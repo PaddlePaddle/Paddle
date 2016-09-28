@@ -554,11 +554,16 @@ void Argument::degradeSequence(const Argument& input, bool useGpu) {
 void Argument::subArgFrom(const Argument& input, size_t offset, size_t height,
                           size_t width, bool useGpu, bool trans, bool seqFlag,
                           size_t seqStart, size_t seqSize) {
-  value = Matrix::create(input.value->getData() + offset, height, width, trans,
-                         useGpu);
+  if (input.value) {
+    value = Matrix::create(input.value->getData() + offset * width,
+                           height, width, trans, useGpu);
+  }
+  if (input.ids) {
+    ids = IVector::create(input.ids->getData() + offset, height, useGpu);
+  }
   if (input.grad) {
-    grad = Matrix::create(input.grad->getData() + offset, height, width, trans,
-                          useGpu);
+    grad = Matrix::create(input.grad->getData() + offset * width,
+                          height, width, trans, useGpu);
   }
   if (seqFlag) {
     sequenceStartPositions = std::make_shared<ICpuGpuVector>(

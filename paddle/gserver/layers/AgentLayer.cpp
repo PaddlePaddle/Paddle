@@ -139,15 +139,16 @@ void ScatterAgentLayer::forward(PassType passType) {
   Layer::forward(passType);
   CHECK_EQ(realLayer_->getDeviceId(), this->getDeviceId());
 
-  if (realLayer_->getOutput().ids) {  // ids scatter
-    IVector::resizeOrCreate(output_.ids, ids_->getSize(), useGpu_);
-    output_.ids->selectFrom(*realLayer_->getOutput().ids, *ids_);
-  } else {  // value scatter
-    int width = this->getSize();
-    if (realOutArg_.value) {
-      output_.subArgFrom(realOutArg_, /* offset */ idIndex_ * width, idSize_,
-                         width, useGpu_);
-    } else {  // used in generation
+  int width = this->getSize();
+  if (realOutArg_.value || realOutArg_.ids) {
+    output_.subArgFrom(realOutArg_, /* offset */ idIndex_, idSize_,
+                       width, useGpu_);
+  } else {  // used in generation
+    if (realLayer_->getOutput().ids) {
+      IVector::resizeOrCreate(output_.ids, ids_->getSize(), useGpu_);
+      output_.ids->selectFrom(*realLayer_->getOutput().ids, *ids_);
+    }
+    if (realLayer_->getOutput().value) {
       int height = ids_->getSize();
       resetOutput(height, width);
 
@@ -213,18 +214,17 @@ void SequenceGatherAgentLayer::forward(PassType passType) {
 void SequenceScatterAgentLayer::forward(PassType passType) {
   Layer::forward(passType);
   CHECK_EQ(realLayer_->getDeviceId(), this->getDeviceId());
-  CHECK(!realLayer_->getOutput().ids) << "Not supported";
 
   const Argument& input = realLayer_->getOutput();
-  CHECK_EQ(input.value->getWidth(), this->getSize());
+  CHECK_EQ(realLayer_->getSize(), this->getSize());
   int width = this->getSize();
 
   AsyncGpuBlock asyncGpuBlock;
   REGISTER_TIMER_INFO("SequenceAgentLayerForward", getName().c_str());
 
-  if (realOutArg_.value) {
+  if (realOutArg_.value || realOutArg_.ids) {
     CHECK(realOutArg_.sequenceStartPositions);
-    output_.subArgFrom(realOutArg_, /* offset */ idIndex_ * width, idSize_,
+    output_.subArgFrom(realOutArg_, /* offset */ idIndex_, idSize_,
                        width, useGpu_, /* trans */ false, /* seqFlag */ true,
                        /* seqStart */ seqStartPosIndex_,
                        /* seqSize */ numSequences_);
