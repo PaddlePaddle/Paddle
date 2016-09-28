@@ -1,5 +1,19 @@
-# 支持双层RNN的Layer介绍
+# 支持双层序列作为输入的Layer
 
+## 概述
+
+在自然语言处理任务中，序列是一种常见的数据类型。一个独立的词语，可以看作是一个非序列输入，或者，我们称之为一个0层的序列；由词语构成的句子，是一个单层序列；若干个句子构成一个段落，是一个双层的序列。
+
+双层序列是一个嵌套的序列，它的每一个元素，又是一个单层的序列。这是一种非常灵活的数据组织方式，帮助我们构造一些复杂的输入信息。
+
+我们可以按照如下层次定义非序列，单层序列，以及双层序列。
+
++ 0层序列：一个独立的元素，类型可以是 paddle 支持的任意输入数据类型
++ 单层序列：排成一列的多个元素，每个元素是一个 0层序列，元素之间的顺序是重要的输入信息
++ 双层序列：排成一列的多个元素，每个元素是一个单层序列，称之为双层序列的一个子序列（subseq），subseq 的每个元素是一个 0 层序列
+
+
+在 PaddlePaddle 中，下面这些Layer能够接受双层序列作为输入，完成相应的计算。
 ## pooling_layer
 
 pooling_layer的使用示例如下，详细见配置API。
@@ -8,17 +22,17 @@ seq_pool = pooling_layer(input=layer,
                          pooling_type=AvgPooling(),
                          agg_level=AggregateLevel.EACH_SEQUENCE)
 ```
-- `pooling_type`有两种，分别是MaxPooling()和AvgPooling。
+- `pooling_type` 目前支持两种，分别是：MaxPooling() 和 AvgPooling()。
 - `agg_level=AggregateLevel.TIMESTEP`时（默认值）：
-  - 作用：双层变0层，或单层变0层
-  - 输入：双层seq或单层seq
-  - 输出：0层seq（一个向量），即整个seq的平均值（或最大值）
+  - 作用：双层序列经过运算变成一个0层序列，或单层序列经过运算变成一个0层序列
+  - 输入：一个双层序列，或一个单层序列
+  - 输出：一个0层序列，即整个输入序列（单层或双层）的平均值（或最大值）
 - `agg_level=AggregateLevel.EACH_SEQUENCE`时：
-  - 作用：双层变单层
-  - 输入：必须是双层seq
-  - 输出：单层seq，其中每个向量是原来双层seq中每个subseq的平均值（或最大值）
+  - 作用：一个双层序列经过运算变成一个单层序列
+  - 输入：必须是一个双层序列
+  - 输出：一个单层序列，序列的每个元素是原来双层序列每个 subseq元素的平均值（或最大值）
 
-## last_seq和first_seq
+## last_seq 和 first_seq
 
 last_seq的使用示例如下（first_seq类似），详细见配置API。
 ```python
@@ -26,13 +40,13 @@ last = last_seq(input=layer,
                 agg_level=AggregateLevel.EACH_SEQUENCE)
 ```
 - `agg_level=AggregateLevel.TIMESTEP`时（默认值）：
-  - 作用：双层变0层，或单层变0层
-  - 输入：双层seq或单层seq
-  - 输出：0层seq（一个向量），即整个seq最后（或最开始）的一个向量。
+  - 作用：一个双层序列经过运算变成一个0层序列，或一个单层序列经过运算变成一个0层序列
+  - 输入：一个双层序列或一个单层序列
+  - 输出：一个0层序列，即整个输入序列（双层或者单层）最后一个，或第一个元素。
 - `agg_level=AggregateLevel.EACH_SEQUENCE`时：
-  - 作用：双层变单层
-  - 输入：必须是双层seq
-  - 输出：单层seq，其中每个向量是原来双层seq中每个subseq最后（或最开始）的一个向量。
+  - 作用：一个双层序列经过运算变成一个单层序列
+  - 输入：必须是一个双层序列
+  - 输出：一个单层序列，其中每个元素是双层序列中每个 subseq 最后一个（或第一个）元素。
 
 ## expand_layer
 
@@ -43,10 +57,10 @@ expand = expand_layer(input=layer1,
                       expand_level=ExpandLevel.FROM_TIMESTEP)
 ```
 - `expand_level=ExpandLevel.FROM_TIMESTEP`时（默认值）：
-  - 作用：0层变双层，或单层变双层
-  - 输入：layer1必须是0层seq，layer2可以是双层seq或单层seq
-  - 输出：单或双层seq（和layer2的一样），其中第i个seq中每个向量的值均为layer1中第i个向量的值
+  - 作用：一个0层序列经过运算扩展成一个单层序列，或者一个双层序列
+  - 输入：layer1必须是一个0层序列，是待扩展的数据；layer2可以是一个单层序列，或者是一个双层序列，提供扩展的长度信息
+  - 输出：一个单层序列，或一个双层序列，输出序列的类型（双层序列，或单层序列）和序列中含有元素的数目同 layer2一致。若输出是单层序列，单层序列的每个元素（0层序列），都是对layer1元素的拷贝；若输出是双层序列，双层序列每个subseq中每个元素（0层序列），都是对layer1元素的拷贝
 - `expand_level=ExpandLevel.FROM_SEQUENCE`时：
-  - 作用：单层变双层
-  - 输入：layer1必须是单层seq，layer2必须是双层seq
-  - 输出：双层seq（和layer2的一样），其中第i个subseq中每个向量的值均为layer1中第i个向量的值 
+  - 作用：一个单层序列经过运算扩展成一个双层序列
+  - 输入：layer1必须是一个单层序列，是待扩展的数据；layer2必须是一个双层序列，提供扩展的长度信息
+  - 输出：一个双层序列，序列中含有元素的数目同layer2一致。要求单层序列含有元素的数目（0层序列），和双层序列含有subseq 的数目一致。单层序列第i个元素（0层序列），被扩展为一个单层序列，构成了输出双层序列的第i个subseq。

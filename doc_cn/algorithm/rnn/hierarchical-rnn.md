@@ -1,45 +1,12 @@
-# 双层RNN教程
-
-## 双层RNN介绍
-
-- 单层（word-level）RNN：每个状态（state）对应一个词（word）。
-- 双层（sequence-level）RNN：一个双层RNN由多个单层RNN组成，每个单层RNN（即双层RNN的每个状态）对应一个子句（subseq）。
-
-为了描述方便，下文将含有子句（subseq）的句子定义为双层seq，不含有子句的句子定义为单层seq，那么0层seq即为一个向量。
-
-## 双层RNN的使用方法
-
-### 训练流程的使用方法
-- **单进单出**：输入和输出都是单层seq。
-  - 如果有多个输入，则不同输入的seq含有的word数必须严格相等。
-  - 输出seq的word数和输入seq的一样。
-  - memory：用来记录上一个word的状态，必须有且为一个向量。
-  - boot_layer：memory初始状态，可以为单层seq或一个向量。默认不设置，即初始状态为0。
-- **双进双出**：输入和输出都是双层seq。
-  - 如果有多个输入，则不同输入的seq含有的subseq数必须严格相等，但含有的word数可以不相等。
-  - 输出seq的subseq数、word数和指定共享的输入seq（默认为第一个输入）的一样。
-  - memory：用来记录上一个subseq的状态，可以为单层seq（只作为read-only memory）或一个向量；也可以不设置，即两个subseq间无关联。
-  - boot_layer：memory初始状态，可以为单层seq（只作为read-only memory）或一个向量。默认不设置，即初始状态为0。
-- **双进单出**：目前还未支持，会报错"In hierachical RNN, all out links should be from sequences now"。
-  
-Python API见recurrent_group。
-
-### 生成流程的使用方法
-
-- 单层RNN：从一个word生成下一个word。
-- 双层RNN：即把单层RNN生成后的subseq给拼接成一个新的双层seq。从语义上看，也不存在一个subseq直接生成下一个subseq的情况。
-
-Python API见beam_search。
-
-## 双层RNN的使用示例
+# 双层RNN配置与示例
 
 我们在`paddle/gserver/tests/test_RecurrentGradientMachine`单测中，通过多组语义相同的单双层RNN配置，讲解如何使用双层RNN。
 
-### 示例1：双进双出，subseq间无memory
+## 示例1：双进双出，subseq间无memory
 
 配置：单层RNN（`sequence_layer_group`）和双层RNN（`sequence_nest_layer_group`），语义完全相同。
 
-#### 读取双层seq的方法
+### 读取双层seq的方法
 
 首先，我们看一下单测中使用的单双层seq的不同数据组织形式（您也可以采用别的组织形式）：
 
@@ -56,7 +23,6 @@ Python API见beam_search。
 2  	HowardJohnson 的 品质 ， 服务 相当 好 的 一 家 五星级 。 房间 不错 、 泳池 不错 、 楼层 安排 很 合理 。 还有 就是 地理位置 ， 简直 一 流 。 就 在 天一阁 、 月湖 旁边 ， 离 天一广场 也 不远 。 下次 来 宁波 还会 住 。
 2  	酒店 很干净 ， 很安静 ， 很 温馨 ， 服务员 服务 好 ， 各方面 都 不错 *
 2  	挺好 的 ， 就是 没 窗户 ， 不过 对 得 起 这 价格
-
 ```
 
 - 双层seq的数据（`Sequence/tour_train_wdseg.nest`）如下，一共有4个样本。样本间用空行分开，代表不同的双层seq；样本内单层seq的数据和上面的完全一样。每个样本的子句数分别为2,3,2,3。
@@ -76,6 +42,7 @@ Python API见beam_search。
 2  	酒店 很干净 ， 很安静 ， 很 温馨 ， 服务员 服务 好 ， 各方面 都 不错 *
 2  	挺好 的 ， 就是 没 窗户 ， 不过 对 得 起 这 价格
 ```
+
 其次，我们看一下单测中使用的单双层seq的不同dataprovider（见`sequenceGen.py`）：
 
 - 单层seq的dataprovider如下：
@@ -129,7 +96,7 @@ def process2(settings, file_name):
                 word_slot_list = []
 ```
 
-#### 模型中的配置
+### 模型中的配置
 
 首先，我们看一下单层seq的配置（见`sequence_layer_group.conf`）。注意：batchsize=5表示一次过5句单层seq，因此2个batch就可以完成1个pass。
 
@@ -215,11 +182,11 @@ with mixed_layer(size=label_dim,
 
 outputs(classification_cost(input=output, label=data_layer(name="label", size=1)))
 ```
-### 示例2：双进双出，subseq间有memory
+## 示例2：双进双出，subseq间有memory
 
 配置：单层RNN（`sequence_rnn.conf`），双层RNN（`sequence_nest_rnn.conf`和`sequence_nest_rnn_readonly_memory.conf`），语义完全相同。
 
-#### 读取双层seq的方法
+### 读取双层seq的方法
 
 我们看一下单测中使用的单双层seq的不同数据组织形式和dataprovider（见`rnn_data_provider.py`）
 ```python
@@ -244,7 +211,7 @@ def process_seq(settings, file_name):
 - 双层seq：有两句，分别为[[1,3,2],[4,5,2]]（2个子句）和[[0,2],[2,5],[0,1,2]]（3个子句）。
 - 单双层seq的label都分别是0和1
 
-#### 模型中的配置
+### 模型中的配置
 
 我们选取单双层seq配置中的不同部分，来对比分析两者语义相同的原因。
 
@@ -322,10 +289,10 @@ def outer_step(x):
 out = recurrent_group(step=outer_step, input=SubsequenceInput(emb))
 ```
 
-### 示例3：双进双出，输入不等长
+## 示例3：双进双出，输入不等长
 
 TBD
 
-### 示例4：beam_search的生成
+## 示例4：beam_search的生成
 
 TBD
