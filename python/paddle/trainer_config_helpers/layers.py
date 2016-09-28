@@ -2704,8 +2704,8 @@ def conv_operator(img, filter, filter_size, num_filters,
                         PaddlePaddle now supports rectangular filters,
                         the filter's shape can be (filter_size, filter_size_y).
     :type filter_size_y: int
-    :param num_filter: channel of output data.
-    :type num_filter: int
+    :param num_filters: channel of output data.
+    :type num_filters: int
     :param num_channel: channel of input data.
     :type num_channel: int
     :param stride: The x dimension of the stride.
@@ -2726,7 +2726,7 @@ def conv_operator(img, filter, filter_size, num_filters,
     if padding_y is None:
         padding_y = padding
     op = ConvOperator(input_layer_names=[img.name, filter.name],
-                      num_filters = num_filter,
+                      num_filters = num_filters,
                       conv_conf=Conv(filter_size=filter_size,
                                      padding=padding,
                                      stride=stride,
