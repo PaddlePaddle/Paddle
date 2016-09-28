@@ -48,7 +48,7 @@ sudo apt-get install libgflags-dev
 sudo apt-get install libgtest-dev
 sudo pip install wheel
 pushd /usr/src/gtest
-cmake ..
+cmake .
 make
 sudo cp *.a /usr/lib
 popd
@@ -106,19 +106,19 @@ Here are some examples of cmake command with different options:
 **only cpu**
 
 ```bash
-cmake -DWITH_GPU=OFF -DWITH_DOC=OFF ..
+cmake -DWITH_GPU=OFF -DWITH_DOC=OFF
 ```
 
 **gpu**
 
 ```bash
-cmake -DWITH_GPU=ON -DWITH_DOC=OFF ..
+cmake -DWITH_GPU=ON -DWITH_DOC=OFF
 ```
 
 **gpu with doc and swig**
 
 ```bash
-cmake -DWITH_GPU=ON -DWITH_DOC=ON -DWITH_SWIG_PY=ON ..
+cmake -DWITH_GPU=ON -DWITH_DOC=ON -DWITH_SWIG_PY=ON
 ``` 
 
 Finally, you can download source code and build:
@@ -232,19 +232,19 @@ Here are some examples of CMake command with different options:
 **only cpu**
 
 ```bash
-cmake -DWITH_GPU=OFF -DWITH_DOC=OFF ..
+cmake -DWITH_GPU=OFF -DWITH_DOC=OFF
 ```
 
 **gpu**
 
 ```bash
-cmake -DWITH_GPU=ON -DWITH_DOC=OFF ..
+cmake -DWITH_GPU=ON -DWITH_DOC=OFF
 ```
 
 **gpu with doc and swig**
 
 ```bash
-cmake -DWITH_GPU=ON -DWITH_DOC=ON -DWITH_SWIG_PY=ON ..
+cmake -DWITH_GPU=ON -DWITH_DOC=ON -DWITH_SWIG_PY=ON
 ``` 
 
 Finally, you can download source code and build:
