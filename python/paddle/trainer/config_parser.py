@@ -1279,7 +1279,7 @@ class LayerBase(object):
             size,
             dims=None,
             sparse = None,
-            format = "csr"):
+            format = None):
         if dims is None:
             # TODO(yuyang18): print warning and callstack here!
             dims = list()
@@ -2074,7 +2074,7 @@ class MaxLayer(LayerBase):
             active_type='linear',
             device=None,
             bias=False,
-            output_max_index=False):
+            output_max_index=None):
         super(MaxLayer, self).__init__(name, 'max', 0, inputs=inputs, device=device)
         config_assert(len(self.inputs) == 1, 'MaxLayer must have 1 input')
         self.config.trans_type =  trans_type
@@ -2083,7 +2083,8 @@ class MaxLayer(LayerBase):
             input_layer = self.get_input_layer(input_index)
             self.set_layer_size(input_layer.size)
         self.create_bias_parameter(bias, self.config.size)
-        self.config.output_max_index=output_max_index
+        if output_max_index is not None:
+            self.config.output_max_index = output_max_index
 
 
 @config_layer('maxid')
@@ -2440,7 +2441,7 @@ class MixedLayer(LayerBase):
             inputs,
             size=0,
             bias=True,
-            error_clipping_threshold=0.0,
+            error_clipping_threshold=None,
             **xargs):
         config_assert(inputs, 'inputs cannot be empty')
         super(MixedLayer, self).__init__(
@@ -2510,7 +2511,8 @@ class MixedLayer(LayerBase):
 
         self.create_bias_parameter(bias, self.config.size)
 
-        self.config.error_clipping_threshold = error_clipping_threshold
+        if error_clipping_threshold is not None:
+            self.config.error_clipping_threshold = error_clipping_threshold
 
 # like MixedLayer, but no bias parameter
 @config_func

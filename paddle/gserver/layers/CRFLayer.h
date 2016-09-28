@@ -25,7 +25,7 @@ namespace paddle {
 /**
  * A layer for calculating the cost of sequential conditional random field
  * model.
- * See LinearChainCRF.h for the detail of the CRF formulation.
+ * See class LinearChainCRF for the detail of the CRF formulation.
  */
 class CRFLayer : public Layer {
 public:

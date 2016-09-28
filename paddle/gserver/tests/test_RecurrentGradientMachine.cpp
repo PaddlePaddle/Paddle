@@ -92,7 +92,11 @@ void CalCost(const string& conf, const string& dir, real* cost,
   rmDir(dir.c_str());
 }
 
-void test(const string& conf1, const string& conf2, double eps) {
+void test(const string& conf1, const string& conf2, double eps, bool useGpu) {
+  if (!paddle::version::isWithGpu() && useGpu) {
+    return;
+  }
+  FLAGS_use_gpu = useGpu;
   int num_passes = 5;
   real* cost1 = new real[num_passes];
   const string dir1 = "gserver/tests/t1";
@@ -113,17 +117,28 @@ void test(const string& conf1, const string& conf2, double eps) {
 }
 
 TEST(RecurrentGradientMachine, HasSubSequence) {
-  test("gserver/tests/sequence_layer_group.conf",
-       "gserver/tests/sequence_nest_layer_group.conf",
-       1e-5);
+  for (bool useGpu : {false, true}) {
+    test("gserver/tests/sequence_layer_group.conf",
+         "gserver/tests/sequence_nest_layer_group.conf",
+         1e-5, useGpu);
+  }
 }
 
 TEST(RecurrentGradientMachine, rnn) {
-  test("gserver/tests/sequence_rnn.conf",
-       "gserver/tests/sequence_nest_rnn.conf",
-       0);
+  for (bool useGpu : {false, true}) {
+    test("gserver/tests/sequence_rnn.conf",
+         "gserver/tests/sequence_nest_rnn.conf",
+         1e-6, useGpu);
+  }
 }
 
+TEST(RecurrentGradientMachine, rnn_multi_input) {
+  for (bool useGpu : {false, true}) {
+    test("gserver/tests/sequence_rnn_multi_input.conf",
+         "gserver/tests/sequence_nest_rnn_multi_input.conf",
+         1e-6, useGpu);
+  }
+}
 
 int main(int argc, char** argv) {
   if (paddle::version::isWithPyDataProvider()) {
