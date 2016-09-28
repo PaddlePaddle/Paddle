@@ -32,7 +32,7 @@ void testNormalImpl(size_t thread_num,
 
  std::vector<std::thread> threads;
  threads.reserve(thread_num);
- for (int32_t i = 0; i < thread_num; ++i) {
+ for (size_t i = 0; i < thread_num; ++i) {
     threads.emplace_back([&thread_num, &mutex,
                          &tids, &barrier, &callback]{
         callback(thread_num, mutex, tids, barrier);
