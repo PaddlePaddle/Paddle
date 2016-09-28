@@ -377,11 +377,17 @@ private:
             std::swap(callingContexts_[cid], callingContexts_[0]);
             cid = 0;
           }
+
+          PyObjectPtr front;
+          {
+            std::unique_lock<std::mutex> l(mtx_);
+            front = pop_get_front(callingContexts_);
+            this->pullCV_.notify_all();
+          }
           {
             PyGuard g;
-            callingContexts_.pop_front();
+            front.reset();
           }
-          this->pullCV_.notify_all();
           continue;
         }
       }
@@ -410,9 +416,6 @@ private:
         std::lock_guard<std::mutex> guard(mtx_);
         poolActualSize_ += additionalBatchSize;
         dataPool_.emplace_back(data);
-      }
-
-      {
         pullCV_.notify_all();
       }
     }
@@ -592,8 +595,8 @@ public:
       {
         std::lock_guard<std::mutex> g(mtx_);
         poolActualSize_ -= bsize;
+        this->pushCV_.notify_all();
       }
-      this->pushCV_.notify_all();
     }
 
     if (bsize == 0) {  // end of pass. In data pool, cannot get any data.
