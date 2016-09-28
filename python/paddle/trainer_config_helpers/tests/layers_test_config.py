@@ -47,7 +47,7 @@ print_layer(input=[out])
 
 outputs(classification_cost(out, data_layer(name="label", size=num_classes)))
 
-dotmul = mixed_layer(input=[dotmul_operator(x=x1, y=y1),
+dotmul = mixed_layer(input=[dotmul_operator(a=x1, b=x1),
                             dotmul_projection(input=y1)])
 
 proj_with_attr_init = mixed_layer(input=full_matrix_projection(input=y1,

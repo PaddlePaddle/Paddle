@@ -18,6 +18,6 @@ outputs(interpolation_layer(input=[a, b], weight=weight),
         cos_sim(a=a, b=c, size=2),
         sum_to_one_norm_layer(input=a),
         conv_shift_layer(a=a, b=d),
-        tensor_layer(x1=a, x2=b, size=1000),
+        tensor_layer(a=a, b=b, size=1000),
         slope_intercept_layer(input=a, slope=0.7, intercept=0.9),
         linear_comb_layer(weights=b, vectors=c))

@@ -439,7 +439,7 @@ def dotmul_projection(input, param_attr=None):
     return proj
 
 
-def dotmul_operator(x, y, scale=1):
+def dotmul_operator(a=None, b=None, scale=1, **kwargs):
     """
     DotMulOperator takes two inputs and performs element-wise multiplication:
 
@@ -455,23 +455,28 @@ def dotmul_operator(x, y, scale=1):
 
        op = dotmul_operator(x=layer1, y=layer2, scale=0.5)
 
-    :param x: Input layer1
-    :type x: LayerOutput
-    :param y: Input layer2
-    :type y: LayerOutput
+    :param a: Input layer1
+    :type a: LayerOutput
+    :param b: Input layer2
+    :type b: LayerOutput
     :param scale: config scalar, default value is one.
     :type scale: float
     :return: A DotMulOperator Object.
     :rtype: DotMulOperator
     """
-    assert isinstance(x, LayerOutput)
-    assert isinstance(y, LayerOutput)
-    if x.size is not None and y.size is not None:
-        assert x.size == y.size
+    if 'x' in kwargs or 'y' in kwargs:
+        logger.warning('x and y arguments for dotmul_operator is deprecated. '
+                       'Please use a and b as parameter.')
+    a = kwargs.get('x', a)    # For Backward capacity.
+    b = kwargs.get('y', b)
+    assert isinstance(a, LayerOutput)
+    assert isinstance(b, LayerOutput)
+    if a.size is not None and b.size is not None:
+        assert a.size == b.size
 
-    op = DotMulOperator(input_layer_names=[x.name, y.name],
+    op = DotMulOperator(input_layer_names=[a.name, b.name],
                         scale=scale)
-    op.origin = [x, y]
+    op.origin = [a, b]
     return op
 
 
@@ -799,7 +804,7 @@ def print_layer(input, name=None):
         type=LayerType.PRINT_LAYER,
         inputs=[l.name for l in input],
     )
-    return LayerOutput(name, LayerType.PRINT_LAYER, input)
+    # this layer don't return anything, can not be input of other layer.
 
 
 @wrap_name_default("seq_pooling")
@@ -935,10 +940,14 @@ def lstmemory(input, name=None, reverse=False, act=None,
     assert act.support_hppl
     assert input.size is not None and input.size % 4 == 0
     if size is not None:
-        logger.warning("NOTE: The lstmemory layer[%s]'s size is set by previous"
-                       " input layer. The lstm size should be equal with input"
-                       " layer size/4. The size which is set explicitly will"
-                       " be ignored." % name)
+        if input.size / 4 == size:
+            plog = logger.warning
+        else:
+            plog = logger.fatal
+
+        plog("NOTE: The lstmemory layer[%s]'s size is set by previous input "
+             "layer. The lstm size should be equal with input layer size/4. The"
+             " size which is set explicitly will be ignored." % name)
 
     Layer(name=name,
           type=LayerType.LSTMEMORY,
@@ -1046,9 +1055,13 @@ def grumemory(input, name=None, reverse=False, act=None,
     assert gate_act.support_hppl
     assert input.size is not None and input.size % 3 == 0
     if size is not None:
-        logger.warning("NOTE: the gru memory layer's size is set by previous "
-                       "input layer, and should be input size / 3. Set size "
-                       "explicitly will be ignored.")
+        if input.size / 3 == size:
+            plog = logger.warning
+        else:
+            plog = logger.fatal
+        plog("NOTE: the gru memory layer's size is set by previous input layer,"
+             " and should be input size / 3. Set size explicitly will be "
+             "ignored.")
 
     Layer(name=name,
           type=LayerType.GRUMEMORY,
@@ -2259,6 +2272,21 @@ def recurrent_layer(input, act=None, bias_attr=None,
     Simple recurrent unit layer. It is just a fully connect layer through both
     time and neural network.
 
+    For each sequence [start, end] it performs the following computation\:
+
+    ..  math::
+
+        out_{i} = act(in_{i})     \\      \\      \\text{for} \\ i = start \\\\
+        out_{i} = act(in_{i} + out_{i-1} * W) \\ \\ \\text{for} \\ start < i <= end
+
+    If reversed is true, the order is reversed\:
+
+    ..  math::
+
+        out_{i} = act(in_{i})           \\    \\   \\text{for} \\ i = end  \\\\
+        out_{i} = act(in_{i} + out_{i+1} * W) \\ \\ \\text{for} \\ start <= i < end
+
+
     :param input: Input Layer
     :type input: LayerOutput
     :param act: activation.
@@ -2919,34 +2947,34 @@ def conv_shift_layer(a, b, name=None):
 @wrap_bias_attr_default()
 @wrap_act_default(act=LinearActivation())
 @layer_support(ERROR_CLIPPING, DROPOUT)
-def tensor_layer(x1, x2, size, act=None, name=None,
+def tensor_layer(a, b, size, act=None, name=None,
                  param_attr=None, bias_attr=None, layer_attr=None):
     """
     This layer performs tensor operation for two input.
     For example, each sample:
 
     .. math::
-       y_{i} = x_{1} * W_{i} * {x_{2}^\mathrm{T}}, i=0,1,...,K-1
+       y_{i} = a * W_{i} * {b^\mathrm{T}}, i=0,1,...,K-1
 
     In this formular:
-      - :math:`x_{1}`: the first input contains M elements.
-      - :math:`x_{2}`: the second input contains N elements.
+      - :math:`a`: the first input contains M elements.
+      - :math:`b`: the second input contains N elements.
       - :math:`y_{i}`: the i-th element of y.
       - :math:`W_{i}`: the i-th learned weight, shape if [M, N]
-      - :math:`{x_{2}}^\mathrm{T}`: the transpose of :math:`x_{2}`.
+      - :math:`b^\mathrm{T}`: the transpose of :math:`b_{2}`.
 
     The simple usage is:
 
     .. code-block:: python
 
-       tensor = tensor_layer(x1=layer1, x2=layer2, size=1000)
+       tensor = tensor_layer(a=layer1, b=layer2, size=1000)
 
     :param name: layer name
     :type name: basestring
-    :param x1: Input layer x_1.
-    :type x1: LayerOutput
-    :param x2: input layer x_2.
-    :type x2: LayerOutput
+    :param a: Input layer a.
+    :type a: LayerOutput
+    :param b: input layer b.
+    :type b: LayerOutput
     :param size: the layer dimension.
     :type size: int.
     :param act: Activation Type. Default is tanh.
@@ -2962,18 +2990,18 @@ def tensor_layer(x1, x2, size, act=None, name=None,
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
-    assert isinstance(x1, LayerOutput) and isinstance(x2, LayerOutput)
+    assert isinstance(a, LayerOutput) and isinstance(b, LayerOutput)
     Layer(
         name=name,
         size=size,
         type=LayerType.TENSOR_LAYER,
         active_type=act.name,
         bias=ParamAttr.to_bias(bias_attr),
-        inputs=[Input(x1.name, **param_attr.attr),
-                Input(x2.name)],
+        inputs=[Input(a.name, **param_attr.attr),
+                Input(b.name)],
         **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
-    return LayerOutput(name, LayerType.TENSOR_LAYER, parents=[x1, x2],
+    return LayerOutput(name, LayerType.TENSOR_LAYER, parents=[a, b],
                        activation=act, size=size)
 
 
