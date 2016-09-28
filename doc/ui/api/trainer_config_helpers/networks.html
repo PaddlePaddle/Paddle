@@ -381,7 +381,7 @@ layers.py for the maths) does. A promising benefit is that LSTM memory
 cell states, or hidden states in every time step are accessible to for the
 user. This is especially useful in attention model. If you do not need to
 access to the internal states of the lstm, but merely use its outputs,
-it is recommanded to use the lstmemory, which is relatively faster than
+it is recommended to use the lstmemory, which is relatively faster than
 lstmemory_group.</p>
 <p>NOTE: In PaddlePaddle&#8217;s implementation, the following input-to-hidden
 multiplications:
@@ -736,7 +736,7 @@ compute attention weight.</li>
 <h2>outputs<a class="headerlink" href="#outputs" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">outputs</code><span class="sig-paren">(</span><em>layers</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">outputs</code><span class="sig-paren">(</span><em>layers</em>, <em>*args</em><span class="sig-paren">)</span></dt>
 <dd><p>Declare the end of network. Currently it will only calculate the
 input/output order of network. It will calculate the predict network or
 train network&#8217;s output automatically.</p>

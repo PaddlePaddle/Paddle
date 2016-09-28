@@ -92,11 +92,20 @@ Each PoolingType contains one parameter:</p>
 <h1>MaxPooling<a class="headerlink" href="#maxpooling" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">MaxPooling</code></dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">MaxPooling</code><span class="sig-paren">(</span><em>output_max_index=None</em><span class="sig-paren">)</span></dt>
 <dd><p>Max pooling.</p>
 <p>Return the very large values for each dimension in sequence or time steps.</p>
 <div class="math">
 \[max(samples\_of\_a\_sequence)\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>output_max_index</strong> (<em>bool|None</em>) &#8211; True if output sequence max index instead of max
+value. None means use default value in proto.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </div>

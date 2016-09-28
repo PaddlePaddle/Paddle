@@ -91,7 +91,7 @@ strings.</td>
 <h2>LayerOutput<a class="headerlink" href="#layeroutput" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">LayerOutput</code><span class="sig-paren">(</span><em>name</em>, <em>layer_type</em>, <em>parents=None</em>, <em>activation=None</em>, <em>num_filters=None</em>, <em>img_norm_type=None</em>, <em>size=None</em>, <em>outputs=None</em><span class="sig-paren">)</span></dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">LayerOutput</code><span class="sig-paren">(</span><em>name</em>, <em>layer_type</em>, <em>parents=None</em>, <em>activation=None</em>, <em>num_filters=None</em>, <em>img_norm_type=None</em>, <em>size=None</em>, <em>outputs=None</em>, <em>reverse=None</em><span class="sig-paren">)</span></dt>
 <dd><p>LayerOutput is output for layer function. It is used internally by several
 reasons.</p>
 <ul>
@@ -115,7 +115,7 @@ reasons.</p>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer output name.</li>
 <li><strong>layer_type</strong> (<em>basestring</em>) &#8211; Current Layer Type. One of LayerType enumeration.</li>
 <li><strong>activation</strong> (<em>BaseActivation.</em>) &#8211; Layer Activation.</li>
-<li><strong>parents</strong> (<em>list|tuple</em>) &#8211; Layer&#8217;s parents.</li>
+<li><strong>parents</strong> (<em>list|tuple|collection.Sequence</em>) &#8211; Layer&#8217;s parents.</li>
 </ul>
 </td>
 </tr>
@@ -219,7 +219,7 @@ of this layer maybe sparse. It requires an additional input to indicate
 several selected columns for output. If the selected columns is not
 specified, selective_fc_layer acts exactly like fc_layer.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">sel_fc</span> <span class="o">=</span> <span class="n">selective_fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">())</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">sel_fc</span> <span class="o">=</span> <span class="n">selective_fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">())</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -229,6 +229,8 @@ specified, selective_fc_layer acts exactly like fc_layer.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
 <li><strong>input</strong> (<em>LayerOutput|list|tuple</em>) &#8211; The input layer.</li>
+<li><strong>select</strong> (<em>LayerOutput</em>) &#8211; The select layer. The output of select layer should be a
+sparse binary matrix, and treat as the mask of selective fc.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; The layer dimension.</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type. Default is tanh.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; The Parameter Attribute.</li>
@@ -257,7 +259,7 @@ default Bias.</li>
 <h2>conv_operator<a class="headerlink" href="#conv-operator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_operator</code><span class="sig-paren">(</span><em>img</em>, <em>filter</em>, <em>filter_size</em>, <em>num_filters</em>, <em>num_channel=None</em>, <em>stride=1</em>, <em>padding=0</em>, <em>groups=1</em>, <em>filter_size_y=None</em>, <em>stride_y=None</em>, <em>padding_y=None</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_operator</code><span class="sig-paren">(</span><em>img</em>, <em>filter</em>, <em>filter_size</em>, <em>num_filters</em>, <em>num_channel=None</em>, <em>stride=1</em>, <em>padding=0</em>, <em>filter_size_y=None</em>, <em>stride_y=None</em>, <em>padding_y=None</em><span class="sig-paren">)</span></dt>
 <dd><p>Different from img_conv_layer, conv_op is an Operator, which can be used
 in mixed_layer. And conv_op takes two inputs to perform convolution.
 The first input is the image and the second is filter kernel. It only
@@ -265,7 +267,7 @@ support GPU mode.</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">op</span> <span class="o">=</span> <span class="n">conv_operator</span><span class="p">(</span><span class="n">img</span><span class="o">=</span><span class="n">input1</span><span class="p">,</span>
                    <span class="nb">filter</span><span class="o">=</span><span class="n">input2</span><span class="p">,</span>
-                   <span class="n">filter_size</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span>
+                   <span class="n">filter_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
                    <span class="n">num_filters</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
                    <span class="n">num_channels</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
 </pre></div>
@@ -320,13 +322,15 @@ the filter&#8217;s shape can be (filter_size, filter_size_y).</li>
 <dl class="docutils">
 <dt>In this formular:</dt>
 <dd><ul class="first last simple">
-<li>a&#8217;s index is computed modulo M.</li>
-<li>b&#8217;s index is computed modulo N.</li>
+<li>a&#8217;s index is computed modulo M. When it is negative, then get item from
+the right side (which is the end of array) to the left.</li>
+<li>b&#8217;s index is computed modulo N. When it is negative, then get item from
+the right size (which is the end of array) to the left.</li>
 </ul>
 </dd>
 </dl>
 <p>The example usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">conv_shift</span> <span class="o">=</span> <span class="n">conv_shif_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">])</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">conv_shift</span> <span class="o">=</span> <span class="n">conv_shift_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">])</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -335,7 +339,8 @@ the filter&#8217;s shape can be (filter_size, filter_size_y).</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
-<li><strong>input</strong> (<em>LayerOutput|list|tuple.</em>) &#8211; Input layer.</li>
+<li><strong>a</strong> (<em>LayerOutput</em>) &#8211; Input layer a.</li>
+<li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input layer b</li>
 </ul>
 </td>
 </tr>
@@ -374,16 +379,19 @@ rest channels will be processed by rest group of filters.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Layer Input.</li>
-<li><strong>filter_size</strong> (<em>int</em>) &#8211; The x dimension of a filter kernel.</li>
-<li><strong>filter_size_y</strong> (<em>int</em>) &#8211; The y dimension of a filter kernel. Since PaddlePaddle
+<li><strong>filter_size</strong> (<em>int|tuple|list</em>) &#8211; The x dimension of a filter kernel. Or input a tuple for
+two image dimension.</li>
+<li><strong>filter_size_y</strong> (<em>int|None</em>) &#8211; The y dimension of a filter kernel. Since PaddlePaddle
 currently supports rectangular filters, the filter&#8217;s
 shape will be (filter_size, filter_size_y).</li>
 <li><strong>num_filters</strong> &#8211; Each filter group&#8217;s number of filter</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type. Default is tanh</li>
 <li><strong>groups</strong> (<em>int</em>) &#8211; Group size of filters.</li>
-<li><strong>stride</strong> (<em>int</em>) &#8211; The x dimension of the stride.</li>
+<li><strong>stride</strong> (<em>int|tuple|list</em>) &#8211; The x dimension of the stride. Or input a tuple for two image
+dimension.</li>
 <li><strong>stride_y</strong> (<em>int</em>) &#8211; The y dimension of the stride.</li>
-<li><strong>padding</strong> (<em>int</em>) &#8211; The x dimension of the padding.</li>
+<li><strong>padding</strong> (<em>int|tuple|list</em>) &#8211; The x dimension of the padding. Or input a tuple for two
+image dimension</li>
 <li><strong>padding_y</strong> (<em>int</em>) &#8211; The y dimension of the padding.</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; Convolution bias attribute. None means default bias.
 False means no bias.</li>
@@ -508,7 +516,6 @@ The details please refer to
 <li><strong>power</strong> (<em>float</em>) &#8211; The hyper-parameter.</li>
 <li><strong>num_channels</strong> &#8211; input layer&#8217;s filers number or channels. If
 num_channels is None, it will be set automatically.</li>
-<li><strong>blocked</strong> &#8211; namely normalize in number of blocked feature maps.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
@@ -549,7 +556,7 @@ y_i &amp;\gets \gamma \hat{x_i} + \beta \qquad &amp;//\ scale\ and\ shift\end{sp
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; batch normalization input. Better be linear activation.
 Because there is an activation inside batch_normalization.</li>
-<li><strong>batch_norm_type</strong> &#8211; We have batch_norm and cudnn_batch_norm. batch_norm
+<li><strong>batch_norm_type</strong> (<em>None|string, None or &quot;batch_norm&quot; or &quot;cudnn_batch_norm&quot;</em>) &#8211; We have batch_norm and cudnn_batch_norm. batch_norm
 supports both CPU and GPU. cudnn_batch_norm requires
 cuDNN version greater or equal to v4 (&gt;=v4). But
 cudnn_batch_norm is faster and needs less memory
@@ -637,23 +644,34 @@ and <span class="math">\(out\)</span> is a (batchSize x dataDim) output vector.<
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">recurrent_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>TODO(yuyang18): Add docs</p>
+<dd><p>Simple recurrent unit layer. It is just a fully connect layer through both
+time and neural network.</p>
+<p>For each sequence [start, end] it performs the following computation:</p>
+<div class="math">
+\[\begin{split}out_{i} = act(in_{i})     \      \      \text{for} \ i = start \\
+out_{i} = act(in_{i} + out_{i-1} * W) \ \ \text{for} \ start &lt; i &lt;= end\end{split}\]</div>
+<p>If reversed is true, the order is reversed:</p>
+<div class="math">
+\[\begin{split}out_{i} = act(in_{i})           \    \   \text{for} \ i = end  \\
+out_{i} = act(in_{i} + out_{i+1} * W) \ \ \text{for} \ start &lt;= i &lt; end\end{split}\]</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>input</strong> &#8211; </li>
-<li><strong>size</strong> &#8211; </li>
-<li><strong>act</strong> &#8211; </li>
-<li><strong>bias_attr</strong> &#8211; </li>
-<li><strong>param_attr</strong> &#8211; </li>
-<li><strong>name</strong> &#8211; </li>
-<li><strong>layer_attr</strong> &#8211; </li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input Layer</li>
+<li><strong>act</strong> (<em>BaseActivation</em>) &#8211; activation.</li>
+<li><strong>bias_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; bias attribute.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; parameter attribute.</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; name of the layer</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Layer Attribute.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">LayerOutput object.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
 </td>
 </tr>
 </tbody>
@@ -803,7 +821,7 @@ Recurrent Neural Networks on Sequence Modeling.</a></p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The gru layer name.</li>
 <li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; input layer.</li>
-<li><strong>reverse</strong> (<em>bool</em>) &#8211; Wether sequence process is reversed or not.</li>
+<li><strong>reverse</strong> (<em>bool</em>) &#8211; Whether sequence process is reversed or not.</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; activation type, TanhActivation by default. This activation
 affects the <span class="math">\({\tilde{h_t}}\)</span>.</li>
 <li><strong>gate_act</strong> (<em>BaseActivation</em>) &#8211; gate activation type, SigmoidActivation by default.
@@ -813,6 +831,8 @@ This activation affects the <span class="math">\(z_t\)</span> and <span class="m
 bias.</li>
 <li><strong>param_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Parameter Attribute.</li>
 <li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer attribute</li>
+<li><strong>size</strong> (<em>None</em>) &#8211; Stub parameter of size, but actually not used. If set this size
+will get a warning.</li>
 </ul>
 </td>
 </tr>
@@ -936,14 +956,14 @@ to maintain tractability.</p>
 <p>The example usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">rnn_step</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
     <span class="n">last_time_step_output</span> <span class="o">=</span> <span class="n">memory</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;rnn&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
-    <span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span> <span class="k">as</span> <span class="n">simple_rnn</span><span class="p">:</span>
+    <span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rnn&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">simple_rnn</span><span class="p">:</span>
         <span class="n">simple_rnn</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
         <span class="n">simple_rnn</span> <span class="o">+=</span> <span class="n">last_time_step_output</span>
     <span class="k">return</span> <span class="n">simple_rnn</span>
 
 <span class="n">beam_gen</span> <span class="o">=</span> <span class="n">beam_search</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;decoder&quot;</span><span class="p">,</span>
                        <span class="n">step</span><span class="o">=</span><span class="n">rnn_step</span><span class="p">,</span>
-                       <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="s2">&quot;encoder_last&quot;</span><span class="p">)],</span>
+                       <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="n">encoder_last</span><span class="p">)],</span>
                        <span class="n">bos_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                        <span class="n">eos_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                        <span class="n">beam_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
@@ -961,22 +981,23 @@ to maintain tractability.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>base string</em>) &#8211; Name of the recurrent unit that generates sequences.</li>
 <li><strong>step</strong> (<em>callable</em>) &#8211; <p>A callable function that defines the calculation in a time
-step, and it is appled to sequences with arbitrary length by
+step, and it is applied to sequences with arbitrary length by
 sharing a same set of weights.</p>
 <p>You can refer to the first parameter of recurrent_group, or
 demo/seqToseq/seqToseq_net.py for more details.</p>
 </li>
-<li><strong>input</strong> (<em>StaticInput|GeneratedInput</em>) &#8211; Input data for the recurrent unit</li>
+<li><strong>input</strong> (<em>list</em>) &#8211; Input data for the recurrent unit</li>
 <li><strong>bos_id</strong> (<em>int</em>) &#8211; Index of the start symbol in the dictionary. The start symbol
 is a special token for NLP task, which indicates the
 beginning of a sequence. In the generation task, the start
-symbol is ensential, since it is used to initialize the RNN
+symbol is essential, since it is used to initialize the RNN
 internal state.</li>
 <li><strong>eos_id</strong> (<em>int</em>) &#8211; Index of the end symbol in the dictionary. The end symbol is
 a special token for NLP task, which indicates the end of a
 sequence. The generation process will stop once the end
 symbol is generated, or a pre-defined max iteration number
 is exceeded.</li>
+<li><strong>max_length</strong> (<em>int</em>) &#8211; Max generated sequence length.</li>
 <li><strong>beam_size</strong> (<em>int</em>) &#8211; Beam search for sequence generation is an iterative search
 algorithm. To maintain tractability, every iteration only
 only stores a predetermined number, called the beam_size,
@@ -1166,7 +1187,7 @@ It performs element-wise multiplication with weight.</p>
 <h2>dotmul_operator<a class="headerlink" href="#dotmul-operator" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">dotmul_operator</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>scale=1</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">dotmul_operator</code><span class="sig-paren">(</span><em>a=None</em>, <em>b=None</em>, <em>scale=1</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>DotMulOperator takes two inputs and performs element-wise multiplication:</p>
 <div class="math">
 \[out.row[i] += scale * (x.row[i] .* y.row[i])\]</div>
@@ -1181,8 +1202,8 @@ scale is a config scalar, its default value is one.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>x</strong> (<em>LayerOutput</em>) &#8211; Input layer1</li>
-<li><strong>y</strong> (<em>LayerOutput</em>) &#8211; Input layer2</li>
+<li><strong>a</strong> (<em>LayerOutput</em>) &#8211; Input layer1</li>
+<li><strong>b</strong> (<em>LayerOutput</em>) &#8211; Input layer2</li>
 <li><strong>scale</strong> (<em>float</em>) &#8211; config scalar, default value is one.</li>
 </ul>
 </td>
@@ -1274,7 +1295,7 @@ It select dimesions [offset, offset+layer_size) from input:</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; Input Layer.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input Layer.</li>
 <li><strong>offset</strong> (<em>int</em>) &#8211; Offset, None if use default.</li>
 </ul>
 </td>
@@ -1493,7 +1514,7 @@ Inputs can be list of LayerOutput or list of projection.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
-<li><strong>input</strong> (<em>list|tuple</em>) &#8211; input layers or projections</li>
+<li><strong>input</strong> (<em>list|tuple|collection.Sequence</em>) &#8211; input layers or projections</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
@@ -1701,7 +1722,7 @@ bias.</li>
 <p>Note that the above computation is for one sample. Multiple samples are
 processed in one batch.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">linear_comb</span> <span class="o">=</span> <span class="n">linear_comb_layer</span><span class="p">(</span><span class="n">weighs</span><span class="o">=</span><span class="n">weight</span><span class="p">,</span> <span class="n">vectors</span><span class="o">=</span><span class="n">vectors</span><span class="p">,</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">linear_comb</span> <span class="o">=</span> <span class="n">linear_comb_layer</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">weight</span><span class="p">,</span> <span class="n">vectors</span><span class="o">=</span><span class="n">vectors</span><span class="p">,</span>
                                 <span class="n">size</span><span class="o">=</span><span class="n">elem_dim</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -1710,7 +1731,8 @@ processed in one batch.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layers.</li>
+<li><strong>weights</strong> (<em>LayerOutput</em>) &#8211; The weight layer.</li>
+<li><strong>vectors</strong> (<em>LayerOutput</em>) &#8211; The vector layer.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; the dimension of this layer.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
 </ul>
@@ -1887,20 +1909,20 @@ element-wise. There is no activation and weight.</p>
 <dd><p>This layer performs tensor operation for two input.
 For example, each sample:</p>
 <div class="math">
-\[y_{i} = x_{1} * W_{i} * {x_{2}^\mathrm{T}}, i=0,1,...,K-1\]</div>
+\[y_{i} = a * W_{i} * {b^\mathrm{T}}, i=0,1,...,K-1\]</div>
 <dl class="docutils">
 <dt>In this formular:</dt>
 <dd><ul class="first last simple">
-<li><span class="math">\(x_{1}\)</span>: the first input contains M elements.</li>
-<li><span class="math">\(x_{2}\)</span>: the second input contains N elements.</li>
+<li><span class="math">\(a\)</span>: the first input contains M elements.</li>
+<li><span class="math">\(b\)</span>: the second input contains N elements.</li>
 <li><span class="math">\(y_{i}\)</span>: the i-th element of y.</li>
 <li><span class="math">\(W_{i}\)</span>: the i-th learned weight, shape if [M, N]</li>
-<li><span class="math">\({x_{2}}^\mathrm{T}\)</span>: the transpose of <span class="math">\(x_{2}\)</span>.</li>
+<li><span class="math">\(b^\mathrm{T}\)</span>: the transpose of <span class="math">\(b_{2}\)</span>.</li>
 </ul>
 </dd>
 </dl>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">tensor</span> <span class="o">=</span> <span class="n">tensor_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">])</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">tensor</span> <span class="o">=</span> <span class="n">tensor_layer</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1909,10 +1931,11 @@ For example, each sample:</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
-<li><strong>input</strong> (<em>LayerOutput|list|tuple.</em>) &#8211; Input layer.</li>
+<li><strong>a</strong> (<em>LayerOutput</em>) &#8211; Input layer a.</li>
+<li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input layer b.</li>
 <li><strong>size</strong> (<em>int.</em>) &#8211; the layer dimension.</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type. Default is tanh.</li>
-<li><strong>param_attr</strong> (<em>ParameterAttribute|list</em>) &#8211; The Parameter Attribute.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; The Parameter Attribute.</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|None|Any</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of ParameterAttribute. None will get a
 default Bias.</li>
@@ -2192,7 +2215,6 @@ Sampling one id for one sample.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
 <li><strong>label</strong> &#8211; The input label.</li>
-<li><strong>type</strong> (<em>basestring.</em>) &#8211; The type of cost.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
 </ul>
@@ -2227,9 +2249,7 @@ Sampling one id for one sample.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The 1st input. Samples of the same query should be loaded
-as sequence. User should provided socres for each sample.
-The score should be the 2nd input of this layer.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Samples of the same query should be loaded as sequence.</li>
 <li><strong>score</strong> &#8211; The 2nd input. Score of each sample.</li>
 <li><strong>NDCG_num</strong> (<em>int</em>) &#8211; The size of NDCG (Normalized Discounted Cumulative Gain),
 e.g., 5 for NDCG&#64;5. It must be less than for equal to the
@@ -2242,7 +2262,6 @@ equal to NDCG_num. And if max_sort_size is greater
 than the size of a list, the algorithm will sort the
 entire list of get gradient.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
-<li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
 </ul>
 </td>
 </tr>
@@ -2330,7 +2349,7 @@ field model.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The first input layer is the feature.</li>
-<li><strong>label</strong> &#8211; The second input layer is label.</li>
+<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; The second input layer is label.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; The category number.</li>
 <li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; The third layer is &#8220;weight&#8221; of each sample, which is an
 optional argument.</li>
@@ -2415,10 +2434,10 @@ should also be num_classes + 1.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layers.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
 <li><strong>label</strong> (<em>LayerOutput</em>) &#8211; The data layer of label with variable length.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; category numbers + 1.</li>
-<li><strong>name</strong> (<em>string|None</em>) &#8211; The name of this layer, which can not specify.</li>
+<li><strong>name</strong> (<em>basestring|None</em>) &#8211; The name of this layer</li>
 <li><strong>norm_by_times</strong> (<em>bool</em>) &#8211; Whether to normalization by times. False by default.</li>
 </ul>
 </td>
