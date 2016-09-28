@@ -112,6 +112,17 @@ static bool contains(const Container& container, const T& val) {
   return std::find(container.begin(), container.end(), val) != container.end();
 }
 
+/**
+ * pop and get the front element of a container
+ */
+template<typename Container>
+typename Container::value_type pop_get_front(Container& c) {
+  typename Container::value_type v;
+  swap(v, c.front());
+  c.pop_front();
+  return v;
+}
+
 #define ARRAYSIZE(a) (sizeof(a) / sizeof(*(a)))
 
 /**
