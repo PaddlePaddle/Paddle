@@ -1,7 +1,7 @@
 from paddle.trainer_config_helpers import *
 
-label_size = 2
-data_size = 18182296
+label_size = 1
+data_size = 10000000
 
 
 """ Algorithm Configuration """
@@ -12,21 +12,18 @@ settings(learning_rate=1e-3,
 """ Data Configuration """
 define_py_data_sources2(train_list='train.list',
                         test_list=None,
-                        module='sparse_data_provider',
+                        module='sparse_float_data_provider',
                         obj='process')
 
 """ Model Configuration """
-non_value = data_layer(name='data',
-                       size=data_size,
-                       param_attr=ParameterAttribute(sparse_update=True))
+sparse_float = data_layer(name='data',
+                       size=data_size)
 label = data_layer(name='label',
                    size=label_size)
 
-hidden1 = fc_layer(input=non_value,
-                   size=32)
+hidden1 = fc_layer(input=sparse_float,
+                   size=512,
+                   param_attr=ParameterAttribute(sparse_update=True))
 hidden2 = fc_layer(input=hidden1,
-                   size=32)
-
-prediction = fc_layer(input=hidden2, size=label_size, act=SoftmaxActivation())
-
-outputs(classification_cost(input=prediction, label=label))
+                   size=1)
+outputs(regression_cost(input=hidden2, label=label))
