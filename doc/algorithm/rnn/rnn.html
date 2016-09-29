@@ -200,12 +200,15 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
 <ul class="simple">
 <li>use <code class="code docutils literal"><span class="pre">GeneratedInput</span></code> for trg_embedding. <code class="code docutils literal"><span class="pre">GeneratedInput</span></code> computes the embedding of the generated token at the last time step for the input at the current time step.</li>
 <li>use <code class="code docutils literal"><span class="pre">beam_search</span></code> function. This function needs to set:<ul>
-<li><code class="code docutils literal"><span class="pre">id_input</span></code>: the integer ID of the data, used to identify the corresponding output in the generated files.</li>
-<li><code class="code docutils literal"><span class="pre">dict_file</span></code>: the dictionary file for converting word id to word.</li>
 <li><code class="code docutils literal"><span class="pre">bos_id</span></code>: the start token. Every sentence starts with the start token.</li>
 <li><code class="code docutils literal"><span class="pre">eos_id</span></code>: the end token. Every sentence ends with the end token.</li>
 <li><code class="code docutils literal"><span class="pre">beam_size</span></code>: the beam size used in beam search.</li>
 <li><code class="code docutils literal"><span class="pre">max_length</span></code>: the maximum length of the generated sentences.</li>
+</ul>
+</li>
+<li>use <code class="code docutils literal"><span class="pre">seqtext_printer_evaluator</span></code> to print text according to index matrix and dictionary. This function needs to set:<ul>
+<li><code class="code docutils literal"><span class="pre">id_input</span></code>: the integer ID of the data, used to identify the corresponding output in the generated files.</li>
+<li><code class="code docutils literal"><span class="pre">dict_file</span></code>: the dictionary file for converting word id to word.</li>
 <li><code class="code docutils literal"><span class="pre">result_file</span></code>: the path of the generation result file.</li>
 </ul>
 </li>
@@ -227,14 +230,15 @@ Its <strong>output function</strong> simply takes <span class="math">\(x_t\)</sp
 <span class="n">beam_gen</span> <span class="o">=</span> <span class="n">beam_search</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">decoder_group_name</span><span class="p">,</span>
                        <span class="n">step</span><span class="o">=</span><span class="n">gru_decoder_with_attention</span><span class="p">,</span>
                        <span class="nb">input</span><span class="o">=</span><span class="n">group_inputs</span><span class="p">,</span>
-                       <span class="n">id_input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;sent_id&quot;</span><span class="p">,</span>
-                                           <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-                       <span class="n">dict_file</span><span class="o">=</span><span class="n">trg_dict_path</span><span class="p">,</span>
                        <span class="n">bos_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># Beginnning token.</span>
                        <span class="n">eos_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="c1"># End of sentence token.</span>
                        <span class="n">beam_size</span><span class="o">=</span><span class="n">beam_size</span><span class="p">,</span>
-                       <span class="n">max_length</span><span class="o">=</span><span class="n">max_length</span><span class="p">,</span>
-                       <span class="n">result_file</span><span class="o">=</span><span class="n">gen_trans_file</span><span class="p">)</span>
+                       <span class="n">max_length</span><span class="o">=</span><span class="n">max_length</span><span class="p">)</span>
+
+<span class="n">seqtext_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">beam_gen</span><span class="p">,</span>
+                          <span class="n">id_input</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;sent_id&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                          <span class="n">dict_file</span><span class="o">=</span><span class="n">trg_dict_path</span><span class="p">,</span>
+                          <span class="n">result_file</span><span class="o">=</span><span class="n">gen_trans_file</span><span class="p">)</span>
 <span class="n">outputs</span><span class="p">(</span><span class="n">beam_gen</span><span class="p">)</span>
 </pre></div>
 </div>

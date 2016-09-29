@@ -978,8 +978,7 @@ to maintain tractability.</p>
                        <span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">StaticInput</span><span class="p">(</span><span class="n">encoder_last</span><span class="p">)],</span>
                        <span class="n">bos_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                        <span class="n">eos_id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                       <span class="n">beam_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
-                       <span class="n">result_file</span><span class="o">=</span><span class="s2">&quot;./generated_sequences.txt&quot;</span><span class="p">)</span>
+                       <span class="n">beam_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Please see the following demo for more details:</p>
@@ -1015,25 +1014,16 @@ algorithm. To maintain tractability, every iteration only
 only stores a predetermined number, called the beam_size,
 of the most promising next words. The greater the beam
 size, the fewer candidate words are pruned.</li>
-<li><strong>result_file</strong> (<em>basestring</em>) &#8211; Path of the file to store the generated results.</li>
-<li><strong>dict_file</strong> (<em>basestring</em>) &#8211; Path of dictionary. This is an optional parameter.
-Every line is a word in the dictionary with
-(line number - 1) as the word index.
-If this parameter is set to None, or to an empty string,
-only word index are printed in the generated results.</li>
 <li><strong>num_results_per_sample</strong> (<em>int</em>) &#8211; Number of the generated results per input
 sequence. This number must always be less than
 beam size.</li>
-<li><strong>id_input</strong> (<em>LayerOutput</em>) &#8211; Index of the input sequence, and the specified index will
-be prited in the gereated results. This an optional
-parameter.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The seq_text_printer that prints the generated sequence to a file.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The generated word index.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">evaluator</p>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
 </td>
 </tr>
 </tbody>

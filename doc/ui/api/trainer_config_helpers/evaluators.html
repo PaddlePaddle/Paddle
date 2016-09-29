@@ -499,10 +499,11 @@ It contains one or more input layers.</p>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">seqtext_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Sequence text printer will print text according to index matrix and a
 dictionary. There can be multiple input to this layer:</p>
-<p>1. If there is only one input, the input must be a matrix containing
+<p>1. If there is no id_input, the input must be a matrix containing
 the sequence of indices;</p>
-<p>2. If there are more than one input, the first input should be ids,
-and are interpreted as sample ids.</p>
+<ol class="arabic simple" start="2">
+<li>If there is id_input, it should be ids, and interpreted as sample ids.</li>
+</ol>
 <p>The output format will be:</p>
 <ol class="arabic simple">
 <li>sequence without sub-sequence, and there is probability.</li>
@@ -527,7 +528,8 @@ and are interpreted as sample ids.</p>
 <p>Typically SequenceTextPrinter layer takes output of maxid or RecurrentGroup
 with maxid (when generating) as an input.</p>
 <p>The simple usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">seqtext_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="o">=</span> <span class="n">seqtext_printer_evaluator</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">maxid_layer</span><span class="p">,</span>
+                                 <span class="n">id_input</span><span class="o">=</span><span class="n">sample_id</span><span class="p">,</span>
                                  <span class="n">dict_file</span><span class="o">=</span><span class="n">dict_file</span><span class="p">,</span>
                                  <span class="n">result_file</span><span class="o">=</span><span class="n">result_file</span><span class="p">)</span>
 </pre></div>
@@ -536,14 +538,27 @@ with maxid (when generating) as an input.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput|list</em>) &#8211; Input Layer name.</li>
-<li><strong>dict_file</strong> (<em>basestring</em>) &#8211; The input dictionary which contains a list of tokens.</li>
-<li><strong>result_file</strong> (<em>basestring</em>) &#8211; The file is to save the results.</li>
+<li><strong>result_file</strong> (<em>basestring</em>) &#8211; Path of the file to store the generated results.</li>
+<li><strong>id_input</strong> (<em>LayerOutput</em>) &#8211; Index of the input sequence, and the specified index will
+be prited in the gereated results. This an optional
+parameter.</li>
+<li><strong>dict_file</strong> (<em>basestring</em>) &#8211; Path of dictionary. This is an optional parameter.
+Every line is a word in the dictionary with
+(line number - 1) as the word index.
+If this parameter is set to None, or to an empty string,
+only word index are printed in the generated results.</li>
 <li><strong>delimited</strong> (<em>bool</em>) &#8211; Whether to use space to separate output tokens.
 Default is True. No space is added if set to False.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; Evaluator name.</li>
 </ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The seq_text_printer that prints the generated sequence to a file.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">evaluator</p>
 </td>
 </tr>
 </tbody>
