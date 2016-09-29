@@ -40,7 +40,7 @@ int main()
     __m256 a = _mm256_set_ps (-1.0f, 2.0f, -3.0f, 4.0f, -1.0f, 2.0f, -3.0f, 4.0f);
     __m256 b = _mm256_set_ps (1.0f, 2.0f, 3.0f, 4.0f, 1.0f, 2.0f, 3.0f, 4.0f);
     __m256 result = _mm256_add_ps (a, b);
-return 0;
+    return 0;
 }" FIND_AVX_10)
 
 IF(${FIND_AVX_20})
