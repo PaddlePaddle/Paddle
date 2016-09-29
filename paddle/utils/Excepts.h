@@ -12,29 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef EXCEPTS_H_
+#define EXCEPTS_H_
 
-#ifndef HL_MATRIX_TYPE_CUH_
-#define HL_MATRIX_TYPE_CUH_
+#if defined(__APPLE__) || defined(__OSX__)
 
-#include "hl_base.h"
+int fegetexcept(void);
+int feenableexcept(unsigned int excepts);
+int fedisableexcept(unsigned int excepts);
 
-#ifdef __CUDA_ARCH__
-// typedef void*  vecType;
-#include <vector_types.h>
-#ifndef HPPL_TYPE_DOUBLE
-typedef float4 vecType;
-#else
-typedef double2 vecType;
-#endif
-#else
-#include <mmintrin.h>
-#include <xmmintrin.h>
-#include <emmintrin.h>
-#ifndef HPPL_TYPE_DOUBLE
-typedef __m128  vecType;
-#else
-typedef __m128d vecType;
-#endif
 #endif
 
-#endif /* HL_MATRIX_TYPE_CUH_ */
+#endif  // EXCEPTS_H_

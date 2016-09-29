@@ -65,12 +65,14 @@ set(OPENBLAS_ROOT $ENV{OPENBLAS_ROOT} CACHE PATH "Folder contains Openblas")
 set(OPENBLAS_INCLUDE_SEARCH_PATHS
         ${OPENBLAS_ROOT}/include
         /usr/include
-        /usr/include/openblas)
+        /usr/include/openblas
+        /usr/local/opt/openblas/include)
 set(OPENBLAS_LIB_SEARCH_PATHS
         ${OPENBLAS_ROOT}/lib
         /usr/lib
         /usr/lib/blas/openblas
-        /usr/lib/openblas)
+        /usr/lib/openblas
+        /usr/local/opt/openblas/lib)
 
 find_path(OPENBLAS_INC_DIR NAMES cblas.h
   PATHS ${OPENBLAS_INCLUDE_SEARCH_PATHS})

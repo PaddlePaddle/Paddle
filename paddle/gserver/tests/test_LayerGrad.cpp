@@ -50,7 +50,7 @@ TEST(Operator, dot_mul) {
 TEST(Projection, context) {
   for (auto contextStart : {-5, -3, -1, 0, 3}) {
     for (auto contextLength : {1, 2, 5, 7}) {
-      for (auto batchSize : {1, 2, 5, 20, 100}) {
+      for (auto batchSize : {1, 2, 5, 20, 50}) {
         for (auto trainablePadding : {false, true}) {
           LOG(INFO) << " contextStart=" << contextStart
                     << " contextLength=" << contextLength

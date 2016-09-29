@@ -45,6 +45,7 @@ void testNormalImpl(const std::function<void(
   size_t cntDown = countDown;
   while (cntDown-- > 0) {
     startBarrier.wait();
+    sleep(1);
     doneBarrier.wait();
     ASSERT_TRUE(tracer.empty());
   }
