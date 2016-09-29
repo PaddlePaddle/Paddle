@@ -16,7 +16,11 @@ limitations under the License. */
 #pragma once
 
 #include <mutex>
+#ifdef __APPLE__
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #include "hl_gpu.h"
 #include "paddle/utils/Logging.h"
 
@@ -48,7 +52,8 @@ public:
    * @return Pointer to the allocated memory
    */
   virtual void* alloc(size_t size) {
-    void* ptr = memalign(32ul, size);
+      void* ptr;
+      posix_memalign(&ptr, 32ul, size);
     CHECK(ptr) << "Fail to allocate CPU memory: size=" << size;
     return ptr;
   }

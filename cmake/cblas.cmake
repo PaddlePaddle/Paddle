@@ -61,26 +61,74 @@ if(ATLAS_INC_DIR AND ATLAS_CBLAS_LIB AND ATLAS_LIB)
 endif()
 
 ## Then find openblas.
-set(OPENBLAS_ROOT $ENV{OPENBLAS_ROOT} CACHE PATH "Folder contains Openblas")
-set(OPENBLAS_INCLUDE_SEARCH_PATHS
-        ${OPENBLAS_ROOT}/include
-        /usr/include
-        /usr/include/openblas)
-set(OPENBLAS_LIB_SEARCH_PATHS
-        ${OPENBLAS_ROOT}/lib
+SET(Open_BLAS_INCLUDE_SEARCH_PATHS
+  /usr/include
+  /usr/include/openblas
+  /usr/include/openblas-base
+  /usr/local/opt/openblas/include
+  /usr/local/include
+  /usr/local/include/openblas
+  /usr/local/include/openblas-base
+  /opt/OpenBLAS/include
+  $ENV{OpenBLAS_HOME}
+  $ENV{OpenBLAS_HOME}/include
+)
+
+SET(Open_BLAS_LIB_SEARCH_PATHS
+        /lib/
+        /lib/openblas-base
+        /lib64/
         /usr/lib
-        /usr/lib/blas/openblas
-        /usr/lib/openblas)
+        /usr/lib/openblas-base
+		/usr/local/opt/openblas/lib
+        /usr/lib64
+        /usr/local/lib
+        /usr/local/lib64
+        /opt/OpenBLAS/lib
+        $ENV{OpenBLAS}cd
+        $ENV{OpenBLAS}/lib
+        $ENV{OpenBLAS_HOME}
+        $ENV{OpenBLAS_HOME}/lib
+ )
 
-find_path(OPENBLAS_INC_DIR NAMES cblas.h
-  PATHS ${OPENBLAS_INCLUDE_SEARCH_PATHS})
-find_library(OPENBLAS_LIB NAMES openblas
-  PATHS ${OPENBLAS_LIB_SEARCH_PATHS})
+FIND_PATH(OpenBLAS_INCLUDE_DIR NAMES cblas.h PATHS ${Open_BLAS_INCLUDE_SEARCH_PATHS})
+FIND_LIBRARY(OpenBLAS_LIB NAMES openblas PATHS ${Open_BLAS_LIB_SEARCH_PATHS})
 
-if(OPENBLAS_INC_DIR AND OPENBLAS_LIB)
+SET(OpenBLAS_FOUND ON)
+
+#    Check include files
+IF(NOT OpenBLAS_INCLUDE_DIR)
+    SET(OpenBLAS_FOUND OFF)
+    MESSAGE(STATUS "Could not find OpenBLAS include. Turning OpenBLAS_FOUND off")
+ENDIF()
+
+#    Check libraries
+IF(NOT OpenBLAS_LIB)
+    SET(OpenBLAS_FOUND OFF)
+    MESSAGE(STATUS "Could not find OpenBLAS lib. Turning OpenBLAS_FOUND off")
+ENDIF()
+
+IF (OpenBLAS_FOUND)
+  IF (NOT OpenBLAS_FIND_QUIETLY)
+    MESSAGE(STATUS "Found OpenBLAS libraries: ${OpenBLAS_LIB}")
+    MESSAGE(STATUS "Found OpenBLAS include: ${OpenBLAS_INCLUDE_DIR}")
+  ENDIF (NOT OpenBLAS_FIND_QUIETLY)
+ELSE (OpenBLAS_FOUND)
+  IF (OpenBLAS_FIND_REQUIRED)
+    MESSAGE(FATAL_ERROR "Could not find OpenBLAS")
+  ENDIF (OpenBLAS_FIND_REQUIRED)
+ENDIF (OpenBLAS_FOUND)
+
+MARK_AS_ADVANCED(
+    OpenBLAS_INCLUDE_DIR
+    OpenBLAS_LIB
+    OpenBLAS
+)
+
+if(OpenBLAS_INCLUDE_DIR AND OpenBLAS_LIB)
   set(CBLAS_PROVIDER OPENBLAS)
-  set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR})
-  set(CBLAS_LIBS ${OPENBLAS_LIB})
+  set(CBLAS_INC_DIR ${OpenBLAS_INCLUDE_DIR})
+  set(CBLAS_LIBS ${OpenBLAS_LIB})
   return()
 endif()
 
