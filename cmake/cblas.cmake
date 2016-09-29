@@ -44,8 +44,8 @@ set(ATLAS_LIB_SEARCH_PATHS
         /usr/lib
         /usr/lib/blas/atlas
         /usr/lib/atlas
-        /usr/lib/atlas-base)   # special for ubuntu 14.04.
-
+        /usr/lib/atlas-base   # special for ubuntu 14.04.
+    )
 find_path(ATLAS_INC_DIR NAMES cblas.h 
   PATHS ${ATLAS_INCLUDE_SEARCH_PATHS})
 find_library(ATLAS_CBLAS_LIB NAMES cblas libcblas.so.3 

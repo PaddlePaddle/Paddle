@@ -144,12 +144,12 @@ PyObjectPtr createPythonClass(
     const std::map<std::string, std::string>& kwargs) {
   PyGuard guard;
   PyObjectPtr pyModule(PyImport_ImportModule(moduleName.c_str()));
-  // LOG(INFO) << "createPythonClass moduleName.c_str:" << moduleName.c_str();
+  LOG(INFO) << "createPythonClass moduleName.c_str:" << moduleName.c_str();
   CHECK_PY(pyModule) << "Import module " << moduleName << " failed.";
   PyObjectPtr pyDict(PyModule_GetDict(pyModule.get()));
   CHECK_PY(pyDict) << "Get Dict failed.";
   PyObjectPtr pyClass(PyDict_GetItemString(pyDict.get(), className.c_str()));
-  // LOG(INFO) << "createPythonClass className.c_str():" << className.c_str();
+  LOG(INFO) << "createPythonClass className.c_str():" << className.c_str();
   CHECK_PY(pyClass) << "Import class " << className << " failed.";
   PyObjectPtr argsObjectList(PyTuple_New(args.size()));
   for (size_t i = 0; i < args.size(); ++i) {

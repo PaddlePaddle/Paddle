@@ -24,6 +24,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <mutex>
 #include <functional>
+#include <sys/syscall.h>  // for syscall()
+#include <sys/types.h>
 
 #include "CommandLineParser.h"
 #include "Logging.h"
@@ -62,6 +64,9 @@ limitations under the License. */
 
 
 namespace paddle {
+
+// return the thread id used by glog
+pid_t getTID();
 
 /**
  * return the 1-based index of the highest bit set

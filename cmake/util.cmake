@@ -24,7 +24,9 @@ function(target_circle_link_libraries TARGET_NAME)
                 list(APPEND libsInArgn ${arg})
             endif()
         endforeach()
-
+        if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+            list(APPEND LIBS "-undefined dynamic_lookup")
+        endif()
         list(REVERSE libsInArgn)
         target_link_libraries(${TARGET_NAME}
             ${LIBS}

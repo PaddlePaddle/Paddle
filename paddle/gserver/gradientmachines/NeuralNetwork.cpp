@@ -385,10 +385,17 @@ void NeuralNetwork::setOutputGrad(const std::vector<Argument>& args) {
   }
 }
 
+extern NeuralNetwork* newCustomNerualNetwork(
+  const std::string& name, NeuralNetwork* network) __attribute__((weak));
+
 NeuralNetwork* NeuralNetwork::newNeuralNetwork(
     const std::string& name,
     NeuralNetwork* rootNetwork) {
-    return new NeuralNetwork(name, rootNetwork);
+    if (newCustomNerualNetwork) {
+      return newCustomNerualNetwork(name, rootNetwork);
+    } else {
+      return new NeuralNetwork(name, rootNetwork);
+    }
 }
 
 }  // namespace paddle

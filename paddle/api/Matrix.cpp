@@ -95,7 +95,7 @@ float Matrix::get(size_t x, size_t y) const throw(RangeError) {
 }
 
 void Matrix::set(size_t x, size_t y, float val) throw(RangeError,
-                                                     UnsupportError) {
+                                                      UnsupportError) {
   if (x > this->getWidth() || y > this->getHeight()) {
     RangeError e;
     throw e;
@@ -239,7 +239,7 @@ void Matrix::toNumpyMatInplace(float** view_data, int* dim1,
 }
 void Matrix::copyToNumpyMat(float** view_m_data, int* dim1,
                             int* dim2) throw(UnsupportError) {
-  static_assert(sizeof(float) == sizeof(float),
+  static_assert(sizeof(paddle::real) == sizeof(float),
                 "Currently PaddleAPI only support for single "
                 "precision version of paddle.");
   if (this->isSparse()) {
@@ -251,12 +251,12 @@ void Matrix::copyToNumpyMat(float** view_m_data, int* dim1,
     if (auto cpuMat = dynamic_cast<paddle::CpuMatrix*>(m->mat.get())) {
       auto src = cpuMat->getData();
       auto dest = *view_m_data;
-      std::memcpy(dest, src, sizeof(float) * (*dim1) * (*dim2));
+      std::memcpy(dest, src, sizeof(paddle::real) * (*dim1) * (*dim2));
     } else if (auto gpuMat = dynamic_cast<paddle::GpuMatrix*>(m->mat.get())) {
       auto src = gpuMat->getData();
       auto dest = *view_m_data;
       hl_memcpy_device2host(dest, src,
-                            sizeof(float) * (*dim1) * (*dim2));
+                            sizeof(paddle::real) * (*dim1) * (*dim2));
     } else {
       LOG(WARNING) << "Unexpected Situation";
       throw UnsupportError();

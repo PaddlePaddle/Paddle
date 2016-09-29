@@ -35,13 +35,6 @@ limitations under the License. */
 #include <Python.h>
 #include <frameobject.h>
 
-// #ifndef _POSIX_C_SOURCE
-// #warning "no _POSIX_C_SOURCE defined in Python.h"
-// #endif
-// #ifndef _XOPEN_SOURCE
-// #warning "no _XOPEN_SOURCE defined in Python.h"
-// #endif
-
 #endif
 
 #include "paddle/utils/Util.h"

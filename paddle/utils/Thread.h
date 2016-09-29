@@ -13,23 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "Util.h"
 #include "Logging.h"
 #include <thread>
-
-#include <sys/syscall.h>
-#include <unistd.h>
-inline pid_t gettid() {
-#if defined(__APPLE__) || defined(__OSX__)
-  pid_t tid = syscall(SYS_thread_selfid);
-#else
-  #ifndef __NR_gettid
-  #define __NR_gettid 224
-  #endif
-  pid_t tid = syscall(__NR_gettid);
-#endif
-  CHECK_NE(tid, -1);
-  return tid;
-}
 
 #include "Queue.h"
 #include "ThreadLocal.h"
@@ -186,7 +172,7 @@ public:
         jobFinishBarrier_(numWorkers + 1),
         jobFunc_(nullptr),
         checkOwner_(checkOwner) {
-    ownerThreadId_ = ::gettid();
+    ownerThreadId_ = getTID();
     workers_.resize(numWorkers);
     start();
   }
@@ -210,7 +196,7 @@ public:
    */
   void exec(JobFunc jobFunc, JobFunc ownerFunc = nullptr) {
     if (checkOwner_) {
-      CHECK_EQ(ownerThreadId_, ::gettid())
+      CHECK_EQ(ownerThreadId_, getTID())
           << "this sync thread pool should be used in one thread";
     }
 
