@@ -79,12 +79,13 @@ var _hmt = _hmt || [];
 <span id="span-id-download-download-and-setup-span"></span><h2><span id="download">Download and Setup</span><a class="headerlink" href="#span-id-download-download-and-setup-span" title="Permalink to this headline">¶</a></h2>
 <p>You can download PaddlePaddle from the <a class="reference external" href="https://github.com/gangliao/Paddle">github source</a>.</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/baidu/Paddle paddle
+<span class="nb">cd</span> paddle
 </pre></div>
 </div>
 </div>
 <div class="section" id="span-id-requirements-requirements-span">
 <span id="span-id-requirements-requirements-span"></span><h2><span id="requirements">Requirements</span><a class="headerlink" href="#span-id-requirements-requirements-span" title="Permalink to this headline">¶</a></h2>
-<p>To compile the source code, your computer must be equipped with GCC &gt;=4.6 or Clang Compiler.</p>
+<p>To compile the source code, your computer must be equipped with GCC &gt;=4.6 or Clang compiler.</p>
 <div class="section" id="dependencies">
 <span id="dependencies"></span><h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
@@ -97,19 +98,16 @@ var _hmt = _hmt || [];
 <div class="section" id="options">
 <span id="options"></span><h3>Options<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h3>
 <p>PaddlePaddle supports some build options. To enable it, first you need to install the related libraries.</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Optional</span>            <span class="o">|</span> <span class="n">Description</span>
-<span class="o">------------</span>        <span class="o">|</span> <span class="p">:</span><span class="o">-----------</span>
-<span class="o">**</span><span class="n">WITH_GPU</span><span class="o">**</span>        <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">GPU</span> <span class="n">mode</span><span class="o">.</span>
-<span class="o">**</span><span class="n">WITH_DOUBLE</span><span class="o">**</span>     <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">double</span> <span class="n">precision</span> <span class="n">floating</span><span class="o">-</span><span class="n">point</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">single</span> <span class="n">precision</span><span class="o">.</span> <span class="o">|</span>
-<span class="o">**</span><span class="n">WITH_GLOG</span><span class="o">**</span>       <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">glog</span><span class="o">.</span> <span class="n">If</span> <span class="ow">not</span> <span class="n">found</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">an</span> <span class="n">internal</span> <span class="n">log</span> <span class="n">implementation</span><span class="o">.</span>
-<span class="o">**</span><span class="n">WITH_GFLAGS</span><span class="o">**</span>     <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">gflags</span><span class="o">.</span> <span class="n">If</span> <span class="ow">not</span> <span class="n">found</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">an</span> <span class="n">internal</span> <span class="n">flag</span> <span class="n">implementation</span><span class="o">.</span>
-<span class="o">**</span><span class="n">WITH_TESTING</span><span class="o">**</span>    <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">gtest</span> <span class="k">for</span> <span class="n">PaddlePaddle</span><span class="s1">&#39;s unit testing. </span>
-<span class="o">**</span><span class="n">WITH_DOC</span><span class="o">**</span>        <span class="o">|</span> <span class="n">Compile</span> <span class="n">to</span> <span class="n">generate</span> <span class="n">PaddlePaddle</span><span class="s1">&#39;s docs, default: disabled (OFF).</span>
-<span class="o">**</span><span class="n">WITH_SWIG_PY</span><span class="o">**</span>    <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">python</span> <span class="n">predict</span> <span class="n">API</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">disabled</span> <span class="p">(</span><span class="n">OFF</span><span class="p">)</span><span class="o">.</span>
-<span class="o">**</span><span class="n">WITH_STYLE_CHECK</span><span class="o">**|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">code</span> <span class="n">style</span> <span class="n">check</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">enabled</span> <span class="p">(</span><span class="n">ON</span><span class="p">)</span><span class="o">.</span>
-</pre></div>
-</div>
-<p>|</p>
+<p>| Optional             | Description                                                                  |
+| &#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8211; | :&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212; |
+| <strong>WITH_GPU</strong>         | Compile with GPU mode.                                                       |
+| <strong>WITH_DOUBLE</strong>      | Compile with double precision floating-point, default: single precision.     |
+| <strong>WITH_GLOG</strong>        | Compile with glog. If not found, default: an internal log implementation.    |
+| <strong>WITH_GFLAGS</strong>      | Compile with gflags. If not found, default: an internal flag implementation. |
+| <strong>WITH_TESTING</strong>     | Compile with gtest for PaddlePaddle&#8217;s unit testing.                          |
+| <strong>WITH_DOC</strong>         | Compile to generate PaddlePaddle&#8217;s docs, default: disabled (OFF).            |
+| <strong>WITH_SWIG_PY</strong>     | Compile with python predict API, default: disabled (OFF).                    |
+| <strong>WITH_STYLE_CHECK</strong> | Compile with code style check, default: enabled (ON).                        |</p>
 <p><strong>Note:</strong></p>
 <ul class="simple">
 <li>The GPU version works best with Cuda Toolkit 7.5 and cuDNN v5.</li>
@@ -186,9 +184,8 @@ distribution versions that have been qualified for this CUDA Toolkit release.</p
 sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
 </pre></div>
 </div>
-<p>Then you need to set LD_LIBRARY_PATH, CUDA_HOME and PATH environment variables in ~/.bashrc.</p>
+<p>Then you need to set LD_LIBRARY_PATH, PATH environment variables in ~/.bashrc.</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/usr/local/cuda/lib64:<span class="nv">$LD_LIBRARY_PATH</span>
-<span class="nb">export</span> <span class="nv">CUDA_HOME</span><span class="o">=</span>/usr/local/cuda
 <span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>/usr/local/cuda/bin:<span class="nv">$PATH</span>
 </pre></div>
 </div>
@@ -223,11 +220,10 @@ If still not found, you can manually set it based on CMake error information fro
 </div>
 </li>
 </ul>
-<p>Finally, you can download source code and build:</p>
+<p>Finally, you can build PaddlePaddle:</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># you can add build option here, such as:    </span>
 cmake .. -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>OFF -DCMAKE_INSTALL_PREFIX<span class="o">=</span>&lt;path to install&gt;
-<span class="c1"># please use sudo make install, if you want</span>
-<span class="c1"># to install PaddlePaddle into the system</span>
+<span class="c1"># please use sudo make install, if you want to install PaddlePaddle into the system</span>
 make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">&amp;&amp;</span> make install
 <span class="c1"># set PaddlePaddle installation path in ~/.bashrc</span>
 <span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>&lt;path to install&gt;/bin:<span class="nv">$PATH</span>
@@ -300,7 +296,7 @@ sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
 </pre></div>
 </div>
 </li>
-<li><p class="first">Then you need to set DYLD_LIBRARY_PATH, CUDA_HOME and PATH environment variables in ~/.bashrc.</p>
+<li><p class="first">Then you need to set DYLD_LIBRARY_PATH, PATH environment variables in ~/.bashrc.</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">DYLD_LIBRARY_PATH</span><span class="o">=</span>/usr/local/cuda/lib:<span class="nv">$DYLD_LIBRARY_PATH</span>
 <span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>/usr/local/cuda/bin:<span class="nv">$PATH</span>
 </pre></div>

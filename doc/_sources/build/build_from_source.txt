@@ -11,11 +11,12 @@ You can download PaddlePaddle from the [github source](https://github.com/gangli
 
 ```bash
 git clone https://github.com/baidu/Paddle paddle
+cd paddle
 ```
 
 ## <span id="requirements">Requirements</span>
 
-To compile the source code, your computer must be equipped with GCC >=4.6 or Clang Compiler.
+To compile the source code, your computer must be equipped with GCC >=4.6 or Clang compiler.
 ### Dependencies
 
 - **CMake**: version >= 2.8
@@ -27,17 +28,17 @@ To compile the source code, your computer must be equipped with GCC >=4.6 or Cla
 
 PaddlePaddle supports some build options. To enable it, first you need to install the related libraries. 
 
-    Optional            | Description
-    ------------        | :-----------
-    **WITH_GPU**        | Compile with GPU mode.
-    **WITH_DOUBLE**     | Compile with double precision floating-point, default: single precision. |
-    **WITH_GLOG**       | Compile with glog. If not found, default: an internal log implementation.
-    **WITH_GFLAGS**     | Compile with gflags. If not found, default: an internal flag implementation.
-    **WITH_TESTING**    | Compile with gtest for PaddlePaddle's unit testing. 
-    **WITH_DOC**        | Compile to generate PaddlePaddle's docs, default: disabled (OFF).
-    **WITH_SWIG_PY**    | Compile with python predict API, default: disabled (OFF).
-    **WITH_STYLE_CHECK**| Compile with code style check, default: enabled (ON).
-|
+
+| Optional             | Description                                                                  |
+| -------------------- | :--------------------------------------------------------------------------- |
+| **WITH_GPU**         | Compile with GPU mode.                                                       |
+| **WITH_DOUBLE**      | Compile with double precision floating-point, default: single precision.     |
+| **WITH_GLOG**        | Compile with glog. If not found, default: an internal log implementation.    |
+| **WITH_GFLAGS**      | Compile with gflags. If not found, default: an internal flag implementation. |
+| **WITH_TESTING**     | Compile with gtest for PaddlePaddle's unit testing.                          |
+| **WITH_DOC**         | Compile to generate PaddlePaddle's docs, default: disabled (OFF).            |
+| **WITH_SWIG_PY**     | Compile with python predict API, default: disabled (OFF).                    |
+| **WITH_STYLE_CHECK** | Compile with code style check, default: enabled (ON).                        |
 
 **Note:**
   - The GPU version works best with Cuda Toolkit 7.5 and cuDNN v5.
@@ -118,11 +119,10 @@ As a simple example, consider the following:
     sudo tar -xzf cudnn-7.5-linux-x64-v5.1.tgz -C /usr/local
     sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
     ```
-    Then you need to set LD\_LIBRARY\_PATH, CUDA\_HOME and PATH environment variables in ~/.bashrc.
+    Then you need to set LD\_LIBRARY\_PATH, PATH environment variables in ~/.bashrc.
 
     ```bash
     export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-    export CUDA_HOME=/usr/local/cuda
     export PATH=/usr/local/cuda/bin:$PATH
     ```
 
@@ -158,13 +158,12 @@ As a simple example, consider the following:
   cmake .. -DWITH_GPU=ON -DWITH_DOC=ON -DWITH_SWIG_PY=ON
   ``` 
 
-Finally, you can download source code and build:
+Finally, you can build PaddlePaddle:
 
 ```bash
 # you can add build option here, such as:    
 cmake .. -DWITH_GPU=ON -DWITH_DOC=OFF -DCMAKE_INSTALL_PREFIX=<path to install>
-# please use sudo make install, if you want
-# to install PaddlePaddle into the system
+# please use sudo make install, if you want to install PaddlePaddle into the system
 make -j `nproc` && make install
 # set PaddlePaddle installation path in ~/.bashrc
 export PATH=<path to install>/bin:$PATH
@@ -240,7 +239,7 @@ easy_install pip
         sudo tar -xzf cudnn-7.5-osx-x64-v5.0-ga.tgz -C /usr/local
         sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
         ```
-    2. Then you need to set DYLD\_LIBRARY\_PATH, CUDA\_HOME and PATH environment variables in ~/.bashrc.
+    2. Then you need to set DYLD\_LIBRARY\_PATH, PATH environment variables in ~/.bashrc.
 
         ```bash
         export DYLD_LIBRARY_PATH=/usr/local/cuda/lib:$DYLD_LIBRARY_PATH
@@ -289,8 +288,6 @@ make -j `nproc` && make install
 # set PaddlePaddle installation path in ~/.bashrc
 export PATH=<installation path>/bin:$PATH
 ```
-
-
 **Note:**
 
 If you set `WITH_SWIG_PY=ON`, related python dependencies also need to be installed.
