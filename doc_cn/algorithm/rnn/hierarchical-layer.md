@@ -8,12 +8,12 @@
 
 我们可以按照如下层次定义非序列，单层序列，以及双层序列。
 
-+ 0层序列：一个独立的元素，类型可以是 paddle 支持的任意输入数据类型
-+ 单层序列：排成一列的多个元素，每个元素是一个 0层序列，元素之间的顺序是重要的输入信息
-+ 双层序列：排成一列的多个元素，每个元素是一个单层序列，称之为双层序列的一个子序列（subseq），subseq 的每个元素是一个 0 层序列
++ 0层序列：一个独立的元素，类型可以是PaddlePaddle支持的任意输入数据类型
++ 单层序列：排成一列的多个元素，每个元素是一个0层序列，元素之间的顺序是重要的输入信息
++ 双层序列：排成一列的多个元素，每个元素是一个单层序列，称之为双层序列的一个子序列（subseq），subseq的每个元素是一个0层序列
 
 
-在 PaddlePaddle 中，下面这些Layer能够接受双层序列作为输入，完成相应的计算。
+在 PaddlePaddle中，下面这些Layer能够接受双层序列作为输入，完成相应的计算。
 ## pooling_layer
 
 pooling_layer的使用示例如下，详细见配置API。
@@ -22,7 +22,7 @@ seq_pool = pooling_layer(input=layer,
                          pooling_type=AvgPooling(),
                          agg_level=AggregateLevel.EACH_SEQUENCE)
 ```
-- `pooling_type` 目前支持两种，分别是：MaxPooling() 和 AvgPooling()。
+- `pooling_type` 目前支持两种，分别是：MaxPooling()和AvgPooling()。
 - `agg_level=AggregateLevel.TIMESTEP`时（默认值）：
   - 作用：双层序列经过运算变成一个0层序列，或单层序列经过运算变成一个0层序列
   - 输入：一个双层序列，或一个单层序列
@@ -30,7 +30,7 @@ seq_pool = pooling_layer(input=layer,
 - `agg_level=AggregateLevel.EACH_SEQUENCE`时：
   - 作用：一个双层序列经过运算变成一个单层序列
   - 输入：必须是一个双层序列
-  - 输出：一个单层序列，序列的每个元素是原来双层序列每个 subseq元素的平均值（或最大值）
+  - 输出：一个单层序列，序列的每个元素是原来双层序列每个subseq元素的平均值（或最大值）
 
 ## last_seq 和 first_seq
 
@@ -46,7 +46,7 @@ last = last_seq(input=layer,
 - `agg_level=AggregateLevel.EACH_SEQUENCE`时：
   - 作用：一个双层序列经过运算变成一个单层序列
   - 输入：必须是一个双层序列
-  - 输出：一个单层序列，其中每个元素是双层序列中每个 subseq 最后一个（或第一个）元素。
+  - 输出：一个单层序列，其中每个元素是双层序列中每个subseq最后一个（或第一个）元素。
 
 ## expand_layer
 

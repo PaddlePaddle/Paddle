@@ -6,11 +6,11 @@
 
 配置：单层RNN（`sequence_layer_group`）和双层RNN（`sequence_nest_layer_group`），语义完全相同。
 
-### 读取双层seq的方法
+### 读取双层序列的方法
 
-首先，我们看一下单测中使用的单双层seq的不同数据组织形式（您也可以采用别的组织形式）：
+首先，我们看一下单双层序列的不同数据组织形式（您也可以采用别的组织形式）：
 
-- 单层seq的数据（`Sequence/tour_train_wdseg`）如下，一共有10个样本。每个样本由两部分组成，一个label（此处都为2）和一个已经分词后的句子。
+- 单层序列的数据（`Sequence/tour_train_wdseg`）如下，一共有10个样本。每个样本由两部分组成，一个label（此处都为2）和一个已经分词后的句子。
 
 ```text
 2  	酒店 有 很 舒适 的 床垫 子 ， 床上用品 也 应该 是 一人 一 换 ， 感觉 很 利落 对 卫生 很 放心 呀 。
@@ -25,7 +25,7 @@
 2  	挺好 的 ， 就是 没 窗户 ， 不过 对 得 起 这 价格
 ```
 
-- 双层seq的数据（`Sequence/tour_train_wdseg.nest`）如下，一共有4个样本。样本间用空行分开，代表不同的双层seq；样本内单层seq的数据和上面的完全一样。每个样本的子句数分别为2,3,2,3。
+- 双层序列的数据（`Sequence/tour_train_wdseg.nest`）如下，一共有4个样本。样本间用空行分开，代表不同的双层序列，序列数据和上面的完全一样。每个样本的子句数分别为2,3,2,3。
 
 ```text
 2  	酒店 有 很 舒适 的 床垫 子 ， 床上用品 也 应该 是 一人 一 换 ， 感觉 很 利落 对 卫生 很 放心 呀 。
@@ -43,10 +43,10 @@
 2  	挺好 的 ， 就是 没 窗户 ， 不过 对 得 起 这 价格
 ```
 
-其次，我们看一下单测中使用的单双层seq的不同dataprovider（见`sequenceGen.py`）：
+其次，我们看一下单双层序列的不同dataprovider（见`sequenceGen.py`）：
 
-- 单层seq的dataprovider如下：
-  - word_slot是integer_value_sequence类型，代表单层seq。
+- 单层序列的dataprovider如下：
+  - word_slot是integer_value_sequence类型，代表单层序列。
   - label是integer_value类型，代表一个向量。
 
 ```python
@@ -66,9 +66,9 @@ def process(settings, file_name):
             yield word_slot, label
 ```
 
-- 双层seq的dataprovider如下：
-  - word_slot是integer_value_sub_sequence类型，代表双层seq。
-  - label是integer_value_sequence类型，代表单层seq，即一个子句一个label。注意：也可以为integer_value类型，代表一个向量，即一个句子一个label。通常根据任务需求进行不同设置。
+- 双层序列的dataprovider如下：
+  - word_slot是integer_value_sub_sequence类型，代表双层序列。
+  - label是integer_value_sequence类型，代表单层序列，即一个子句一个label。注意：也可以为integer_value类型，代表一个向量，即一个句子一个label。通常根据任务需求进行不同设置。
   - 关于dataprovider中input_types的详细用法，参见PyDataProvider2。
 
 ```python
@@ -98,7 +98,7 @@ def process2(settings, file_name):
 
 ### 模型中的配置
 
-首先，我们看一下单层seq的配置（见`sequence_layer_group.conf`）。注意：batchsize=5表示一次过5句单层seq，因此2个batch就可以完成1个pass。
+首先，我们看一下单层序列的配置（见`sequence_layer_group.conf`）。注意：batchsize=5表示一次过5句单层序列，因此2个batch就可以完成1个pass。
 
 ```python
 settings(batch_size=5)
@@ -128,17 +128,17 @@ with mixed_layer(size=label_dim,
 outputs(classification_cost(input=output, label=data_layer(name="label", size=1)))
 
 ```
-其次，我们看一下语义相同的双层seq配置（见`sequence_nest_layer_group.conf`），并对其详细分析：
+其次，我们看一下语义相同的双层序列配置（见`sequence_nest_layer_group.conf`），并对其详细分析：
 
-- batchsize=2表示一次过2句双层seq。但从上面的数据格式可知，2句双层seq和5句单层seq的数据完全一样。
-- data_layer和embedding_layer不关心数据是否是seq格式，因此两个配置在这两层上的输出是一样的。
+- batchsize=2表示一次过2句双层序列。但从上面的数据格式可知，2句双层序列和5句单层序列的数据完全一样。
+- data_layer和embedding_layer不关心数据是否是序列格式，因此两个配置在这两层上的输出是一样的。
 - lstmemory:
-  - 单层seq过了一个mixed_layer和lstmemory_group。
-  - 双层seq在同样的mixed_layer和lstmemory_group外，直接加了一层group。由于这个外层group里面没有memory，表示subseq间不存在联系，即起到的作用仅仅是把双层seq拆成单层，因此双层seq过完lstmemory的输出和单层的一样。
+  - 单层序列过了一个mixed_layer和lstmemory_group。
+  - 双层序列在同样的mixed_layer和lstmemory_group外，直接加了一层group。由于这个外层group里面没有memory，表示subseq间不存在联系，即起到的作用仅仅是把双层seq拆成单层，因此双层序列过完lstmemory的输出和单层的一样。
 - last_seq：
-  - 单层seq直接取了最后一个向量
-  - 双层seq首先（last_seq层）取了每个subseq的最后一个向量，将其拼接成一个新的单层seq；接着（expand_layer层）将其扩展成一个新的双层seq，其中第i个subseq中的所有向量均为输入的单层seq中的第i个向量；最后（average_layer层）取了每个subseq的平均值。
-  - 分析得出：第一个last_seq后，每个subseq的最后一个向量就等于单层seq的最后一个向量，而expand_layer和average_layer后，依然保持每个subseq最后一个向量的值不变（这儿加入这两层是为了表达它们的用法，从语义上来看，并不需要这两层）。因此单双层seq的输出是一样旳。
+  - 单层序列直接取了最后一个元素
+  - 双层序列首先（last_seq层）取了每个subseq的最后一个元素，将其拼接成一个新的单层序列；接着（expand_layer层）将其扩展成一个新的双层序列，其中第i个subseq中的所有向量均为输入的单层序列中的第i个向量；最后（average_layer层）取了每个subseq的平均值。
+  - 分析得出：第一个last_seq后，每个subseq的最后一个元素就等于单层序列的最后一个元素，而expand_layer和average_layer后，依然保持每个subseq最后一个元素的值不变（这两层仅是为了展示它们的用法，实际中并不需要）。因此单双层序列的输出是一样旳。
 
 ```python
 settings(batch_size=2)
@@ -186,9 +186,9 @@ outputs(classification_cost(input=output, label=data_layer(name="label", size=1)
 
 配置：单层RNN（`sequence_rnn.conf`），双层RNN（`sequence_nest_rnn.conf`和`sequence_nest_rnn_readonly_memory.conf`），语义完全相同。
 
-### 读取双层seq的方法
+### 读取双层序列的方法
 
-我们看一下单测中使用的单双层seq的不同数据组织形式和dataprovider（见`rnn_data_provider.py`）
+我们看一下单双层序列的不同数据组织形式和dataprovider（见`rnn_data_provider.py`）
 ```python
 data = [
     [[[1, 3, 2], [4, 5, 2]], 0],
@@ -207,15 +207,15 @@ def process_seq(settings, file_name):
     for d in data:
         seq = []
 ```
-- 单层seq：有两句，分别为[1,3,2,4,5,2]和[0,2,2,5,0,1,2]。
-- 双层seq：有两句，分别为[[1,3,2],[4,5,2]]（2个子句）和[[0,2],[2,5],[0,1,2]]（3个子句）。
-- 单双层seq的label都分别是0和1
+- 单层序列：有两句，分别为[1,3,2,4,5,2]和[0,2,2,5,0,1,2]。
+- 双层序列：有两句，分别为[[1,3,2],[4,5,2]]（2个子句）和[[0,2],[2,5],[0,1,2]]（3个子句）。
+- 单双层序列的label都分别是0和1
 
 ### 模型中的配置
 
-我们选取单双层seq配置中的不同部分，来对比分析两者语义相同的原因。
+我们选取单双层序列配置中的不同部分，来对比分析两者语义相同的原因。
 
-- 单层seq：过了一个很简单的recurrent_group。每一个时间步，当前的输入y和上一个时间步的输出rnn_state做了一个全链接。
+- 单层序列：过了一个很简单的recurrent_group。每一个时间步，当前的输入y和上一个时间步的输出rnn_state做了一个全链接。
 
 ```python
 def step(y):
@@ -228,9 +228,9 @@ def step(y):
 
 out = recurrent_group(step=step, input=emb)
 ```
-- 双层seq，外层memory是一个向量：
-  - 内层inner_step的recurrent_group和单层seq的几乎一样。除了boot_layer=outer_mem，表示将外层的outer_mem作为内层memory的初始状态。外层outer_step中，outer_mem是一个子句的最后一个向量，即整个双层group是将前一个子句的最后一个向量，作为下一个子句memory的初始状态。
-  - 从输入数据上看，单层seq和双层seq的句子是一样的，只是双层seq将其又做了子句划分。因此双层seq的配置中，必须将前一个子句的最后一个向量，作为boot_layer传给下一个子句的memory，才能保证和单层seq的配置中“每一个时间步都用了上一个时间步的输出结果”一致。
+- 双层序列，外层memory是一个元素：
+  - 内层inner_step的recurrent_group和单层序列的几乎一样。除了boot_layer=outer_mem，表示将外层的outer_mem作为内层memory的初始状态。外层outer_step中，outer_mem是一个子句的最后一个向量，即整个双层group是将前一个子句的最后一个向量，作为下一个子句memory的初始状态。
+  - 从输入数据上看，单双层序列的句子是一样的，只是双层序列将其又做了子序列划分。因此双层序列的配置中，必须将前一个子句的最后一个元素，作为boot_layer传给下一个子句的memory，才能保证和单层序列的配置中“每一个时间步都用了上一个时间步的输出结果”一致。
 
 ```python
 def outer_step(x):
@@ -254,10 +254,10 @@ def outer_step(x):
 
 out = recurrent_group(step=outer_step, input=SubsequenceInput(emb))
 ```
-- 双层seq，外层memory是单层seq：
+- 双层序列，外层memory是单层序列：
   - 由于外层每个时间步返回的是一个子句，这些子句的长度往往不等长。因此当外层有is_seq=True的memory时，内层是**无法直接使用**它的，即内层memory的boot_layer不能链接外层的这个memory。
-  - 如果内层memory想**间接使用**这个外层memory，只能通过`pooling_layer`、`last_seq`或`first_seq`这三个layer将它先变成一个向量。但这种情况下，外层memory必须有boot_layer，否则在第0个时间步时，由于外层memory没有任何seq信息，因此上述三个layer的前向会报出“**Check failed: input.sequenceStartPositions**”的错误。
-  - `sequence_nest_rnn_readonly_memory.conf`中的`readonly_mem`是一个单层seq，目前是作为只读memory，即对output没有任何贡献。
+  - 如果内层memory想**间接使用**这个外层memory，只能通过`pooling_layer`、`last_seq`或`first_seq`这三个layer将它先变成一个元素。但这种情况下，外层memory必须有boot_layer，否则在第0个时间步时，由于外层memory没有任何seq信息，因此上述三个layer的前向会报出“**Check failed: input.sequenceStartPositions**”的错误。
+  - `sequence_nest_rnn_readonly_memory.conf`中的`readonly_mem`是一个单层序列，目前是作为只读memory，即对output没有任何贡献。
 
 ```python
 def outer_step(x):
