@@ -94,6 +94,8 @@ public:
    */
   real checkGradient();
 
+  void time();
+
 
   /**
    * given a dataBatch and the current parameter value
