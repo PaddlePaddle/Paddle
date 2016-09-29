@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Build and Install &#8212; PaddlePaddle  documentation</title>
+    <title>Installing from Sources &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -67,47 +67,93 @@ var _hmt = _hmt || [];
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="build-and-install">
-<span id="build-and-install"></span><h1>Build and Install<a class="headerlink" href="#build-and-install" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="requirement">
-<span id="requirement"></span><h2>Requirement<a class="headerlink" href="#requirement" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="dependents">
-<span id="dependents"></span><h3>Dependents<a class="headerlink" href="#dependents" title="Permalink to this headline">¶</a></h3>
+  <div class="section" id="installing-from-sources">
+<span id="installing-from-sources"></span><h1>Installing from Sources<a class="headerlink" href="#installing-from-sources" title="Permalink to this headline">¶</a></h1>
 <ul class="simple">
-<li><strong>CMake</strong>: required for 2.8+ version</li>
-<li><strong>g++</strong>: a recent c++ compiler supporting c++11, &gt;= 4.6, &lt; 5</li>
-<li><strong>BLAS library</strong>: such as openBLAS, MKL, ATLAS</li>
-<li><strong>protobuf</strong>: required for 2.4+ version, 3.x is not supported</li>
-<li><strong>python</strong>: currently only 2.7 version is supported</li>
+<li><a class="reference external" href="#download">1. Download and Setup</a></li>
+<li><a class="reference external" href="#requirements">2. Requirements</a></li>
+<li><a class="reference external" href="#ubuntu">3. Build on Ubuntu</a></li>
+<li><a class="reference external" href="#mac">4. Build on Mac OS X</a></li>
+</ul>
+<div class="section" id="span-id-download-download-and-setup-span">
+<span id="span-id-download-download-and-setup-span"></span><h2><span id="download">Download and Setup</span><a class="headerlink" href="#span-id-download-download-and-setup-span" title="Permalink to this headline">¶</a></h2>
+<p>You can download PaddlePaddle from the <a class="reference external" href="https://github.com/gangliao/Paddle">github source</a>.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/baidu/Paddle paddle
+</pre></div>
+</div>
+</div>
+<div class="section" id="span-id-requirements-requirements-span">
+<span id="span-id-requirements-requirements-span"></span><h2><span id="requirements">Requirements</span><a class="headerlink" href="#span-id-requirements-requirements-span" title="Permalink to this headline">¶</a></h2>
+<p>To compile the source code, your computer must be equipped with GCC &gt;=4.6 or Clang Compiler.</p>
+<div class="section" id="dependencies">
+<span id="dependencies"></span><h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><strong>CMake</strong>: version &gt;= 2.8</li>
+<li><strong>BLAS</strong>: MKL, OpenBlas or ATLAS</li>
+<li><strong>protobuf</strong>: version &gt;= 2.4, <strong>Note: 3.x is not supported</strong></li>
+<li><strong>python</strong>: only python 2.7 is supported currently</li>
 </ul>
 </div>
-<div class="section" id="optional">
-<span id="optional"></span><h3>Optional<a class="headerlink" href="#optional" title="Permalink to this headline">¶</a></h3>
-<p>PaddlePaddle also support some build options, you have to install related libraries.</p>
+<div class="section" id="options">
+<span id="options"></span><h3>Options<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h3>
+<p>PaddlePaddle supports some build options. To enable it, first you need to install the related libraries.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Optional</span>            <span class="o">|</span> <span class="n">Description</span>
+<span class="o">------------</span>        <span class="o">|</span> <span class="p">:</span><span class="o">-----------</span>
+<span class="o">**</span><span class="n">WITH_GPU</span><span class="o">**</span>        <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">GPU</span> <span class="n">mode</span><span class="o">.</span>
+<span class="o">**</span><span class="n">WITH_DOUBLE</span><span class="o">**</span>     <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">double</span> <span class="n">precision</span> <span class="n">floating</span><span class="o">-</span><span class="n">point</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">single</span> <span class="n">precision</span><span class="o">.</span> <span class="o">|</span>
+<span class="o">**</span><span class="n">WITH_GLOG</span><span class="o">**</span>       <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">glog</span><span class="o">.</span> <span class="n">If</span> <span class="ow">not</span> <span class="n">found</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">an</span> <span class="n">internal</span> <span class="n">log</span> <span class="n">implementation</span><span class="o">.</span>
+<span class="o">**</span><span class="n">WITH_GFLAGS</span><span class="o">**</span>     <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">gflags</span><span class="o">.</span> <span class="n">If</span> <span class="ow">not</span> <span class="n">found</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">an</span> <span class="n">internal</span> <span class="n">flag</span> <span class="n">implementation</span><span class="o">.</span>
+<span class="o">**</span><span class="n">WITH_TESTING</span><span class="o">**</span>    <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">gtest</span> <span class="k">for</span> <span class="n">PaddlePaddle</span><span class="s1">&#39;s unit testing. </span>
+<span class="o">**</span><span class="n">WITH_DOC</span><span class="o">**</span>        <span class="o">|</span> <span class="n">Compile</span> <span class="n">to</span> <span class="n">generate</span> <span class="n">PaddlePaddle</span><span class="s1">&#39;s docs, default: disabled (OFF).</span>
+<span class="o">**</span><span class="n">WITH_SWIG_PY</span><span class="o">**</span>    <span class="o">|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">python</span> <span class="n">predict</span> <span class="n">API</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">disabled</span> <span class="p">(</span><span class="n">OFF</span><span class="p">)</span><span class="o">.</span>
+<span class="o">**</span><span class="n">WITH_STYLE_CHECK</span><span class="o">**|</span> <span class="n">Compile</span> <span class="k">with</span> <span class="n">code</span> <span class="n">style</span> <span class="n">check</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">enabled</span> <span class="p">(</span><span class="n">ON</span><span class="p">)</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>|</p>
+<p><strong>Note:</strong></p>
 <ul class="simple">
-<li><strong>WITH_GPU</strong>: Compile with gpu mode<ul>
-<li>The GPU version works best with Cuda Toolkit 7.5 and cuDNN v5</li>
-<li>Other versions Cuda Toolkit 6.5, 7.0 and cuDNN v2, v3, v4 are also supported</li>
-<li>Note: to utilize cuDNN v5, Cuda Toolkit 7.5 is prerequisite and vice versa</li>
+<li>The GPU version works best with Cuda Toolkit 7.5 and cuDNN v5.</li>
+<li>Other versions like Cuda Toolkit 6.5, 7.0, 8.0 and cuDNN v2, v3, v4 are also supported.</li>
+<li><strong>To utilize cuDNN v5, Cuda Toolkit 7.5 is prerequisite and vice versa.</strong></li>
 </ul>
+<p>As a simple example, consider the following:</p>
+<ol>
+<li><p class="first"><strong>Python Dependencies(optional)</strong></p>
+<p>To compile PaddlePaddle with python predict API, make sure swig installed and set <code class="docutils literal"><span class="pre">-DWITH_SWIG_PY=ON</span></code> as follows:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># install swig on ubuntu</span>
+sudo apt-get install swig
+<span class="c1"># install swig on Mac OS X</span>
+brew install swig
+
+<span class="c1"># active swig in cmake</span>
+cmake .. -DWITH_SWIG_PY<span class="o">=</span>ON
+</pre></div>
+</div>
 </li>
-<li><strong>WITH_DOUBLE</strong>: Compile with double precision, otherwise use single precision</li>
-<li><strong>WITH_GLOG</strong>: Compile with glog, otherwise use a log implement internally</li>
-<li><strong>WITH_GFLAGS</strong>: Compile with gflags, otherwise use a flag implement internally</li>
-<li><strong>WITH_TESTING</strong>: Compile with gtest and run unittest for PaddlePaddle</li>
-<li><strong>WITH_DOC</strong>: Compile with documentation</li>
-<li><strong>WITH_SWIG_PY</strong>: Compile with python predict api</li>
-<li><strong>WITH_STYLE_CHECK</strong>: Style check for source code</li>
-</ul>
+<li><p class="first"><strong>Doc Dependencies(optional)</strong></p>
+<p>To generate PaddlePaddle&#8217;s documentation, install dependencies and set <code class="docutils literal"><span class="pre">-DWITH_DOC=ON</span></code> as follows:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install <span class="s1">&#39;sphinx&gt;=1.4.0&#39;</span>
+pip install sphinx_rtd_theme breathe recommonmark
+
+<span class="c1"># install doxygen on Ubuntu</span>
+sudo apt-get install doxygen 
+<span class="c1"># install doxygen on Mac OS X</span>
+brew install doxygen
+
+<span class="c1"># active docs in cmake</span>
+cmake .. -DWITH_DOC<span class="o">=</span>ON<span class="sb">`</span>
+</pre></div>
+</div>
+</li>
+</ol>
 </div>
 </div>
-<div class="section" id="building-on-ubuntu14-04">
-<span id="building-on-ubuntu14-04"></span><h2>Building on Ubuntu14.04<a class="headerlink" href="#building-on-ubuntu14-04" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="span-id-ubuntu-build-on-ubuntu-14-04-span">
+<span id="span-id-ubuntu-build-on-ubuntu-14-04-span"></span><h2><span id="ubuntu">Build on Ubuntu 14.04</span><a class="headerlink" href="#span-id-ubuntu-build-on-ubuntu-14-04-span" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="install-dependencies">
 <span id="install-dependencies"></span><h3>Install Dependencies<a class="headerlink" href="#install-dependencies" title="Permalink to this headline">¶</a></h3>
-<ul class="simple">
-<li><strong>CPU Dependencies</strong></li>
-</ul>
+<ul>
+<li><p class="first"><strong>CPU Dependencies</strong></p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># necessary</span>
 sudo apt-get update
 sudo apt-get install -y g++ make cmake build-essential libatlas-base-dev python python-pip libpython-dev m4 libprotobuf-dev protobuf-compiler python-protobuf python-numpy git
@@ -123,17 +169,19 @@ sudo cp *.a /usr/lib
 <span class="nb">popd</span>
 </pre></div>
 </div>
-<ul class="simple">
-<li><strong>GPU Dependencies(optional)</strong></li>
-</ul>
-<p>If you need to build GPU version, the first thing you need is a machine that has GPU and CUDA installed.
-And you also need to install cuDNN.</p>
-<p>You can download CUDA toolkit and cuDNN from nvidia website:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>https://developer.nvidia.com/cuda-downloads
-https://developer.nvidia.com/cudnn
+</li>
+<li><p class="first"><strong>GPU Dependencies (optional)</strong></p>
+<p>To build GPU version, you will need the following installed:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>  <span class="mf">1.</span> <span class="n">a</span> <span class="n">CUDA</span><span class="o">-</span><span class="n">capable</span> <span class="n">GPU</span>
+  <span class="mf">2.</span> <span class="n">A</span> <span class="n">supported</span> <span class="n">version</span> <span class="n">of</span> <span class="n">Linux</span> <span class="k">with</span> <span class="n">a</span> <span class="n">gcc</span> <span class="n">compiler</span> <span class="ow">and</span> <span class="n">toolchain</span>
+  <span class="mf">3.</span> <span class="n">NVIDIA</span> <span class="n">CUDA</span> <span class="n">Toolkit</span> <span class="p">(</span><span class="n">available</span> <span class="n">at</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cuda</span><span class="o">-</span><span class="n">downloads</span><span class="p">)</span>
+  <span class="mf">4.</span> <span class="n">NVIDIA</span> <span class="n">cuDNN</span> <span class="n">Library</span> <span class="p">(</span><span class="n">availabel</span> <span class="n">at</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cudnn</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>You can copy cuDNN files into the CUDA toolkit directory, such as:</p>
+<p>The CUDA development environment relies on tight integration with the host development environment,
+including the host compiler and C runtime libraries, and is therefore only supported on
+distribution versions that have been qualified for this CUDA Toolkit release.</p>
+<p>After downloading cuDNN library, issue the following commands:</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>sudo tar -xzf cudnn-7.5-linux-x64-v5.1.tgz -C /usr/local
 sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
 </pre></div>
@@ -144,56 +192,170 @@ sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
 <span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>/usr/local/cuda/bin:<span class="nv">$PATH</span>
 </pre></div>
 </div>
-<ul class="simple">
-<li><strong>Python Dependencies(optional)</strong></li>
+</li>
 </ul>
-<p>If you want to compile PaddlePaddle with python predict api, you need to add -DWITH_SWIG_PY=ON in cmake command and install these first:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>sudo apt-get install swig
-</pre></div>
-</div>
-<ul class="simple">
-<li><strong>Doc Dependencies(optional)</strong></li>
-</ul>
-<p>If you want to compile PaddlePaddle with doc, you need to add -DWITH_DOC=ON in cmake command and install these first:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install <span class="s1">&#39;sphinx&gt;=1.4.0&#39;</span>
-pip install sphinx_rtd_theme breathe recommonmark
-sudo apt-get install doxygen 
-</pre></div>
-</div>
 </div>
 <div class="section" id="build-and-install">
-<span id="id1"></span><h3>Build and Install<a class="headerlink" href="#build-and-install" title="Permalink to this headline">¶</a></h3>
-<p>CMake will find dependent libraries in system default paths first. After installing some optional libraries, corresponding build option will automatically be on(such as glog, gtest and gflags). And if libraries are not found, you have to set following variables manually in cmake command(CUDNN_ROOT, ATLAS_ROOT, MKL_ROOT, OPENBLAS_ROOT).</p>
-<p>Here are some examples of cmake command with different options:</p>
-<p><strong>only cpu</strong></p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake -DWITH_GPU<span class="o">=</span>OFF -DWITH_DOC<span class="o">=</span>OFF
+<span id="build-and-install"></span><h3>Build and Install<a class="headerlink" href="#build-and-install" title="Permalink to this headline">¶</a></h3>
+<p>As usual, the best option is to create build folder under paddle project directory.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>mkdir build <span class="o">&amp;&amp;</span> <span class="nb">cd</span> build
+cmake ..
 </pre></div>
 </div>
-<p><strong>gpu</strong></p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>OFF
+<p>CMake first check PaddlePaddle&#8217;s dependencies in system default path. After installing some optional
+libraries, corresponding build option will be set automatically (for instance, glog, gtest and gflags).
+If still not found, you can manually set it based on CMake error information from your screen.</p>
+<p>As a simple example, consider the following:</p>
+<ul>
+<li><p class="first"><strong>Only CPU</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake  .. -DWITH_GPU<span class="o">=</span>OFF -DWITH_DOC<span class="o">=</span>OFF
 </pre></div>
 </div>
-<p><strong>gpu with doc and swig</strong></p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>ON -DWITH_SWIG_PY<span class="o">=</span>ON
+</li>
+<li><p class="first"><strong>GPU</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake .. -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>OFF
 </pre></div>
 </div>
+</li>
+<li><p class="first"><strong>GPU with doc and swig</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake .. -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>ON -DWITH_SWIG_PY<span class="o">=</span>ON
+</pre></div>
+</div>
+</li>
+</ul>
 <p>Finally, you can download source code and build:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/baidu/Paddle paddle
-<span class="nb">cd</span> paddle
-mkdir build
-<span class="nb">cd</span> build
-<span class="c1"># you can add build option here, such as:    </span>
-cmake -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>OFF -DCMAKE_INSTALL_PREFIX<span class="o">=</span>&lt;path to install&gt; ..
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># you can add build option here, such as:    </span>
+cmake .. -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>OFF -DCMAKE_INSTALL_PREFIX<span class="o">=</span>&lt;path to install&gt;
 <span class="c1"># please use sudo make install, if you want</span>
 <span class="c1"># to install PaddlePaddle into the system</span>
 make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">&amp;&amp;</span> make install
-<span class="c1"># PaddlePaddle installation path</span>
+<span class="c1"># set PaddlePaddle installation path in ~/.bashrc</span>
 <span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>&lt;path to install&gt;/bin:<span class="nv">$PATH</span>
 </pre></div>
 </div>
-<p><strong>Note</strong></p>
-<p>And if you set WITH_SWIG_PY=ON, you have to install related python predict api at the same time:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>pip install &lt;path to install&gt;/opt/paddle/share/wheels/*.whl
+<p><strong>Note:</strong></p>
+<p>If you set <code class="docutils literal"><span class="pre">WITH_SWIG_PY=ON</span></code>, related python dependencies also need to be installed.
+Otherwise, PaddlePaddle will automatically install python dependencies
+at first time when user run paddle commands, such as <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">version</span></code>, <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code>.
+It may require sudo privileges:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># you can run</span>
+sudo pip install &lt;path to install&gt;/opt/paddle/share/wheels/*.whl
+<span class="c1"># or just run </span>
+sudo paddle version
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="span-id-mac-building-on-mac-os-x-span">
+<span id="span-id-mac-building-on-mac-os-x-span"></span><h2><span id="mac">Building on Mac OS X</span><a class="headerlink" href="#span-id-mac-building-on-mac-os-x-span" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="prerequisites">
+<span id="prerequisites"></span><h3>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h3>
+<p>This guide is based on Mac OS X 10.11 (El Capitan). Note that if you are running an up to date version of OS X,
+you will already have Python 2.7.10 and Numpy 1.8 installed.</p>
+<p>The best option is to use the package manager homebrew to handle installations and upgrades for you.
+To install <a class="reference external" href="http://brew.sh/">homebrew</a>, first open a terminal window (you can find Terminal in the Utilities folder in Applications), and issue the command:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># install brew</span>
+/usr/bin/ruby -e <span class="s2">&quot;</span><span class="k">$(</span>curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install<span class="k">)</span><span class="s2">&quot;</span>
+<span class="c1"># install pip</span>
+easy_install pip
+</pre></div>
+</div>
+</div>
+<div class="section" id="install-dependencies">
+<span id="id1"></span><h3>Install Dependencies<a class="headerlink" href="#install-dependencies" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first"><strong>CPU Dependencies</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># Install fundamental dependents </span>
+brew install glog gflags cmake protobuf openblas
+
+<span class="c1"># Install google test on Mac OS X</span>
+<span class="c1"># Download gtest 1.7.0</span>
+wget https://github.com/google/googletest/archive/release-1.7.0.tar.gz
+tar -xvf googletest-release-1.7.0.tar.gz <span class="o">&amp;&amp;</span> <span class="nb">cd</span> googletest-release-1.7.0
+<span class="c1"># Build gtest</span>
+mkdir build <span class="o">&amp;&amp;</span> cmake ..
+make
+<span class="c1"># Install gtest library</span>
+sudo cp -r ../include/gtest /usr/local/include/
+sudo cp lib*.a /usr/local/lib
+</pre></div>
+</div>
+</li>
+<li><p class="first"><strong>GPU Dependencies(optional)</strong></p>
+<p>To build GPU version, you will need the following installed:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>  <span class="mf">1.</span> <span class="n">a</span> <span class="n">CUDA</span><span class="o">-</span><span class="n">capable</span> <span class="n">GPU</span>
+  <span class="mf">2.</span> <span class="n">Mac</span> <span class="n">OS</span> <span class="n">X</span> <span class="mf">10.11</span> <span class="ow">or</span> <span class="n">later</span>
+  <span class="mf">2.</span> <span class="n">the</span> <span class="n">Clang</span> <span class="n">compiler</span> <span class="ow">and</span> <span class="n">toolchain</span> <span class="n">installed</span> <span class="n">using</span> <span class="n">Xcode</span>
+  <span class="mf">3.</span> <span class="n">NVIDIA</span> <span class="n">CUDA</span> <span class="n">Toolkit</span> <span class="p">(</span><span class="n">available</span> <span class="n">at</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cuda</span><span class="o">-</span><span class="n">downloads</span><span class="p">)</span>
+  <span class="mf">4.</span> <span class="n">NVIDIA</span> <span class="n">cuDNN</span> <span class="n">Library</span> <span class="p">(</span><span class="n">availabel</span> <span class="n">at</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">cudnn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The CUDA development environment relies on tight integration with the host development environment,
+including the host compiler and C runtime libraries, and is therefore only supported on
+distribution versions that have been qualified for this CUDA Toolkit release.</p>
+<ol>
+<li><p class="first">After downloading cuDNN library, issue the following commands:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>sudo tar -xzf cudnn-7.5-osx-x64-v5.0-ga.tgz -C /usr/local
+sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
+</pre></div>
+</div>
+</li>
+<li><p class="first">Then you need to set DYLD_LIBRARY_PATH, CUDA_HOME and PATH environment variables in ~/.bashrc.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">DYLD_LIBRARY_PATH</span><span class="o">=</span>/usr/local/cuda/lib:<span class="nv">$DYLD_LIBRARY_PATH</span>
+<span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>/usr/local/cuda/bin:<span class="nv">$PATH</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</li>
+</ul>
+</div>
+<div class="section" id="build-and-install">
+<span id="id2"></span><h3>Build and Install<a class="headerlink" href="#build-and-install" title="Permalink to this headline">¶</a></h3>
+<p>As usual, the best option is to create build folder under paddle project directory.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>mkdir build <span class="o">&amp;&amp;</span> <span class="nb">cd</span> build
+cmake ..
+</pre></div>
+</div>
+<p>CMake first check PaddlePaddle&#8217;s dependencies in system default path. After installing some optional
+libraries, corresponding build option will be set automatically (for instance, glog, gtest and gflags).
+If still not found, you can manually set it based on CMake error information from your screen.</p>
+<p>As a simple example, consider the following:</p>
+<ul>
+<li><p class="first"><strong>Only CPU</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake  .. -DWITH_GPU<span class="o">=</span>OFF -DWITH_DOC<span class="o">=</span>OFF
+</pre></div>
+</div>
+</li>
+<li><p class="first"><strong>GPU</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake .. -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>OFF
+</pre></div>
+</div>
+</li>
+<li><p class="first"><strong>GPU with doc and swig</strong></p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>cmake .. -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>ON -DWITH_SWIG_PY<span class="o">=</span>ON
+</pre></div>
+</div>
+</li>
+</ul>
+<p>Finally, you can build PaddlePaddle:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># you can add build option here, such as:    </span>
+cmake .. -DWITH_GPU<span class="o">=</span>ON -DWITH_DOC<span class="o">=</span>OFF -DCMAKE_INSTALL_PREFIX<span class="o">=</span>&lt;installation path&gt;
+<span class="c1"># please use sudo make install, if you want to install PaddlePaddle into the system</span>
+make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">&amp;&amp;</span> make install
+<span class="c1"># set PaddlePaddle installation path in ~/.bashrc</span>
+<span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>&lt;installation path&gt;/bin:<span class="nv">$PATH</span>
+</pre></div>
+</div>
+<p><strong>Note:</strong></p>
+<p>If you set <code class="docutils literal"><span class="pre">WITH_SWIG_PY=ON</span></code>, related python dependencies also need to be installed.
+Otherwise, PaddlePaddle will automatically install python dependencies
+at first time when user run paddle commands, such as <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">version</span></code>, <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code>.
+It may require sudo privileges:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># you can run</span>
+sudo pip install &lt;path to install&gt;/opt/paddle/share/wheels/*.whl
+<span class="c1"># or just run </span>
+sudo paddle version
 </pre></div>
 </div>
 </div>
@@ -208,13 +370,20 @@ make -j <span class="sb">`</span>nproc<span class="sb">`</span> <span class="o">
         <div class="sphinxsidebarwrapper">
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Build and Install</a><ul>
-<li><a class="reference internal" href="#requirement">Requirement</a><ul>
-<li><a class="reference internal" href="#dependents">Dependents</a></li>
-<li><a class="reference internal" href="#optional">Optional</a></li>
+<li><a class="reference internal" href="#">Installing from Sources</a><ul>
+<li><a class="reference internal" href="#span-id-download-download-and-setup-span"><span id="download">Download and Setup</span></a></li>
+<li><a class="reference internal" href="#span-id-requirements-requirements-span"><span id="requirements">Requirements</span></a><ul>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#options">Options</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#building-on-ubuntu14-04">Building on Ubuntu14.04</a><ul>
+<li><a class="reference internal" href="#span-id-ubuntu-build-on-ubuntu-14-04-span"><span id="ubuntu">Build on Ubuntu 14.04</span></a><ul>
+<li><a class="reference internal" href="#install-dependencies">Install Dependencies</a></li>
+<li><a class="reference internal" href="#build-and-install">Build and Install</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#span-id-mac-building-on-mac-os-x-span"><span id="mac">Building on Mac OS X</span></a><ul>
+<li><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
 <li><a class="reference internal" href="#install-dependencies">Install Dependencies</a></li>
 <li><a class="reference internal" href="#build-and-install">Build and Install</a></li>
 </ul>

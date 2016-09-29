@@ -183,9 +183,13 @@ var _hmt = _hmt || [];
 <dl class="class">
 <dt id="_CPPv2N6paddle8SpinLockE">
 <span id="paddle::SpinLock"></span><span class="target" id="paddleclasspaddle_1_1SpinLock"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SpinLock</code><a class="headerlink" href="#_CPPv2N6paddle8SpinLockE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A simple wrapper for spin lock. The lock() method of <a class="reference internal" href="#paddleclasspaddle_1_1SpinLock"><span class="std std-ref">SpinLock</span></a> is busy-waiting which means it will keep trying to lock until lock on successfully. The <a class="reference internal" href="#paddleclasspaddle_1_1SpinLock"><span class="std std-ref">SpinLock</span></a> disable copy. </p>
-<div class="breathe-sectiondef container">
+<dd><div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle8SpinLock12DISABLE_COPYE8SpinLock">
+<span id="paddle::SpinLock::DISABLE_COPY__SpinLock"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1abb87cdb52fc8a8cc9576e2e220809085"></span><code class="descname">DISABLE_COPY</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle8SpinLockE" title="paddle::SpinLock">SpinLock</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8SpinLock12DISABLE_COPYE8SpinLock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="function">
 <dt id="_CPPv2N6paddle8SpinLock8SpinLockEv">
 <span id="paddle::SpinLock::SpinLock"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1ae4b8664661115cae5d7a9f5c1e4cd4ed"></span><code class="descname">SpinLock</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8SpinLock8SpinLockEv" title="Permalink to this definition">¶</a></dt>
@@ -194,16 +198,6 @@ var _hmt = _hmt || [];
 <dl class="function">
 <dt id="_CPPv2N6paddle8SpinLockD0Ev">
 <span id="paddle::SpinLock::~SpinLock"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1a12800af3f93511270eceba996f2e1233"></span><code class="descname">~SpinLock</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8SpinLockD0Ev" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="_CPPv2N6paddle8SpinLock8SpinLockERK8SpinLock">
-<span id="paddle::SpinLock::SpinLock__SpinLockCR"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1a055efdc5fa3c87bf9c5efa19ca91fceb"></span><code class="descname">SpinLock</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle8SpinLock8SpinLockEv" title="paddle::SpinLock::SpinLock">SpinLock</a>&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8SpinLock8SpinLockERK8SpinLock" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="_CPPv2N6paddle8SpinLockaSERK8SpinLock">
-<span id="paddle::SpinLock::assign-operator__SpinLockCR"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1a65860c4525eafaf6c50f67bb7e6f1217"></span><a class="reference internal" href="#_CPPv2N6paddle8SpinLockE" title="paddle::SpinLock">SpinLock</a> &amp;<code class="descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle8SpinLockE" title="paddle::SpinLock">SpinLock</a>&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8SpinLockaSERK8SpinLock" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -217,19 +211,6 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
-<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
-<dl class="member">
-<dt id="_CPPv2N6paddle8SpinLock5lock_E">
-<span id="paddle::SpinLock::lock___pthread_spinlock_t"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1a262929588dcc81d1740094988782f57e"></span>pthread_spinlock_t <code class="descname">lock_</code><a class="headerlink" href="#_CPPv2N6paddle8SpinLock5lock_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="member">
-<dt id="_CPPv2N6paddle8SpinLock8padding_E">
-<span id="paddle::SpinLock::padding___cA"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1a8c0dd8c3d3959525ecb169db292382ec"></span>char <code class="descname">padding_</code>[64-sizeof(pthread_spinlock_t)]<a class="headerlink" href="#_CPPv2N6paddle8SpinLock8padding_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</div>
 </dd></dl>
 
 </div>
@@ -238,9 +219,25 @@ var _hmt = _hmt || [];
 <dl class="class">
 <dt id="_CPPv2N6paddle9SemaphoreE">
 <span id="paddle::Semaphore"></span><span class="target" id="paddleclasspaddle_1_1Semaphore"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Semaphore</code><a class="headerlink" href="#_CPPv2N6paddle9SemaphoreE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A simple wapper of semaphore which can only be shared in the same process. </p>
-<div class="breathe-sectiondef container">
+<dd><div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle9Semaphore9SemaphoreERK9Semaphore">
+<span id="paddle::Semaphore::Semaphore__SemaphoreCR"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1a6d471a25979a5d8c85f3649576a01284"></span><code class="descname">Semaphore</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle9Semaphore9SemaphoreERK9Semaphore" title="paddle::Semaphore::Semaphore">Semaphore</a> &amp;<em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Semaphore9SemaphoreERK9Semaphore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disable copy &amp; assign. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9SemaphoreaSERRK9Semaphore">
+<span id="paddle::Semaphore::assign-operator__SemaphoreCRR"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1a9072e5b688450318d9c55437b5593f46"></span><a class="reference internal" href="#_CPPv2N6paddle9SemaphoreE" title="paddle::Semaphore">Semaphore</a> &amp;<code class="descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle9SemaphoreE" title="paddle::Semaphore">Semaphore</a> &amp;&amp;<em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9SemaphoreaSERRK9Semaphore" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Semaphore9SemaphoreERR9Semaphore">
+<span id="paddle::Semaphore::Semaphore__SemaphoreRR"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1a0a3cacfa683029887de7a865a6956b72"></span><code class="descname">Semaphore</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle9Semaphore9SemaphoreERK9Semaphore" title="paddle::Semaphore::Semaphore">Semaphore</a> &amp;&amp;<em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Semaphore9SemaphoreERR9Semaphore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enable move. </p>
+</dd></dl>
+
 <dl class="function">
 <dt id="_CPPv2N6paddle9Semaphore9SemaphoreEi">
 <span id="paddle::Semaphore::Semaphore__i"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1a4884c28f1f853a0467b70e7f33547670"></span><code class="descname">Semaphore</code><span class="sig-paren">(</span>int <em>initValue</em> = 0<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Semaphore9SemaphoreEi" title="Permalink to this definition">¶</a></dt>
@@ -291,14 +288,6 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
-<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
-<dl class="member">
-<dt id="_CPPv2N6paddle9Semaphore4sem_E">
-<span id="paddle::Semaphore::sem___sem_t"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1ab66cee48c4a02d13b4ef56cf2538ee42"></span>sem_t <code class="descname">sem_</code><a class="headerlink" href="#_CPPv2N6paddle9Semaphore4sem_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</div>
 </dd></dl>
 
 </div>
@@ -307,9 +296,13 @@ var _hmt = _hmt || [];
 <dl class="class">
 <dt id="_CPPv2N6paddle13ThreadBarrierE">
 <span id="paddle::ThreadBarrier"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ThreadBarrier</code><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrierE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A simple wrapper of thread barrier. The <a class="reference internal" href="#paddleclasspaddle_1_1ThreadBarrier"><span class="std std-ref">ThreadBarrier</span></a> disable copy. </p>
-<div class="breathe-sectiondef container">
+<dd><div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle13ThreadBarrier12DISABLE_COPYE13ThreadBarrier">
+<span id="paddle::ThreadBarrier::DISABLE_COPY__ThreadBarrier"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier_1ace6a9d5cf27b395ce3c478b3cbfd1f17"></span><code class="descname">DISABLE_COPY</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle13ThreadBarrierE" title="paddle::ThreadBarrier">ThreadBarrier</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrier12DISABLE_COPYE13ThreadBarrier" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="function">
 <dt id="_CPPv2N6paddle13ThreadBarrier13ThreadBarrierEi">
 <span id="paddle::ThreadBarrier::ThreadBarrier__i"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier_1a2b4ee1af9857ce417455d6a343a1a117"></span><code class="descname">ThreadBarrier</code><span class="sig-paren">(</span>int <em>count</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrier13ThreadBarrierEi" title="Permalink to this definition">¶</a></dt>
@@ -322,28 +315,10 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle13ThreadBarrier13ThreadBarrierERK13ThreadBarrier">
-<span id="paddle::ThreadBarrier::ThreadBarrier__ThreadBarrierCR"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier_1a42b7d18074508549f5e53156d8791fd8"></span><code class="descname">ThreadBarrier</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle13ThreadBarrier13ThreadBarrierEi" title="paddle::ThreadBarrier::ThreadBarrier">ThreadBarrier</a>&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrier13ThreadBarrierERK13ThreadBarrier" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="_CPPv2N6paddle13ThreadBarrieraSERK13ThreadBarrier">
-<span id="paddle::ThreadBarrier::assign-operator__ThreadBarrierCR"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier_1a84b0ef2c24d0ee7770fa453d385f5bdf"></span><a class="reference internal" href="#_CPPv2N6paddle13ThreadBarrierE" title="paddle::ThreadBarrier">ThreadBarrier</a> &amp;<code class="descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle13ThreadBarrierE" title="paddle::ThreadBarrier">ThreadBarrier</a>&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrieraSERK13ThreadBarrier" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
 <dt id="_CPPv2N6paddle13ThreadBarrier4waitEv">
 <span id="paddle::ThreadBarrier::wait"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier_1af63f9491d2644a258350e12120fedf89"></span>void <code class="descname">wait</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrier4waitEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>If there were count - 1 threads waiting before, then wake up all the count - 1 threads and continue run together. Else block the thread until waked by other thread . </p>
 </dd></dl>
-
-</div>
-<div class="breathe-sectiondef container">
-<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
-<dl class="member">
-<dt id="_CPPv2N6paddle13ThreadBarrier8barrier_E">
-<span id="paddle::ThreadBarrier::barrier___pthread_barrier_t"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier_1ae29548e35c5a20906647e8dcc48f9f39"></span>pthread_barrier_t <code class="descname">barrier_</code><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrier8barrier_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
 
 </div>
 </dd></dl>
