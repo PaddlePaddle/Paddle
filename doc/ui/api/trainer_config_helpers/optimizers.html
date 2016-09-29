@@ -94,6 +94,32 @@ be learned. The i is the i-th observation in (trainning) data.</p>
 </dd></dl>
 
 </div>
+<div class="section" id="momentumoptimizer">
+<h1>MomentumOptimizer<a class="headerlink" href="#momentumoptimizer" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">MomentumOptimizer</code><span class="sig-paren">(</span><em>momentum=None</em>, <em>sparse=False</em><span class="sig-paren">)</span></dt>
+<dd><p>MomentumOptimizer.</p>
+<p>When sparse=True, the update scheme:</p>
+<div class="math">
+\[\begin{split}\alpha_t &amp;= \alpha_{t-1} / k \\
+\beta_t &amp;= \beta_{t-1} / (1 + \lambda \gamma_t) \\
+u_t &amp;= u_{t-1} - \alpha_t \gamma_t g_t \\
+v_t &amp;= v_{t-1} + \tau_{t-1} \alpha_t \gamma_t g_t \\
+\tau_t &amp;= \tau_{t-1} + \beta_t / \alpha_t\end{split}\]</div>
+<p>where <span class="math">\(k\)</span> is momentum, <span class="math">\(\lambda\)</span> is decay rate,
+<span class="math">\(\gamma_t\)</span> is learning rate at the t&#8217;th step.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sparse</strong> (<em>bool</em>) &#8211; with sparse support or not.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 <div class="section" id="adamoptimizer">
 <h1>AdamOptimizer<a class="headerlink" href="#adamoptimizer" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
@@ -289,6 +315,7 @@ clipped.</li>
   <h3><a href="../../../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">BaseSGDOptimizer</a></li>
+<li><a class="reference internal" href="#momentumoptimizer">MomentumOptimizer</a></li>
 <li><a class="reference internal" href="#adamoptimizer">AdamOptimizer</a></li>
 <li><a class="reference internal" href="#adamaxoptimizer">AdamaxOptimizer</a></li>
 <li><a class="reference internal" href="#adagradoptimizer">AdaGradOptimizer</a></li>

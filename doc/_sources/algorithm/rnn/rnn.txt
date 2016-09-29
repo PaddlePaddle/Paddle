@@ -142,6 +142,7 @@ We also project the encoder vector to :code:`decoder_size` dimensional space, ge
 The decoder uses :code:`recurrent_group` to define the recurrent neural network. The step and output functions are defined in :code:`gru_decoder_with_attention`:
 
 .. code-block:: python
+
     group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
                   StaticInput(input=encoded_proj,is_seq=True)]
     trg_embedding = embedding_layer(
