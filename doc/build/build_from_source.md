@@ -135,7 +135,7 @@ mkdir build && cd build
 cmake ..
 ```
 
-CMake first check PaddlePaddle's dependecies in system default path. After installing some optional
+CMake first check PaddlePaddle's dependencies in system default path. After installing some optional
 libraries, corresponding build option will be set automatically (for instance, glog, gtest and gflags).
 If still not found, you can manually set it based on CMake error information from your screen.
 
@@ -256,7 +256,7 @@ mkdir build && cd build
 cmake ..
 ```
 
-CMake first check PaddlePaddle's dependecies in system default path. After installing some optional
+CMake first check PaddlePaddle's dependencies in system default path. After installing some optional
 libraries, corresponding build option will be set automatically (for instance, glog, gtest and gflags).
 If still not found, you can manually set it based on CMake error information from your screen.
 
