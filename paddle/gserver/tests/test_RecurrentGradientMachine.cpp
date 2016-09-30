@@ -21,6 +21,8 @@ limitations under the License. */
 #include <paddle/trainer/TrainerInternal.h>
 #include <paddle/gserver/gradientmachines/GradientMachine.h>
 
+P_DECLARE_int32(seed);
+
 using namespace paddle;  // NOLINT
 using namespace std;  // NOLINT
 class TrainerForTest : public paddle::Trainer {
@@ -68,7 +70,9 @@ void CalCost(const string& conf, const string& dir, real* cost,
   CpuVector vecMomentum(dim);
 
   // vecW needs to be assigned, otherwise the variable is an uncertain value.
-  vecW.zeroMem();
+
+  *ThreadLocalRand::getSeed() = FLAGS_seed;
+  vecW.randnorm(0, 0.1);
 
   trainer.startTrain();
   for (int i = 0; i < num_passes; ++i) {
@@ -88,25 +92,52 @@ void CalCost(const string& conf, const string& dir, real* cost,
   rmDir(dir.c_str());
 }
 
-TEST(RecurrentGradientMachine, HasSubSequence) {
+void test(const string& conf1, const string& conf2, double eps, bool useGpu) {
+  if (!paddle::version::isWithGpu() && useGpu) {
+    return;
+  }
+  FLAGS_use_gpu = useGpu;
   int num_passes = 5;
   real* cost1 = new real[num_passes];
-  const string conf1 = "gserver/tests/sequence_layer_group.conf";
   const string dir1 = "gserver/tests/t1";
   CalCost(conf1, dir1, cost1, num_passes);
 
   real* cost2 = new real[num_passes];
-  const string conf2 = "gserver/tests/sequence_nest_layer_group.conf";
   const string dir2 = "gserver/tests/t2";
   CalCost(conf2, dir2, cost2, num_passes);
 
   for (int i = 0; i < num_passes; i++) {
     LOG(INFO) << "num_passes: " << i << ", cost1=" << cost1[i]
-              << ", cost2=" << cost2[i];
-    ASSERT_NEAR(cost1[i], cost2[i], 1e-3);
+              << ", cost2=" << cost2[i]
+              << ", diff=" << std::abs(cost1[i] - cost2[i]);
+    ASSERT_NEAR(cost1[i], cost2[i], eps);
   }
   delete[] cost1;
   delete[] cost2;
+}
+
+TEST(RecurrentGradientMachine, HasSubSequence) {
+  for (bool useGpu : {false, true}) {
+    test("gserver/tests/sequence_layer_group.conf",
+         "gserver/tests/sequence_nest_layer_group.conf",
+         1e-5, useGpu);
+  }
+}
+
+TEST(RecurrentGradientMachine, rnn) {
+  for (bool useGpu : {false, true}) {
+    test("gserver/tests/sequence_rnn.conf",
+         "gserver/tests/sequence_nest_rnn.conf",
+         1e-6, useGpu);
+  }
+}
+
+TEST(RecurrentGradientMachine, rnn_multi_input) {
+  for (bool useGpu : {false, true}) {
+    test("gserver/tests/sequence_rnn_multi_input.conf",
+         "gserver/tests/sequence_nest_rnn_multi_input.conf",
+         1e-6, useGpu);
+  }
 }
 
 int main(int argc, char** argv) {

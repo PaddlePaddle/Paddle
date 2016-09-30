@@ -25,9 +25,12 @@ repo or just head straight to the command line:
  
 ```shell
 # Clone your fork to your local machine
-git clone git@github.com:USERNAME/paddle.git
+git clone https://github.com/USERNAME/Paddle.git
 ```
-Then you can start to develop. 
+Then you can start to develop by making a local developement branch
+```shell
+git checkout -b MY_COOL_STUFF_BRANCH origin/master
+```
 
 ## Commit
 
@@ -45,14 +48,14 @@ are the details if any.
 
 ## Keeping Fork Up to Date
 
-Before pull your request, you shold sync you code from the latest PaddlePaddle.
+Before pull your request, you should sync your code from the latest PaddlePaddle.
 To do this, you'll need to add a remote at first:
 
 ```shell
 # see the current configured remote repository
 git remote -v
 # add upstream repository
-git remote add upstream https://github.com/paddle/paddle.git
+git remote add upstream https://github.com/baidu/Paddle.git
 # verify the new upstream
 git remote -v
 ```
@@ -60,8 +63,7 @@ git remote -v
 Update your fork with the latest upstream changes:
 
 ```shell
-git fetch upstream
-git pull upstream master
+git pull --rebase upstream HEAD
 ```
 
 If there are no unique commits locally, git will simply perform a fast-forward.
@@ -74,10 +76,26 @@ Now, your local master branch is up-to-date with everything modified upstream.
 
 ```shell
 # push to your repository in Github
-git push origin master
+git push origin HEAD
 ```
 
 ## Pull Request
 
 Go to the page for your fork on GitHub, select your development branch,
 and click the **pull request button**.
+
+## Update your pull request with the lastest version
+
+During the code review, your pull request may become stale because new commits in
+baidu/Paddle. GitHub allows autmotic update if there is no conflict. You can do this
+by clicking the "Update Branch" button in your pull request page. However, in the case
+of conflict, you need to do the update manually. You need to do the following on
+your local repository:
+```shell
+git checkout MY_COOL_STUFF_BRANCH
+git pull --rebase upstream HEAD
+# You may need to resolve the conflict according to the git prompt.
+# Make and test your code.
+git push -f origin HEAD
+```
+Now your Pull Request is updated with the latest version.

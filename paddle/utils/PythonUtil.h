@@ -18,6 +18,12 @@ limitations under the License. */
 #ifndef PADDLE_NO_PYTHON
 // must include the following two blocks, otherwise,
 // gcc compiler may produce warning
+#ifdef __APPLE__
+#define _POSIX_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 700
+#endif
+
 #ifdef _POSIX_C_SOURCE
 #define __TEMP_POSIX_C_SOURCE _POSIX_C_SOURCE
 #undef _POSIX_C_SOURCE
@@ -28,12 +34,7 @@ limitations under the License. */
 #endif
 #include <Python.h>
 #include <frameobject.h>
-#ifndef _POSIX_C_SOURCE
-#warning "no _POSIX_C_SOURCE defined in Python.h"
-#endif
-#ifndef _XOPEN_SOURCE
-#warning "no _XOPEN_SOURCE defined in Python.h"
-#endif
+
 #endif
 
 #include "paddle/utils/Util.h"
@@ -175,10 +176,21 @@ public:
   /**
    * Get bool attribute.
    * @param field
+   * @param [out] isBoolType return true if attribute is bool type. If the
+   *                         attribute is not bool type, then an implicit
+   *                         conversion will happens, and will return the
+   *                         conversion result.
+   *
+   *                         Such as, if the attribute is 1, then the return
+   *                         value of function will be true, but the isBoolType
+   *                         will return false.
    * @return
    */
-  bool getBoolAttr(const std::string& field) const {
+  bool getBoolAttr(const std::string& field, bool* isBoolType = nullptr) const {
     PyObjectPtr tmp(getAttr(field));
+    if (isBoolType) {
+      *isBoolType = PyBool_Check(tmp.get());
+    }
     return PyObject_IsTrue(tmp.get());
   }
 
@@ -256,6 +268,15 @@ public:
 
   void setBool(const std::string& key, bool b) {
     this->set(key, PyBool_FromLong(b));
+  }
+
+  void setStringList(const std::string& key,
+                     const std::vector<std::string>& items) {
+    auto * list = PyList_New(items.size());
+    for (size_t i=0; i < items.size(); ++i) {
+      PyList_SetItem(list, i, PyString_FromString(items[i].c_str()));
+    }
+    this->set(key, list);
   }
 
 private:

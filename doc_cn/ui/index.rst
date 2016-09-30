@@ -5,6 +5,7 @@
 ''''''''
 
 ..  toctree::
+    :maxdepth: 1
 
     data_provider/index.rst
 

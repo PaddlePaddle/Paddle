@@ -82,12 +82,6 @@ img_cmrnorm_layer
     :members: img_cmrnorm_layer
     :noindex:
 
-img_rnorm_layer
------------------
-..  automodule:: paddle.trainer_config_helpers.layers
-    :members: img_rnorm_layer
-    :noindex:
-
 batch_norm_layer
 ---------------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -175,6 +169,12 @@ dotmul_projection
     :members: dotmul_projection
     :noindex:
 
+dotmul_operator
+---------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: dotmul_operator
+    :noindex:
+
 full_matrix_projection
 ----------------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -251,10 +251,10 @@ addto_layer
     :members: addto_layer
     :noindex:
 
-convex_comb_layer
+linear_comb_layer
 -----------------
 ..  automodule:: paddle.trainer_config_helpers.layers
-    :members: convex_comb_layer
+    :members: linear_comb_layer
     :noindex:
 
 interpolation_layer
@@ -286,7 +286,13 @@ tensor_layer
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: tensor_layer
     :noindex:
-    
+
+cos_sim
+-------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: cos_sim
+    :noindex:
+
 trans_layer
 ------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -345,12 +351,6 @@ rank_cost
 ---------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: rank_cost
-    :noindex:
-
-cos_sim
--------
-..  automodule:: paddle.trainer_config_helpers.layers
-    :members: cos_sim
     :noindex:
 
 crf_layer

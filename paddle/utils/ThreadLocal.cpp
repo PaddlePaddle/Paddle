@@ -12,10 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "Util.h"
 #include "ThreadLocal.h"
-
-#include "Thread.h"
-
 #include "CommandLineParser.h"
 
 P_DEFINE_bool(thread_local_rand_use_global_seed, false,
@@ -31,11 +29,11 @@ unsigned int* ThreadLocalRand::getSeed() {
   if (!p) {  // init seed
     if (FLAGS_thread_local_rand_use_global_seed) {
       p = new unsigned int(defaultSeed_);
-    } else if (getpid() == gettid()) {  // main thread
+    } else if (getpid() == getTID()) {  // main thread
       // deterministic, but differs from global srand()
       p = new unsigned int(defaultSeed_ - 1);
     } else {
-      p = new unsigned int(defaultSeed_ + gettid());
+      p = new unsigned int(defaultSeed_ + getTID());
       LOG(INFO) << "thread use undeterministic rand seed:" << *p;
     }
     seed_.set(p);
@@ -51,7 +49,7 @@ std::default_random_engine& ThreadLocalRandomEngine::get() {
     int defaultSeed = ThreadLocalRand::getDefaultSeed();
     engine->seed(FLAGS_thread_local_rand_use_global_seed
                      ? defaultSeed
-                     : defaultSeed + gettid());
+                     : defaultSeed + getTID());
     engine_.set(engine);
   }
   return *engine;

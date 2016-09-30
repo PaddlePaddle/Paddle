@@ -93,7 +93,7 @@ where `train.sh` is almost the same as `demo/seqToseq/translation/train.sh`, the
 - `--init_model_path`: path of the initialization model, here is `data/paraphrase_model`
 - `--load_missing_parameter_strategy`: operations when model file is missing, here use a normal distibution to initialize the other parameters except for the embedding layer
 
-For users who want to understand the dataset format, model architecture and training procedure in detail, please refer to [Text generation Tutorial](text_generation.md).
+For users who want to understand the dataset format, model architecture and training procedure in detail, please refer to [Text generation Tutorial](../text_generation/text_generation.md).
 
 ## Optional Function ##
 ###  Embedding Parameters Observation

@@ -47,9 +47,14 @@ class MaxPooling(BasePoolingType):
     ..  math::
 
         max(samples\\_of\\_a\\_sequence)
+
+    :param output_max_index: True if output sequence max index instead of max
+                             value. None means use default value in proto.
+    :type output_max_index: bool|None
     """
-    def __init__(self):
+    def __init__(self, output_max_index=None):
         BasePoolingType.__init__(self, "max")
+        self.output_max_index = output_max_index
         
 
 class AvgPooling(BasePoolingType):

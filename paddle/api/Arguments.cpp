@@ -110,8 +110,8 @@ IVector* Arguments::getSlotSequenceStartPositions(size_t idx) const
   }
 }
 
-IVector*Arguments::getSlotSubSequenceStartPositions(size_t idx) const
-    throw (RangeError){
+IVector* Arguments::getSlotSubSequenceStartPositions(size_t idx) const
+    throw(RangeError) {
   auto& a = m->getArg(idx);
   if (a.subSequenceStartPositions) {
     return IVector::createByPaddleVectorPtr(
@@ -129,7 +129,7 @@ void Arguments::setSlotSequenceStartPositions(size_t idx,
 }
 
 void Arguments::setSlotSubSequenceStartPositions(
-    size_t idx, IVector *vec) throw (RangeError) {
+    size_t idx, IVector *vec) throw(RangeError) {
   auto& a = m->getArg(idx);
   auto& v = m->cast<paddle::IVector>(vec->getSharedPtr());
   a.subSequenceStartPositions = std::make_shared<paddle::ICpuGpuVector>(v);

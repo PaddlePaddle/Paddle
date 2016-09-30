@@ -1,4 +1,5 @@
-#Image Classification Tutorial
+Image Classification Tutorial
+==============================
 
 This tutorial will guide you through training a convolutional neural network to classify objects using the CIFAR-10 image classification dataset.
 As shown in the following figure, the convolutional neural network can recognize the main object in images, and output the classification result.
@@ -172,7 +173,7 @@ python -m paddle.utils.plotcurve -i $log > plot.png
 - The script `plotcurve.py` requires the python module of `matplotlib`, so if it fails, maybe you need to install `matplotlib`.
 
 
-After training finishes, the training and testing error curve will be saved to `plot.png` using `plotcurve.py` script. An example of the plot is shown below:
+After training finishes, the training and testing error curves will be saved to `plot.png` using `plotcurve.py` script. An example of the plot is shown below:
 
 <center>![Training and testing curves.](./plot.png)</center>
 

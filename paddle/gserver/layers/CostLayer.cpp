@@ -26,11 +26,7 @@ namespace paddle {
 bool CostLayer::init(const LayerMap& layerMap,
                      const ParameterMap& parameterMap) {
   bool ret = Layer::init(layerMap, parameterMap);
-  if (config_.has_coeff()) {
-    coeff_ = config_.coeff();  // coeff only affact bp
-  } else {
-    coeff_ = real(1.0);
-  }
+  coeff_ = config_.coeff();
   if (!ret) return ret;
   CHECK_GE(inputLayers_.size(), 2UL);
   CHECK_LE(inputLayers_.size(), 3UL);
@@ -509,8 +505,10 @@ void HuberTwoClass::forwardImp(Matrix &output, Argument &label,
                                Matrix &cost) {
   if (useGpu_) {
     for (size_t i = 0; i < inputLayers_.size(); i++) {
-      tmpCpuInput_[i].resizeAndCopyFrom(getInput(i), false, HPPL_STREAM_1);
+      tmpCpuInput_[i].resizeAndCopyFrom(
+          getInput(i), false, HPPL_STREAM_DEFAULT);
     }
+    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   }
   forwardImpIn(output, label, cost);
 }

@@ -585,7 +585,7 @@ public:
    * \f[
    *  a[i] = \sum_{j=-(N-1)/2}^{(N-1)/2} b_{i+j} * c_{j}
    * \f]
-   *  
+   *
    * b contains M elements,
    * c contains N elements (N is odd),
    * b's index arithmetic is computed modulo M,
@@ -774,7 +774,7 @@ public:
   virtual void crossMapNormalFwd(Matrix& input, size_t imgSizeH,
                                  size_t imgSizeW, Matrix& denoms,
                                  size_t channels, size_t sizeX, float scale,
-                                 float pow, bool blocked) {
+                                 float pow) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -782,7 +782,7 @@ public:
                                  Matrix& preOutV, Matrix& localOutV,
                                  size_t channels, size_t imgSizeH,
                                  size_t imgSizeW, size_t size, float scale,
-                                 float pow, bool blocked) {
+                                 float pow) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -883,7 +883,7 @@ public:
    * @code
    * this[i] = -sum(label[i][j]*log(output[i][j])
    *           + (1-label[i][j])*log(1-output[i][j]))
-   * @endcode             
+   * @endcode
    */
   virtual void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label) {
     LOG(FATAL) << "Not implemented";
@@ -895,7 +895,7 @@ public:
    * @code
    * this[i][j] = -label[i][j]/output[i][j]
    *              + (1-label[i][j])/(1-output[i][j])
-   * @endcode             
+   * @endcode
    */
   virtual void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label) {
     LOG(FATAL) << "Not implemented";
@@ -903,12 +903,12 @@ public:
 
   /**
    * @brief  Calculate the classification error for multi binary labels
-   * 
+   *
    * @code
    * this[i] = sum((output[i][j] >= threshold && label[i][j] == 0)
    *            || (output[i][j] < threshold && label[i][j] == 1))
    *            / output->getWidth()
-   * @endcode           
+   * @endcode
    */
   virtual void classificationErrorMulti(Matrix& output, Matrix& label,
                                         real threshold) {
@@ -1149,12 +1149,12 @@ public:
 
   void crossMapNormalFwd(Matrix& input, size_t imgSizeH, size_t imgSizeW,
                          Matrix& denoms, size_t channels, size_t sizeX,
-                         float scale, float pow, bool blocked);
+                         float scale, float pow);
 
   void crossMapNormalBwd(Matrix& localGrad, Matrix& denoms, Matrix& preOutV,
                          Matrix& localOutV, size_t channels, size_t imgSizeH,
-                         size_t imgSizeW, size_t sizeX, float scale, float pow,
-                         bool blocked);
+                         size_t imgSizeW, size_t sizeX,
+                         float scale, float pow);
 
   void maxSequenceForward(Matrix& input, const IVector& sequence,
                           IVector& index);
@@ -1260,12 +1260,12 @@ public:
 
   void crossMapNormalFwd(Matrix& input, size_t imgSizeH, size_t imgSizeW,
                          Matrix& denoms, size_t channels, size_t sizeX,
-                         float scale, float pow, bool blocked);
+                         float scale, float pow);
 
   void crossMapNormalBwd(Matrix& localGrad, Matrix& denoms, Matrix& preOutV,
                          Matrix& localOutV, size_t channels, size_t imgSizeH,
-                         size_t imgSizeW, size_t sizeX, float scale, float pow,
-                         bool blocked);
+                         size_t imgSizeW, size_t sizeX,
+                         float scale, float pow);
 
   void maxSequenceForward(Matrix& input, const IVector& sequence,
                           IVector& index);
@@ -1307,14 +1307,14 @@ public:
    * @code
    * table.row[ids[i]] += this.row[i]
    * @endcode
-   */ 
+   */
   virtual void addToRows(Matrix& table, IVector& ids);
 
   /**
    * @code
    * this[i] = table[i, id[i]]
    * @endcode
-   */ 
+   */
   virtual void selectElements(Matrix& table, IVector& ids);
 
   /**

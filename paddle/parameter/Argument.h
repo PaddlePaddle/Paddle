@@ -177,11 +177,11 @@ struct Argument {
   }
 
   /**
-   * @brief (value, grad, sequenceStartPositions) of output are subset of
+   * @brief (value, ids, grad, sequenceStartPositions) of output are subset of
    *        input. Note that, output share the same memory of input.
    *
    * @param input[in]       input
-   * @param offset[in]      offset of input.value
+   * @param offset[in]      offset in terms of rows
    * @param height[in]      height of output.value
    * @param width[in]       width of output.value
    * @param useGpu[in]
@@ -203,13 +203,28 @@ struct Argument {
    *   startSeq: the sample id of start
    *   copySize: how many samples need to copy
    *   return value: how many samples are copied
+   * Note that when specifying the stream explicitly in this case,
+   * synchronize should also be called somewhere after this function
    */
   int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
-                            int32_t copySize, bool useGpu = FLAGS_use_gpu,
-                            hl_stream_t stream = HPPL_STREAM_DEFAULT);
+                            int32_t copySize, bool useGpu, hl_stream_t stream);
 
-  void resizeAndCopyFrom(const Argument& src, bool useGpu = FLAGS_use_gpu,
-                         hl_stream_t stream = HPPL_STREAM_DEFAULT);
+  /*
+   * same with the above function, except that the stream is
+   * HPPL_STREAM_DEFAULT and synchronize is automatically called
+   * inside it
+   */
+  int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
+                            int32_t copySize, bool useGpu = FLAGS_use_gpu);
+
+  void resizeAndCopyFrom(const Argument& src, bool useGpu, hl_stream_t stream);
+
+  /*
+   * same with the above function, except that the stream is
+   * HPPL_STREAM_DEFAULT and synchronize is automatically called
+   * inside it
+   */
+  void resizeAndCopyFrom(const Argument& src, bool useGpu = FLAGS_use_gpu);
 
   /*
     @brief Concatenate several arguments into one and put the result into it.
@@ -238,12 +253,29 @@ struct Argument {
   static void splitByDataId(const std::vector<Argument>& argus,
                             std::vector<std::vector<Argument>>* arguGroups);
 
+  struct SeqInfo {
+    // Equal to sequence length for sequence data
+    // Equal to number of subsequences for subsequence data
+    int topLevelLength;
+
+    int seqStart;
+    int seqId;
+
+    // Equal to topLevelLength for sequence data
+    // Equal to sum of the length of subsequences for subsequence data
+    int subLevelLength;
+
+    // Only used for subsequence data, start position of this sequence
+    // is subSequenceStartPositions, i.e.
+    // subSequenceStartPositions[subSeqStart] == seqStart
+    int subSeqStart;
+  };
   /*
-   Get Sequence Length, startPositions and max Length according to input
-   */
-  void getSeqLengthAndStart(
-      std::vector<std::tuple<int, int, int, int>>* seqLengthAndStart,
-      int* maxSequenceLength) const;
+    Get SeqInfo for each sequence of this argument
+    Elements in *seqInfo are sorted by topLevelLength in descending order
+  */
+  void getSeqInfo(std::vector<SeqInfo>* segInfo) const;
+
   /*
    Check Whether sequenceStartPositions is subset of
    subSequenceStartPositions.

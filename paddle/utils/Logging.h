@@ -191,7 +191,7 @@ void installFailureWriter(void(*callback)(const char*, int));
 }
 #endif  // PADDLE_USE_GLOG
 
-#ifndef NDEBUG
+#ifdef NDEBUG
 #define DEBUG_LEVEL 5
 #define DBG VLOG(DEBUG_LEVEL)
 #else

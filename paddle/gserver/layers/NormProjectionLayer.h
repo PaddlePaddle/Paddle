@@ -23,14 +23,11 @@ namespace paddle {
 
 /**
  * @brief response normalization across feature maps
- * namely normalize in number of size_ channels 
+ * namely normalize in number of size_ channels
  */
 class CMRProjectionNormLayer : public ResponseNormLayer {
   size_t imgSizeH_, imgSizeW_;
   size_t outputH_, outputW_;
-
-protected:
-  bool blocked_;
 
 public:
   explicit CMRProjectionNormLayer(const LayerConfig& config)

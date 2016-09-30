@@ -50,7 +50,7 @@ TEST(Operator, dot_mul) {
 TEST(Projection, context) {
   for (auto contextStart : {-5, -3, -1, 0, 3}) {
     for (auto contextLength : {1, 2, 5, 7}) {
-      for (auto batchSize : {1, 2, 5, 20, 100}) {
+      for (auto batchSize : {1, 2, 5, 20, 50}) {
         for (auto trainablePadding : {false, true}) {
           LOG(INFO) << " contextStart=" << contextStart
                     << " contextLength=" << contextLength
@@ -179,10 +179,9 @@ TEST(Layer, CRFLayer) {
   config.layerConfig.add_inputs();
   config.layerConfig.add_inputs();
 
-  for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "crf", 100, /* trans */ false, /* useGpu */ useGpu,
-                  false /*useWeight*/, 0.03 /*epsilon*/);
-  }
+  // Not support GPU now
+  testLayerGrad(config, "crf", 100, /* trans */ false, /* useGpu */ false,
+                false /*useWeight*/, 0.03 /*epsilon*/);
 }
 
 TEST(Layer, CTCLayer) {

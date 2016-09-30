@@ -27,6 +27,15 @@ limitations under the License. */
 
 namespace paddle {
 
+/**
+ * UIO_MAXIOV is documented in writev(2), but <sys/uio.h> only
+ * declares it on osx/ios if defined(KERNEL)
+ */
+#ifndef UIO_MAXIOV
+#define UIO_MAXIOV 512
+#endif
+
+
 SocketChannel::~SocketChannel() {
   if (tcpRdma_ == F_TCP)
     close(tcpSocket_);

@@ -56,6 +56,14 @@ process函数调用多次 :code:`yield` 即可。 :code:`yield` 是Python的一�
 这里说明了训练数据是 'train.list'，而没有测试数据。引用的DataProvider是 'mnist_provider' 
 这个模块中的 'process' 函数。
 
+同时，根据模型配置文件中 :code:`data_layer` 的名字，用户也可以显式指定返回的数据对应关系。例如:
+
+.. literalinclude:: mnist_provider.dict.py
+   :linenos:
+
+如果用户不指定返回数据的对应关系，那么PaddlePaddle会粗略的根据layer的声明顺序，
+来确定对应关系。这个对应关系可能不正确。所以推荐使用显式指定返回值和数据对应关系。
+
 至此，简单的PyDataProvider样例就说明完毕了。对于用户来说，讲数据发送给PaddlePaddle，仅仅需要
 知道如何从 **一个文件** 里面读取 **一条** 样本。而PaddlePaddle进程帮助用户做了
 
@@ -116,16 +124,16 @@ DataProvider创建的时候执行。这个初始化函数具有如下参数:
 参考(Reference)
 ---------------
 
-..  _@provider::
-
 @provider
 +++++++++
 
-'@provider'是一个Python的 `Decorator`_ ，他可以将某一个函数标记成一个PyDataProvider。它包含的参数有:
+:code:`@provider` 是一个Python的 `Decorator`_ ，他可以将某一个函数标记成一个PyDataProvider。它包含的参数有:
 
 *  `input_types`_ 是数据输入格式。具体有哪些格式，参考 `input_types`_ 。
 *  should_shuffle 是个DataProvider是不是要做shuffle，如果不设置的话，训练的时候默认shuffle，
-   测试的时候默认不shuffle
+   测试的时候默认不shuffle。
+*  min_pool_size 是设置DataProvider在内存中最小暂存的数据条数。这个也是PaddlePaddle所能够保证的shuffle粒度。
+   设置成-1的话，会预先读取全部数据到内存中。
 *  pool_size 是设置DataProvider在内存中暂存的数据条数。设置成-1的话，即不在乎内存暂存多少条数据。
 *  can_over_batch_size 表示是否允许Paddle暂存略微多余pool_size的数据。这样做可以避免很多死锁问题。
    一般推荐设置成True
@@ -133,9 +141,11 @@ DataProvider创建的时候执行。这个初始化函数具有如下参数:
    是一个batch size，但是有时为了计算均衡性，可以将一条数据设置成多个batch size
 *  cache 是数据缓存的策略，参考 `cache`_
 *  init_hook 是初始化时调用的函数，参考 `init_hook`_
-
-
-..  _input_types::
+*  use_dynamic_order 如果是true的话，可以返回一个dict，key是data_layer的名字，value是特征值。同时，也可以
+   返回一个list或者tuple。如果是false的话，只能够返回list或者tuple
+*  check 设置成true的话，会根据input_types检查数据的合法性。
+*  check_fail_continue 如果设置成true的话，即使在check中数据不合法，也会扔到这条数据，继续训练。 如果
+   check是false的话，没有作用。
 
 input_types
 +++++++++++
@@ -169,15 +179,10 @@ PaddlePaddle的数据包括四种主要类型，和三种序列模式。其中�
 
 其中，f代表一个浮点数，i代表一个整数。
 
-..  _init_hook::
-..  _settings::
-
 init_hook
 +++++++++
 
 init_hook可以传入一个函数。这个函数在初始化的时候会被调用。这个函数的参数是:
-
-
 
 * 第一个参数是 settings 对象。这个对象和process的第一个参数一致。具有的属性有
     * settings.input_types 设置输入类型。参考 `input_types`_
@@ -192,8 +197,6 @@ init_hook可以传入一个函数。这个函数在初始化的时候会被调�
 注意，PaddlePaddle保留添加参数的权力，所以init_hook尽量使用 :code:`**kwargs` , 来接受不使用的
 函数来保证兼容性。
 
-..  _cache::
-
 cache
 +++++
 
@@ -202,3 +205,55 @@ DataProvider提供了两种简单的Cache策略。他们是
 * CacheType.NO_CACHE 不缓存任何数据，每次都会从python端读取数据
 * CacheType.CACHE_PASS_IN_MEM 第一个pass会从python端读取数据，剩下的pass会直接从内存里
   读取数据。 
+
+
+注意事项
+--------
+
+可能的内存泄露问题
+++++++++++++++++++
+
+PaddlePaddle将train.list中的每一行，都传递给process函数，从而生成多个generator。
+即如果train.list中，有100个训练文件，即会生成100个generator。这个本身不是一个很
+严重的问题。
+
+但是，如果在训练时，每一条训练数据都是一个文件，并且，训练数据非常多的情况下，就
+会生成多个generator。每个generator在没有调用的时候，是几乎不占内存的。但是，当调
+用过一次的时候，generator便会存下当前的上下文(Context)。而这个Context可能会非常
+大。并且，generator至少调用两次才会知道是否停止。所以，即使在process里面只会有一
+个yield，也需要两次随机选择到同样的generator的时候，才会释放该段内存。
+
+..  code-block:: python
+
+    def func():
+        yield 0
+
+    f = func()  # 创建generator
+    tmp = next(f)  # 调用一次，返回0
+    tmp = next(f)  # 调用第二次的时候，才会Stop Iteration
+
+而如果按顺序调用这些generator就不会出现这个问题。
+
+所以最佳实践推荐不要将每一个样本都放入train.list。而是将样本的地址放入另一个文本
+文件，train.list写入那个文本文件的地址。 或者在python generator的上下文中尽量留
+下非常少的变量引用。例如
+
+..  code-block:: python
+
+    def real_process(fn):
+        # ... read from fn
+        return result   # 当函数返回的时候，python可以解除掉内部变量的引用。
+
+    def process(fn):
+        yield real_process(fn)
+
+这个问题是PyDataProvider读数据时候的逻辑问题，基本上不能整体修正。
+
+
+内存不够用的情况
+++++++++++++++++
+
+PyDataProvider2会尽量使用内存。所以如果对于内存比较小的机器，推荐设置
+:code:`pool_size` 变量，而这个变量推荐大于训练的batch size，并且在内存足够
+的情况下越大越好。
+

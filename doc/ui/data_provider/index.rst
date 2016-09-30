@@ -1,5 +1,5 @@
-PaddlePaddle DataProvider Introduction
-================================
+DataProvider Introduction
+=========================
 DataProvider is a module that loads training or testing data into cpu or gpu
 memory for the following triaining or testing process.
 
@@ -10,7 +10,7 @@ customized, with sacrificing the efficiency only a little. This is extremly
 useful when you have to dynamically generate certain kinds of data according to,
 for example, the training performance.
 
-Besides, users also can also customize a C++ :code:`DataProvider` for a more
+Besides, users also can customize a C++ :code:`DataProvider` for a more
 complex usage, or for a higher efficiency.
 
 The following parameters are required to define in the PaddlePaddle network

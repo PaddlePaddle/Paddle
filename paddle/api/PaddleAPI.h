@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/utils/GlobalConstants.h"
+#include "paddle/utils/TypeDefs.h"
 
 /// Import PaddlePaddle's enumeration into global namespace.
 using namespace paddle::enumeration_wrapper;  // NOLINT
@@ -392,7 +393,7 @@ public:
   void setSlotSequenceStartPositions(size_t idx,
                                      IVector* vec) throw(RangeError);
   void setSlotSubSequenceStartPositions(size_t idx,
-                                        IVector* vec) throw (RangeError);
+                                        IVector* vec) throw(RangeError);
   void setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError);
 
 private:

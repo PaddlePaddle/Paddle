@@ -93,6 +93,19 @@ static void installProfilerSwitch() {}
 
 namespace paddle {
 
+pid_t getTID() {
+  #if defined(__APPLE__) || defined(__OSX__)
+      pid_t tid = syscall(SYS_thread_selfid);
+  #else
+      #ifndef __NR_gettid
+      #define __NR_gettid 224
+      #endif
+      pid_t tid = syscall(__NR_gettid);
+  #endif
+  CHECK_NE(tid, -1);
+  return tid;
+}
+
 static bool g_initialized = false;
 typedef std::pair<int, std::function<void()>> PriorityFuncPair;
 typedef std::vector<PriorityFuncPair> InitFuncList;
@@ -129,13 +142,7 @@ void runInitFunctions() {
 
 void initMain(int argc, char** argv) {
   initializeLogging(argc, argv);
-  logging::installFailureWriter([](const char* data, int sz) {
-    std::cerr << "Current Layer forward/backward stack is " << std::endl;
-    gLayerStackTrace.dump([](const std::string& layername){
-      std::cerr << "LayerName: " << layername << std::endl;
-    });
-    std::cerr.write(data, sz);
-  });
+  installLayerStackTracer();
   std::string line;
   for (int i = 0; i < argc; ++i) {
     line += argv[i];

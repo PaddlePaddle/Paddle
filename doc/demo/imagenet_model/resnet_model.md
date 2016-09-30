@@ -1,6 +1,6 @@
 # Model Zoo - ImageNet #
 
-[ImageNet](http://www.image-net.org/) is a popular dataset for generic object classification. This tutorial provided convolutional neural network(CNN) models for ImageNet.
+[ImageNet](http://www.image-net.org/) is a popular dataset for generic object classification. This tutorial provides convolutional neural network(CNN) models for ImageNet.
 
 ## ResNet Introduction
 
@@ -48,11 +48,11 @@ We present three ResNet models, which are converted from the models provided by 
 
 ## ResNet Model
 
-See ```demo/model_zoo/resnet/resnet.py```. This confgiure contains network of 50, 101 and 152 layers. You can specify layer number by adding argument like this ```--config_args=layer_num=50``` in command line arguments.
+See ```demo/model_zoo/resnet/resnet.py```. This config contains network of 50, 101 and 152 layers. You can specify layer number by adding argument like ```--config_args=layer_num=50``` in command line arguments.
 
 ### Network Visualization
 
-You can get a diagram of ResNet network by running the following command. The script generates dot file and then converts dot file to PNG file, which uses installed draw_dot tool in our server. If you can not access the server, just install graphviz to convert dot file.
+You can get a diagram of ResNet network by running the following commands. The script generates dot file and then converts dot file to PNG file, which uses installed draw_dot tool in our server. If you can not access the server, just install graphviz to convert dot file.
 
 ```
 cd demo/model_zoo/resnet
@@ -165,7 +165,7 @@ We provide both C++ and Python interfaces to extract features. The following exa
 
 ### C++ Interface
 
-First, specify image data list in `define_py_data_sources` in the config, see example `demo/model_zoo/resnet/resnet.py`.
+First, specify image data list in `define_py_data_sources2` in the config, see example `demo/model_zoo/resnet/resnet.py`.
 
 ```
     train_list = 'train.list' if not is_test else None
@@ -190,8 +190,7 @@ Second, specify layers to extract features in `Outputs()` of `resnet.py`. For ex
 Outputs("res5_3_branch2c_conv", "res5_3_branch2c_bn")
 ```
 
-Third, specify model path and output directory in `extract_fea_c++.sh
-`, and then run following commands
+Third, specify model path and output directory in `extract_fea_c++.sh`, and then run the following commands.
 
 ```
 cd demo/model_zoo/resnet

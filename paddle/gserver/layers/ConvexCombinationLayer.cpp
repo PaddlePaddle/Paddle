@@ -21,18 +21,20 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * @brief A layer for convex weighted average of vectors,
+ * @brief A layer for weighted sum of vectors,
  * which is used in NEURAL MACHINE TRANSLATION BY JOINTLY LEARNING TO ALIGN AND
  * TRANSLATE
- * - Input: the first input contains the convex weights (batchSize x weightDim),
- *          and the shape of second input is (batchSize x (weightdim*dataDim)).
- * - Output: the shape of output is (batchSize x dataDim).
+ * - Input: the the size of the first input is weightDim,
+ *          and the size of the second input is weightdim * dataDim.
+ * - Output: the sizeof the output is dataDim
  * \f[
- *   out[i][j] = \sum_{j}(in0(i, j) * in1(i,j + i * dataDim)),
- *               i = 0,1,...,(batchSize-1); j = 0, 1,...,(dataDim-1)
+ *   out(j) = \sum_{i}(in0(i) * in1(i,j + i * dataDim)),
+ *               i = 0,1,...,(weightDim-1); j = 0, 1,...,(dataDim-1)
  * \f]
+ * Note that the above computation is for one sample. Multiple samples are
+ * processed in one batch.
  *
- * The config file api is convex_comb_layer.
+ * The config file api is linear_comb_layer.
  */
 class ConvexCombinationLayer : public Layer {
 protected:

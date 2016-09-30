@@ -146,6 +146,7 @@ void Matrix::resizeOrCreate(MatrixPtr& matrix, size_t height, size_t width,
   if (!matrix) {
     matrix = Matrix::create(height, width, trans, useGpu);
   } else {
+    CHECK_EQ(matrix->useGpu(), useGpu);
     matrix->resize(height, width);
   }
 }
@@ -161,6 +162,7 @@ void Matrix::resizeOrCreateSparseMatrix(MatrixPtr& matrix, size_t height,
   } else {
     CHECK(dynamic_cast<CpuSparseMatrix*>(matrix.get()) ||
           dynamic_cast<GpuSparseMatrix*>(matrix.get()));
+    CHECK_EQ(matrix->useGpu(), useGpu);
     matrix->resize(height, width, nnz, valueType, format);
   }
 }
@@ -943,7 +945,7 @@ void GpuMatrix::avgPoolBackward(Matrix& outGrad, size_t imgSizeH,
 void GpuMatrix::crossMapNormalFwd(Matrix& input, size_t imgSizeH,
                                   size_t imgSizeW, Matrix& denoms,
                                   size_t channels, size_t sizeX, float scale,
-                                  float pow, bool blocked) {
+                                  float pow) {
   size_t num = input.getHeight();
   size_t height = imgSizeH;
   size_t width = imgSizeW;
@@ -960,7 +962,7 @@ void GpuMatrix::crossMapNormalBwd(Matrix& localGrad, Matrix& denoms,
                                   Matrix& preOutV, Matrix& localOutV,
                                   size_t channels, size_t imgSizeH,
                                   size_t imgSizeW, size_t sizeX, float scale,
-                                  float pow, bool blocked) {
+                                  float pow) {
   size_t num = preOutV.getHeight();
   size_t height = imgSizeH;
   size_t width = imgSizeW;
@@ -1602,7 +1604,7 @@ void CpuMatrix::avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
 void CpuMatrix::crossMapNormalFwd(Matrix& input, size_t imgSizeH,
                                   size_t imgSizeW, Matrix& denoms,
                                   size_t channels, size_t sizeX, float scale,
-                                  float pow, bool blocked) {
+                                  float pow) {
   size_t num = input.getHeight();
   size_t height = imgSizeH;
   size_t width = imgSizeW;
@@ -1655,7 +1657,7 @@ void CpuMatrix::crossMapNormalBwd(Matrix& localGrad, Matrix& denoms,
                                   Matrix& preOutV, Matrix& localOutV,
                                   size_t channels, size_t imgSizeH,
                                   size_t imgSizeW, size_t size, float scale,
-                                  float pow, bool blocked) {
+                                  float pow) {
   LOG(FATAL) << "Not implemented";
 
   CHECK(imgSizeH * imgSizeW * channels == preOutV.getWidth());
@@ -2512,7 +2514,8 @@ void SharedCpuMatrix::mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB,
     for (int k = 0; k < blockNum_; ++k) {
       blockSeq.push_back(k);
     }
-    std::random_shuffle(blockSeq.begin(), blockSeq.end());
+    std::shuffle(blockSeq.begin(), blockSeq.end(),
+        ThreadLocalRandomEngine::get());
   }
   std::vector<int>& localBufRows = *localBufRows_;
   int* cols = a->getCols();

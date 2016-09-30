@@ -12,14 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
-
 from paddle.trainer.PyDataProvider2 import *
 import common_utils  # parse
-
 
 def hook(settings, meta, **kwargs):
     """
@@ -46,7 +40,6 @@ def hook(settings, meta, **kwargs):
     # slot types.
     settings.input_types = headers
     settings.meta = meta
-
 
 @provider(init_hook=hook, cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, filename):
