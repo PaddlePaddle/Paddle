@@ -59,7 +59,7 @@ IF(${FIND_AVX_10})
     ENDIF()
 ENDIF()
 
-IF("${FIND_AVX_10}" OR "${FIND_AVX_20}")
+IF(${FIND_AVX_10})
     SET(AVX_FOUND TRUE)
     MESSAGE(STATUS "Find CPU supports ${AVX_FLAGS}.")
 ENDIF()
