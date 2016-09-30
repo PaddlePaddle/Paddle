@@ -7,8 +7,10 @@ settings(
 
 img = data_layer(name='image', size=256*256)
 
+# the parse_conv in config_parse.py is not strictly accurate when filter_size
+# is not square. So here set square filter_size.
 img_conv = img_conv_layer(input=img, num_channels=1, num_filters=64,
-                          filter_size=(32, 64), padding=(1, 0), stride=(1, 1),
+                          filter_size=(32, 32), padding=(1, 1), stride=(1, 1),
                           act=LinearActivation())
 img_bn = batch_norm_layer(input=img_conv, act=ReluActivation())
 
