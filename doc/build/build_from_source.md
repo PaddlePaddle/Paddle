@@ -1,5 +1,5 @@
 Installing from Sources
-=================
+==========================
 
 * [1. Download and Setup](#download)
 * [2. Requirements](#requirements)
