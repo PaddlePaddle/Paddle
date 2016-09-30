@@ -28,17 +28,51 @@ To compile the source code, your computer must be equipped with GCC >=4.6 or Cla
 
 PaddlePaddle supports some build options. To enable it, first you need to install the related libraries. 
 
-
-| Optional             | Description                                                                  |
-| -------------------- | :--------------------------------------------------------------------------- |
-| **WITH_GPU**         | Compile with GPU mode.                                                       |
-| **WITH_DOUBLE**      | Compile with double precision floating-point, default: single precision.     |
-| **WITH_GLOG**        | Compile with glog. If not found, default: an internal log implementation.    |
-| **WITH_GFLAGS**      | Compile with gflags. If not found, default: an internal flag implementation. |
-| **WITH_TESTING**     | Compile with gtest for PaddlePaddle's unit testing.                          |
-| **WITH_DOC**         | Compile to generate PaddlePaddle's docs, default: disabled (OFF).            |
-| **WITH_SWIG_PY**     | Compile with python predict API, default: disabled (OFF).                    |
-| **WITH_STYLE_CHECK** | Compile with code style check, default: enabled (ON).                        |
+<style type="text/css">
+.tg  {border-collapse:collapse;border-spacing:0;border-color:#ccc;}
+.tg td{font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:0px;overflow:hidden;word-break:normal;border-color:#ccc;color:#333;background-color:#fff;border-top-width:1px;border-bottom-width:1px;}
+.tg th{font-family:Arial, sans-serif;font-size:14px;font-weight:normal;padding:10px 5px;border-style:solid;border-width:0px;overflow:hidden;word-break:normal;border-color:#ccc;color:#333;background-color:#f0f0f0;border-top-width:1px;border-bottom-width:1px;}
+.tg .tg-yw4l{vertical-align:top}
+.tg .tg-9hbo{font-weight:bold;vertical-align:top}
+</style>
+<table class="tg">
+  <tr>
+    <th class="tg-yw4l">Optional</th>
+    <th class="tg-yw4l">Description</th>
+  </tr>
+  <tr>
+    <td class="tg-9hbo">WITH_GPU</td>
+    <td class="tg-yw4l">Compile with GPU mode.</td>
+  </tr>
+  <tr>
+    <td class="tg-9hbo">WITH_DOUBLE</td>
+    <td class="tg-yw4l">Compile with double precision floating-point, default: single precision.</td>
+  </tr>
+  <tr>
+    <td class="tg-9hbo">WITH_GLOG</td>
+    <td class="tg-yw4l">Compile with glog. If not found, default: an internal log implementation.</td>
+  </tr>
+  <tr>
+    <td class="tg-9hbo">WITH_GFLAGS</td>
+    <td class="tg-yw4l">Compile with gflags. If not found, default: an internal flag implementation.</td>
+  </tr>
+  <tr>
+    <td class="tg-9hbo">WITH_TESTING</td>
+    <td class="tg-yw4l">Compile with gtest for PaddlePaddle's unit testing.</td>
+  </tr>
+  <tr>
+    <td class="tg-9hbo">WITH_DOC</td>
+    <td class="tg-yw4l">Compile to generate PaddlePaddle's docs, default: disabled (OFF)</td>
+  </tr>
+  <tr>
+    <td class="tg-9hbo">WITH_SWIG_PY</td>
+    <td class="tg-yw4l">Compile with python predict API, default: disabled (OFF).</td>
+  </tr>
+  <tr>
+    <td class="tg-9hbo">WITH_STYLE_CHECK</td>
+    <td class="tg-yw4l">Compile with code style check, default: enabled (ON).</td>
+  </tr>
+</table>
 
 **Note:**
   - The GPU version works best with Cuda Toolkit 7.5 and cuDNN v5.
