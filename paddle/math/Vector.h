@@ -258,6 +258,15 @@ public:
   /// print the "idx" element of the Vector
   virtual void printOneElement(std::ostream& os, size_t idx) const = 0;
 
+  template<typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    if (BaseVector<T>::useGpu_) {
+      TensorGpuApply<T>(*this, expr);
+    } else {
+      TensorCpuApply<T>(*this, expr);
+    }
+  }
+
 protected:
   friend class GpuVectorT<T>;
   friend class CpuVectorT<T>;
@@ -314,6 +323,11 @@ public:
   virtual T get(size_t pos);
   virtual void print(std::ostream& os, size_t num) const;
   virtual void printOneElement(std::ostream& os, size_t idx) const;
+
+  template<typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    TensorGpuApply<T>(*this, expr);
+  }
 
 protected:
   virtual void copyTo(CpuVectorT<T>* dest) const;
@@ -378,6 +392,11 @@ public:
   virtual T get(size_t pos);
   virtual void print(std::ostream& os, size_t num) const;
   virtual void printOneElement(std::ostream& os, size_t idx) const;
+
+  template<typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    TensorCpuApply<T>(*this, expr);
+  }
 };
 
 template <class T>

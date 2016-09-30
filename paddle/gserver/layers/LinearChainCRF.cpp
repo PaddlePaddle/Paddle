@@ -61,7 +61,7 @@ real LinearChainCRF::forward(real* x, int* s, int length) {
   expX_->assign(*matX);
   // subtract max to avoid overflow or underflow
   expX_->mul(maxX_, ones_, (real)-1, (real)1);
-  expX_->exp();
+  expX_->exp2();
 
   real* a = a_->getData();
   real* b = b_->getData();
@@ -70,7 +70,7 @@ real LinearChainCRF::forward(real* x, int* s, int length) {
   real* expX = expX_->getData();
   real* maxX = maxX_->getData();
 
-  expW_->exp(*w_);
+  expW_->exp2(*w_);
   real* expW = expW_->getData();
 
   for (int i = 0; i < numClasses_; ++i) {

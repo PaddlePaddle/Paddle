@@ -355,11 +355,11 @@ void BaseMatrixT<T>::neg() { applyUnary(unary::Neg<T>()); }
 
 DEFINE_MATRIX_UNARY_OP(Exp, a = exp(a));
 template<>
-void BaseMatrixT<real>::exp() { applyUnary(unary::Exp<real>()); }
+void BaseMatrixT<real>::exp2() { applyUnary(unary::Exp<real>()); }
 
 DEFINE_MATRIX_UNARY_OP(Log, a = log(a));
 template<>
-void BaseMatrixT<real>::log() {
+void BaseMatrixT<real>::log2() {
   if (useGpu_) {
     applyUnary(unary::Log<real>());
   } else {
@@ -369,23 +369,23 @@ void BaseMatrixT<real>::log() {
 
 DEFINE_MATRIX_UNARY_OP(Sqrt, a = sqrt(a));
 template<>
-void BaseMatrixT<real>::sqrt() { applyUnary(unary::Sqrt<real>()); }
+void BaseMatrixT<real>::sqrt2() { applyUnary(unary::Sqrt<real>()); }
 
 DEFINE_MATRIX_UNARY_OP(Square, a = a * a);
 template<class T>
-void BaseMatrixT<T>::square() { applyUnary(unary::Square<T>()); }
+void BaseMatrixT<T>::square2() { applyUnary(unary::Square<T>()); }
 
 DEFINE_MATRIX_UNARY_OP(Reciprocal, a = 1.0f / a);
 template<class T>
-void BaseMatrixT<T>::reciprocal() { applyUnary(unary::Reciprocal<T>()); }
+void BaseMatrixT<T>::reciprocal2() { applyUnary(unary::Reciprocal<T>()); }
 
 DEFINE_MATRIX_UNARY_OP(Abs, a = a > 0 ? a : -a);
 template<class T>
-void BaseMatrixT<T>::abs() { applyUnary(unary::Abs<T>()); }
+void BaseMatrixT<T>::abs2() { applyUnary(unary::Abs<T>()); }
 
 DEFINE_MATRIX_UNARY_OP(Sign, a = (a > 0) - (a < 0));
 template<class T>
-void BaseMatrixT<T>::sign() { applyUnary(unary::Sign<T>()); }
+void BaseMatrixT<T>::sign2() { applyUnary(unary::Sign<T>()); }
 
 DEFINE_MATRIX_UNARY_OP(Zero, a = 0);
 template<class T>
@@ -405,7 +405,7 @@ void BaseMatrixT<T>::one() { applyUnary(unary::One<T>()); }
 
 DEFINE_MATRIX_UNARY_PARAMETER_OP(Pow, ONE_PARAMETER, a = pow(a, p));
 template<>
-void BaseMatrixT<real>::pow(real p) {
+void BaseMatrixT<real>::pow2(real p) {
   if (useGpu_) {
     applyUnary(unary::Pow<real>(p));
   } else {
@@ -534,7 +534,7 @@ void BaseMatrixT<T>::add(BaseMatrixT& b, T p) {
 
 DEFINE_MATRIX_BINARY_PARAMETER_OP(Pow, ONE_PARAMETER, a = pow(b, p));
 template<>
-void BaseMatrixT<real>::pow(BaseMatrixT& b, real p) {
+void BaseMatrixT<real>::pow2(BaseMatrixT& b, real p) {
   if (useGpu_) {
     applyBinary(binary::Pow<real>(p), b);
   } else {
@@ -615,7 +615,7 @@ void BaseMatrixT<T>::breluDerivative(BaseMatrixT& b) {
 
 DEFINE_MATRIX_BINARY_OP(Square, b = a * a);
 template<class T>
-void BaseMatrixT<T>::square(BaseMatrixT& b) {
+void BaseMatrixT<T>::square2(BaseMatrixT& b) {
   applyBinary(binary::Square<T>(), b);
 }
 
@@ -654,7 +654,7 @@ void BaseMatrixT<T>::scaledTanhDerivative(BaseMatrixT& b, T p1, T p2) {
 
 DEFINE_MATRIX_BINARY_OP(Reciprocal, b = 1.0f / a);
 template<class T>
-void BaseMatrixT<T>::reciprocal(BaseMatrixT& b) {
+void BaseMatrixT<T>::reciprocal2(BaseMatrixT& b) {
   applyBinary(binary::Reciprocal<T>(), b);
 }
 
@@ -666,7 +666,7 @@ void BaseMatrixT<T>::reciprocalDerivative(BaseMatrixT& b) {
 
 DEFINE_MATRIX_BINARY_OP(Abs, b = a > 0.0f ? a : -a);
 template<class T>
-void BaseMatrixT<T>::abs(BaseMatrixT& b) { applyBinary(binary::Abs<T>(), b); }
+void BaseMatrixT<T>::abs2(BaseMatrixT& b) { applyBinary(binary::Abs<T>(), b); }
 
 DEFINE_MATRIX_BINARY_OP(AbsDerivative, a = (b > 0) ? a : (b < 0) ? -a : 0);
 template<class T>
@@ -726,17 +726,19 @@ void BaseMatrixT<T>::expDerivative(BaseMatrixT& b) {
 
 DEFINE_MATRIX_BINARY_OP(Sign, b = a > 0.0f ? 1.0f : -1.0f);
 template<class T>
-void BaseMatrixT<T>::sign(BaseMatrixT& b) { applyBinary(binary::Sign<T>(), b); }
+void BaseMatrixT<T>::sign2(BaseMatrixT& b) {
+  applyBinary(binary::Sign<T>(), b);
+}
 
 DEFINE_MATRIX_BINARY_OP(Exp, a = exp(b));
 template<>
-void BaseMatrixT<real>::exp(BaseMatrixT& b) {
+void BaseMatrixT<real>::exp2(BaseMatrixT& b) {
   applyBinary(binary::Exp<real>(), b);
 }
 
 DEFINE_MATRIX_BINARY_OP(Log, a = log(b));
 template<>
-void BaseMatrixT<real>::log(BaseMatrixT& b) {
+void BaseMatrixT<real>::log2(BaseMatrixT& b) {
   if (useGpu_) {
     applyBinary(binary::Log<real>(), b);
   } else {
@@ -746,7 +748,7 @@ void BaseMatrixT<real>::log(BaseMatrixT& b) {
 
 DEFINE_MATRIX_BINARY_OP(Sqrt, a = sqrt(b));
 template<>
-void BaseMatrixT<real>::sqrt(BaseMatrixT& b) {
+void BaseMatrixT<real>::sqrt2(BaseMatrixT& b) {
   applyBinary(binary::Sqrt<real>(), b);
 }
 
@@ -1062,7 +1064,7 @@ void BaseMatrixT<T>::biggerThan(BaseMatrixT& b,
 
 DEFINE_MATRIX_TERNARY_OP(Max, a = (b > c) ? b : c);
 template<class T>
-void BaseMatrixT<T>::max(BaseMatrixT& b, BaseMatrixT& c) {  // NOLINT
+void BaseMatrixT<T>::max2(BaseMatrixT& b, BaseMatrixT& c) {
   applyTernary(ternary::Max<T>(), b, c);
 }
 
@@ -1165,7 +1167,7 @@ void BaseMatrixT<T>::reciprocalSum(BaseMatrixT& b, BaseMatrixT& c, T p1, T p2,
 DEFINE_MATRIX_BINARY_PARAMETER_OP(Reciprocal2, TWO_PARAMETER,
                                   a = 1 / (p1 * b + p2));
 template<class T>
-void BaseMatrixT<T>::reciprocal(BaseMatrixT& b, T p1, T p2) {
+void BaseMatrixT<T>::reciprocal2(BaseMatrixT& b, T p1, T p2) {
   applyBinary(binary::Reciprocal2<T>(p1, p2), b);
 }
 

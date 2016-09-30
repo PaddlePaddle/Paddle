@@ -930,6 +930,15 @@ public:
   virtual void paramReluBackwardDiff(Matrix& oGrad, Matrix& data, Matrix& W) {
     LOG(FATAL) << "Not implemented";
   }
+
+  template<typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    if (useGpu_) {
+      TensorGpuApply<real>(*this, expr);
+    } else {
+      TensorCpuApply<real>(*this, expr);
+    }
+  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Matrix& mat) {
@@ -1191,6 +1200,11 @@ public:
                                        int contextLength,
                                        int contextStart, int totalPad,
                                        size_t beginPad);
+
+  template<typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    TensorGpuApply<real>(*this, expr);
+  }
 };
 
 class CpuMatrix : public Matrix {
@@ -1469,6 +1483,11 @@ public:
   void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
   void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label);
   void classificationErrorMulti(Matrix& output, Matrix& label, real threshold);
+
+  template<typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    TensorCpuApply<real>(*this, expr);
+  }
 };
 
 class SharedCpuMatrix : public CpuMatrix {
@@ -1504,6 +1523,7 @@ public:
   void add(real p1, real p2);
 
 private:
+  using Matrix::mul;
   void initShared(int blockNum);
   void initBlock(int blockNum);
 

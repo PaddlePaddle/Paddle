@@ -41,7 +41,7 @@ void BatchNormalizationLayer::calMeanAndStd(const MatrixPtr& mat) {
   savedMean_->mulScalar(1.0 / numSamples);  // E[x]
 
   tmpMat_->assign(*mat);
-  tmpMat_->square();
+  tmpMat_->square2();
   savedInvVar_->zeroMem();
   savedInvVar_->accumulateColSum(*tmpMat_);
   savedInvVar_->mulScalar(1.0 / numSamples);  // E[x^2]
@@ -55,7 +55,7 @@ void BatchNormalizationLayer::calMeanAndStd(const MatrixPtr& mat) {
   calMovingMeanAndVar();
 
   savedInvVar_->subScalar(-EPS);
-  savedInvVar_->sqrt(*savedInvVar_);
+  savedInvVar_->sqrt2(*savedInvVar_);
 }
 
 void BatchNormalizationLayer::calMovingMeanAndVar() {
@@ -86,7 +86,7 @@ void BatchNormalizationLayer::setMeanAndStd() {
   savedInvVar_->downClip(real(0.0));
 
   savedInvVar_->subScalar(-EPS);
-  savedInvVar_->sqrt(*savedInvVar_);
+  savedInvVar_->sqrt2(*savedInvVar_);
 }
 
 void BatchNormalizationLayer::expandMat(const MatrixPtr& in, MatrixPtr& out) {

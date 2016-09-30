@@ -17,6 +17,7 @@ limitations under the License. */
 #include <cstddef>
 #include <stdint.h>
 #include "paddle/utils/TypeDefs.h"
+#include "TensorExpression.h"
 
 namespace paddle {
 
@@ -66,7 +67,7 @@ public:
 };
 
 template<class T>
-class BaseMatrixT {
+class BaseMatrixT : public TensorExpression<BaseMatrixT<T>, T> {
 public:
   size_t height_, width_;
   size_t stride_;
@@ -351,14 +352,14 @@ public:
    *
    */
   void neg();
-  void exp();
-  void pow(T p);
-  void log();
-  void sqrt();
-  void square();
-  void reciprocal();
-  void abs();
-  void sign();
+  void exp2();
+  void pow2(T p);
+  void log2();
+  void sqrt2();
+  void square2();
+  void reciprocal2();
+  void abs2();
+  void sign2();
   void zero();
 
   /**
@@ -516,7 +517,7 @@ public:
    * b = this * this
    * @endcode
    */
-  void square(BaseMatrixT& b);
+  void square2(BaseMatrixT& b);
   void squareDerivative(BaseMatrixT& b);
 
   /**
@@ -540,7 +541,7 @@ public:
    * b = 1.0f / this
    * @endcode
    */
-  void reciprocal(BaseMatrixT& b);
+  void reciprocal2(BaseMatrixT& b);
   void reciprocalDerivative(BaseMatrixT& b);
 
   /**
@@ -548,7 +549,7 @@ public:
    * b = this > 0.0f ? this : -this
    * @endcode
    */
-  void abs(BaseMatrixT& b);
+  void abs2(BaseMatrixT& b);
   void absDerivative(BaseMatrixT& b);
 
   /**
@@ -566,12 +567,12 @@ public:
    */
   void expDerivative(BaseMatrixT& b);
 
-  void sign(BaseMatrixT& b);
+  void sign2(BaseMatrixT& b);
 
-  void exp(BaseMatrixT& b);
-  void pow(BaseMatrixT& b, T p);
-  void log(BaseMatrixT& b);
-  void sqrt(BaseMatrixT& b);
+  void exp2(BaseMatrixT& b);
+  void pow2(BaseMatrixT& b, T p);
+  void log2(BaseMatrixT& b);
+  void sqrt2(BaseMatrixT& b);
   void addScalar(BaseMatrixT& b, T p);
   void subScalar(BaseMatrixT& b, T p);
   void mulScalar(BaseMatrixT& b, T p);
@@ -742,7 +743,7 @@ public:
    * this = b>c ? b : c
    * @endcode
    */
-   void max(BaseMatrixT& b, BaseMatrixT& c);  //  NOLINT
+  void max2(BaseMatrixT& b, BaseMatrixT& c);
 
   /**
    * @code
@@ -837,7 +838,7 @@ public:
    * this = 1 / (p1 * b + p2)
    * @endcode
    */
-  void reciprocal(BaseMatrixT& b, T p1, T p2);
+  void reciprocal2(BaseMatrixT& b, T p1, T p2);
 
   /**
    * @code
@@ -952,6 +953,32 @@ public:
 
   virtual bool isSparse() const {
     return false;
+  }
+
+  template<typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    if (useGpu_) {
+      TensorGpuApply<T>(*this, expr);
+    } else {
+      TensorCpuApply<T>(*this, expr);
+    }
+  }
+
+  template<typename ExpressionType>
+  void operator+=(const ExpressionType& expr) {
+    (*this) = (*this) + expr;
+  }
+  template<typename ExpressionType>
+  void operator-=(const ExpressionType& expr) {
+    (*this) = (*this) - expr;
+  }
+  template<typename ExpressionType>
+  void operator*=(const ExpressionType& expr) {
+    (*this) = (*this) * expr;
+  }
+  template<typename ExpressionType>
+  void operator/=(const ExpressionType& expr) {
+    (*this) = (*this) / expr;
   }
 };
 

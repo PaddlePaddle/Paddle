@@ -15,7 +15,7 @@ limitations under the License. */
 
 #include "paddle/utils/Util.h"
 #include "paddle/utils/Flags.h"
-
+#include "paddle/math/TrainingAlgorithmOp.h"
 #include "FirstOrderOptimizer.h"
 
 #include <cmath>
@@ -113,17 +113,20 @@ void SparseMomentumParameterOptimizer::finishBatch() {
 void AdagradParameterOptimizer::update(const VectorPtr vecs[],
                                        const ParameterConfig& config,
                                        size_t sparseId) const {
-  vecs[PARAMETER_GRADIENT_SQURESUM1]->addSquare(*vecs[PARAMETER_GRADIENT],
-                                                1.0f);
-  vecs[PARAMETER_LEARNING_RATE]->add(*vecs[PARAMETER_GRADIENT_SQURESUM],
-                                     *vecs[PARAMETER_GRADIENT_SQURESUM1]);
-  vecs[PARAMETER_LEARNING_RATE]->add(optConfig_.ada_epsilon());
-  vecs[PARAMETER_LEARNING_RATE]->invSqrt(*vecs[PARAMETER_LEARNING_RATE]);
+  BaseMatrix& value = *vecs[PARAMETER_VALUE];
+  BaseMatrix& grad = *vecs[PARAMETER_GRADIENT];
+  BaseMatrix& mom = *vecs[PARAMETER_MOMENTUM];
+  BaseMatrix& accum_buffer = *vecs[PARAMETER_GRADIENT_SQURESUM];
+  BaseMatrix& accum = *vecs[PARAMETER_GRADIENT_SQURESUM1];
+  BaseMatrix& lr = *vecs[PARAMETER_LEARNING_RATE];
 
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate_ * config.learning_rate(),
-      config.momentum(), applyDecay_ ? config.decay_rate() : 0);
+  real epsilon = optConfig_.ada_epsilon();
+  real learningRate = learningRate_ * config.learning_rate();
+  real momentum = config.momentum();
+  real decayRate = applyDecay_ ? config.decay_rate() : 0;
+
+  adagradApply(value, grad, mom, accum_buffer, accum, lr,
+    epsilon, learningRate, momentum, decayRate);
 }
 
 ParameterOptimizer::TraverseCallback
@@ -147,32 +150,32 @@ void AdaDeltaParameterOptimizer::update(const VectorPtr vecs[],
                                         const ParameterConfig& config,
                                         size_t sparseId) const {
   CHECK(sparseId == -1LU) << "Sparse update is not supported";
-  // E(g_t^2) = \rou * E(g_{t-1}^2) + (1-\rou) * g^2
-  vecs[PARAMETER_GRADIENT_SQURESUM]->decayAddSquare(*vecs[PARAMETER_GRADIENT],
-                                                    rou_, 1.0f - rou_);
+  BaseMatrix& value = *vecs[PARAMETER_VALUE];
+  BaseMatrix& grad = *vecs[PARAMETER_GRADIENT];
+  BaseMatrix& mom = *vecs[PARAMETER_MOMENTUM];
+  BaseMatrix& accum = *vecs[PARAMETER_GRADIENT_SQURESUM];
+  BaseMatrix& accum_update = *vecs[PARAMETER_GRADIENT_SQURESUM1];
+  BaseMatrix& lr = *vecs[PARAMETER_LEARNING_RATE];
 
-  // learn_rate = sqrt( ( E(dx_{t-1}^2) + epsilon ) / ( E(g_t^2) + epsilon ) )
-  vecs[PARAMETER_LEARNING_RATE]->dotDiv(*vecs[PARAMETER_GRADIENT_SQURESUM1],
-                                        *vecs[PARAMETER_GRADIENT_SQURESUM],
-                                        epsilon_, epsilon_);
-  vecs[PARAMETER_LEARNING_RATE]->sqrt();
+  real learningRate = learningRate_ * config.learning_rate();
+  real momentum = config.momentum();
+  real decayRate = applyDecay_ ? config.decay_rate() : 0;
 
-  // E(dx_t^2) = \rou * E(dx_{t-1}^2) + (1-\rou) * (-g*learn_rate)^2
-  vecs[PARAMETER_GRADIENT_SQURESUM1]->decayAddSquareMul(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_LEARNING_RATE], rou_,
-      1.0f - rou_);
-
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate_ * config.learning_rate(),
-      config.momentum(), applyDecay_ ? config.decay_rate() : 0);
+  adadeltaApply(value, grad, mom, accum, accum_update, lr,
+    rou_, epsilon_, learningRate, momentum, decayRate);
 }
 
 void RMSPropParameterOptimizer::update(const VectorPtr vecs[],
                                        const ParameterConfig& config,
                                        size_t sparseId) const {
-  real accumulatedRou = rou_;
+  BaseMatrix& value = *vecs[PARAMETER_VALUE];
+  BaseMatrix& grad = *vecs[PARAMETER_GRADIENT];
+  BaseMatrix& mom = *vecs[PARAMETER_MOMENTUM];
+  BaseMatrix& sum = *vecs[PARAMETER_GRADIENT_SQURESUM];
+  BaseMatrix& sum1 = *vecs[PARAMETER_GRADIENT_SQURESUM1];
+  BaseMatrix& lr = *vecs[PARAMETER_LEARNING_RATE];
 
+  real accumulatedRou = rou_;
   bool firstTime = timer_ == 0;
   if (sparseId != -1LU) {
     CHECK_LT(sparseId, t0Vec_.size());
@@ -181,37 +184,26 @@ void RMSPropParameterOptimizer::update(const VectorPtr vecs[],
     t0Vec_[sparseId] = timer_ + 1;
   }
 
-  // E(g_t^2) = \rou * E(g_{t-1}^2) + (1-\rou) * g^2
-  // For the first time update, make the sum be the current square
-  // so that the initial estimation of E(g_t^2) will not be too small.
-  vecs[PARAMETER_GRADIENT_SQURESUM]->decayAddSquare(
-      *vecs[PARAMETER_GRADIENT], accumulatedRou,
-      firstTime ? 1.0f : 1.0f - rou_);
+  real epsilon = optConfig_.ada_epsilon();
+  real learningRate = learningRate_ * config.learning_rate();
+  real momentum = config.momentum();
+  real decayRate = applyDecay_ ? config.decay_rate() : 0;
 
-  // E(g_t) = \rou * E(g_{t-1}) + (1-\rou) * g
-  vecs[PARAMETER_GRADIENT_SQURESUM1]->add(*vecs[PARAMETER_GRADIENT],
-                                          accumulatedRou, 1.0f - rou_);
-
-  // learn_rate = 1/sqrt( ( E(g_t^2) - (E(g_t))^2 + epsilon )
-  // Basiclly if the sign of the gradient changes more often,
-  // the learning rate will be decreased.
-  vecs[PARAMETER_LEARNING_RATE]->assign(*vecs[PARAMETER_GRADIENT_SQURESUM]);
-  vecs[PARAMETER_LEARNING_RATE]->addSquare(*vecs[PARAMETER_GRADIENT_SQURESUM1],
-                                           -1.0f);
-  vecs[PARAMETER_LEARNING_RATE]->add(optConfig_.ada_epsilon());
-  vecs[PARAMETER_LEARNING_RATE]->invSqrt(*vecs[PARAMETER_LEARNING_RATE]);
-
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate_ * config.learning_rate(),
-      config.momentum(), applyDecay_ ? config.decay_rate() : 0);
+  rmspropApply(value, grad, mom, sum, sum1, lr,
+    accumulatedRou, rou_, epsilon, learningRate, momentum, decayRate,
+    firstTime);
 }
 
 void DecayedAdagradParameterOptimizer::update(const VectorPtr vecs[],
                                               const ParameterConfig& config,
                                               size_t sparseId) const {
-  real accumulatedRou = rou_;
+  BaseMatrix& value = *vecs[PARAMETER_VALUE];
+  BaseMatrix& grad = *vecs[PARAMETER_GRADIENT];
+  BaseMatrix& mom = *vecs[PARAMETER_MOMENTUM];
+  BaseMatrix& sum = *vecs[PARAMETER_GRADIENT_SQURESUM];
+  BaseMatrix& lr = *vecs[PARAMETER_LEARNING_RATE];
 
+  real accumulatedRou = rou_;
   bool firstTime = timer_ == 0;
   if (sparseId != -1LU) {
     CHECK_LT(sparseId, t0Vec_.size());
@@ -220,76 +212,47 @@ void DecayedAdagradParameterOptimizer::update(const VectorPtr vecs[],
     t0Vec_[sparseId] = timer_ + 1;
   }
 
-  // E(g_t^2) = \rou * E(g_{t-1}^2) + (1-\rou) * g^2
-  // For the first time update, make the sum be the current square
-  // so that the initial estimation of E(g_t^2) will not be too small.
-  vecs[PARAMETER_GRADIENT_SQURESUM]->decayAddSquare(
-      *vecs[PARAMETER_GRADIENT], accumulatedRou,
-      firstTime ? 1.0f : 1.0f - rou_);
+  real epsilon = optConfig_.ada_epsilon();
+  real learningRate = learningRate_ * config.learning_rate();
+  real momentum = config.momentum();
+  real decayRate = applyDecay_ ? config.decay_rate() : 0;
 
-  // learn_rate = 1/sqrt( ( E(g_t^2) + epsilon )
-  // Basiclly if the bigger the magnitude gradient is,
-  // the smaller the learning rate will be.
-  vecs[PARAMETER_LEARNING_RATE]->assign(optConfig_.ada_epsilon());
-  vecs[PARAMETER_LEARNING_RATE]->add(*vecs[PARAMETER_GRADIENT_SQURESUM]);
-  vecs[PARAMETER_LEARNING_RATE]->invSqrt(*vecs[PARAMETER_LEARNING_RATE]);
-
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate_ * config.learning_rate(),
-      config.momentum(), applyDecay_ ? config.decay_rate() : 0);
+  decayedAdagradApply(value, grad, mom, sum, lr,
+    accumulatedRou, rou_, epsilon, learningRate, momentum, decayRate,
+    firstTime);
 }
 
 void AdamParameterOptimizer::update(const VectorPtr vecs[],
                                     const ParameterConfig& config,
                                     size_t sparseId) const {
   CHECK(sparseId == -1UL) << "Sparse update is not supported";
-  Vector* m = vecs[PARAMETER_MOMENTUM].get();
-  Vector* g = vecs[PARAMETER_GRADIENT].get();
-  Vector* v = vecs[PARAMETER_SECOND_MOMENTUM].get();
-  Vector* theta = vecs[PARAMETER_VALUE].get();
+  real beta1_power = std::pow(beta1_, step_);
+  real beta2_power = std::pow(beta2_, step_);
+  real learningRate = config.learning_rate() * learningRate_;
 
-  // m_t = \beta_1 * m_{t-1} + (1-\beta_1)* g_t;
-  m->add(*g, beta1_, 1 - beta1_);
+  BaseMatrix& value = *vecs[PARAMETER_VALUE];
+  BaseMatrix& grad = *vecs[PARAMETER_GRADIENT];
+  BaseMatrix& mom = *vecs[PARAMETER_MOMENTUM];
+  BaseMatrix& v = *vecs[PARAMETER_SECOND_MOMENTUM];
 
-  // v_t = \beta_2 * v_{t-1} + (1-\beta_2)* g_{t-1}^2
-  g->square();
-  v->add(*g, beta2_, 1 - beta2_);
-
-  // tmp = m_t / ( \sqrt{v_t} + \epsilon )
-  // \theta_t = \theta_{t-1} - \alpha * \sqrt(1-\beta_2^t) / (1-\beta_1^t) * tmp
-  g->sqrt(*v);
-  g->dotDiv(*m, *g, 0., epsilon_);
-  real alpha = config.learning_rate() * learningRate_;
-  alpha = alpha * std::sqrt(1 - std::pow(beta2_, step_)) /
-          (1 - std::pow(beta1_, step_));
-  theta->add(*theta, 1.0, *g, -alpha);
+  adamApply(value, grad, mom, v,
+    beta1_, beta2_, beta1_power, beta2_power, epsilon_, learningRate);
 }
 
 void AdamaxParameterOptimizer::update(const VectorPtr vecs[],
                                       const ParameterConfig& config,
                                       size_t sparseId) const {
   CHECK(sparseId == -1UL) << "Sparse update is not supported";
-  Vector* m = vecs[PARAMETER_MOMENTUM].get();
-  Vector* g = vecs[PARAMETER_GRADIENT].get();
-  Vector* u = vecs[PARAMETER_WEIGHTED_INFINITY_NORM].get();
-  Vector* theta = vecs[PARAMETER_VALUE].get();
-
-  // m_t = \beta_1 * m_{t-1} + (1-\beta_1)* g_t;
-  m->add(*g, beta1_, 1 - beta1_);
-
-  // u_t = max(\beta_2*u_{t-1}, abs(g_t))
-  u->mulScalar(beta2_);
-  g->abs();
-  u->max(*u, *g);
-
-  // \theta_t = \theta_{t-1} - (\alpha/(1-\beta_1^t))*m_t/u_t
-  g->dotDiv(*m, *u);
   real learningRate = config.learning_rate() * learningRate_;
-  learningRate /= (1 - std::pow(beta1_, step_));
-  theta->add(*theta, 1.0, *g, -learningRate);
-}
 
+  BaseMatrix& value = *vecs[PARAMETER_VALUE];
+  BaseMatrix& grad = *vecs[PARAMETER_GRADIENT];
+  BaseMatrix& mom = *vecs[PARAMETER_MOMENTUM];
+  BaseMatrix& u = *vecs[PARAMETER_WEIGHTED_INFINITY_NORM];
+
+  adamaxApply(value, grad, mom, u,
+    beta1_, beta2_, step_, learningRate);
+}
 
 void OptimizerWithGradientClipping::update(const VectorPtr vecs[],
                                            const ParameterConfig& config,

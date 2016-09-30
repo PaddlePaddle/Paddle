@@ -3,6 +3,7 @@
 add_simple_unittest(test_ExecViaCpu)
 add_simple_unittest(test_SIMDFunctions)
 add_simple_unittest(test_matrix)
+add_simple_unittest(test_TrainingAlgorithm)
 
 # TODO(yuyang18): Refactor TestUtil.cpp. Remove this cross module reference.
 add_unittest(test_matrixCompare
@@ -13,3 +14,8 @@ add_simple_unittest(test_sparseMatrixCompare)
 add_simple_unittest(test_perturbation)
 add_simple_unittest(test_CpuGpuVector)
 add_simple_unittest(test_Allocator)
+if(COMPILER_SUPPORT_CXX11)
+  LIST(APPEND CUDA_NVCC_FLAGS -std=c++11 -Xcompiler -fPIC --use_fast_math)
+  CUDA_ADD_EXECUTABLE(test_Tensor test_Tensor.cu)
+  link_paddle_test(test_Tensor)
+endif()

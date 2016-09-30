@@ -381,8 +381,8 @@ void testMatrixSqrt(int height, int width) {
 
   cpuA->randomizeUniform();
   gpuA->copyFrom(*cpuA);
-  cpuA->sqrt();
-  gpuA->sqrt();
+  cpuA->sqrt2();
+  gpuA->sqrt2();
 
   MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, width);
   outputCheck->copyFrom(*gpuA);

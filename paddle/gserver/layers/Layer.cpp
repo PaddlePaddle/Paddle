@@ -310,12 +310,12 @@ void Layer::showOutputStats() {
     auto tmpMat = dynamic_cast<CpuSparseMatrix*>(outSquare.get());
     min = tmpMat->getMin();
     max = tmpMat->getMax();
-    tmpMat->square();
+    tmpMat->square2();
     LOG(INFO) << "show statistics of [none zero values] in sparse matrix";
   } else {
     min = outSquare->getMin();
     max = outSquare->getMax();
-    outSquare->square();
+    outSquare->square2();
   }
   real std = (outSquare->getSum() / outSquare->getElementCnt()) - mean * mean;
   std = std > 0 ? std : 0;

@@ -19,7 +19,6 @@ limitations under the License. */
 #include "hl_base.h"
 
 #ifdef __CUDA_ARCH__
-// typedef void*  vecType;
 #include <vector_types.h>
 #ifndef PADDLE_TYPE_DOUBLE
 typedef float4 vecType;
@@ -37,4 +36,10 @@ typedef __m128d vecType;
 #endif
 #endif
 
-#endif /* HL_MATRIX_TYPE_CUH_ */
+#ifdef __CUDA_ARCH__
+#define INLINE   __device__ inline
+#else
+#define INLINE   inline
+#endif
+
+#endif  // HL_MATRIX_TYPE_CUH_

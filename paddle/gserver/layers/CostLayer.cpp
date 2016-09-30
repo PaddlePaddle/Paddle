@@ -114,12 +114,12 @@ void MultiClassCrossEntropyWithSelfNorm::forwardImp(Matrix& output,
                                                     Matrix& target) {
   Matrix::resizeOrCreate(sftMaxSum_, output.getHeight(), 1, false, useGpu_);
   output.rowSum(*sftMaxSum_);
-  sftMaxSum_->log();
+  sftMaxSum_->log2();
 
   target.oneHotCrossEntropy(output, *label.ids);
   target.add(*sftMaxSum_);
 
-  sftMaxSum_->square();
+  sftMaxSum_->square2();
   target.add(*sftMaxSum_, config_.softmax_selfnorm_alpha());
 }
 
@@ -130,12 +130,12 @@ void MultiClassCrossEntropyWithSelfNorm::backwardImp(Matrix& output,
   output.rowSum(*sftMaxSum_);
 
   Matrix::resizeOrCreate(sumInv_, output.getHeight(), 1, false, useGpu_);
-  sftMaxSum_->reciprocal(*sumInv_);
+  sftMaxSum_->reciprocal2(*sumInv_);
 
   outputG.oneHotCrossEntropyBp(output, *label.ids);
   outputG.addColumnVector(*sumInv_);
 
-  sftMaxSum_->log();
+  sftMaxSum_->log2();
   sumInv_->dotMul(*sumInv_, *sftMaxSum_);
   sumInv_->mulScalar(2 * config_.softmax_selfnorm_alpha());
 

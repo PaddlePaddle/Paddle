@@ -100,7 +100,7 @@ void PowerLayer::backward(const UpdateCallback& callback) {
     Matrix::resizeOrCreate(tmpMtx, batchSize, dataDim, false, useGpu_);
 
     if (inG0) {
-      tmpMtx->log(*inV1);
+      tmpMtx->log2(*inV1);
       tmpMtx->dotMul(*tmpMtx, *outV);
 
       // inG0 += outG .* (log(inV1) * outV)

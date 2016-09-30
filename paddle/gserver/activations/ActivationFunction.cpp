@@ -271,7 +271,7 @@ void forward(Argument& act) {
                          /* trans */ false, useGpu(act.deviceId));
 
   act.in->copyFrom(*act.value);
-  act.value->abs(*act.value);
+  act.value->abs2(*act.value);
 }
 
 void backward(Argument& act) { act.grad->absDerivative(*act.in); }
@@ -290,7 +290,7 @@ void forward(Argument& act) {
                          /* trans */ false, useGpu(act.deviceId));
 
   act.in->copyFrom(*act.value);
-  act.value->square(*act.value);
+  act.value->square2(*act.value);
 }
 
 void backward(Argument& act) { act.grad->squareDerivative(*act.in); }
@@ -302,7 +302,7 @@ END_DEFINE_ACTIVATION(square)
  * \f]
  */
 BEGIN_DEFINE_ACTIVATION(exponential)
-void forward(Argument& act) { act.value->exp(*act.value); }
+void forward(Argument& act) { act.value->exp2(*act.value); }
 
 void backward(Argument& act) { act.grad->expDerivative(*act.value); }
 END_DEFINE_ACTIVATION(exponential)
