@@ -565,7 +565,7 @@ void hl_memcpy_sparse_matrix(hl_sparse_matrix_s dst,
 /**
  * Calculate beta * C, if beta is zero, C does not have to be a valid input.
  */
-static void _beat_mul_c(real *c, int dimM, int dimN, real beta) {
+static void _beta_mul_c(real *c, int dimM, int dimN, real beta) {
   if (beta == 0.0) {
     hl_gpu_apply_unary_op(unary::Zero<real>(), c, dimM, dimN, dimN);
   } else {
@@ -596,7 +596,7 @@ void hl_matrix_csr_mul_dense(hl_sparse_matrix_s A_d, hl_trans_op_t transa,
   }
 
   if (A_d->nnz == 0) {
-    _beat_mul_c(C_d, dimM, dimN, beta);
+    _beta_mul_c(C_d, dimM, dimN, beta);
     return;
   }
 
@@ -642,7 +642,7 @@ void hl_matrix_csr_mul_dense(hl_sparse_matrix_s A_d, hl_trans_op_t transa,
                                                beta);
     }
   } else if (HPPL_OP_T == transa) {
-    _beat_mul_c(C_d, dimM, dimN, beta);
+    _beta_mul_c(C_d, dimM, dimN, beta);
 
     int blocksX = (dimN + CU_CSC_MUL_DENSE_BLOCK_N - 1) /
                   CU_CSC_MUL_DENSE_BLOCK_N;
@@ -702,7 +702,7 @@ void hl_matrix_dense_mul_csc(real *A_d, hl_trans_op_t transa,
     << "matrix format error!";
 
   if (B_d->nnz == 0) {
-    _beat_mul_c(C_d, dimM, dimN, beta);
+    _beta_mul_c(C_d, dimM, dimN, beta);
     return;
   }
 
@@ -746,7 +746,7 @@ void hl_matrix_dense_mul_csc(real *A_d, hl_trans_op_t transa,
                                                beta);
     }
   } else if (transb == HPPL_OP_T) {
-    _beat_mul_c(C_d, dimM, dimN, beta);
+    _beta_mul_c(C_d, dimM, dimN, beta);
     int blocksX = 1 + (dimK-1)/CU_DM_CSR_THREAD_X;
     int blocksY = 1 + (dimM-1)/CU_DM_CSR_BLOCK_M;
     dim3 threads(CU_DM_CSR_THREAD_X, CU_DM_CSR_THREAD_Y);
@@ -803,7 +803,7 @@ void hl_matrix_dense_mul_csr(real *A_d, hl_trans_op_t transa,
     << "matrix format error!";
 
   if (B_d->nnz == 0) {
-    _beat_mul_c(C_d, dimM, dimN, beta);
+    _beta_mul_c(C_d, dimM, dimN, beta);
     return;
   }
 
@@ -816,7 +816,7 @@ void hl_matrix_dense_mul_csr(real *A_d, hl_trans_op_t transa,
   }
 
   if (transb == HPPL_OP_N) {
-    _beat_mul_c(C_d, dimM, dimN, beta);
+    _beta_mul_c(C_d, dimM, dimN, beta);
     int blocksX = 1 + (dimK-1)/CU_DM_CSR_THREAD_X;
     int blocksY = 1 + (dimM-1)/CU_DM_CSR_BLOCK_M;
     dim3 threads(CU_DM_CSR_THREAD_X, CU_DM_CSR_THREAD_Y);
@@ -901,7 +901,7 @@ void hl_matrix_csc_mul_dense(hl_sparse_matrix_s A_d, hl_trans_op_t transa,
   }
 
   if (A_d->nnz == 0) {
-    _beat_mul_c(C_d, dimM, dimN, beta);
+    _beta_mul_c(C_d, dimM, dimN, beta);
     return;
   }
 
@@ -914,7 +914,7 @@ void hl_matrix_csc_mul_dense(hl_sparse_matrix_s A_d, hl_trans_op_t transa,
   }
 
   if (HPPL_OP_N == transa) {
-    _beat_mul_c(C_d, dimM, dimN, beta);
+    _beta_mul_c(C_d, dimM, dimN, beta);
 
     int blocksX = (dimN + CU_CSC_MUL_DENSE_BLOCK_N -1)/CU_CSC_MUL_DENSE_BLOCK_N;
     int blocksY = (dimK + CU_CSC_MUL_DENSE_BLOCK_K -1)/CU_CSC_MUL_DENSE_BLOCK_K;
