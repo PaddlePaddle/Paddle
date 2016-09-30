@@ -3,9 +3,9 @@
 
 Welcome to the PaddlePaddle GitHub.
 
-The software will be released on Sept. 30 with full documentation and installation support. 
+Do you wanna try and play PaddlePaddle? Just following the [Install Guide](http://www.paddlepaddle.org/doc/build/index.html) and [Quick Start](http://www.paddlepaddle.org/doc/demo/quick_start/index_en.html). The chinese version is [Install Guide](http://www.paddlepaddle.org/doc_cn/build_and_install/index.html) and [Quick Start](http://www.paddlepaddle.org/doc_cn/demo/quick_start/index.html).
 
-A pre-release version is available now for those who are eager to take a look.
+Please refer to our [release log](https://github.com/baidu/Paddle/releases) to track the latest feature of PaddlePaddle. 
 
 PaddlePaddle (PArallel Distributed Deep LEarning) is an easy-to-use,
 efficient, flexible and scalable deep learning platform, which is originally
