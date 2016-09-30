@@ -24,6 +24,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <mutex>
 #include <functional>
+#include <sys/syscall.h>  // for syscall()
+#include <sys/types.h>
 
 #include "CommandLineParser.h"
 #include "Logging.h"
@@ -62,6 +64,9 @@ limitations under the License. */
 
 
 namespace paddle {
+
+// return the thread id used by glog
+pid_t getTID();
 
 /**
  * return the 1-based index of the highest bit set
@@ -110,6 +115,17 @@ bool mapGet(const K& k, const C& c, V* value) {
 template <class Container, class T>
 static bool contains(const Container& container, const T& val) {
   return std::find(container.begin(), container.end(), val) != container.end();
+}
+
+/**
+ * pop and get the front element of a container
+ */
+template<typename Container>
+typename Container::value_type pop_get_front(Container& c) {
+  typename Container::value_type v;
+  swap(v, c.front());
+  c.pop_front();
+  return v;
 }
 
 #define ARRAYSIZE(a) (sizeof(a) / sizeof(*(a)))

@@ -362,7 +362,7 @@ __global__ void KeMatrixAddRows(real* output,
         if (AddRow == 0) {
           outputData[i] += tableData[i];
         } else {
-          atomicAdd(&tableData[i], outputData[i]);
+          paddle::paddleAtomicAdd(&tableData[i], outputData[i]);
         }
       }
     }

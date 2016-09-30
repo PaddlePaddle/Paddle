@@ -142,6 +142,7 @@ We also project the encoder vector to :code:`decoder_size` dimensional space, ge
 The decoder uses :code:`recurrent_group` to define the recurrent neural network. The step and output functions are defined in :code:`gru_decoder_with_attention`:
 
 .. code-block:: python
+
     group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
                   StaticInput(input=encoded_proj,is_seq=True)]
     trg_embedding = embedding_layer(
@@ -202,14 +203,17 @@ After training the model, we can use it to generate sequences. A common practice
 * use :code:`GeneratedInput` for trg_embedding. :code:`GeneratedInput` computes the embedding of the generated token at the last time step for the input at the current time step.
 * use :code:`beam_search` function. This function needs to set:
 
-  - :code:`id_input`: the integer ID of the data, used to identify the corresponding output in the generated files.
-  - :code:`dict_file`: the dictionary file for converting word id to word.
   - :code:`bos_id`: the start token. Every sentence starts with the start token.
   - :code:`eos_id`: the end token. Every sentence ends with the end token.
   - :code:`beam_size`: the beam size used in beam search.
   - :code:`max_length`: the maximum length of the generated sentences.
-  - :code:`result_file`: the path of the generation result file.
 
+* use :code:`seqtext_printer_evaluator` to print text according to index matrix and dictionary. This function needs to set:
+
+  - :code:`id_input`: the integer ID of the data, used to identify the corresponding output in the generated files.
+  - :code:`dict_file`: the dictionary file for converting word id to word.
+  - :code:`result_file`: the path of the generation result file.
+    
 The code is listed below:
 
 .. code-block:: python
@@ -230,14 +234,15 @@ The code is listed below:
     beam_gen = beam_search(name=decoder_group_name,
                            step=gru_decoder_with_attention,
                            input=group_inputs,
-                           id_input=data_layer(name="sent_id",
-                                               size=1),
-                           dict_file=trg_dict_path,
                            bos_id=0, # Beginnning token.
                            eos_id=1, # End of sentence token.
                            beam_size=beam_size,
-                           max_length=max_length,
-                           result_file=gen_trans_file)
+                           max_length=max_length)
+
+    seqtext_printer_evaluator(input=beam_gen,
+                              id_input=data_layer(name="sent_id", size=1),
+                              dict_file=trg_dict_path,
+                              result_file=gen_trans_file)
     outputs(beam_gen)
 
 

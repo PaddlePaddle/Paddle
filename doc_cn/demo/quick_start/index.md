@@ -4,7 +4,7 @@
 
 ## 安装(Install)
 
-首先请参考<a href = "../../build_and_install/install/index.html">安装教程</a>安装PaddlePaddle。
+首先请参考<a href = "../../build_and_install/index.html">安装教程</a>安装PaddlePaddle。
 
 ## 使用概述(Overview)
 

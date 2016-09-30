@@ -35,7 +35,7 @@ __global__ void KeMatrixAddRows(real* output, int ldo,
       real *tab = table + tableId * ldt;
       for (int i = idx; i < dim; i += blockDimX) {
         if (AddRow) {
-          atomicAdd(&tab[i], out[i]);
+          paddle::paddleAtomicAdd(&tab[i], out[i]);
         } else {
           out[i] += tab[i];
         }
