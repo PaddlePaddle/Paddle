@@ -65,14 +65,33 @@ var _hmt = _hmt || [];
 指令集的X86 CPU。如果系统使用不支持 <a class="reference external" href="https://en.wikipedia.org/wiki/Advanced_Vector_Extensions">AVX</a> 指令集的CPU运行PaddlePaddle，那么需要从源码
 编译PaddlePaddle，请参考 <a class="reference external" href="../cmake/index.html">编译文档</a> 。</p>
 <p>用户需要先将PaddlePaddle安装包下载到本地，然后执行如下命令即可完成安装。</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>dpkg -i paddle-0.8.0b-cpu.deb
+<div class="highlight-shell"><div class="highlight"><pre><span></span>dpkg -i paddle-*-cpu.deb
 apt-get install -f
 </pre></div>
 </div>
 <p>在 <code class="code docutils literal"><span class="pre">dpkg</span> <span class="pre">-i</span></code> 的时候如果报一些依赖未找到的错误是正常的，
-在 <code class="code docutils literal"><span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">-f</span></code> 里会继续安装 PaddlePaddle。
-需要注意的是，如果使用GPU版本的PaddlePaddle，请安装CUDA 7.5 和CUDNN 5到本地环境中，
+在 <code class="code docutils literal"><span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">-f</span></code> 里会继续安装 PaddlePaddle。</p>
+<p>或者使用下面一条命令安装.</p>
+<div class="highlight-shell"><div class="highlight"><pre><span></span>gdebi paddle-*-cpu.deb
+</pre></div>
+</div>
+<p>如果 <code class="code docutils literal"><span class="pre">gdebi</span></code> 没有安装,则需要使用 <code class="code docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">gdebi</span></code>, 来安装 <code class="code docutils literal"><span class="pre">gdebi</span></code></p>
+<p>需要注意的是，如果使用GPU版本的PaddlePaddle，请安装CUDA 7.5 和CUDNN 5到本地环境中，
 并设置好对应的环境变量(LD_LIBRARY_PATH等等)。</p>
+<p>安装完成后,可以使用命令 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">version</span></code> 查看安装后的paddle 版本。可能的输出为</p>
+<div class="highlight-text"><div class="highlight"><pre><span></span>PaddlePaddle 0.8.0b1, compiled with
+with_avx: ON
+with_gpu: OFF
+with_double: OFF
+with_python: ON
+with_rdma: OFF
+with_glog: ON
+with_gflags: ON
+with_metric_learning:
+with_timer: OFF
+with_predict_sdk:
+</pre></div>
+</div>
 <div class="section" id="id2">
 <h2>可能遇到的问题<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="libcudart-so-libcudnn-so">
