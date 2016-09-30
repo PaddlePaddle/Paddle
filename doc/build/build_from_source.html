@@ -98,51 +98,26 @@ var _hmt = _hmt || [];
 <div class="section" id="options">
 <span id="options"></span><h3>Options<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h3>
 <p>PaddlePaddle supports some build options. To enable it, first you need to install the related libraries.</p>
-<style type="text/css">
-.tg  {border-collapse:collapse;border-spacing:0;border-color:#ccc;}
-.tg td{font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:0px;overflow:hidden;word-break:normal;border-color:#ccc;color:#333;background-color:#fff;border-top-width:1px;border-bottom-width:1px;}
-.tg th{font-family:Arial, sans-serif;font-size:14px;font-weight:normal;padding:10px 5px;border-style:solid;border-width:0px;overflow:hidden;word-break:normal;border-color:#ccc;color:#333;background-color:#f0f0f0;border-top-width:1px;border-bottom-width:1px;}
-.tg .tg-yw4l{vertical-align:top}
-.tg .tg-9hbo{font-weight:bold;vertical-align:top}
-</style>
-<table class="tg">
-  <tr>
-    <th class="tg-yw4l">Optional</th>
-    <th class="tg-yw4l">Description</th>
-  </tr>
-  <tr>
-    <td class="tg-9hbo">WITH_GPU</td>
-    <td class="tg-yw4l">Compile with GPU mode.</td>
-  </tr>
-  <tr>
-    <td class="tg-9hbo">WITH_DOUBLE</td>
-    <td class="tg-yw4l">Compile with double precision floating-point, default: single precision.</td>
-  </tr>
-  <tr>
-    <td class="tg-9hbo">WITH_GLOG</td>
-    <td class="tg-yw4l">Compile with glog. If not found, default: an internal log implementation.</td>
-  </tr>
-  <tr>
-    <td class="tg-9hbo">WITH_GFLAGS</td>
-    <td class="tg-yw4l">Compile with gflags. If not found, default: an internal flag implementation.</td>
-  </tr>
-  <tr>
-    <td class="tg-9hbo">WITH_TESTING</td>
-    <td class="tg-yw4l">Compile with gtest for PaddlePaddle's unit testing.</td>
-  </tr>
-  <tr>
-    <td class="tg-9hbo">WITH_DOC</td>
-    <td class="tg-yw4l">Compile to generate PaddlePaddle's docs, default: disabled (OFF)</td>
-  </tr>
-  <tr>
-    <td class="tg-9hbo">WITH_SWIG_PY</td>
-    <td class="tg-yw4l">Compile with python predict API, default: disabled (OFF).</td>
-  </tr>
-  <tr>
-    <td class="tg-9hbo">WITH_STYLE_CHECK</td>
-    <td class="tg-yw4l">Compile with code style check, default: enabled (ON).</td>
-  </tr>
-</table><p><strong>Note:</strong></p>
+<p><html></p>
+<table> 
+<thead>
+<tr>
+<th scope="col" class="left">Optional</th>
+<th scope="col" class="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr><td class="left">WITH_GPU</td><td class="left">Compile with GPU mode.</td></tr>
+<tr><td class="left">WITH_DOUBLE</td><td class="left">Compile with double precision floating-point, default: single precision.</td></tr>
+<tr><td class="left">WITH_GLOG</td><td class="left">Compile with glog. If not found, default: an internal log implementation.</td></tr>
+<tr><td class="left">WITH_GFLAGS</td><td class="left">Compile with gflags. If not found, default: an internal flag implementation.</td></tr>
+<tr><td class="left">WITH_TESTING</td><td class="left">Compile with gtest for PaddlePaddle's unit testing.</td></tr>
+<tr><td class="left">WITH_DOC</td><td class="left"> Compile to generate PaddlePaddle's docs, default: disabled (OFF).</td></tr>
+<tr><td class="left">WITH_SWIG_PY</td><td class="left">Compile with python predict API, default: disabled (OFF).</td></tr>
+<tr><td class="left">WITH_STYLE_CHECK</td><td class="left">Compile with code style check, default: enabled (ON).</td></tr>
+</tbody>
+</table>
+</html><p><strong>Note:</strong></p>
 <ul class="simple">
 <li>The GPU version works best with Cuda Toolkit 7.5 and cuDNN v5.</li>
 <li>Other versions like Cuda Toolkit 6.5, 7.0, 8.0 and cuDNN v2, v3, v4 are also supported.</li>
