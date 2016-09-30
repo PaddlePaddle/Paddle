@@ -88,7 +88,6 @@ extern void hl_expand_feature2col(
  * @param[in]   sizeY       height of pooling window.
  * @param[in]   strideH     pooling stride height.
  * @param[in]   strideW     pooling stride width.
- * @param[in]   start       pooling start.
  * @param[in]   paddingH    padding height.
  * @param[in]   paddingW    padding width.
  * @param[out]  tgtData     output data.
@@ -101,8 +100,7 @@ extern void hl_maxpool_forward(
     const int pooledH, const int pooledW,
     const int sizeX, const int sizeY,
     const int strideH, const int strideW,
-    const int start, const int paddingH,
-    const int paddingW, real* tgtData);
+    const int paddingH, const int paddingW, real* tgtData);
 
 /**
  * @brief   Maximum pool backward.
@@ -120,7 +118,6 @@ extern void hl_maxpool_forward(
  * @param[in]   sizeY       height of pooling window.
  * @param[in]   strideH     pooling stride height.
  * @param[in]   strideW     pooling stride width.
- * @param[in]   start       pooling start.
  * @param[in]   scaleA      scale.
  * @param[in]   scaleB      scale.
  * @param[in]   paddingH    padding height.
@@ -136,7 +133,6 @@ extern void hl_maxpool_backward(
     const int pooledH, const int pooledW,
     const int sizeX, const int sizeY,
     const int strideH, const int strideW,
-    const int start,
     const int paddingH, const int paddingW,
     real scaleA, real scaleB,
     real* targetGrad);
@@ -155,7 +151,6 @@ extern void hl_maxpool_backward(
  * @param[in]   sizeY       height of pooling window.
  * @param[in]   strideH     pooling stride height.
  * @param[in]   strideW     pooling stride width.
- * @param[in]   start       pooling start.
  * @param[in]   paddingH    padding height.
  * @param[in]   paddingW    padding width.
  * @param[out]  tgtData     output data.
@@ -168,8 +163,7 @@ extern void hl_avgpool_forward(
     const int pooledH, const int pooledW,
     const int sizeX, const int sizeY,
     const int strideH, const int strideW,
-    const int start, const int paddingH,
-    const int paddingW, real* tgtData);
+    const int paddingH, const int paddingW, real* tgtData);
 
 /**
  * @brief   Maximum pool backward.
@@ -185,7 +179,6 @@ extern void hl_avgpool_forward(
  * @param[in]   sizeY       height of pooling window.
  * @param[in]   strideH     pooling stride height.
  * @param[in]   strideW     pooling stride width.
- * @param[in]   start       pooling start.
  * @param[in]   paddingH    padding height.
  * @param[in]   paddingW    padding width.
  * @param[in]   scaleA      scale.
@@ -200,7 +193,6 @@ extern void hl_avgpool_backward(
     const int pooledH, const int pooledW,
     const int sizeX, const int sizeY,
     const int strideH, const int strideW,
-    const int start,
     int paddingH, int paddingW,
     real scaleA, real scaleB,
     real* backGrad);

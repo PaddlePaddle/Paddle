@@ -75,7 +75,6 @@ class CudnnAvgPooling(BasePoolingType):
     """
     def __init__(self):
         BasePoolingType.__init__(self, "cudnn-avg-pool")
->>>>>>> support rectangle padding, stride, window and input for PoolProjection
 
 class AvgPooling(BasePoolingType):
     """

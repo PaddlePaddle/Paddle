@@ -862,7 +862,7 @@ void GpuMatrix::convShrink(Matrix& expandFeat, int thisImgHeight,
 void GpuMatrix::maxPoolForward(Matrix& inputMat, size_t imgSizeH,
                                size_t imgSizeW, size_t channels,
                                size_t sizeX, size_t sizeY,
-                               int start, size_t strideH, size_t strideW,
+                               size_t strideH, size_t strideW,
                                size_t outputH, size_t outputW,
                                size_t paddingH, size_t paddingW) {
   CHECK(inputMat.useGpu_ == true) << "Matrix type are not equal";
@@ -874,16 +874,15 @@ void GpuMatrix::maxPoolForward(Matrix& inputMat, size_t imgSizeH,
   CHECK(height * width * channels == inputMat.getWidth());
   CHECK(height_ == inputMat.getHeight());
   CHECK(width_ == outputH * outputW * channels);
-  CHECK(!(start && (paddingH > 0 || paddingW > 0)));
 
   hl_maxpool_forward(frameNum, inputData, channels, height, width,
                      outputH, outputW, sizeX, sizeY, strideH, strideW,
-                     start, paddingH, paddingW, data_);
+                     paddingH, paddingW, data_);
 }
 
 void GpuMatrix::maxPoolBackward(Matrix& inputMat, size_t imgSizeH,
                                 size_t imgSizeW, Matrix& outGrad, Matrix& outV,
-                                size_t sizeX, size_t sizeY, int start,
+                                size_t sizeX, size_t sizeY,
                                 size_t strideH, size_t strideW,
                                 size_t outputH, size_t outputW,
                                 real scaleTargets, real scaleOutput,
@@ -905,20 +904,17 @@ void GpuMatrix::maxPoolBackward(Matrix& inputMat, size_t imgSizeH,
   CHECK(outGrad.getHeight() == outV.getHeight() &&
         outGrad.getWidth() == outV.getWidth());
 
-  CHECK(!(start && (paddingH || paddingW)));
 
   hl_maxpool_backward(frameNum, inputData, outData, outDiff, channels,
                       height, width, outputH, outputW, sizeX, sizeY,
-                      strideH, strideW, start,
-                      paddingH, paddingW,
-                      scaleTargets, scaleOutput,
-                      data_);
+                      strideH, strideW, paddingH, paddingW,
+                      scaleTargets, scaleOutput, data_);
 }
 
 void GpuMatrix::avgPoolForward(Matrix& inputMat, size_t imgSizeH,
                                size_t imgSizeW, size_t channels,
                                size_t sizeX, size_t sizeY,
-                               int start, size_t strideH, size_t strideW,
+                               size_t strideH, size_t strideW,
                                size_t outputH, size_t outputW,
                                size_t paddingH, size_t paddingW) {
   CHECK(inputMat.useGpu_ == true) << "Matrix type are not equal";
@@ -931,17 +927,15 @@ void GpuMatrix::avgPoolForward(Matrix& inputMat, size_t imgSizeH,
   CHECK(height_ == inputMat.getHeight());
   CHECK(width_ == outputH * outputW * channels);
 
-  CHECK(!(start && (paddingH || paddingW)));
-
   hl_avgpool_forward(frameNum, inputData, channels, height, width,
                      outputH, outputW, sizeX, sizeY,
-                     strideH, strideW, start,
+                     strideH, strideW,
                      paddingH, paddingW, data_);
 }
 
 void GpuMatrix::avgPoolBackward(Matrix& outGrad, size_t imgSizeH,
                                 size_t imgSizeW, size_t sizeX, size_t sizeY,
-                                int start, size_t strideH, size_t strideW,
+                                size_t strideH, size_t strideW,
                                 size_t outputH, size_t outputW,
                                 real scaleTargets, real scaleOutput,
                                 size_t paddingH, size_t paddingW) {
@@ -955,12 +949,10 @@ void GpuMatrix::avgPoolBackward(Matrix& outGrad, size_t imgSizeH,
   CHECK(height * width * channels == width_);
   CHECK(height_ == outGrad.getHeight());
   CHECK(outGrad.getWidth() == outputH * outputW * channels);
-  CHECK(!(start && (paddingH > 0 || paddingW > 0)));
 
   hl_avgpool_backward(frameNum, outDiff, channels, height, width,
                       outputH, outputW, sizeX, sizeY,
-                      strideH, strideW, start,
-                      paddingH, paddingW,
+                      strideH, strideW, paddingH, paddingW,
                       scaleTargets, scaleOutput,
                       data_);
 }
@@ -1475,7 +1467,6 @@ void CpuMatrix::convShrink(Matrix& expandFeat, int thisImgHeight,
 void CpuMatrix::maxPoolForward(Matrix& inputMat, size_t imgSizeH,
                                size_t imgSizeW, size_t channels,
                                size_t sizeX, size_t sizeY,
-                               int start,
                                size_t strideH, size_t strideW,
                                size_t outputH, size_t outputW,
                                size_t paddingH, size_t paddingW) {
@@ -1488,23 +1479,18 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat, size_t imgSizeH,
   CHECK_EQ(num, this->getHeight());
   CHECK_EQ(channels*outputH*outputW, this->getWidth());
 
-  CHECK(!(start && (paddingH || paddingW)));
-
   /* initialize the data_ */
   for (size_t i = 0; i < height_ * width_; i++) {
-    outData[i] = -real(FLT_MAX);
+    outData[i] = -(real)FLT_MAX;
   }
-
-  int offsetH = start > 0 ? -start : paddingH;
-  int offsetW = start > 0 ? -start : paddingW;
 
   /* pool max one by one */
   for (size_t n = 0; n < num; ++n) {         // frame by frame
     for (size_t c = 0; c < channels; ++c) {  // channel by channel
       for (size_t ph = 0; ph < outputH; ++ph) {
         for (size_t pw = 0; pw < outputW; ++pw) {
-          int hstart = ph * strideH - offsetH;
-          int wstart = pw * strideW - offsetW;
+          int hstart = ph * strideH - paddingH;
+          int wstart = pw * strideW - paddingW;
           int hend = std::min(hstart + sizeY, inHeight);
           int wend = std::min(wstart + sizeX, inWidth);
           hstart = std::max(hstart, 0);
@@ -1526,8 +1512,7 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat, size_t imgSizeH,
 
 void CpuMatrix::maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
                                 Matrix& outGrad, Matrix& outV, size_t sizeX,
-                                size_t sizeY, int start,
-                                size_t strideH, size_t strideW,
+                                size_t sizeY, size_t strideH, size_t strideW,
                                 size_t outputH, size_t outputW,
                                 real scaleTargets, real scaleOutput,
                                 size_t paddingH, size_t paddingW) {
@@ -1538,11 +1523,6 @@ void CpuMatrix::maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
   CHECK(outV.getHeight() == outGrad.getHeight() &&
         outV.getWidth() == outGrad.getWidth());
 
-  CHECK(!(start && (paddingH || paddingW)));
-
-  int offsetH = start > 0 ? -start : paddingH;
-  int offsetW = start > 0 ? -start : paddingW;
-
   real* tgtGrad = data_;
   real* inData = image.getData();
   real* otData = outV.getData();
@@ -1551,8 +1531,8 @@ void CpuMatrix::maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
     for (size_t c = 0; c < channels; ++c) {
       for (size_t ph = 0; ph < outputH; ++ph) {
         for (size_t pw = 0; pw < outputW; ++pw) {
-          int hstart = ph * strideH - offsetH;
-          int wstart = pw * strideW - offsetW;
+          int hstart = ph * strideH - paddingH;
+          int wstart = pw * strideW - paddingW;
           int hend = std::min(hstart + sizeY, imgSizeH);
           int wend = std::min(wstart + sizeX, imgSizeW);
           hstart = std::max(hstart, 0);
@@ -1578,7 +1558,7 @@ void CpuMatrix::maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
 
 void CpuMatrix::avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
                                size_t channels, size_t sizeX, size_t sizeY,
-                               int start, size_t strideH, size_t strideW,
+                               size_t strideH, size_t strideW,
                                size_t outputH, size_t outputW,
                                size_t paddingH, size_t paddingW) {
   // The main loop
@@ -1590,34 +1570,20 @@ void CpuMatrix::avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
   real* tgtData = data_;
   real* inData = input.getData();
 
-  CHECK(!(start && (paddingH || paddingW)));
-
   for (size_t n = 0; n < num; ++n) {
     for (size_t c = 0; c < channels; ++c) {
       for (size_t ph = 0; ph < outputH; ++ph) {
         for (size_t pw = 0; pw < outputW; ++pw) {
-          int hstart = 0, wstart = 0;
-          int hend = 0, wend = 0;
-          int poolSize = 0;
-          if (start > 0) {
-            hstart = ph * strideH + start;
-            wstart = pw * strideW + start;
-            hend = std::min(hstart + sizeY, inHeight);
-            wend = std::min(wstart + sizeX, inWidth);
-            poolSize = (hend - hstart) * (wend - wstart);
-          } else {
-            // This branch is applicable for start == 0
-            // The pool_size is calculated differently when using padding
-            hstart = ph * strideH - paddingH;
-            wstart = pw * strideW - paddingW;
-            hend = std::min(hstart + sizeY, inHeight + paddingH);
-            wend = std::min(wstart + sizeX, inWidth + paddingW);
-            poolSize = (hend - hstart) * (wend - wstart);
-            hstart = std::max(hstart, 0);
-            wstart = std::max(wstart, 0);
-            hend = std::min(hend, static_cast<int>(inHeight));
-            wend = std::min(wend, static_cast<int>(inWidth));
-          }
+          int hstart = ph * strideH - paddingH;
+          int wstart = pw * strideW - paddingW;
+          int hend = std::min(hstart + sizeY, inHeight + paddingH);
+          int wend = std::min(wstart + sizeX, inWidth + paddingW);
+          int poolSize = (hend - hstart) * (wend - wstart);
+          hstart = std::max(hstart, 0);
+          wstart = std::max(wstart, 0);
+          hend = std::min(hend, static_cast<int>(inHeight));
+          wend = std::min(wend, static_cast<int>(inWidth));
+
           CHECK(poolSize);
           tgtData[ph * outputW + pw] = 0;  // clear
           for (int h = hstart; h < hend; ++h) {
@@ -1636,7 +1602,7 @@ void CpuMatrix::avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
 }
 
 void CpuMatrix::avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                                size_t sizeX, size_t sizeY, int start,
+                                size_t sizeX, size_t sizeY,
                                 size_t strideH, size_t strideW,
                                 size_t outputH, size_t outputW,
                                 real scaleTargets, real scaleOutput,
@@ -1647,34 +1613,19 @@ void CpuMatrix::avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
   real* inData = input.getData();
   real* outData = getData();
 
-  CHECK(!(start && (paddingH > 0 || paddingW > 0)));
-
   for (size_t n = 0; n < num; ++n) {
     for (size_t c = 0; c < channels; ++c) {
       for (size_t ph = 0; ph < outputH; ++ph) {
         for (size_t pw = 0; pw < outputW; ++pw) {
-          int hstart = 0, wstart = 0;
-          int hend = 0, wend = 0;
-          int poolSize = 0;
-          if (start > 0) {
-            hstart = ph * strideH + start;
-            wstart = pw * strideW + start;
-            hend = std::min(hstart + sizeY, imgSizeH);
-            wend = std::min(wstart + sizeX, imgSizeW);
-            poolSize = (hend - hstart) * (wend - wstart);
-          } else {
-            // This branch is applicable for start == 0
-            // The pool_size is calculated differently when using padding
-            hstart = ph * strideH - paddingH;
-            wstart = pw * strideW - paddingW;
-            hend = std::min(hstart + sizeY, imgSizeH + paddingH);
-            wend = std::min(wstart + sizeX, imgSizeW + paddingW);
-            poolSize = (hend - hstart) * (wend - wstart);
-            hstart = std::max(hstart, 0);
-            wstart = std::max(wstart, 0);
-            hend = std::min(hend, static_cast<int>(imgSizeH));
-            wend = std::min(wend, static_cast<int>(imgSizeW));
-          }
+          int hstart = ph * strideH - paddingH;
+          int wstart = pw * strideW - paddingW;
+          int hend = std::min(hstart + sizeY, imgSizeH + paddingH);
+          int wend = std::min(wstart + sizeX, imgSizeW + paddingW);
+          int poolSize = (hend - hstart) * (wend - wstart);
+          hstart = std::max(hstart, 0);
+          wstart = std::max(wstart, 0);
+          hend = std::min(hend, static_cast<int>(imgSizeH));
+          wend = std::min(wend, static_cast<int>(imgSizeW));
           CHECK(poolSize);
 
           for (int h = hstart; h < hend; ++h) {

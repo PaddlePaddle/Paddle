@@ -116,15 +116,9 @@ void calcGradient(DataIn& in, DataOut& out, const std::string& configPath) {
   gradientMachine->start(trainer.getConfig(), nullptr);
   gradientMachine->forward(in.inArgs, &outArgs, PASS_TRAIN);
   for (size_t i = 0; i < in.outGrads.size(); i++) {
-    if (outArgs[i].grad) {
-      outArgs[i].grad->copyFrom(*in.outGrads[i]);
-    } else {
-      Matrix::resizeOrCreate(outArgs[i].grad,
-              in.outGrads[i]->getHeight(),
-              in.outGrads[i]->getWidth(),
-              false, false);
-      outArgs[i].grad->copyFrom(*in.outGrads[i]);
-    }
+    // If the all the layers in the config have no parameters, also
+    // not set NeedGradient(), the outArgs[i] will be nullptr.
+    outArgs[i].grad->copyFrom(*in.outGrads[i]);
   }
   gradientMachine->backward();
   for (size_t i = 0; i < in.outGrads.size(); i++) {
@@ -237,8 +231,10 @@ TEST(Compare, concat_table) {
 TEST(Compare, img_pool) {
   std::string config_file_a = "./gserver/tests/img_pool_a.conf";
   std::string config_file_b = "./gserver/tests/img_pool_b.conf";
-  FLAGS_use_gpu = 1;
+  bool useGpu = FLAGS_use_gpu;
+  FLAGS_use_gpu = true;
   compareNetwork(config_file_a, config_file_b);
+  FLAGS_use_gpu = useGpu;
 }
 #endif
 

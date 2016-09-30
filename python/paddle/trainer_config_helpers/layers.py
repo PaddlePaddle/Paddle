@@ -1658,8 +1658,8 @@ def img_pool_layer(input, pool_size, name=None,
     :type stride: int
     :param stride_y: stride height of pooling. It is equal to stride by default.
     :type stride_y: int|None
-    :param start: start position of pooling operation.
-    :type start: int
+    :param start: start position of pooling operation. Note it is deprecated now.
+    :type start: int|None
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
     :param img_width: the width of input feature map. If it is None, the input feature

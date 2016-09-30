@@ -183,24 +183,18 @@ void hl_maxpool_forward(const int frameCnt, const real* inputData,
                         const int pooledH, const int pooledW,
                         const int sizeX, const int sizeY,
                         const int strideH, const int strideW,
-                        const int start,
                         const int paddingH, const int paddingW,
                         real* tgtData) {
-  CHECK(!(start && (paddingH || paddingW)))
-      << "Can not set start and padding at the same time.";
 
   int num_kernels = pooledH * pooledW * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
-  int offsetH = (start > 0) ? (-start) : paddingH;
-  int offsetW = (start > 0) ? (-start) : paddingW;
-
   KeMaxPoolForward<<< grid, threads, 0, STREAM_DEFAULT >>>
            (num_kernels, inputData, channels, height, width,
            pooledH, pooledW, sizeX, sizeY, strideH, strideW,
-           offsetH, offsetW, tgtData);
+           paddingH, paddingW, tgtData);
   CHECK_SYNC("hl_maxpool_forward failed");
 }
 
@@ -211,7 +205,6 @@ __global__ void KeMaxPoolBackward(const int nthreads, const real* inputData,
                                   const int pooledH, const int pooledW,
                                   const int sizeX, const int sizeY,
                                   const int strideH, const int strideW,
-                                  const int start,
                                   const int padH, const int padW,
                                   real scaleA, real scaleB,
                                   real* targetGrad) {
@@ -219,12 +212,9 @@ __global__ void KeMaxPoolBackward(const int nthreads, const real* inputData,
   if (index < nthreads) {
     // find out the local index
     // find out the local offset
-    int offsetW = index % width;
-    int offsetH = (index / width) % height;
+    int offsetW = index % width + padW;
+    int offsetH = (index / width) % height + padH;
     int offsetC = (index / width / height) % channels;
-
-    offsetW = start > 0 ? offsetW - start : offsetW + padW;
-    offsetH = start > 0 ? offsetH - start : offsetH + padH;
 
     int frameNum = index / width / height / channels;
     int phstart = (offsetH < sizeY) ? 0 : (offsetH - sizeY) / strideH + 1;
@@ -254,12 +244,9 @@ void hl_maxpool_backward(const int frameCnt, const real* inputData,
                         const int pooledH, const int pooledW,
                         const int sizeX, const int sizeY,
                         const int strideH, const int strideW,
-                        const int start,
                         const int paddingH, const int paddingW,
                         real scaleA, real scaleB,
                         real* targetGrad) {
-  CHECK(!(start && (paddingH || paddingW)))
-      << "Can not set start and padding at the same time.";
 
   int num_kernels = height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
@@ -268,7 +255,7 @@ void hl_maxpool_backward(const int frameCnt, const real* inputData,
            (num_kernels, inputData, outData, outGrad, channels,
            height, width, pooledH, pooledW, sizeX, sizeY,
            strideH, strideW,
-           start, paddingH, paddingW,
+           paddingH, paddingW,
            scaleA, scaleB,
            targetGrad);
   CHECK_SYNC("hl_maxpool_backward");
@@ -280,7 +267,6 @@ __global__ void KeAvgPoolForward(const int nthreads, const real* inputData,
                                  const int pooledH, const int pooledW,
                                  const int sizeX, const int sizeY,
                                  const int strideH, const int strideW,
-                                 const int start,
                                  const int padH, const int padW,
                                  real* tgtData) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -290,28 +276,15 @@ __global__ void KeAvgPoolForward(const int nthreads, const real* inputData,
     int c = (index / pooledW / pooledH) % channels;
     int frameNum = index / pooledW / pooledH / channels;
 
-    int hstart = 0;
-    int wstart = 0;
-    int hend = 0;
-    int wend = 0;
-    int pool_size = 0;
-    if (start > 0) {
-      hstart = ph * strideH + start;
-      wstart = pw * strideW + start;
-      hend = min(hstart + sizeY, height);
-      wend = min(wstart + sizeX, width);
-      pool_size = (hend - hstart) * (wend - wstart);
-    } else {
-      hstart = ph * strideH - padH;
-      wstart = pw * strideW - padW;
-      hend = min(hstart + sizeY, height + padH);
-      wend = min(wstart + sizeX, width + padW);
-      pool_size = (hend - hstart) * (wend - wstart);
-      hstart = max(hstart, 0);
-      wstart = max(wstart, 0);
-      hend = min(hend, height);
-      wend = min(wend, width);
-    }
+    int hstart = ph * strideH - padH;
+    int wstart = pw * strideW - padW;
+    int hend = min(hstart + sizeY, height + padH);
+    int wend = min(wstart + sizeX, width + padW);
+    int pool_size = (hend - hstart) * (wend - wstart);
+    hstart = max(hstart, 0);
+    wstart = max(wstart, 0);
+    hend = min(hend, height);
+    wend = min(wend, width);
 
     real aveval = 0;
     inputData += (frameNum * channels + c) * height * width;
@@ -330,18 +303,14 @@ void hl_avgpool_forward(const int frameCnt, const real* inputData,
                         const int pooledH, const int pooledW,
                         const int sizeX, const int sizeY,
                         const int strideH, const int strideW,
-                        const int start,
                         const int paddingH, const int paddingW, real* tgtData) {
-  CHECK(!(start && (paddingH || paddingW)))
-      << "Can not set start and padding at the same time.";
-
   int num_kernels = pooledH * pooledW * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
   KeAvgPoolForward<<< blocks, 1024, 0, STREAM_DEFAULT >>>
            (num_kernels, inputData, channels,
            height, width, pooledH, pooledW,
            sizeX, sizeY, strideH, strideW,
-           start, paddingH, paddingW, tgtData);
+           paddingH, paddingW, tgtData);
   CHECK_SYNC("hl_avgpool_forward failed");
 }
 
@@ -351,19 +320,15 @@ __global__ void KeAvgPoolBackward(const int nthreads, const real* outGrad,
                                   const int pooledH, const int pooledW,
                                   const int sizeX, const int sizeY,
                                   const int strideH, const int strideW,
-                                  const int start,
                                   const int padH, const int padW,
                                   real scaleA, real scaleB,
                                   real* tgtGrad) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < nthreads) {
-    int offsetW = index % width;
-    int offsetH = (index / width) % height;
+    int offsetW = index % width + padW;
+    int offsetH = (index / width) % height + padH;
     int offsetC = (index / width / height) % channels;
     int frameNum = index / width / height / channels;
-
-    offsetW = start > 0 ? offsetW - start : offsetW + padW;
-    offsetH = start > 0 ? offsetH - start : offsetH + padH;
 
     int phstart = (offsetH < sizeY) ? 0 : (offsetH - sizeY) / strideH + 1;
     int pwstart = (offsetW < sizeX) ? 0 : (offsetW - sizeX) / strideW + 1;
@@ -375,20 +340,11 @@ __global__ void KeAvgPoolBackward(const int nthreads, const real* outGrad,
     for (int ph = phstart; ph < phend; ++ph) {
       for (int pw = pwstart; pw < pwend; ++pw) {
         // figure out the pooling size
-        int poolsize=0;
-        if (start > 0) {
-          int hstart = ph * strideH + start;
-          int wstart = pw * strideW + start;
-          int hend = min(hstart + sizeY, height);
-          int wend = min(wstart + sizeX, width);
-          poolsize = (hend - hstart) * (wend - wstart);
-        } else {
-          int hstart = ph * strideH - padH;
-          int wstart = pw * strideW - padW;
-          int hend = min(hstart + sizeY, height + padH);
-          int wend = min(wstart + sizeX, width + padW);
-          poolsize = (hend - hstart) * (wend - wstart);
-        }
+        int hstart = ph * strideH - padH;
+        int wstart = pw * strideW - padW;
+        int hend = min(hstart + sizeY, height + padH);
+        int wend = min(wstart + sizeX, width + padW);
+        int poolsize = (hend - hstart) * (wend - wstart);
         gradient += outGrad[ph * pooledW + pw]/poolsize;
       }
     }
@@ -402,13 +358,9 @@ void hl_avgpool_backward(const int frameCnt, const real* outGrad,
                          const int pooledH, const int pooledW,
                          const int sizeX, const int sizeY,
                          const int strideH, const int strideW,
-                         const int start,
                          const int paddingH, const int paddingW,
                          real scaleA, real scaleB,
                          real* backGrad) {
-  CHECK(!(start && (paddingH || paddingW)))
-      << "Can not set start and padding at the same time.";
-
   int num_kernels = height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
@@ -416,7 +368,7 @@ void hl_avgpool_backward(const int frameCnt, const real* outGrad,
            (num_kernels, outGrad, channels, height, width,
            pooledH, pooledW, sizeX, sizeY,
            strideH, strideW,
-           start, paddingH, paddingW,
+           paddingH, paddingW,
            scaleA, scaleB,
            backGrad);
   CHECK_SYNC("hl_avgpool_backward failed");

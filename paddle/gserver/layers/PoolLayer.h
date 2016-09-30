@@ -28,7 +28,7 @@ namespace paddle {
 class PoolLayer : public Layer {
 protected:
   size_t channels_, sizeX_, stride_, outputX_, imgSize_;
-  int start_, confPadding_;
+  int confPadding_;
 
   size_t sizeY_;
   size_t imgSizeY_;
