@@ -68,6 +68,10 @@ public:
    * is training at same time.
    */
   void testOnePeriod();
+  void startTestPeriod();
+  void finishTestPeriod();
+  void testOneDataBatch(const DataBatch& dataBatch,
+                        std::vector<Argument>* outArgs);
 
   /**
    * Test for given data batch.
@@ -75,7 +79,9 @@ public:
    * @param evaluator Evaluator
    * @return cost
    */
-  real testOneBatch(const DataBatch &dataBatch, Evaluator *evaluator);
+  real forwardOneBatch(const DataBatch& dataBatch,
+                       Evaluator* evaluator,
+                       std::vector<Argument>* outArgs);
 
 
   /**
@@ -99,6 +105,10 @@ protected:
   std::ofstream os_;
   std::vector<MatrixPtr> cpuMat_;
   std::vector<IVectorPtr> cpuVec_;
+  struct {
+    int64_t numSamples;
+    real cost;
+  } testContext_;
 
 private:
   /**

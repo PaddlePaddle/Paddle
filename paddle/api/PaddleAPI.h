@@ -372,6 +372,7 @@ public:
    * the param idx is the slot id
    */
   Matrix* getSlotValue(size_t idx) const throw(RangeError);
+  Matrix* getGrad(size_t idx) const throw(RangeError);
   IVector* getSlotIds(size_t idx) const throw(RangeError);
   Matrix* getSlotIn(size_t idx) const throw(RangeError);
   IVector* getSlotSequenceStartPositions(size_t idx) const throw(RangeError);
@@ -388,6 +389,7 @@ public:
    * The other param is the input Matrix or vector.
    */
   void setSlotValue(size_t idx, Matrix* mat) throw(RangeError);
+  void setGrad(size_t idx, Matrix* mat) throw(RangeError);
   void setSlotIn(size_t idx, Matrix* mat) throw(RangeError);
   void setSlotIds(size_t idx, IVector* vec) throw(RangeError);
   void setSlotSequenceStartPositions(size_t idx,
@@ -446,7 +448,6 @@ struct OptimizationConfigPrivate;
 class OptimizationConfig {
   DISABLE_COPY_AND_ASSIGN(OptimizationConfig);
   OptimizationConfig();
-  void* getRawPtr();
 
 public:
   static OptimizationConfig* createFromProtoString(const std::string& str);
@@ -462,6 +463,7 @@ private:
 
   friend class TrainerConfig;
   friend class ParameterOptimizer;
+  friend class Trainer;
 };
 
 struct ParameterPrivate;
@@ -515,8 +517,6 @@ public:
   virtual ~ModelConfig();
 
 private:
-  void* getPaddleModelConfig() const;
-
   ModelConfigPrivate* m;
   friend class TrainerConfig;
   friend struct TrainerConfigPrivate;
@@ -539,6 +539,7 @@ public:
 
   static TrainerConfig* createFromTrainerConfigFile(
       const std::string& configPath);
+  static TrainerConfig* createFromProtoString(const std::string& str);
 
   ModelConfig* getModelConfig() const;
 
@@ -546,6 +547,7 @@ public:
 
 private:
   TrainerConfigPrivate* m;
+  friend class Trainer;
 };
 
 /**
@@ -700,11 +702,12 @@ private:
   GradientMachinePrivate* m;
 
   static GradientMachine* createFromPaddleModelPtr(
-      void* confPtr, GradientMatchineCreateMode mode,
+      const void* confPtr, GradientMatchineCreateMode mode,
       const std::vector<int>& types);
 
   // Not to use c++ 11 init-list, so we use static var as function default arg.
   static std::vector<int> defaultParamTypes;
+  friend class Trainer;
 };
 
 struct TrainerPrivate;
@@ -712,6 +715,7 @@ class Trainer {
 private:
   TrainerPrivate* m;
   Trainer();
+  Trainer(TrainerConfig* optConfig, GradientMachine* gm);
   DISABLE_COPY_AND_ASSIGN(Trainer);
 
 public:
@@ -720,38 +724,42 @@ public:
   /// Create A Trainer By TrainerConfig. using paddle command line.
   static Trainer* createByCommandLine() throw(IOError);
 
-  /// Start Train.
+  static Trainer* create(TrainerConfig* optConfig, GradientMachine* gm)
+      throw(IOError);
+
+  /// Start training
   void startTrain();
+
+  /// Finish training
   void finishTrain();
 
-  /// Start Pass.
+  /// Start a pass.
   void startTrainPass();
-  void finishTrainPass();
 
-  void setBatchSize(size_t batchSize);
+  /// Finish a pass
+  void finishTrainPass();
 
   /**
    * Train one batch,
    *
-   * @param batchSize -1 wiil use command line or batch size set before,
-   *                  otherwise use this batchSize for train.
-   *
    * @return true if all batch finished.
    */
-  bool trainOneBatch(size_t batchSize = -1UL);
+  bool trainOneBatch(size_t batchSize);
 
-  bool prepareBatchData(size_t batchSize = -1UL);
+  void trainOneDataBatch(size_t batchSize, const Arguments& args);
 
-  void finishTrainOneBatch();
+  void startTestPeriod();
+  void testOneDataBatch(size_t batchSize, const Arguments& args);
+  void finishTestPeriod();
 
-  void forwardOneBatch() throw(UnsupportError);
+  void forwardOneBatch(size_t batchSize);
 
-  Arguments* getNetworkOutput();
+  Arguments* getForwardOutput();
 
   Matrix* getLayerOutput(const std::string& layerName);
 };
 
-/// The N-Best results generated from one input sequence.
+/// the N-Best results generated from one input sequence.
 class ISequenceResults {
 public:
   virtual ~ISequenceResults();
