@@ -11,12 +11,7 @@ efficient, flexible and scalable deep learning platform, which is originally
 developed by Baidu scientists and engineers for the purpose of applying deep
 learning to many products at Baidu.
 
-Our vision is to enable deep learning for everyone via PaddlePaddle. Check out the 
-[Install Guide](http://www.paddlepaddle.org/doc/build/index.html)
-and [Quick Start](http://www.paddlepaddle.org/doc/demo/quick_start/index_en.html) references to dig deeper.
-[**Chinese Docs:** [Install Guide](http://www.paddlepaddle.org/doc_cn/build_and_install/index.html)
-and [Quick Start](http://www.paddlepaddle.org/doc_cn/demo/quick_start/index.html)] 
-
+Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release log](https://github.com/baidu/Paddle/releases) to track the latest feature of PaddlePaddle. 
 
 ## Features
@@ -59,13 +54,12 @@ Please refer to our [release log](https://github.com/baidu/Paddle/releases) to t
     the capability of PaddlePaddle to make a huge impact for your product.
 
 ## Installation
-See [Installation Guide](http://paddlepaddle.org/doc/build/) to install from
-pre-built package or build from the source code. (Note: The installation
-packages are still in pre-release state and your experience of installation
-may not be smooth).
-
+Check out the [Install Guide](http://paddlepaddle.org/doc/build/) to install from
+pre-built packages (**docker image**, **deb package**) or 
+directly build on **Linux** and **Mac OS X** from the source code.
+ 
 ## Documentation
-- [Chinese Documentation](http://paddlepaddle.org/doc_cn/) <br>
+Both [English Docs](http://paddlepaddle.org/doc/) and [Chinese Docs](http://paddlepaddle.org/doc_cn/) are provided for our users and developers.
 
 - [Quick Start](http://paddlepaddle.org/doc/demo/quick_start/index_en) <br>
    You can follow the quick start tutorial to learn how use PaddlePaddle
