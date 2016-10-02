@@ -124,8 +124,8 @@ void checkSMatrixErr(const CpuSparseMatrixPtr& a,
       if (a->getValueType() == FLOAT_VALUE) {
         real aVal = a->getValue()[r];
         real bVal = b->getValue()[r];
-        if (fabs(aVal - bVal) > err) {
-          if ((fabsf(aVal - bVal) / fabsf(aVal)) > (err / 10.0f)) {
+        if (std::abs(aVal - bVal) > err) {
+          if ((std::abs(aVal - bVal) / std::abs(aVal)) > (err / 10.0f)) {
             LOG(INFO) << "a=" << aVal << "\t" << "b=" << bVal;
             count++;
           }
@@ -141,8 +141,8 @@ void checkSMatrixErr(const CpuSparseMatrixPtr& a,
       if (a->getValueType() == FLOAT_VALUE) {
         real aVal = a->getValue()[r];
         real bVal = b->getValue()[r];
-        if (fabs(aVal - bVal) > err) {
-          if ((fabsf(aVal - bVal) / fabsf(aVal)) > (err / 10.0f)) {
+        if (std::abs(aVal - bVal) > err) {
+          if ((std::abs(aVal - bVal) / std::abs(aVal)) > (err / 10.0f)) {
             count++;
           }
         }
@@ -173,8 +173,8 @@ void checkMatrixErr(const Matrix& matrix1, const Matrix& matrix2) {
     for (int j = 0; j < width; j++) {
       real a = data1[i * width + j];
       real b = data2[i * width + j];
-      if (fabs(a - b) > err) {
-        if ((fabsf(a - b) / fabsf(a)) > (err / 10.0f)) {
+      if (std::abs(a - b) > err) {
+        if ((std::abs(a - b) / std::abs(a)) > (err / 10.0f)) {
           count++;
         }
       }

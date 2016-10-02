@@ -156,7 +156,15 @@ private:
   static void dataDestructor(void* p) { delete (T*)p; }
 
   void updateMap(T* p) {
-    pid_t tid = syscall(SYS_gettid);
+#if defined(__APPLE__) || defined(__OSX__)
+    pid_t tid = syscall(SYS_thread_selfid);
+#else
+    #ifndef __NR_gettid
+    #define __NR_gettid 224
+    #endif
+    pid_t tid = syscall(__NR_gettid);
+#endif
+    CHECK_NE(tid, -1);
     std::lock_guard<std::mutex> guard(mutex_);
     auto ret = threadMap_.insert(std::make_pair(tid, p));
     if (!ret.second) {

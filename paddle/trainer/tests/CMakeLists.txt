@@ -47,7 +47,7 @@ add_test(NAME test_CompareTwoOpts
   COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
         ${CMAKE_CURRENT_BINARY_DIR}/test_CompareTwoOpts
             --config_file_a=trainer/tests/sample_trainer_config_opt_a.conf --config_file_b=trainer/tests/sample_trainer_config_opt_b.conf
-            --num_passes=1 --need_high_accuracy=1
+            --num_passes=1 --need_high_accuracy=0
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle/)
 
 ################# test_CompareSparse ##################

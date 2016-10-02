@@ -17,6 +17,7 @@ limitations under the License. */
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <fcntl.h>
 
 #include <arpa/inet.h>
@@ -24,7 +25,6 @@ limitations under the License. */
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <sstream>
-#include <linux/tcp.h>
 
 #include "LightNetwork.h"
 #include "paddle/utils/Util.h"
@@ -79,6 +79,7 @@ std::string getIpAddr(std::string &device) {
  * @note adjust some default sock option for better performance
  */
 void setOption(int sockfd) {
+#if !defined(__APPLE__) && !defined(__OSX__)
   int sendSize = FLAGS_sock_send_buf_size;
   int recvSize = FLAGS_sock_recv_buf_size;
   CHECK_GE(
@@ -87,15 +88,19 @@ void setOption(int sockfd) {
   CHECK_GE(
       setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &sendSize, sizeof(sendSize)),
       0);
+#endif
+
   if (FLAGS_small_messages) {
     int optval = 1;
     CHECK_GE(
         setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval)),
         0);
+#ifdef TCP_QUICKACK
     optval = 1;
     CHECK_GE(
         setsockopt(sockfd, IPPROTO_TCP, TCP_QUICKACK, &optval, sizeof(optval)),
         0);
+#endif
   }
   int reuse = 1;
   CHECK_GE(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)),
@@ -340,17 +345,27 @@ void SocketWorker::run() {
  */
 void SocketClient::TcpClient(const std::string &serverAddr, int serverPort) {
   struct sockaddr_in serv_addr;
-  struct hostent hostinfo, *server;
-  char buf[1024];  // temp for gethostbyname_r
+  struct hostent *server;
+
   int errRet;      // temp for gethostbyname_r
 
   /// Create a socket point
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   PCHECK(sockfd >= 0) << "ERROR opening socket";
-  CHECK_EQ(0, gethostbyname_r(serverAddr.c_str(), &hostinfo, buf, sizeof(buf),
-                              &server, &errRet))
-      << "ERROR, no such host: " << serverAddr << " ret = " << errRet;
-  CHECK(server) << "gethostbyname_r err";
+
+#if defined(__OSX__) || defined(__APPLE__)
+   server = getipnodebyname(serverAddr.c_str(), AF_INET, AI_DEFAULT, &errRet);
+   CHECK_NE(HOST_NOT_FOUND, errRet)
+     << "ERROR, no such host: " << serverAddr << " ret = " << errRet;
+   CHECK(server) << "getipnodebyname error!";
+#else
+   struct hostent hostinfo;
+   char buf[1024];  // temp for gethostbyname_r
+   CHECK_EQ(0, gethostbyname_r(serverAddr.c_str(), &hostinfo, buf, sizeof(buf),
+                               &server, &errRet))
+       << "ERROR, no such host: " << serverAddr << " ret = " << errRet;
+   CHECK(server) << "gethostbyname_r error!";
+#endif
 
   bzero((char *)&serv_addr, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;

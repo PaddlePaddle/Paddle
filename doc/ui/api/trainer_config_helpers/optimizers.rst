@@ -4,6 +4,12 @@ BaseSGDOptimizer
     :members: BaseSGDOptimizer
     :noindex:
 
+MomentumOptimizer
+=================
+..  automodule:: paddle.trainer_config_helpers.optimizers
+    :members: MomentumOptimizer
+    :noindex:
+
 AdamOptimizer
 =============
 ..  automodule:: paddle.trainer_config_helpers.optimizers

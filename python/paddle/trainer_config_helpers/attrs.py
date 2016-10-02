@@ -174,12 +174,16 @@ class ExtraLayerAttribute(object):
                       The dropout rate is the zero rate of this mask. The
                       details of what dropout is please refer to `here
                       <https://www.cs.toronto.edu/~hinton/absps/
-                      JMLRdropout.pdf>`_
+                      JMLRdropout.pdf>`_.
     :type drop_rate: float
-
+    :param device: device ID of layer. device=-1, use CPU. device>0, use GPU.
+                   The details allocation in parallel_nn please refer to `here
+                   <http://www.paddlepaddle.org/doc/ui/cmd_argument/
+                   use_case.html#case-2-specify-layers-in-different-devices>`_.
+    :type device: int
     """
 
-    def __init__(self, error_clipping_threshold=None, drop_rate=None):
+    def __init__(self, error_clipping_threshold=None, drop_rate=None, device=None):
         self.attr = dict()
         if isinstance(error_clipping_threshold, float):
             assert error_clipping_threshold > 0
@@ -188,6 +192,9 @@ class ExtraLayerAttribute(object):
         if isinstance(drop_rate, float):
             assert drop_rate > 0
             self.attr["drop_rate"] = drop_rate
+
+        if isinstance(device, int):
+            self.attr["device"] = device
 
     def check(self, layer_name):
         for key in self.attr:
