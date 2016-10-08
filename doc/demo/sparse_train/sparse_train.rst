@@ -60,10 +60,10 @@ Just remove ```ParameterAttribute(sparse_update=True)``` setting in fc_layer con
 
 With 
 ```
-hidden1 = fc_layer(input=data,
-                   size=256)
+hidden1 = fc_layer(input=data, size=256)
 ```
 At last, local train exhaust more than 150GB RAM, then going to abort.
+
 ```
 F0928 22:04:04.030071  8482 Allocator.h:52] Check failed: ptr Fail to allocate CPU memory: size=18618671104
 ```
@@ -72,10 +72,10 @@ The system memories are drained over by allocating HIGH dimension dense matrix.
 
 With 
 ```
-hidden1 = fc_layer(input=data,
-                   size=64)
+hidden1 = fc_layer(input=data, size=64)
 ```
 it also takes 107seconds(22:16:31 -> 22:18:51.) to train one dummy pass.
+
 ```
 .....I0928 22:16:31.285207 28823 TrainerInternal.cpp:179]  Pass=0 Batch=11 samples=2002 AvgCost=0.0928303 Eval: classification_error_evaluator=0.039778
 I0928 22:16:31.290060 28823 GradientMachine.cpp:112] Saving parameters to ./output/model/pass-00000
@@ -88,35 +88,31 @@ With Local Sparse Training
 Enable  ```ParameterAttribute(sparse_update=True)``` , 
 With
 ```
-hidden1 = fc_layer(input=non_value,
-                   size=256,
-                   param_attr=ParameterAttribute(sparse_update=True))
+hidden1 = fc_layer(input=non_value, size=256, param_attr=ParameterAttribute(sparse_update=True))
 ```
+
 At last,  train goes successfully, and quickly finished all passes in ```several ```seconds.
+
 ```
 .....I0928 21:55:42.169045 17090 TrainerInternal.cpp:179]  Pass=0 Batch=11 samples=2002 AvgCost=0.0913546 Eval: classification_error_evaluator=0.0615171
 I0928 21:55:42.169306 17090 GradientMachine.cpp:112] Saving parameters to ./output/model/pass-00000
 I0928 21:56:07.312760 17090 Util.cpp:219] copy ./sparse_trainer_config.py to ./output/model/pass-00000
 .....I0928 21:56:07.640897 17090 TrainerInternal.cpp:179]  Pass=1 Batch=11 samples=2002 AvgCost=0.0174494 Eval: classification_error_evaluator=0.00185014
 ```
+
 So, the memories and computation can significantly be reduced with sparse training.
 
 With Cluster Sparse Training
 ############################
+
 Go through ```cluster train``` DOC to build cluster environments with local workspace.
 Assuming you have already got the ```workspace``` which contains data, model, dataprovider. Here we focus the system performance comparison, so we just ```--job_dispatch_package``` in ```paddle.py``` in cluster scripts to dispatch same train data in all nodes in current experiment.
 
 Set ```PADDLE_PORTS_NUM_FOR_SPARSE = 2``` in ```conf.py``` and ```paddle.py```command options.
 
 Configuration in conf.py :
-```python
-#pserver port
-PADDLE_PORT = 7164
-#pserver ports num
-PADDLE_PORTS_NUM = 2
-#pserver sparse ports num
-PADDLE_PORTS_NUM_FOR_SPARSE = 4
-```
+
+.. literalinclude:: ../../../demo/sparse_train/sparse_binary/cluster_config.conf
 
 Command line
 
@@ -126,6 +122,7 @@ Compared with local sparse training, we further observed that the memories exhau
 
 Sparse Train with sparse_vector Data Input
 ##########################################
+
 For ```sparse_vector``` input data,  the steps to enable sparse train are almost same with ```sparse_binary_vector``` input data.
 Here we randomly generate ```sparse_vector``` train data used  to do  dummy regression training task to make sparse training understood quickly. The convergence could not be well, but it will be useful for explaining sparse training.
 
@@ -155,6 +152,7 @@ Execute ```sh local.sh ``` to start sparse training.
 - Performance Gains
  To disable sparse training with removing ```param_attr=ParameterAttribute(sparse_update=True)``` , the initialisation will fail because the HUGE parameters storage allocation failed. 
 Training goes quickly within several seconds if sparse training is enabled, the memory size allocated for training also decreases from 170GB to 30GB.
+
 ```
 .....I0929 18:08:46.986836 19235 TrainerInternal.cpp:179]  Pass=0 Batch=10 samples=2000 AvgCost=3160.34 Eval:
 I0929 18:08:47.004266 19235 GradientMachine.cpp:112] Saving parameters to ./output/model/pass-00000
@@ -180,19 +178,19 @@ PaddlePaddle controls sparse with the unit of ```parameter``` for local train an
 The ```Sparse``` training located in several aspects:
 
 - ```Argument``` is stored sparsely. 
-The Sparse Input Data Layers are stored with sparse matrix.  Except the Input Data Layers, others layers are dense since the activations could be non zero value.
+  The Sparse Input Data Layers are stored with sparse matrix.  Except the Input Data Layers, others layers are dense since the activations could be non zero value.
 
 - ```Weight Matrix``` is stored sparsely. 
-Weight Matrix and Parameters can be regarded as same entities. Generally the gradient matrix are sparse while value matrix is not sparse.  For cluster training, the full value matrix is stored in parameter server, so the matrix in train end could be sparse.
+  Weight Matrix and Parameters can be regarded as same entities. Generally the gradient matrix are sparse while value matrix is not sparse.  For cluster training, the full value matrix is stored in parameter server, so the matrix in train end could be sparse.
 
 - ```Computations```in backpropagation algorithm is sparsely.
- These computation contains forward computation, backward computation,  the engine can do sparse forwardbackward computation with the non zero sparse input activation.
+  These computation contains forward computation, backward computation,  the engine can do sparse forwardbackward computation with the non zero sparse input activation.
  
 - SGD optimization computation
-The optimization could be applied not all parameter weights to reduce computation resource. PaddlePaddle use special ```catchup``` mechanism to do sparse optimization.
+  The optimization could be applied not all parameter weights to reduce computation resource. PaddlePaddle use special ```catchup``` mechanism to do sparse optimization.
 
 - ```Communication``` in cluster training is sparsely.
-With the sparse parameter architecture,  any distributed trainers do ```prefetch``` latest sparse parameters value from parameter servers that currently mini-batch needs. Also trainers push latest sparse gradients to distributed parameter servers. It can significantly reduce memory and bandwidth exhaustion. The distributed architecture allows you to train HUGE model whose size is larger than that of the physical RAM memory in single host.
+  With the sparse parameter architecture,  any distributed trainers do ```prefetch``` latest sparse parameters value from parameter servers that currently mini-batch needs. Also trainers push latest sparse gradients to distributed parameter servers. It can significantly reduce memory and bandwidth exhaustion. The distributed architecture allows you to train HUGE model whose size is larger than that of the physical RAM memory in single host.
 
 Miscellous
 ##########
