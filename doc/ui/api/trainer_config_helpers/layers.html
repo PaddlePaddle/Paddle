@@ -945,6 +945,13 @@ through time. It&#8217;s a mechanism to access layer outside step function.</p>
 </li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; If reverse is set true, the recurrent unit will process the
 input sequence in a reverse order.</li>
+<li><strong>targetInlink</strong> (<em>LayerOutput|SubsequenceInput</em>) &#8211; <p>the input layer which share info with layer group&#8217;s output</p>
+<p>Param input specifies multiple input layers. For
+SubsequenceInput inputs, config should assign one input
+layer that share info(the number of sentences and the number
+of words in each sentence) with all layer group&#8217;s outputs.
+targetInlink should be one of the layer group&#8217;s input.</p>
+</li>
 </ul>
 </td>
 </tr>
