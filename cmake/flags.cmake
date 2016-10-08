@@ -71,6 +71,11 @@ foreach(flag ${COMMON_FLAGS})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
 endforeach()
 
+# On Mac OS X build fat binaries with x86_64 architectures by default.
+if (APPLE)
+    set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+endif ()
+
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
 
