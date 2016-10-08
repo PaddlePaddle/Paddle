@@ -16,6 +16,11 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 #include <dispatch/dispatch.h>
 #include <libkern/OSAtomic.h>
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
+#include <os/lock.h>
+#endif
+
 namespace paddle {
 
 class SemaphorePrivate {
@@ -50,21 +55,32 @@ void Semaphore::post() {
 
 class SpinLockPrivate {
 public:
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
+  os_unfair_lock lock_;
+#else
   SpinLockPrivate(): lock_(OS_SPINLOCK_INIT) {}
-
   OSSpinLock lock_;
-  char padding_[64 - sizeof(OSSpinLock)];  // Padding to cache line size
+#endif
+  char padding_[64 - sizeof(lock_)];  // Padding to cache line size
 };
 
 SpinLock::SpinLock(): m(new SpinLockPrivate()) {}
 SpinLock::~SpinLock() { delete m; }
 
 void SpinLock::lock() {
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
+  os_unfair_lock_lock(&m->lock_);
+#else
   OSSpinLockLock(&m->lock_);
+#endif
 }
 
 void SpinLock::unlock() {
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
+  os_unfair_lock_unlock(&m->lock_);
+#else
   OSSpinLockUnlock(&m->lock_);
+#endif
 }
 
 
