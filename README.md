@@ -2,7 +2,7 @@
 
 |  **`Linux`**   | **`License`** | **`Chat Room`** |
 |----------------|---------------|-----------------|
-|[![Build Status](https://travis-ci.org/baidu/Paddle.svg?branch=master)](https://travis-ci.org/baidu/Paddle)|[![License](https://img.shields.io/badge/license-Apache-green.svg)](LICENSE)|[![Join the chat at https://gitter.im/PaddlePaddle/Deep_Learning](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/PaddlePaddle/Deep_Learning?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)|
+|[![Build Status](https://travis-ci.org/baidu/Paddle.svg?branch=master)](https://travis-ci.org/baidu/Paddle)|[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)|[![Join the chat at https://gitter.im/PaddlePaddle/Deep_Learning](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/PaddlePaddle/Deep_Learning?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)|
 
 Welcome to the PaddlePaddle GitHub.
 
