@@ -16,7 +16,7 @@
 在 PaddlePaddle中，下面这些Layer能够接受双层序列作为输入，完成相应的计算。
 ## pooling_layer
 
-pooling_layer的使用示例如下，详细见配置API。
+pooling_layer的使用示例如下，详细见<a href = "../../../doc/ui/api/trainer_config_helpers/layers.html#pooling-layer">配置API</a>。
 ```python
 seq_pool = pooling_layer(input=layer,
                          pooling_type=AvgPooling(),
@@ -34,7 +34,7 @@ seq_pool = pooling_layer(input=layer,
 
 ## last_seq 和 first_seq
 
-last_seq的使用示例如下（first_seq类似），详细见配置API。
+last_seq的使用示例如下（first_seq类似），详细见<a href = "../../../doc/ui/api/trainer_config_helpers/layers.html#last-seq">配置API</a>。
 ```python
 last = last_seq(input=layer,
                 agg_level=AggregateLevel.EACH_SEQUENCE)
@@ -50,7 +50,7 @@ last = last_seq(input=layer,
 
 ## expand_layer
 
-expand_layer的使用示例如下，详细见配置API。
+expand_layer的使用示例如下，详细见<a href = "../../../doc/ui/api/trainer_config_helpers/layers.html#expand-layer">配置API</a>。
 ```python
 expand = expand_layer(input=layer1,
                       expand_as=layer2,

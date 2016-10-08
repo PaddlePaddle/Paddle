@@ -130,14 +130,6 @@ TEST(RecurrentGradientMachine, rnn) {
   }
 }
 
-TEST(RecurrentGradientMachine, rnn2) {
-  for (bool useGpu : {false, true}) {
-  test("gserver/tests/sequence_rnn.conf",
-       "gserver/tests/sequence_nest_rnn_readonly_memory.conf",
-       1e-6, useGpu);
-  }
-}
-
 TEST(RecurrentGradientMachine, rnn_multi_input) {
   for (bool useGpu : {false, true}) {
     test("gserver/tests/sequence_rnn_multi_input.conf",

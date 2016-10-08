@@ -17,7 +17,7 @@
 ## 相关概念
 
 ### 基本原理
-`recurrent_group` 是PaddlePaddle支持的一种任意复杂的RNN单元。使用者只需要关注于设计RNN在一个时间步之内完成的计算，PaddlePaddle负责完成信息和误差在时间序列上的传播。
+`recurrent_group` 是PaddlePaddle支持的一种任意复杂的RNN单元。使用者只需要关注于设计RNN在一个时间步之内完成的计算，PaddlePaddle负责完成信息和梯度在时间序列上的传播。
 
 PaddlePaddle中，`recurrent_group`的一个简单调用如下：
 
@@ -52,7 +52,7 @@ recurrent_group(step, input, reverse)
 在序列生成任务中，decoder RNN总是引用上一时刻预测出的词的词向量，作为当前时刻输入。`GeneratedInput`自动完成这一过程。
 		 
 ### 输出
-`step`函数必须返回某个Layer的输出，这个Layer的输出会作为整个`recurrent_group` 最终的输出结果。在输出的过程中，`recurrent_group` 会将每个时间步的输出拼接，这个过程对用户也是透明的。
+`step`函数必须返回一个或多个Layer的输出，这个Layer的输出会作为整个`recurrent_group` 最终的输出结果。在输出的过程中，`recurrent_group` 会将每个时间步的输出拼接，这个过程对用户也是透明的。
 
 ### memory
 memory只能在`recurrent_group`中定义和使用。memory不能独立存在，必须指向一个PaddlePaddle定义的Layer。引用memory得到这layer上一时刻输出，因此，可以将memory理解为一个时延操作。

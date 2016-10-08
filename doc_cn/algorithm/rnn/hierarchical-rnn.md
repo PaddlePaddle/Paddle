@@ -257,37 +257,6 @@ out = recurrent_group(step=outer_step, input=SubsequenceInput(emb))
 - 双层序列，外层memory是单层序列：
   - 由于外层每个时间步返回的是一个子句，这些子句的长度往往不等长。因此当外层有is_seq=True的memory时，内层是**无法直接使用**它的，即内层memory的boot_layer不能链接外层的这个memory。
   - 如果内层memory想**间接使用**这个外层memory，只能通过`pooling_layer`、`last_seq`或`first_seq`这三个layer将它先变成一个元素。但这种情况下，外层memory必须有boot_layer，否则在第0个时间步时，由于外层memory没有任何seq信息，因此上述三个layer的前向会报出“**Check failed: input.sequenceStartPositions**”的错误。
-  - `sequence_nest_rnn_readonly_memory.conf`中的`readonly_mem`是一个单层序列，目前是作为只读memory，即对output没有任何贡献。
-
-```python
-def outer_step(x):
-    # if memory in hierachical rnn is sequence (is_seq=True), it must be read-only 
-    # memory, since the sequence length of each timestep maybe different.
-    readonly_mem = memory(name="outer_rnn_readonly", size=hidden_dim, is_seq=True)
-
-    outer_mem = memory(name="outer_rnn_state", size=hidden_dim)
-    def inner_step(y):
-        inner_mem = memory(name="inner_rnn_state",
-                           size=hidden_dim,
-                           boot_layer=outer_mem)
-        return fc_layer(input=[y, inner_mem],
-                        size=hidden_dim,
-                        act=TanhActivation(),
-                        bias_attr=True,
-                        name="inner_rnn_state")
-
-    inner_rnn_output = recurrent_group(
-        step=inner_step,
-        input=x)
-    last = last_seq(input=inner_rnn_output, name="outer_rnn_state")
-
-    # used for read-only memory
-    with mixed_layer(size=hidden_dim, name="outer_rnn_readonly") as readonly:
-        readonly += identity_projection(input=inner_rnn_output)
-    return inner_rnn_output
-
-out = recurrent_group(step=outer_step, input=SubsequenceInput(emb))
-```
 
 ## 示例3：双进双出，输入不等长
 
