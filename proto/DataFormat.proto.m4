@@ -68,9 +68,14 @@ message DataSample {
 };
 
 /*
- DataHeader2 describes the format and type of input data. Input data consists of a couple of slots.
- For each slot, a SlotDef and a SeqType type must be appointed. For example, if input data contains
- 3 kinds of slot, the size of slot_defs and seq_type will both be 3.
+ Usually, training data consists of several types of data, where each type of data is defined as a slot.
+ For example, input vector and corresponding label are needed for common supervised learning tasks,
+ which are regarded as two kinds of input slots.
+ Data type and sequence type are orthogonal attribute of a slot. PaddlePaddle has four data types and
+ three sequence types. You must assign a data type and a sequence type of each slot.
+ DataHeader2 describes the data type and sequence type of input data which contains one or more slots.
+ slot_defs and seq_type are defined as repeated field. The size of slot_defs and seq_type must be the
+ same as the slots number.
 */
 message DataHeader2 {
   enum SeqType {
@@ -83,15 +88,23 @@ message DataHeader2 {
 }
 
 /*
- SlotSample describes the content of each slot. The unique slot id of input data is identified by slot_id.
- A repeated field vector_slots is defined for the content of slot data. SeqType and SlotDef is orthogonal.
- NON_SEQ : size of vector_slots is 1.
- SEQ : size of vector_slots is the length of sequence.
- SUB_SEQ : subseq_start_positions is defined to record start positions of the subsequence in a sequence.
- INDEX : size of ids in VectorSlot is 1.
- VECTOR_DENSE : a dense vector.
- VECTOR_SPARSE_NON_VALUE : size of ids in VectorSlot >= 1.
- VECTOR_SPARSE_VALUE : a sparse vector.
+ SlotSample describes the content of each slot. Each slot has an unique slot id, which is identified
+ by slot_id. slot_id starts from 0 to (slots number - 1).
+ A repeated field vector_slots is defined for storing data units of each slot data, which are able to
+ represent both NON_SEQ data and SEQ data. SUB_SEQ data needs to set subseq_start_positions additionally.
+ Following shows how data is organized in SlotSample.
+ +-------------------------+---------------------+-----------------------------------+------------------------------------------------+
+ |                         | NO_SEQ              | SEQ                               |  SUB_SEQ                                       |
+ +=========================+=====================+===================================+================================================+
+ | VECTOR_DENSE            | [f, f, ...]         | [[f, ...], [f, ...], ...]         | [[[f, ...], ...], [[f, ...], ...],...]         |
+ +-------------------------+---------------------+-----------------------------------+------------------------------------------------+
+ | VECTOR_SPARSE_NON_VALUE | [i, i, ...]         | [[i, ...], [i, ...], ...]         | [[[i, ...], ...], [[i, ...], ...],...]         |
+ +-------------------------+---------------------+-----------------------------------+------------------------------------------------+
+ | VECTOR_SPARSE_VALUE     | [(i,f), (i,f), ...] | [[(i,f), ...], [(i,f), ...], ...] | [[[(i,f), ...], ...], [[(i,f), ...], ...],...] |
+ +-------------------------+---------------------+-----------------------------------+------------------------------------------------+
+ | INDEX                   |  i                  | [i, i, ...]                       | [[i, ...], [i, ...], ...]                      |
+ +-------------------------+---------------------+-----------------------------------+------------------------------------------------+
+ Note: In VectorSlot, i is stored in ids field and f is stored in values field.
 */
 message SlotSample {
   required uint32 slot_id = 1;
@@ -99,8 +112,10 @@ message SlotSample {
   repeated uint32 subseq_start_positions = 3;
 }
 /*
- A DataSample2 represents a sample of input data, which contains a repeated field SlotSample.
- For example, if input data contains 3 kinds of slot, the size of slots_data is 3.
+ DataSample2 represents a sample of input data containing one or more slots defined in DataHeader2.
+ The size of slots_data must be the same as the slots number defined in DataHeader2. The order of
+ SlotSample in DataSample2 must also be the same as the slot_defs and seq_type order in DataHeader2.
+ The slot_id of the i'th SlotSample is i(start from 0). Missing slots in a DataSample2 is not allowed.
 */
 message DataSample2 {
   repeated SlotSample slots_data = 1;
