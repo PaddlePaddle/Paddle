@@ -2347,7 +2347,7 @@ class SubsequenceInput(object):
 
 
 @wrap_name_default("recurrent_group")
-def recurrent_group(step, input, reverse=False, name=None):
+def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
     """
     Recurrent layer group is an extremely flexible recurrent unit in
     PaddlePaddle. As long as the user defines the calculation done within a
@@ -2401,6 +2401,17 @@ def recurrent_group(step, input, reverse=False, name=None):
     :param reverse: If reverse is set true, the recurrent unit will process the
                     input sequence in a reverse order.
     :type reverse: bool
+
+    :param targetInlink: the input layer which share info with layer group's output
+
+                         Param input specifies multiple input layers. For
+                         SubsequenceInput inputs, config should assign one input
+                         layer that share info(the number of sentences and the number
+                         of words in each sentence) with all layer group's outputs.
+                         targetInlink should be one of the layer group's input.
+
+    :type targetInlink: LayerOutput|SubsequenceInput
+
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2419,6 +2430,20 @@ def recurrent_group(step, input, reverse=False, name=None):
 
     in_links = filter(is_in_links, input)
 
+    def targetInlink_in_inlinks():
+        for inlink in in_links:
+            if isinstance(inlink, SubsequenceInput):
+                if targetInlink == inlink.input:
+                    return True
+            elif targetInlink == inlink:
+                return True
+        return False
+
+    assert(targetInlink == None or targetInlink_in_inlinks())
+    targetInlinkName = None if targetInlink == None \
+                            else targetInlink.name if isinstance(targetInlink, LayerOutput) \
+                                                   else targetInlink.input.name
+
     contains_sub_seq = [False]
 
     def map_in_links(x):
@@ -2430,7 +2455,8 @@ def recurrent_group(step, input, reverse=False, name=None):
 
     RecurrentLayerGroupWithoutOutLinksBegin(
         name=name, in_links=map(map_in_links, in_links),
-        seq_reversed=reverse)
+        seq_reversed=reverse,
+        target_inlinkname=targetInlinkName)
     in_args = []
     for each_input in input:
         assert is_single_input(each_input)
