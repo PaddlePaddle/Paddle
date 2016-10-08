@@ -71,6 +71,7 @@ void CalCost(const string& conf, const string& dir, real* cost,
 
   *ThreadLocalRand::getSeed() = FLAGS_seed;
   vecW.randnorm(0, 0.1);
+  vecMomentum.randnorm(0, 0.1);
 
   trainer.startTrain();
   for (int i = 0; i < num_passes; ++i) {
@@ -136,6 +137,14 @@ TEST(RecurrentGradientMachine, rnn_multi_input) {
          "gserver/tests/sequence_nest_rnn_multi_input.conf",
          1e-6, useGpu);
   }
+}
+
+TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
+    for (bool useGpu : {false, true}) {
+        test("gserver/tests/sequence_rnn_multi_unequalength_inputs.conf",
+        "gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.conf",
+             1e-6, useGpu);
+    }
 }
 
 int main(int argc, char** argv) {

@@ -1,8 +1,8 @@
 # PaddlePaddle
 
-|  **`Linux`**   |
-|----------------|
-|[![Build Status](https://travis-ci.org/baidu/Paddle.svg?branch=master)](https://travis-ci.org/baidu/Paddle)|
+|  **`Linux`**   | **`License`** | **`Chat Room`** |
+|----------------|---------------|-----------------|
+|[![Build Status](https://travis-ci.org/baidu/Paddle.svg?branch=master)](https://travis-ci.org/baidu/Paddle)|[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)|[![Join the chat at https://gitter.im/PaddlePaddle/Deep_Learning](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/PaddlePaddle/Deep_Learning?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)|
 
 Welcome to the PaddlePaddle GitHub.
 
@@ -86,9 +86,9 @@ Both [English Docs](http://paddlepaddle.org/doc/) and [Chinese Docs](http://padd
 - [Source Code Documents](http://paddlepaddle.org/doc/source/) <br>
 
 ## Ask Questions
-
-If you want to ask questions and discuss about methods and models, welcome
-to send email to paddle-dev@baidu.com. Framework development discussions and
+Please join the [**gitter chat**](https://gitter.im/PaddlePaddle/Deep_Learning) or send email to
+**paddle-dev@baidu.com** to ask questions and talk about methods and models.
+Framework development discussions and
 bug reports are collected on [Issues](https://github.com/baidu/paddle/issues).
 
 ## Copyright and License

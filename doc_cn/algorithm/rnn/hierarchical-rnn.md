@@ -196,13 +196,13 @@ data = [
 ]
 
 @provider(input_types=[integer_value_sub_sequence(10),
-                       integer_value(2)])
+                       integer_value(3)])
 def process_subseq(settings, file_name):
     for d in data:
         yield d
 
 @provider(input_types=[integer_value_sequence(10),
-                       integer_value(2)])
+                       integer_value(3)])
 def process_seq(settings, file_name):
     for d in data:
         seq = []
