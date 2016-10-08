@@ -22,14 +22,16 @@ NOTE: You do not need to restrict your RAW data with above format, instead the l
 
 Unzip ```train.zip``` to ```train.txt``` firstly, all samples are stored as simple TXT file ```train.txt```, then set it in ```train.list``` index file, which is used in model configuration file. We just provides no more than 2000+ samples to explains following  experiments. Check related HOWTO in other DOC. 
 
-### Prepare DataProvider
+Prepare DataProvider
+####################
 Use following dataprovider to feed DataProvider:
 
 .. literalinclude:: ../../../demo/sparse_train/sparse_binary/sparse_data_provider.py
 
 Please consult related DOC for ```sparse_binary_vector``` and ```integer_value```.
 
-### Prepare Model Configuration
+Prepare Model Configuration
+###########################
 Here providing one simple fc_layers network, which is enough for explaining HOW to train DNN with sparse training.
 
 We use ```ParameterAttribute(sparse_update=True)``` to enable sparse training for local job as well as cluster job. The ```trainer_config_helpers``` model will set internal FLAGs automatically. At last, these layers not set with sparse FLAG do dense training while sparse layers automatically use sparse training. Generally RECOMMEND you set these layers with high sparsity input, such as first hidden layers with sparse input.
@@ -38,7 +40,8 @@ The full configuration as follows:
 
 .. literalinclude:: ../../../demo/sparse_train/sparse_binary/sparse_trainer_config.py
 
-### Start Training 
+Start Training 
+############## 
 For local train, you do not need to do anything to start sparse training. 
 
 .. literalinclude:: ../../../demo/sparse_train/sparse_binary/local.sh
@@ -46,11 +49,13 @@ For local train, you do not need to do anything to start sparse training.
 For cluster train, you maybe just care about ```--ports_num_for_sparse=4``` in command line and conf.py files.  You need to understand simple cluster helper scripts in ```paddle/cluster_train/paddle.py```. Check DOC about cluster training.
 
 
-## Quantitive Analysis on Performance 
+Quantitive Analysis on Performance 
+----------------------------------
 We takes several experiments to help you understand ```what happened``` and ```what will benefit``` from sparse training.  
 To make you better understand sparse training, we could use some BIGGER hidden size to enlarge the performance gap between Sparse Training and default dense training. All analysis are based on QuickStart data and configuration.
 
-### Without Sparse Training
+Without Sparse Training
+#######################
 Just remove ```ParameterAttribute(sparse_update=True)``` setting in fc_layer configuration to disable sparse training.   
 
 With 
@@ -78,7 +83,8 @@ I0928 22:16:37.540330 28823 Util.cpp:219] copy ./sparse_trainer_config.py to ./o
 .....I0928 22:18:51.734253 28823 TrainerInternal.cpp:179]  Pass=1 Batch=11 samples=2002 AvgCost=0.0262592 Eval: classification_error_evaluator=0.00231267
 ```
 
-### With Local Sparse Training
+With Local Sparse Training
+##########################
 Enable  ```ParameterAttribute(sparse_update=True)``` , 
 With
 ```
@@ -95,7 +101,8 @@ I0928 21:56:07.312760 17090 Util.cpp:219] copy ./sparse_trainer_config.py to ./o
 ```
 So, the memories and computation can significantly be reduced with sparse training.
 
-### With Cluster Sparse Training
+With Cluster Sparse Training
+############################
 Go through ```cluster train``` DOC to build cluster environments with local workspace.
 Assuming you have already got the ```workspace``` which contains data, model, dataprovider. Here we focus the system performance comparison, so we just ```--job_dispatch_package``` in ```paddle.py``` in cluster scripts to dispatch same train data in all nodes in current experiment.
 
@@ -117,7 +124,8 @@ Command line
 
 Compared with local sparse training, we further observed that the memories exhausted by trainer process decreased with same hidden size. Because the parameter server will store all parameters within different parameter servers' nodes. That fact shows that the sparse architecture in distributed parameter server can let you train HUGE model, such as the model whose size is larger than single node's RAM. 
 
-### Sparse Train with sparse_vector Data Input
+Sparse Train with sparse_vector Data Input
+##########################################
 For ```sparse_vector``` input data,  the steps to enable sparse train are almost same with ```sparse_binary_vector``` input data.
 Here we randomly generate ```sparse_vector``` train data used  to do  dummy regression training task to make sparse training understood quickly. The convergence could not be well, but it will be useful for explaining sparse training.
 
@@ -155,9 +163,11 @@ I0929 18:09:36.475224 19235 Util.cpp:219] copy ./sparse_float_trainer_config.py 
 I0929 18:09:36.945366 19235 GradientMachine.cpp:112] Saving parameters to ./output/model/pass-00001
 ```
 
-## Internals of Sparse Training
+Internals of Sparse Training
+----------------------------
 
-### Overview
+Overview
+########
 
 In backpropagation algorithm, the fact that the partial derivative of the weight of parameters will be ```0``` if the input activations in all next mini-batch is ```0``` can help you do sparse optimization for reducing computation, storage, communication. 
 
@@ -184,10 +194,12 @@ The optimization could be applied not all parameter weights to reduce computatio
 - ```Communication``` in cluster training is sparsely.
 With the sparse parameter architecture,  any distributed trainers do ```prefetch``` latest sparse parameters value from parameter servers that currently mini-batch needs. Also trainers push latest sparse gradients to distributed parameter servers. It can significantly reduce memory and bandwidth exhaustion. The distributed architecture allows you to train HUGE model whose size is larger than that of the physical RAM memory in single host.
 
-### Miscellous
+Miscellous
+##########
 With mini-batch training, the sparse training overhead could be related with mini-batch size because the union of all samples in mini-batch determine which weight needs to be updated. In further, the communication overhead is related with mini-batch if sparse training is enabled.
 
-## Supported Layers
+Supported Layers
+----------------
 
 Theoretically, most layers can be configured with ```sparse```training, however if the degree of sparsity is not BIG enough the additional computation and storage needs for sparse matrix could hurt the overall performance.
 
@@ -195,20 +207,23 @@ It's recommend that use sparse setting with first hidden layer attach with HIGH 
 
 The best supported layer type for sparse training is fc_layer\ProjectedLayer\NCE layer.
 
-## Supported Optimisers
+Supported Optimisers
+--------------------
 Currently not all SGD Optmimizers support sparse updating.
 
 ```AdaDeltaOptimizer``` does not support sparse training.
 With momentum setting, it's needed to update new parameter weight with history ```momentum``` even if current weight's gradient is 0,  so PaddlePaddle designs special ```MomentumOptimizer```  for sparse momentum.  The novel design can benefit ```sparse``` cluster communication for HUGE model which can significantly improve performance in cluster training.
 The algorithm will be describe in details later.
 
-## HUGE Model Training
+HUGE Model Training
+------------------
 
 PaddlePaddle designs one ```loadAndSaveParameterinPserver``` mechanism to build distributed model parameters storage.  It means the full parameters copy is stored in all parameters servers, all training processes fetch part of parameters as need after seeing next min-batch. Generally, this mechanism works with sparse training.
 Check ```-loadsave_parameters_in_pserver``` for details.
 
 
-## FAQ
+FAQ
+---
 
  1. Does AdamOptimizer support Sparse Training ?
 No.
