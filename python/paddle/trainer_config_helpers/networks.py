@@ -20,7 +20,7 @@ from activations import LinearActivation, ReluActivation, SoftmaxActivation, \
     IdentityActivation, TanhActivation, SequenceSoftmaxActivation
 from attrs import ExtraAttr
 from default_decorators import wrap_name_default, wrap_act_default, \
-    wrap_param_default
+    wrap_param_default, wrap_bias_attr_default, wrap_param_attr_default
 from layers import *  # There are too many layers used in network, so import *
 from poolings import MaxPooling, SumPooling
 from paddle.trainer.config_parser import *
@@ -505,7 +505,7 @@ def simple_lstm(input, size, name=None, reverse=False, mat_param_attr=None,
 def lstmemory_unit(input, name=None, size=None, param_attr=None,
                    act=None, gate_act=None, state_act=None,
                    mixed_bias_attr=None, lstm_bias_attr=None,
-                   mixed_layer_attr=None,lstm_layer_attr=None,
+                   mixed_layer_attr=None, lstm_layer_attr=None,
                    get_output_layer_attr=None):
     """
     Define calculations that a LSTM unit performs in a single time step.

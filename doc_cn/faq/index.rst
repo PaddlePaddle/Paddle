@@ -1,11 +1,11 @@
+####################
 PaddlePaddle常见问题
-====================
+####################
 
 ..  contents::
 
-
-如何减少PaddlePaddle的内存占用
-------------------------------
+1. 如何减少PaddlePaddle的内存占用
+---------------------------------
 
 神经网络的训练本身是一个非常消耗内存和显存的工作。经常会消耗数十G的内存和数G的显存。
 PaddlePaddle的内存占用主要分为如下几个方面\:
@@ -65,8 +65,8 @@ PaddlePaddle支持非常多的优化算法(Optimizer)，不同的优化算法需
 
 可以考虑使用一些优化算法，例如 :code:`momentum`。
 
-如何加速PaddlePaddle的训练速度
-------------------------------
+2. 如何加速PaddlePaddle的训练速度
+---------------------------------
 
 PaddlePaddle是神经网络训练平台，加速PaddlePaddle训练有如下几个方面\：
 
@@ -115,5 +115,55 @@ PaddlePaddle支持Sparse的训练，sparse训练需要训练特征是 :code:`spa
 * 多机训练
   * 使用多机训练的方法也比较简单，需要先在每个节点启动 :code:`paddle pserver`，在使用 :code:`paddle train --pservers=192.168.100.1,192.168.100.2` 来指定每个pserver的ip地址
   * 具体的多机训练方法参考 `多机训练 <TBD>`_ 文档。
+
+
+3. 遇到“非法指令”或者是“illegal instruction” 
+--------------------------------------------
+
+paddle在进行计算的时候为了提升计算性能，使用了avx指令。部分老的cpu型号无法支持这样的指令。通常来说执行下grep avx /proc/cpuinfo看看是否有输出即可知道是否支持。（另：用此方法部分虚拟机可能检测到支持avx指令但是实际运行会挂掉，请当成是不支持，看下面的解决方案）
+
+解决办法是\:
+
+* 使用 NO_AVX的 `安装包 <../build_and_install/index.html>`_ 或者 `Docker image <../build_and_install/install/docker_install.html>`_
+* 或者，使用 :code:`-DWITH_AVX=OFF` 重新编译PaddlePaddle。
+
+
+4. 如何选择SGD算法的学习率
+--------------------------
+
+在采用sgd/async_sgd进行训练时，一个重要的问题是选择正确的learning_rate。如果learning_rate太大，那么训练有可能不收敛，如果learning_rate太小，那么收敛可能很慢，导致训练时间过长。
+
+通常做法是从一个比较大的learning_rate开始试，如果不收敛，那减少学习率10倍继续试验，直到训练收敛为止。那么如何判断训练不收敛呢？可以估计出如果模型采用不变的输出最小的cost0是多少。
+
+如果训练过程的的cost明显高于这个常数输出的cost，那么我们可以判断为训练不收敛。举一个例子，假如我们是三分类问题，采用multi-class-cross-entropy作为cost，数据中0,1,2三类的比例为 :code:`0.2, 0.5, 0.3` , 那么常数输出所能达到的最小cost是 :code:`-(0.2*log(0.2)+0.5*log(0.5)+0.3*log(0.3))=1.03` 。如果训练一个pass（或者更早）后，cost还大于这个数，那么可以认为训练不收敛，应该降低学习率。
+
+
+5. 如何初始化参数
+-----------------
+
+默认情况下，PaddlePaddle使用均值0，标准差为 :math:`\frac{1}{\sqrt{d}}` 来初始化参数。其中 :math:`d` 为参数矩阵的宽度。这种初始化方式在一般情况下不会产生很差的结果。如果用户想要自定义初始化方式，PaddlePaddle目前提供两种参数初始化的方式\:
+
+* 高斯分布。将 :code:`param_attr` 设置成 :code:`param_attr=ParamAttr(initial_mean=0.0, initial_std=1.0)`
+* 均匀分布。将 :code:`param_attr` 设置成 :code:`param_attr=ParamAttr(initial_max=1.0, initial_min=-1.0)`
+
+比如设置一个全连接层的参数初始化方式和bias初始化方式，可以使用如下代码。
+
+..  code-block:: python
+
+    hidden = fc_layer(input=ipt, param_attr=ParamAttr(initial_max=1.0, initial_min=-1.0), 
+                      bias_attr=ParamAttr(initial_mean=1.0, initial_std=0.0))
+
+上述代码将bias全部初始化为1.0, 同时将参数初始化为 :code:`[1.0, -1.0]`的均匀分布。
+
+6. 如何共享参数
+---------------
+
+PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字的参数，会共享参数。设置参数的名字，可以使用 :code:`ParamAttr(name="YOUR_PARAM_NAME")` 来设置。更方便的设置方式，是想要共享的参数使用同样的 :code:`ParamAttr` 对象。
+
+简单的全连接网络，参数共享的配置示例为\:
+
+..  literalinclude:: ../../python/paddle/trainer_config_helpers/tests/configs/shared_fc.py
+
+这里 :code:`hidden_a` 和 :code:`hidden_b` 使用了同样的parameter和bias。并且softmax层的两个输入也使用了同样的参数 :code:`softmax_param`。
 
 
