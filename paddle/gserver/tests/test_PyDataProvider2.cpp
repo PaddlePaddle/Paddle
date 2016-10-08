@@ -321,7 +321,7 @@ TEST(PyDataProvider2, input_order) {
     if (!realBatchSize) {
       break;
     }
-    ASSERT_EQ(batch.getStreams().size(), 2);
+    ASSERT_EQ(batch.getStreams().size(), (size_t)2);
     for (size_t i = 0; i < realBatchSize; ++i) {
       ASSERT_EQ(batch.getStream(0).ids->getData()[i], 0);
       ASSERT_EQ(batch.getStream(1).ids->getData()[i], 1);

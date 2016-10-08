@@ -65,7 +65,8 @@ void DataProviderGroup<T>::reset() {
   provider_ = nullptr;
 
   // shuffle file list
-  std::random_shuffle(fileList_.begin(), fileList_.end());
+  std::shuffle(fileList_.begin(), fileList_.end(),
+      ThreadLocalRandomEngine::get());
 
   startLoader();
   DataProvider::reset();
