@@ -18,6 +18,12 @@ limitations under the License. */
 #ifndef PADDLE_NO_PYTHON
 // must include the following two blocks, otherwise,
 // gcc compiler may produce warning
+#ifdef __APPLE__
+#define _POSIX_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 700
+#endif
+
 #ifdef _POSIX_C_SOURCE
 #define __TEMP_POSIX_C_SOURCE _POSIX_C_SOURCE
 #undef _POSIX_C_SOURCE
@@ -28,12 +34,7 @@ limitations under the License. */
 #endif
 #include <Python.h>
 #include <frameobject.h>
-#ifndef _POSIX_C_SOURCE
-#warning "no _POSIX_C_SOURCE defined in Python.h"
-#endif
-#ifndef _XOPEN_SOURCE
-#warning "no _XOPEN_SOURCE defined in Python.h"
-#endif
+
 #endif
 
 #include "paddle/utils/Util.h"

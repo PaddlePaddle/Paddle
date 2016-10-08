@@ -223,6 +223,7 @@ extern void hl_matrix_csc2dense(hl_sparse_matrix_s A_d,
  * @param[in]   dimK    width of op(A) & height of op(B)
  * @param[in]   alpha   scalar used for multiplication.
  * @param[in]   beta    scalar used for multiplication.
+ *                      If beta is zero, C does not have to be a valid input.
  *
  * @note    transb is not support HPPL_OP_T.
  *
@@ -251,6 +252,7 @@ extern void hl_matrix_csr_mul_dense(hl_sparse_matrix_s A_d,
  * @param[in]   dimK    width of op(A) & height of op(B)
  * @param[in]   alpha   scalar used for multiplication.
  * @param[in]   beta    scalar used for multiplication.
+ *                      If beta is zero, C does not have to be a valid input.
  *
  * @note    transb is not support HPPL_OP_T.
  *
@@ -275,6 +277,7 @@ extern void hl_matrix_csc_mul_dense(hl_sparse_matrix_s A_d,
  * @param[in]   dimK    width of op(A) & height of op(B)
  * @param[in]   alpha   scalar used for multiplication.
  * @param[in]   beta    scalar used for multiplication.
+ *                      If beta is zero, C does not have to be a valid input.
  *
  * @note    transa is not support HPPL_OP_T.
  *
@@ -327,6 +330,7 @@ extern void hl_sparse_matrix_mul(real* A_d, hl_trans_op_t transa,
  * @param[in]   dimK    width of op(A) & height of op(B)
  * @param[in]   alpha   scalar used for multiplication.
  * @param[in]   beta    scalar used for multiplication.
+ *                      If beta is zero, C does not have to be a valid input.
  *
  *
  * @note    transa is not support HPPL_OP_T.

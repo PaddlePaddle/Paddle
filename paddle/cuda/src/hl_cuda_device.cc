@@ -209,7 +209,18 @@ __thread cudaStream_t default_stream = 0;
 __thread bool g_sync_flag = true;
 bool hl_start_flag = false;
 
-#define gettid() syscall(SYS_gettid)
+inline pid_t gettid() {
+#if defined(__APPLE__) || defined(__OSX__)
+  pid_t tid = syscall(SYS_thread_selfid);
+#else
+  #ifndef __NR_gettid
+  #define __NR_gettid 224
+  #endif
+  pid_t tid = syscall(__NR_gettid);
+#endif
+  CHECK_NE(tid, -1);
+  return tid;    
+}
 
 void hl_init(int device) {
   CHECK(hl_start_flag)

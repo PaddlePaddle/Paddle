@@ -62,7 +62,11 @@ TEST(checkGradient, multiGpu) {
   }
 }
 
-TEST(checkGradient, parallel) { checkGradientTest(configFile4, true, true); }
+TEST(checkGradient, parallel) {
+  if (hl_get_device_count() >= 2) {
+    checkGradientTest(configFile4, true, true);
+  }
+}
 
 TEST(checkGradient, multiParallel) {
   FLAGS_allow_only_one_model_on_one_gpu = false;
@@ -90,7 +94,11 @@ TEST(checkGradient, multi) {
 TEST(checkGradient, hsigmoid) { checkGradientTest(configFile2, false, false); }
 
 TEST(checkGradient, chunk) {
+#if defined(__APPLE__) || defined (__OSX__)
+  EXPECT_EQ(0, system("python trainer/tests/gen_proto_data.py"));
+#else
   EXPECT_EQ(0, system("python2 trainer/tests/gen_proto_data.py"));
+#endif
   checkGradientTest(configFile3, false, false);
 #ifndef PADDLE_ONLY_CPU
   checkGradientTest(configFile3, true, true);

@@ -616,7 +616,7 @@ def lstmemory_group(input, size=None, name=None,
     cell states, or hidden states in every time step are accessible to for the
     user. This is especially useful in attention model. If you do not need to
     access to the internal states of the lstm, but merely use its outputs,
-    it is recommanded to use the lstmemory, which is relatively faster than
+    it is recommended to use the lstmemory, which is relatively faster than
     lstmemory_group.
 
     NOTE: In PaddlePaddle's implementation, the following input-to-hidden
@@ -1052,7 +1052,7 @@ def dropout_layer(input, dropout_rate, name=None):
                        layer_attr=ExtraAttr(drop_rate=dropout_rate))
 
 
-def outputs(layers):
+def outputs(layers, *args):
     """
     Declare the end of network. Currently it will only calculate the
     input/output order of network. It will calculate the predict network or
@@ -1089,9 +1089,12 @@ def outputs(layers):
     if isinstance(layers, LayerOutput):
         layers = [layers]
 
+    if len(args) != 0:
+        layers.extend(args)
+
     assert len(layers) > 0
     if len(layers) != 1:
-        logger.warning("EndOfNetwork routine try to calculate network's"
+        logger.warning("`outputs` routine try to calculate network's"
                        " inputs and outputs order. It might not work well."
                        "Please see follow log carefully.")
     inputs = []

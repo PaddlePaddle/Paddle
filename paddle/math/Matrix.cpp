@@ -2514,7 +2514,8 @@ void SharedCpuMatrix::mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB,
     for (int k = 0; k < blockNum_; ++k) {
       blockSeq.push_back(k);
     }
-    std::random_shuffle(blockSeq.begin(), blockSeq.end());
+    std::shuffle(blockSeq.begin(), blockSeq.end(),
+        ThreadLocalRandomEngine::get());
   }
   std::vector<int>& localBufRows = *localBufRows_;
   int* cols = a->getCols();

@@ -25,6 +25,9 @@ limitations under the License. */
 #define     VECTOR_LEN      4
 #define     VECTOR_SET      _mm_set_ps1
 #else
+#if   defined(__APPLE__) || defined(__OSX__)
+#define     _mm_set_pd1     _mm_set1_pd
+#endif
 /* number of double in vector */
 #define     VECTOR_LEN      2
 #define     VECTOR_SET      _mm_set_pd1

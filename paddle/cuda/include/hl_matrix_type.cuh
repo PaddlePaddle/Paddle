@@ -27,6 +27,8 @@ typedef float4 vecType;
 typedef double2 vecType;
 #endif
 #else
+#include <mmintrin.h>
+#include <xmmintrin.h>
 #include <emmintrin.h>
 #ifndef HPPL_TYPE_DOUBLE
 typedef __m128  vecType;
