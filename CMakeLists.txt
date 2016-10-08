@@ -65,6 +65,16 @@ else()
             Subversion_WC_INFO(${PROJ_ROOT} Project)
             add_definitions(-DPADDLE_VERSION=${Project_WC_REVISION})
         endif()
+    elseif(EXISTS ${PROJ_ROOT}/.git/)
+        find_package(Git REQUIRED)
+        if(GIT_FOUND)
+            execute_process(
+                COMMAND git log -1 --format=%H
+                WORKING_DIRECTORY ${PROJ_ROOT}
+                OUTPUT_VARIABLE GIT_SHA1
+                ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+            add_definitions(-DPADDLE_VERSION=\"${GIT_SHA1}\")
+        endif()
     endif()
 endif()
 
