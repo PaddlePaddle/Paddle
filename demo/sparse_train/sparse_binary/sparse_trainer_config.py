@@ -6,7 +6,7 @@ data_size = 18182296
 
 """ Algorithm Configuration """
 settings(learning_rate=1e-3,
-         learning_method=MomentumOptimizer(momentum=0.9),
+         learning_method=MomentumOptimizer(momentum=0.9, sparse=True),
          batch_size=200)
 
 """ Data Configuration """
@@ -16,12 +16,12 @@ define_py_data_sources2(train_list='train.list',
                         obj='process')
 
 """ Model Configuration """
-non_value = data_layer(name='data',
+data= data_layer(name='data',
                        size=data_size)
 label = data_layer(name='label',
                    size=label_size)
 
-hidden1 = fc_layer(input=non_value,
+hidden1 = fc_layer(input=data,
                    size=32,
                    param_attr=ParameterAttribute(sparse_update=True))
 hidden2 = fc_layer(input=hidden1,

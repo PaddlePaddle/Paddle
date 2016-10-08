@@ -6,6 +6,8 @@ This Document will guide you to understand the sparse design in PaddlePaddle.
 
 Assuming that you are familiar with PaddlePaddle. Here show train billion level parameters with sparse training. 
 
+NOTE: main code and data can be found in demo/sparse_train/sparse_binary directory.
+
 ### Prepare Data
 Given the Input data sample as follows:
 ```
@@ -13,31 +15,15 @@ Given the Input data sample as follows:
 ```
 The first slot ```0``` is just one flag, not one feature; the second slot ```0``` is  label; the third slot is feature id, ```7216737 1```means the ```7216737``` dimension is not zero, the ```1``` is just one flag, not one feature; the ```18127654 1``` is another non zero feature. The line data depicts one simple high dimension input data for classification task.
 
-All samples are stored as simple TXT file ```train.txt```, then set it in ```train.list``` index file, which is used in model configuration file. We just provides no more than 2000+ samples to explains following  experiments. Check related HOWTO in other DOC. 
+NOTE: You do not need to restrict your RAW data with above format, instead the last data ```yield``` by DataProvider determines the ultimate data format.
+
+Unzip ```train.zip``` to ```train.txt``` firstly, all samples are stored as simple TXT file ```train.txt```, then set it in ```train.list``` index file, which is used in model configuration file. We just provides no more than 2000+ samples to explains following  experiments. Check related HOWTO in other DOC. 
 
 ### Prepare DataProvider
 Use following dataprovider to feed DataProvider:
-```python
-# Define a py data provider
-@provider(input_types=[
-    sparse_binary_vector(18182296),
-    integer_value(2)
-])
-def process(settings, filename):
-    f = open(filename, 'r')
-    for line in f:  # read each line
-        splits = line.split(',')
-        label = int(splits[1])
-        splits.pop(0)
-        splits.pop(0)
-        sparse_non_values = []
-        for value in splits:
-            v = value.split(" ")
-            sparse_non_values.append(long(v[0]))
-        # give data to paddle.
-        yield sparse_non_values, label
-    f.close()  # close file
-```
+
+.. literalinclude:: ../../../demo/sparse_train/sparse_binary/sparse_data_provider.py
+
 Please consult related DOC for ```sparse_binary_vector``` and ```integer_value```.
 
 ### Prepare Model Configuration
@@ -46,55 +32,14 @@ Here providing one simple fc_layers network, which is enough for explaining HOW 
 We use ```ParameterAttribute(sparse_update=True)``` to enable sparse training for local job as well as cluster job. The ```trainer_config_helpers``` model will set internal FLAGs automatically. At last, these layers not set with sparse FLAG do dense training while sparse layers automatically use sparse training. Generally RECOMMEND you set these layers with high sparsity input, such as first hidden layers with sparse input.
 
 The full configuration as follows:
-```python
-rom paddle.trainer_config_helpers import *
 
-label_size = 2
-data_size = 18182296
-
-""" Algorithm Configuration """
-settings(learning_rate=1e-3,
-         learning_method=MomentumOptimizer(momentum=0.9),
-         batch_size=200)
-
-""" Data Configuration """
-define_py_data_sources2(train_list='train.list',
-                        test_list=None,
-                        module='sparse_data_provider',
-                        obj='process')
-
-""" Model Configuration """
-non_value = data_layer(name='data',
-                       size=data_size)
-label = data_layer(name='label',
-                   size=label_size)
-
-hidden1 = fc_layer(input=non_value,
-                   size=128,
-                   param_attr=ParameterAttribute(sparse_update=True))
-hidden2 = fc_layer(input=hidden1,
-                   size=32)
-
-prediction = fc_layer(input=hidden2, size=label_size, act=SoftmaxActivation())
-
-outputs(classification_cost(input=prediction, label=label))
-```
+.. literalinclude:: ../../../demo/sparse_train/sparse_binary/sparse_trainer_config.py
 
 ### Start Training 
 For local train, you do not need to do anything to start sparse training. 
-```bash
-paddle train \
-    --use_gpu=0 \
-    --config=./sparse_trainer_config.py \
-    --saving_period=1 \
-    --test_period=0 \
-    --num_passes=4 \
-    --dot_period=2 \
-    --log_period=20 \
-    --trainer_count=10 \
-    --saving_period_by_batches=5000 \
-    --local=1
-```
+
+.. literalinclude:: ../../../demo/sparse_train/sparse_binary/local.sh
+
 For cluster train, you maybe just care about ```--ports_num_for_sparse=4``` in command line and conf.py files.  You need to understand simple cluster helper scripts in ```paddle/cluster_train/paddle.py```. Check DOC about cluster training.
 
 
@@ -107,7 +52,7 @@ Just remove ```ParameterAttribute(sparse_update=True)``` setting in fc_layer con
 
 With 
 ```
-hidden1 = fc_layer(input=non_value,
+hidden1 = fc_layer(input=data,
                    size=256)
 ```
 At last, local train exhaust more than 150GB RAM, then going to abort.
@@ -119,7 +64,7 @@ The system memories are drained over by allocating HIGH dimension dense matrix.
 
 With 
 ```
-hidden1 = fc_layer(input=non_value,
+hidden1 = fc_layer(input=data,
                    size=64)
 ```
 it also takes 107seconds(22:16:31 -> 22:18:51.) to train one dummy pass.
@@ -164,22 +109,8 @@ PADDLE_PORTS_NUM_FOR_SPARSE = 4
 ```
 
 Command line
-```
-PATH_TO_LOCAL_WORKSPACE=/home/sparse_test/workspace
-python paddle.py \
-  --job_dispatch_package="${PATH_TO_LOCAL_WORKSPACE}" \
-  --use_gpu=0 \
-  --config=./sparse_trainer_config.py \
-  --saving_period=1 \
-  --test_period=0 \
-  --num_passes=4 \
-  --dot_period=2 \
-  --log_period=20 \
-  --trainer_count=10 \
-  --saving_period_by_batches=5000 \
-  --ports_num_for_sparse=4 \
-  --local=0 \
-```
+
+.. literalinclude:: ../../../demo/sparse_train/sparse_binary/cluster.sh
 
 Compared with local sparse training, we further observed that the memories exhausted by trainer process decreased with same hidden size. Because the parameter server will store all parameters within different parameter servers' nodes. That fact shows that the sparse architecture in distributed parameter server can let you train HUGE model, such as the model whose size is larger than single node's RAM. 
 

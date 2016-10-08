@@ -15,10 +15,7 @@ def process(settings, filename):
         sparse_float = []
         for value in splits:
             v = value.split(" ")
-            entry = []
-            entry.append(long(v[0]))
-            entry.append(float(v[1]))
-            sparse_float.append(entry)
+            sparse_float.append((long(v[0]), float(v[1])))
         # give data to paddle.
         yield sparse_float, [label]
 
