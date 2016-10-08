@@ -1,14 +1,17 @@
-# Sparse Training with PaddlePaddle
+Sparse Training with PaddlePaddle
+=================================
 
 This Document will guide you to understand the sparse design in PaddlePaddle.
 
-## Quick Start
+Quick Start
+-----------
 
 Assuming that you are familiar with PaddlePaddle. Here show train billion level parameters with sparse training. 
 
 NOTE: main code and data can be found in demo/sparse_train/sparse_binary directory.
 
-### Prepare Data
+Prepare Data
+############
 Given the Input data sample as follows:
 ```
 0,0,7216737 1,18127654 1, ... 
