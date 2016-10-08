@@ -27,6 +27,7 @@ addons:
       - libgoogle-glog-dev
       - libgflags-dev
       - libgtest-dev
+      - graphviz
 before_install:
   - pip install wheel protobuf sphinx breathe recommonmark
   - sudo paddle/scripts/travis/before_install.sh
