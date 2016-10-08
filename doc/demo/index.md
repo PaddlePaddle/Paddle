@@ -21,4 +21,4 @@ There are serveral examples and demos here.
 * [Embedding: Chinese Word](embedding_model/index.md)
 
 ## Sparse Training
-* [Sparse Training](sparse_train/sparse_train.md)
+* [Sparse Training](sparse_train/sparse_train.rst)
