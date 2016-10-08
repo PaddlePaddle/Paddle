@@ -44,7 +44,7 @@ data_size=3*32*32
 label_size=10
 img = data_layer(name='image',
                  size=data_size)
-# small_vgg is predined in trainer_config_helpers.network
+# small_vgg is predefined in trainer_config_helpers.networks
 predict = small_vgg(input_image=img,
                     num_channels=3,
                     num_classes=label_size)
