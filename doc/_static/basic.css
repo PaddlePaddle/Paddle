@@ -494,6 +494,13 @@ pre {
     overflow-y: hidden;  /* fixes display issues on Chrome browsers */
 }
 
+span.pre {
+    -moz-hyphens: none;
+    -ms-hyphens: none;
+    -webkit-hyphens: none;
+    hyphens: none;
+}
+
 td.linenos pre {
     padding: 5px 0px;
     border: 0;
