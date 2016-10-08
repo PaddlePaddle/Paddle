@@ -95,7 +95,11 @@ namespace paddle {
 
 pid_t getTID() {
   #if defined(__APPLE__) || defined(__OSX__)
-      pid_t tid = syscall(SYS_thread_selfid);
+      // syscall is deprecated: first deprecated in macOS 10.12.
+      // syscall is unsupported;
+      // syscall pid_t tid = syscall(SYS_thread_selfid);
+      uint64_t tid;
+      pthread_threadid_np(NULL, &tid);
   #else
       #ifndef __NR_gettid
       #define __NR_gettid 224
