@@ -18,6 +18,7 @@ from setuptools import setup, Extension
 import numpy as np
 import api.paddle_ld_flags
 import platform
+import os
 
 system = platform.system().lower()
 
@@ -45,6 +46,7 @@ except:
 if is_lin == True:
     extra_links = ["-Xlinker", '-start-group'] + extra_links + ["-Xlinker", "-end-group"]
 elif is_osx == True:
+    os.environ["ARCHFLAGS"] = "-arch x86_64"
     extra_links = ["-Wl,-all_load"] + extra_links
 
 include_dirs = [np.get_include(), "../"]    # include numpy and paddle.
