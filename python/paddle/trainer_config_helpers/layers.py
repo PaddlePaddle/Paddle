@@ -2777,29 +2777,49 @@ def beam_search(step, input, bos_id, eos_id, beam_size,
 
     return tmp
 
+def __cost_input__(input, label, weight=None):
+    """
+    inputs and parents for cost layers. 
+    """
+    ipts = [Input(input.name), Input(label.name)]
+    parents = [input, label]
+    if weight is not None:
+        assert weight.layer_type == LayerType.DATA
+        ipts.append(Input(weight.name))
+        parents.append(weight)
+    return ipts, parents
+    
 
 @wrap_name_default()
-def regression_cost(input, label, cost='square_error', name=None):
+def regression_cost(input, label, weight=None, cost='square_error', name=None):
     """
     Regression Layer.
 
     TODO(yuyang18): Complete this method.
 
     :param name: layer name.
+    :type name: basestring
     :param input: Network prediction.
+    :type input: LayerOutput
     :param label: Data label.
+    :type label: LayerOutput
+    :param weight: The weight affects the cost, namely the scale of cost.
+                   It is an optional argument.
+    :type weight: LayerOutput
     :param cost: Cost method.
+    :type cost: basestring
     :return: LayerOutput object.
+    :rtype: LayerOutput
     """
-    Layer(inputs=[Input(input.name), Input(label.name)], type=cost, name=name)
-    return LayerOutput(
-        name, LayerType.COST, parents=[input, label]
-    )
+    ipts, parents = __cost_input__(input, label, weight)
+
+    Layer(inputs=ipts, type=cost, name=name)
+    return LayerOutput(name, LayerType.COST, parents=parents)
 
 
 @wrap_name_default("cost")
 @layer_support()
-def classification_cost(input, label, name=None,
+def classification_cost(input, label, weight=None, name=None,
                         cost="multi-class-cross-entropy",
                         evaluator=classification_error_evaluator,
                         layer_attr=None):
@@ -2812,6 +2832,9 @@ def classification_cost(input, label, name=None,
     :type input: LayerOutput
     :param label: label layer name. data_layer often.
     :type label: LayerOutput
+    :param weight: The weight affects the cost, namely the scale of cost.
+                   It is an optional argument.
+    :type weight: LayerOutput
     :param cost: cost method.
     :type cost: basestring
     :param evaluator: Evaluator method.
@@ -2823,7 +2846,10 @@ def classification_cost(input, label, name=None,
     assert input.layer_type != LayerType.DATA
     assert isinstance(input.activation, SoftmaxActivation)
     assert label.layer_type == LayerType.DATA
-    Layer(name=name, type=cost, inputs=[Input(input.name), Input(label.name)],
+
+    ipts, parents = __cost_input__(input, label, weight)
+
+    Layer(name=name, type=cost, inputs=ipts,
           **ExtraLayerAttribute.to_kwargs(layer_attr))
 
     def __add_evaluator__(e):
@@ -2835,7 +2861,7 @@ def classification_cost(input, label, name=None,
         assert isinstance(e.for_classification, bool)
         assert e.for_classification
 
-        e(name=e.__name__, input=input, label=label)
+        e(name=e.__name__, input=input, label=label, weight=weight)
 
     if not isinstance(evaluator, collections.Sequence):
         evaluator = [evaluator]
@@ -2843,7 +2869,7 @@ def classification_cost(input, label, name=None,
     for each_evaluator in evaluator:
         __add_evaluator__(each_evaluator)
 
-    return LayerOutput(name, LayerType.COST, parents=[input, label])
+    return LayerOutput(name, LayerType.COST, parents=parents)
 
 
 def conv_operator(img, filter, filter_size, num_filters,
