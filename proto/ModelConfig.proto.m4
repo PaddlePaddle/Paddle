@@ -88,7 +88,8 @@ message PoolConfig {
   required uint32 size_x = 3;
 
   // Tell the net where in the input image to start the pooling.
-  required uint32 start = 4;
+  // start is deprecated now.
+  optional uint32 start = 4;
 
   // Defines the stride size between successive pooling squares.
   required uint32 stride = 5;

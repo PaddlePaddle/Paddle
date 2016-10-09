@@ -961,10 +961,6 @@ def parse_pool(pool, input_layer_name, pool_conf):
                   "['max-projection', 'avg-projection', "
                   "'cudnn-max-pool', 'cudnn-avg-pool']"
                   % pool.pool_type)
-    if pool.size_y or pool.stride_y or pool.img_width or pool.padding_y:
-        config_assert(pool.pool_type.startswith('cudnn'),
-                      "'size_y', 'stride_y' and 'img_width' and 'padding_y'"
-                      "can only be used for cudnn")
 
     pool_conf.channels = pool.channels
     pool_conf.size_x = pool.size_x
@@ -974,36 +970,25 @@ def parse_pool(pool, input_layer_name, pool_conf):
     pool_conf.stride_y = default(pool.stride_y, pool_conf.stride);
 
     img_pixels = g_layer_map[input_layer_name].size / pool.channels
+    # the img_width may be removed,
+    # and it can be calculated automatically later.
     pool_conf.img_size = default(pool.img_width, int(img_pixels ** 0.5))
     pool_conf.img_size_y = img_pixels / pool_conf.img_size
     config_assert(pool_conf.img_size * pool_conf.img_size_y == img_pixels,
                   "Incorrect input image size %d for input image pixels %d"
                   % (pool_conf.img_size, img_pixels))
 
-    if pool.start is not None:
-        config_assert(pool.padding is None,
-              'At most one of start and padding can be set.')
-        pool_conf.start = pool.start
-        pool_conf.padding = 0
-        pool_conf.output_x = int(math.ceil((pool_conf.img_size - \
-            pool_conf.start - pool_conf.size_x) / \
-            float(pool_conf.stride))) + 1
+    config_assert(not pool.start, "start is deprecated in pooling.")
 
-        pool_conf.output_y = int(math.ceil((pool_conf.img_size_y - \
-            pool_conf.start - pool_conf.size_y) / \
-            float(pool_conf.stride_y))) + 1
-    elif pool.padding is not None:
+    if pool.padding is not None:
         pool_conf.padding = pool.padding
         pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
-        pool_conf.start = 0
         pool_conf.output_x = int(math.ceil((pool_conf.img_size + \
             2*pool_conf.padding - pool_conf.size_x) / \
             float(pool_conf.stride))) + 1
         pool_conf.output_y = int(math.ceil((pool_conf.img_size_y + \
             2*pool_conf.padding_y - pool_conf.size_y) / \
             float(pool_conf.stride_y))) + 1
-    else:
-        raise ValueError('At least one of start and padding should be set.')
 
 def parse_image(image, input_layer_name, image_conf):
     image_conf.channels = image.channels
@@ -1603,7 +1588,7 @@ class PoolLayer(LayerBase):
             pool_conf = self.config.inputs[input_index].pool_conf
             print("output size for %s is %d*%d " % (
                 name, pool_conf.output_y, pool_conf.output_x))
-            self.set_layer_size((pool_conf.output_x ** 2) * pool_conf.channels)
+            self.set_layer_size((pool_conf.output_x * pool_conf.output_y) * pool_conf.channels)
 
 @config_layer('batch_norm')
 class BatchNormLayer(LayerBase):
