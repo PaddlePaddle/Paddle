@@ -18,10 +18,6 @@ limitations under the License. */
 #include <atomic>
 #include <libkern/OSAtomic.h>
 
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
-#include <os/lock.h>
-#endif
-
 namespace paddle {
 
 class SemaphorePrivate {
