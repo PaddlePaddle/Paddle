@@ -67,13 +67,16 @@ else()
         endif()
     elseif(EXISTS ${PROJ_ROOT}/.git/)
         find_package(Git REQUIRED)
-        if(GIT_FOUND)
-            execute_process(
-                COMMAND git log -1 --format=%H
-                WORKING_DIRECTORY ${PROJ_ROOT}
-                OUTPUT_VARIABLE GIT_SHA1
-                ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} log -1 --format=%H
+            WORKING_DIRECTORY ${PROJ_ROOT}
+            OUTPUT_VARIABLE GIT_SHA1
+            RESULT_VARIABLE GIT_RESULT
+            ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(NOT ${GIT_RESULT})
             add_definitions(-DPADDLE_VERSION=\"${GIT_SHA1}\")
+        else()
+            message(WARNING "Cannot add paddle version from git tag")
         endif()
     endif()
 endif()
