@@ -33,7 +33,7 @@ if ! python -c "import paddle" >/dev/null 2>/dev/null; then
     esac
   done
   shift $(($OPTIND - 1))
-  export PYTHONPATH=$PYPATH
+  export PYTHONPATH=$PYPATH:$PYTHONPATH
   $@
 else
   echo "paddle package is already in your PYTHONPATH. But unittest need a clean environment."
