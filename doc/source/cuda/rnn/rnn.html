@@ -159,8 +159,8 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv218hl_maxpool_forwardiPK4realiiiiiiiiP4real">
-<span id="hl_maxpool_forward__i.realCP.i.i.i.i.i.i.i.i.realP"></span><span class="target" id="paddlehl__cnn_8h_1a61a9d289929ea007f91afe838044f38d"></span>void <code class="descname">hl_maxpool_forward</code><span class="sig-paren">(</span>int <em>frameCnt</em>, <em class="property">const</em> real *<em>inputData</em>, int <em>channels</em>, int <em>height</em>, int <em>width</em>, int <em>pooledH</em>, int <em>pooledW</em>, int <em>sizeX</em>, int <em>stride</em>, int <em>start</em>, real *<em>tgtData</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_maxpool_forwardiPK4realiiiiiiiiP4real" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv218hl_maxpool_forwardKiPK4realKiKiKiKiKiKiKiKiKiKiKiP4real">
+<span id="hl_maxpool_forward__iC.realCP.iC.iC.iC.iC.iC.iC.iC.iC.iC.iC.iC.realP"></span><span class="target" id="paddlehl__cnn_8h_1a8059e00019ba687c3e1b51b2fe6abfdf"></span>void <code class="descname">hl_maxpool_forward</code><span class="sig-paren">(</span><em class="property">const</em> int <em>frameCnt</em>, <em class="property">const</em> real *<em>inputData</em>, <em class="property">const</em> int <em>channels</em>, <em class="property">const</em> int <em>height</em>, <em class="property">const</em> int <em>width</em>, <em class="property">const</em> int <em>pooledH</em>, <em class="property">const</em> int <em>pooledW</em>, <em class="property">const</em> int <em>sizeX</em>, <em class="property">const</em> int <em>sizeY</em>, <em class="property">const</em> int <em>strideH</em>, <em class="property">const</em> int <em>strideW</em>, <em class="property">const</em> int <em>paddingH</em>, <em class="property">const</em> int <em>paddingW</em>, real *<em>tgtData</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_maxpool_forwardKiPK4realKiKiKiKiKiKiKiKiKiKiKiP4real" title="Permalink to this definition">¶</a></dt>
 <dd><p>Maximum pool forward. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
@@ -179,11 +179,17 @@ var _hmt = _hmt || [];
 </li>
 <li><code class="first docutils literal"><span class="pre">pooledW</span></code> - <p>output image width. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>size of pooling window. </p>
+<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>width of pooling window. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">stride</span></code> - <p>pooling stride. </p>
+<li><code class="first docutils literal"><span class="pre">sizeY</span></code> - <p>height of pooling window. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">start</span></code> - <p>pooling start. </p>
+<li><code class="first docutils literal"><span class="pre">strideH</span></code> - <p>pooling stride height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">strideW</span></code> - <p>pooling stride width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingH</span></code> - <p>padding height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingW</span></code> - <p>padding width. </p>
 </li>
 <li><code class="first docutils literal"><span class="pre">tgtData</span></code> - <p>output data. </p>
 </li>
@@ -194,8 +200,8 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv219hl_maxpool_backwardiPK4realPK4realPK4realiiiiiiiiP4real4real4real">
-<span id="hl_maxpool_backward__i.realCP.realCP.realCP.i.i.i.i.i.i.i.i.realP.real.real"></span><span class="target" id="paddlehl__cnn_8h_1a7642be21b22025cfeebaad3d54b89b65"></span>void <code class="descname">hl_maxpool_backward</code><span class="sig-paren">(</span>int <em>frameCnt</em>, <em class="property">const</em> real *<em>inputData</em>, <em class="property">const</em> real *<em>outData</em>, <em class="property">const</em> real *<em>outGrad</em>, int <em>channels</em>, int <em>height</em>, int <em>width</em>, int <em>pooledH</em>, int <em>pooledW</em>, int <em>sizeX</em>, int <em>stride</em>, int <em>start</em>, real *<em>targetGrad</em>, real <em>scaleA</em>, real <em>scaleB</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_maxpool_backwardiPK4realPK4realPK4realiiiiiiiiP4real4real4real" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv219hl_maxpool_backwardKiPK4realPK4realPK4realKiKiKiKiKiKiKiKiKiKiKi4real4realP4real">
+<span id="hl_maxpool_backward__iC.realCP.realCP.realCP.iC.iC.iC.iC.iC.iC.iC.iC.iC.iC.iC.real.real.realP"></span><span class="target" id="paddlehl__cnn_8h_1a5a5671e0aadc4d58addb2f6c81f5c26b"></span>void <code class="descname">hl_maxpool_backward</code><span class="sig-paren">(</span><em class="property">const</em> int <em>frameCnt</em>, <em class="property">const</em> real *<em>inputData</em>, <em class="property">const</em> real *<em>outData</em>, <em class="property">const</em> real *<em>outGrad</em>, <em class="property">const</em> int <em>channels</em>, <em class="property">const</em> int <em>height</em>, <em class="property">const</em> int <em>width</em>, <em class="property">const</em> int <em>pooledH</em>, <em class="property">const</em> int <em>pooledW</em>, <em class="property">const</em> int <em>sizeX</em>, <em class="property">const</em> int <em>sizeY</em>, <em class="property">const</em> int <em>strideH</em>, <em class="property">const</em> int <em>strideW</em>, <em class="property">const</em> int <em>paddingH</em>, <em class="property">const</em> int <em>paddingW</em>, real <em>scaleA</em>, real <em>scaleB</em>, real *<em>targetGrad</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_maxpool_backwardKiPK4realPK4realPK4realKiKiKiKiKiKiKiKiKiKiKi4real4realP4real" title="Permalink to this definition">¶</a></dt>
 <dd><p>Maximum pool backward. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
@@ -218,17 +224,23 @@ var _hmt = _hmt || [];
 </li>
 <li><code class="first docutils literal"><span class="pre">pooledW</span></code> - <p>output image width. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>size of pooling window. </p>
+<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>width of pooling window. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">stride</span></code> - <p>pooling stride. </p>
+<li><code class="first docutils literal"><span class="pre">sizeY</span></code> - <p>height of pooling window. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">start</span></code> - <p>pooling start. </p>
+<li><code class="first docutils literal"><span class="pre">strideH</span></code> - <p>pooling stride height. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">targetGrad</span></code> - <p>output grad. </p>
+<li><code class="first docutils literal"><span class="pre">strideW</span></code> - <p>pooling stride width. </p>
 </li>
 <li><code class="first docutils literal"><span class="pre">scaleA</span></code> - <p>scale. </p>
 </li>
 <li><code class="first docutils literal"><span class="pre">scaleB</span></code> - <p>scale. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingH</span></code> - <p>padding height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingW</span></code> - <p>padding width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">targetGrad</span></code> - <p>output grad. </p>
 </li>
 </ul>
 </dd>
@@ -237,8 +249,8 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv218hl_avgpool_forwardiPK4realiiiiiiiiP4real">
-<span id="hl_avgpool_forward__i.realCP.i.i.i.i.i.i.i.i.realP"></span><span class="target" id="paddlehl__cnn_8h_1a54bb6d607410b752ab0119e534652a24"></span>void <code class="descname">hl_avgpool_forward</code><span class="sig-paren">(</span>int <em>frameCnt</em>, <em class="property">const</em> real *<em>inputData</em>, int <em>channels</em>, int <em>height</em>, int <em>width</em>, int <em>pooledH</em>, int <em>pooledW</em>, int <em>sizeX</em>, int <em>stride</em>, int <em>start</em>, real *<em>tgtData</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_avgpool_forwardiPK4realiiiiiiiiP4real" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv218hl_avgpool_forwardKiPK4realKiKiKiKiKiKiKiKiKiKiKiP4real">
+<span id="hl_avgpool_forward__iC.realCP.iC.iC.iC.iC.iC.iC.iC.iC.iC.iC.iC.realP"></span><span class="target" id="paddlehl__cnn_8h_1a85120743584a4241217d60b83a61a894"></span>void <code class="descname">hl_avgpool_forward</code><span class="sig-paren">(</span><em class="property">const</em> int <em>frameCnt</em>, <em class="property">const</em> real *<em>inputData</em>, <em class="property">const</em> int <em>channels</em>, <em class="property">const</em> int <em>height</em>, <em class="property">const</em> int <em>width</em>, <em class="property">const</em> int <em>pooledH</em>, <em class="property">const</em> int <em>pooledW</em>, <em class="property">const</em> int <em>sizeX</em>, <em class="property">const</em> int <em>sizeY</em>, <em class="property">const</em> int <em>strideH</em>, <em class="property">const</em> int <em>strideW</em>, <em class="property">const</em> int <em>paddingH</em>, <em class="property">const</em> int <em>paddingW</em>, real *<em>tgtData</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_avgpool_forwardKiPK4realKiKiKiKiKiKiKiKiKiKiKiP4real" title="Permalink to this definition">¶</a></dt>
 <dd><p>Averge pool forward. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
@@ -257,11 +269,17 @@ var _hmt = _hmt || [];
 </li>
 <li><code class="first docutils literal"><span class="pre">pooledW</span></code> - <p>output image width. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>size of pooling window. </p>
+<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>width of pooling window. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">stride</span></code> - <p>pooling stride. </p>
+<li><code class="first docutils literal"><span class="pre">sizeY</span></code> - <p>height of pooling window. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">start</span></code> - <p>pooling start. </p>
+<li><code class="first docutils literal"><span class="pre">strideH</span></code> - <p>pooling stride height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">strideW</span></code> - <p>pooling stride width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingH</span></code> - <p>padding height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingW</span></code> - <p>padding width. </p>
 </li>
 <li><code class="first docutils literal"><span class="pre">tgtData</span></code> - <p>output data. </p>
 </li>
@@ -272,8 +290,8 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv219hl_avgpool_backwardiPK4realiiiiiiiiP4real4real4real">
-<span id="hl_avgpool_backward__i.realCP.i.i.i.i.i.i.i.i.realP.real.real"></span><span class="target" id="paddlehl__cnn_8h_1a43773146d2f15b0c321e712394efcd75"></span>void <code class="descname">hl_avgpool_backward</code><span class="sig-paren">(</span>int <em>frameCnt</em>, <em class="property">const</em> real *<em>outGrad</em>, int <em>channels</em>, int <em>height</em>, int <em>width</em>, int <em>pooledH</em>, int <em>pooledW</em>, int <em>sizeX</em>, int <em>stride</em>, int <em>start</em>, real *<em>backGrad</em>, real <em>scaleA</em>, real <em>scaleB</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_avgpool_backwardiPK4realiiiiiiiiP4real4real4real" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv219hl_avgpool_backwardKiPK4realKiKiKiKiKiKiKiKiKiii4real4realP4real">
+<span id="hl_avgpool_backward__iC.realCP.iC.iC.iC.iC.iC.iC.iC.iC.iC.i.i.real.real.realP"></span><span class="target" id="paddlehl__cnn_8h_1adb3a661e90396ffbf2602ad317d95a8c"></span>void <code class="descname">hl_avgpool_backward</code><span class="sig-paren">(</span><em class="property">const</em> int <em>frameCnt</em>, <em class="property">const</em> real *<em>outGrad</em>, <em class="property">const</em> int <em>channels</em>, <em class="property">const</em> int <em>height</em>, <em class="property">const</em> int <em>width</em>, <em class="property">const</em> int <em>pooledH</em>, <em class="property">const</em> int <em>pooledW</em>, <em class="property">const</em> int <em>sizeX</em>, <em class="property">const</em> int <em>sizeY</em>, <em class="property">const</em> int <em>strideH</em>, <em class="property">const</em> int <em>strideW</em>, int <em>paddingH</em>, int <em>paddingW</em>, real <em>scaleA</em>, real <em>scaleB</em>, real *<em>backGrad</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv219hl_avgpool_backwardKiPK4realKiKiKiKiKiKiKiKiKiii4real4realP4real" title="Permalink to this definition">¶</a></dt>
 <dd><p>Maximum pool backward. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
@@ -292,17 +310,23 @@ var _hmt = _hmt || [];
 </li>
 <li><code class="first docutils literal"><span class="pre">pooledW</span></code> - <p>output image width. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>size of pooling window. </p>
+<li><code class="first docutils literal"><span class="pre">sizeX</span></code> - <p>width of pooling window. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">stride</span></code> - <p>pooling stride. </p>
+<li><code class="first docutils literal"><span class="pre">sizeY</span></code> - <p>height of pooling window. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">start</span></code> - <p>pooling start. </p>
+<li><code class="first docutils literal"><span class="pre">strideH</span></code> - <p>pooling stride height. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">backGrad</span></code> - <p>output grad. </p>
+<li><code class="first docutils literal"><span class="pre">strideW</span></code> - <p>pooling stride width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingH</span></code> - <p>padding height. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">paddingW</span></code> - <p>padding width. </p>
 </li>
 <li><code class="first docutils literal"><span class="pre">scaleA</span></code> - <p>scale. </p>
 </li>
 <li><code class="first docutils literal"><span class="pre">scaleB</span></code> - <p>scale. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">backGrad</span></code> - <p>output grad. </p>
 </li>
 </ul>
 </dd>

@@ -1794,6 +1794,12 @@ virtual <span class="target" id="paddleclasspaddle_1_1Layer_1a80e1752698b6140998
 <dd><p>Intialization. For example, adding input layers from layerMap and parameterMap. </p>
 </dd></dl>
 
+<dl class="function">
+<dt id="_CPPv2N6paddle9PoolLayer10outputSizeEiiii">
+<span id="paddle::PoolLayer::outputSize__i.i.i.i"></span><span class="target" id="paddleclasspaddle_1_1PoolLayer_1a2bfec8a881edba8da3ec60aeb5a73605"></span>int <code class="descname">outputSize</code><span class="sig-paren">(</span>int <em>imageSize</em>, int <em>windowSize</em>, int <em>padding</em>, int <em>stride</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9PoolLayer10outputSizeEiiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate output size according window size and padding size. </p>
+</dd></dl>
+
 </div>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
@@ -1829,11 +1835,6 @@ virtual <span class="target" id="paddleclasspaddle_1_1Layer_1a80e1752698b6140998
 <dl class="member">
 <dt id="_CPPv2N6paddle9PoolLayer8imgSize_E">
 <span id="paddle::PoolLayer::imgSize___s"></span><span class="target" id="paddleclasspaddle_1_1PoolLayer_1a34f5c074e7b51c3b1c726007f995a165"></span>size_t <code class="descname">imgSize_</code><a class="headerlink" href="#_CPPv2N6paddle9PoolLayer8imgSize_E" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="member">
-<dt id="_CPPv2N6paddle9PoolLayer6start_E">
-<span id="paddle::PoolLayer::start___i"></span><span class="target" id="paddleclasspaddle_1_1PoolLayer_1af66d237b885e1cc1a8e8ed737744b0e4"></span>int <code class="descname">start_</code><a class="headerlink" href="#_CPPv2N6paddle9PoolLayer6start_E" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="member">
@@ -1964,12 +1965,6 @@ virtual <span class="target" id="paddleclasspaddle_1_1Layer_1a80e1752698b6140998
 <dt id="_CPPv2N6paddle14CudnnPoolLayer8backwardERK14UpdateCallback">
 <span id="paddle::CudnnPoolLayer::backward__UpdateCallbackCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1CudnnPoolLayer_1affeb9d7a007856660977078c58a00b1a"></span>void <code class="descname">backward</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14CudnnPoolLayer8backwardERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Backward propagation. Should only be called after <a class="reference internal" href="#paddleclasspaddle_1_1Layer_1a12386b3f20dd731e7ceaa2c61667cbe1"><span class="std std-ref">Layer::forward()</span></a> function. </p>
-</dd></dl>
-
-<dl class="function">
-<dt id="_CPPv2N6paddle14CudnnPoolLayer10outputSizeEiiii">
-<span id="paddle::CudnnPoolLayer::outputSize__i.i.i.i"></span><span class="target" id="paddleclasspaddle_1_1CudnnPoolLayer_1a4565d36cd90fc19c389fd1d76f97537c"></span>int <code class="descname">outputSize</code><span class="sig-paren">(</span>int <em>imageSize</em>, int <em>windowSize</em>, int <em>padding</em>, int <em>stride</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14CudnnPoolLayer10outputSizeEiiii" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate output size according window size of pooling. </p>
 </dd></dl>
 
 </div>
