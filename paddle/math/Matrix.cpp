@@ -282,13 +282,13 @@ void GpuMatrix::copyFrom(const IVector& src) {
   copyFrom(matrix);
 }
 
-void GpuMatrix::copyByRowIndex(Matrix& b, IVector& rowIndex) {
+void GpuMatrix::copyByRowIndex(Matrix& b, const IVector& rowIndex) {
   size_t height = getHeight();
   size_t width = getWidth();
   CHECK_EQ(b.getWidth(), width);
   real* dst = getData();
   real* src = b.getData();
-  int* index = rowIndex.getData();
+  const int* index = rowIndex.getData();
   hl_sequence2batch_copy(dst, src, index, width, height, true);
 }
 
@@ -1278,11 +1278,11 @@ void CpuMatrix::copyFrom(const IVector& src) {
   }
 }
 
-void CpuMatrix::copyByRowIndex(Matrix& b, IVector& rowIndex) {
+void CpuMatrix::copyByRowIndex(Matrix& b, const IVector& rowIndex) {
   size_t height = getHeight();
   size_t width = getWidth();
   CHECK_EQ(b.getWidth(), width);
-  int* index = rowIndex.getData();
+  const int* index = rowIndex.getData();
   for (size_t i = 0; i < height; i++) {
     CHECK_LT(static_cast<size_t>(index[i]), b.getHeight());
     real* src = b.getData() + index[i] * width;
