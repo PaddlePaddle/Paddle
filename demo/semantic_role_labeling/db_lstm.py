@@ -19,8 +19,9 @@ import sys
 from paddle.trainer_config_helpers import *
 
 #file paths
-word_dict_file = './data/src.dict'
-label_dict_file = './data/tgt.dict'
+word_dict_file = './data/wordDict.txt'
+label_dict_file = './data/targetDict.txt'
+predicate_file= './data/verbDict.txt'
 train_list_file = './data/train.list'
 test_list_file = './data/test.list'
 
@@ -31,8 +32,10 @@ if not is_predict:
     #load dictionaries
     word_dict = dict()
     label_dict = dict()
+    predicate_dict = dict()
     with open(word_dict_file, 'r') as f_word, \
-         open(label_dict_file, 'r') as f_label:
+         open(label_dict_file, 'r') as f_label, \
+         open(predicate_file, 'r') as f_pre:
         for i, line in enumerate(f_word):
             w = line.strip()
             word_dict[w] = i
@@ -40,6 +43,11 @@ if not is_predict:
         for i, line in enumerate(f_label):
             w = line.strip()
             label_dict[w] = i
+
+        for i, line in enumerate(f_pre):
+            w = line.strip()
+            predicate_dict[w] = i
+
 
     if is_test:
         train_list_file = None 
@@ -51,91 +59,169 @@ if not is_predict:
         module='dataprovider',
         obj='process',
         args={'word_dict': word_dict,
-              'label_dict': label_dict})
+              'label_dict': label_dict,
+              'predicate_dict': predicate_dict })
 
     word_dict_len = len(word_dict)
     label_dict_len = len(label_dict)
+    pred_len = len(predicate_dict)
 
 else:
     word_dict_len = get_config_arg('dict_len', int)
     label_dict_len = get_config_arg('label_len', int)
+    pred_len = get_config_arg('pred_len', int)
 
+############################## Hyper-parameters ##################################
 mark_dict_len = 2
 word_dim = 32
 mark_dim = 5
-hidden_dim = 128
+hidden_dim = 512
 depth = 8
-emb_lr = 1e-2
-fc_lr = 1e-2
-lstm_lr = 2e-2
+
+
+
+########################### Optimizer #######################################
+
 
 settings(
     batch_size=150,
-    learning_method=AdamOptimizer(),
-    learning_rate=1e-3,
+    learning_method=MomentumOptimizer(momentum=0),
+    learning_rate=2e-2,
     regularization=L2Regularization(8e-4),
-    gradient_clipping_threshold=25)
+    is_async=False,
+    model_average=ModelAverage(average_window=0.5,
+                               max_average_window=10000),
+                               
+)
 
-#6 features
+
+
+
+####################################### network ##############################
+#8 features and 1 target
 word = data_layer(name='word_data', size=word_dict_len)
-predicate = data_layer(name='verb_data', size=word_dict_len)
+predicate = data_layer(name='verb_data', size=pred_len)
+
+ctx_n2 = data_layer(name='ctx_n2_data', size=word_dict_len)
 ctx_n1 = data_layer(name='ctx_n1_data', size=word_dict_len)
 ctx_0 = data_layer(name='ctx_0_data', size=word_dict_len)
 ctx_p1 = data_layer(name='ctx_p1_data', size=word_dict_len)
+ctx_p2 = data_layer(name='ctx_p2_data', size=word_dict_len)
 mark = data_layer(name='mark_data', size=mark_dict_len)
+
 
 if not is_predict:
     target = data_layer(name='target', size=label_dict_len)
 
-ptt = ParameterAttribute(name='src_emb', learning_rate=emb_lr)
-layer_attr = ExtraLayerAttribute(drop_rate=0.5)
-fc_para_attr = ParameterAttribute(learning_rate=fc_lr)
-lstm_para_attr = ParameterAttribute(initial_std=0., learning_rate=lstm_lr)
-para_attr = [fc_para_attr, lstm_para_attr]
 
-word_embedding = embedding_layer(size=word_dim, input=word, param_attr=ptt)
-predicate_embedding = embedding_layer(
-    size=word_dim, input=predicate, param_attr=ptt)
-ctx_n1_embedding = embedding_layer(size=word_dim, input=ctx_n1, param_attr=ptt)
-ctx_0_embedding = embedding_layer(size=word_dim, input=ctx_0, param_attr=ptt)
-ctx_p1_embedding = embedding_layer(size=word_dim, input=ctx_p1, param_attr=ptt)
-mark_embedding = embedding_layer(size=mark_dim, input=mark)
+default_std=1/math.sqrt(hidden_dim)/3.0
+
+emb_para = ParameterAttribute(name='emb', initial_std=0., learning_rate=0.)
+std_0 = ParameterAttribute(initial_std=0.)
+std_default = ParameterAttribute(initial_std=default_std) 
+
+word_embedding = embedding_layer(size=word_dim, input=word, param_attr=emb_para)
+predicate_embedding = embedding_layer(size=word_dim, input=predicate, param_attr=ParameterAttribute(name='vemb',initial_std=default_std))
+ctx_n2_embedding = embedding_layer(size=word_dim, input=ctx_n2, param_attr=emb_para)
+ctx_n2_embedding = embedding_layer(size=word_dim, input=ctx_n2, param_attr=emb_para)
+ctx_n1_embedding = embedding_layer(size=word_dim, input=ctx_n1, param_attr=emb_para)
+ctx_0_embedding = embedding_layer(size=word_dim, input=ctx_0, param_attr=emb_para)
+ctx_p1_embedding = embedding_layer(size=word_dim, input=ctx_p1, param_attr=emb_para)
+ctx_p2_embedding = embedding_layer(size=word_dim, input=ctx_p2, param_attr=emb_para)
+mark_embedding = embedding_layer(name='word_ctx-in_embedding', size=mark_dim, input=mark, param_attr=std_0)
+
 
 hidden_0 = mixed_layer(
+    name='hidden0',
     size=hidden_dim,
+    bias_attr=std_default,
     input=[
-        full_matrix_projection(input=word_embedding),
-        full_matrix_projection(input=predicate_embedding),
-        full_matrix_projection(input=ctx_n1_embedding),
-        full_matrix_projection(input=ctx_0_embedding),
-        full_matrix_projection(input=ctx_p1_embedding),
-        full_matrix_projection(input=mark_embedding),
+        full_matrix_projection(input=word_embedding, param_attr=std_default),
+        full_matrix_projection(input=predicate_embedding, param_attr=std_default),
+        full_matrix_projection(input=ctx_n2_embedding, param_attr=std_default),
+        full_matrix_projection(input=ctx_n1_embedding, param_attr=std_default),
+        full_matrix_projection(input=ctx_0_embedding, param_attr=std_default),
+        full_matrix_projection(input=ctx_p1_embedding, param_attr=std_default),
+        full_matrix_projection(input=ctx_p2_embedding, param_attr=std_default),
+        full_matrix_projection(input=mark_embedding, param_attr=std_default)
     ])
 
-lstm_0 = lstmemory(input=hidden_0, layer_attr=layer_attr)
+
+mix_hidden_lr = 1e-3
+lstm_para_attr = ParameterAttribute(initial_std=0.0, learning_rate=1.0)
+hidden_para_attr = ParameterAttribute(initial_std=default_std, learning_rate=mix_hidden_lr)
+
+lstm_0 = lstmemory(name='lstm0',
+                   input=hidden_0, 
+                   act=ReluActivation(),
+                   gate_act=SigmoidActivation(),
+                   state_act=SigmoidActivation(),
+                   bias_attr=std_0,
+                   param_attr=lstm_para_attr)
 
 #stack L-LSTM and R-LSTM with direct edges
 input_tmp = [hidden_0, lstm_0]
 
+
 for i in range(1, depth):
 
-    fc = fc_layer(input=input_tmp, size=hidden_dim, param_attr=para_attr)
+    mix_hidden = mixed_layer(name='hidden'+str(i),
+                             size=hidden_dim, 
+                             bias_attr=std_default,
+                             input=[full_matrix_projection(input=input_tmp[0], param_attr=hidden_para_attr),
+                                    full_matrix_projection(input=input_tmp[1], param_attr=lstm_para_attr)
+                                   ]
+                             )
 
-    lstm = lstmemory(
-        input=fc,
-        act=ReluActivation(),
-        reverse=(i % 2) == 1,
-        layer_attr=layer_attr)
-    input_tmp = [fc, lstm]
+    lstm = lstmemory(name='lstm'+str(i),
+                     input=mix_hidden,
+                     act=ReluActivation(),
+                     gate_act=SigmoidActivation(),
+                     state_act=SigmoidActivation(),
+                     reverse=((i % 2)==1),
+                     bias_attr=std_0,
+                     param_attr=lstm_para_attr)
 
-prob = fc_layer(
-    input=input_tmp,
-    size=label_dict_len,
-    act=SoftmaxActivation(),
-    param_attr=para_attr)
+    input_tmp = [mix_hidden, lstm]
+
+feature_out = mixed_layer(name='output',
+                          size=label_dict_len,
+                          bias_attr=std_default, 
+                          input=[full_matrix_projection(input=input_tmp[0], param_attr=hidden_para_attr),
+                                 full_matrix_projection(input=input_tmp[1], param_attr=lstm_para_attr)
+                                ],
+                          )
+
+
 
 if not is_predict:
-    cls = classification_cost(input=prob, label=target)
-    outputs(cls)
+    crf_l = crf_layer( name = 'crf',
+                       size = label_dict_len,
+                       input = feature_out, 
+                       label = target,
+                       param_attr=ParameterAttribute(name='crfw',initial_std=default_std, learning_rate=mix_hidden_lr)
+
+                      )
+
+    
+    crf_dec_l = crf_decoding_layer(name = 'crf_dec_l',
+                                   size = label_dict_len,
+                                   input = feature_out,
+                                   label = target,
+                                   param_attr=ParameterAttribute(name='crfw')
+                                       )
+
+
+    eval = sum_evaluator(input=crf_dec_l)
+        
+    outputs(crf_l)
+
 else:
-    outputs(prob)
+    crf_dec_l = crf_decoding_layer(name = 'crf_dec_l',
+                                   size = label_dict_len,
+                                   input = feature_out,
+                                   param_attr=ParameterAttribute(name='crfw')
+                                       )
+
+    outputs(crf_dec_l)
+
