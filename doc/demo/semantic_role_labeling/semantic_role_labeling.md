@@ -109,7 +109,7 @@ The `process`function yield 9 lists which are 8 features and label.
 ### Neural Network Config
 `db_lstm.py` is the neural network config file to load the dictionaries and define the  data provider module and network architecture during the training procedure. 
 
-Seven `data_layer` load instances from data provider. Six features are transformed into embedddings respectively, and mixed by `mixed_layer` .  Deep bidirectional LSTM layers extract features for the softmax layer. The objective function is cross entropy of labels.
+Nine `data_layer` load instances from data provider. Eight features are transformed into embedddings respectively, and mixed by `mixed_layer` .  Deep bidirectional LSTM layers extract features for the softmax layer. The objective function is cross entropy of labels.
 
 ### Run Training 
 The script for training is `train.sh`, user just need to execute:
@@ -145,11 +145,11 @@ paddle train \
 -  \--save_dir=./output: output path to save models.
 -  \--local=1: traing in local mode
 -  \--num_passes=10000: set pass number, one pass in PaddlePaddle means training all samples in dataset one time.
--  \--test_period=0: run testing each pass \
--  \--average_test_period=10000000:  do test on average parameter every average_test_period batches\
--  \--init_model_path=./data: parameter initialization path \ 
--  \--load_missing_parameter_strategy=rand: random initialization unexisted parameters\
--  \--dot_period=100: print a dot per 100 batches  \
+-  \--test_period=0: run testing each pass 
+-  \--average_test_period=10000000:  do test on average parameter every average_test_period batches
+-  \--init_model_path=./data: parameter initialization path 
+-  \--load_missing_parameter_strategy=rand: random initialization unexisted parameters
+-  \--dot_period=100: print a dot per 100 batches  
 
 
 After training, the models  will be saved in directory `output`.
