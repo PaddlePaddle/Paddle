@@ -22,4 +22,4 @@ gunzip test.wsj.words.gz
 gunzip test.wsj.props.gz
 
 python extract_pairs.py  -w test.wsj.words -p test.wsj.props -o test.wsj.seq_pair
-python extract_dict_feature.py -p test.wsj.seq_pair -f feature  -s src.dict  -t tgt.dict
+python extract_dict_feature.py -p test.wsj.seq_pair -f feature 
