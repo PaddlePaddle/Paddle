@@ -166,6 +166,7 @@ def inference(images):
 
     # output 1
     resh1 = tf.reshape(pool6, [-1, 1024])
+    drop = tf.nn.dropout(resh1, 0.4)
     affn1 = _affine(resh1, 1024, 1000, act=False)
 
     return affn1
