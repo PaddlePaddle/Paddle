@@ -25,7 +25,7 @@ def process(settings, filename):  # settings is not used currently.
         label = ord(l.read(1))
         pixels = []
         for j in range(28*28):
-            pixels.append(float(ord(f.read(1))))
+            pixels.append(float(ord(f.read(1))) / 255.0)
         yield  { "pixel": pixels, 'label': label }
         
     f.close()

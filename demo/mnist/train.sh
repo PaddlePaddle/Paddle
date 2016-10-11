@@ -22,7 +22,7 @@ paddle train \
 --dot_period=10 \
 --log_period=100 \
 --test_all_data_in_one_period=1 \
---use_gpu=1 \
+--use_gpu=0 \
 --trainer_count=1 \
 --num_passes=100 \
 --save_dir=$output \
