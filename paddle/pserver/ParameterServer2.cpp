@@ -37,6 +37,9 @@ P_DEFINE_double(
     async_lagged_ratio_default, 1.5,
     "if async_lagged_grad_discard_ratio is not set in trainer_config.conf"
     "use it as defalut value");
+P_DEFINE_string(dcsgd_option, "none", "dcsgd option");
+P_DEFINE_double(dcsgd_lambda1, 2.0, "dcsgd param");
+P_DEFINE_double(dcsgd_lambda2, 0.04, "dcsgd param");
 
 namespace paddle {
 
@@ -301,6 +304,11 @@ void ParameterServer2::setParameter(const SendParameterRequest& request,
     blockInfos_.resize(numBlocks);
     for (auto& info : blockInfos_) {
       info.lock.reset(new std::mutex());
+    }
+
+    backups_.resize(FLAGS_num_gradient_servers);
+    for (auto& backup : backups_) {
+      backup.reset(new CpuVector(size_));
     }
   } else {
     CHECK_EQ((size_t)size_, vectors_[PARAMETER_VALUE]->getSize())
@@ -618,6 +626,26 @@ void ParameterServer2::asyncSGD(const SendParameterRequest& request,
         vecs[type]->subVecFrom(*vectors_[type], offset, size);
       }
       vecs[PARAMETER_GRADIENT]->subVecFrom(buffer.base, 0, size);
+      if (FLAGS_dcsgd_option == "option1") {
+        CpuVector paraA(size);
+        CpuVector paraB(size);
+        paraA.copyFrom(*vecs[PARAMETER_GRADIENT]);
+        paraB.copyFrom(*vecs[PARAMETER_VALUE]);
+        paraA.abs();
+        paraB.sub(*backups_[request.trainer_id()]->subVec(offset, size));
+        vecs[PARAMETER_GRADIENT]->addDotMul(paraA, paraB, 1.0,
+                                            FLAGS_dcsgd_lambda1);
+      }
+      if (FLAGS_dcsgd_option == "option2") {
+        CpuVector paraA(size);
+        CpuVector paraB(size);
+        paraA.copyFrom(*vecs[PARAMETER_GRADIENT]);
+        paraB.copyFrom(*vecs[PARAMETER_VALUE]);
+        paraA.square();
+        paraB.sub(*backups_[request.trainer_id()]->subVec(offset, size));
+        vecs[PARAMETER_GRADIENT]->addDotMul(paraA, paraB, 1.0,
+                                            FLAGS_dcsgd_lambda2);
+      }
       info.optimizer->update(vecs, config, isSparseServer_ ? 0 : -1);
 
       if (auto callback = info.optimizer->needSpecialTraversal(config)) {
@@ -678,6 +706,7 @@ void ParameterServer2::getParameter(const SendParameterRequest& request,
   (void)inputBuffers;
   LOG(INFO) << "pserver: getParameter";
   ReadLockGuard guard(parameterMutex_);
+  backups_[request.trainer_id()]->copyFrom(*vectors_[PARAMETER_VALUE]);
   for (const auto& block : request.blocks()) {
     int type = request.send_back_parameter_type();
     sendBackParameter(block, type, response, outputBuffers);

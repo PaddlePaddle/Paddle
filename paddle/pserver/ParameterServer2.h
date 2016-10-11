@@ -103,6 +103,7 @@ protected:
   std::vector<CpuVectorPtr> vectors_;
   std::vector<CpuMatrixPtr> matrices_;
   std::vector<CpuMemHandlePtr> dataMems_;
+  std::vector<CpuVectorPtr> backups_;
 
   // TODO(yanfei):
   // if storing sparse_remote_update() flag in request instead of
