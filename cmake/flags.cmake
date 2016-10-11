@@ -21,12 +21,6 @@ function(safe_set_flag is_c src_list flag_name)
     endif()
     if(${safe_name})
         set(${src_list} "${${src_list}} ${flag_name}" PARENT_SCOPE)
-        if(is_c)
-          set(CUDA_NVCC_FLAGS
-              --compiler-options;${flag_name}
-              ${CUDA_NVCC_FLAGS}
-              PARENT_SCOPE)
-        endif()
     endif()
 endfunction()
 
@@ -39,6 +33,20 @@ endmacro()
 macro(safe_set_cxxflag src_list flag_name)
     safe_set_flag(OFF ${src_list} ${flag_name})
 endmacro()
+
+# helper macro to set nvcc flag
+macro(safe_set_nvflag flag_name)
+    string(REPLACE "-" "_" safe_name ${flag_name})
+    string(REPLACE "=" "_" safe_name ${safe_name})
+    CHECK_C_COMPILER_FLAG(${flag_name} C_COMPILER_SUPPORT_FLAG_${safe_name})
+    set(safe_name C_COMPILER_SUPPORT_FLAG_${safe_name})
+    if(${safe_name})
+        set(CUDA_NVCC_FLAGS
+            --compiler-options;${flag_name}
+            ${CUDA_NVCC_FLAGS})
+    endif()
+endmacro()
+
 
 CHECK_CXX_SYMBOL_EXISTS(UINT64_MAX "stdint.h" UINT64_MAX_EXISTS)
 if(NOT UINT64_MAX_EXISTS)
@@ -63,18 +71,41 @@ set(COMMON_FLAGS
     -Wnon-virtual-dtor
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
+    -Wno-unused-function
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs)
+
+set(GPU_COMMON_FLAGS
+    -fPIC
+    -fno-omit-frame-pointer
+    -Wnon-virtual-dtor
+    -Wdelete-non-virtual-dtor
+    -Wno-unused-parameter
+    -Wno-unused-function
+    -Wno-error=literal-suffix
+    -Wno-error=unused-local-typedefs)
+
+if (APPLE)
+    # On Mac OS X build fat binaries with x86_64 architectures by default.
+    set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+else()
+    set(GPU_COMMON_FLAGS
+        -Wall
+        -Wextra
+        -Werror
+        ${GPU_COMMON_FLAGS})
+endif()
+
 
 foreach(flag ${COMMON_FLAGS})
     safe_set_cflag(CMAKE_C_FLAGS ${flag})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
 endforeach()
 
-# On Mac OS X build fat binaries with x86_64 architectures by default.
-if (APPLE)
-    set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
-endif ()
+foreach(flag ${GPU_COMMON_FLAGS})
+    safe_set_nvflag(${flag})
+endforeach()
+
 
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
