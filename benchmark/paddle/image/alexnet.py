@@ -27,13 +27,13 @@ settings(
 net = data_layer('data', size=height * width * 3)
 net = img_conv_layer(input=net, filter_size=11, num_channels=3,
       num_filters=96, stride=4, padding=1)
-net = img_cmrnorm_layer(input=net, size=5, scale=0.0048, power=0.75)
+net = img_cmrnorm_layer(input=net, size=5, scale=0.0001, power=0.75)
 net = img_pool_layer(input=net, pool_size=3, stride=2) 
 
 # conv2
 net = img_conv_layer(input=net, filter_size=5, num_filters=256,
       stride=1, padding=2, groups=1)
-net = img_cmrnorm_layer(input=net, size=5, scale=0.0128, power=0.75)
+net = img_cmrnorm_layer(input=net, size=5, scale=0.0001, power=0.75)
 net = img_pool_layer(input=net, pool_size=3, stride=2)
 
 # conv3
@@ -48,8 +48,8 @@ net = img_conv_layer(input=net, filter_size=3, num_filters=256,
       stride=1, padding=1, groups=1)
 net = img_pool_layer(input=net, pool_size=3, stride=2)
 
-net = fc_layer(input=net, size=4096, act=ReluActivation())
-net = fc_layer(input=net, size=4096, act=ReluActivation())
+net = fc_layer(input=net, size=4096, act=ReluActivation(), layer_attr=ExtraAttr(drop_rate=0.5))
+net = fc_layer(input=net, size=4096, act=ReluActivation(), layer_attr=ExtraAttr(drop_rate=0.5))
 net = fc_layer(input=net, size=1000, act=SoftmaxActivation())
 
 lab = data_layer('label', num_class)

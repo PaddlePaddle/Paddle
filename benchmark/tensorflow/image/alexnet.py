@@ -51,7 +51,7 @@ def _conv(name, inpOp, nIn, nOut, kH, kW, dH, dW, padType, wd=0.005):
         conv1 = tf.nn.relu(bias, name=scope)
         return conv1
 
-def _affine(name, inpOp, nIn, nOut, wd=0.005, act=True):
+def _affine(name, inpOp, nIn, nOut, wd=0.005, act=True, drop=None):
     with tf.name_scope(name) as scope:
         kernel = tf.get_variable(name + '_w', [nIn, nOut],
             initializer=tf.truncated_normal_initializer(stddev=0.01, dtype=tf.float32),
@@ -68,7 +68,9 @@ def _affine(name, inpOp, nIn, nOut, wd=0.005, act=True):
         affine1 = tf.nn.relu_layer(inpOp, kernel, biases, name=name) if act else \
                   tf.matmul(inpOp, kernel) + biases
 
-        return affine1
+        output = tf.nn.dropout(affine1, drop) if not drop else affine1
+
+        return output
 
 def _mpool(name, inpOp, kH, kW, dH, dW):
     if FLAGS.data_format == 'NCHW':
@@ -123,8 +125,8 @@ def inference(images):
     conv5 = _conv ('conv5', conv4,  384, 256, 3, 3, 1, 1, 'SAME')
     pool5 = _mpool('pool5', conv5,  3, 3, 2, 2)
     resh1 = tf.reshape(pool5, [-1, 256 * 6 * 6])
-    affn1 = _affine('fc6', resh1, 256 * 6 * 6, 4096)
-    affn2 = _affine('fc7', affn1, 4096, 4096)
+    affn1 = _affine('fc6', resh1, 256 * 6 * 6, 4096, 0.5)
+    affn2 = _affine('fc7', affn1, 4096, 4096, 0.5)
     affn3 = _affine('fc8', affn2, 4096, 1000, wd=None, act=False) # last fc
 
     return affn3
