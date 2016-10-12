@@ -56,16 +56,6 @@ public:
   void reshape(int batchSize);
   virtual void forward(PassType passType);
   virtual void backward(const UpdateCallback& callback = nullptr);
-
-  /**
-   * Calculate output size according window size of pooling.
-   */
-  int outputSize(int imageSize, int windowSize, int padding, int stride) {
-    int outputSize;
-    outputSize =
-        (imageSize - windowSize + 2 * padding + stride - 1) / stride + 1;
-    return outputSize;
-  }
 };
 
 }  // namespace paddle
