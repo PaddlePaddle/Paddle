@@ -178,13 +178,6 @@ macro(add_simple_unittest TARGET_NAME)
     add_unittest(${TARGET_NAME} ${TARGET_NAME}.cpp)
 endmacro()
 
-macro(add_paddle_culib TARGET_NAME)
-    set(NVCC_FLAG ${CUDA_NVCC_FLAGS})
-    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--use_fast_math)
-    cuda_add_library(${TARGET_NAME} STATIC ${ARGN})
-    set(CUDA_NVCC_FLAGS ${NVCC_FLAG})
-endmacro()
-
 
 # Creates C resources file from files in given resource file
 function(create_resources res_file output)

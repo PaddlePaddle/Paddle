@@ -81,7 +81,7 @@ int VectorCheckErr(const VectorPtr& vector1, const VectorPtr& vector2) {
 
 #else
 
-#include "paddle/common/Stat.h"
+#include "paddle/utils/Stat.h"
 
 #define CHECK_VECTORPTR(vector1, vector2)
 

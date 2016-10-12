@@ -98,6 +98,8 @@ else()
         add_definitions(-DPADDLE_USE_DSO)
     endif(WITH_DSO)
 
+    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-g -O3 --use_fast_math")
+
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
     include_directories(${CUDA_TOOLKIT_INCLUDE})
@@ -117,6 +119,9 @@ endif(NOT WITH_TIMER)
 if(WITH_AVX)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${AVX_FLAGS}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AVX_FLAGS}")
+    if(AVX_FOUND)
+        set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler -mavx")
+    endif(AVX_FOUND)
 else(WITH_AVX)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse3")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse3")
