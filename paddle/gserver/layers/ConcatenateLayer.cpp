@@ -140,22 +140,22 @@ bool ConcatenateLayer2::init(const LayerMap& layerMap,
   }
   CHECK_EQ(getSize(), endCol);
 
-  if (dynamic_cast<ConvProjection*>(projections_[0].get())) {
-    CHECK(useGpu_) << "ConvProjection only support GPU";
-    for (size_t i = 1; i < inputLayers_.size(); i++) {
-      CHECK(dynamic_cast<ConvProjection*>(projections_[i].get()));
-    }
-    isConvProj_ = true;
-  }
-
   /* initialize biases_ */
   if (biasParameter_.get() != NULL) {
+    if (dynamic_cast<ConvProjection*>(projections_[0].get())) {
+      CHECK(useGpu_) << "ConvProjection only support GPU";
+      for (size_t i = 1; i < inputLayers_.size(); i++) {
+        CHECK(dynamic_cast<ConvProjection*>(projections_[i].get()));
+      }
+      isConvProj_ = true;
+    }
+
     size_t w = isConvProj_ ? 0 : getSize();
     if (isConvProj_) {
       // only support shared bias
       for (size_t i = 0; i < inputLayers_.size(); i++) {
         auto proj = dynamic_cast<ConvProjection*>(projections_[i].get());
-        w += proj->getChannels();
+        w += proj->getNumFilters();
       }
       auto prj = dynamic_cast<ConvProjection*>(projections_[0].get());
       prj->createBias(w);
@@ -180,8 +180,11 @@ void ConcatenateLayer2::forward(PassType passType) {
     projOutput_[i].grad = output_.grad->subColMatrix(startCol, endCol);
   }
 
-  for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    projections_[i]->forward(&getInput(i), &projOutput_[i], passType);
+  {
+    AsyncGpuBlock block;
+    for (size_t i = 0; i != inputLayers_.size(); ++i) {
+      projections_[i]->forward(&getInput(i), &projOutput_[i], passType);
+    }
   }
 
   /* add the bias-vector */
@@ -221,9 +224,12 @@ void ConcatenateLayer2::backward(const UpdateCallback& callback) {
     biases_->getParameterPtr()->incUpdate(callback);
   }
 
-  for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    if (projections_[i]) {
-      projections_[i]->backward(callback);
+  {
+    AsyncGpuBlock block;
+    for (size_t i = 0; i != inputLayers_.size(); ++i) {
+      if (projections_[i]) {
+        projections_[i]->backward(callback);
+      }
     }
   }
 }
