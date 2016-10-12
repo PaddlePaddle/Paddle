@@ -3039,10 +3039,11 @@ def conv_projection(input, filter_size, num_filters,
                           conv_conf=Conv(filter_size=filter_size,
                                          padding=padding,
                                          stride=stride,
-                                         channels=num_channel,
+                                         channels=num_channels,
                                          filter_size_y=filter_size_y,
                                          padding_y=padding_y,
-                                         stride_y=stride_y),
+                                         stride_y=stride_y,
+                                         groups=1),
                           **param_attr.attr)
 
     proj.origin = input

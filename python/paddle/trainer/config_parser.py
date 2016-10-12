@@ -663,6 +663,9 @@ class ConvProjection(Projection):
         fw = self.proj_conf.conv_conf.filter_size_y
         return co * ci * fh * fw
 
+    def calc_bias_size(self):
+        return self.proj_conf.num_filters
+
     def calc_parameter_dims(self, input_size, output_size):
         return None
         # or [self.proj_conf.conv_conf.channels *
@@ -2566,8 +2569,11 @@ class MixedLayer(LayerBase):
             record_operator_conf = self.config.operator_confs.add()
             record_operator_conf.CopyFrom(operator_conf)
 
-
-        self.create_bias_parameter(bias, self.config.size)
+        psize = self.config.size
+        if isinstance(self.inputs[0], ConvProjection):
+          # ConvProjection only support shared bias
+          psize = self.inputs[0].calc_bias_size()
+        self.create_bias_parameter(bias, psize)
 
         if error_clipping_threshold is not None:
             self.config.error_clipping_threshold = error_clipping_threshold
@@ -2649,7 +2655,7 @@ class ConcatenateLayer2(LayerBase):
           psize = 0
           for input_index in xrange(len(self.inputs)):
               input = self.inputs[input_index]
-              psize += input.proj_conf.conv_conf.channels 
+              psize += input.calc_bias_size()
         self.create_bias_parameter(bias, psize)
 
 @config_layer('recurrent')

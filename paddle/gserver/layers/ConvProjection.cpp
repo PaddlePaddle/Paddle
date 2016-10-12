@@ -22,7 +22,7 @@ REGISTER_PROJECTION(conv, ConvProjection);
 
 ConvProjection::ConvProjection(const ProjectionConfig& config,
                                ParameterPtr parameter, bool useGpu)
-    : Projection(config, parameter, useGpu) {
+    : Projection(config, parameter, useGpu), bias_(false) {
 
   CHECK(useGpu);  // only support GPU
   getConvParams();
@@ -42,8 +42,8 @@ void ConvProjection::getConvParams() {
   strideH_ = conf.stride_y();
   strideW_ = conf.stride();
 
-  filterH_ = conf.filter_size();
-  filterW_ = conf.filter_size_y();
+  filterH_ = conf.filter_size_y();
+  filterW_ = conf.filter_size();
 
   configImgH_ = conf.img_size();
   configImgW_ = conf.img_size();
@@ -110,16 +110,7 @@ void ConvProjection::allocConvWorkSpace(size_t maxWorkSpace) {
 }
 
 void ConvProjection::reshape(int batchSize) {
-  imageH_ = in_->getFrameHeight();
-  imageW_ = in_->getFrameWidth();
-  if (imageH_ == 0) imageH_ = configImgH_;
-  if (imageW_ == 0) imageW_ = configImgW_;
-  outputH_ = outputSize(imageH_, filterH_, paddingH_, strideH_);
-  outputW_ = outputSize(imageW_, filterW_, paddingW_, strideW_);
-
-  out_->setFrameHeight(outputH_);
-  out_->setFrameWidth(outputW_);
-
+  calOutputSize();
   isSelectAlgo_ = (batchSize == batchNum_);
   batchNum_ = batchSize;
 
@@ -182,6 +173,23 @@ void ConvProjection::backward(const UpdateCallback& callback) {
   }
 
   weight_->getParameterPtr()->incUpdate(callback);
+}
+
+ConvProjection::~ConvProjection() {
+  hl_destroy_tensor_descriptor(inputDesc_);
+  hl_destroy_tensor_descriptor(outputDesc_);
+  hl_destroy_filter_descriptor(filterDesc_);
+  hl_destroy_convolution_descriptor(convDesc_);
+
+  if (bias_) {
+    hl_destroy_tensor_descriptor(allOutputDesc_);
+    hl_destroy_tensor_descriptor(biasDesc_);
+  }
+
+  if (workSpaceInBytes_ != 0) {
+    hl_free_mem_device(workSpace_);
+    workSpaceInBytes_ = 0;
+  }
 }
 
 }  // namespace paddle

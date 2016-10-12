@@ -29,22 +29,32 @@ public:
    */
   ConvProjection(const ProjectionConfig& config, ParameterPtr parameter,
                  bool useGpu);
+
+  ~ConvProjection();
+
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 
-  int getChannels() {
-    return channels_;
+  int getNumFilters() {
+    return numFilters_;
   }
 
   void createBias(int elmCnt) {
     hl_create_tensor_descriptor(&allOutputDesc_);
     hl_create_tensor_descriptor(&biasDesc_);
     hl_tensor_reshape(biasDesc_, 1, elmCnt, 1, 1);
+    bias_ = true;
   }
 
+  /// in case of concat2(input=[convProj, convProj])
+  /// numFilters != numFilters_
   void addBias(int batchSize, int numFilters, real* outData, real* biasData) {
     CHECK(allOutputDesc_ && biasDesc_);
-    // numFilters != numFilters_ in case of concat2(input=[convProj, convProj])
+    
+    // if addBias is called before forward and reshape(),
+    // it need to call calOutputSize() outputH_ and outputW_
+    // calOutputSize();
+
     hl_tensor_reshape(allOutputDesc_, batchSize, numFilters,
                       outputH_, outputW_, numFilters * outputH_ * outputW_,
                       outputH_ * outputW_, outputW_, 1);
@@ -63,15 +73,24 @@ protected:
   void initCudnn();
 
   void allocConvWorkSpace(size_t maxWorkSpace);
-
   void reshapeTensorDesc(int batchSize);
-
   void reshape(int batchSize);
 
   int outputSize(int imageSize, int filterSize, int padding, int stride) {
     // caffe mode
     int outputSize = (imageSize - filterSize + 2 * padding) / stride + 1;
     return outputSize;
+  }
+  void calOutputSize() {
+    imageH_ = in_->getFrameHeight();
+    imageW_ = in_->getFrameWidth();
+    if (imageH_ == 0) imageH_ = configImgH_;
+    if (imageW_ == 0) imageW_ = configImgW_;
+    outputH_ = outputSize(imageH_, filterH_, paddingH_, strideH_);
+    outputW_ = outputSize(imageW_, filterW_, paddingW_, strideW_);
+
+    out_->setFrameHeight(outputH_);
+    out_->setFrameWidth(outputW_);
   }
 
   /// imageH_ and imageW_ is calculated from the input layer.
@@ -109,6 +128,8 @@ protected:
   /// batchNum is used to record batch size. If the batch size is changed,
   /// the selection algorithm will be called.
   int batchNum_;
+
+  bool bias_;
 
   std::unique_ptr<Weight> weight_;
 };

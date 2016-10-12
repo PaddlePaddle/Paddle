@@ -271,7 +271,7 @@ void CudnnConvLayer::backward(const UpdateCallback &callback) {
 }
 
 CudnnConvLayer::~CudnnConvLayer() {
-  if (biasDesc_) {
+  if (biases_.get()) {
     hl_destroy_tensor_descriptor(biasDesc_);
   }
 

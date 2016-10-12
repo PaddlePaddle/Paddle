@@ -84,7 +84,8 @@ def inception(name, input, channels, \
     covprj = conv_projection(input=pool1, filter_size=1, num_filters=proj,
                              stride=1, padding=0)
 
-    cat = concat_layer(input=[cov1, cov3, cov5, covprj])
+    cat = concat_layer(name=name, input=[cov1, cov3, cov5, covprj],
+                       bias_attr=True, act=ReluActivation())
     return cat
 
 

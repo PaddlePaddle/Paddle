@@ -134,6 +134,45 @@ TEST(Projection, identity) {
   }
 }
 
+
+#ifndef PADDLE_ONLY_CPU
+TEST(Projection, conv) {
+  const int NUM_FILTERS = 16;
+  const int FILTER_SIZE = 2;
+  const int FILTER_SIZE_Y = 3;
+  const int CHANNELS = 3;
+  const int IMAGE_SIZE = 16;
+
+  ProjectionConfig conf;
+  conf.set_type("conv");
+  conf.set_num_filters(NUM_FILTERS);
+
+  ConvConfig* conv = conf.mutable_conv_conf();
+  conv->set_filter_size(FILTER_SIZE);
+  conv->set_filter_size_y(FILTER_SIZE_Y);
+  conv->set_channels(CHANNELS);
+  conv->set_padding(0);
+  conv->set_padding_y(1);
+  conv->set_stride(2);
+  conv->set_stride_y(2);
+  conv->set_groups(1);
+  conv->set_filter_channels(conv->channels() / conv->groups());
+  conv->set_img_size(IMAGE_SIZE);
+  int outputSize = (2 * conv->padding() + conv->img_size() -
+      conv->filter_size()) / conv->stride() + 1;
+  int outputSizeY = (2 * conv->padding_y() + conv->img_size() -
+      conv->filter_size_y()) / conv->stride_y() + 1;
+  conv->set_output_x(outputSize);
+  conf.set_input_size(IMAGE_SIZE * IMAGE_SIZE * CHANNELS);
+  conf.set_output_size(outputSize * outputSizeY * NUM_FILTERS);
+
+  testProjectionGrad(conf, INPUT_DATA,
+      /* parameterSize */ NUM_FILTERS * CHANNELS * FILTER_SIZE * FILTER_SIZE_Y,
+      /* batchSize */ 100, true, false, NUM_FILTERS);
+}
+#endif
+
+
 TEST(Layer, concat) {
   TestConfig config;
   config.biasSize = 0;
