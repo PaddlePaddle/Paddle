@@ -77,10 +77,14 @@ def main():
     trainer_config.ClearField('data_config')
     trainer_config.ClearField('test_data_config')
 
+    # create a GradientMachine from the model configuratin
     model = api.GradientMachine.createFromConfigProto(
         trainer_config.model_config)
+    # create a trainer for the gradient machine
     trainer = api.Trainer.create(trainer_config, model)
 
+    # create a data converter which converts data to PaddlePaddle
+    # internal format
     input_types = [
         integer_value_sequence(len(word_dict)) if options.seq
             else sparse_binary_vector(len(word_dict)),
