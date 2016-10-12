@@ -17,7 +17,8 @@ import itertools
 import random
 
 from paddle.trainer.config_parser import parse_config
-from py_paddle import swig_paddle, DataProviderConverter
+from py_paddle import swig_paddle as api
+from py_paddle import DataProviderConverter
 from paddle.trainer.PyDataProvider2 \
     import integer_value, integer_value_sequence, sparse_binary_vector
 
@@ -30,7 +31,14 @@ def parse_arguments():
                         type=str, required=True, help="config file name")
     parser.add_argument("--dict_file", required=True, help="dictionary file")
     parser.add_argument("--seq",
-                        default=1, type=int, help="whether use sequence training")
+                        default=1, type=int,
+                        help="whether use sequence training")
+    parser.add_argument("--use_gpu", default=0, type=int,
+                        help="whether use GPU for training")
+    parser.add_argument("--trainer_count", default=1, type=int,
+                        help="Number of threads for training")
+    parser.add_argument("--num_passes", default=5, type=int,
+                        help="Number of training passes")
     return parser.parse_args()
 
 UNK_IDX = 0
@@ -53,8 +61,8 @@ def load_dict(dict_file):
 
 def main():
     options = parse_arguments()
-    print 'seq=%s' % options.seq
-    swig_paddle.initPaddle("--use_gpu=1", "--v=5", "--trainer_count=2")
+    api.initPaddle("--use_gpu=%s" % options.use_gpu,
+                   "--trainer_count=%s" % options.trainer_count)
 
     word_dict = load_dict(options.dict_file)
     train_dataset = list(load_data(options.train_data, word_dict))
@@ -69,10 +77,9 @@ def main():
     trainer_config.ClearField('data_config')
     trainer_config.ClearField('test_data_config')
 
-    print trainer_config.model_config
-    model = swig_paddle.GradientMachine.createFromConfigProto(
+    model = api.GradientMachine.createFromConfigProto(
         trainer_config.model_config)
-    trainer = swig_paddle.Trainer.create(trainer_config, model)
+    trainer = api.Trainer.create(trainer_config, model)
 
     input_types = [
         integer_value_sequence(len(word_dict)) if options.seq
@@ -82,7 +89,7 @@ def main():
 
     batch_size = trainer_config.opt_config.batch_size
     trainer.startTrain()
-    for train_pass in xrange(2):
+    for train_pass in xrange(options.num_passes):
         trainer.startTrainPass()
         random.shuffle(train_dataset)
         for pos in xrange(0, len(train_dataset)):

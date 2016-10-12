@@ -372,7 +372,6 @@ public:
    * the param idx is the slot id
    */
   Matrix* getSlotValue(size_t idx) const throw(RangeError);
-  Matrix* getGrad(size_t idx) const throw(RangeError);
   IVector* getSlotIds(size_t idx) const throw(RangeError);
   Matrix* getSlotIn(size_t idx) const throw(RangeError);
   IVector* getSlotSequenceStartPositions(size_t idx) const throw(RangeError);
@@ -389,7 +388,6 @@ public:
    * The other param is the input Matrix or vector.
    */
   void setSlotValue(size_t idx, Matrix* mat) throw(RangeError);
-  void setGrad(size_t idx, Matrix* mat) throw(RangeError);
   void setSlotIn(size_t idx, Matrix* mat) throw(RangeError);
   void setSlotIds(size_t idx, IVector* vec) throw(RangeError);
   void setSlotSequenceStartPositions(size_t idx,
