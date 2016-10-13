@@ -3524,13 +3524,13 @@ def nce_layer(input, label, num_classes, weight=None,
     :type weight: LayerOutput
     :param num_classes: number of classes.
     :type num_classes: int 
-    :param num_neg_samples: number of negative samples.
+    :param num_neg_samples: number of negative samples. Default is 10.
     :type num_neg_samples: int 
     :param neg_distribution: The distribution for generating the random negative labels.
                              A uniform distribution will be used if not provided.
                              If not None, its length must be equal to num_classes.
-    :type neg_sampling_dist: list|tuple|collections.Sequence|None
-    :param bias_attr: Bias parameter attribute. False if no bias.
+    :type neg_distribution: list|tuple|collections.Sequence|None
+    :param bias_attr: Bias parameter attribute. True if no bias.
     :type bias_attr: ParameterAttribute|None|False
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -3567,6 +3567,7 @@ def nce_layer(input, label, num_classes, weight=None,
         type=LayerType.NCE_LAYER,
         num_classes=num_classes,
         neg_sampling_dist=neg_distribution,
+        num_neg_samples=num_neg_samples,
         inputs=ipts_for_layer,
         bias=ParamAttr.to_bias(bias_attr),
         **ExtraLayerAttribute.to_kwargs(layer_attr)
