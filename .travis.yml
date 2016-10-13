@@ -2,9 +2,17 @@ language: cpp
 cache: ccache
 sudo: required
 dist: trusty
+os:
+  - linux
+  - osx
 env:
   - JOB=DOCS
   - JOB=BUILD_AND_TEST
+matrix:
+  exclude:
+    - os: osx
+      env: JOB=DOCS  # Only generate documentation in linux
+
 addons:
   apt:
     packages:
@@ -28,8 +36,9 @@ addons:
       - libgflags-dev
       - libgtest-dev
 before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo paddle/scripts/travis/before_install.linux.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
   - pip install wheel protobuf sphinx breathe recommonmark
-  - sudo paddle/scripts/travis/before_install.sh
 script:
   - paddle/scripts/travis/main.sh
 notifications:
