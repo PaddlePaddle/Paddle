@@ -87,6 +87,8 @@ PyObjectPtr createPythonClass(const std::string& moduleName,
   CHECK((x) != nullptr) << ::paddle::py::getPyCallStack()
 
 namespace py {
+PyObjectPtr import(const std::string& moduleName);
+
 /**
  * Cast a PyLong or PyInt to int type T.
  * @tparam T return type.

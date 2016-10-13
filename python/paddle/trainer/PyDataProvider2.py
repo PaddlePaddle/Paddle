@@ -340,6 +340,9 @@ def provider(input_types=None, should_shuffle=None, pool_size=-1,
                 assert self.slots is not None
                 assert self.generator is not None
 
+                if use_dynamic_order and isinstance(self.slots, dict):  # reorder input_types
+                    self.slots = [self.slots[ipt] for ipt in self.input_order]
+
                 if len(self.slots) == 1:
                     self.generator = SingleSlotWrapper(self.generator)
 
