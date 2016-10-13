@@ -371,6 +371,12 @@ ctc_layer
     :members: ctc_layer
     :noindex:
 
+nce_layer
+-----------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: nce_layer
+    :noindex:
+
 hsigmoid
 ---------
 ..  automodule:: paddle.trainer_config_helpers.layers
