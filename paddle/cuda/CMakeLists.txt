@@ -2,10 +2,17 @@ set(AVX_SOURCES
     src/hl_math.cc
     src/hl_avx_functions.cc
 )
-set(CUDA_SOURCES
-    src/hl_time.cc
-    src/hl_cpu_functions.cc
-    ${AVX_SOURCES})
+
+if(WITH_AVX)
+    set(CUDA_SOURCES
+        src/hl_time.cc
+        src/hl_cpu_functions.cc
+        ${AVX_SOURCES})
+else()
+    set(CUDA_SOURCES
+        src/hl_time.cc
+        src/hl_cpu_functions.cc)
+endif()
 
 set(CUDA_CXX_WITH_GPU_SOURCES
     src/hl_cuda_cublas.cc

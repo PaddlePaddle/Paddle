@@ -210,7 +210,7 @@ DEVICE = 'device'
 
 
 def layer_support(*attrs):
-    attrs_list = list(attrs) 
+    attrs_list = list(attrs)
     attrs_list.append(DEVICE)
     def decorator(method):
         @functools.wraps(method)
@@ -1627,7 +1627,9 @@ def img_conv_layer(input, filter_size, num_filters,
 @layer_support()
 def img_pool_layer(input, pool_size, name=None,
                    num_channels=None, pool_type=None,
-                   stride=1, start=None, padding=0, layer_attr=None):
+                   stride=1, start=None, padding=0, layer_attr=None,
+                   pool_size_y=None, stride_y=None, padding_y=None,
+                   img_width=None):
     """
     Image pooling Layer.
 
@@ -1635,25 +1637,34 @@ def img_pool_layer(input, pool_size, name=None,
 
     .. _pooling: http://ufldl.stanford.edu/tutorial/supervised/Pooling/
 
-    :param padding: pooling padding
+    :param padding: pooling padding width.
     :type padding: int
+    :param padding_y: pooling padding height. It's equal to padding by default.
+    :type padding_y: int|None
     :param name: name of pooling layer
     :type name: basestring.
     :param input: layer's input
     :type input: LayerOutput
-    :param pool_size: pooling size
+    :param pool_size: pooling window width
     :type pool_size: int
+    :param pool_size_y: pooling window height. It's eaqual to pool_size by default.
+    :type pool_size_y: int|None
     :param num_channels: number of input channel.
     :type num_channels: int
     :param pool_type: pooling type. MaxPooling or AveragePooling. Default is
                       MaxPooling.
     :type pool_type: BasePoolingType
-    :param stride: stride of pooling.
+    :param stride: stride width of pooling.
     :type stride: int
-    :param start: start position of pooling operation.
-    :type start: int
+    :param stride_y: stride height of pooling. It is equal to stride by default.
+    :type stride_y: int|None
+    :param start: start position of pooling operation. Note it is deprecated now.
+    :type start: int|None
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param img_width: the width of input feature map. If it is None, the input feature
+                      map should be square.
+    :type img_width: int|None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -1666,17 +1677,29 @@ def img_pool_layer(input, pool_size, name=None,
     elif isinstance(pool_type, AvgPooling):
         pool_type.name = 'avg'
 
+    type_name = pool_type.name + '-projection' \
+      if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+      else pool_type.name
+
+    pool_size_y = pool_size if pool_size_y is None else pool_size_y
+    stride_y = stride if stride_y is None else stride_y
+    padding_y = padding if padding_y is None else padding_y
+
     Layer(
         name=name,
         type=LayerType.POOL_LAYER,
         inputs=[Input(input.name,
                       pool=Pool(
-                          pool_type=''.join([pool_type.name, '-projection']),
+                          pool_type=type_name,
                           channels=num_channels,
                           size_x=pool_size,
                           start=start,
                           stride=stride,
-                          padding=padding
+                          padding=padding,
+                          size_y=pool_size_y,
+                          stride_y=stride_y,
+                          padding_y=padding_y,
+                          img_width=img_width
                       ))],
         **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
@@ -2751,32 +2774,52 @@ def beam_search(step, input, bos_id, eos_id, beam_size,
 
     tmp = recurrent_group(step=__real_step__, input=real_input, reverse=False,
                           name=name)
-    
+
     return tmp
 
+def __cost_input__(input, label, weight=None):
+    """
+    inputs and parents for cost layers. 
+    """
+    ipts = [Input(input.name), Input(label.name)]
+    parents = [input, label]
+    if weight is not None:
+        assert weight.layer_type == LayerType.DATA
+        ipts.append(Input(weight.name))
+        parents.append(weight)
+    return ipts, parents
+    
 
 @wrap_name_default()
-def regression_cost(input, label, cost='square_error', name=None):
+def regression_cost(input, label, weight=None, cost='square_error', name=None):
     """
     Regression Layer.
 
     TODO(yuyang18): Complete this method.
 
     :param name: layer name.
+    :type name: basestring
     :param input: Network prediction.
+    :type input: LayerOutput
     :param label: Data label.
+    :type label: LayerOutput
+    :param weight: The weight affects the cost, namely the scale of cost.
+                   It is an optional argument.
+    :type weight: LayerOutput
     :param cost: Cost method.
+    :type cost: basestring
     :return: LayerOutput object.
+    :rtype: LayerOutput
     """
-    Layer(inputs=[Input(input.name), Input(label.name)], type=cost, name=name)
-    return LayerOutput(
-        name, LayerType.COST, parents=[input, label]
-    )
+    ipts, parents = __cost_input__(input, label, weight)
+
+    Layer(inputs=ipts, type=cost, name=name)
+    return LayerOutput(name, LayerType.COST, parents=parents)
 
 
 @wrap_name_default("cost")
 @layer_support()
-def classification_cost(input, label, name=None,
+def classification_cost(input, label, weight=None, name=None,
                         cost="multi-class-cross-entropy",
                         evaluator=classification_error_evaluator,
                         layer_attr=None):
@@ -2789,6 +2832,9 @@ def classification_cost(input, label, name=None,
     :type input: LayerOutput
     :param label: label layer name. data_layer often.
     :type label: LayerOutput
+    :param weight: The weight affects the cost, namely the scale of cost.
+                   It is an optional argument.
+    :type weight: LayerOutput
     :param cost: cost method.
     :type cost: basestring
     :param evaluator: Evaluator method.
@@ -2800,7 +2846,10 @@ def classification_cost(input, label, name=None,
     assert input.layer_type != LayerType.DATA
     assert isinstance(input.activation, SoftmaxActivation)
     assert label.layer_type == LayerType.DATA
-    Layer(name=name, type=cost, inputs=[Input(input.name), Input(label.name)],
+
+    ipts, parents = __cost_input__(input, label, weight)
+
+    Layer(name=name, type=cost, inputs=ipts,
           **ExtraLayerAttribute.to_kwargs(layer_attr))
 
     def __add_evaluator__(e):
@@ -2812,7 +2861,7 @@ def classification_cost(input, label, name=None,
         assert isinstance(e.for_classification, bool)
         assert e.for_classification
 
-        e(name=e.__name__, input=input, label=label)
+        e(name=e.__name__, input=input, label=label, weight=weight)
 
     if not isinstance(evaluator, collections.Sequence):
         evaluator = [evaluator]
@@ -2820,7 +2869,7 @@ def classification_cost(input, label, name=None,
     for each_evaluator in evaluator:
         __add_evaluator__(each_evaluator)
 
-    return LayerOutput(name, LayerType.COST, parents=[input, label])
+    return LayerOutput(name, LayerType.COST, parents=parents)
 
 
 def conv_operator(img, filter, filter_size, num_filters,

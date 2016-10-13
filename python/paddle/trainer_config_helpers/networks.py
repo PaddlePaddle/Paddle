@@ -170,13 +170,13 @@ def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
     :type shared_bias: bool
     :param conv_layer_attr: see img_conv_layer for details
     :type conv_layer_attr: ExtraLayerAttribute
-    :param pool_stride: see img_conv_layer for details
+    :param pool_stride: see img_pool_layer for details
     :type pool_stride: int
-    :param pool_start: see img_conv_layer for details
+    :param pool_start: see img_pool_layer for details. It is deprecated now.
     :type pool_start: int
-    :param pool_padding: see img_conv_layer for details
+    :param pool_padding: see img_pool_layer for details
     :type pool_padding: int
-    :param pool_layer_attr: see img_conv_layer for details
+    :param pool_layer_attr: see img_pool_layer for details
     :type pool_layer_attr: ExtraLayerAttribute
     :return: Layer's output
     :rtype: LayerOutput
@@ -243,7 +243,7 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
     :param bn_layer_attr: ParameterAttribute.
     :param pool_stride: see img_pool_layer's document.
     :type pool_stride: int
-    :param pool_start: see img_pool_layer's document.
+    :param pool_start: see img_pool_layer's document. It is deprecated now.
     :type pool_start: int
     :param pool_padding: see img_pool_layer's document.
     :type pool_padding: int
@@ -555,7 +555,7 @@ def lstmemory_unit(input, name=None, size=None, param_attr=None,
     :type gate_act: BaseActivation
     :param state_act: lstm state activiation type.
     :type state_act: BaseActivation
-    :param mixed_bias_attr: bias parameter attribute of mixed layer. 
+    :param mixed_bias_attr: bias parameter attribute of mixed layer.
                             False means no bias, None means default bias.
     :type mixed_bias_attr: ParameterAttribute|False
     :param lstm_bias_attr: bias parameter attribute of lstm layer.
