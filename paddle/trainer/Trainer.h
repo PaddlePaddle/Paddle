@@ -73,12 +73,6 @@ public:
       const std::shared_ptr<DataProvider> &testDataProvider = nullptr);
 
   /**
-   * Initialize Trainer from command line flags.
-   */
-  void init(int argc, char** argv);
-
-
-  /**
    * Train until num_passes reached.
    * One pass means neural network train through all training data.
    *
