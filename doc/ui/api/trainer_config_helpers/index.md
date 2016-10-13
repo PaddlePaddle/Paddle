@@ -1,4 +1,4 @@
-# Trainer Config Helpers
+# Model Config Interface
 
 * [Optimizer](optimizers_index.rst)
 * [Data Source](data_sources.rst)
@@ -7,4 +7,4 @@
 * [Poolings](poolings_index.rst)
 * [Networks](networks_index.rst)
 * [Evaluators](evaluators_index.rst)
-* [Parameter and Extra Layer Attribute](attrs.rst)  
+* [Parameter and Extra Layer Attribute](attrs.rst)

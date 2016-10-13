@@ -1,6 +1,3 @@
-
-
-
 if(NOT DEFINED SPHINX_THEME)
     set(SPHINX_THEME default)
 endif()

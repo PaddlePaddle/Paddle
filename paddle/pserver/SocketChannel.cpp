@@ -27,6 +27,15 @@ limitations under the License. */
 
 namespace paddle {
 
+/**
+ * UIO_MAXIOV is documented in writev(2), but <sys/uio.h> only
+ * declares it on osx/ios if defined(KERNEL)
+ */
+#ifndef UIO_MAXIOV
+#define UIO_MAXIOV 512
+#endif
+
+
 SocketChannel::~SocketChannel() {
   if (tcpRdma_ == F_TCP)
     close(tcpSocket_);
@@ -148,7 +157,8 @@ void SocketChannel::writeMessage(const std::vector<struct iovec>& userIovs) {
   std::vector<iovec> iovs;
   iovs.reserve(userIovs.size() + 2);
   iovs.push_back({&header, sizeof(header)});
-  iovs.push_back({&iovLengths[0], sizeof(iovLengths[0]) * header.numIovs});
+  iovs.push_back({&iovLengths[0], static_cast<size_t>(
+      sizeof(iovLengths[0]) * header.numIovs)});
   iovs.insert(iovs.end(), userIovs.begin(), userIovs.end());
 
   header.totalLength = 0;

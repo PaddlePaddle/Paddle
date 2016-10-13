@@ -9,7 +9,7 @@ There are serveral examples and demos here.
 
 * [Sentiment Analysis](sentiment_analysis/index.rst)
 * [Text Generation](text_generation/index.rst)
-* [Semantic Role Labeling](semantic_role_labeling/index.md)
+* [Semantic Role Labeling](semantic_role_labeling/index.rst)
 
 ## Recommendation
 
@@ -19,6 +19,3 @@ There are serveral examples and demos here.
 ## Model Zoo
 * [ImageNet: ResNet](imagenet_model/resnet_model.md)
 * [Embedding: Chinese Word](embedding_model/index.md)
-
-## Customization
-* [Writing New Layers](new_layer/index.md)

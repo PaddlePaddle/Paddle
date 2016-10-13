@@ -19,6 +19,7 @@ limitations under the License. */
 #include <mutex>
 #include <vector>
 #include <unordered_map>
+#include <map>
 #include "Allocator.h"
 
 namespace paddle {

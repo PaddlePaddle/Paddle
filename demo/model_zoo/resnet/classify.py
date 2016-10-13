@@ -22,9 +22,8 @@ from optparse import OptionParser
 
 import paddle.utils.image_util as image_util
 
-from py_paddle import swig_paddle, util
-from py_paddle import DataProviderWrapperConverter
-from paddle.trainer.PyDataProviderWrapper import DenseSlot
+from py_paddle import swig_paddle, DataProviderConverter
+from paddle.trainer.PyDataProvider2 import dense_vector
 from paddle.trainer.config_parser import parse_config
 
 logging.basicConfig(format='[%(levelname)s %(asctime)s %(filename)s:%(lineno)s] %(message)s')
@@ -85,9 +84,8 @@ class ImageClassifier():
         self.network.loadParameters(self.model_dir)
 
         data_size = 3 * self.crop_dims[0] * self.crop_dims[1]
-        slots = [DenseSlot(data_size)]
-        is_sequence = False
-        self.converter = util.DataProviderWrapperConverter(is_sequence, slots)
+        slots = [dense_vector(data_size)]
+        self.converter = DataProviderConverter(slots)
 
     def get_data(self, img_path):
         """

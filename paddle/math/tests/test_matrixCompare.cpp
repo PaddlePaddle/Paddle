@@ -1697,7 +1697,6 @@ TEST(Matrix, cosSimDerivate) {
   }
 }
 
-
 void testParamReluForward(int height, int width, int w_height,
                                                  int w_width) {
   MatrixPtr output = CpuMatrix::create(height, width, false, false);
@@ -1735,7 +1734,6 @@ TEST(Matrix, paramReluForward) {
     }
   }
 }
-
 
 void testParamReluBackwardW(int height, int width, int w_height,
                                                    int w_width) {
@@ -1775,7 +1773,6 @@ TEST(Matrix, paramReluBackwardW) {
   }
 }
 
-
 void testParamReluBackwardDiff(int height, int width, int w_height,
                                                       int w_width) {
   MatrixPtr oGrad = CpuMatrix::create(height, width, false, false);
@@ -1813,6 +1810,189 @@ TEST(Matrix, paramReluBackwardDiff) {
       for (auto w_height : {1, 2}) {
         for (auto w_width : {1, 2}) {
           testParamReluBackwardDiff(height, width, w_height, w_width);
+        }
+      }
+    }
+  }
+}
+
+void testClassificationError(int numSamples, int dim) {
+  MatrixPtr cpuError = std::make_shared<CpuMatrix>(numSamples, 1);
+  MatrixPtr gpuError = std::make_shared<GpuMatrix>(numSamples, 1);
+  MatrixPtr cpuOutput = std::make_shared<CpuMatrix>(numSamples, dim);
+  MatrixPtr gpuOutput = std::make_shared<GpuMatrix>(numSamples, dim);
+  IVectorPtr cpuLabel = std::make_shared<CpuIVector>(numSamples);
+  IVectorPtr gpuLabel = std::make_shared<GpuIVector>(numSamples);
+
+  cpuOutput->randomizeUniform();
+  cpuLabel->rand(dim);
+  gpuOutput->copyFrom(*cpuOutput);
+  gpuLabel->copyFrom(*cpuLabel);
+
+  cpuError->classificationError(cpuOutput, cpuLabel);
+  gpuError->classificationError(gpuOutput, gpuLabel);
+
+  MatrixPtr check = std::make_shared<CpuMatrix>(numSamples, 1);
+  check->copyFrom(*gpuError);
+  MatrixCheckEqual(*cpuError, *check);
+}
+
+TEST(Matrix, classificationError) {
+  for (auto numSamples : {1, 10, 100, 1000, 70000}) {
+    for (auto dim : {1, 10, 100, 1000}) {
+      VLOG(3) << " numSamples=" << numSamples << " dim=" << dim;
+      testClassificationError(numSamples, dim);
+    }
+  }
+}
+
+void testMaxPoolFwdBwd(int numSamples, int channels,
+                       int imgSizeH, int imgSizeW,
+                       int ksizeH, int ksizeW,
+                       int strideH, int strideW,
+                       int padH, int padW) {
+  int outH = 0, outW = 0;
+  outH = (imgSizeH - ksizeH + 2 * padH + strideH - 1) / strideH + 1;
+  outW = (imgSizeW - ksizeW + 2 * padW + strideW - 1) / strideW + 1;
+
+  int inWidth = imgSizeH * imgSizeW * channels;
+  MatrixPtr input = CpuMatrix::create(numSamples, inWidth, false, false);
+  MatrixPtr inputGpu = GpuMatrix::create(numSamples, inWidth, false, true);
+
+  int outWidth = channels * outH * outW;
+  MatrixPtr target = CpuMatrix::create(numSamples, outWidth, false, false);
+  MatrixPtr targetGpu = GpuMatrix::create(numSamples, outWidth, false, true);
+
+  input->randomizeUniform();
+  target->randomizeUniform();
+  inputGpu->copyFrom(*input);
+  targetGpu->copyFrom(*target);
+
+  target->maxPoolForward(*input, imgSizeH, imgSizeW,
+                         channels, ksizeW, ksizeH,
+                         strideH, strideW, outH, outW, padH, padW);
+  targetGpu->maxPoolForward(*inputGpu, imgSizeH, imgSizeW,
+                            channels, ksizeW, ksizeH,
+                            strideH, strideW, outH, outW, padH, padW);
+  MatrixPtr targetCheck = CpuMatrix::create(numSamples, outWidth, false, false);
+  targetCheck->copyFrom(*targetGpu);
+  checkMatrixEqual(target, targetCheck);
+
+  MatrixPtr inputGrad = CpuMatrix::create(numSamples, inWidth, false, false);
+  MatrixPtr inputGpuGrad = GpuMatrix::create(numSamples, inWidth, false, true);
+  MatrixPtr targetGrad = CpuMatrix::create(numSamples, outWidth, false, false);
+  MatrixPtr targetGpuGrad = GpuMatrix::create(numSamples, outWidth,
+                                              false, true);
+
+  inputGrad->randomizeUniform();
+  targetGrad->randomizeUniform();
+  inputGpuGrad->copyFrom(*inputGrad);
+  targetGpuGrad->copyFrom(*targetGrad);
+
+  inputGrad->maxPoolBackward(*input, imgSizeH, imgSizeW,
+                             *targetGrad, *target,
+                             ksizeW, ksizeH,
+                             strideH, strideW,
+                             outH, outW, 1.0, 1.0, padH, padW);
+  inputGpuGrad->maxPoolBackward(*inputGpu, imgSizeH, imgSizeW,
+                                *targetGpuGrad, *targetGpu,
+                                ksizeW, ksizeH,
+                                strideH, strideW,
+                                outH, outW, 1.0, 1.0, padH, padW);
+  MatrixPtr targetBwdCheck = CpuMatrix::create(numSamples, inWidth,
+                                               false, false);
+  targetBwdCheck->copyFrom(*inputGpuGrad);
+  checkMatrixEqual(inputGrad, targetBwdCheck);
+}
+
+void testAvgPoolFwdBwd(int numSamples, int channels,
+                       int imgSizeH, int imgSizeW,
+                       int ksizeH, int ksizeW,
+                       int strideH, int strideW,
+                       int padH, int padW) {
+  int outH = 0, outW = 0;
+  outH = (imgSizeH - ksizeH + 2 * padH + strideH - 1) / strideH + 1;
+  outW = (imgSizeW - ksizeW + 2 * padW + strideW - 1) / strideW + 1;
+
+  int inWidth = imgSizeH * imgSizeW * channels;
+  MatrixPtr input = CpuMatrix::create(numSamples, inWidth, false, false);
+  MatrixPtr inputGpu = GpuMatrix::create(numSamples, inWidth, false, true);
+
+  int outWidth = channels * outH * outW;
+  MatrixPtr target = CpuMatrix::create(numSamples, outWidth, false, false);
+  MatrixPtr targetGpu = GpuMatrix::create(numSamples, outWidth, false, true);
+
+  input->randomizeUniform();
+  target->randomizeUniform();
+  inputGpu->copyFrom(*input);
+  targetGpu->copyFrom(*target);
+
+  target->avgPoolForward(*input, imgSizeH, imgSizeW,
+                         channels, ksizeW, ksizeH,
+                         strideH, strideW, outH, outW, padH, padW);
+  targetGpu->avgPoolForward(*inputGpu, imgSizeH, imgSizeW,
+                            channels, ksizeW, ksizeH,
+                            strideH, strideW, outH, outW, padH, padW);
+  MatrixPtr targetCheck = CpuMatrix::create(numSamples, outWidth, false, false);
+  targetCheck->copyFrom(*targetGpu);
+  MatrixCheckErr(*target, *targetCheck);
+
+  MatrixPtr inputGrad = CpuMatrix::create(numSamples, inWidth, false, false);
+  MatrixPtr inputGpuGrad = GpuMatrix::create(numSamples, inWidth, false, true);
+  MatrixPtr targetGrad = CpuMatrix::create(numSamples, outWidth, false, false);
+  MatrixPtr targetGpuGrad = GpuMatrix::create(numSamples, outWidth,
+                                              false, true);
+
+  inputGrad->randomizeUniform();
+  targetGrad->randomizeUniform();
+  inputGpuGrad->copyFrom(*inputGrad);
+  targetGpuGrad->copyFrom(*targetGrad);
+
+  inputGrad->avgPoolBackward(*targetGrad, imgSizeH, imgSizeW,
+                             ksizeW, ksizeH,
+                             strideH, strideW,
+                             outH, outW, 1.0, 1.0, padH, padW);
+  inputGpuGrad->avgPoolBackward(*targetGpuGrad, imgSizeH, imgSizeW,
+                                ksizeW, ksizeH,
+                                strideH, strideW,
+                                outH, outW, 1.0, 1.0, padH, padW);
+  MatrixPtr targetBwdCheck = CpuMatrix::create(numSamples, inWidth,
+                                               false, false);
+  targetBwdCheck->copyFrom(*inputGpuGrad);
+  MatrixCheckErr(*inputGrad, *targetBwdCheck);
+}
+
+TEST(Matrix, PoolFwdBwd) {
+  for (auto numSamples : {5, 32}) {
+    for (auto channels : {1, 9, 32}) {
+      for (auto imgSizeH : {14, 28}) {
+        for (auto imgSizeW : {16, 30}) {
+          for (auto sizeX : {2, 5}) {
+            for (auto sizeY : {2, 5}) {
+              for (auto sH : {1, 2}) {
+                for (auto sW : {1, 2}) {
+                   for (auto pH : {0, (sizeY - 1)/2}) {
+                     for (auto pW : {0, (sizeX - 1)/2}) {
+                       VLOG(3) << " numSamples=" << numSamples
+                               << " channels=" << channels
+                               << " imgSizeH=" << imgSizeH
+                               << " imgSizeW=" << imgSizeW
+                               << " sizeX=" << sizeX
+                               << " sizeY=" << sizeY
+                               << " strideH=" << sH
+                               << " strideW=" << sW
+                               << " padingH=" << pH
+                               << " padingW=" << pW;
+                       testMaxPoolFwdBwd(numSamples, channels, imgSizeH,
+                         imgSizeW, sizeX, sizeY, sH, sW, pH, pW);
+                       testAvgPoolFwdBwd(numSamples, channels, imgSizeH,
+                         imgSizeW, sizeX, sizeY, sH, sW, pH, pW);
+                     }
+                   }
+                }
+              }
+            }
+          }
         }
       }
     }

@@ -4,7 +4,7 @@
 
 ## 安装(Install)
 
-首先请参考<a href = "../../build/index.html">安装教程</a>安装PaddlePaddle。
+首先请参考<a href = "../../build_and_install/index.html">安装教程</a>安装PaddlePaddle。
 
 ## 使用概述(Overview)
 
@@ -32,13 +32,12 @@
 
 ## 数据格式准备(Data Preparation)
 在本问题中，我们使用[Amazon电子产品评论数据](http://jmcauley.ucsd.edu/data/amazon/)，
-将评论分为好评(正样本)和差评(负样本)两类。`demo/quick_start`里提供了数据下载脚本
+将评论分为好评(正样本)和差评(负样本)两类。[源码](https://github.com/baidu/Paddle)的`demo/quick_start`里提供了数据下载脚本
 和预处理脚本。
 
 ```bash
 cd demo/quick_start
 ./data/get_data.sh
-pip install -r requirements.txt
 ./preprocess.sh
 ```
 
@@ -135,8 +134,8 @@ define_py_data_sources2(train_list='data/train.list',
 * obj="process": 指定生成数据的函数
 * args={"dictionary": word_dict}: 额外的参数，这里指定词典
 
-更详细用例请参考文档<a href = "../../ui/data_provider/python_case.html">Python Use Case</a>，
-数据格式和详细文档请参考<a href = "../../ui/py_data_provider_wrapper_api.html">
+更详细用例请参考文档<a href = "../../../doc/ui/data_provider/python_case.html">Python Use Case</a>，
+数据格式和详细文档请参考<a href = "../../../doc/ui/data_provider/pydataprovider2.html">
 PyDataProviderWrapper</a>。
 
 ## 网络结构(Network Architecture)
@@ -144,8 +143,8 @@ PyDataProviderWrapper</a>。
 <center> ![](./PipelineNetwork.jpg) </center>
 
 我们将以基本的逻辑回归网络作为起点，并逐渐展示更加深入的功能。更详细的网络配置
-连接请参考<a href = "../../ui/trainer_config_helpers_api.html#module-paddle.trainer_config_helpers.layers">Layer文档</a>。
-所有配置在`demo/quick_start`目录，首先列举逻辑回归网络。
+连接请参考<a href = "../../../doc/layer.html">Layer文档</a>。
+所有配置在[源码](https://github.com/baidu/Paddle)`demo/quick_start`目录，首先列举逻辑回归网络。
 
 ### 逻辑回归模型(Logistic Regression)
 
@@ -351,7 +350,7 @@ lstm = simple_lstm(input=emb, size=lstm_size)
 <br>
 
 ## 优化算法(Optimization Algorithm)
-<a href = "../../ui/trainer_config_helpers_api.html#module-paddle.trainer_config_helpers.optimizers">优化算法</a>包括
+<a href = "../../../doc/ui/trainer_config_helpers_api.html#module-paddle.trainer_config_helpers.optimizers">优化算法</a>包括
 Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优化方法，加了L2正则和梯度截断。
 
 ```python
@@ -376,7 +375,7 @@ paddle train \
 --num_passes=15 \
 --use_gpu=false
 ```
-这里没有介绍多机分布式训练，可以参考<a href = "../../platform/index.html">分布式训练</a>的demo学习如何进行多机训练。
+这里没有介绍多机分布式训练，可以参考<a href = "../../cluster/index.html">分布式训练</a>的demo学习如何进行多机训练。
 
 ## 预测(Prediction)
 可以使用训练好的模型评估带有label的验证集，也可以预测没有label的测试集。
@@ -408,8 +407,15 @@ paddle train \
 
 mv rank-00000 result.txt
 ```
-与训练网络配置不同的是：无需label相关的层，指定outputs输出概率层(softmax输出)，
+这里以`output/pass-00003`为例进行预测，用户可以根据训练log选择test结果最好的模型来预测。与训练网络配置不同的是：无需label相关的层，指定outputs输出概率层(softmax输出)，
 指定batch_size=1，数据传输无需label数据，预测数据指定test_list的位置。
+
+预测结果以文本的形式保存在`result.txt`中，一行为一个样本，格式如下：
+
+```
+预测ID;ID为0的概率 ID为1的概率
+预测ID;ID为0的概率 ID为1的概率
+```
 
 ```
 is_predict = get_config_arg('is_predict', bool, False)

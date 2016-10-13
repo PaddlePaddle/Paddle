@@ -17,10 +17,17 @@
 ## Find MKL First.
 set(MKL_ROOT $ENV{MKL_ROOT} CACHE PATH "Folder contains MKL")
 
-find_path(MKL_INCLUDE_DIR mkl.h PATHS ${MKL_ROOT}/include)
-find_library(MKL_CORE_LIB NAMES mkl_core PATHS ${MKL_ROOT}/lib)
-find_library(MKL_SEQUENTIAL_LIB NAMES mkl_sequential PATHS ${MKL_ROOT}/lib)
-find_library(MKL_INTEL_LP64 NAMES mkl_intel_lp64 PATHS ${MKL_ROOT}/lib)
+find_path(MKL_INCLUDE_DIR mkl.h PATHS
+  ${MKL_ROOT}/include)
+find_library(MKL_CORE_LIB NAMES mkl_core PATHS
+  ${MKL_ROOT}/lib
+  ${MKL_ROOT}/lib/intel64)
+find_library(MKL_SEQUENTIAL_LIB NAMES mkl_sequential PATHS
+  ${MKL_ROOT}/lib
+  ${MKL_ROOT}/lib/intel64)
+find_library(MKL_INTEL_LP64 NAMES mkl_intel_lp64 PATHS
+  ${MKL_ROOT}/lib
+  ${MKL_ROOT}/lib/intel64)
 
 
 if(MKL_INCLUDE_DIR AND MKL_CORE_LIB AND MKL_SEQUENTIAL_LIB AND MKL_INTEL_LP64)
@@ -65,12 +72,14 @@ set(OPENBLAS_ROOT $ENV{OPENBLAS_ROOT} CACHE PATH "Folder contains Openblas")
 set(OPENBLAS_INCLUDE_SEARCH_PATHS
         ${OPENBLAS_ROOT}/include
         /usr/include
-        /usr/include/openblas)
+        /usr/include/openblas
+        /usr/local/opt/openblas/include)
 set(OPENBLAS_LIB_SEARCH_PATHS
         ${OPENBLAS_ROOT}/lib
         /usr/lib
         /usr/lib/blas/openblas
-        /usr/lib/openblas)
+        /usr/lib/openblas
+        /usr/local/opt/openblas/lib)
 
 find_path(OPENBLAS_INC_DIR NAMES cblas.h
   PATHS ${OPENBLAS_INCLUDE_SEARCH_PATHS})

@@ -58,7 +58,7 @@ def seq_to_seq_data(data_dir,
                            args = {"src_dict": src_dict,
                                    "trg_dict": trg_dict})
 
-    return {"src_dict_path": src_lang_dict, "trg_dict_path": trg_lang_dict, 
+    return {"src_dict_path": src_lang_dict, "trg_dict_path": trg_lang_dict,
             "gen_result": gen_result}
 
 
@@ -88,11 +88,11 @@ def gru_encoder_decoder(data_conf,
     src_embedding = embedding_layer(
         input=src_word_id,
         size=word_vector_dim,
-        param_attr=ParamAttr(name='_source_language_embedding'), )
-    src_forward = simple_gru(input=src_embedding, size=encoder_size, )
+        param_attr=ParamAttr(name='_source_language_embedding'))
+    src_forward = simple_gru(input=src_embedding, size=encoder_size)
     src_backward = simple_gru(input=src_embedding,
                               size=encoder_size,
-                              reverse=True, )
+                              reverse=True)
     encoded_vector = concat_layer(input=[src_forward, src_backward])
 
     with mixed_layer(size=decoder_size) as encoded_proj:
@@ -128,12 +128,16 @@ def gru_encoder_decoder(data_conf,
         return out
 
     decoder_group_name = "decoder_group"
+    group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
+                  StaticInput(input=encoded_proj,is_seq=True)]
+
     if not is_generating:
         trg_embedding = embedding_layer(
             input=data_layer(name='target_language_word',
                              size=target_dict_dim),
             size=word_vector_dim,
             param_attr=ParamAttr(name='_target_language_embedding'))
+        group_inputs.append(trg_embedding)
 
         # For decoder equipped with attention mechanism, in training,
         # target embeding (the groudtruth) is the data input,
@@ -142,42 +146,38 @@ def gru_encoder_decoder(data_conf,
         # for the recurrent_group.
         decoder = recurrent_group(name=decoder_group_name,
                                   step=gru_decoder_with_attention,
-                                  input=[
-                                      StaticInput(input=encoded_vector,
-                                                  is_seq=True),
-                                      StaticInput(input=encoded_proj,
-                                                  is_seq=True), trg_embedding
-                                  ], )
+                                  input=group_inputs)
 
         lbl = data_layer(name='target_language_next_word',
                          size=target_dict_dim)
-        cost = classification_cost(input=decoder, label=lbl, )
+        cost = classification_cost(input=decoder, label=lbl)
         outputs(cost)
     else:
-        gen_inputs = [StaticInput(input=encoded_vector,
-                                  is_seq=True),
-                      StaticInput(input=encoded_proj,
-                                  is_seq=True), ]
-        # In generation, decoder predicts a next target word based on
+        # In generation, the decoder predicts a next target word based on
         # the encoded source sequence and the last generated target word.
+
         # The encoded source sequence (encoder's output) must be specified by
-        # StaticInput which is a read-only memory.
-        # Here, GeneratedInputs automatically fetchs the last generated word,
-        # which is initialized by a start mark, such as <s>.
+        # StaticInput, which is a read-only memory.
+        # Embedding of the last generated word is automatically gotten by
+        # GeneratedInputs, which is initialized by a start mark, such as <s>,
+        # and must be included in generation.
+
         trg_embedding = GeneratedInput(
             size=target_dict_dim,
             embedding_name='_target_language_embedding',
             embedding_size=word_vector_dim)
-        gen_inputs.append(trg_embedding)
+        group_inputs.append(trg_embedding)
+
         beam_gen = beam_search(name=decoder_group_name,
                                step=gru_decoder_with_attention,
-                               input=gen_inputs,
-                               id_input=data_layer(name="sent_id",
-                                                   size=1),
-                               dict_file=trg_dict_path,
+                               input=group_inputs,
                                bos_id=0,
                                eos_id=1,
                                beam_size=beam_size,
-                               max_length=max_length,
-                               result_file=gen_trans_file)
+                               max_length=max_length)
+
+        seqtext_printer_evaluator(input=beam_gen,
+                                  id_input=data_layer(name="sent_id", size=1),
+                                  dict_file=trg_dict_path,
+                                  result_file=gen_trans_file)
         outputs(beam_gen)

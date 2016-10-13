@@ -8,7 +8,7 @@ packages=['paddle',
           'paddle.trainer_config_helpers',
           'paddle.utils']
 
-if len(INTERNAL_PACKAGE) == 0:
+if len(INTERNAL_PACKAGE) != 0:
     packages.append(INTERNAL_PACKAGE)
 
 setup(name='paddle',

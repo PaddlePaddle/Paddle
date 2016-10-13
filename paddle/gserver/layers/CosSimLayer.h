@@ -20,11 +20,23 @@ limitations under the License. */
 #include "paddle/utils/ThreadLocal.h"
 
 namespace paddle {
-
+/**
+ * @brief A layer for calculating cosine similarity between two vector
+ * \f[
+ * f(x,y)=scale\frac{x_1y_1+x_2y_2+...+x_ny_n}{\sqrt{x_1^2+x_2^2+...
+ * +x_n^2}\sqrt{y_1^2+y_2^2+...+y_n^2}}
+ * \f]
+ *
+ * - Input1: A vector (batchSize * dataDim) *
+ * - Input2: A vector (batchSize * dataDim) or (1 * dataDim) *
+ * - Output: A vector (dataDim * 1)
+ *
+ * The config file api is cos_sim.
+ */
 class CosSimLayer : public Layer {
 public:
   explicit CosSimLayer(const LayerConfig& config)
-      : Layer(config), kCosSimScale_(5.0f) {}
+      : Layer(config) {}
 
   ~CosSimLayer() {}
 
@@ -32,8 +44,6 @@ public:
 
   void forward(PassType passType);
   void backward(const UpdateCallback& callback = nullptr);
-
-  const real kCosSimScale_;
 };
 
 }  // namespace paddle

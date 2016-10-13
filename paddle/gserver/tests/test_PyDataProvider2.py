@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
+
 from paddle.trainer.PyDataProvider2 import *
 
 
@@ -39,7 +41,8 @@ def test_init_hook(setting, filename):
 
 
 @provider(
-    input_types=[sparse_binary_vector(30000, seq_type=SequenceType.NO_SEQUENCE)])
+    input_types=[
+        sparse_binary_vector(30000, seq_type=SequenceType.NO_SEQUENCE)])
 def test_sparse_non_value_no_seq(setting, filename):
     for i in xrange(200):
         yield [(i + 1) * (j + 1) for j in xrange(10)]
@@ -66,3 +69,43 @@ def test_index_sub_seq(setting, filename):
 
     for i in xrange(200):
         yield list(gen_sub_seq(i))
+
+
+@provider(input_types=[index_slot(100)], min_pool_size=1000)
+def test_min_pool_size(setting, filename):
+    for _ in xrange(1 << 14):
+        yield random.randint(0, 100 - 1)
+
+
+@provider(input_types=[index_slot(100, seq_type=SequenceType.SEQUENCE)],
+          can_over_batch_size=False,
+          calc_batch_size=lambda x: len(x[0]))
+def test_can_over_batch_size(setting, filename):
+    for _ in xrange(1 << 10):
+        seq_len = random.randint(0, 99)
+        yield [random.randint(0, 100 - 1) for _ in xrange(seq_len)]
+
+
+@provider(input_types=[index_slot(10), index_slot(10)])
+def test_input_order(setting, filename):
+    for _ in xrange(1000):
+        yield {
+            'input1': 0,
+            'input2': 1
+        }
+
+
+@provider(input_types=[index_slot(10)],
+          check=True,
+          check_fail_continue=True,
+          should_shuffle="123")  # also test should shuffle
+def test_check(settings, filename):
+    yield_good_value = False
+
+    while not yield_good_value:
+        for _ in xrange(10000):
+            i = random.randint(0, 100)
+            if i < 10:
+                yield_good_value = True
+            yield i
+

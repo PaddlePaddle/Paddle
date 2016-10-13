@@ -23,6 +23,8 @@ extern "C" {
 }
 #endif
 
+#include <cmath>
+
 namespace paddle {
 
 template<class T>

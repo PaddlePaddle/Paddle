@@ -43,6 +43,41 @@ fi
 
 export PYTHONPATH=${PWD}:${PYTHONPATH}
 
+
+# Check python lib installed or not.
+pip --help > /dev/null
+if [ $? -ne 0 ]; then
+    echo "pip should be installed to run paddle."
+    exit 1
+fi
+
+INSTALLED_VERSION=`pip freeze 2>/dev/null | grep '^paddle' | sed 's/.*==//g'`
+
+if [ -z ${INSTALLED_VERSION} ]; then
+   INSTALLED_VERSION="0.0.0"  # not installed
+fi
+cat <<EOF | python -
+from distutils.version import LooseVersion
+import sys
+if LooseVersion("${INSTALLED_VERSION}") < LooseVersion("@PADDLE_VERSION@"):
+  sys.exit(1)
+else:
+  sys.exit(0)
+EOF
+
+if [ $? -eq 1 ]; then  # Older version installed, or not installed at all
+   echo "First time run paddle, need to install some python dependencies."
+   BASEDIR=$(dirname "$0")
+   pip install ${BASEDIR}/../opt/paddle/share/wheels/*.whl
+   if [ $? -ne 0 ]; then
+      echo "pip install wheels failed. "
+      echo "Please use 'sudo paddle' at the first time you use PaddlePaddle"
+      echo "PaddlePaddle will install some python dependencies automatically."
+      exit 1
+   fi
+   echo "Python dependencies are installed."
+fi
+
 case "$1" in
     "train")
         ${DEBUGGER} $MYDIR/../opt/paddle/bin/paddle_trainer ${@:2}

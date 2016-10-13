@@ -39,50 +39,97 @@ limitations under the License. */
 #include "paddle/parameter/Argument.h"
 
 namespace paddle {
+/**
+ * @def REGISTER_DATA_PROVIDER
+ * @brief Macro for registering a data provider. The class type should contain
+ *        a consturctor with parameter (DataConfig, bool).
+ */
+#define REGISTER_DATA_PROVIDER(__type_name, __class_name)\
+  static InitFunction __reg_type_##__type_name([]() {\
+  DataProvider::registrar_.registerClass(\
+  #__type_name, \
+  [](DataConfig conf, ModelConfig, bool useGpu) -> DataProvider* { \
+    DataProvider* dp = new __class_name (conf, useGpu);\
+    return dp;\
+  });\
+})
 
 /**
- * @brief Macro for registering a data provider.
+ * @def REGISTER_DATA_PROVIDER_EX
+ * @brief Macro for registering a data provider, which contains a constructor
+ *        with parameter (DataConfig, ModelConfig, bool).
  */
-#define REGISTER_DATA_PROVIDER(__type_name, __class_name)               \
-  static InitFunction __reg_type_##__type_name([]() {                   \
-    DataProvider::registrar_.registerClass<__class_name>(#__type_name); \
-  })
+#define REGISTER_DATA_PROVIDER_EX(__type_name, __class_name)            \
+  static InitFunction __reg_type_##__type_name([] {                     \
+  DataProvider::registrar_.registerClass<__class_name>(#__type_name);   \
+})
 
 class DataBatch;
 class BufferBatch;
 typedef std::shared_ptr<DataBatch> DataBatchPtr;
 typedef std::shared_ptr<BufferBatch> BufferBatchPtr;
-
+/**
+ * @brief Data for batch training a neural network
+ */
 class DataBatch {
 public:
   DataBatch() : size_(0) { data_.clear(); }
-
+  /**
+   * @brief Get batch size
+   * @return batch size
+   */
   int64_t getSize() const { return size_; }
-
+  /**
+   * @brief Get num of sequences of sequence data
+   * @return num of sequences
+   */
   int64_t getNumSequences() const {
     if (data_.empty()) return size_;
     return data_[0].sequenceStartPositions
                ? data_[0].sequenceStartPositions->getSize() - 1
                : size_;
   }
-
+  /**
+   * @brief Set batch size
+   * @param[in] size size
+   */
   void setSize(int64_t size) { size_ = size; }
-
+  /**
+   * @brief Get size of argument vector
+   * @return size of argument vector
+   * @note For usual supervised learning, input data and label is needed,
+   * then there will be two argument.
+   */
   int64_t getNumStreams() const { return data_.size(); }
 
+  /**
+   * @brief Get a argument with index i
+   * @param[in] i index in argument vector
+   * @return a argument with index i
+   */
   const Argument& getStream(int i) const { return data_[i]; }
-
+  /**
+   * @brief Get all argument
+   * @return an argument vector
+   */
   std::vector<Argument>& getStreams() { return data_; }
-
+  /**
+   * @brief Get all argument const
+   * @return an argument vector
+   */
   std::vector<Argument> getStreams() const { return data_; }
-
+  /**
+   * @brief Clear DataBatch
+   */
   void clear() {
     data_.clear();
     size_ = 0;
   }
 
   /**
-   * The order in which each data stream is appended must match the order
+   * @brief Append data to DataBatch
+   * @param[in] data  matrix data
+   * @note The order in which each data stream is appended must match the order
    * specified in stream_names of DataConfig. The stream_names can be obtained
    * using DataProvider::getStreamNames().
    */
@@ -93,7 +140,10 @@ public:
   }
 
   /**
-   * The order in which each data stream is appended must match the order
+   * @brief Append sequence data to DataBatch
+   * @param[in] data                      matrix data
+   * @param[in] sequenceStartPositions    sequence data
+   * @note The order in which each data stream is appended must match the order
    * specified in stream_names of DataConfig. The stream_names can be obtained
    * using DataProvider::getStreamNames().
    */
@@ -104,24 +154,32 @@ public:
     argu.sequenceStartPositions = sequenceStartPositions;
     data_.push_back(argu);
   }
-
+  /**
+   * @brief Append label data
+   * @param[in]  label    label data
+   * @param[in]  value    matrix data, default null
+   */
   void appendLabel(IVectorPtr label, MatrixPtr value = nullptr) {
     Argument argu;
     argu.ids = label;
     argu.value = value;
     data_.push_back(argu);
   }
-
+  /**
+   * @brief Append user defined data
+   * @param[in]  ptr     user defined data
+   */
   void appendUserDefinedPtr(UserDefinedVectorPtr ptr) {
     Argument argu;
     argu.udp = ptr;
     data_.push_back(argu);
   }
 
-  /**
-   * @param argus: DataBatch.getStreams()
-   * @param size: DataBatch.getSize()
-   * @param dataId: sub dataprovider id (in MultiDataProvider)
+  /*
+   * @brief Append argument
+   * @param[in]  argus   DataBatch.getStreams()
+   * @param[in]  size    DataBatch.getSize()
+   * @param[in]  dataId  sub dataprovider id (in MultiDataProvider)
    */
   void appendArguments(const std::vector<Argument>& argus, int size,
                        int dataId) {
@@ -133,7 +191,14 @@ public:
   }
 
 protected:
+  /**
+   * @brief batch size
+   */
   int64_t size_;
+  /**
+   * @brief A batch data consist of a Argument vector,
+   * An argument corresponds to a type of input data.
+   */
   std::vector<Argument> data_;
 };
 
@@ -228,16 +293,24 @@ protected:
 };
 
 /**
- * DataProvider supplies data for training
- * It can supplies multiple streams of data.
+ * @brief Base class for DataProvider, which supplies data for training
+ * @note It can supplies multiple streams of data.
  * For typical supervised training, there are two streams:
  * one is for input, one is for label.
  */
 class DataProvider {
 public:
-  static ClassRegistrar<DataProvider, DataConfig, bool> registrar_;
+  static ClassRegistrar<DataProvider, DataConfig, ModelConfig, bool> registrar_;
   static DataProvider* create(const DataConfig& config,
+                              const ModelConfig& modelConfig,
                               bool useGpu = FLAGS_use_gpu);
+
+  /**
+   * @brief create only used for unittest.
+   */
+  inline static DataProvider* create(const DataConfig &config, bool useGpu) {
+    return create(config, ModelConfig(), useGpu);
+  }
 
   DataProvider(const DataConfig& config, bool useGpu)
       : config_(config),
@@ -253,16 +326,23 @@ public:
   const DataConfig& getConfig() const { return config_; }
 
   void setSkipShuffle() { skipShuffle_ = true; }
+
+  /**
+   * @brief Get next batch of training samples
+   * @param[in]    size    size of training samples to get
+   * @param[out]   batch   a batch of training samples
+   * @return actual size of obtained training samples
+   */
   int64_t getNextBatch(int64_t size, DataBatch* batch);
 
   /**
-   * Shuffle the data set
+   * @brief Shuffle the data set
    */
   virtual void shuffle() = 0;
 
   /**
-   * reset() must be called before any calls to getNextBatch()
-   * reset all the value of index
+   * @brief reset all the value of index
+   * @note reset() must be called before any calls to getNextBatch()
    * IMPORTANT: subclass reset() should always call the base class reset()
    * at the end of the function
    */
@@ -274,11 +354,18 @@ public:
   }
 
   /**
-   * return the number of training samples in the data set.
-   * return -1 to indicate unlimited number of samples.
+   * @brief Get the size of training samples
+   * @return the number of training samples in the data set.
+   * @note return -1 to indicate unlimited number of samples.
    */
   virtual int64_t getSize() = 0;
 
+  /**
+   * @brief Get next batch training samples internally
+   * @param[in]    size      size of training samples to get
+   * @param[out]   batch     a batch of training samples
+   * @return actual size of obtained training samples
+   */
   virtual int64_t getNextBatchInternal(int64_t size, DataBatch* batch) = 0;
 
 protected:
@@ -288,7 +375,12 @@ protected:
   bool useGpu_;
   std::unique_ptr<DoubleBuffer> doubleBuffer_;
   ThreadLocal<std::vector<MatrixPtr>> constantSlots_;
-
+  /**
+   * @@brief Get next batch training samples from buffer
+   * @param[in]    size      size of training samples to get
+   * @param[out]   batch     a batch of training samples
+   * @return actual size of obtained training samples
+   */
   int64_t getNextBatchFromBuffer(int64_t size, DataBatch* batch);
 
   void initAsyncLoader();

@@ -87,6 +87,10 @@ protected:
   /// Is or not select conv algorihtm.
   bool isSelectAlgo_;
 
+  /// batchNum is used to record batch size. If the batch size is changed,
+  /// the selection algorithm will be called.
+  int batchNum_;
+
 public:
   explicit CudnnConvLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
 

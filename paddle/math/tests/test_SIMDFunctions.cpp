@@ -24,7 +24,7 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 
-#include <malloc.h>
+#include <stdlib.h>
 #include <time.h>
 
 static constexpr size_t VECTOR_LEN = 3072;
@@ -37,7 +37,9 @@ static std::mt19937 RandomEngine(time(0));
 
 inline static std::unique_ptr<float[]> NewVector(size_t len = VECTOR_LEN,
                                                  size_t align = ALIGN) {
-  return std::unique_ptr<float[]>((float*)memalign(align, len * sizeof(float)));
+  float* ptr;
+  CHECK_EQ(posix_memalign((void**)&ptr, align, len * sizeof(float)), 0);
+  return std::unique_ptr<float[]>(ptr);
 }
 
 inline static std::unique_ptr<float[]> NewRandomVector(size_t len = VECTOR_LEN,

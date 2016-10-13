@@ -16,12 +16,11 @@ limitations under the License. */
 #pragma once
 
 #include <pthread.h>
-#include <semaphore.h>
 #include <sys/time.h>
-#include <unistd.h>
-
 #include <condition_variable>
 #include <mutex>
+
+#include "DisableCopy.h"
 
 namespace paddle {
 
@@ -98,35 +97,44 @@ protected:
  * which means it will keep trying to lock until lock on successfully.
  * The SpinLock disable copy.
  */
+class SpinLockPrivate;
 class SpinLock {
 public:
-  SpinLock() { pthread_spin_init(&lock_, 0); }
-  ~SpinLock() { pthread_spin_destroy(&lock_); }
-  SpinLock(const SpinLock&) = delete;
-  SpinLock& operator=(const SpinLock&) = delete;
+  DISABLE_COPY(SpinLock);
+  SpinLock();
+  ~SpinLock();
 
   // std::mutext interface
-  void lock() { pthread_spin_lock(&lock_); }
-  void unlock() { pthread_spin_unlock(&lock_); }
+  void lock();
+  void unlock();
 
-protected:
-  pthread_spinlock_t lock_;
-  char padding_[64 - sizeof(pthread_spinlock_t)];
+private:
+  SpinLockPrivate* m;
 };
 
 /**
  * A simple wapper of semaphore which can only be shared in the same process.
  */
+class SemaphorePrivate;
 class Semaphore {
+public:
+  //! Disable copy & assign
+  Semaphore(const Semaphore& other) = delete;
+  Semaphore& operator= (const Semaphore&& other) = delete;
+
+  //! Enable move.
+  Semaphore(Semaphore&& other): m(std::move(other.m)) {
+  }
+
 public:
   /**
    * @brief Construct Function. 
    * @param[in] initValue the initial value of the 
    * semaphore, default 0.
    */
-  explicit Semaphore(int initValue = 0) { sem_init(&sem_, 0, initValue); }
+  explicit Semaphore(int initValue = 0);
 
-  ~Semaphore() { sem_destroy(&sem_); }
+  ~Semaphore();
 
   /**
    * @brief The same as wait(), except if the decrement can not 
@@ -136,41 +144,38 @@ public:
    * @return ture if the decrement proceeds before ts, 
    * else return false.
    */
-  bool timeWait(struct timespec* ts) { return (0 == sem_timedwait(&sem_, ts)); }
+  bool timeWait(struct timespec* ts);
 
   /**
    * @brief decrement the semaphore. If the semaphore's value is 0, then call blocks.
    */
-  void wait() { sem_wait(&sem_); }
+  void wait();
 
   /**
    * @brief increment the semaphore. If the semaphore's value 
    * greater than 0, wake up a thread blocked in wait().
    */
-  void post() { sem_post(&sem_); }
+  void post();
 
-protected:
-  sem_t sem_;
+private:
+  SemaphorePrivate* m;
 };
-
-static_assert(sizeof(SpinLock) == 64, "Wrong padding");
 
 /**
  * A simple wrapper of thread barrier.
  * The ThreadBarrier disable copy.
  */
+class ThreadBarrierPrivate;
 class ThreadBarrier {
 public:
+  DISABLE_COPY(ThreadBarrier);
+
   /**
    * @brief Construct Function. Initialize the barrier should
    * wait for count threads in wait().
    */
-  explicit ThreadBarrier(int count) {
-    pthread_barrier_init(&barrier_, NULL, count);
-  }
-  ~ThreadBarrier() { pthread_barrier_destroy(&barrier_); }
-  ThreadBarrier(const ThreadBarrier&) = delete;
-  ThreadBarrier& operator=(const ThreadBarrier&) = delete;
+  explicit ThreadBarrier(int count);
+  ~ThreadBarrier();
 
   /**
    * @brief . 
@@ -178,10 +183,10 @@ public:
    * then wake up all the count - 1 threads and continue run together. 
    * Else block the thread until waked by other thread .
    */
-  void wait() { pthread_barrier_wait(&barrier_); }
+  void wait();
 
-protected:
-  pthread_barrier_t barrier_;
+private:
+  ThreadBarrierPrivate* m;
 };
 
 /**

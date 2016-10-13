@@ -21,10 +21,11 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * A layer for computing the outer product of two vectors,
- * which is used in NEURAL TURING MACHINE
- * Input: two vectors: batchSize x dim1, batchSize x dim2
- * Output: a matrix: (batchSize x (dim1*dim2))
+ * @brief A layer for computing the outer product of two vectors
+ * @note used in NEURAL TURING MACHINE
+ * Input1: vector (batchSize * dim1)
+ * Input2: vector (batchSize * dim2)
+ * Output: a matrix: (batchSize * (dim1*dim2))
  */
 
 class OuterProdLayer : public Layer {

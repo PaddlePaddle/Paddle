@@ -22,13 +22,13 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * @brief basic parent layer of pooling
+ * @brief Basic parent layer of pooling
  * Pools the input within regions
  */
 class PoolLayer : public Layer {
 protected:
   size_t channels_, sizeX_, stride_, outputX_, imgSize_;
-  int start_, confPadding_;
+  int confPadding_;
 
   size_t sizeY_;
   size_t imgSizeY_;
@@ -41,10 +41,22 @@ protected:
 public:
   explicit PoolLayer(const LayerConfig& config) : Layer(config) {}
 
-  // create pooling layer by pool_type
+  /**
+   * @brief create pooling layer by pool_type
+   */
   static Layer* create(const LayerConfig& config);
 
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+
+  /**
+   * Calculate output size according window size and padding size.
+   */
+  int outputSize(int imageSize, int windowSize, int padding, int stride) {
+    int outputSize;
+    outputSize =
+        (imageSize - windowSize + 2 * padding + stride - 1) / stride + 1;
+    return outputSize;
+  }
 };
 
 }  // namespace paddle

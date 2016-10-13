@@ -14,10 +14,10 @@
 # limitations under the License.
 set -e
 
-#cfg=trainer_config.lr.py
+cfg=trainer_config.lr.py
 #cfg=trainer_config.emb.py
 #cfg=trainer_config.cnn.py
-cfg=trainer_config.lstm.py
+#cfg=trainer_config.lstm.py
 model="output/pass-00003"
 paddle train \
     --config=$cfg \

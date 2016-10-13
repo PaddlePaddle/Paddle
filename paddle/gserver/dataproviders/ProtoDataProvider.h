@@ -26,8 +26,10 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * @brief  Data file with each sample specified by proto message
- *         DataSample defined in DataFormat.proto.
+ * @brief Provider data from protobuf data file with each sample
+ * specified by proto message
+ *
+ * DataSample defined in DataFormat.proto.
  *
  * The file format is
  *
@@ -68,19 +70,38 @@ public:
   virtual int64_t getNextBatchInternal(int64_t size, DataBatch* batch);
 
 protected:
+  /**
+   * @brief load protobuf data from a list of file
+   * @param[in]  fileName  file name of a file which contains
+   * a list of file names
+   */
   void loadData(const std::string& fileName);
-  void loadDataFile(const std::string& fileName);
 
+  /**
+   * @brief load protobuf data from file
+   * @param[in]  fileName   data file name
+   */
+  void loadDataFile(const std::string& fileName);
+  /** @brief check data header of each data sample
+   *  @param[in] header     data header read from protobuf data
+   */
   void checkDataHeader(const DataHeader& header);
+  /**
+   * @brief fill protobuf data into slot_,
+   * slot_ is a vector of ProtoSlot in memory.
+   * @param[in]  sample     data sample read from protobuf data
+   */
   void fillSlots(const DataSample& sample);
 
   /**
-   * return true if each sample is one sequence, i.e., independent
+   * @brief return true if each sample is one sequence, i.e., independent
    * of other samples.
    */
   inline bool iidData() const { return sequenceStartPositions_.empty(); }
 
-  /// check that sample is consistent with header_
+  /**
+   * @brief check that sample is consistent with header_
+   */
   void checkSample(const DataSample& sample);
 
   template <class Op>
@@ -129,20 +150,21 @@ protected:
 
   int64_t currentSequenceIndex_;
 
-  /// The size should be the number of sequences.
+  // The size should be the number of sequences.
   std::vector<size_t> shuffledSequenceIds_;
 
   ThreadLocalD<DataBatch> cpuBatch_;
   ThreadLocalD<DataBatch> gpuBatch_;
 
   RWLock lock_;
-  // stats for number of none-zeros entries
-  std::vector<StatPtr> nnzStats_;
+  std::vector<StatPtr> nnzStats_;  // stats for number of none-zeros entries
 };
 
 /**
- * Special use for Proto data: instances should contain sparse-non-value slots
- * and label. ProtoSequenceDataProvider treats each SPARSE SLOT as a SEQUENCE
+ * @brief Special use for Proto data: instances should contain sparse-non-value slots
+ * and label.
+ *
+ * @note ProtoSequenceDataProvider treats each SPARSE SLOT as a SEQUENCE
  */
 class ProtoSequenceDataProvider : public ProtoDataProvider {
 public:

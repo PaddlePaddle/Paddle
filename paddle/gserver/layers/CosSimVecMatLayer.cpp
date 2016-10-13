@@ -21,13 +21,16 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * A layer for computing cosine similarity between a vector an each row of a
- * matrix,
+ * @brief A layer for computing cosine similarity between a vector
+ * and each row of a matrix
  * out[i] = cos_scale * cos(in1, in2(i,:));
- * which is used in NEURAL TURING MACHINE
- * Input: a vector (batchSize x dataDim) and a matrix in vec form (batchSize x
- * (weightDim*dataDim))
- * Output: a vector (batchSize x weightDim)
+ * @note used in NEURAL TURING MACHINE
+ *
+ * Input1: a vector (batchSize * dataDim)
+ *
+ * Input2: a matrix in vector form (batchSize * (weightDim*dataDim))
+ *
+ * Output: a vector (batchSize * weightDim)
  */
 
 class CosSimVecMatLayer : public Layer {

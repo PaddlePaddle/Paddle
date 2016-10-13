@@ -29,7 +29,6 @@ import gzip
 from subprocess import Popen, PIPE
 from optparse import OptionParser
 import json
-from bs4 import BeautifulSoup
 from multiprocessing import Queue
 from multiprocessing import Pool
 import multiprocessing
@@ -68,16 +67,6 @@ def parse(path):
     for l in g:
         yield json.loads(l)
     g.close()
-
-'''
-def clean(review):
-    """
-    Clean input review: remove HTML, convert words to lower cases.
-    """
-    # Remove HTML
-    review_text = BeautifulSoup(review, "html.parser").get_text()
-    return review_text
-'''
 
 
 def tokenize(sentences):
@@ -152,7 +141,7 @@ def save_batch(data_dir, num_tokenize, data_dir_dict):
 def parse_batch(data, num_tokenize):
     """
     parse data by batch
-    parse -> clean ->tokenize ->save
+    parse -> tokenize -> save
     """
     raw_txt = parse(data)
     neg, pos = [], []
@@ -160,7 +149,6 @@ def parse_batch(data, num_tokenize):
     sys.stderr.write("extract raw data\n")
     for l in raw_txt:
         rating = l["overall"]
-        #text = clean(l["reviewText"].lower()) # remove HTML
         text = l["reviewText"].lower()  # # convert words to lower case
         if rating == 5.0 and text:
             pos.append(text)
@@ -223,7 +211,6 @@ def main():
     pool.close()
     pool.join()
 
-    sys.stderr.write("clean data done.\n")
     file(os.path.join(os.path.dirname(data), 'labels.list'),
          'w').write('neg\t0\npos\t1\n')
 

@@ -19,6 +19,7 @@ limitations under the License. */
 #include "hl_matrix_apply.cuh"
 #include "hl_sequence.h"
 #include "paddle/utils/Logging.h"
+#include "hl_device_functions.cuh"
 
 DEFINE_MATRIX_UNARY_OP(Zero, a = 0);
 DEFINE_MATRIX_TERNARY_PARAMETER_OP(_add, TWO_PARAMETER, c = p1*a + p2*b);
@@ -266,25 +267,21 @@ template<int blockSize>
 __global__ void KeMatrixClassificationError(real* in_A,
                                             int* in_B,
                                             real* out_C,
-                                            int dimM,
                                             int dimN) {
   __shared__ real max_s[blockSize];
   __shared__ int max_l[blockSize];
-  int cnt = (dimN + blockSize -1) / blockSize;
-  int tid = threadIdx.x;
-  int lmt = tid;
-  int index = 0;
-  real t;
+  const int tid = threadIdx.x;
+  const int rowId = blockIdx.x;
 
   max_s[tid] = -1e30f;
-  for (int ii = 0; ii < cnt && lmt < dimN; ii++) {
-    index = blockIdx.y*dimN + lmt;
-    t = in_A[index];
-    if (max_s[tid] < t) {
-      max_s[tid] = t;
-      max_l[tid] = lmt;
+  in_A += rowId * dimN;
+  real tmp;
+  for (int colId = tid; colId < dimN; colId += blockSize) {
+    tmp = in_A[colId];
+    if (max_s[tid] < tmp) {
+      max_s[tid] = tmp;
+      max_l[tid] = colId;
     }
-    lmt += blockSize;
   }
   __syncthreads();
 
@@ -300,7 +297,7 @@ __global__ void KeMatrixClassificationError(real* in_A,
   __syncthreads();
 
   if (tid == 0) {
-    out_C[blockIdx.y] = (max_l[0] == in_B[blockIdx.y] ? 0 : 1.0f);
+    out_C[rowId] = (max_l[0] == in_B[rowId] ? 0 : 1.0f);
   }
 }
 
@@ -313,12 +310,9 @@ void hl_matrix_classification_error(real* A_d,
   CHECK_NOTNULL(B_d);
   CHECK_NOTNULL(C_d);
 
-  int blocksX = 1;
-  int blocksY = dimM;
-  dim3 threads(1024, 1);
-  dim3 grid(blocksX, blocksY);
-  KeMatrixClassificationError<1024><<< grid, threads, 0, STREAM_DEFAULT >>>
-           (A_d, B_d, C_d, dimM, dimN);
+  // each sample is calculated by one block
+  KeMatrixClassificationError<1024><<< dimM, 1024, 0, STREAM_DEFAULT >>>
+    (A_d, B_d, C_d, dimN);
   CHECK_SYNC("hl_matrix_classification_error");
 }
 
@@ -629,7 +623,7 @@ __global__ void KeCosSimDerivative(real* grad,
         prevGradY[index] +=
           scale * grad[ty] * prevOutX[index] * reciprocal;
       } else {
-        atomicAdd(prevGradY + index,
+        paddle::paddleAtomicAdd(prevGradY + index,
           scale * grad[ty] * prevOutX[index] * reciprocal);
       }
     }
@@ -646,7 +640,7 @@ __global__ void KeCosSimDerivative(real* grad,
           (prevOutX[index] * reciprocalXY -
            prevOutY[index] * reciprocalSquareSumY);
       } else {
-        atomicAdd(prevGradY + index, output[ty] * grad[ty] *
+        paddle::paddleAtomicAdd(prevGradY + index, output[ty] * grad[ty] *
           (prevOutX[index] * reciprocalXY -
            prevOutY[index] * reciprocalSquareSumY));
       }

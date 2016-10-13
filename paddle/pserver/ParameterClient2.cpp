@@ -278,7 +278,7 @@ void ParameterClient2::prepareSendData(
 
           if (sendingPara) {
             sendJob->parallelInputIovs[serverId].push_back(
-                {sendMat->getLocalRow(row), sizeof(real) * blockSize});
+                {sendMat->getLocalRow(row), sizeof(real) * (size_t) blockSize});
             /// detect sparse parameter distribution
             sparseDistribution_->probeDistribution(serverId,
                     sizeof(real) * blockSize);
@@ -302,8 +302,8 @@ void ParameterClient2::prepareSendData(
         block->set_begin_pos(beginDim);
         block->set_block_size(endDim - beginDim);
         if (buf) {
-            sendJob->parallelInputIovs[serverId].push_back(
-                    {buf + beginDim, sizeof(real) * (endDim - beginDim)});
+            sendJob->parallelInputIovs[serverId].push_back({buf + beginDim,
+                     sizeof(real) * ((size_t) (endDim - beginDim))});
         }
       }
     }

@@ -14,8 +14,7 @@ limitations under the License. */
 
 
 #include "HierarchicalSigmoidLayer.h"
-
-#include "paddle/math/Bits.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 

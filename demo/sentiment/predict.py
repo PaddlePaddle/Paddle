@@ -15,13 +15,13 @@
 import os
 import numpy as np
 from optparse import OptionParser
-from py_paddle import swig_paddle, util, DataProviderWrapperConverter
-from paddle.trainer.PyDataProviderWrapper import IndexSlot
+from py_paddle import swig_paddle, DataProviderConverter
+from paddle.trainer.PyDataProvider2 import integer_value_sequence
 from paddle.trainer.config_parser import parse_config
 
 """
 Usage: run following command to show help message.
-  python predict.py -h 
+  python predict.py -h
 """
 
 class SentimentPrediction():
@@ -46,8 +46,8 @@ class SentimentPrediction():
         conf = parse_config(train_conf, "is_predict=1")
         self.network = swig_paddle.GradientMachine.createFromConfigProto(conf.model_config)
         self.network.loadParameters(self.model_dir)
-        slots = [IndexSlot(self.dict_dim)]
-        self.converter = util.DataProviderWrapperConverter(True, slots)
+        slots = [integer_value_sequence(self.dict_dim)]
+        self.converter = DataProviderConverter(slots)
 
     def load_dict(self):
         """

@@ -101,6 +101,7 @@ void TrainerInternal::trainOneBatch(int64_t batchId,
       // it
       //! to ParameterHook.
       auto& grad = para->getBuf(PARAMETER_GRADIENT);
+      SetDevice device(para->getDeviceId());
       paraStats[para->getID()].avgAbsGrad = grad->getAbsSum() / para->getSize();
       paraStats[para->getID()].maxAbsGrad = grad->getAbsMax();
     }

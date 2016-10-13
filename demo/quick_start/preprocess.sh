@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright (c) 2016 Baidu, Inc. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,20 +18,22 @@
 # 3. distinct train set and test set.
 # 4. build dict
 
+set -e
 
-mkdir data/tmp
+mkdir -p data/tmp
 python preprocess.py -i data/reviews_Electronics_5.json.gz
 # uniq and shuffle
 cd data/tmp
+echo 'uniq and shuffle...'
 cat pos_*|sort|uniq|shuf> pos.shuffed
 cat neg_*|sort|uniq|shuf> neg.shuffed
 
 min_len=`sed -n '$=' neg.shuffed`
-((test_num=$min_len/10))
+test_num=$((min_len/10))
 if [ $test_num -gt 12500 ];then
  test_num=12500
 fi
-((train_num=$min_len-$test_num))
+train_num=$((min_len-test_num))
 
 head -n$train_num pos.shuffed >train.pos
 head -n$train_num neg.shuffed >train.neg

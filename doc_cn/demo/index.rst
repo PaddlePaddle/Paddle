@@ -21,5 +21,6 @@
 
 常用模型
 ''''''''
-* `ImageNet: ResNet <../../doc/demo/imagenet_model/index.html>`_
+
+* `ImageNet: ResNet <../../doc/demo/imagenet_model/resnet_model.html>`_
 * `Embedding: Chinese Word <../../doc/demo/embedding_model/index.html>`_

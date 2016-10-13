@@ -5,13 +5,10 @@
 ''''''''
 
 ..  toctree::
+    :maxdepth: 1
 
     data_provider/index.rst
 
-API参考
-'''''''
-
-`Trainer Config Helper <http://paddlepaddle.org/doc/ui/api/trainer_config_helpers/index.html>`_
 
 命令行参数
 ''''''''''
