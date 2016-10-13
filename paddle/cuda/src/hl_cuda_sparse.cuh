@@ -355,7 +355,7 @@ __global__ void KeSMatrixCscMulDense(real *C_d,
 }
 
 /* best perf */
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
 #define CU_CSCMM_THREAD_M_BEST          9
 #else
 #define CU_CSCMM_THREAD_M_BEST          4
