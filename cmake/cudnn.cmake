@@ -30,7 +30,7 @@ endif()
 if(CUDNN_FOUND)
     file(READ ${CUDNN_INCLUDE_DIR}/cudnn.h CUDNN_VERSION_FILE_CONTENTS)
 
-    get_filename_component(CUDNN_LIB_PATH ${CUDNN_LIBRARY} DIRECTORY)
+    get_filename_component(CUDNN_LIB_PATH ${CUDNN_LIBRARY} PATH)
 
     string(REGEX MATCH "define CUDNN_VERSION +([0-9]+)"
         CUDNN_VERSION "${CUDNN_VERSION_FILE_CONTENTS}")
