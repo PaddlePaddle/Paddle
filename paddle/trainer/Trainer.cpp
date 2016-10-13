@@ -88,12 +88,16 @@ P_DEFINE_string(model_list, "",
 
 namespace paddle {
 
-
 void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
-                   bool testing,
-                   const std::shared_ptr<GradientMachine> &gradientMachine,
-                   const std::shared_ptr<DataProvider> &dataProvider,
-                   const std::shared_ptr<DataProvider> &testDataProvider) {
+                   bool testing) {
+  /// @TODO(yanfei): Clean this useless variable in next commit.
+  /// redundant parameters are removed, set nullptr with local variable
+  /// to verfiy that these there variables are useless.
+  /// Compiling Internal opensource/external opensource/metric learning passed
+  const std::shared_ptr<GradientMachine> &gradientMachine = nullptr;
+  const std::shared_ptr<DataProvider> &dataProvider = nullptr;
+  const std::shared_ptr<DataProvider> &testDataProvider = nullptr;
+
   this->stats_ = std::make_shared<TrainerStats>();
 
   config_ = config;

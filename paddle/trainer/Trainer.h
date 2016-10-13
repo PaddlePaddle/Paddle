@@ -60,17 +60,10 @@ public:
    *
    * @param config TrainerConfig.
    * @param testing true if only for testing
-   * @param gradientMachine GradientMachine that will be trained.
-   *                        nullptr if create from config.
-   * @param dataProvider Train Data Provider. null if create from config.
-   * @param testDataProvider Test Data Provider. null if create from config.
    */
   virtual void init(
       const std::shared_ptr<TrainerConfigHelper> &config,
-      bool testing = false,
-      const std::shared_ptr<GradientMachine> &gradientMachine = nullptr,
-      const std::shared_ptr<DataProvider> &dataProvider = nullptr,
-      const std::shared_ptr<DataProvider> &testDataProvider = nullptr);
+      bool testing = false);
 
   /**
    * Train until num_passes reached.
