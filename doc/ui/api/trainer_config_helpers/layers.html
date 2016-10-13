@@ -129,7 +129,7 @@ reasons.</p>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer output name.</li>
 <li><strong>layer_type</strong> (<em>basestring</em>) &#8211; Current Layer Type. One of LayerType enumeration.</li>
 <li><strong>activation</strong> (<em>BaseActivation.</em>) &#8211; Layer Activation.</li>
-<li><strong>parents</strong> (<em>list|tuple|collection.Sequence</em>) &#8211; Layer&#8217;s parents.</li>
+<li><strong>parents</strong> (<em>list|tuple|collections.Sequence</em>) &#8211; Layer&#8217;s parents.</li>
 </ul>
 </td>
 </tr>
@@ -1524,13 +1524,17 @@ SumPooling, SquareRootNPooling.</li>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">concat_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Concat all input vector into one huge vector.
 Inputs can be list of LayerOutput or list of projection.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">concat</span> <span class="o">=</span> <span class="n">concat_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">])</span>
+</pre></div>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
-<li><strong>input</strong> (<em>list|tuple|collection.Sequence</em>) &#8211; input layers or projections</li>
+<li><strong>input</strong> (<em>list|tuple|collections.Sequence</em>) &#8211; input layers or projections</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
@@ -2469,6 +2473,49 @@ should also be num_classes + 1.</p>
 </dd></dl>
 
 </div>
+<div class="section" id="nce-layer">
+<h2>nce_layer<a class="headerlink" href="#nce-layer" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">nce_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Noise-contrastive estimation.
+Implements the method in the following paper:
+A fast and simple algorithm for training neural probabilistic language models.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">nce_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">layer3</span><span class="p">,</span>
+                 <span class="n">num_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">neg_distribution</span><span class="o">=</span><span class="p">[</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.3</span><span class="p">,</span><span class="mf">0.6</span><span class="p">])</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
+<li><strong>input</strong> (<em>LayerOutput|list|tuple|collections.Sequence</em>) &#8211; input layers. It could be a LayerOutput of list/tuple of LayerOutput.</li>
+<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; label layer</li>
+<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; weight layer, can be None(default)</li>
+<li><strong>num_classes</strong> (<em>int</em>) &#8211; number of classes.</li>
+<li><strong>num_neg_samples</strong> (<em>int</em>) &#8211; number of negative samples. Default is 10.</li>
+<li><strong>neg_distribution</strong> (<em>list|tuple|collections.Sequence|None</em>) &#8211; The distribution for generating the random negative labels.
+A uniform distribution will be used if not provided.
+If not None, its length must be equal to num_classes.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Bias parameter attribute. True if no bias.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">layer name.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 <div class="section" id="hsigmoid">
 <h2>hsigmoid<a class="headerlink" href="#hsigmoid" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
@@ -2655,6 +2702,7 @@ It is used by recurrent layer group.</p>
 <li><a class="reference internal" href="#crf-layer">crf_layer</a></li>
 <li><a class="reference internal" href="#crf-decoding-layer">crf_decoding_layer</a></li>
 <li><a class="reference internal" href="#ctc-layer">ctc_layer</a></li>
+<li><a class="reference internal" href="#nce-layer">nce_layer</a></li>
 <li><a class="reference internal" href="#hsigmoid">hsigmoid</a></li>
 </ul>
 </li>
