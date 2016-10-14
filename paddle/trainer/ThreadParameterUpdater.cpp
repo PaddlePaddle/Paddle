@@ -51,8 +51,10 @@ void SgdThreadUpdater::init(std::vector<ParameterPtr>& parameters) {
     size_t numRows = para->isGradSparseUpdate() ? para->getConfig().dims(0) : 0;
     optimizers_[pid]->init(numRows, &para->getConfig());
     if (para->isGradSparseUpdate() && FLAGS_trainer_count == 1) {
-      // For sparse_update and trainer_count==1, the buf for PARAMETER_GRADIENT
-      // is created. We need to explicitly create it.
+      // For trainer_count=1, the gradient machine is NeuralNetwork, which does
+      // not create parameter buf for PARAMETER_GRADIENT for sparse update in
+      // Parameter::enableType(). But gradient parameter buf is still used
+      // in SgdThreadUpdater. We need to explicitly create it.
       para->enableBufType(PARAMETER_GRADIENT);
     }
   }
