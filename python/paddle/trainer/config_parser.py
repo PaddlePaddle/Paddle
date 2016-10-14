@@ -1715,7 +1715,6 @@ def define_cost(class_name, cost_type):
     g_cost_map[cost_type] = cls
 
 define_cost('MultiClassCrossEntropy', 'multi-class-cross-entropy')
-define_cost('ClassificationErrorLayer', 'classification_error')
 define_cost('RankingCost', 'rank-cost')
 define_cost('AucValidation', 'auc-validation')
 define_cost('PnpairValidation', 'pnpair-validation')
