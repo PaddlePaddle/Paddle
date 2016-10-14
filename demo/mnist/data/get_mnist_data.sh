@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # This scripts downloads the mnist data and unzips it.
-
+set -e
 DIR="$( cd "$(dirname "$0")" ; pwd -P )"
 rm -rf "$DIR/raw_data"
 mkdir "$DIR/raw_data"
