@@ -50,6 +50,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'slope_intercept_layer', 'trans_full_matrix_projection',
            'linear_comb_layer',
            'convex_comb_layer', 'ctc_layer', 'crf_layer', 'crf_decoding_layer',
+           'nce_layer',
            'cross_entropy_with_selfnorm', 'cross_entropy',
            'multi_binary_label_cross_entropy',
            'rank_cost', 'lambda_cost', 'huber_cost',
@@ -115,6 +116,7 @@ class LayerType(object):
     CTC_LAYER = "ctc"
     CRF_LAYER = "crf"
     CRF_DECODING_LAYER = "crf_decoding"
+    NCE_LAYER = 'nce'
 
     RANK_COST = "rank-cost"
     LAMBDA_COST = "lambda_cost"
@@ -168,7 +170,7 @@ class LayerOutput(object):
     :param activation: Layer Activation.
     :type activation: BaseActivation.
     :param parents: Layer's parents.
-    :type parents: list|tuple|collection.Sequence
+    :type parents: list|tuple|collections.Sequence
     """
 
     def __init__(self, name, layer_type, parents=None, activation=None,
@@ -1988,10 +1990,16 @@ def concat_layer(input, act=None, name=None, layer_attr=None):
     Concat all input vector into one huge vector.
     Inputs can be list of LayerOutput or list of projection.
 
+    The example usage is:
+
+    ..  code-block:: python
+
+        concat = concat_layer(input=[layer1, layer2])
+
     :param name: Layer name.
     :type name: basestring
     :param input: input layers or projections
-    :type input: list|tuple|collection.Sequence
+    :type input: list|tuple|collections.Sequence
     :param act: Activation type.
     :type act: BaseActivation
     :param layer_attr: Extra Layer Attribute.
@@ -3488,6 +3496,83 @@ def crf_decoding_layer(input, size, label=None, param_attr=None, name=None):
         parents.append(label)
     return LayerOutput(name, LayerType.CRF_DECODING_LAYER, parents, size=size)
 
+@wrap_bias_attr_default(has_bias=True)
+@wrap_name_default()
+@layer_support()
+def nce_layer(input, label, num_classes, weight=None,
+              num_neg_samples=10, neg_distribution=None,
+              name=None, bias_attr=None, layer_attr=None):
+    """
+    Noise-contrastive estimation.
+    Implements the method in the following paper:
+    A fast and simple algorithm for training neural probabilistic language models.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       cost = nce_layer(input=layer1, label=layer2, weight=layer3,
+                        num_classes=3, neg_distribution=[0.1,0.3,0.6])
+
+    :param name: layer name
+    :type name: basestring
+    :param input: input layers. It could be a LayerOutput of list/tuple of LayerOutput.
+    :type input: LayerOutput|list|tuple|collections.Sequence
+    :param label: label layer
+    :type label: LayerOutput
+    :param weight: weight layer, can be None(default)
+    :type weight: LayerOutput
+    :param num_classes: number of classes.
+    :type num_classes: int 
+    :param num_neg_samples: number of negative samples. Default is 10.
+    :type num_neg_samples: int 
+    :param neg_distribution: The distribution for generating the random negative labels.
+                             A uniform distribution will be used if not provided.
+                             If not None, its length must be equal to num_classes.
+    :type neg_distribution: list|tuple|collections.Sequence|None
+    :param bias_attr: Bias parameter attribute. True if no bias.
+    :type bias_attr: ParameterAttribute|None|False
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: layer name.
+    :rtype: LayerOutput
+    """
+    if isinstance(input, LayerOutput):
+        input = [input]
+    assert isinstance(input, collections.Sequence)
+    assert isinstance(label, LayerOutput)
+    assert label.layer_type == LayerType.DATA
+    if neg_distribution is not None:
+        assert isinstance(neg_distribution, collections.Sequence)
+        assert len(neg_distribution) == num_classes
+        assert sum(neg_distribution) == 1
+    
+    ipts_for_layer = []
+    parents = []
+    for each_input in input:
+        assert isinstance(each_input, LayerOutput)
+        ipts_for_layer.append(each_input.name)
+        parents.append(each_input)
+    ipts_for_layer.append(label.name)
+    parents.append(label)
+
+    if weight is not None:
+        assert isinstance(weight, LayerOutput)
+        assert weight.layer_type == LayerType.DATA
+        ipts_for_layer.append(weight.name)
+        parents.append(weight)
+
+    Layer(
+        name=name,
+        type=LayerType.NCE_LAYER,
+        num_classes=num_classes,
+        neg_sampling_dist=neg_distribution,
+        num_neg_samples=num_neg_samples,
+        inputs=ipts_for_layer,
+        bias=ParamAttr.to_bias(bias_attr),
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
+    )
+    return LayerOutput(name, LayerType.NCE_LAYER, parents=parents)
 
 """
 following are cost Layers.

@@ -107,8 +107,8 @@ void SequencePoolLayer::forward(PassType passType) {
 
   resetOutput(newBatchSize_, dim);
   if (type_) {
-    // when trans_type = seq, input must hasSubseq
-    CHECK_EQ(input.hasSubseq(), 1UL);
+    CHECK(input.subSequenceStartPositions)
+      << "when trans_type = seq, input must hasSubseq";
   }
   /* If type_ = kNonSeq, both seq has or not has sub-seq degrade to a non-seq,
    * thus, in this case, output_ has no sequenceStartPositions.
