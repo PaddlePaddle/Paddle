@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/math/SparseRowMatrix.h"
 #include "paddle/utils/Thread.h"
 
+P_DECLARE_int32(trainer_count);
+
 namespace paddle {
 
 SgdThreadUpdater::SgdThreadUpdater(const OptimizationConfig& optConfig)
@@ -48,6 +50,11 @@ void SgdThreadUpdater::init(std::vector<ParameterPtr>& parameters) {
                                               false /*inPserver*/));
     size_t numRows = para->isGradSparseUpdate() ? para->getConfig().dims(0) : 0;
     optimizers_[pid]->init(numRows, &para->getConfig());
+    if (para->isGradSparseUpdate() && FLAGS_trainer_count == 1) {
+      // For sparse_update and trainer_count==1, the buf for PARAMETER_GRADIENT
+      // is created. We need to explicitly create it.
+      para->enableBufType(PARAMETER_GRADIENT);
+    }
   }
 }
 
@@ -211,7 +218,7 @@ void SgdThreadUpdater::threadUpdateSparse(
     // From MultiGradientMachine
     SparseRowIdsCpuMatrix* mainMat = dynamic_cast<SparseRowIdsCpuMatrix*>(
       para->getMat(PARAMETER_GRADIENT).get());
-    const std::vector<uint32_t>& sparseIds = mainMat->getIds(tid);
+    std::vector<uint32_t>& sparseIds = mainMat->getIds(tid);
 
     for (auto id : sparseIds) {
       // setup sub bufs
@@ -221,6 +228,7 @@ void SgdThreadUpdater::threadUpdateSparse(
       optimizer->update(vecs, para->getConfig(), id);
       vecs[PARAMETER_GRADIENT]->zeroMem();
     }
+    sparseIds.clear();
   } else if (dynamic_cast<SparseRowCpuMatrix*>(
                para->getMat(PARAMETER_GRADIENT).get())) {
     // From NeuralNetwork
@@ -246,6 +254,10 @@ void SgdThreadUpdater::threadUpdateSparse(
       optimizer->update(vecs, para->getConfig(), id);
       vecs[PARAMETER_GRADIENT]->zeroMem();
     }
+    // For numThreads > 1, MultiGradientMachine is used, which goes
+    // to the above branch.
+    CHECK_EQ(numThreads, 1);
+    mainMat->clearIndices();
   } else {
     auto & m = *para->getMat(PARAMETER_GRADIENT).get();
     LOG(FATAL) << "Internal error: " << para->getName() << " "
