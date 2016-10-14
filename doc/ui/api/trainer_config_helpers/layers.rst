@@ -130,6 +130,12 @@ gru_step_layer
 Recurrent Layer Group
 =====================
 
+memory
+------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: memory
+    :noindex:
+
 recurrent_group
 ---------------
 ..  automodule:: paddle.trainer_config_helpers.layers
