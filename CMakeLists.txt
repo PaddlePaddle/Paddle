@@ -104,7 +104,7 @@ else()
 endif(NOT WITH_GPU)
 
 if(WITH_DOUBLE)
-    add_definitions(-DPADDLE_TYPE_DOUBLE -DHPPL_TYPE_DOUBLE)
+    add_definitions(-DPADDLE_TYPE_DOUBLE)
     set(ACCURACY double)
 else(WITH_DOUBLE)
     set(ACCURACY float)
