@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "AgentLayer.h"
 
 #include "paddle/utils/Logging.h"
@@ -62,8 +61,8 @@ void SequenceAgentLayer::forward(PassType passType) {
 
   // get Arguments from real layers
   if (numSamples_ > 0 && numSamples_ < realNumSequences) {
-    int numRows = realOutput.sequenceStartPositions->
-                  getData(false)[numSamples_];
+    int numRows =
+        realOutput.sequenceStartPositions->getData(false)[numSamples_];
     CHECK(!realOutput.ids) << "Not supported";
     output_.subArgFrom(realOutput, /* offset */ 0, numRows, getSize(), useGpu_,
                        /* trans */ false, /* seqFlag */ true,
@@ -141,8 +140,8 @@ void ScatterAgentLayer::forward(PassType passType) {
 
   int width = this->getSize();
   if (realOutArg_.value || realOutArg_.ids) {
-    output_.subArgFrom(realOutArg_, /* offset */ idIndex_, idSize_,
-                       width, useGpu_);
+    output_.subArgFrom(realOutArg_, /* offset */ idIndex_, idSize_, width,
+                       useGpu_);
   } else {  // used in generation
     if (realLayer_->getOutput().ids) {
       IVector::resizeOrCreate(output_.ids, ids_->getSize(), useGpu_);
@@ -224,8 +223,8 @@ void SequenceScatterAgentLayer::forward(PassType passType) {
 
   if (realOutArg_.value || realOutArg_.ids) {
     CHECK(realOutArg_.sequenceStartPositions);
-    output_.subArgFrom(realOutArg_, /* offset */ idIndex_, idSize_,
-                       width, useGpu_, /* trans */ false, /* seqFlag */ true,
+    output_.subArgFrom(realOutArg_, /* offset */ idIndex_, idSize_, width,
+                       useGpu_, /* trans */ false, /* seqFlag */ true,
                        /* seqStart */ seqStartPosIndex_,
                        /* seqSize */ numSequences_);
   } else {
@@ -249,11 +248,12 @@ void SequenceScatterAgentLayer::forward(PassType passType) {
     CHECK_NE(input.sequenceStartPositions.get(),
              output_.sequenceStartPositions.get());
     ICpuGpuVector::resizeOrCreate(output_.sequenceStartPositions,
-                                   numSequences + 1, false);
+                                  numSequences + 1, false);
     int* outStarts = output_.sequenceStartPositions->getMutableData(false);
 
-    IVector::resizeOrCreate(cpuInputStartPos_, height, false);
-    int* inStarts = cpuInputStartPos_->getData();
+    ICpuGpuVector::resizeOrCreate(inputStartPos_, height, false);
+    int* inStarts = inputStartPos_->getMutableData(false);
+
     size_t offsetOut = 0;
     for (size_t i = 0; i < numSequences; ++i) {
       outStarts[i] = offsetOut;
@@ -266,13 +266,8 @@ void SequenceScatterAgentLayer::forward(PassType passType) {
     }
     outStarts[numSequences] = offsetOut;
 
-    if (useGpu_) {
-      IVector::resizeOrCreate(inputStartPos_, height, true);
-      inputStartPos_->copyFrom(*cpuInputStartPos_, HPPL_STREAM_DEFAULT);
-    } else {
-      inputStartPos_ = cpuInputStartPos_;
-    }
-    outputValue->copyByRowIndex(*input.value, *inputStartPos_);
+    outputValue->copyByRowIndex(*input.value,
+                                *inputStartPos_->getVector(useGpu_));
   }
 }
 
