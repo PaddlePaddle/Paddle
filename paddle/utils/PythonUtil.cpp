@@ -206,7 +206,7 @@ void initPython(int argc, char** argv) {
   // python blocks SIGINT. Need to enable it.
   signal(SIGINT, SIG_DFL);
 
-  // Enable python virtualenv.
+  // Manually activate virtualenv when user is using virtualenv
   PyRun_SimpleString(enable_virtualenv_py);
 #endif
 }
