@@ -189,10 +189,10 @@ process函数调用多次 <code class="code docutils literal"><span class="pre">
 
 
 <span class="c1"># Define a py data provider</span>
-<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span>
-    <span class="n">dense_vector</span><span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">),</span>
-    <span class="n">integer_value</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-<span class="p">])</span>
+<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;pixel&#39;</span><span class="p">:</span> <span class="n">dense_vector</span><span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">),</span>
+    <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="n">integer_value</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="p">})</span>
 <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>  <span class="c1"># settings is not used currently.</span>
     <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>  <span class="c1"># open one of training file</span>
 
@@ -207,7 +207,7 @@ process函数调用多次 <code class="code docutils literal"><span class="pre">
             <span class="n">pixels_float</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">each_pixel_str</span><span class="p">))</span>
 
         <span class="c1"># give data to paddle.</span>
-        <span class="k">yield</span> <span class="p">{</span> <span class="s2">&quot;pixel&quot;</span><span class="p">:</span> <span class="n">pixels_float</span><span class="p">,</span> <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="p">}</span>
+        <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;pixel&quot;</span><span class="p">:</span> <span class="n">pixels_float</span><span class="p">,</span> <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)}</span>
 
     <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># close file</span>
 </pre></div>
@@ -340,8 +340,6 @@ DataProvider创建的时候执行。这个初始化函数具有如下参数:</p>
 是一个batch size，但是有时为了计算均衡性，可以将一条数据设置成多个batch size</li>
 <li>cache 是数据缓存的策略，参考 <a class="reference internal" href="#cache">cache</a></li>
 <li>init_hook 是初始化时调用的函数，参考 <a class="reference internal" href="#init-hook">init_hook</a></li>
-<li>use_dynamic_order 如果是true的话，可以返回一个dict，key是data_layer的名字，value是特征值。同时，也可以
-返回一个list或者tuple。如果是false的话，只能够返回list或者tuple</li>
 <li>check 设置成true的话，会根据input_types检查数据的合法性。</li>
 <li>check_fail_continue 如果设置成true的话，即使在check中数据不合法，也会扔到这条数据，继续训练。 如果
 check是false的话，没有作用。</li>

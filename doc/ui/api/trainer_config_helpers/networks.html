@@ -751,14 +751,13 @@ compute attention weight.</li>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">outputs</code><span class="sig-paren">(</span><em>layers</em>, <em>*args</em><span class="sig-paren">)</span></dt>
-<dd><p>Declare the end of network. Currently it will only calculate the
-input/output order of network. It will calculate the predict network or
-train network&#8217;s output automatically.</p>
+<dd><p>Declare the outputs of network. If user have not defined the inputs of
+network, this method will calculate the input order by dfs travel.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>layers</strong> (<em>list|tuple|LayerOutput</em>) &#8211; </td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>layers</strong> (<em>list|tuple|LayerOutput</em>) &#8211; Output layers.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
 </tr>
