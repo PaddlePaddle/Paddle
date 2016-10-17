@@ -15,7 +15,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "PoolLayer.h"
+#include "SequencePoolLayer.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/utils/ThreadLocal.h"
 
