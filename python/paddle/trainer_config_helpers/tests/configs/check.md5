@@ -2,6 +2,8 @@
 a5d9259ff1fd7ca23d0ef090052cb1f2  last_first_seq.protostr
 9c038249ec8ff719753a746cdb04c026  layer_activations.protostr
 5913f87b39cee3b2701fa158270aca26  projections.protostr
+7334ba0a4544f0623231330fc51d390d  shared_fc.protostr
+8b8b6bb128a7dfcc937be86145f53e2f  shared_lstm.protostr
 6b39e34beea8dfb782bee9bd3dea9eb5  simple_rnn_layers.protostr
 0fc1409600f1a3301da994ab9d28b0bf  test_cost_layers.protostr
 6cd5f28a3416344f20120698470e0a4c  test_cost_layers_with_weight.protostr
