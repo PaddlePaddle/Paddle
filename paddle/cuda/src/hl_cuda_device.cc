@@ -626,7 +626,7 @@ void hl_specify_devices_start(int* device, int number) {
 void hl_rand(real *dest_d, size_t num) {
   pthread_mutex_lock(t_resource.gen_mutex);
   CHECK_EQ(
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
   dynload::curandGenerateUniform(t_resource.gen, dest_d, num),
 #else
   dynload::curandGenerateUniformDouble(t_resource.gen, dest_d, num),
