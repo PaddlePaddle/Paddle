@@ -1013,8 +1013,8 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv222hl_sequence2batch_copyP4realP4realPiiib">
-<span id="hl_sequence2batch_copy__realP.realP.iP.i.i.b"></span><span class="target" id="paddlehl__sequence_8h_1a6e0b30bd2703b8232ac1d70022306a6a"></span>void <code class="descname">hl_sequence2batch_copy</code><span class="sig-paren">(</span>real *<em>batch</em>, real *<em>sequence</em>, int *<em>batchIndex</em>, int <em>seqWidth</em>, int <em>batchCount</em>, bool <em>seq2batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv222hl_sequence2batch_copyP4realP4realPiiib" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv222hl_sequence2batch_copyP4realP4realPKiiib">
+<span id="hl_sequence2batch_copy__realP.realP.iCP.i.i.b"></span><span class="target" id="paddlehl__sequence_8h_1a13d7f834880527645555849e05278745"></span>void <code class="descname">hl_sequence2batch_copy</code><span class="sig-paren">(</span>real *<em>batch</em>, real *<em>sequence</em>, <em class="property">const</em> int *<em>batchIndex</em>, int <em>seqWidth</em>, int <em>batchCount</em>, bool <em>seq2batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv222hl_sequence2batch_copyP4realP4realPKiiib" title="Permalink to this definition">¶</a></dt>
 <dd><p>Memory copy from sequence to batch. </p>
 <p>if seq2batch == true</p>
 <p>copy from sequence to batch: batch[i] = sequence[batchIndex[i]].</p>
