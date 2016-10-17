@@ -16,7 +16,7 @@ cpack3 -G RPM
 mv *.rpm ~/dist/cpu
 
 rm -rf *
-cmake3 .. -DWITH_GPU=ON -DWITH_SWIG_PY=ON -DWITH_AVX=ON -DCUDNN_ROOT=/usr/
+cmake3 .. -DWITH_GPU=ON -DWITH_SWIG_PY=ON -DWITH_AVX=ON
 make -j `nproc`
 cpack3 -G RPM
 mv *.rpm ~/dist/gpu
@@ -29,7 +29,7 @@ cpack3 -G RPM
 mv *.rpm ~/dist/cpu-noavx
 
 rm -rf *
-cmake3 .. -DWITH_GPU=ON -DWITH_SWIG_PY=ON -DWITH_AVX=OFF -DCUDNN_ROOT=/usr/
+cmake3 .. -DWITH_GPU=ON -DWITH_SWIG_PY=ON -DWITH_AVX=OFF
 make -j `nproc`
 cpack3 -G RPM
 mv *.rpm ~/dist/gpu-noavx

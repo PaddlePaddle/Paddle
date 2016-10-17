@@ -206,8 +206,9 @@ sudo paddle version
     # necessary
     sudo yum -y update
     sudo rpm -Uvh http://download.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-8.noarch.rpm
-    sudo yum -y install git gcc gcc-c++ make cmake numpy python-devel openblas-devel protobuf-devel protobuf-python m4 python-pip
+    sudo yum -y install git gcc gcc-c++ make cmake python-devel openblas-devel protobuf-devel protobuf-python m4 python-pip
     sudo pip install --upgrade pip 
+    sudo pip install 'numpy>=1.11.0'
     sudo pip install wheel
     # optional
     sudo yum -y install glog-devel gflags-devel gtest-devel
