@@ -50,7 +50,7 @@ public:
   /// numFilters != numFilters_
   void addBias(int batchSize, int numFilters, real* outData, real* biasData) {
     CHECK(allOutputDesc_ && biasDesc_);
-    
+
     // if addBias is called before forward and reshape(),
     // it need to call calOutputSize() outputH_ and outputW_
     // calOutputSize();
@@ -72,7 +72,6 @@ protected:
   void getConvParams();
   void initCudnn();
 
-  void allocConvWorkSpace(size_t maxWorkSpace);
   void reshapeTensorDesc(int batchSize);
   void reshape(int batchSize);
 
@@ -121,8 +120,7 @@ protected:
   /// There is no explanation here.
   int fwdAlgo_, bwdFilterAlgo_, bwdDataAlgo_;
   size_t fwdLimitBytes_, bwdDataLimitBytes_, bwdFilterLimitBytes_;
-  size_t workSpaceInBytes_;
-  void* workSpace_;
+  size_t workSpaceInReal_;
 
   bool isSelectAlgo_;
   /// batchNum is used to record batch size. If the batch size is changed,

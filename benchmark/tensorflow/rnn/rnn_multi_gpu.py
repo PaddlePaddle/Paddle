@@ -125,7 +125,6 @@ def loss(logits, labels):
     return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
 
-#def tower_loss(scope, train_dataset):
 def tower_loss(scope):
     """Calculate the total loss on a single tower running the model.
     Args:
@@ -133,15 +132,10 @@ def tower_loss(scope):
     Returns:
         Tensor of shape [] containing the total loss for a batch of data
     """
-
-    #x_input = tf.placeholder(tf.int32, [FLAGS.batch_size, FLAGS.max_len], name="x_input")
-    #y_input = tf.placeholder(tf.int32, [FLAGS.batch_size, NUM_CLASS], name="y_input")
-
     data, label = train_dataset.next_batch(FLAGS.batch_size)
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
-    #last_layer = inference(x_input)
     last_layer = inference(data)
 
     # Build the portion of the Graph calculating the losses. Note that we will
@@ -216,8 +210,7 @@ def time_tensorflow_run(session, target):
     total_duration_squared = 0.0
     for i in xrange(FLAGS.num_batches + num_steps_burn_in):
       start_time = time.time()
-      #data, label = train_dataset.next_batch(FLAGS.batch_size)
-      #_ = session.run(target, feed_dict={x_input:data, y_input:label})
+      _ = session.run(target, feed_dict={x_input:data, y_input:label})
       _, loss_value = session.run(target)
       duration = time.time() - start_time
       if i > num_steps_burn_in:
@@ -268,7 +261,6 @@ def run_benchmark():
           # Calculate the loss for one tower of the model. This function
           # constructs the entire model but shares the variables across
           # all towers.
-          #loss = tower_loss(scope, train_dataset)
           loss = tower_loss(scope)
 
           # Reuse variables for the next tower.

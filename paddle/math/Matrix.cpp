@@ -187,6 +187,37 @@ MatrixPtr Matrix::subMatrix(size_t startRow, size_t endRow, size_t startCol,
                         trans_, useGpu_);
 }
 
+static ThreadLocal<std::vector<std::vector<MatrixPtr>>> gpuLocalMats;
+static ThreadLocal<std::vector<MatrixPtr>> cpuLocalMats;
+static __thread bool gpuLocalMatsInit = false;
+MatrixPtr Matrix::getTmpMatrix(
+    size_t height, size_t width, bool useGpu) {
+  if (!gpuLocalMatsInit) {
+    int numDevices = hl_get_device_count();
+    gpuLocalMats.get()->resize(numDevices);
+    gpuLocalMatsInit = true;
+  }
+
+  std::vector<MatrixPtr>* localMats;
+  if (useGpu) {
+    int devId = hl_get_device();
+    localMats = &((*gpuLocalMats.get())[devId]);
+  } else {
+    localMats = cpuLocalMats.get();
+  }
+  auto it = localMats->begin();
+  while (it != localMats->end()) {
+    if (it->unique()) {
+      resizeOrCreate(*it, height, width, false, useGpu);
+      return *it;
+    }
+    ++it;
+  }
+  localMats->emplace_back(create(height, width, false, useGpu));
+  return localMats->back();
+}
+
+
 GpuMatrix::GpuMatrix(size_t height, size_t width, bool trans)
     : Matrix(std::make_shared<GpuMemoryHandle>(height * width * sizeof(real)),
              height, width, trans, true) {}

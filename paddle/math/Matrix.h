@@ -147,6 +147,14 @@ public:
     stride_ = width_;
   }
 
+  /**
+   * Get a temporary matrix. This is threadsafe. It should be only used
+   * temporarily, i.e. do not store it or use it as return value.
+   * Do NOT use large amount of tmp matrix.
+   */
+  static MatrixPtr getTmpMatrix(
+      size_t height, size_t width, bool useGpu);
+
   size_t getWidth() const { return width_; }
   size_t getHeight() const { return height_; }
   size_t getStride() const { return stride_; }

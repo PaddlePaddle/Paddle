@@ -2332,13 +2332,3 @@ layer {
   top: "loss3/loss3"
   loss_weight: 1
 }
-layer {
-  name: "loss3/top-1"
-  type: "Accuracy"
-  bottom: "loss3/classifier"
-  bottom: "label"
-  top: "loss3/top-1"
-  include {
-    phase: TEST
-  }
-}

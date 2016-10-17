@@ -29,7 +29,7 @@ conv_counter = 1
 pool_counter = 1
 affine_counter = 1
 
-def _conv(inpOp, nIn, nOut, kH, kW, dH, dW, padType):
+def _conv(inpOp, nIn, nOut, kH, kW, dH, dW, padType, wd = 0.0005):
     global conv_counter
     global parameters
     name = 'conv' + str(conv_counter)
@@ -38,6 +38,11 @@ def _conv(inpOp, nIn, nOut, kH, kW, dH, dW, padType):
         kernel = tf.Variable(tf.truncated_normal([kH, kW, nIn, nOut],
                                                  dtype=tf.float32,
                                                  stddev=1e-1), name='weights')
+
+        if wd is not None and wd > 0:
+            weight_decay = tf.mul(tf.nn.l2_loss(kernel), wd, name='weight_loss')
+            tf.add_to_collection('losses', weight_decay)
+
         if FLAGS.data_format == 'NCHW':
           strides = [1, 1, dH, dW]
         else:
@@ -53,7 +58,7 @@ def _conv(inpOp, nIn, nOut, kH, kW, dH, dW, padType):
         parameters += [kernel, biases]
         return conv1
 
-def _affine(inpOp, nIn, nOut, act=True):
+def _affine(inpOp, nIn, nOut, act=True, wd = 0.0005):
     global affine_counter
     global parameters
     name = 'affine' + str(affine_counter)
@@ -62,6 +67,11 @@ def _affine(inpOp, nIn, nOut, act=True):
         kernel = tf.Variable(tf.truncated_normal([nIn, nOut],
                                                  dtype=tf.float32,
                                                  stddev=1e-1), name='weights')
+
+        if wd is not None and wd > 0:
+            weight_decay = tf.mul(tf.nn.l2_loss(kernel), wd, name='weight_loss')
+            tf.add_to_collection('losses', weight_decay)
+
         biases = tf.Variable(tf.constant(0.0, shape=[nOut], dtype=tf.float32),
                              trainable=True, name='biases')
         affine1 = tf.nn.relu_layer(inpOp, kernel, biases, name=name) if act else tf.matmul(inpOp, kernel) + biases 
@@ -222,7 +232,8 @@ def run_benchmark():
     objective = loss(last_layer, labels)
 
     # Compute gradients.
-    opt = tf.train.GradientDescentOptimizer(0.001)
+    # opt = tf.train.GradientDescentOptimizer(0.001)
+    opt = tf.train.MomentumOptimizer(0.001, 0.9)
     grads = opt.compute_gradients(objective) 
     global_step = tf.get_variable('global_step', [],
        initializer=tf.constant_initializer(0.0, dtype=tf.float32),

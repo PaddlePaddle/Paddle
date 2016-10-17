@@ -21,12 +21,8 @@ if [ ! -d "logs" ]; then
 fi
 
 #========multi-gpus=========#
-# multi-gpu 4gpus
-train alexnet.py 4 128 alexnet
-train alexnet.py 4 256 alexnet
 train alexnet.py 4 512 alexnet
+train alexnet.py 4 1024 alexnet
 
-# multi-gpu 4gpus
-train alexnet.py 2 128 alexnet
-train alexnet.py 2 256 alexnet
-train alexnet.py 2 512 alexnet
+train googlenet.py 4 512 googlenet 
+train googlenet.py 4 1024 googlenet

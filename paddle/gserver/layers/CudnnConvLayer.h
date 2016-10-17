@@ -31,10 +31,6 @@ namespace paddle {
  * The config file api is img_conv_layer.
  */
 class CudnnConvLayer : public ConvBaseLayer {
-private:
-  /// resize Cudnn workspace size
-  void allocConvWorkSpace(size_t maxWorkSpace);
-
 protected:
   int imageH_, imageW_, outputH_, outputW_;
   /// Cudnn tensor descriptor for bias.

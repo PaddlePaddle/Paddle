@@ -11,8 +11,9 @@ function train() {
     --use_gpu=True \
     --trainer_count=$thread \
     --log_period=10 \
-    --test_period=100 \
+    --test_period=50 \
     --config_args=$args \
+    --cudnn_dir=/home/dangqingqing/tools/cudnn-5.1/lib64 \
     > logs/$prefix-${thread}gpu-$bz.log 2>&1 
 }
 
@@ -28,8 +29,9 @@ train alexnet.py 1 256 alexnet
 train alexnet.py 1 512 alexnet
 
 # googlenet
-train googlenet.py 1 64 goolenet
-train googlenet.py 1 128 goolenet
+train googlenet.py 1 64 googlenet
+train googlenet.py 1 128 googlenet
+train googlenet.py 1 256 googlenet
 
 # smallnet
 train smallnet_mnist_cifar.py 1 64 smallnet
