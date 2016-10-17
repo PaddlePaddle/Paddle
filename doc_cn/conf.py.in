@@ -47,6 +47,7 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
+    'sphinx.ext.graphviz'
 ]
 table_styling_embed_css = True
 

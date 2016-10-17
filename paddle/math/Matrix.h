@@ -253,7 +253,7 @@ public:
     LOG(FATAL) << "copy data from int vector only available on CpuMatrix.";
   }
 
-  virtual void copyByRowIndex(Matrix& b, IVector& rowIndex) {
+  virtual void copyByRowIndex(Matrix& b, const IVector& rowIndex) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -979,7 +979,7 @@ public:
 
   void copyFrom(const IVector& src);
 
-  void copyByRowIndex(Matrix& b, IVector& rowIndex);
+  void copyByRowIndex(Matrix& b, const IVector& rowIndex);
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
 
@@ -1241,7 +1241,7 @@ public:
 
   void copyFrom(CpuSparseMatrix& src);
 
-  void copyByRowIndex(Matrix& b, IVector& rowIndex);
+  void copyByRowIndex(Matrix& b, const IVector& rowIndex);
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
 

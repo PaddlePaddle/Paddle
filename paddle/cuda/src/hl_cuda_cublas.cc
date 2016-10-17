@@ -84,7 +84,7 @@ CUBLAS_BLAS_ROUTINE_EACH(DYNAMIC_LOAD_CUBLAS_V2_WRAP)
 } /* namespace dynload */
 
 
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
 #define     CUBLAS_GEAM     dynload::cublasSgeam
 #define     CUBLAS_GEMV     dynload::cublasSgemv
 #define     CUBLAS_GEMM     dynload::cublasSgemm
