@@ -901,49 +901,6 @@ will get a warning.</li>
 </div>
 <div class="section" id="recurrent-layer-group">
 <h1>Recurrent Layer Group<a class="headerlink" href="#recurrent-layer-group" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="memory">
-<h2>memory<a class="headerlink" href="#memory" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt>
-<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">memory</code><span class="sig-paren">(</span><em>name</em>, <em>size</em>, <em>is_seq=False</em>, <em>boot_layer=None</em>, <em>boot_bias=None</em>, <em>boot_bias_active_type=None</em>, <em>boot_with_const_id=None</em><span class="sig-paren">)</span></dt>
-<dd><p>The memory layers is a layer cross each time step. Reference this output
-as previous time step layer <code class="code docutils literal"><span class="pre">name</span></code> &#8216;s output.</p>
-<p>The default memory is zero in first time step, previous time step&#8217;s
-output in the rest time steps.</p>
-<p>If boot_bias, the first time step value is this bias and
-with activation.</p>
-<p>If boot_with_const_id, then the first time stop is a IndexSlot, the
-Arguments.ids()[0] is this <code class="code docutils literal"><span class="pre">cost_id</span></code>.</p>
-<p>If boot_layer is not null, the memory is just the boot_layer&#8217;s output.
-Set <code class="code docutils literal"><span class="pre">is_seq</span></code> is true boot layer is sequence.</p>
-<p>The same name layer in recurrent group will set memory on each time
-step.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>name</strong> (<em>basestring</em>) &#8211; memory&#8217;s name.</li>
-<li><strong>size</strong> (<em>int</em>) &#8211; size of memory.</li>
-<li><strong>is_seq</strong> (<em>bool</em>) &#8211; is sequence for boot_layer</li>
-<li><strong>boot_layer</strong> (<em>LayerOutput|None</em>) &#8211; boot layer of memory.</li>
-<li><strong>boot_bias</strong> (<em>ParameterAttribute|None</em>) &#8211; boot layer&#8217;s bias</li>
-<li><strong>boot_bias_active_type</strong> (<em>BaseActivation</em>) &#8211; boot layer&#8217;s active type.</li>
-<li><strong>boot_with_const_id</strong> (<em>int</em>) &#8211; boot layer&#8217;s id.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object which is a memory.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</div>
 <div class="section" id="recurrent-group">
 <h2>recurrent_group<a class="headerlink" href="#recurrent-group" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
@@ -2690,7 +2647,6 @@ It is used by recurrent layer group.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#recurrent-layer-group">Recurrent Layer Group</a><ul>
-<li><a class="reference internal" href="#memory">memory</a></li>
 <li><a class="reference internal" href="#recurrent-group">recurrent_group</a></li>
 <li><a class="reference internal" href="#beam-search">beam_search</a></li>
 <li><a class="reference internal" href="#get-output-layer">get_output_layer</a></li>
