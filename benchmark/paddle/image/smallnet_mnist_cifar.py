@@ -2,8 +2,8 @@
 
 from paddle.trainer_config_helpers import *
 
-height=24
-width=24
+height=32
+width=32
 num_class = 10
 
 batch_size = get_config_arg('batch_size', int, 128) 
@@ -26,17 +26,17 @@ settings(
 # conv1
 net = data_layer('data', size=height * width * 3)
 net = img_conv_layer(input=net, filter_size=5, num_channels=3,
-                     num_filters=32, stride=5, padding=2)
+                     num_filters=32, stride=1, padding=2)
 net = img_pool_layer(input=net, pool_size=3, stride=2, padding=1)
 
 # conv2
 net = img_conv_layer(input=net, filter_size=5, num_filters=32,
-                     stride=5, padding=2)
+                     stride=1, padding=2)
 net = img_pool_layer(input=net, pool_size=3, stride=2, padding=1, pool_type=AvgPooling())
 
 # conv3
 net = img_conv_layer(input=net, filter_size=3, num_filters=64,
-                     stride=5, padding=1)
+                     stride=1, padding=1)
 net = img_pool_layer(input=net, pool_size=3, stride=2, padding=1, pool_type=AvgPooling())
 
 net = fc_layer(input=net, size=64, act=ReluActivation())

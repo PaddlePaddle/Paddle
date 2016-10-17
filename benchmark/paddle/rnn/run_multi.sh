@@ -13,30 +13,22 @@ function train() {
     --num_passes=1 \
     --feed_data=1 \
     --config_args=$args \
-    >rnn-pad${4}-${thread}gpu-batch${6}-hid${5}-lstm${3}.log 2>&1
+    >logs/rnn-pad${4}-${thread}gpu-lstm${3}-hid${5}-batch${6}.log 2>&1
 }
+
+
+if [ ! -d "logs" ]; then
+  mkdir logs
+fi
 
 #-----config--gpu--lstm_num--padding--hidden_size--batch_size
 #==================multi gpus=====================#
-## hidden_size=512, lstm_num=2, different batch size
+# hidden_size=256, lstm_num=2, different batch size
+train rnn.py 4 2 1 256 128 
+train rnn.py 4 2 1 256 256 
+train rnn.py 4 2 1 256 512 
+
+# hidden_size=512, lstm_num=4, different batch size
 train rnn.py 4 2 1 512 128 
 train rnn.py 4 2 1 512 256 
 train rnn.py 4 2 1 512 512 
-
-## hidden_size=512, lstm_num=4, different batch size
-train rnn.py 4 4 1 512 128 
-train rnn.py 4 4 1 512 256 
-train rnn.py 4 4 1 512 512 
-
-
-#==================single gpu======================#
-#=========for compare, testing single gpu again====#
-## hidden_size=512, lstm_num=2, different batch size
-train rnn.py 1 2 1 512 128 
-train rnn.py 1 2 1 512 256 
-train rnn.py 1 2 1 512 512 
-
-## hidden_size=512, lstm_num=4, different batch size
-train rnn.py 1 4 1 512 128 
-train rnn.py 1 4 1 512 256 
-train rnn.py 1 4 1 512 512 

@@ -32,6 +32,9 @@ def create_data(path="imdb.pkl"):
         pickle.dump(train_set, open('imdb.train.pkl', 'wb'))
         pickle.dump(test_set, open('imdb.test.pkl', 'wb'))
 
+    if (not os.path.isfile('train.list')):
+        file('train.list', 'w').write('imdb.train.pkl\n')
+
 def main():
     create_data('imdb.pkl')
 

@@ -80,7 +80,7 @@ def _affine(name, inpOp, nIn, nOut, wd=0.005, act=True):
 
         return affine1
 
-def _mpool(name, inpOp, kH, kW, dH, dW):
+def _mpool(name, inpOp, kH, kW, dH, dW, padding):
     if FLAGS.data_format == 'NCHW':
       ksize = [1, 1, kH, kW]
       strides = [1, 1, dH, dW]
@@ -90,14 +90,23 @@ def _mpool(name, inpOp, kH, kW, dH, dW):
     return tf.nn.max_pool(inpOp,
                           ksize=ksize,
                           strides=strides,
-                          padding='VALID',
+                          padding=padding,
                           data_format=FLAGS.data_format,
                           name=name)
 
-def _norm(name, l_input, lsize=4):
-    return tf.nn.lrn(l_input, lsize, bias=1.0,
-                     alpha=0.001 / 9.0,
-                     beta=0.75, name=name)
+def _apool(name, inpOp, kH, kW, dH, dW, padding):
+    if FLAGS.data_format == 'NCHW':
+      ksize = [1, 1, kH, kW]
+      strides = [1, 1, dH, dW]
+    else:
+      ksize = [1, kH, kW, 1]
+      strides = [1, dH, dW, 1]
+    return tf.nn.avg_pool(inpOp,
+                          ksize=ksize,
+                          strides=strides,
+                          padding=padding,
+                          data_format=FLAGS.data_format,
+                          name=name)
 
 def loss(logits, labels):
     labels = tf.cast(labels, tf.int64)
@@ -120,23 +129,61 @@ def get_incoming_shape(incoming):
     else:
         raise Exception("Invalid incoming layer.")
 
-def inference(images):
-    conv1 = _conv ('conv1', images, 3, 96, 11, 11, 4, 4, 'VALID')
-    pool1 = _mpool('pool1', conv1,  3, 3, 2, 2)
-    norm1 = _norm ('norm1', pool1, lsize=5)
-    conv2 = _conv ('conv2', norm1,  96, 256, 5, 5, 1, 1, 'SAME')
-    pool2 = _mpool('pool2', conv2,  3, 3, 2, 2)
-    norm2 = _norm ('norm2', pool2, lsize=5)
-    conv3 = _conv ('conv3', norm2,  256, 384, 3, 3, 1, 1, 'SAME')
-    conv4 = _conv ('conv4', conv3,  384, 384, 3, 3, 1, 1, 'SAME')
-    conv5 = _conv ('conv5', conv4,  384, 256, 3, 3, 1, 1, 'SAME')
-    pool5 = _mpool('pool5', conv5,  3, 3, 2, 2)
-    resh1 = tf.reshape(pool5, [-1, 256 * 6 * 6])
-    affn1 = _affine('fc6', resh1, 256 * 6 * 6, 4096)
-    affn2 = _affine('fc7', affn1, 4096, 4096)
-    affn3 = _affine('fc8', affn2, 4096, 1000, wd=None, act=False) # last fc
 
-    return affn3
+def _inception(name, inp, inSize, o1s, o2s1, o2s2, o3s1, o3s2, o4s1, o4s2):
+    conv1 = _conv(name + '_1' , inp, inSize, o1s, 1, 1, 1, 1, 'VALID')
+
+    conv3_ = _conv(name + '_3r', inp, inSize, o2s1, 1, 1, 1, 1, 'VALID')
+    conv3 = _conv(name + '_3', conv3_, o2s1, o2s2, 3, 3, 1, 1, 'SAME')
+
+    conv5_ = _conv(name + '_5r', inp, inSize, o3s1, 1, 1, 1, 1, 'VALID')
+    conv5 = _conv(name + '5', conv5_, o3s1, o3s2, 5, 5, 1, 1, 'SAME')
+
+    pool_ = _mpool(name + 'pool', inp, o4s1, o4s1, 1, 1, 'SAME')
+    pool = _conv(name + 'proj', pool_, inSize, o4s2, 1, 1, 1, 1, 'VALID')
+
+    if FLAGS.data_format == 'NCHW':
+      channel_dim = 1
+    else:
+      channel_dim = 3
+    incept = tf.concat(channel_dim, [conv1, conv3, conv5, pool])
+    return incept
+
+
+def inference(images):
+    # stage 1
+    conv1 = _conv ('conv1', images, 3, 64, 7, 7, 2, 2, 'SAME')
+    pool1 = _mpool('pool1', conv1,  3, 3, 2, 2, 'SAME')
+
+    # stage 2
+    conv2 = _conv ('conv2', pool1,  64, 64, 1, 1, 1, 1, 'VALID')
+    conv3 = _conv ('conv3', conv2,  64, 192, 3, 3, 1, 1, 'SAME')
+    pool3 = _mpool('pool3', conv3,  3, 3, 2, 2, 'SAME')
+
+    # stage 3
+    incept3a = _inception('ince3a', pool3,    192, 64, 96, 128, 16, 32, 3, 32)
+    incept3b = _inception('ince3b', incept3a, 256, 128, 128, 192, 32, 96, 3, 64)
+    pool4 = _mpool('pool4', incept3b,  3, 3, 2, 2, 'SAME')
+
+    # stage 4
+    incept4a = _inception('ince4a', pool4,    480, 192,  96, 208, 16, 48, 3, 64)
+    incept4b = _inception('ince4b', incept4a, 512, 160, 112, 224, 24, 64, 3, 64)
+    incept4c = _inception('ince4c', incept4b, 512, 128, 128, 256, 24, 64, 3, 64)
+    incept4d = _inception('ince4d', incept4c, 512, 112, 144, 288, 32, 64, 3, 64)
+    incept4e = _inception('ince4e', incept4d, 528, 256, 160, 320, 32, 128, 3, 128)
+    pool5 = _mpool('pool5', incept4e,  3, 3, 2, 2, 'SAME')
+
+    # stage 5
+    incept5a = _inception('ince5a', pool5,    832, 256, 160, 320, 32, 128, 3, 128)
+    incept5b = _inception('ince5b', incept5a, 832, 384, 192, 384, 48, 128, 3, 128)
+    pool6 = _apool('pool6', incept5b,  7, 7, 1, 1, 'VALID')
+
+    # output 1
+    resh1 = tf.reshape(pool6, [-1, 1024])
+    drop = tf.nn.dropout(resh1, 0.4)
+    affn1 = _affine('fc_out', resh1, 1024, 1000, act=False)
+
+    return affn1
 
 def tower_loss(scope):
     """Calculate the total loss on a single tower running the model.
@@ -147,9 +194,9 @@ def tower_loss(scope):
     """
     image_size = 224
     if FLAGS.data_format == 'NCHW':
-        image_shape = [FLAGS.batch_size, 3, image_size + 3, image_size + 3]
+        image_shape = [FLAGS.batch_size, 3, image_size, image_size]
     else:
-        image_shape = [FLAGS.batch_size, image_size + 3, image_size + 3, 3]
+        image_shape = [FLAGS.batch_size, image_size, image_size, 3]
     images = tf.get_variable('image', image_shape, 
                              initializer=tf.truncated_normal_initializer(stddev=0.1, dtype=tf.float32),
                              dtype=tf.float32,
@@ -279,7 +326,6 @@ def run_benchmark():
                                     staircase=True)
 
     # Create an optimizer that performs gradient descent.
-    # opt = tf.train.GradientDescentOptimizer(lr)
     opt = tf.train.MomentumOptimizer(lr, 0.9)
 
     # Calculate the gradients for each model tower.

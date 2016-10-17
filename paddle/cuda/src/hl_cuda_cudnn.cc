@@ -242,7 +242,7 @@ void hl_conv_workspace(hl_tensor_descriptor input,
     CHECK_NOTNULL(conv);
 
     // Specify workspace limit directly
-    size_t memoryLimitBytes = 8 * 1024 * 1024;
+    size_t memoryLimitBytes = 1LL << 30;
 
     // cudnn convolution forward configuration
     cudnnTensorDescriptor_t       fwd_src_desc = GET_TENSOR_DESCRIPTOR(input);

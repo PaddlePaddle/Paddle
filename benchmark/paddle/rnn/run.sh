@@ -13,8 +13,12 @@ function train() {
     --num_passes=1 \
     --feed_data=1 \
     --config_args=$args \
-    >rnn-pad${4}-${thread}gpu-batch${6}-hid${5}-lstm${3}.log 2>&1
+    >logs/rnn-pad${4}-${thread}gpu-lstm${3}-batch${6}-hid${5}.log 2>&1
 }
+
+if [ ! -d "logs" ]; then
+  mkdir logs
+fi
 
 ## padding, single gpu
 #-----config--gpu--lstm_num--padding--hidden_size--batch_size

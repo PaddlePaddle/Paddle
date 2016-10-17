@@ -113,9 +113,6 @@ def inference(seq):
 
 def loss(logits, labels):
     # one label index for one sample
-    #labels = tf.cast(labels, tf.int64)
-    # cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-    #                logits, labels, name='cross_entropy_per_example')
     labels = tf.cast(labels, tf.float32)
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
                     logits, labels, name='cross_entropy_per_example')

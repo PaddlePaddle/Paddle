@@ -29,16 +29,14 @@ if(NOT WITH_GPU)
         layers/CudnnPoolLayer.h
         layers/CudnnBatchNormLayer.h
         layers/NormProjectionLayer.h
-        layers/NormLayer.h
-        layers/ConvProjection.h)
+        layers/NormLayer.h)
 
     list(REMOVE_ITEM GSERVER_SOURCES
         layers/CudnnConvLayer.cpp
         layers/CudnnPoolLayer.cpp
         layers/CudnnBatchNormLayer.cpp
         layers/NormProjectionLayer.cpp
-        layers/NormLayer.cpp
-        layers/ConvProjection.cpp)
+        layers/NormLayer.cpp)
     compile_cu_as_cpp(layers/LstmCompute.cu)
     compile_cu_as_cpp(layers/GruCompute.cu)
 endif()

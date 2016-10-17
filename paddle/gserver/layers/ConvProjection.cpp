@@ -69,8 +69,7 @@ void ConvProjection::initCudnn() {
   fwdLimitBytes_ = 0;
   bwdDataLimitBytes_ = 0;
   bwdFilterLimitBytes_ = 0;
-  workSpaceInBytes_ = 0;
-  workSpace_ = nullptr;
+  workSpaceInReal_ = 0;
 
   batchNum_ = 0;
   isSelectAlgo_ = false;
@@ -98,17 +97,6 @@ void ConvProjection::reshapeTensorDesc(int batchSize) {
                     nStride, outputH_ * outputW_, outputW_, 1);
 }
 
-void ConvProjection::allocConvWorkSpace(size_t maxWorkSpace) {
-  if (maxWorkSpace > workSpaceInBytes_) {
-    if (workSpaceInBytes_ != 0) {
-        hl_free_mem_device(workSpace_);
-    }
-    // total amount of storage needed
-    workSpace_ = hl_malloc_device(maxWorkSpace);
-    workSpaceInBytes_ = maxWorkSpace;
-  }
-}
-
 void ConvProjection::reshape(int batchSize) {
   calOutputSize();
   isSelectAlgo_ = (batchSize == batchNum_);
@@ -124,8 +112,8 @@ void ConvProjection::reshape(int batchSize) {
     size_t maxWorkSpace = 0;
     maxWorkSpace = std::max(fwdLimitBytes_, bwdDataLimitBytes_);
     maxWorkSpace = std::max(maxWorkSpace, bwdFilterLimitBytes_);
+    workSpaceInReal_ = (maxWorkSpace + sizeof(real) - 1) / sizeof(real);
 
-    this->allocConvWorkSpace(maxWorkSpace);
 
     VLOG(3) << getName() << " Fwd / BwdData / BwdFilter algo: " << fwdAlgo_
                          << " / " << bwdDataAlgo_
@@ -143,22 +131,35 @@ void ConvProjection::forward() {
   real *wgtData = weight_->getW()->getData();
   real *outData = out_->value->getData();
 
+  void* workSpace = NULL;
+  if (workSpaceInReal_ > 0) {
+    MatrixPtr tmpMat = Matrix::getTmpMatrix(1, workSpaceInReal_, true);
+    workSpace = (void*)tmpMat->getData();
+  }
+
   REGISTER_TIMER_INFO("ConvProjectionFwTimer", getName().c_str());
   hl_convolution_forward(inputDesc_, inputData, outputDesc_,
                          outData, filterDesc_, wgtData,
-                         convDesc_, workSpace_,
+                         convDesc_, workSpace,
                          fwdLimitBytes_, fwdAlgo_);
 }
 
 void ConvProjection::backward(const UpdateCallback& callback) {
   REGISTER_TIMER_INFO("ConvProjectionBpTimer", getName().c_str());
+
+  void* workSpace = NULL;
+  if (workSpaceInReal_ > 0) {
+    MatrixPtr tmpMat = Matrix::getTmpMatrix(1, workSpaceInReal_, true);
+    workSpace = (void*)tmpMat->getData();
+  }
+
   real *outGrad = out_->grad->getData();
   if (weight_->getWGrad()) {
     real *inputData = in_->value->getData();
     real *weightGrad = weight_->getWGrad()->getData();
     hl_convolution_backward_filter(
         inputDesc_, inputData, outputDesc_, outGrad, filterDesc_,
-        weightGrad, convDesc_, workSpace_, bwdFilterLimitBytes_,
+        weightGrad, convDesc_, workSpace, bwdFilterLimitBytes_,
         bwdFilterAlgo_);
   }
 
@@ -168,7 +169,7 @@ void ConvProjection::backward(const UpdateCallback& callback) {
     real *wgtData = weight_->getW()->getData();
     hl_convolution_backward_data(
         inputDesc_, inputGrad, outputDesc_, outGrad, filterDesc_,
-        wgtData, convDesc_, workSpace_, bwdDataLimitBytes_,
+        wgtData, convDesc_, workSpace, bwdDataLimitBytes_,
         bwdDataAlgo_);
   }
 
@@ -184,11 +185,6 @@ ConvProjection::~ConvProjection() {
   if (bias_) {
     hl_destroy_tensor_descriptor(allOutputDesc_);
     hl_destroy_tensor_descriptor(biasDesc_);
-  }
-
-  if (workSpaceInBytes_ != 0) {
-    hl_free_mem_device(workSpace_);
-    workSpaceInBytes_ = 0;
   }
 }
 
