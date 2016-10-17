@@ -246,8 +246,7 @@ private:
                        PyObjectPtr && kwargs) {
     LOG(INFO) << "loading dataprovider " << model <<"::" << className;
 
-    PyObjectPtr module(PyImport_ImportModule(model.c_str()));
-    CHECK_PY(module) << "Cannot imort module " << model.c_str();
+    PyObjectPtr module = py::import(model);
     PyObjectPtr moduleDict(PyModule_GetDict(module.get()));
     CHECK_PY(moduleDict) << "Invoke module.__dict__ error";
     PyObjectPtr cls(PyDict_GetItemString(moduleDict.get(),

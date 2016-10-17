@@ -30,7 +30,7 @@ __all__ = ['sequence_conv_pool', 'simple_lstm', "simple_img_conv_pool",
            'lstmemory_unit', 'small_vgg', 'img_conv_group', 'vgg_16_network',
            'gru_unit', 'gru_group', 'simple_gru', 'simple_attention',
            'text_conv_pool',
-           'bidirectional_lstm', 'outputs']
+           'bidirectional_lstm', 'inputs', 'outputs']
 
 
 ######################################################
@@ -372,8 +372,8 @@ def small_vgg(input_image, num_channels, num_classes):
     tmp = __vgg__(tmp, 128, 2, [0.4, 0])
     tmp = __vgg__(tmp, 256, 3, [0.4, 0.4, 0])
     tmp = __vgg__(tmp, 512, 3, [0.4, 0.4, 0])
-    tmp = img_pool_layer(input = tmp, stride = 2,
-                         pool_size = 2, pool_type = MaxPooling())
+    tmp = img_pool_layer(input=tmp, stride=2,
+                         pool_size=2, pool_type=MaxPooling())
     tmp = dropout_layer(input=tmp, dropout_rate=0.5)
     tmp = fc_layer(input=tmp, size=512, layer_attr=ExtraAttr(drop_rate=0.5),
                    act=LinearActivation())
@@ -745,7 +745,6 @@ def gru_group(input,
               gru_bias_attr=None,
               act=None, gate_act=None,
               gru_layer_attr=None):
-
     """
     gru_group is a recurrent layer group version Gated Recurrent Unit. It
     does exactly the same calculation as the grumemory layer does. A promising
@@ -919,12 +918,12 @@ def bidirectional_lstm(input, size, name=None, return_seq=False,
 
     fw = simple_lstm(name='%s_fw' % name, input=input, size=size,
                      **dict((k[len('fwd_'):], v) for k, v in args.iteritems()
-                        if k.startswith('fwd_')))
+                            if k.startswith('fwd_')))
 
     bw = simple_lstm(name="%s_bw" % name, input=input, size=size,
                      reverse=True,
                      **dict((k[len('bwd_'):], v) for k, v in args.iteritems()
-                        if k.startswith('bwd_')))
+                            if k.startswith('bwd_')))
 
     if return_seq:
         return concat_layer(name=name, input=[fw, bw], layer_attr=concat_attr,
@@ -1052,14 +1051,30 @@ def dropout_layer(input, dropout_rate, name=None):
                        layer_attr=ExtraAttr(drop_rate=dropout_rate))
 
 
+def inputs(layers, *args):
+    """
+    Declare the inputs of network. The order of input should be as same as
+    the data provider's return order.
+
+    :param layers: Input Layers.
+    :type layers: list|tuple|LayerOutput.
+    :return:
+    """
+
+    if isinstance(layers, LayerOutput) or isinstance(layers, basestring):
+        layers = [layers]
+    if len(args) != 0:
+        layers.extend(args)
+
+    Inputs(*[l.name for l in layers])
+
+
 def outputs(layers, *args):
     """
-    Declare the end of network. Currently it will only calculate the
-    input/output order of network. It will calculate the predict network or
-    train network's output automatically.
+    Declare the outputs of network. If user have not defined the inputs of
+    network, this method will calculate the input order by dfs travel.
 
-
-    :param layers:
+    :param layers: Output layers.
     :type layers: list|tuple|LayerOutput
     :return:
     """
@@ -1093,6 +1108,11 @@ def outputs(layers, *args):
         layers.extend(args)
 
     assert len(layers) > 0
+
+    if HasInputsSet():  # input already set
+        Outputs(*[l.name for l in layers])
+        return  # just return outputs.
+
     if len(layers) != 1:
         logger.warning("`outputs` routine try to calculate network's"
                        " inputs and outputs order. It might not work well."

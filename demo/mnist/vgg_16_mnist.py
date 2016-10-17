@@ -47,6 +47,7 @@ predict = small_vgg(input_image=img,
 
 if not is_predict:
     lbl = data_layer(name="label", size=label_size)
+    inputs(img, lbl)
     outputs(classification_cost(input=predict, label=lbl))
 else:
     outputs(predict)

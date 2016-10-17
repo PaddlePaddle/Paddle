@@ -184,3 +184,20 @@ macro(add_paddle_culib TARGET_NAME)
     cuda_add_library(${TARGET_NAME} STATIC ${ARGN})
     set(CUDA_NVCC_FLAGS ${NVCC_FLAG})
 endmacro()
+
+
+# Creates C resources file from files in given resource file
+function(create_resources res_file output)
+    # Create empty output file
+    file(WRITE ${output} "")
+    # Get short filename
+    string(REGEX MATCH "([^/]+)$" filename ${res_file})
+    # Replace filename spaces & extension separator for C compatibility
+    string(REGEX REPLACE "\\.| |-" "_" filename ${filename})
+    # Read hex data from file
+    file(READ ${res_file} filedata HEX)
+    # Convert hex data for C compatibility
+    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
+    # Append data to output file
+    file(APPEND ${output} "const unsigned char ${filename}[] = {${filedata}};\nconst unsigned ${filename}_size = sizeof(${filename});\n")
+endfunction()
