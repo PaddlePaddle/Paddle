@@ -14,11 +14,11 @@ limitations under the License. */
 
 #ifndef PADDLE_NO_PYTHON
 
+#include <Python.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unordered_set>
 #include <list>
-#include <Python.h>
 #include <numpy/numpyconfig.h>
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/ndarrayobject.h>
