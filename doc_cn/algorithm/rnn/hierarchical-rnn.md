@@ -260,7 +260,143 @@ out = recurrent_group(step=outer_step, input=SubsequenceInput(emb))
 
 ## 示例3：双进双出，输入不等长
 
-TBD
+**输入不等长**是指recurrent_group的多个输入在各时刻的长度可以不相等, 但需要指定一个和输出长度一致的input，用<font color="red">targetInlink</font>表示。参考配置：单层RNN（`sequence_rnn_multi_unequalength_inputs.conf`），双层RNN（`sequence_nest_rnn_multi_unequalength_inputs.conf`）
+
+### 读取双层序列的方法
+
+我们看一下单双层序列的数据组织形式和dataprovider（见`rnn_data_provider.py`）
+```python
+data2 = [
+    [[[1, 2], [4, 5, 2]], [[5, 4, 1], [3, 1]] ,0],
+    [[[0, 2], [2, 5], [0, 1, 2]],[[1, 5], [4], [2, 3, 6, 1]], 1],
+]
+
+@provider(input_types=[integer_value_sub_sequence(10),
+                       integer_value_sub_sequence(10),
+                       integer_value(2)],
+          should_shuffle=False)
+def process_unequalength_subseq(settings, file_name): #双层RNN的dataprovider
+    for d in data2:
+        yield d
+
+
+@provider(input_types=[integer_value_sequence(10),
+                       integer_value_sequence(10),
+                       integer_value(2)],
+          should_shuffle=False)
+def process_unequalength_seq(settings, file_name): #单层RNN的dataprovider
+    for d in data2:
+        words1=reduce(lambda x,y: x+y, d[0])
+        words2=reduce(lambda x,y: x+y, d[1])
+        yield words1, words2, d[2]
+```
+
+data2 中有两个样本，每个样本有两个特征, 记fea1, fea2。
+
+- 单层序列：两个样本分别为[[1, 2, 4, 5, 2], [5, 4, 1, 3, 1]] 和 [[0, 2, 2, 5, 0, 1, 2], [1, 5, 4, 2, 3, 6, 1]]
+- 双层序列：两个样本分别为
+  - **样本1**：[[[1, 2], [4, 5, 2]], [[5, 4, 1], [3, 1]]]。fea1和fea2都分别有2个子句，fea1=[[1, 2], [4, 5, 2]], fea2=[[5, 4, 1], [3, 1]]
+  - **样本2**：[[[0, 2], [2, 5], [0, 1, 2]],[[1, 5], [4], [2, 3, 6, 1]]]。fea1和fea2都分别有3个子句， fea1=[[0, 2], [2, 5], [0, 1, 2]], fea2=[[1, 5], [4], [2, 3, 6, 1]]。<br/>
+  - **注意**：每个样本中，各特征的子句数目需要相等。这里说的“双进双出，输入不等长”是指fea1在i时刻的输入的长度可以不等于fea2在i时刻的输入的长度。如对于第1个样本，时刻i=2, fea1[2]=[4, 5, 2]，fea2[2]=[3, 1]，3≠2。
+- 单双层序列中，两个样本的label都分别是0和1
+
+### 模型中的配置
+
+单层RNN（`sequence_rnn_multi_unequalength_inputs.conf`）和双层RNN（`sequence_nest_rnn_multi_unequalength_inputs.conf`）两个模型配置达到的效果完全一样，区别只在于输入为单层还是双层序列，现在我们来看它们内部分别是如何实现的。
+
+- 单层序列：
+  - 过了一个简单的recurrent_group。每一个时间步，当前的输入y和上一个时间步的输出rnn_state做了一个全连接，功能与示例2中`sequence_rnn.conf`的`step`函数完全相同。这里，两个输入x1,x2分别通过calrnn返回最后时刻的状态。结果得到的encoder1_rep和encoder2_rep分别是单层序列，最后取encoder1_rep的最后一个时刻和encoder2_rep的所有时刻分别相加得到context。
+  - 注意到这里recurrent_group输入的每个样本中，fea1和fea2的长度都分别相等，这并非偶然，而是因为recurrent_group要求输入为单层序列时，所有输入的长度都必须相等。
+
+```python
+def step(x1, x2):
+	def calrnn(y):
+		mem = memory(name = 'rnn_state_' + y.name, size = hidden_dim)
+        out = fc_layer(input = [y, mem],
+	        size = hidden_dim,
+	        act = TanhActivation(),
+            bias_attr = True,
+            name = 'rnn_state_' + y.name)
+        return out
+
+	encoder1 = calrnn(x1)
+    encoder2 = calrnn(x2)
+    return [encoder1, encoder2]
+    
+encoder1_rep, encoder2_rep = recurrent_group(
+    name="stepout",                           
+    step=step,
+    input=[emb1, emb2])
+
+encoder1_last = last_seq(input = encoder1_rep)                           
+encoder1_expandlast = expand_layer(input = encoder1_last,
+                                   expand_as = encoder2_rep)
+context = mixed_layer(input = [identity_projection(encoder1_expandlast),
+                               identity_projection(encoder2_rep)],
+                      size = hidden_dim)
+```
+- 双层序列：
+  - 双层RNN中，对输入的两个特征分别求时序上的连续全连接(`inner_step1`和`inner_step2`分别处理fea1和fea2)，其功能与示例2中`sequence_nest_rnn.conf`的`outer_step`函数完全相同。不同之处是，此时输入`[SubsequenceInput(emb1), SubsequenceInput(emb2)]`在各时刻并不等长。
+  - 函数`outer_step`中可以分别处理这两个特征，但我们需要用<font color=red>targetInlink</font>指定recurrent_group的输出的格式（各子句长度）只能和其中一个保持一致，如这里选择了和emb2的长度一致。
+  - 最后，依然是取encoder1_rep的最后一个时刻和encoder2_rep的所有时刻分别相加得到context。
+
+```python
+def outer_step(x1, x2):
+    outer_mem1 = memory(name = "outer_rnn_state1", size = hidden_dim)
+    outer_mem2 = memory(name = "outer_rnn_state2", size = hidden_dim)
+    def inner_step1(y):
+        inner_mem = memory(name = 'inner_rnn_state_' + y.name,
+                           size = hidden_dim,
+                           boot_layer = outer_mem1)
+        out = fc_layer(input = [y, inner_mem],
+                       size = hidden_dim,
+                       act = TanhActivation(),
+                       bias_attr = True,
+                       name = 'inner_rnn_state_' + y.name)
+        return out
+
+    def inner_step2(y):
+        inner_mem = memory(name = 'inner_rnn_state_' + y.name,
+                           size = hidden_dim,
+                           boot_layer = outer_mem2)
+        out = fc_layer(input = [y, inner_mem],
+                       size = hidden_dim,
+                       act = TanhActivation(),
+                       bias_attr = True,
+                       name = 'inner_rnn_state_' + y.name)
+        return out
+
+    encoder1 = recurrent_group(
+        step = inner_step1,
+        name = 'inner1',
+        input = x1)
+
+    encoder2 = recurrent_group(
+        step = inner_step2,
+        name = 'inner2',
+        input = x2)
+
+    sentence_last_state1 = last_seq(input = encoder1, name = 'outer_rnn_state1')
+    sentence_last_state2_ = last_seq(input = encoder2, name = 'outer_rnn_state2')
+
+    encoder1_expand = expand_layer(input = sentence_last_state1,
+                                   expand_as = encoder2)
+
+    return [encoder1_expand, encoder2]
+
+encoder1_rep, encoder2_rep = recurrent_group(
+    name="outer",
+    step=outer_step,
+    input=[SubsequenceInput(emb1), SubsequenceInput(emb2)],
+    targetInlink=emb2)
+
+encoder1_last = last_seq(input = encoder1_rep)
+encoder1_expandlast = expand_layer(input = encoder1_last,
+                                   expand_as = encoder2_rep)
+context = mixed_layer(input = [identity_projection(encoder1_expandlast),
+                               identity_projection(encoder2_rep)],
+                      size = hidden_dim)
+```
 
 ## 示例4：beam_search的生成
 
