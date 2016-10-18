@@ -84,6 +84,7 @@ def define_py_data_source(file_list, cls, module,
             data.load_data_module = load_data_module
             data.load_data_object = load_data_object
             data.load_data_args = load_data_args
+            data.async_load_data = True
             return data
         data_cls = py_data2
 
