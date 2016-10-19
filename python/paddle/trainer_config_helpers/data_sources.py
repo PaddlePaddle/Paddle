@@ -68,7 +68,7 @@ def define_py_data_source(file_list, cls, module,
         file_list_name = 'train.list'
         if isinstance(cls, TestData):
             file_list_name = 'test.list'
-        with open(file_list_name, 'r') as f:
+        with open(file_list_name, 'w') as f:
             f.writelines(file_list)
         file_list = file_list_name
 
