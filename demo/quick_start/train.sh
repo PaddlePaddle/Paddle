@@ -22,9 +22,6 @@ cfg=trainer_config.lr.py
 #cfg=trainer_config.db-lstm.py
 paddle train \
   --config=$cfg \
-  #--config_args=lstm_network='lstm'; \
-  #--config_args=lstm_network='bidi-lstm' \
-  #--config_args=lstm_network='db-lstm' \
   --save_dir=./output \
   --trainer_count=4 \
   --log_period=20 \
