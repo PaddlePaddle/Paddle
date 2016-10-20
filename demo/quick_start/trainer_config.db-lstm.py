@@ -46,17 +46,24 @@ bias_attr = ParamAttr(initial_std=0.,l2_rate=0.)
 
 data = data_layer(name="word", size=len(word_dict))
 emb = embedding_layer(input=data, size=128)
-fc = fc_layer(input=emb, size=512,
-              act=LinearActivation(),
-              bias_attr=bias_attr,
-              layer_attr=ExtraAttr(drop_rate=0.1))
-lstm = lstmemory(input=fc, act=TanhActivation(),
-                 bias_attr=bias_attr,
-                 layer_attr=ExtraAttr(drop_rate=0.25))
+
+hidden_0 = mixed_layer(size=128, input=[full_matrix_projection(input=emb)])
+lstm_0 = lstmemory(input=hidden_0, layer_attr=ExtraAttr(drop_rate=0.1))
+
+input_layers = [hidden_0, lstm_0]
+
+for i in range(1,8):
+    fc = fc_layer(input=input_layers, size=128)
+    lstm = lstmemory(input=fc, layer_attr=ExtraAttr(drop_rate=0.1),
+                    reverse=(i % 2) == 1,)
+    input_layers = [fc, lstm]
+
 lstm_last = pooling_layer(input=lstm, pooling_type=MaxPooling())
+
 output = fc_layer(input=lstm_last, size=2,
                   bias_attr=bias_attr,
                   act=SoftmaxActivation())
+
 if is_predict:
     maxid = maxid_layer(output)
     outputs([maxid, output])

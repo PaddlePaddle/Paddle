@@ -43,20 +43,16 @@ settings(
 )
 
 bias_attr = ParamAttr(initial_std=0.,l2_rate=0.)
-
 data = data_layer(name="word", size=len(word_dict))
 emb = embedding_layer(input=data, size=128)
-fc = fc_layer(input=emb, size=512,
-              act=LinearActivation(),
-              bias_attr=bias_attr,
-              layer_attr=ExtraAttr(drop_rate=0.1))
-lstm = lstmemory(input=fc, act=TanhActivation(),
-                 bias_attr=bias_attr,
-                 layer_attr=ExtraAttr(drop_rate=0.25))
-lstm_last = pooling_layer(input=lstm, pooling_type=MaxPooling())
-output = fc_layer(input=lstm_last, size=2,
+
+bi_lstm = bidirectional_lstm(input=emb, size=128)
+dropout = dropout_layer(input=bi_lstm, dropout_rate=0.5)
+
+output = fc_layer(input=dropout, size=2,
                   bias_attr=bias_attr,
                   act=SoftmaxActivation())
+
 if is_predict:
     maxid = maxid_layer(output)
     outputs([maxid, output])
