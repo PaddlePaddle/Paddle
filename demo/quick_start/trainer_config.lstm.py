@@ -24,7 +24,7 @@ with open(dict_file, 'r') as f:
         word_dict[w] = i
 
 is_predict = get_config_arg('is_predict', bool, False)
-network_type = get_config_arg('network_type', str, 'lstm')
+network_type = get_config_arg('lstm_network', str, 'lstm')
 trn = 'data/train.list' if not is_predict else None
 tst = 'data/test.list' if not is_predict else 'data/pred.list'
 process = 'process' if not is_predict else 'process_predict'
