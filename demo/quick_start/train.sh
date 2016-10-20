@@ -14,15 +14,15 @@
 # limitations under the License.
 set -e
 
-cfg=trainer_config.lr.py
+#cfg=trainer_config.lr.py
 #cfg=trainer_config.emb.py
 #cfg=trainer_config.cnn.py
-#cfg=trainer_config.lstm.py
+cfg=trainer_config.lstm.py
 paddle train \
   --config=$cfg \
-  #--config_args=network_type='lstm'; \
-  #--config_args=network_type='bidi-lstm' \
-  #--config_args=network_type='db-lstm' \
+  #--config_args=lstm_network='lstm'; \
+  #--config_args=lstm_network='bidi-lstm' \
+  #--config_args=lstm_network='db-lstm' \
   --save_dir=./output \
   --trainer_count=4 \
   --log_period=20 \
