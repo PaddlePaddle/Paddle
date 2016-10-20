@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 project(paddle CXX C)
 set(PADDLE_MAJOR_VERSION 0)
 set(PADDLE_MINOR_VERSION 8)
-set(PADDLE_PATCH_VERSION 0b1)
+set(PADDLE_PATCH_VERSION 0b2)
 set(PADDLE_VERSION ${PADDLE_MAJOR_VERSION}.${PADDLE_MINOR_VERSION}.${PADDLE_PATCH_VERSION})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
@@ -65,6 +65,19 @@ else()
             Subversion_WC_INFO(${PROJ_ROOT} Project)
             add_definitions(-DPADDLE_VERSION=${Project_WC_REVISION})
         endif()
+    elseif(EXISTS ${PROJ_ROOT}/.git/)
+        find_package(Git REQUIRED)
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} log -1 --format=%H
+            WORKING_DIRECTORY ${PROJ_ROOT}
+            OUTPUT_VARIABLE GIT_SHA1
+            RESULT_VARIABLE GIT_RESULT
+            ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(NOT ${GIT_RESULT})
+            add_definitions(-DPADDLE_VERSION=\"${GIT_SHA1}\")
+        else()
+            message(WARNING "Cannot add paddle version from git tag")
+        endif()
     endif()
 endif()
 
@@ -91,7 +104,7 @@ else()
 endif(NOT WITH_GPU)
 
 if(WITH_DOUBLE)
-    add_definitions(-DPADDLE_TYPE_DOUBLE -DHPPL_TYPE_DOUBLE)
+    add_definitions(-DPADDLE_TYPE_DOUBLE)
     set(ACCURACY double)
 else(WITH_DOUBLE)
     set(ACCURACY float)

@@ -157,7 +157,8 @@ void SocketChannel::writeMessage(const std::vector<struct iovec>& userIovs) {
   std::vector<iovec> iovs;
   iovs.reserve(userIovs.size() + 2);
   iovs.push_back({&header, sizeof(header)});
-  iovs.push_back({&iovLengths[0], sizeof(iovLengths[0]) * header.numIovs});
+  iovs.push_back({&iovLengths[0], static_cast<size_t>(
+      sizeof(iovLengths[0]) * header.numIovs)});
   iovs.insert(iovs.end(), userIovs.begin(), userIovs.end());
 
   header.totalLength = 0;

@@ -17,10 +17,17 @@
 ## Find MKL First.
 set(MKL_ROOT $ENV{MKL_ROOT} CACHE PATH "Folder contains MKL")
 
-find_path(MKL_INCLUDE_DIR mkl.h PATHS ${MKL_ROOT}/include)
-find_library(MKL_CORE_LIB NAMES mkl_core PATHS ${MKL_ROOT}/lib)
-find_library(MKL_SEQUENTIAL_LIB NAMES mkl_sequential PATHS ${MKL_ROOT}/lib)
-find_library(MKL_INTEL_LP64 NAMES mkl_intel_lp64 PATHS ${MKL_ROOT}/lib)
+find_path(MKL_INCLUDE_DIR mkl.h PATHS
+  ${MKL_ROOT}/include)
+find_library(MKL_CORE_LIB NAMES mkl_core PATHS
+  ${MKL_ROOT}/lib
+  ${MKL_ROOT}/lib/intel64)
+find_library(MKL_SEQUENTIAL_LIB NAMES mkl_sequential PATHS
+  ${MKL_ROOT}/lib
+  ${MKL_ROOT}/lib/intel64)
+find_library(MKL_INTEL_LP64 NAMES mkl_intel_lp64 PATHS
+  ${MKL_ROOT}/lib
+  ${MKL_ROOT}/lib/intel64)
 
 
 if(MKL_INCLUDE_DIR AND MKL_CORE_LIB AND MKL_SEQUENTIAL_LIB AND MKL_INTEL_LP64)

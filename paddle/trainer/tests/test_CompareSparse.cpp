@@ -57,7 +57,7 @@ std::vector<ParameterPtr> trainerOnePassTest(const string& configFile,
             << " sparseUpdate=" << sparseUpdate;
   srand(FLAGS_seed);
   *ThreadLocalRand::getSeed() = FLAGS_seed;
-
+  ThreadLocalRandomEngine::get().seed(FLAGS_seed);
   if (useGpu) {
     CHECK_LE(trainerCount, gNumDevices);
   }

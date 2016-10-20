@@ -211,7 +211,11 @@ bool hl_start_flag = false;
 
 inline pid_t gettid() {
 #if defined(__APPLE__) || defined(__OSX__)
-  pid_t tid = syscall(SYS_thread_selfid);
+  // syscall is deprecated: first deprecated in macOS 10.12.
+  // syscall is unsupported;
+  // syscall pid_t tid = syscall(SYS_thread_selfid);
+  uint64_t tid;
+  pthread_threadid_np(NULL, &tid);
 #else
   #ifndef __NR_gettid
   #define __NR_gettid 224
@@ -622,7 +626,7 @@ void hl_specify_devices_start(int* device, int number) {
 void hl_rand(real *dest_d, size_t num) {
   pthread_mutex_lock(t_resource.gen_mutex);
   CHECK_EQ(
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
   dynload::curandGenerateUniform(t_resource.gen, dest_d, num),
 #else
   dynload::curandGenerateUniformDouble(t_resource.gen, dest_d, num),
