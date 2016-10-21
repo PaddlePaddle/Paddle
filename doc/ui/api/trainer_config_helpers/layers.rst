@@ -73,6 +73,12 @@ img_pool_layer
     :members: img_pool_layer
     :noindex:
 
+maxout_layer
+------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: maxout_layer
+    :noindex:
+
 Norm Layer
 ==========
 

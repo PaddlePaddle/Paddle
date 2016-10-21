@@ -55,7 +55,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'multi_binary_label_cross_entropy',
            'rank_cost', 'lambda_cost', 'huber_cost',
            # 'block_expand_layer',  # TODO(yuyang18): this layer is not correct
-           'out_prod_layer', 'print_layer'
+           'maxout_layer', 'out_prod_layer', 'print_layer'
            ]
 
 
@@ -110,6 +110,7 @@ class LayerType(object):
     SLOPE_INTERCEPT_LAYER = "slope_intercept"
     LINEAR_COMBINATION_LAYER = "convex_comb"
     BLOCK_EXPAND = "blockexpand"
+    MAXOUT = "maxout"
 
     PRINT_LAYER = "print"
 
@@ -3331,6 +3332,60 @@ def block_expand_layer(input,
           )
 
     return LayerOutput(name, LayerType.BLOCK_EXPAND, parents=[input])
+
+
+@wrap_name_default()
+@layer_support()
+def maxout_layer(input,
+                 channels,
+                 groups,
+                 size_x=None,
+                 size_y=None,
+                 name=None,
+                 layer_attr=None):
+    """
+    A layer to do max out on conv layer output.
+      - Input: output of a conv layer.
+      - Output: feature map size same as input. Channel is (input channel) / groups.
+
+    So groups should be larger than 1, and the num of channels should be able 
+    to devided by groups.
+    
+    The simple usage is:
+
+    .. code-block:: python
+
+       maxout = maxout_layer(input,
+                             channels=128,
+                             groups=4)
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param channels: The channel number of input layer.
+    :type channels: int
+    :param groups: The group number of input layer.
+    :type groups: int
+    :param size_x: conv output width. Default auto calculate.
+    :type size_x: int|None
+    :param size_y: conv output height. Default auto calculate.
+    :type size_y: int|None
+    :param name: The name of this layer, which can not specify.
+    :type name: None|basestring.
+    :param layer_attr: Extra Layer attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert input.layer_type == LayerType.CONV_LAYER
+    assert groups > 1
+    assert channels % groups == 0
+    Layer(name=name,
+          inputs=Input(input.name,
+                       maxout=MaxOut(channels=channels,
+                                     groups=groups)),
+          type=LayerType.MAXOUT,
+          **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(name, LayerType.MAXOUT, parents=[input])
 
 
 @wrap_name_default()
