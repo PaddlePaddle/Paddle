@@ -3337,8 +3337,8 @@ def block_expand_layer(input,
 @wrap_name_default()
 @layer_support()
 def maxout_layer(input,
-                 channels,
                  groups,
+                 num_channels=None,
                  size_x=None,
                  size_y=None,
                  name=None,
@@ -3362,18 +3362,21 @@ def maxout_layer(input,
     .. code-block:: python
 
        maxout = maxout_layer(input,
-                             channels=128,
+                             num_channels=128,
                              groups=4)
 
     :param input: The input layer.
     :type input: LayerOutput
-    :param channels: The channel number of input layer.
-    :type channels: int
+    :param num_channels: The channel number of input layer. If None will be set
+                     automatically from previous output.
+    :type num_channels: int|None
     :param groups: The group number of input layer.
     :type groups: int
-    :param size_x: conv output width. Default auto calculate.
+    :param size_x: conv output width. If None will be set
+                   automatically from previous output.
     :type size_x: int|None
-    :param size_y: conv output height. Default auto calculate.
+    :param size_y: conv output height. If None will be set
+                   automatically from previous output.
     :type size_y: int|None
     :param name: The name of this layer, which can not specify.
     :type name: None|basestring.
@@ -3385,10 +3388,13 @@ def maxout_layer(input,
     assert input.layer_type == LayerType.CONV_LAYER
     assert isinstance(input.activation, LinearActivation)
     assert groups > 1
-    assert channels % groups == 0
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+    assert num_channels % groups == 0
     Layer(name=name,
           inputs=Input(input.name,
-                       maxout=MaxOut(channels=channels,
+                       maxout=MaxOut(channels=num_channels,
                                      groups=groups)),
           type=LayerType.MAXOUT,
           **ExtraLayerAttribute.to_kwargs(layer_attr))

@@ -16,7 +16,7 @@ conv = img_conv_layer(input=data,
                       bias_attr=True)
 
 maxout = maxout_layer(input=conv,
-                      channels=16,
+                      num_channels=16,
                       groups=2)
 
 pool = img_pool_layer(input=maxout,

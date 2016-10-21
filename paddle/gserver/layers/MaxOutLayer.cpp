@@ -46,12 +46,12 @@ bool MaxOutLayer::init(const LayerMap& layerMap,
   Layer::init(layerMap, parameterMap);
 
   /* the size of inputs for maxout-layer is 1 */
-  CHECK_EQ(config_.inputs_size(), 1);
+  CHECK_EQ(config_.inputs_size(), 1UL);
 
   const MaxOutConfig& conf = config_.inputs(0).maxout_conf();
   groups_ = conf.groups();
   channels_ = conf.channels();
-  CHECK_EQ(channels_ % groups_, 0);
+  CHECK_EQ(channels_ % groups_, 0UL);
   outputChannels_ = channels_ / groups_;
 
   return true;
