@@ -21,9 +21,7 @@ namespace paddle {
 REGISTER_LAYER(maxout, MaxOutLayer);
 
 size_t MaxOutLayer::getSize() {
-  CHECK_EQ(inputLayers_.size(), 1UL);
   const MaxOutConfig& maxoutConf = config_.inputs(0).maxout_conf();
-  size_t layerSize = 0;
   imgSizeH_ = inputLayers_[0]->getOutput().getFrameHeight();
   imgSizeW_ = inputLayers_[0]->getOutput().getFrameWidth();
   if (imgSizeH_ == 0) {
@@ -34,7 +32,7 @@ size_t MaxOutLayer::getSize() {
   }
 
   featLen_ = imgSizeH_ * imgSizeW_;
-  layerSize = featLen_ * outputChannels_;
+  size_t layerSize = featLen_ * outputChannels_;
 
   getOutput().setFrameHeight(imgSizeH_);
   getOutput().setFrameWidth(imgSizeW_);
@@ -53,6 +51,7 @@ bool MaxOutLayer::init(const LayerMap& layerMap,
   const MaxOutConfig& conf = config_.inputs(0).maxout_conf();
   groups_ = conf.groups();
   channels_ = conf.channels();
+  CHECK_EQ(channels_ % groups_, 0);
   outputChannels_ = channels_ / groups_;
 
   return true;

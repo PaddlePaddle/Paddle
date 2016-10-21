@@ -1728,15 +1728,14 @@ class MaxOutLayer(LayerBase):
             self,
             name,
             inputs,
-            device=None):
-        super(MaxOutLayer, self).__init__(name, 'maxout', 0, inputs=inputs, device=device)
-        for input_index in xrange(len(self.inputs)):
-            input_layer = self.get_input_layer(input_index)
-            parse_maxout(self.inputs[input_index].maxout,
-                input_layer.name,
-                self.config.inputs[input_index].maxout_conf)
-            maxout_conf = self.config.inputs[input_index].maxout_conf
-            self.set_layer_size(g_layer_map[input_layer.name].size / maxout_conf.groups)
+            **xargs):
+        super(MaxOutLayer, self).__init__(name, 'maxout', 0, inputs=inputs, **xargs)
+        input_layer = self.get_input_layer(0)
+        parse_maxout(self.inputs[0].maxout,
+                     input_layer.name,
+                     self.config.inputs[0].maxout_conf)
+        maxout_conf = self.config.inputs[0].maxout_conf
+        self.set_layer_size(g_layer_map[input_layer.name].size / maxout_conf.groups)
             
 # key: cost type
 # value: cost class

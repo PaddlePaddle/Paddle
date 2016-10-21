@@ -3350,6 +3350,12 @@ def maxout_layer(input,
 
     So groups should be larger than 1, and the num of channels should be able 
     to devided by groups.
+
+    Please refer to Paper: 
+      - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
+      - Multi-digit Number Recognition from Street View \
+        Imagery using Deep Convolutional Neural Networks: \
+        https://arxiv.org/pdf/1312.6082v4.pdf
     
     The simple usage is:
 
@@ -3377,6 +3383,7 @@ def maxout_layer(input,
     :rtype: LayerOutput
     """
     assert input.layer_type == LayerType.CONV_LAYER
+    assert isinstance(input.activation, LinearActivation)
     assert groups > 1
     assert channels % groups == 0
     Layer(name=name,

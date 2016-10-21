@@ -26,7 +26,6 @@ limitations under the License. */
 #include "hl_gpu.h"
 #include "hl_table_apply.h"
 #include "hl_top_k.h"
-#include "hl_cnn.h"
 
 #include "paddle/utils/ThreadLocal.h"
 
