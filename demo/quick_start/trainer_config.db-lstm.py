@@ -48,13 +48,13 @@ data = data_layer(name="word", size=len(word_dict))
 emb = embedding_layer(input=data, size=128)
 
 hidden_0 = mixed_layer(size=128, input=[full_matrix_projection(input=emb)])
-lstm_0 = simple_lstm(input=hidden_0, lstm_cell_attr=ExtraAttr(drop_rate=0.1))
+lstm_0 = simple_lstm(input=hidden_0, size=128, lstm_cell_attr=ExtraAttr(drop_rate=0.1))
 
 input_layers = [hidden_0, lstm_0]
 
 for i in range(1,8):
     fc = fc_layer(input=input_layers, size=128)
-    lstm = simple_lstm(input=fc, lstm_cell_attr=ExtraAttr(drop_rate=0.1),
+    lstm = simple_lstm(input=fc, size=128, lstm_cell_attr=ExtraAttr(drop_rate=0.1),
                     reverse=(i % 2) == 1,)
     input_layers = [fc, lstm]
 
