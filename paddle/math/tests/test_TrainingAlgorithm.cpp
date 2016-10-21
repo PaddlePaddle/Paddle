@@ -11,6 +11,7 @@
 #include "paddle/utils/Util.h"
 #include "paddle/math/TrainingAlgorithmOp.h"
 #include "OriginalOptimizerApi.h"
+#include "TensorCheck.h"
 
 using namespace paddle;  // NOLINT
 
@@ -33,26 +34,6 @@ private:
   double max_diff_;
 };
 
-int VectorCheckErr(const Vector& vector1, const Vector& vector2) {
-  CHECK(vector1.getSize() == vector2.getSize());
-
-  const real* data1 = vector1.getData();
-  const real* data2 = vector2.getData();
-  size_t size = vector1.getSize();
-  int count = 0;
-  for (size_t i = 0; i < size; i++) {
-    real a = data1[i];
-    real b = data2[i];
-    if (fabs(a - b) > FLAGS_max_diff) {
-      if ((fabsf(a - b) / fabsf(a)) > (FLAGS_max_diff / 10.0f)) {
-        count++;
-      }
-    }
-  }
-
-  return count;
-}
-
 #define COPY_VECTOR_TO_CPU(cpuVec, vector)  \
   do {\
     if (vector->useGpu()) {\
@@ -70,39 +51,6 @@ int VectorCheckErr(const VectorPtr& vector1, const VectorPtr& vector2) {
   COPY_VECTOR_TO_CPU(tmp2, vector2);
   return VectorCheckErr(*tmp1, *tmp2);
 }
-
-#ifdef PADDLE_DISABLE_TIMER
-
-#define CHECK_VECTORPTR(vector1, vector2)   \
-    EXPECT_EQ(VectorCheckErr(vector1, vector2), 0)
-
-#define EXPRESSION_PERFORMANCE(expression)  \
-    expression;
-
-#else
-
-#include "paddle/utils/Stat.h"
-
-#define CHECK_VECTORPTR(vector1, vector2)
-
-#define EXPRESSION_PERFORMANCE(expression) \
-  do {\
-    char expr[30];\
-    strncpy(expr, #expression, 30);\
-    if (expr[29] != '\0') {\
-      expr[27] = '.'; expr[28] = '.'; expr[29] = '\0';\
-    }\
-    expression;\
-    for (int i = 0; i < 20; i++) {\
-      REGISTER_TIMER(expr);\
-      expression;\
-    }\
-    LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')\
-      << *globalStat.getStat(expr);\
-    globalStat.reset();\
-  } while (0)
-
-#endif
 
 typedef std::function<void(size_t size, bool useGpu)> testMatrixFunc;
 

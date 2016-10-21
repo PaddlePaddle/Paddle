@@ -27,14 +27,16 @@ inline void TensorCpuApply(LeftType& lhs, const RightType& rhs) {
   CHECK_EQ(lhs_.getHeight(), rhs_.getHeight());
   CHECK_EQ(lhs_.useGpu(), rhs_.useGpu());
 
+  int height = lhs_.getHeight();
+  int width = lhs_.getWidth();
   if (lhs_.isContiguous() && rhs_.isContiguous()) {
-    int size = lhs_.getHeight() * lhs_.getWidth();
+    int size = height * width;
     for (int index = 0; index < size; index++) {
       lhs_.applyRef(index) = rhs_.apply(index);
     }
   } else {
-    for (size_t i = 0; i < lhs_.getHeight(); i++) {
-      for (size_t j = 0; j < lhs_.getWidth(); j++) {
+    for (int i = 0; i < height; i++) {
+      for (int j = 0; j < width; j++) {
         lhs_.applyRef(i, j) = rhs_.apply(i, j);
       }
     }

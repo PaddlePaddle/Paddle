@@ -27,6 +27,8 @@ typename ExprType2,
 typename ExprType3,
 class T> class TensorTernaryOp;
 
+template<typename LhsType, typename RhsType, class T> class TensorAssignOp;
+
 /**
  * \brief Tensor base class.
  * 
@@ -316,6 +318,12 @@ public:
   constant(T p) const {
     return TensorConstant<hppl::unary::constant<T>, const Derived, T>
       (hppl::unary::constant<T>(p), derived());
+  }
+
+  template<typename ExpressionType>
+  TensorAssignOp<Derived, ExpressionType, T>
+  lazyAssign(const ExpressionType& expr) const {
+    return TensorAssignOp<Derived, ExpressionType, T> (derived(), expr);
   }
 
 protected:

@@ -87,6 +87,12 @@ if(NOT WITH_GPU)
     add_definitions(-DHPPL_STUB_FUNC)
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
+    if(${CUDA_VERSION_MAJOR} GREATER 6)
+        if(COMPILER_SUPPORT_CXX11)
+            LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
+        endif()
+    endif()
+
     # TODO(yuyang18): Change it to remove std=c++11 in cuda compile.
     set(CUDA_PROPAGATE_HOST_FLAGS OFF)
     if(NOT CUDNN_FOUND)
