@@ -43,6 +43,5 @@ output = fc_layer(input=hidden2, size=3513, act=SoftmaxActivation())
 label = data_layer(name="label", size=3513)
 
 # Define cross-entropy classification loss and error.
-classification_cost(input=output, label=label)
 cls = classification_cost(input=output, label=label)
 outputs(cls)
