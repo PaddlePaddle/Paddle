@@ -312,6 +312,49 @@ TEST(Layer, convLayer) {
 #endif
 }
 
+
+void testConvTransLayer(const string& type, bool trans, bool useGpu) {
+  TestConfig config;
+  config.biasSize = 3;
+  config.layerConfig.set_type(type);
+  config.layerConfig.set_num_filters(3);
+  config.layerConfig.set_partial_sum(1);
+  config.layerConfig.set_shared_biases(true);
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 288});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ConvConfig* conv = input->mutable_conv_conf();
+  conv->set_filter_size(2);
+  conv->set_filter_size_y(3);
+  conv->set_channels(16);
+  conv->set_padding(0);
+  conv->set_padding_y(1);
+  conv->set_stride(2);
+  conv->set_stride_y(2);
+  conv->set_groups(1);
+  conv->set_filter_channels(3 / conv->groups());
+  conv->set_img_size(16);
+  conv->set_output_x(
+      (2 * conv->padding() + conv->img_size() - conv->filter_size()) /
+          ((float)conv->stride()) +
+      1.5);
+
+  config.layerConfig.set_size(conv->img_size() * conv->img_size() *
+                              config.layerConfig.num_filters());
+
+  testLayerGrad(config, "convTrans", 100, trans, useGpu);
+}
+
+TEST(Layer, convTransLayer) {
+  testConvTransLayer("exconvt", /* trans= */ false, /* useGpu= */ false);
+/*
+#ifndef PADDLE_ONLY_CPU
+  testConvLayer("exconv",  trans=  false,  useGpu=  true);
+  testConvLayer("cudnn_conv",  trans=  false,  useGpu=  true);
+#endif
+*/
+}
+
 TEST(Layer, blockExpandLayer) {
   TestConfig config;
   config.biasSize = 0;
