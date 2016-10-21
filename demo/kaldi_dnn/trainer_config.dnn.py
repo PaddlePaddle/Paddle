@@ -16,7 +16,7 @@ with open(label) as f:
 
 define_py_data_sources2(train_list=trn,
                         test_list=tst,
-                        module="dataprovider_kaldi",
+                        module="dataprovider_ark",
                         obj=process,
                         args={"utt_pdf" : utt_pdf, "num_seonoe" : 3513})
 
