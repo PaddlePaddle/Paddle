@@ -147,14 +147,6 @@ public:
     stride_ = width_;
   }
 
-  /**
-   * Get a temporary matrix. This is threadsafe. It should be only used
-   * temporarily, i.e. do not store it or use it as return value.
-   * Do NOT use large amount of tmp matrix.
-   */
-  static MatrixPtr getTmpMatrix(
-      size_t height, size_t width, bool useGpu);
-
   size_t getWidth() const { return width_; }
   size_t getHeight() const { return height_; }
   size_t getStride() const { return stride_; }
@@ -351,8 +343,16 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void addSharedBias(Matrix& b, real scale) {
+    LOG(FATAL) << "Not implemented";
+  }
+
   /// add each sample from a to this.
   virtual void collectBias(Matrix& a, real scale) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void collectSharedBias(Matrix& a, real scale) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -1029,6 +1029,7 @@ public:
 
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
+  void addSharedBias(Matrix& b, real scale);
 
   /**
    * @code
@@ -1036,6 +1037,7 @@ public:
    * @endcode
    */
   void collectBias(Matrix& a, real scale);
+  void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
 
@@ -1349,9 +1351,11 @@ public:
 public:
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
+  void addSharedBias(Matrix& b, real scale);
 
   /// add each sample of a to this.
   void collectBias(Matrix& a, real scale);
+  void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
 

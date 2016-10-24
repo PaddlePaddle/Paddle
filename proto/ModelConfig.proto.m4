@@ -379,6 +379,9 @@ sinclude(`ModelConfigLayer.proto.m4')
 
   // use to compute moving mean and variance.
   optional real moving_average_fraction = 47 [default = 0.9];
+
+  // bias size
+  optional uint32 bias_size = 48 [default = 0];
 }
 
 message EvaluatorConfig {

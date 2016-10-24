@@ -27,6 +27,7 @@ class ConvBaseLayer : public Layer {
 protected:
   typedef std::vector<int> IntV;
 
+
   /// The number of filters.
   int numFilters_;
   /// The x dimension of the padding.
@@ -43,19 +44,18 @@ protected:
   IntV filterSizeY_;
   /// The spatial dimensions of the convolution input.
   IntV channels_;
-  /// The spatial dimensions of input feature map.
-  IntV imgSize_;
-  /// The total pixel size of input feature map.
-  /// imgPixels_ = imgSizeX_ * imgSizeY_.
-  IntV imgPixels_;
+  /// The spatial dimensions of input feature map height.
+  IntV imgSizeH_;
+  /// The spatial dimensions of input feature map width.
+  IntV imgSizeW_;
   /// filterPixels_ = filterSizeX_ * filterSizeY_.
   IntV filterPixels_;
   /// filterChannels_ = channels_/groups_.
   IntV filterChannels_;
-  /// The spatial dimensions of output feature map.
-  IntV outputX_;
-  /// The spatial dimensions of output feature map.
-  IntV outputs_;
+  /// The spatial dimensions of output feature map height.
+  IntV outputH_;
+  /// The spatial dimensions of output feature map width.
+  IntV outputW_;
   /// Group size, refer to grouped convolution in
   /// Alex Krizhevsky's paper: when group=2, the first half of the
   /// filters are only connected to the first half of the input channels,
@@ -79,6 +79,7 @@ public:
   explicit ConvBaseLayer(const LayerConfig& config) : Layer(config) {}
 
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  virtual size_t calOutputSize();
 
   Weight& getWeight(int idx) { return *weights_[idx]; }
 

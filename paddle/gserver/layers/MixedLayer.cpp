@@ -15,38 +15,10 @@ limitations under the License. */
 
 #include "paddle/utils/Stat.h"
 #include "MixedLayer.h"
-#include "ConvProjection.h"
 
 namespace paddle {
 
 REGISTER_LAYER(mixed, MixedLayer);
-
-size_t MixedLayer::getBiasSize() {
-  isConvProj_ = false;
-  if (projections_[0]) {
-    if (dynamic_cast<ConvProjection*>(projections_[0].get())) {
-      CHECK(useGpu_) << "ConvProjection only support GPU";
-      for (size_t i = 1; i < inputLayers_.size(); i++) {
-        CHECK(dynamic_cast<ConvProjection*>(projections_[i].get()));
-      }
-      isConvProj_ = true;
-    }
-  }
-
-  size_t biasSize = isConvProj_ ? 0 : getSize();
-  if (isConvProj_) {
-    // only support shared bias
-    for (size_t i = 0; i < inputLayers_.size(); i++) {
-      if (projections_[i]) {
-        auto proj = dynamic_cast<ConvProjection*>(projections_[i].get());
-        biasSize += proj->getNumFilters();
-      }
-    }
-    auto prj = dynamic_cast<ConvProjection*>(projections_[0].get());
-    prj->createBias(biasSize);
-  }
-  return biasSize;
-}
 
 bool MixedLayer::init(const LayerMap& layerMap,
                       const ParameterMap& parameterMap) {
@@ -72,8 +44,12 @@ bool MixedLayer::init(const LayerMap& layerMap,
 
   /* initialize biases_ */
   if (biasParameter_.get() != NULL) {
+    if (config_.has_shared_biases()) {
+      sharedBias_ = config_.shared_biases();
+    }
+    size_t psize = config_.bias_size();
     biases_ = std::unique_ptr<Weight>(
-        new Weight(1, getBiasSize(), biasParameter_));
+        new Weight(1, psize, biasParameter_));
   }
 
   return true;
@@ -167,11 +143,8 @@ void MixedLayer::forward(PassType passType) {
   /* add the bias-vector */
   if (biases_.get() != NULL) {
     REGISTER_TIMER_INFO("FwBiasTimer", getName().c_str());
-    if (isConvProj_) {
-      MatrixPtr b = biases_->getW();
-      auto prj = dynamic_cast<ConvProjection*>(projections_[0].get());
-      prj->addBias(batchSize, b->getWidth(),
-                   output_.value->getData(), b->getData());
+    if (sharedBias_) {
+      outV->addSharedBias(*(biases_->getW()), 1);
     } else {
       outV->addBias(*(biases_->getW()), 1);
     }
@@ -191,10 +164,8 @@ void MixedLayer::backward(const UpdateCallback& callback) {
 
   if (biases_ && biases_->getWGrad()) {
     REGISTER_TIMER_INFO("BpBiasTimer", getName().c_str());
-    if (isConvProj_) {
-      auto prj = dynamic_cast<ConvProjection*>(projections_[0].get());
-      prj->bpropBias(output_.grad->getData(),
-                     biases_->getWGrad()->getData());
+    if (sharedBias_) {
+      biases_->getWGrad()->collectSharedBias(*getOutputGrad(), 1);
     } else {
       biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
     }

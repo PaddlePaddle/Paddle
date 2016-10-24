@@ -2958,7 +2958,7 @@ def conv_operator(img, filter, filter_size, num_filters,
 def conv_projection(input, filter_size, num_filters,
                     num_channels=None, stride=1, padding=0,
                     filter_size_y=None, stride_y=None, padding_y=None,
-                    param_attr=None):
+                    groups=1, param_attr=None):
     """
     ConvProjection with a layer as input.
     It performs element-wise multiplication with weight.
@@ -2996,6 +2996,8 @@ def conv_projection(input, filter_size, num_filters,
     :type padding: int
     :param padding_y: The y dimension of padding.
     :type padding_y: int
+    :param groups: The group number.
+    :type groups: int
     :param param_attr: Convolution param attribute. None means default attribute
     :type param_attr: ParameterAttribute
     :return: A DotMulProjection Object.
@@ -3043,7 +3045,7 @@ def conv_projection(input, filter_size, num_filters,
                                          filter_size_y=filter_size_y,
                                          padding_y=padding_y,
                                          stride_y=stride_y,
-                                         groups=1),
+                                         groups=groups),
                           **param_attr.attr)
 
     proj.origin = input

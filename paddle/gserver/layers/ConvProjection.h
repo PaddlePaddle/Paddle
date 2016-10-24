@@ -35,39 +35,6 @@ public:
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 
-  int getNumFilters() {
-    return numFilters_;
-  }
-
-  void createBias(int elmCnt) {
-    hl_create_tensor_descriptor(&allOutputDesc_);
-    hl_create_tensor_descriptor(&biasDesc_);
-    hl_tensor_reshape(biasDesc_, 1, elmCnt, 1, 1);
-    bias_ = true;
-  }
-
-  /// in case of concat2(input=[convProj, convProj])
-  /// numFilters != numFilters_
-  void addBias(int batchSize, int numFilters, real* outData, real* biasData) {
-    CHECK(allOutputDesc_ && biasDesc_);
-
-    // if addBias is called before forward and reshape(),
-    // it need to call calOutputSize() outputH_ and outputW_
-    // calOutputSize();
-
-    hl_tensor_reshape(allOutputDesc_, batchSize, numFilters,
-                      outputH_, outputW_, numFilters * outputH_ * outputW_,
-                      outputH_ * outputW_, outputW_, 1);
-
-    hl_convolution_forward_add_bias(biasDesc_, biasData,
-                                    allOutputDesc_, outData);
-  }
-
-  void bpropBias(real* outGrad, real* biasGrad) {
-    CHECK(allOutputDesc_ && biasDesc_);
-    hl_convolution_backward_bias(biasDesc_, biasGrad, outputDesc_, outGrad);
-  }
-
 protected:
   void getConvParams();
   void initCudnn();
@@ -76,10 +43,9 @@ protected:
   void reshape(int batchSize);
 
   int outputSize(int imageSize, int filterSize, int padding, int stride) {
-    // caffe mode
-    int outputSize = (imageSize - filterSize + 2 * padding) / stride + 1;
-    return outputSize;
+    return (imageSize - filterSize + 2 * padding) / stride + 1;
   }
+
   void calOutputSize() {
     imageH_ = in_->getFrameHeight();
     imageW_ = in_->getFrameWidth();
@@ -90,6 +56,9 @@ protected:
 
     out_->setFrameHeight(outputH_);
     out_->setFrameWidth(outputW_);
+
+    inputOffset_ = (channels_ / groups_) * imageH_ * imageW_;
+    outputOffset_ = (numFilters_ / groups_) * outputH_ * outputW_;
   }
 
   /// imageH_ and imageW_ is calculated from the input layer.
@@ -101,27 +70,45 @@ protected:
   int paddingH_, paddingW_;
   int strideH_, strideW_;
   int filterH_, filterW_;
-  int inputOffset_, outputOffset_, weightOffset_;
+  /// One group offset of input data.
+  int inputOffset_;
+  /// One group offset of output data.
+  int outputOffset_;
+  /// One group offset of weight.
+  int weightOffset_;
+  int groups_;
 
+  /// Cudnn tensor descriptor for input.
   hl_tensor_descriptor inputDesc_;
+  /// Cudnn tensor descriptor for output.
   hl_tensor_descriptor outputDesc_;
+  /// Cudnn tensor descriptor for filter.
   hl_filter_descriptor filterDesc_;
+  /// Cudnn tensor descriptor for a convolution operation.
   hl_convolution_descriptor convDesc_;
 
-  /// if ConvProjection is the input of ConcatenateLayer2,
-  /// this projection's output is only sub columns of
-  /// ConcatenateLayer2's output matrix.
-  /// allOutputDesc_ is used to describe the ConcatenateLayer2's output.
-  /// It is used when the ConcatenateLayer2 has bias.
-  hl_tensor_descriptor allOutputDesc_;
-  hl_tensor_descriptor biasDesc_;
+  /// Save the algorithm for forward convolution, which is obtained by cudnn
+  /// api to search the best suited algorithm.
+  int fwdAlgo_;
+  /// Save the algorithm for computing convolution gradient with respect to
+  /// filter coefficients.
+  int bwdFilterAlgo_;
+  /// Save the algorithm for computing convolution gradient with respect to
+  /// the output.
+  int bwdDataAlgo_;
+  /// Amount of GPU memory needed as workspace to be able to execute a
+  /// forward convolution with the specified algo.
+  size_t fwdLimitBytes_;
+  /// Amount of GPU memory needed as workspace to be able to execute a
+  /// backwardFilter with the specified algo.
+  size_t bwdDataLimitBytes_;
+  /// Amount of GPU memory needed as workspace to be able to execute a
+  /// backwardData with the specified algo.
+  size_t bwdFilterLimitBytes_;
+  /// Size of total work space.
+  size_t workSpaceInBytes_;
 
-  /// Following member variables are same with CudnnConvLayer.
-  /// There is no explanation here.
-  int fwdAlgo_, bwdFilterAlgo_, bwdDataAlgo_;
-  size_t fwdLimitBytes_, bwdDataLimitBytes_, bwdFilterLimitBytes_;
-  size_t workSpaceInReal_;
-
+  /// Is or not select conv algorihtm.
   bool isSelectAlgo_;
   /// batchNum is used to record batch size. If the batch size is changed,
   /// the selection algorithm will be called.

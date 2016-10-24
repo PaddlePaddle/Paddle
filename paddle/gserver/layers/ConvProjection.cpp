@@ -18,19 +18,39 @@ limitations under the License. */
 
 namespace paddle {
 
+static ThreadLocal<std::vector<MemoryHandlePtr>> convMem_;
+static __thread bool convMemInit = false;
+void* getSpaceBytes(size_t size) {
+  if (!convMemInit) {
+    int numDevices = hl_get_device_count();
+    convMem_.get()->resize(numDevices);
+    convMemInit = true;
+  }
+
+  int devId = hl_get_device();
+  MemoryHandlePtr* localMem = &(*convMem_.get())[devId];
+  if (NULL == (*localMem).get() || size > (*localMem)->getAllocSize()) {
+    *localMem = std::make_shared<GpuMemoryHandle>(size);
+  }
+  return (*localMem)->getBuf();
+}
+
 REGISTER_PROJECTION(conv, ConvProjection);
 
 ConvProjection::ConvProjection(const ProjectionConfig& config,
                                ParameterPtr parameter, bool useGpu)
-    : Projection(config, parameter, useGpu), bias_(false) {
+    : Projection(config, parameter, useGpu) {
 
   CHECK(useGpu);  // only support GPU
   getConvParams();
   initCudnn();
 
-  size_t height = filterH_ * filterW_ * channels_;
+  size_t height = filterH_ * filterW_ * channels_ / groups_;
   size_t width = numFilters_;
   weight_.reset(new Weight(height, width, parameter));
+
+
+  weightOffset_ = height * width / groups_;
 }
 
 void ConvProjection::getConvParams() {
@@ -51,7 +71,9 @@ void ConvProjection::getConvParams() {
   channels_ = conf.channels();
   numFilters_ = config_.num_filters();
 
-  CHECK_EQ(conf.groups(), 1U);
+  groups_ = conf.groups();
+  CHECK_EQ(channels_ % groups_, 0);
+  CHECK_EQ(numFilters_ % groups_, 0);
 }
 
 void ConvProjection::initCudnn() {
@@ -69,7 +91,7 @@ void ConvProjection::initCudnn() {
   fwdLimitBytes_ = 0;
   bwdDataLimitBytes_ = 0;
   bwdFilterLimitBytes_ = 0;
-  workSpaceInReal_ = 0;
+  workSpaceInBytes_ = 0;
 
   batchNum_ = 0;
   isSelectAlgo_ = false;
@@ -99,6 +121,7 @@ void ConvProjection::reshapeTensorDesc(int batchSize) {
 
 void ConvProjection::reshape(int batchSize) {
   calOutputSize();
+
   isSelectAlgo_ = (batchSize == batchNum_);
   batchNum_ = batchSize;
 
@@ -112,7 +135,7 @@ void ConvProjection::reshape(int batchSize) {
     size_t maxWorkSpace = 0;
     maxWorkSpace = std::max(fwdLimitBytes_, bwdDataLimitBytes_);
     maxWorkSpace = std::max(maxWorkSpace, bwdFilterLimitBytes_);
-    workSpaceInReal_ = (maxWorkSpace + sizeof(real) - 1) / sizeof(real);
+    workSpaceInBytes_ = maxWorkSpace;
 
 
     VLOG(3) << getName() << " Fwd / BwdData / BwdFilter algo: " << fwdAlgo_
@@ -127,50 +150,52 @@ void ConvProjection::forward() {
   int batchSize = in_->value->getHeight();
   reshape(batchSize);
 
-  real *inputData = in_->value->getData();
-  real *wgtData = weight_->getW()->getData();
-  real *outData = out_->value->getData();
-
   void* workSpace = NULL;
-  if (workSpaceInReal_ > 0) {
-    MatrixPtr tmpMat = Matrix::getTmpMatrix(1, workSpaceInReal_, true);
-    workSpace = (void*)tmpMat->getData();
+  if (workSpaceInBytes_ > 0) {
+    workSpace = getSpaceBytes(workSpaceInBytes_);
   }
 
-  REGISTER_TIMER_INFO("ConvProjectionFwTimer", getName().c_str());
-  hl_convolution_forward(inputDesc_, inputData, outputDesc_,
-                         outData, filterDesc_, wgtData,
-                         convDesc_, workSpace,
-                         fwdLimitBytes_, fwdAlgo_);
+  for (int g = 0; g < groups_; ++g) {
+    REGISTER_TIMER_INFO("CudnnConvFwTimer", getName().c_str());
+
+    real *inputData = in_->value->getData() + g * inputOffset_;
+    real *wgtData = weight_->getW()->getData() + g * weightOffset_;
+    real *outData = out_->value->getData() + g * outputOffset_;
+    hl_convolution_forward(inputDesc_, inputData, outputDesc_,
+                           outData, filterDesc_, wgtData,
+                           convDesc_, workSpace,
+                           fwdLimitBytes_, fwdAlgo_);
+  }
 }
 
 void ConvProjection::backward(const UpdateCallback& callback) {
-  REGISTER_TIMER_INFO("ConvProjectionBpTimer", getName().c_str());
+  REGISTER_TIMER_INFO("CudnnConvBpTimer", getName().c_str());
 
   void* workSpace = NULL;
-  if (workSpaceInReal_ > 0) {
-    MatrixPtr tmpMat = Matrix::getTmpMatrix(1, workSpaceInReal_, true);
-    workSpace = (void*)tmpMat->getData();
+  if (workSpaceInBytes_ > 0) {
+    workSpace = getSpaceBytes(workSpaceInBytes_);
   }
 
-  real *outGrad = out_->grad->getData();
-  if (weight_->getWGrad()) {
-    real *inputData = in_->value->getData();
-    real *weightGrad = weight_->getWGrad()->getData();
-    hl_convolution_backward_filter(
-        inputDesc_, inputData, outputDesc_, outGrad, filterDesc_,
-        weightGrad, convDesc_, workSpace, bwdFilterLimitBytes_,
-        bwdFilterAlgo_);
-  }
+  for (int g = 0; g < groups_; ++g) {
+    real *outGrad = out_->grad->getData() + g * outputOffset_;
+    if (weight_->getWGrad()) {
+      real *inputData = in_->value->getData() + g * inputOffset_;
+      real *weightGrad = weight_->getWGrad()->getData() + g * weightOffset_;
+      hl_convolution_backward_filter(
+          inputDesc_, inputData, outputDesc_, outGrad, filterDesc_,
+          weightGrad, convDesc_, workSpace, bwdFilterLimitBytes_,
+          bwdFilterAlgo_);
+    }
 
-  MatrixPtr preGrad = in_->grad;
-  if (NULL != preGrad) {
-    real *inputGrad = preGrad->getData();
-    real *wgtData = weight_->getW()->getData();
-    hl_convolution_backward_data(
-        inputDesc_, inputGrad, outputDesc_, outGrad, filterDesc_,
-        wgtData, convDesc_, workSpace, bwdDataLimitBytes_,
-        bwdDataAlgo_);
+    MatrixPtr preGrad = in_->grad;
+    if (NULL != preGrad) {
+      real *inputGrad = preGrad->getData() + g * inputOffset_;
+      real *wgtData = weight_->getW()->getData() + g* weightOffset_;
+      hl_convolution_backward_data(
+          inputDesc_, inputGrad, outputDesc_, outGrad, filterDesc_,
+          wgtData, convDesc_, workSpace, bwdDataLimitBytes_,
+          bwdDataAlgo_);
+    }
   }
 
   weight_->getParameterPtr()->incUpdate(callback);
@@ -181,11 +206,6 @@ ConvProjection::~ConvProjection() {
   hl_destroy_tensor_descriptor(outputDesc_);
   hl_destroy_filter_descriptor(filterDesc_);
   hl_destroy_convolution_descriptor(convDesc_);
-
-  if (bias_) {
-    hl_destroy_tensor_descriptor(allOutputDesc_);
-    hl_destroy_tensor_descriptor(biasDesc_);
-  }
 }
 
 }  // namespace paddle

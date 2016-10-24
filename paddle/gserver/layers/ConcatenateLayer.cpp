@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/utils/Stat.h"
 #include "Layer.h"
 #include "Projection.h"
-#include "ConvProjection.h"
 
 namespace paddle {
 
@@ -99,7 +98,7 @@ void ConcatenateLayer::backward(const UpdateCallback& callback) {
 class ConcatenateLayer2 : public Layer {
 public:
   explicit ConcatenateLayer2(const LayerConfig& config) :
-      Layer(config), isConvProj_(false) {}
+      Layer(config), sharedBias_(false) {}
 
   ~ConcatenateLayer2() {}
 
@@ -109,10 +108,12 @@ public:
   virtual void backward(const UpdateCallback& callback = nullptr);
 
 protected:
+  bool sharedBiases_;
+
   std::vector<std::unique_ptr<Projection>> projections_;
   std::vector<Argument> projOutput_;
   std::vector<std::pair<size_t, size_t>> projCol_;
-  bool isConvProj_;
+  bool sharedBias_;
   std::unique_ptr<Weight> biases_;
 };
 
@@ -142,25 +143,11 @@ bool ConcatenateLayer2::init(const LayerMap& layerMap,
 
   /* initialize biases_ */
   if (biasParameter_.get() != NULL) {
-    if (dynamic_cast<ConvProjection*>(projections_[0].get())) {
-      CHECK(useGpu_) << "ConvProjection only support GPU";
-      for (size_t i = 1; i < inputLayers_.size(); i++) {
-        CHECK(dynamic_cast<ConvProjection*>(projections_[i].get()));
-      }
-      isConvProj_ = true;
+    if (config_.has_shared_biases()) {
+      sharedBias_ = config_.shared_biases();
     }
-
-    size_t w = isConvProj_ ? 0 : getSize();
-    if (isConvProj_) {
-      // only support shared bias
-      for (size_t i = 0; i < inputLayers_.size(); i++) {
-        auto proj = dynamic_cast<ConvProjection*>(projections_[i].get());
-        w += proj->getNumFilters();
-      }
-      auto prj = dynamic_cast<ConvProjection*>(projections_[0].get());
-      prj->createBias(w);
-    }
-    biases_ = std::unique_ptr<Weight>(new Weight(1, w, biasParameter_));
+    size_t psize = config_.bias_size();
+    biases_ = std::unique_ptr<Weight>(new Weight(1, psize, biasParameter_));
   }
 
   return true;
@@ -190,11 +177,8 @@ void ConcatenateLayer2::forward(PassType passType) {
   /* add the bias-vector */
   if (biases_.get() != NULL) {
     REGISTER_TIMER_INFO("FwBiasTimer", getName().c_str());
-    if (isConvProj_) {
-      MatrixPtr b = biases_->getW();
-      auto prj = dynamic_cast<ConvProjection*>(projections_[0].get());
-      prj->addBias(batchSize, b->getWidth(),
-                   output_.value->getData(), b->getData());
+    if (sharedBias_) {
+      output_.value->addSharedBias(*(biases_->getW()), 1);
     } else {
       output_.value->addBias(*(biases_->getW()), 1);
     }
@@ -214,10 +198,8 @@ void ConcatenateLayer2::backward(const UpdateCallback& callback) {
 
   if (biases_ && biases_->getWGrad()) {
     REGISTER_TIMER_INFO("Concat2BpBiasTimer", getName().c_str());
-    if (isConvProj_) {
-      auto prj = dynamic_cast<ConvProjection*>(projections_[0].get());
-      prj->bpropBias(output_.grad->getData(),
-                     biases_->getWGrad()->getData());
+    if (sharedBias_) {
+      biases_->getWGrad()->collectSharedBias(*getOutputGrad(), 1);
     } else {
       biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
     }

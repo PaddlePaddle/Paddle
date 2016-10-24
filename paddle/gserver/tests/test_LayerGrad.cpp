@@ -168,7 +168,7 @@ TEST(Projection, conv) {
 
   testProjectionGrad(conf, INPUT_DATA,
       /* parameterSize */ NUM_FILTERS * CHANNELS * FILTER_SIZE * FILTER_SIZE_Y,
-      /* batchSize */ 100, true, false, NUM_FILTERS);
+      /* batchSize */ 100, true, false, NUM_FILTERS, true);
 }
 #endif
 
