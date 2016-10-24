@@ -1629,7 +1629,7 @@ def img_conv_layer(input, filter_size, num_filters,
 @layer_support()
 def img_pool_layer(input, pool_size, name=None,
                    num_channels=None, pool_type=None,
-                   stride=1, start=None, padding=0, layer_attr=None,
+                   stride=1, padding=0, layer_attr=None,
                    pool_size_y=None, stride_y=None, padding_y=None,
                    img_width=None):
     """
@@ -1660,8 +1660,6 @@ def img_pool_layer(input, pool_size, name=None,
     :type stride: int
     :param stride_y: stride height of pooling. It is equal to stride by default.
     :type stride_y: int|None
-    :param start: start position of pooling operation. Note it is deprecated now.
-    :type start: int|None
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
     :param img_width: the width of input feature map. If it is None, the input feature
@@ -1695,7 +1693,7 @@ def img_pool_layer(input, pool_size, name=None,
                           pool_type=type_name,
                           channels=num_channels,
                           size_x=pool_size,
-                          start=start,
+                          start=None,
                           stride=stride,
                           padding=padding,
                           size_y=pool_size_y,
