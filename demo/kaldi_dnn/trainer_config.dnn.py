@@ -4,23 +4,15 @@ from paddle.trainer_config_helpers import *
 
 trn = '/paddle/data/train.list'
 tst = '/paddle/data/test.list'
-label = '/paddle/data/1k_utt.pdf'
 process = 'process'
-
-utt_pdf = dict()
-with open(label) as f:
-    for line in f:
-        parts = line.split()
-        utt_pdf[parts[0]] = [int(s) for s in parts[1:]]
-
 
 define_py_data_sources2(train_list=trn,
                         test_list=tst,
                         module="dataprovider_ark",
                         obj=process,
-                        args={"utt_pdf" : utt_pdf, "num_senone" : 3513})
+                        args={"num_senone" : 3513})
 
-batch_size = 128
+batch_size = 256
 settings(
     batch_size=batch_size,
     learning_rate=2e-3,
