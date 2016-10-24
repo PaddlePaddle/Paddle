@@ -3285,73 +3285,6 @@ convex_comb_layer = linear_comb_layer
 
 @wrap_name_default()
 @layer_support()
-def maxout_layer(input,
-                 groups,
-                 num_channels=None,
-                 size_x=None,
-                 size_y=None,
-                 name=None,
-                 layer_attr=None):
-    """
-    A layer to do max out on conv layer output.
-      - Input: output of a conv layer.
-      - Output: feature map size same as input. Channel is (input channel) / groups.
-
-    So groups should be larger than 1, and the num of channels should be able 
-    to devided by groups.
-
-    Please refer to Paper: 
-      - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
-      - Multi-digit Number Recognition from Street View \
-        Imagery using Deep Convolutional Neural Networks: \
-        https://arxiv.org/pdf/1312.6082v4.pdf
-    
-    The simple usage is:
-
-    .. code-block:: python
-
-       maxout = maxout_layer(input,
-                             num_channels=128,
-                             groups=4)
-
-    :param input: The input layer.
-    :type input: LayerOutput
-    :param num_channels: The channel number of input layer. If None will be set
-                     automatically from previous output.
-    :type num_channels: int|None
-    :param groups: The group number of input layer.
-    :type groups: int
-    :param size_x: conv output width. If None will be set
-                   automatically from previous output.
-    :type size_x: int|None
-    :param size_y: conv output height. If None will be set
-                   automatically from previous output.
-    :type size_y: int|None
-    :param name: The name of this layer, which can not specify.
-    :type name: None|basestring.
-    :param layer_attr: Extra Layer attribute.
-    :type layer_attr: ExtraLayerAttribute
-    :return: LayerOutput object.
-    :rtype: LayerOutput
-    """
-    assert input.layer_type == LayerType.CONV_LAYER
-    assert isinstance(input.activation, LinearActivation)
-    assert groups > 1
-    if num_channels is None:
-        assert input.num_filters is not None
-        num_channels = input.num_filters
-    assert num_channels % groups == 0
-    Layer(name=name,
-          inputs=Input(input.name,
-                       maxout=MaxOut(channels=num_channels,
-                                     groups=groups)),
-          type=LayerType.MAXOUT,
-          **ExtraLayerAttribute.to_kwargs(layer_attr))
-    return LayerOutput(name, LayerType.MAXOUT, parents=[input])
-
-
-@wrap_name_default()
-@layer_support()
 def block_expand_layer(input,
                        channel=0,
                        block_x=0,
@@ -3428,6 +3361,73 @@ def block_expand_layer(input,
           )
 
     return LayerOutput(name, LayerType.BLOCK_EXPAND, parents=[input])
+
+
+@wrap_name_default()
+@layer_support()
+def maxout_layer(input,
+                 groups,
+                 num_channels=None,
+                 size_x=None,
+                 size_y=None,
+                 name=None,
+                 layer_attr=None):
+    """
+    A layer to do max out on conv layer output.
+      - Input: output of a conv layer.
+      - Output: feature map size same as input. Channel is (input channel) / groups.
+
+    So groups should be larger than 1, and the num of channels should be able 
+    to devided by groups.
+
+    Please refer to Paper: 
+      - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
+      - Multi-digit Number Recognition from Street View \
+        Imagery using Deep Convolutional Neural Networks: \
+        https://arxiv.org/pdf/1312.6082v4.pdf
+    
+    The simple usage is:
+
+    .. code-block:: python
+
+       maxout = maxout_layer(input,
+                             num_channels=128,
+                             groups=4)
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param num_channels: The channel number of input layer. If None will be set
+                     automatically from previous output.
+    :type num_channels: int|None
+    :param groups: The group number of input layer.
+    :type groups: int
+    :param size_x: conv output width. If None will be set
+                   automatically from previous output.
+    :type size_x: int|None
+    :param size_y: conv output height. If None will be set
+                   automatically from previous output.
+    :type size_y: int|None
+    :param name: The name of this layer, which can not specify.
+    :type name: None|basestring.
+    :param layer_attr: Extra Layer attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert input.layer_type == LayerType.CONV_LAYER
+    assert isinstance(input.activation, LinearActivation)
+    assert groups > 1
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+    assert num_channels % groups == 0
+    Layer(name=name,
+          inputs=Input(input.name,
+                       maxout=MaxOut(channels=num_channels,
+                                     groups=groups)),
+          type=LayerType.MAXOUT,
+          **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(name, LayerType.MAXOUT, parents=[input])
 
 
 @wrap_name_default()
