@@ -170,6 +170,15 @@ message BlockExpandConfig {
   required uint32 img_size_y = 11;
 }
 
+message MaxOutConfig {
+  required uint32 channels = 1;
+  required uint32 groups = 2;
+
+  // The size of input feature map.
+  required uint32 img_size_x = 3;
+  required uint32 img_size_y = 4;
+}
+
 message ProjectionConfig {
   required string type = 1;
   required string name = 2;
@@ -225,6 +234,7 @@ message LayerInputConfig {
   // If the input layer has multi-output.
   // Set the argument name.
   optional string input_layer_argument = 9;
+  optional MaxOutConfig maxout_conf = 10;
 }
 
 message LayerConfig {

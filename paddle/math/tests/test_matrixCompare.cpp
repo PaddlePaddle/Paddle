@@ -1999,6 +1999,78 @@ TEST(Matrix, PoolFwdBwd) {
   }
 }
 
+void testMaxOutFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
+                      int channels, int groups) {
+  int inWidth = imgSizeH * imgSizeW * channels;
+  int outChannels = channels / groups;
+  int outWidth = imgSizeH * imgSizeW * outChannels;
+
+  // forward
+  MatrixPtr input = CpuMatrix::create(numSamples, inWidth, false, false);
+  MatrixPtr inputGpu = GpuMatrix::create(numSamples, inWidth, false, true);
+
+  MatrixPtr target = CpuMatrix::create(numSamples, outWidth, false, false);
+  MatrixPtr targetGpu = GpuMatrix::create(numSamples, outWidth, false, true);
+  MatrixPtr targetCheck = CpuMatrix::create(numSamples, outWidth, false, false);
+
+  IVectorPtr id = CpuIVector::create(numSamples * outWidth, false);
+  IVectorPtr idGpu = GpuIVector::create(numSamples * outWidth, true);
+  IVectorPtr idCheck = CpuIVector::create(numSamples * outWidth, false);
+
+  input->randomizeUniform();
+  inputGpu->copyFrom(*input);
+
+  target->maxoutForward(*input, *id, outChannels, groups);
+  targetGpu->maxoutForward(*inputGpu, *idGpu, outChannels, groups);
+
+  // check
+  targetCheck->copyFrom(*targetGpu);
+  MatrixCheckErr(*target, *targetCheck);
+  idCheck->copyFrom(*idGpu);
+  VectorCheckEqual(*id, *idCheck);
+
+  // backward
+  MatrixPtr inputGrad = CpuMatrix::create(numSamples, inWidth, false, false);
+  MatrixPtr inputGpuGrad = GpuMatrix::create(numSamples, inWidth, false, true);
+
+  MatrixPtr targetGrad = CpuMatrix::create(numSamples, outWidth, false, false);
+  MatrixPtr targetGpuGrad = GpuMatrix::create(numSamples, outWidth, false,
+                                              true);
+  MatrixPtr targetCheckGrad = CpuMatrix::create(numSamples, inWidth, false,
+                                                false);
+
+  inputGrad->randomizeUniform();
+  targetGrad->randomizeUniform();
+  inputGpuGrad->copyFrom(*inputGrad);
+  targetGpuGrad->copyFrom(*targetGrad);
+
+  inputGrad->maxoutBackward(*targetGrad, *id, outChannels, groups);
+  inputGpuGrad->maxoutBackward(*targetGpuGrad, *idGpu, outChannels, groups);
+
+  // check
+  targetCheckGrad->copyFrom(*inputGpuGrad);
+  MatrixCheckErr(*inputGrad, *targetCheckGrad);
+}
+
+TEST(Matrix, MaxOutFwdBwd) {
+  for (auto numSamples : {5, 10}) {
+    for (auto channels : {8, 16}) {
+      for (auto imgSizeH : {14, 28}) {
+        for (auto imgSizeW : {16, 30}) {
+          for (auto groups : {2, 4}) {
+            VLOG(3) << " numSamples=" << numSamples
+                    << " channels=" << channels
+                    << " imgSizeH=" << imgSizeH
+                    << " imgSizeW=" << imgSizeW
+                    << " groups=" << groups;
+            testMaxOutFwdBwd(numSamples, imgSizeH, imgSizeW, channels, groups);
+          }
+        }
+      }
+    }
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);

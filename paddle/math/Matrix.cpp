@@ -583,6 +583,42 @@ void GpuMatrix::colMax(Matrix& max) {
   max.maxCols(*this);
 }
 
+void GpuMatrix::colMax(IVector& maxIds, Matrix& maxVal) {
+  LOG(FATAL) << "Is not supported";
+}
+
+void GpuMatrix::maxoutForward(Matrix& a, IVector& id, size_t channels,
+                              size_t groups) {
+  CHECK(dynamic_cast<GpuMatrix*>(&a));
+  CHECK(dynamic_cast<GpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = getWidth();
+  size_t batchSize = getHeight();
+  const real* input  = a.getData();
+  real* output = getData();
+  int* idForGpu = id.getData();
+
+  hl_maxout_forward(input, output, idForGpu, batchSize, size,
+                    size / channels, groups);
+}
+
+void GpuMatrix::maxoutBackward(Matrix& a, IVector& id, size_t channels,
+                               size_t groups) {
+  CHECK(dynamic_cast<GpuMatrix*>(&a));
+  CHECK(dynamic_cast<GpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = a.getWidth();
+  size_t batchSize = getHeight();
+  real* input  = getData();
+  const real* output = a.getData();
+  const int* idForGpu = id.getData();
+
+  hl_maxout_backward(input, output, idForGpu, batchSize, size,
+                     size / channels, groups);
+}
+
 /*calulate the error of classification */
 void GpuMatrix::classificationError(MatrixPtr output, IVectorPtr label) {
   GpuMatrixPtr output_ptr = std::dynamic_pointer_cast<GpuMatrix>(output);
@@ -2746,6 +2782,95 @@ void CpuMatrix::colMax(Matrix& max) {
   CHECK_EQ(max.getWidth(), getWidth());
   CHECK_EQ(max.getHeight(), (size_t)1);
   max.maxCols(*this);
+}
+
+void CpuMatrix::colMax(IVector& maxIds, Matrix& maxVal) {
+  CHECK(isContiguous());
+  CHECK(!maxIds.useGpu() && !maxVal.useGpu()) << "Matrix type are not equal";
+  size_t numSamples = getWidth();
+  size_t beam = maxVal.getHeight();
+  CHECK_EQ(maxIds.getSize(), numSamples * beam);
+  CHECK_EQ(maxVal.getWidth(), numSamples);
+
+  real* a = getData();
+  int* s = maxIds.getData();
+  real* t = maxVal.getData();
+  size_t dim = getHeight();
+  for (size_t i = 0; i < numSamples; i++) {
+    std::vector<std::pair<real, size_t>> vec;
+    for (size_t j = 0; j < dim; j++) {
+      vec.push_back(std::pair<real, size_t>(a[i + j * numSamples], j));
+    }
+
+    std::partial_sort(
+        vec.begin(), vec.begin() + beam, vec.end(),
+        [](const std::pair<real, size_t>& l, const std::pair<real, size_t>& r) {
+          return l.first > r.first;
+        });
+    for (size_t j = 0; j < beam; j++) {
+      t[i + j * numSamples] = vec[j].first;
+      s[i + j * numSamples] = vec[j].second;
+    }
+  }
+}
+
+void CpuMatrix::maxoutForward(Matrix& a, IVector& id, size_t channels,
+                              size_t groups) {
+  CHECK(dynamic_cast<CpuMatrix*>(&a));
+  CHECK(dynamic_cast<CpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = getWidth();
+  size_t batchSize = getHeight();
+  size_t featLen = size / channels;
+  const real* input  = a.getData();
+  int* idForCpu = id.getData();
+
+  MatrixPtr maxInMat, maxOutMat;
+  Matrix::resizeOrCreate(maxInMat, groups, size, false, false);
+  Matrix::resizeOrCreate(maxOutMat, 1, size, false, false);
+
+  for (size_t batch_idx = 0; batch_idx < batchSize; ++batch_idx) {
+    size_t newIndex = batch_idx * size;
+    IVectorPtr tmpId = IVector::create(idForCpu + newIndex, size, false);
+
+    for (size_t i = 0; i < channels; ++i) {
+      size_t newFeatLen = i * featLen;
+      for (size_t j = 0; j < groups; ++j) {
+        maxInMat->subMatrix(j, j + 1, newFeatLen, newFeatLen + featLen)
+            ->copyFrom(input + (newIndex + newFeatLen) * groups + j * featLen,
+                       featLen);
+      }
+    }
+    maxInMat->colMax(*tmpId, *maxOutMat);
+    this->subRowMatrix(batch_idx, batch_idx + 1)->copyFrom(*maxOutMat);
+  }
+}
+
+void CpuMatrix::maxoutBackward(Matrix& a, IVector& id, size_t channels,
+                               size_t groups) {
+  CHECK(dynamic_cast<CpuMatrix*>(&a));
+  CHECK(dynamic_cast<CpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = a.getWidth();
+  size_t batchSize = getHeight();
+  size_t featLen = size / channels;
+  size_t newFeatLen = groups * featLen;
+  real* inputG  = getData();
+  const real* outG  = a.getData();
+  int* idForCpu = id.getData();
+
+  for (size_t batch_idx = 0; batch_idx < batchSize; ++batch_idx) {
+    size_t newIndex = batch_idx * size;
+    int* idData = idForCpu + newIndex;
+
+    for (size_t i = 0; i < size; ++i) {
+      int gradIdx =
+          idData[i] * featLen + (i / featLen) * newFeatLen + i % featLen;
+      (inputG + newIndex * groups)[gradIdx] += (outG + newIndex)[i];
+    }
+  }
 }
 
 void CpuMatrix::rowNormalizeL1(Matrix& out) {
