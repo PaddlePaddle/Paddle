@@ -258,7 +258,7 @@ void SgdThreadUpdater::threadUpdateSparse(
     }
     // For numThreads > 1, MultiGradientMachine is used, which goes
     // to the above branch.
-    CHECK_EQ(numThreads, 1);
+    CHECK_EQ(numThreads, 1UL);
     mainMat->clearIndices();
   } else {
     auto & m = *para->getMat(PARAMETER_GRADIENT).get();
