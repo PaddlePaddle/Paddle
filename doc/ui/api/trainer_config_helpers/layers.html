@@ -355,6 +355,7 @@ the right size (which is the end of array) to the left.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
 <li><strong>a</strong> (<em>LayerOutput</em>) &#8211; Input layer a.</li>
 <li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input layer b</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; layer&#8217;s extra attribute.</li>
 </ul>
 </td>
 </tr>
@@ -1640,6 +1641,7 @@ convolution neural network, and before recurrent neural network.</p>
 <li><strong>padding_x</strong> (<em>int</em>) &#8211; The padding size in horizontal direction.</li>
 <li><strong>padding_y</strong> (<em>int</em>) &#8211; The padding size in vertical direction.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layer, which can not specify.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -1798,6 +1800,7 @@ processed in one batch.</p>
 <li><strong>vectors</strong> (<em>LayerOutput</em>) &#8211; The vector layer.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; the dimension of this layer.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -1950,6 +1953,7 @@ element-wise. There is no activation and weight.</p>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
 <li><strong>slope</strong> (<em>float.</em>) &#8211; the scale factor.</li>
 <li><strong>intercept</strong> (<em>float.</em>) &#8211; the offset.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -2145,6 +2149,7 @@ Sampling one id for one sample.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -2181,6 +2186,7 @@ Sampling one id for one sample.</p>
 <li><strong>type</strong> (<em>basestring.</em>) &#8211; The type of cost.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2215,6 +2221,7 @@ Sampling one id for one sample.</p>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
 <li><strong>softmax_selfnorm_alpha</strong> (<em>float.</em>) &#8211; The scale factor affects the cost.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2248,6 +2255,7 @@ Sampling one id for one sample.</p>
 <li><strong>type</strong> (<em>basestring</em>) &#8211; The type of cost.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2280,6 +2288,7 @@ Sampling one id for one sample.</p>
 <li><strong>label</strong> &#8211; The input label.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2325,6 +2334,7 @@ equal to NDCG_num. And if max_sort_size is greater
 than the size of a list, the algorithm will sort the
 entire list of get gradient.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2379,6 +2389,7 @@ Their dimension is one.</li>
 It is an optional argument.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2418,6 +2429,7 @@ field model.</p>
 optional argument.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter attribute. None means default attribute</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -2452,6 +2464,7 @@ decoding or 0 for correct decoding.</p>
 <li><strong>label</strong> (<em>LayerOutput or None</em>) &#8211; None or ground-truth label.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter attribute. None means default attribute</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -2502,6 +2515,7 @@ should also be num_classes + 1.</p>
 <li><strong>size</strong> (<em>int</em>) &#8211; category numbers + 1.</li>
 <li><strong>name</strong> (<em>basestring|None</em>) &#8211; The name of this layer</li>
 <li><strong>norm_by_times</strong> (<em>bool</em>) &#8211; Whether to normalization by times. False by default.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
