@@ -12,6 +12,7 @@ a5d9259ff1fd7ca23d0ef090052cb1f2  last_first_seq.protostr
 8bb44e1e5072d0c261572307e7672bda  test_grumemory_layer.protostr
 1f3510672dce7a9ed25317fc58579ac7  test_hsigmoid.protostr
 d350bd91a0dc13e854b1364c3d9339c6  test_lstmemory_layer.protostr
+6fa59551808ee7012bbd24f757e782d2  test_maxout.protostr
 251a948ba41c1071afcd3d9cf9c233f7  test_ntm_layers.protostr
 e6ff04e70aea27c7b06d808cc49c9497  test_print_layer.protostr
 2a75dd33b640c49a8821c2da6e574577  test_rnn_group.protostr

@@ -89,4 +89,12 @@ inline void hl_CMRNorm_backward(
     size_t channels, size_t height, size_t width, size_t sizeX,
     real alpha, real beta) {}
 
+inline void hl_maxout_forward(
+    const real* inData, real* outData, int* idData,
+    size_t batchSize, size_t size, size_t featLen, size_t group) {}
+
+inline void hl_maxout_backward(
+    real* inGrad, const real* outGrad, const int* idData,
+    size_t batchSize, size_t size, size_t featLen, size_t group) {}
+
 #endif  // HL_CNN_STUB_H_
