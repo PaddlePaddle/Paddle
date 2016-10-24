@@ -91,6 +91,11 @@ public:
   /// B = A'
   void transpose(MatrixPtr matTrans, bool memAlloc);
 
+  MatrixPtr getInverse() { LOG(FATAL) << "Not implemented"; return NULL; }
+  void inverse(MatrixPtr matInv, bool memAlloc) {
+    LOG(FATAL) << "Not implemented";
+  }
+
   void copyFrom(const Matrix& src);
   void copyFrom(const Matrix& src, hl_stream_t stream);
   void copyFromCSR(CpuSparseMatrix& src, hl_stream_t stream);

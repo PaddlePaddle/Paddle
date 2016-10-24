@@ -328,6 +328,11 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual MatrixPtr getInverse() = 0;
+  virtual void inverse(MatrixPtr matInv, bool memAlloc) {
+    LOG(FATAL) << "Not implemented";
+  }
+
 public:
   /// Only set all variables to 0 or NULL but not free them.
   virtual void clear() {
@@ -1019,6 +1024,9 @@ public:
   MatrixPtr getTranspose();
   void transpose(MatrixPtr matTrans, bool memAlloc);
 
+  MatrixPtr getInverse();
+  void inverse(MatrixPtr matInv, bool memAlloc);
+
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
 
@@ -1255,6 +1263,9 @@ public:
 
   MatrixPtr getTranspose();
   void transpose(MatrixPtr matTrans, bool memAlloc);
+
+  MatrixPtr getInverse();
+  void inverse(MatrixPtr matInv, bool memAlloc);
 
   void copyFrom(const Matrix& src);
 

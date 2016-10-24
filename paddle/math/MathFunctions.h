@@ -22,6 +22,9 @@ extern "C" {
 #include <cblas.h>
 }
 #endif
+extern "C" {
+#include <clapack.h>
+}
 
 #include <cmath>
 
@@ -33,6 +36,14 @@ void gemm(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
           const T alpha, const T* A, const int lda,
           const T* B, const int ldb,
           const T beta, T* C, const int ldc);
+
+template<class T>
+int getrf(const CBLAS_ORDER Order, const int M, const int N,
+          T *A, const int lda, int *ipiv);
+
+template<class T>
+int getri(const CBLAS_ORDER Order, const int N, T *A,
+          const int lda, const int *ipiv);
 
 template<class T>
 void axpy(const int n, const T alpha, const T* x, T* y);

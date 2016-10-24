@@ -40,6 +40,30 @@ void gemm<double>(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
 }
 
 template<>
+int getrf<float>(const CBLAS_ORDER Order, const int M, const int N,
+                  float *A, const int lda, int *ipiv) {
+  return clapack_sgetrf(CblasRowMajor, M, N, A, lda, ipiv);
+}
+
+template<>
+int getrf<double>(const CBLAS_ORDER Order, const int M, const int N,
+                   double *A, const int lda, int *ipiv) {
+  return clapack_dgetrf(CblasRowMajor, M, N, A, lda, ipiv);
+}
+
+template<>
+int getri<float>(const CBLAS_ORDER Order, const int N, float *A,
+                  const int lda, const int *ipiv) {
+  return clapack_sgetri(CblasRowMajor, N, A, lda, ipiv);
+}
+
+template<>
+int getri<double>(const CBLAS_ORDER Order, const int N, double *A,
+                  const int lda, const int *ipiv) {
+  return clapack_dgetri(CblasRowMajor, N, A, lda, ipiv);
+}
+
+template<>
 void axpy<float>(const int n, const float alpha, const float* x, float* y) {
   cblas_saxpy(n, alpha, x, 1, y, 1);
 }

@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <sys/time.h>
 #include <mutex>
+#include "hl_cuda.h"
 #include "hl_cuda_cublas.h"
 #include "hl_thread.ph"
 #include "hl_dso_loader.h"
@@ -75,6 +76,8 @@ DYNAMIC_LOAD_CUBLAS_WRAP(cublasSgemmBatched)
 DYNAMIC_LOAD_CUBLAS_WRAP(cublasDgemmBatched)
 DYNAMIC_LOAD_CUBLAS_WRAP(cublasCgemmBatched)
 DYNAMIC_LOAD_CUBLAS_WRAP(cublasZgemmBatched)
+DYNAMIC_LOAD_CUBLAS_WRAP(cublasSgetrfBatched)
+DYNAMIC_LOAD_CUBLAS_WRAP(cublasSgetriBatched)
 CUBLAS_BLAS_ROUTINE_EACH(DYNAMIC_LOAD_CUBLAS_V2_WRAP)
 
 #undef DYNAMIC_LOAD_CUBLAS_WRAP
@@ -88,10 +91,14 @@ CUBLAS_BLAS_ROUTINE_EACH(DYNAMIC_LOAD_CUBLAS_V2_WRAP)
 #define     CUBLAS_GEAM     dynload::cublasSgeam
 #define     CUBLAS_GEMV     dynload::cublasSgemv
 #define     CUBLAS_GEMM     dynload::cublasSgemm
+#define     CUBLAS_GETRF    dynload::cublasSgetrfBatched
+#define     CUBLAS_GETRI    dynload::cublasSgetriBatched
 #else
 #define     CUBLAS_GEAM     dynload::cublasDgeam
 #define     CUBLAS_GEMV     dynload::cublasDgemv
 #define     CUBLAS_GEMM     dynload::cublasDgemm
+#define     CUBLAS_GETRF    dynload::cublasDgetrfBatched
+#define     CUBLAS_GETRI    dynload::cublasDgetriBatched
 #endif
 
 const char* hl_cublas_get_error_string(cublasStatus_t status) {
@@ -160,6 +167,65 @@ void hl_matrix_transpose(real *A_d,
 
 void hl_matrix_transpose(real *A_d, real *C_d, int dimM, int dimN) {
   hl_matrix_transpose(A_d, C_d, dimM, dimN, dimN, dimM);
+}
+
+void hl_matrix_inverse(real *A_d, real *C_d, int dimN, int lda, int ldc) {
+  /* Solve Ax = I */
+  CHECK_NOTNULL(A_d);
+  CHECK_NOTNULL(C_d);
+
+  /* Step 1: Compute the LU decomposition of matrix A */
+  const unsigned int nMatrices = 1;
+
+  real **inout_h = (real **)hl_malloc_host(nMatrices*sizeof(real *));
+  for (size_t i = 0; i < nMatrices; i++) {
+    inout_h[i] = (real *)((char*)A_d+i*((size_t)dimN*lda)*sizeof(real));
+  }
+  real **inout_d = (real **)hl_malloc_device(nMatrices*sizeof(real *));
+  hl_memcpy(inout_d, inout_h, nMatrices*sizeof(real *));
+  hl_free_mem_host(inout_h);
+
+  int *pivot_d = (int *)hl_malloc_device(dimN*nMatrices*sizeof(int));  
+  int *info_h = (int *)hl_malloc_host(nMatrices*sizeof(int));
+  int *info_d = (int *)hl_malloc_device(nMatrices*sizeof(int));
+
+  CHECK_CUBLAS(CUBLAS_GETRF(t_resource.handle,
+	       dimN, inout_d, lda, pivot_d,
+               info_d, nMatrices));
+
+  hl_memcpy(info_h, info_d, nMatrices*sizeof(int));
+  for (size_t i = 0; i < nMatrices; i++) {
+    if (info_h[i] != 0) {
+      LOG(FATAL) << "Factorization of matrix failed: matrix may be singular.\n";
+    }
+  }
+
+  /* Step 2: Computer the inverse of the matrix given its LU decomposition */
+  real **out_h = (real **)hl_malloc_host(nMatrices*sizeof(real *));
+  for (size_t i = 0; i < nMatrices; i++) {
+    out_h[i] = (real *)((char*)C_d+i*((size_t)dimN*ldc)*sizeof(real));
+  }
+  real **out_d = (real **)hl_malloc_device(nMatrices*sizeof(real *));
+  hl_memcpy(out_d, out_h, nMatrices*sizeof(real *));
+  hl_free_mem_host(out_h);
+
+  CHECK_CUBLAS(CUBLAS_GETRI(t_resource.handle,
+	       dimN, (const real **)inout_d, lda, pivot_d,
+	       out_d, ldc, info_d, nMatrices));
+
+  hl_memcpy(info_h, info_d, nMatrices*sizeof(int));
+  for (size_t i = 0; i < nMatrices; i++) {
+    if (info_h[i] != 0) {
+      LOG(FATAL) << "Inversion of matrix failed: matrix may be singular.\n";
+    }
+  }
+
+  hl_free_mem_device(inout_d);
+  hl_free_mem_device(info_d);
+  hl_free_mem_device(pivot_d);
+  hl_free_mem_device(out_d);
+  
+  CHECK_SYNC("hl_matrix_inverse failed");
 }
 
 void hl_matrix_mul(real *A_d, hl_trans_op_t transa,

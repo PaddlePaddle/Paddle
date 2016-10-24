@@ -639,9 +639,25 @@ void testMatrixTranspose(int height, int width) {
   MatrixCheckEqual(*cpuT, *outputCheck);
 }
 
+void testMatrixInverse(int height) {
+  MatrixPtr cpu = std::make_shared<CpuMatrix>(height, height);
+  MatrixPtr gpu = std::make_shared<GpuMatrix>(height, height);
+  MatrixPtr cpuI = std::make_shared<CpuMatrix>(height, height);
+  MatrixPtr gpuI = std::make_shared<GpuMatrix>(height, height);
+
+  cpu->randomizeUniform();
+  gpu->copyFrom(*cpu);
+  cpu->inverse(cpuI, false);
+  gpu->inverse(gpuI, false);
+
+  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, height);
+  outputCheck->copyFrom(*gpuI);
+  MatrixCheckErr(*cpuI, *outputCheck);
+}
+
 TEST(Matrix, unary) {
-  for (auto height : {1, 11, 73, 128, 200, 330}) {
-    for (auto width : {1, 32, 100, 512, 1000, 3210}) {
+  for (auto height : {1, 3, 11, 73, 128, 200, 330}) {
+    for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
       VLOG(3) << " height=" << height << " width=" << width;
 
       // applyUnary
@@ -673,6 +689,8 @@ TEST(Matrix, unary) {
       // transpose
       testMatrixTranspose(height, width);
     }
+    // inverse
+    testMatrixInverse(height);
   }
 }
 

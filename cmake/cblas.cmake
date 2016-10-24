@@ -57,7 +57,7 @@ find_path(ATLAS_INC_DIR NAMES cblas.h
   PATHS ${ATLAS_INCLUDE_SEARCH_PATHS})
 find_library(ATLAS_CBLAS_LIB NAMES cblas libcblas.so.3 
   PATHS ${ATLAS_LIB_SEARCH_PATHS})
-find_library(ATLAS_LIB NAMES atlas libatlas.so.3
+find_library(ATLAS_LIB NAMES lapack_atlas liblapack_atlas.so.3
   PATHS ${ATLAS_LIB_SEARCH_PATHS})
 
 if(ATLAS_INC_DIR AND ATLAS_CBLAS_LIB AND ATLAS_LIB)

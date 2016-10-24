@@ -50,6 +50,22 @@ extern void hl_matrix_transpose(real *A_d,
                                 int dimM,
                                 int dimN);
 
+/*
+ * @brief Matrix inverse
+ *
+ * @param[in]   A_d    input matrix (M x M).
+ * @param[out]  C_d    output matrix (M x M).
+ * @param[in]   dimN   matrix height = matrix width
+ * @param[in]   lda    the first dimension of A_d
+ * @param[in]   ldc    the first dimension of C_d
+ *
+ */
+extern void hl_matrix_inverse(real *A_d,
+                              real *C_d,
+                              int dimN,
+                              int lda,
+                              int ldc);
+
 /**
  * @brief   C_d = alpha*(op(A_d) * op(B_d)) + beta*C_d
  *
