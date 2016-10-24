@@ -27,7 +27,16 @@ void testMatrixCase(testMatrixFunc matrixFunc) {
 
 template<typename Tensor>
 void testLazyAssign(int height, int width) {
-  INIT_QUATERNARY(A1, A2, B, C, D);
+  Tensor A1(height, width);
+  Tensor A2(height, width);
+  Tensor B(height, width);
+  Tensor C(height, width);
+  Tensor D(height, width);
+  A1.randomizeUniform();
+  B.randomizeUniform();
+  C.randomizeUniform();
+  D.randomizeUniform();
+  A2.copyFrom(A1);
 
   EXPRESSION_PERFORMANCE(A1 = B + C; A1 = A1 * D;);
 

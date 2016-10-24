@@ -1,11 +1,16 @@
-/**
- * test_TrainingAlgorithm.cpp
- *
- * Author: hedaoyuan (hedaoyuan@baidu.com)
- * Created on: 2016-06-29
- *
- * Copyright (c) Baidu.com, Inc. All Rights Reserved
- */
+/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include <gtest/gtest.h>
 #include "paddle/utils/Util.h"
@@ -44,6 +49,26 @@ private:
     }\
   } while (0)
 
+int VectorCheckErr(const Vector& vector1, const Vector& vector2) {
+  CHECK(vector1.getSize() == vector2.getSize());
+
+  const real* data1 = vector1.getData();
+  const real* data2 = vector2.getData();
+  size_t size = vector1.getSize();
+  int count = 0;
+  for (size_t i = 0; i < size; i++) {
+    real a = data1[i];
+    real b = data2[i];
+    if (fabs(a - b) > FLAGS_max_diff) {
+      if ((fabsf(a - b) / fabsf(a)) > (FLAGS_max_diff / 10.0f)) {
+        count++;
+      }
+    }
+  }
+
+  return count;
+}
+
 int VectorCheckErr(const VectorPtr& vector1, const VectorPtr& vector2) {
   VectorPtr tmp1;
   VectorPtr tmp2;
@@ -51,6 +76,17 @@ int VectorCheckErr(const VectorPtr& vector1, const VectorPtr& vector2) {
   COPY_VECTOR_TO_CPU(tmp2, vector2);
   return VectorCheckErr(*tmp1, *tmp2);
 }
+
+#ifdef PADDLE_DISABLE_TIMER
+
+#define CHECK_VECTORPTR(vector1, vector2)   \
+    EXPECT_EQ(VectorCheckErr(vector1, vector2), 0)
+
+#else
+
+#define CHECK_VECTORPTR(vector1, vector2)
+
+#endif
 
 typedef std::function<void(size_t size, bool useGpu)> testMatrixFunc;
 

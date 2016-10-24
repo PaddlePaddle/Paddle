@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 #include "paddle/math/Matrix.h"
+
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
@@ -105,49 +106,8 @@ void TensorCheckEqual(const GpuVectorT<T>& vector1,
   TensorCheckEqual(cpu1, cpu2);
 }
 
-int VectorCheckErr(const Vector& vector1, const Vector& vector2) {
-  CHECK(vector1.getSize() == vector2.getSize());
-
-  const real* data1 = vector1.getData();
-  const real* data2 = vector2.getData();
-  size_t size = vector1.getSize();
-  int count = 0;
-  for (size_t i = 0; i < size; i++) {
-    real a = data1[i];
-    real b = data2[i];
-    if (fabs(a - b) > FLAGS_max_diff) {
-      if ((fabsf(a - b) / fabsf(a)) > (FLAGS_max_diff / 10.0f)) {
-        count++;
-      }
-    }
-  }
-
-  return count;
-}
-
-#define INIT_UNARY(A1, A2)                  \
-    Tensor A1(height, width);               \
-    Tensor A2(height, width);               \
-    A1.randomizeUniform();                  \
-    A2.copyFrom(A1)
-#define INIT_BINARY(A1, A2, B)              \
-    INIT_UNARY(A1, A2);                     \
-    Tensor B(height, width);                \
-    B.randomizeUniform()
-#define INIT_TERNARY(A1, A2, B, C)          \
-    INIT_BINARY(A1, A2, B);                 \
-    Tensor C(height, width);                \
-    C.randomizeUniform()
-#define INIT_QUATERNARY(A1, A2, B, C, D)    \
-    INIT_TERNARY(A1, A2, B, C);             \
-    Tensor D(height, width);                \
-    D.randomizeUniform()
-
 // Performance Check
 #ifdef PADDLE_DISABLE_TIMER
-
-#define CHECK_VECTORPTR(vector1, vector2)   \
-    EXPECT_EQ(VectorCheckErr(vector1, vector2), 0)
 
 #define EXPRESSION_PERFORMANCE(expression)  \
     expression;
@@ -155,8 +115,6 @@ int VectorCheckErr(const Vector& vector1, const Vector& vector2) {
 #else
 
 #include "paddle/utils/Stat.h"
-
-#define CHECK_VECTORPTR(vector1, vector2)
 
 #define EXPRESSION_PERFORMANCE(expression) \
   do {\
