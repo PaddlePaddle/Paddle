@@ -318,12 +318,19 @@ public:
     return condition(constant(p1), constant(p2));
   }
 
+  /**
+   * return a TensorConstant. A TensorConstant object hold a constant value.
+   */
   const TensorConstant<hppl::unary::constant<T>, const Derived, T>
   constant(T p) const {
     return TensorConstant<hppl::unary::constant<T>, const Derived, T>
       (hppl::unary::constant<T>(p), derived());
   }
 
+  /**
+   * return a TensorAssignOp, and use AssignEvaluate to evaluate one or more
+   * TensorAssignOp objects.
+   */
   template<typename ExpressionType>
   TensorAssignOp<Derived, ExpressionType, T>
   lazyAssign(const ExpressionType& expr) const {

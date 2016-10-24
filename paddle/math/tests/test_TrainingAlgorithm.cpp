@@ -91,7 +91,11 @@ int VectorCheckErr(const VectorPtr& vector1, const VectorPtr& vector2) {
 typedef std::function<void(size_t size, bool useGpu)> testMatrixFunc;
 
 void testCase(testMatrixFunc matrixFunc) {
+#ifndef PADDLE_ONLY_CPU
   for (auto useGpu : {false, true}) {
+#else
+  for (auto useGpu : {false}) {
+#endif
     for (auto size : {1, 32, 64, 128, 512, 1024, 4096, 32768, 65536, 131072,
                        262144, 524288, 1048576, 2097152}) {
       LOG(INFO) << " size=" << size << " useGpu=" << useGpu;
