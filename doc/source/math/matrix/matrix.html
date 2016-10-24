@@ -1966,6 +1966,24 @@ where bit(i, j) = ((codes(i) + numClasses) &amp; 2^j) ? 1 : 0
 <dl class="function">
 <dt id="_CPPv2N6paddle6Matrix6colMaxER6Matrix">
 <span id="paddle::Matrix::colMax__MatrixR"></span>virtual <span class="target" id="paddleclasspaddle_1_1Matrix_1ac89c66983c6376c64d468a2e47890a8d"></span>void <code class="descname">colMax</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>max</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Matrix6colMaxER6Matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>set the max of each column of this to mat </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6Matrix6colMaxER7IVectorR6Matrix">
+<span id="paddle::Matrix::colMax__IVectorR.MatrixR"></span>virtual <span class="target" id="paddleclasspaddle_1_1Matrix_1a946a1df809f7067a468d7cd835dddc90"></span>void <code class="descname">colMax</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>maxIds</em>, <a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>maxVal</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Matrix6colMaxER7IVectorR6Matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the top k elements of each column of this matrix. </p>
+<p>The row ids and values of these elements are stored in maxIds and max respectively. where k is the size of maxIds. And note that the top k elements are not sorted. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6Matrix13maxoutForwardER6MatrixR7IVector6size_t6size_t">
+<span id="paddle::Matrix::maxoutForward__MatrixR.IVectorR.s.s"></span>virtual <span class="target" id="paddleclasspaddle_1_1Matrix_1a6ba3527c4fbea9e70b3e79cc4279d379"></span>void <code class="descname">maxoutForward</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>a</em>, <a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>id</em>, size_t <em>channels</em>, size_t <em>groups</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Matrix13maxoutForwardER6MatrixR7IVector6size_t6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6Matrix14maxoutBackwardER6MatrixR7IVector6size_t6size_t">
+<span id="paddle::Matrix::maxoutBackward__MatrixR.IVectorR.s.s"></span>virtual <span class="target" id="paddleclasspaddle_1_1Matrix_1a7f56ce9593dba387c49c5a182b2ed750"></span>void <code class="descname">maxoutBackward</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>a</em>, <a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>id</em>, size_t <em>channels</em>, size_t <em>groups</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Matrix14maxoutBackwardER6MatrixR7IVector6size_t6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1977,7 +1995,7 @@ where bit(i, j) = ((codes(i) + numClasses) &amp; 2^j) ? 1 : 0
 <dt id="_CPPv2N6paddle6Matrix6rowMaxER7IVectorR6Matrix">
 <span id="paddle::Matrix::rowMax__IVectorR.MatrixR"></span>virtual <span class="target" id="paddleclasspaddle_1_1Matrix_1a6c3aca70393342be128eab1f2e6dc379"></span>void <code class="descname">rowMax</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>maxIds</em>, <a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>max</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Matrix6rowMaxER7IVectorR6Matrix" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the top k elements of each row of this matrix. </p>
-<p>The column ids and values of these elements are stored in maxIds and max respectively. Note that the top k elements are not sorted. </p>
+<p>The column ids and values of these elements are stored in maxIds and max respectively. where k is the size of maxIds. And note that the top k elements are not sorted. </p>
 </dd></dl>
 
 <dl class="function">
@@ -2748,12 +2766,30 @@ where bit(i, j) = ((codes(i) + numClasses) &amp; 2^j) ? 1 : 0
 <dt id="_CPPv2N6paddle9GpuMatrix6rowMaxER7IVectorR6Matrix">
 <span id="paddle::GpuMatrix::rowMax__IVectorR.MatrixR"></span>virtual <span class="target" id="paddleclasspaddle_1_1GpuMatrix_1a1bf5a4d0d31aa3cd92e495c4b4fc3e29"></span>void <code class="descname">rowMax</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>maxIds</em>, <a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>max</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9GpuMatrix6rowMaxER7IVectorR6Matrix" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the top k elements of each row of this matrix. </p>
-<p>The column ids and values of these elements are stored in maxIds and max respectively. Note that the top k elements are not sorted. </p>
+<p>The column ids and values of these elements are stored in maxIds and max respectively. where k is the size of maxIds. And note that the top k elements are not sorted. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle9GpuMatrix6colMaxER6Matrix">
 <span id="paddle::GpuMatrix::colMax__MatrixR"></span>virtual <span class="target" id="paddleclasspaddle_1_1GpuMatrix_1a34e4d0e75833ffa50d8aee72bbe592da"></span>void <code class="descname">colMax</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>max</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9GpuMatrix6colMaxER6Matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>set the max of each column of this to mat </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9GpuMatrix6colMaxER7IVectorR6Matrix">
+<span id="paddle::GpuMatrix::colMax__IVectorR.MatrixR"></span>virtual <span class="target" id="paddleclasspaddle_1_1GpuMatrix_1a50899afbb71c85e2a55487131fe7672d"></span>void <code class="descname">colMax</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>maxIds</em>, <a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>maxVal</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9GpuMatrix6colMaxER7IVectorR6Matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the top k elements of each column of this matrix. </p>
+<p>The row ids and values of these elements are stored in maxIds and max respectively. where k is the size of maxIds. And note that the top k elements are not sorted. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9GpuMatrix13maxoutForwardER6MatrixR7IVector6size_t6size_t">
+<span id="paddle::GpuMatrix::maxoutForward__MatrixR.IVectorR.s.s"></span>virtual <span class="target" id="paddleclasspaddle_1_1GpuMatrix_1a7442fb9f327c87cdbcda52b4a00e6d72"></span>void <code class="descname">maxoutForward</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>a</em>, <a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>id</em>, size_t <em>channels</em>, size_t <em>groups</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9GpuMatrix13maxoutForwardER6MatrixR7IVector6size_t6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9GpuMatrix14maxoutBackwardER6MatrixR7IVector6size_t6size_t">
+<span id="paddle::GpuMatrix::maxoutBackward__MatrixR.IVectorR.s.s"></span>virtual <span class="target" id="paddleclasspaddle_1_1GpuMatrix_1a4a921cc1adb4953e2a406c8ca4f59410"></span>void <code class="descname">maxoutBackward</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>a</em>, <a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>id</em>, size_t <em>channels</em>, size_t <em>groups</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9GpuMatrix14maxoutBackwardER6MatrixR7IVector6size_t6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -3372,12 +3408,30 @@ where bit(i, j) = ((codes(i) + numClasses) &amp; 2^j) ? 1 : 0
 <dt id="_CPPv2N6paddle9CpuMatrix6rowMaxER7IVectorR6Matrix">
 <span id="paddle::CpuMatrix::rowMax__IVectorR.MatrixR"></span>virtual <span class="target" id="paddleclasspaddle_1_1CpuMatrix_1a8d63feac52987dddd6af7741afbf846b"></span>void <code class="descname">rowMax</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>maxIds</em>, <a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>max</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9CpuMatrix6rowMaxER7IVectorR6Matrix" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the top k elements of each row of this matrix. </p>
-<p>The column ids and values of these elements are stored in maxIds and max respectively. Note that the top k elements are not sorted. </p>
+<p>The column ids and values of these elements are stored in maxIds and max respectively. where k is the size of maxIds. And note that the top k elements are not sorted. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle9CpuMatrix6colMaxER6Matrix">
 <span id="paddle::CpuMatrix::colMax__MatrixR"></span>virtual <span class="target" id="paddleclasspaddle_1_1CpuMatrix_1aa90557207b0204490d88ef854ddd1d1a"></span>void <code class="descname">colMax</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>max</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9CpuMatrix6colMaxER6Matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>set the max of each column of this to mat </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9CpuMatrix6colMaxER7IVectorR6Matrix">
+<span id="paddle::CpuMatrix::colMax__IVectorR.MatrixR"></span>virtual <span class="target" id="paddleclasspaddle_1_1CpuMatrix_1a126ca6b5874e7cc2b66fe2ef4446b64f"></span>void <code class="descname">colMax</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>maxIds</em>, <a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>maxVal</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9CpuMatrix6colMaxER7IVectorR6Matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the top k elements of each column of this matrix. </p>
+<p>The row ids and values of these elements are stored in maxIds and max respectively. where k is the size of maxIds. And note that the top k elements are not sorted. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9CpuMatrix13maxoutForwardER6MatrixR7IVector6size_t6size_t">
+<span id="paddle::CpuMatrix::maxoutForward__MatrixR.IVectorR.s.s"></span>virtual <span class="target" id="paddleclasspaddle_1_1CpuMatrix_1ad220fe3dac59b84dadb6869f8c2e8b69"></span>void <code class="descname">maxoutForward</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>a</em>, <a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>id</em>, size_t <em>channels</em>, size_t <em>groups</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9CpuMatrix13maxoutForwardER6MatrixR7IVector6size_t6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9CpuMatrix14maxoutBackwardER6MatrixR7IVector6size_t6size_t">
+<span id="paddle::CpuMatrix::maxoutBackward__MatrixR.IVectorR.s.s"></span>virtual <span class="target" id="paddleclasspaddle_1_1CpuMatrix_1a4f3d8539c81c249d82b8736b056b2dc5"></span>void <code class="descname">maxoutBackward</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>a</em>, <a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>id</em>, size_t <em>channels</em>, size_t <em>groups</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9CpuMatrix14maxoutBackwardER6MatrixR7IVector6size_t6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -5954,7 +6008,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1GpuSparseMatrix_1a1ea7be6a
 <dt id="_CPPv2N6paddle15CpuSparseMatrix6rowMaxER7IVectorR6Matrix">
 <span id="paddle::CpuSparseMatrix::rowMax__IVectorR.MatrixR"></span>virtual <span class="target" id="paddleclasspaddle_1_1CpuSparseMatrix_1a7724e18286ae958b8c5709f075cf6dc0"></span>void <code class="descname">rowMax</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle7IVectorE" title="paddle::IVector">IVector</a> &amp;<em>maxIds</em>, <a class="reference internal" href="#_CPPv2N6paddle6MatrixE" title="paddle::Matrix">Matrix</a> &amp;<em>max</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15CpuSparseMatrix6rowMaxER7IVectorR6Matrix" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the top k elements of each row of this matrix. </p>
-<p>The column ids and values of these elements are stored in maxIds and max respectively. Note that the top k elements are not sorted. </p>
+<p>The column ids and values of these elements are stored in maxIds and max respectively. where k is the size of maxIds. And note that the top k elements are not sorted. </p>
 </dd></dl>
 
 <dl class="function">

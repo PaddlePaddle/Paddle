@@ -298,7 +298,7 @@ var _hmt = _hmt || [];
 <dd><ul class="breatheparameterlist first last">
 <li><code class="first docutils literal"><span class="pre">frameCnt</span></code> - <p>batch size of input image. </p>
 </li>
-<li><code class="first docutils literal"><span class="pre">outGrad</span></code> - <p>input data. </p>
+<li><code class="first docutils literal"><span class="pre">outGrad</span></code> - <p>output grad data. </p>
 </li>
 <li><code class="first docutils literal"><span class="pre">channels</span></code> - <p>number of channel. </p>
 </li>
@@ -397,6 +397,60 @@ var _hmt = _hmt || [];
 <li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scale. </p>
 </li>
 <li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scale. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv217hl_maxout_forwardPK4realP4realPi6size_t6size_t6size_t6size_t">
+<span id="hl_maxout_forward__realCP.realP.iP.s.s.s.s"></span><span class="target" id="paddlehl__cnn_8h_1a194fd1a9bed05cb00bf7bf59b649b053"></span>void <code class="descname">hl_maxout_forward</code><span class="sig-paren">(</span><em class="property">const</em> real *<em>inData</em>, real *<em>outData</em>, int *<em>idData</em>, size_t <em>batchSize</em>, size_t <em>size</em>, size_t <em>featLen</em>, size_t <em>groups</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv217hl_maxout_forwardPK4realP4realPi6size_t6size_t6size_t6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>MaxOut forward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">inData</span></code> - <p>input data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outData</span></code> - <p>output data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">idData</span></code> - <p>output maxId. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">batchSize</span></code> - <p>batchSize. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>number of channels * image height * image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">featLen</span></code> - <p>feature length = image height * image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">groups</span></code> - <p>number of groups. </p>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv218hl_maxout_backwardP4realPK4realPKi6size_t6size_t6size_t6size_t">
+<span id="hl_maxout_backward__realP.realCP.iCP.s.s.s.s"></span><span class="target" id="paddlehl__cnn_8h_1a258d5fbc3c34047d5dc6ac068e81730e"></span>void <code class="descname">hl_maxout_backward</code><span class="sig-paren">(</span>real *<em>inGrad</em>, <em class="property">const</em> real *<em>outGrad</em>, <em class="property">const</em> int *<em>idData</em>, size_t <em>batchSize</em>, size_t <em>size</em>, size_t <em>featLen</em>, size_t <em>groups</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv218hl_maxout_backwardP4realPK4realPKi6size_t6size_t6size_t6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>MaxOut backward. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last">
+<li><code class="first docutils literal"><span class="pre">inGrad</span></code> - <p>input grad data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">outGrad</span></code> - <p>output grad data. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">idData</span></code> - <p>output maxId. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">batchSize</span></code> - <p>batchSize. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>number of channels * image height * image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">featLen</span></code> - <p>feature length = image height * image width. </p>
+</li>
+<li><code class="first docutils literal"><span class="pre">groups</span></code> - <p>number of groups. </p>
 </li>
 </ul>
 </dd>

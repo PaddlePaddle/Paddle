@@ -513,6 +513,64 @@ map should be square.</li>
 </dd></dl>
 
 </div>
+<div class="section" id="maxout-layer">
+<h2>maxout_layer<a class="headerlink" href="#maxout-layer" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">maxout_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><dl class="docutils">
+<dt>A layer to do max out on conv layer output.</dt>
+<dd><ul class="first last simple">
+<li>Input: output of a conv layer.</li>
+<li>Output: feature map size same as input. Channel is (input channel) / groups.</li>
+</ul>
+</dd>
+</dl>
+<p>So groups should be larger than 1, and the num of channels should be able
+to devided by groups.</p>
+<dl class="docutils">
+<dt>Please refer to Paper:</dt>
+<dd><ul class="first last simple">
+<li>Maxout Networks: <a class="reference external" href="http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf">http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf</a></li>
+<li>Multi-digit Number Recognition from Street View         Imagery using Deep Convolutional Neural Networks:         <a class="reference external" href="https://arxiv.org/pdf/1312.6082v4.pdf">https://arxiv.org/pdf/1312.6082v4.pdf</a></li>
+</ul>
+</dd>
+</dl>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">maxout</span> <span class="o">=</span> <span class="n">maxout_layer</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span>
+                      <span class="n">num_channels</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+                      <span class="n">groups</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
+<li><strong>num_channels</strong> (<em>int|None</em>) &#8211; The channel number of input layer. If None will be set
+automatically from previous output.</li>
+<li><strong>groups</strong> (<em>int</em>) &#8211; The group number of input layer.</li>
+<li><strong>size_x</strong> (<em>int|None</em>) &#8211; conv output width. If None will be set
+automatically from previous output.</li>
+<li><strong>size_y</strong> (<em>int|None</em>) &#8211; conv output height. If None will be set
+automatically from previous output.</li>
+<li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layer, which can not specify.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 </div>
 <div class="section" id="norm-layer">
 <h1>Norm Layer<a class="headerlink" href="#norm-layer" title="Permalink to this headline">¶</a></h1>
@@ -2687,6 +2745,7 @@ It is used by recurrent layer group.</p>
 </li>
 <li><a class="reference internal" href="#image-pooling-layer">Image Pooling Layer</a><ul>
 <li><a class="reference internal" href="#img-pool-layer">img_pool_layer</a></li>
+<li><a class="reference internal" href="#maxout-layer">maxout_layer</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#norm-layer">Norm Layer</a><ul>
