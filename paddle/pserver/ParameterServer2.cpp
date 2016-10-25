@@ -264,6 +264,9 @@ void ParameterServer2::setParameter(const SendParameterRequest& request,
   std::vector<int64_t> blockIds;
   blockIds.reserve(request.blocks_size());
   int bufferIndex = 0;
+
+  if (!request.blocks().size()) { return; }
+
   for (const auto& block : request.blocks()) {
     /// block size for parameter(e.g. 128 for sparse row, 1K for dense)
     uint64_t blockSize = getParameterConfig(block).parameter_block_size();
