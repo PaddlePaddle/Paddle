@@ -150,7 +150,7 @@ if(WITH_TESTING)
     include_directories(${GTEST_INCLUDE_DIRS})
 endif()
 
-include_directories("${ATLAS_INC_DIR}")
+include_directories("${ATLAS_INC_DIR}/atlas")
 include_directories("${CBLAS_INC_DIR}")
 include_directories("${PROJ_ROOT}")
 include_directories("${PROJ_ROOT}/paddle/cuda/include")
