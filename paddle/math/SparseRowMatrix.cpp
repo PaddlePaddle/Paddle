@@ -238,7 +238,7 @@ void SparsePrefetchRowCpuMatrix::addRows(const unsigned int* ids, size_t len) {
 
 void SparsePrefetchRowCpuMatrix::addRows(MatrixPtr input) {
   CpuSparseMatrix* mat = dynamic_cast<CpuSparseMatrix*>(input.get());
-  CHECK(mat) << "only support non value sparse matrix";
+  CHECK(mat) << "only support sparse matrix";
   addRows(reinterpret_cast<const unsigned int*>(mat->getCols()),
           mat->getElementCnt());
 }
