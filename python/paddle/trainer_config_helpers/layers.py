@@ -78,6 +78,7 @@ class LayerType(object):
     COSINE_SIM = 'cos'
     HSIGMOID = 'hsigmoid'
     CONV_LAYER = "conv"
+    CONVTRANS_LAYER = "convt"
     POOL_LAYER = "pool"
     BATCH_NORM_LAYER = 'batch_norm'
     NORM_LAYER = 'norm'
@@ -1624,6 +1625,128 @@ def img_conv_layer(input, filter_size, num_filters,
     )
     return LayerOutput(name, LayerType.CONV_LAYER, parents=[input],
                        activation=act, num_filters=num_filters)
+
+@wrap_name_default("convt")
+@wrap_param_attr_default()
+@wrap_bias_attr_default()
+@wrap_act_default(act=ReluActivation())
+@layer_support(DROPOUT)
+def img_convTrans_layer(input, filter_size, num_filters,
+                   name=None, num_channels=None,
+                   act=None, groups=1, stride=1, padding=0, bias_attr=None,
+                   param_attr=None, shared_biases=True, layer_attr=None,
+                   filter_size_y=None, stride_y=None, padding_y=None):
+    """
+    Convolution Transpose (deconv) layer for image. Paddle only support square 
+    input currently and thus input image's width equals height.
+
+    The details of convolution transpose layer, 
+    please refer to the following explanation and references therein
+    <http://datascience.stackexchange.com/questions/6107/
+    what-are-deconvolutional-layers/>`_ .
+
+    The num_channel means input image's channel number. It may be 1 or 3 when
+    input is raw pixels of image(mono or RGB), or it may be the previous layer's
+    num_filters * num_group.
+
+    There are several group of filter in PaddlePaddle implementation.
+    Each group will process some channel of the inputs. For example, if an input
+    num_channel = 256, group = 4, num_filter=32, the PaddlePaddle will create
+    32*4 = 128 filters to process inputs. The channels will be split into 4
+    pieces. First 256/4 = 64 channels will process by first 32 filters. The
+    rest channels will be processed by rest group of filters.
+
+    :param name: Layer name.
+    :type name: basestring
+    :param input: Layer Input.
+    :type input: LayerOutput
+    :param filter_size: The x dimension of a filter kernel. Or input a tuple for
+                        two image dimension.
+    :type filter_size: int|tuple|list
+    :param filter_size_y: The y dimension of a filter kernel. Since PaddlePaddle
+                        currently supports rectangular filters, the filter's
+                        shape will be (filter_size, filter_size_y).
+    :type filter_size_y: int|None
+    :param num_filters: Each filter group's number of filter
+    :param act: Activation type. Default is tanh
+    :type act: BaseActivation
+    :param groups: Group size of filters.
+    :type groups: int
+    :param stride: The x dimension of the stride. Or input a tuple for two image
+                   dimension.
+    :type stride: int|tuple|list
+    :param stride_y: The y dimension of the stride.
+    :type stride_y: int
+    :param padding: The x dimension of the padding. Or input a tuple for two
+                    image dimension
+    :type padding: int|tuple|list
+    :param padding_y: The y dimension of the padding.
+    :type padding_y: int
+    :param bias_attr: Convolution bias attribute. None means default bias.
+                      False means no bias.
+    :type bias_attr: ParameterAttribute|False
+    :param num_channels: number of input channels. If None will be set
+                        automatically from previous output.
+    :type num_channels: int
+    :param param_attr: Convolution param attribute. None means default attribute
+    :type param_attr: ParameterAttribute
+    :param shared_biases: Is biases will be shared between filters or not.
+    :type shared_biases: bool
+    :param layer_attr: Layer Extra Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+
+    if filter_size_y is None:
+        if isinstance(filter_size, collections.Sequence):
+            assert len(filter_size) == 2
+            filter_size, filter_size_y = filter_size
+        else:
+            filter_size_y = filter_size
+
+    if stride_y is None:
+        if isinstance(stride, collections.Sequence):
+            assert len(stride) == 2
+            stride, stride_y = stride
+        else:
+            stride_y = stride
+
+    if padding_y is None:
+        if isinstance(padding, collections.Sequence):
+            assert len(padding) == 2
+            padding, padding_y = padding
+        else:
+            padding_y = padding
+
+    if param_attr.attr.get('initial_smart'):
+        # special initial for conv layers.
+        init_w = (2.0 / (filter_size ** 2 * num_channels)) ** 0.5
+        param_attr.attr["initial_mean"] = 0.0
+        param_attr.attr["initial_std"] = init_w
+        param_attr.attr["initial_strategy"] = 0
+        param_attr.attr["initial_smart"] = False
+    Layer(
+        name=name,
+        inputs=Input(input.name, conv=Conv(
+            filter_size=filter_size, padding=padding, stride=stride,
+            channels=num_channels, groups=groups,
+            filter_size_y=filter_size_y, padding_y=padding_y,
+            stride_y=stride_y),
+                     **param_attr.attr),
+        active_type=act.name,
+        num_filters=num_filters,
+        bias=ParamAttr.to_bias(bias_attr),
+        shared_biases=shared_biases,
+        type=LayerType.CONVTRANS_LAYER,
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
+    )
+    return LayerOutput(name, LayerType.CONVTRANS_LAYER, parents=[input],
+                       activation=act, num_filters=num_filters)
+
 
 
 @wrap_name_default("pool")
