@@ -46,7 +46,7 @@ bool MaxOutLayer::init(const LayerMap& layerMap,
   Layer::init(layerMap, parameterMap);
 
   /* the size of inputs for maxout-layer is 1 */
-  CHECK_EQ(config_.inputs_size(), 1UL);
+  CHECK_EQ(config_.inputs_size(), 1);
 
   const MaxOutConfig& conf = config_.inputs(0).maxout_conf();
   groups_ = conf.groups();
