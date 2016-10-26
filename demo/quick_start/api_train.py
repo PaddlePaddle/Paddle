@@ -96,14 +96,14 @@ def main():
     for train_pass in xrange(options.num_passes):
         trainer.startTrainPass()
         random.shuffle(train_dataset)
-        for pos in xrange(0, len(train_dataset)):
+        for pos in xrange(0, len(train_dataset), batch_size):
             batch = itertools.islice(train_dataset, pos, pos + batch_size)
             size = min(batch_size, len(train_dataset) - pos)
             trainer.trainOneDataBatch(size, converter(batch))
         trainer.finishTrainPass()
         if test_dataset:
             trainer.startTestPeriod();
-            for pos in xrange(0, len(test_dataset)):
+            for pos in xrange(0, len(test_dataset), batch_size):
                 batch = itertools.islice(test_dataset, pos, pos + batch_size)
                 size = min(batch_size, len(test_dataset) - pos)
                 trainer.testOneDataBatch(size, converter(batch))
