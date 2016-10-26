@@ -13,7 +13,10 @@ set(CPACK_PACKAGE_DESCRIPTION "")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libatlas3-base, libgflags2, libgoogle-glog0, libprotobuf8, libpython2.7, libstdc++6, python-numpy, python-pip, python-pip-whl, python-protobuf")
 set(CPACK_DEBIAN_PACKAGE_SECTION Devel)
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJ_ROOT}/paddle/scripts/deb/postinst")
-#set(CPACK_GENERATOR "DEB")
+## RPM Settings
+set(CPACK_RPM_PACKAGE_NAME paddle)
+set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${PROJ_ROOT}/paddle/scripts/rpm/postinst")
+set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST /usr/bin /usr/opt)
 # Start cpack
 include (CMakePackageConfigHelpers)
 include (CPack)

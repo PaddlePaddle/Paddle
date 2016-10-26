@@ -1,61 +1,32 @@
 #!/bin/bash
 set -e
 cd `dirname $0`
-m4 -DPADDLE_WITH_GPU=OFF -DPADDLE_IS_DEVEL=OFF -DPADDLE_WITH_DEMO=OFF \
-   -DPADDLE_BASE_IMAGE=ubuntu:14.04 -DPADDLE_WITH_AVX=ON\
-   Dockerfile.m4 > Dockerfile.cpu
+on_off=('ON' 'OFF')
+images=('nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04' 'nvidia/cuda:7.5-cudnn5-devel-centos7' 'ubuntu:14.04' 'centos:7')
+build_script=('build.sh' 'build_centos.sh')
+cpu_tag=('gpu' 'cpu')
+image_tag=('-ubuntu14.04' '-centos7')
+avx_tag=('' '-noavx')
 
-m4 -DPADDLE_WITH_GPU=OFF -DPADDLE_IS_DEVEL=OFF -DPADDLE_WITH_DEMO=OFF \
-   -DPADDLE_BASE_IMAGE=ubuntu:14.04 -DPADDLE_WITH_AVX=OFF\
-   Dockerfile.m4 > Dockerfile.cpu-noavx
+# gpu/cpu
+for i in 0 1; do
+# ubuntu/centos
+    for j in 0 1; do
+# avx/noavx
+        for k in 0 1; do
+            m4 -DBUILD_SCRIPT=${build_script[j]} -DPADDLE_WITH_GPU=${on_off[i]} -DPADDLE_IS_DEVEL=OFF \
+            -DPADDLE_WITH_DEMO=OFF -DPADDLE_BASE_IMAGE=${images[2*i+j]} -DPADDLE_WITH_AVX=${on_off[k]}\
+            Dockerfile.m4 > Dockerfile.${cpu_tag[i]}${avx_tag[k]}${image_tag[j]}
 
-m4 -DPADDLE_WITH_GPU=OFF -DPADDLE_IS_DEVEL=ON -DPADDLE_WITH_DEMO=OFF \
-   -DPADDLE_BASE_IMAGE=ubuntu:14.04 -DPADDLE_WITH_AVX=OFF\
-   Dockerfile.m4 > Dockerfile.cpu-noavx-devel
+            m4 -DBUILD_SCRIPT=${build_script[j]} -DPADDLE_WITH_GPU=${on_off[i]} -DPADDLE_IS_DEVEL=ON \
+	    -DPADDLE_WITH_DEMO=OFF -DPADDLE_BASE_IMAGE=${images[2*i+j]} -DPADDLE_WITH_AVX=${on_off[k]}\
+            Dockerfile.m4 > Dockerfile.${cpu_tag[i]}${avx_tag[k]}-devel${image_tag[j]}
 
-m4 -DPADDLE_WITH_GPU=OFF -DPADDLE_IS_DEVEL=ON -DPADDLE_WITH_DEMO=OFF \
-   -DPADDLE_BASE_IMAGE=ubuntu:14.04 -DPADDLE_WITH_AVX=ON\
-   Dockerfile.m4 > Dockerfile.cpu-devel
+            m4 -DBUILD_SCRIPT=${build_script[j]} -DPADDLE_WITH_GPU=${on_off[i]} -DPADDLE_IS_DEVEL=ON \
+	    -DPADDLE_WITH_DEMO=ON -DPADDLE_BASE_IMAGE=${images[2*i+j]} -DPADDLE_WITH_AVX=${on_off[k]}\
+            Dockerfile.m4 > Dockerfile.${cpu_tag[i]}${avx_tag[k]}-demo${image_tag[j]}
+        done
+    done
+done
 
-
-m4 -DPADDLE_WITH_GPU=OFF -DPADDLE_IS_DEVEL=ON -DPADDLE_WITH_DEMO=ON \
-   -DPADDLE_BASE_IMAGE=ubuntu:14.04 -DPADDLE_WITH_AVX=ON\
-   Dockerfile.m4 > Dockerfile.cpu-demo
-
-m4 -DPADDLE_WITH_GPU=OFF -DPADDLE_IS_DEVEL=ON -DPADDLE_WITH_DEMO=ON \
-   -DPADDLE_BASE_IMAGE=ubuntu:14.04 -DPADDLE_WITH_AVX=OFF\
-   Dockerfile.m4 > Dockerfile.cpu-noavx-demo
-
-
-m4 -DPADDLE_WITH_GPU=ON -DPADDLE_IS_DEVEL=OFF -DPADDLE_WITH_DEMO=OFF \
-   -DPADDLE_BASE_IMAGE=nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04 \
-   -DPADDLE_WITH_AVX=ON \
-   Dockerfile.m4 > Dockerfile.gpu
-
-m4 -DPADDLE_WITH_GPU=ON -DPADDLE_IS_DEVEL=OFF -DPADDLE_WITH_DEMO=OFF \
-   -DPADDLE_BASE_IMAGE=nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04 \
-   -DPADDLE_WITH_AVX=OFF \
-   Dockerfile.m4 > Dockerfile.gpu-noavx
-
-
-m4 -DPADDLE_WITH_GPU=ON -DPADDLE_IS_DEVEL=ON -DPADDLE_WITH_DEMO=OFF \
-   -DPADDLE_BASE_IMAGE=nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04 \
-   -DPADDLE_WITH_AVX=ON \
-   Dockerfile.m4 > Dockerfile.gpu-devel
-
-m4 -DPADDLE_WITH_GPU=ON -DPADDLE_IS_DEVEL=ON -DPADDLE_WITH_DEMO=OFF \
-   -DPADDLE_BASE_IMAGE=nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04 \
-   -DPADDLE_WITH_AVX=OFF \
-   Dockerfile.m4 > Dockerfile.gpu-noavx-devel
-
-m4 -DPADDLE_WITH_GPU=ON -DPADDLE_IS_DEVEL=ON -DPADDLE_WITH_DEMO=ON \
-   -DPADDLE_BASE_IMAGE=nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04 \
-   -DPADDLE_WITH_AVX=ON \
-   Dockerfile.m4 > Dockerfile.gpu-demo
-
-
-m4 -DPADDLE_WITH_GPU=ON -DPADDLE_IS_DEVEL=ON -DPADDLE_WITH_DEMO=ON \
-   -DPADDLE_BASE_IMAGE=nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04 \
-   -DPADDLE_WITH_AVX=OFF \
-   Dockerfile.m4 > Dockerfile.gpu-noavx-demo
 

@@ -12,13 +12,14 @@ Install PaddlePaddle
     internal/install_from_jumbo.md
     docker_install.rst
     ubuntu_install.rst
+    centos_install.rst
 
 Build from Source
 -----------------
 
 ..  warning::
 
-    Please use :code:`deb` package or :code:`docker` image to install paddle. The building guide is used for hacking or contributing to PaddlePaddle.
+    Please use :code:`deb` package, :code:`rpm` package or :code:`docker` image to install paddle. The building guide is used for hacking or contributing to PaddlePaddle.
     
 
 If you want to hack and contribute PaddlePaddle source code, following guides can help you\:
