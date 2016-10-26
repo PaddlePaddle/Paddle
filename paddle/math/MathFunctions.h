@@ -17,6 +17,7 @@ limitations under the License. */
 
 #ifdef PADDLE_USE_MKL
 #include <mkl.h>
+#include <mkl_lapacke.h>
 #else
 extern "C" {
 #include <cblas.h>

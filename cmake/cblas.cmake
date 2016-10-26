@@ -58,7 +58,8 @@ set(ATLAS_LIB_SEARCH_PATHS
     )
 find_path(ATLAS_INC_DIR NAMES cblas.h 
   PATHS ${ATLAS_INCLUDE_SEARCH_PATHS})
-find_path(Atlas_CLAPACK_INCLUDE_DIR NAMES clapack.h PATHS ${Atlas_INCLUDE_SEARCH_PATHS})
+find_path(ATLAS_CLAPACK_INC_DIR NAMES clapack.h
+  PATHS ${ATLAS_INCLUDE_SEARCH_PATHS})
 find_library(ATLAS_CBLAS_LIB NAMES cblas libcblas.so.3 
   PATHS ${ATLAS_LIB_SEARCH_PATHS})
 find_library(ATLAS_LIB NAMES lapack_atlas liblapack_atlas.so.3
@@ -66,7 +67,7 @@ find_library(ATLAS_LIB NAMES lapack_atlas liblapack_atlas.so.3
 
 if(ATLAS_INC_DIR AND ATLAS_CBLAS_LIB AND ATLAS_LIB)
   set(CBLAS_PROVIDER ATLAS)
-  set(CBLAS_INC_DIR ${ATLAS_INC_DIR} ${Atlas_CLAPACK_INCLUDE_DIR})
+  set(CBLAS_INC_DIR ${ATLAS_INC_DIR} ${ATLAS_CLAPACK_INC_DIR})
   set(CBLAS_LIBS ${ATLAS_LIB} ${ATLAS_CBLAS_LIB})
   add_definitions(-DPADDLE_USE_ATLAS)  
   message(STATUS "Found Atlas (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBS})")
