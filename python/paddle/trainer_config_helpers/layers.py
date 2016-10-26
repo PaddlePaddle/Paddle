@@ -54,7 +54,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'cross_entropy_with_selfnorm', 'cross_entropy',
            'multi_binary_label_cross_entropy',
            'rank_cost', 'lambda_cost', 'huber_cost',
-           # 'block_expand_layer',  # TODO(yuyang18): this layer is not correct
+           'block_expand_layer',
            'maxout_layer', 'out_prod_layer', 'print_layer'
            ]
 
@@ -3284,7 +3284,7 @@ convex_comb_layer = linear_comb_layer
 @wrap_name_default()
 @layer_support()
 def block_expand_layer(input,
-                       channel=0,
+                       num_channels=0,
                        block_x=0,
                        block_y=0,
                        stride_x=0,
@@ -3295,7 +3295,7 @@ def block_expand_layer(input,
                        layer_attr=None):
     """
     Expand feature map to minibatch matrix.
-       - matrix width is: block_y * block_x * channel
+       - matrix width is: block_y * block_x * num_channels
        - matirx height is: outputH * outputW
 
     .. math::
@@ -3307,7 +3307,7 @@ def block_expand_layer(input,
     The expand method is the same with ExpandConvLayer, but saved the transposed
     value. After expanding, output.sequenceStartPositions will store timeline.
     The number of time steps are outputH * outputW and the dimension of each
-    time step is block_y * block_x * channel. This layer can be used after
+    time step is block_y * block_x * num_channels. This layer can be used after
     convolution neural network, and before recurrent neural network.
 
     The simple usage is:
@@ -3315,7 +3315,7 @@ def block_expand_layer(input,
     .. code-block:: python
 
        block_expand = block_expand_layer(input,
-                                         channel=128,
+                                         num_channels=128,
                                          stride_x=1,
                                          stride_y=1,
                                          block_x=1,
@@ -3323,8 +3323,8 @@ def block_expand_layer(input,
 
     :param input: The input layer.
     :type input: LayerOutput
-    :param channel: The channel number of input layer.
-    :type channel: int
+    :param num_channels: The channel number of input layer.
+    :type num_channels: int
     :param block_x: The width of sub block.
     :type block_x: int
     :param block_y: The width of sub block.
@@ -3345,15 +3345,14 @@ def block_expand_layer(input,
     :rtype: LayerOutput
     """
     Layer(name=name,
-          input=Input(input.name,
-                      block_expand=BlockExpand(channels=channel,
-                                               block_x=block_x,
-                                               block_y=block_y,
-                                               stride_x=stride_x,
-                                               stride_y=stride_y,
-                                               padding_x=padding_x,
-                                               padding_y=padding_y)
-                      ),
+          inputs=Input(input.name,
+                       block_expand=BlockExpand(channels=num_channels,
+                                                block_x=block_x,
+                                                block_y=block_y,
+                                                stride_x=stride_x,
+                                                stride_y=stride_y,
+                                                padding_x=padding_x,
+                                                padding_y=padding_y)),
           type=LayerType.BLOCK_EXPAND,
           **ExtraLayerAttribute.to_kwargs(layer_attr)
           )
