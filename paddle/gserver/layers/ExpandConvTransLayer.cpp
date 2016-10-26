@@ -17,6 +17,11 @@ limitations under the License. */
 #include "paddle/utils/Stat.h"
 #include "ExpandConvTransLayer.h"
 
+/* The implementation of the convTransLayer is basically a swap of forward and
+ * backward of the original convLayer.
+ * The variable naming follows the convention of the convLayer.
+ * */
+
 namespace paddle {
 
 REGISTER_LAYER(exconvt, ExpandConvTransLayer);

@@ -96,6 +96,11 @@ public:
    *   - outputSize = 5;
    */
 
+  /*
+   * In order to be consistent with the convLayer, here the outputSize is
+   * actually the size of the input image of convTransLayer, and the image size
+   * is actually the size of the output image of convTransLayer
+   */
   int imageSize(int outputSize, int filterSize, int padding, int stride) {
     int imageSize;
     if (!caffeMode_) {

@@ -33,7 +33,9 @@ P_DECLARE_double(checkgrad_eps);
 P_DECLARE_bool(thread_local_rand_use_global_seed);
 P_DECLARE_bool(prev_batch_state);
 
+// Test that the convTrans forward is the same as conv backward
 TEST(Layer, convTransLayerFwd) {
+    // Setting up conv-trans layer
     TestConfig configt;
     configt.biasSize = 3;
     configt.layerConfig.set_type("exconvt");
@@ -68,7 +70,7 @@ TEST(Layer, convTransLayerFwd) {
     LayerMap layerMap;
     vector<Argument> datas;
     initDataLayer(configt, &dataLayers, &datas, &layerMap, "convTrans",
-                  100, false, useGpu);
+                  100, false, false);
     // test layer initialize
     std::vector<ParameterPtr> parameters;
     LayerPtr convtLayer;
@@ -76,6 +78,7 @@ TEST(Layer, convTransLayerFwd) {
     convtLayer->getBiasParameter()->zeroMem();
     convtLayer->forward(PASS_GC);
 
+    // Setting up conv-layer config
     TestConfig config;
     config.biasSize = 16;
     config.layerConfig.set_type("exconv");
@@ -109,16 +112,18 @@ TEST(Layer, convTransLayerFwd) {
     LayerMap layerMap2;
     vector<Argument> datas2;
     initDataLayer(config, &dataLayers2, &datas2, &layerMap2, "conv",
-                  100, false, useGpu);
+                  100, false, false);
     // test layer initialize
     std::vector<ParameterPtr> parameters2;
     LayerPtr convLayer;
     initTestLayer(config, &layerMap2, &parameters2, &convLayer);
 
+    // Sync convLayer and convtLayer parameter
     convLayer->getBiasParameter()->zeroMem();
     convLayer->getParameters()[0]->getBuf(PARAMETER_VALUE)->copyFrom(
             *(convtLayer->getParameters()[0]->getBuf(PARAMETER_VALUE)));
 
+    // Set convLayer outputGrad as convTransLayer input value
     convLayer->forward(PASS_GC);
     convLayer->getOutput().grad->copyFrom(*(dataLayers[0]->getOutputValue()));
 
@@ -126,8 +131,115 @@ TEST(Layer, convTransLayerFwd) {
     auto callback = [&](Parameter* para) { ++callbackFlags[para->getID()]; };
     convLayer->backward(callback);
 
+    // Check that the convLayer backward is the same as convTransLayer forward
     checkMatrixEqual(convtLayer->getOutputValue(),
                      dataLayers2[0]->getOutputGrad());
+}
+
+
+// Do one forward pass of convTrans layer and check to see if its output
+// matches the given result
+void doOneConvtTest(size_t imgSize, size_t output_x, size_t stride,
+                    size_t padding, size_t filter_size, MatrixPtr& result) {
+    TestConfig configt;
+    configt.biasSize = 1;
+    configt.layerConfig.set_type("exconvt");
+    configt.layerConfig.set_num_filters(1);
+    configt.layerConfig.set_partial_sum(1);
+    configt.layerConfig.set_shared_biases(true);
+
+    configt.inputDefs.push_back({INPUT_DATA, "layer_0", output_x * output_x,
+                                 filter_size * filter_size});
+    LayerInputConfig* input = configt.layerConfig.add_inputs();
+    ConvConfig* conv = input->mutable_conv_conf();
+    conv->set_filter_size(filter_size);
+    conv->set_filter_size_y(filter_size);
+    conv->set_channels(1);
+    conv->set_padding(padding);
+    conv->set_padding_y(padding);
+    conv->set_stride(stride);
+    conv->set_stride_y(stride);
+    conv->set_groups(1);
+    conv->set_filter_channels(1);
+    conv->set_img_size(imgSize);
+    conv->set_output_x(output_x);
+
+    configt.layerConfig.set_size(conv->img_size() * conv->img_size() *
+                                configt.layerConfig.num_filters());
+    configt.layerConfig.set_name("convTrans");
+
+    std::vector<DataLayerPtr> dataLayers;
+    LayerMap layerMap;
+    vector<Argument> datas;
+    initDataLayer(configt, &dataLayers, &datas, &layerMap, "convTrans",
+                  1, false, false);
+    dataLayers[0]->getOutputValue()->zeroMem();
+    dataLayers[0]->getOutputValue()->add(1.0);
+
+    // test layer initialize
+    std::vector<ParameterPtr> parameters;
+    LayerPtr convtLayer;
+    initTestLayer(configt, &layerMap, &parameters, &convtLayer);
+    convtLayer->getBiasParameter()->zeroMem();
+    convtLayer->getParameters()[0]->zeroMem();
+    convtLayer->getParameters()[0]->getBuf(PARAMETER_VALUE)->add(1.0);
+    convtLayer->forward(PASS_GC);
+
+    checkMatrixEqual(convtLayer->getOutputValue(), result);
+}
+
+TEST(Layer, convTransLayerFwd2) {
+    size_t imgSize, output_x, stride, padding, filter_size;
+    MatrixPtr result;
+
+    imgSize = 5;
+    output_x = 1;
+    stride = 1;
+    padding = 0;
+    filter_size = 5;
+    result = Matrix::create(1, imgSize * imgSize, false, false);
+    result->zeroMem();
+    result->add(1.0);
+    doOneConvtTest(imgSize, output_x, stride, padding, filter_size, result);
+
+    imgSize = 5;
+    output_x = 2;
+    stride = 1;
+    padding = 0;
+    filter_size = 4;
+    float resultData[] = {1, 2, 2, 2, 1,
+                          2, 4, 4, 4, 2,
+                          2, 4, 4, 4, 2,
+                          2, 4, 4, 4, 2,
+                          1, 2, 2, 2, 1};
+    result = Matrix::create(resultData, 1, imgSize * imgSize, false, false);
+    doOneConvtTest(imgSize, output_x, stride, padding, filter_size, result);
+
+    imgSize = 5;
+    output_x = 2;
+    stride = 2;
+    padding = 1;
+    filter_size = 5;
+    float resultData2[] = {1, 2, 2, 2, 1,
+                           2, 4, 4, 4, 2,
+                           2, 4, 4, 4, 2,
+                           2, 4, 4, 4, 2,
+                           1, 2, 2, 2, 1};
+    result = Matrix::create(resultData2, 1, imgSize * imgSize, false, false);
+    doOneConvtTest(imgSize, output_x, stride, padding, filter_size, result);
+
+    imgSize = 5;
+    output_x = 2;
+    stride = 2;
+    padding = 0;
+    filter_size = 3;
+    float resultData3[] = {1, 1, 2, 1, 1,
+                           1, 1, 2, 1, 1,
+                           2, 2, 4, 2, 2,
+                           1, 1, 2, 1, 1,
+                           1, 1, 2, 1, 1};
+    result = Matrix::create(resultData3, 1, imgSize * imgSize, false, false);
+    doOneConvtTest(imgSize, output_x, stride, padding, filter_size, result);
 }
 
 int main(int argc, char** argv) {

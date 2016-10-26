@@ -23,6 +23,17 @@ bool ConvTransBaseLayer::init(const LayerMap& layerMap,
   Layer::init(layerMap, parameterMap);
 
   /* Initialize the convolutional layer parameter */
+  /* Everything is the same as ConvBaseLayer.cpp except that the meaning of
+   * num_filters and channel is switched.
+   *
+   * In the config, num_filters refer to the number of feature maps in the
+   * output of convTransLayer, and channel refer to the number of feature maps
+   * in the input of convTransLayer.
+   *
+   * However, within the convTrans class, the channel is related to the output
+   * and num_filters is related to the input, so that it is consistent with the
+   * settings in convLayer.
+   * */
   channel_ = config_.num_filters();
   sharedBiases_ = config_.shared_biases();
   for (auto& inputConfig : config_.inputs()) {

@@ -1107,7 +1107,7 @@ def parse_conv(conv, input_layer_name, conv_conf):
                                          conv_conf.caffe_mode)
 
 
-def parse_convt(conv, input_layer_name, conv_conf):
+def parse_convt(conv, input_layer_name, conv_conf, num_filters):
     conv_conf.filter_size = conv.filter_size
     conv_conf.filter_size_y = conv.filter_size_y
     conv_conf.channels = conv.channels
@@ -1116,7 +1116,7 @@ def parse_convt(conv, input_layer_name, conv_conf):
     conv_conf.stride = conv.stride
     conv_conf.stride_y = conv.stride_y
     conv_conf.groups = conv.groups
-    conv_conf.filter_channels = conv.channels / conv.groups
+    conv_conf.filter_channels = num_filters / conv.groups
     conv_conf.caffe_mode = conv.caffe_mode
 
     outputSize = g_layer_map[input_layer_name].size / conv.channels
@@ -1126,14 +1126,14 @@ def parse_convt(conv, input_layer_name, conv_conf):
     config_assert((conv_conf.output_x ** 2) == outputSize,
                   ("Input layer %s: Incorrect input image size %d for input "
                    + "image pixels %d")
-                  % (input_layer_name, conv_conf.img_size, img_pixels))
+                  % (input_layer_name, conv_conf.output_x, outputSize))
     if conv.caffe_mode:
         conv_conf.img_size = \
             (conv_conf.output_x - 1) * conv.stride \
             + conv.filter_size - 2 * conv.padding
     else:
         conv_conf.img_size = \
-            (conv_conf.output_x - 1) * conv.stride \
+            (conv_conf.output_x - 2) * conv.stride \
             + conv.filter_size - 2 * conv.padding + 1
 
 
@@ -1655,7 +1655,7 @@ class ConvTransLayerBase(LayerBase):
             num_filters=None,
             shared_biases=False,
             **xargs):
-        super(ConvLayerBase, self).__init__(
+        super(ConvTransLayerBase, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **xargs)
 
         if num_filters is not None:
@@ -1686,7 +1686,7 @@ class ConvTransLayerBase(LayerBase):
             parse_convt(
                 self.inputs[input_index].conv,
                 input_layer.name,
-                self.config.inputs[input_index].conv_conf)
+                self.config.inputs[input_index].conv_conf, num_filters)
             conv_conf = self.config.inputs[input_index].conv_conf
             psize = self.calc_parameter_size(conv_conf)
             print("output size for %s is %d " % (name, conv_conf.output_x))
@@ -1700,7 +1700,7 @@ class ConvTransLayerBase(LayerBase):
         self.create_bias_parameter(bias, psize, [psize, 1])
 
     def calc_parameter_size(self, conv_conf):
-        return conv_conf.channels() * conv_conf.filter_channels \
+        return conv_conf.channels * conv_conf.filter_channels \
                     * (conv_conf.filter_size * conv_conf.filter_size_y)
 
 @config_layer('exconvt')
