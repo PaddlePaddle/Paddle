@@ -169,7 +169,7 @@ extern void hl_avgpool_forward(
  * @brief   Maximum pool backward.
  *
  * @param[in]   frameCnt    batch size of input image.
- * @param[in]   outGrad     input data.
+ * @param[in]   outGrad     output grad data.
  * @param[in]   channels    number of channel.
  * @param[in]   height      image height.
  * @param[in]   width       image width.
@@ -239,5 +239,35 @@ extern void hl_CMRNorm_backward(
     const real* outV, const real* outDiff, real *inDiff,
     size_t channels, size_t height, size_t width, size_t sizeX,
     real alpha, real beta);
+
+/**
+ * @brief   MaxOut forward.
+ *
+ * @param[in]   inData      input data.
+ * @param[out]  outData     output data.
+ * @param[out]  idData      output maxId.
+ * @param[in]   batchSize   batchSize.
+ * @param[in]   size        number of channels * image height * image width.
+ * @param[in]   featLen     feature length = image height * image width.
+ * @param[in]   groups      number of groups.
+ */
+extern void hl_maxout_forward(
+    const real* inData, real* outData, int* idData,
+    size_t batchSize, size_t size, size_t featLen, size_t groups);
+
+/**
+ * @brief   MaxOut backward.
+ *
+ * @param[out]  inGrad      input grad data.
+ * @param[in]   outGrad     output grad data.
+ * @param[in]   idData      output maxId.
+ * @param[in]   batchSize   batchSize.
+ * @param[in]   size        number of channels * image height * image width.
+ * @param[in]   featLen     feature length = image height * image width.
+ * @param[in]   groups      number of groups.
+ */
+extern void hl_maxout_backward(
+    real* inGrad, const real* outGrad, const int* idData,
+    size_t batchSize, size_t size, size_t featLen, size_t groups);
 
 #endif /* HL_CNN_H_ */

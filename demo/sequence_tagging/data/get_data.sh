@@ -14,19 +14,8 @@
 # limitations under the License.
 set -e
 
-cfg=trainer_config.lr.py
-#cfg=trainer_config.emb.py
-#cfg=trainer_config.cnn.py
-#cfg=trainer_config.lstm.py
-#cfg=trainer_config.bidi-lstm.py
-#cfg=trainer_config.db-lstm.py
-paddle train \
-  --config=$cfg \
-  --save_dir=./output \
-  --trainer_count=4 \
-  --log_period=20 \
-  --num_passes=15 \
-  --use_gpu=false \
-  --show_parameter_stats_period=100 \
-  --test_all_data_in_one_period=1 \
-  2>&1 | tee 'train.log'
+DIR="$( cd "$(dirname "$0")" ; pwd -P )"
+cd $DIR
+
+wget http://www.cnts.ua.ac.be/conll2000/chunking/train.txt.gz
+wget http://www.cnts.ua.ac.be/conll2000/chunking/test.txt.gz
