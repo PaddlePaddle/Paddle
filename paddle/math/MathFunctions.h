@@ -22,9 +22,13 @@ extern "C" {
 #include <cblas.h>
 }
 #endif
+#ifdef PADDLE_USE_ATLAS
 extern "C" {
 #include <clapack.h>
 }
+#else
+#include <lapacke.h>
+#endif
 
 #include <cmath>
 

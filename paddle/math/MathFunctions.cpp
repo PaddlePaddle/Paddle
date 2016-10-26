@@ -42,25 +42,41 @@ void gemm<double>(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
 template<>
 int getrf<float>(const CBLAS_ORDER Order, const int M, const int N,
                   float *A, const int lda, int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
   return clapack_sgetrf(CblasRowMajor, M, N, A, lda, ipiv);
+#else
+  return LAPACKE_sgetrf(CblasRowMajor, M, N, A, lda, ipiv);
+#endif
 }
 
 template<>
 int getrf<double>(const CBLAS_ORDER Order, const int M, const int N,
                    double *A, const int lda, int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
   return clapack_dgetrf(CblasRowMajor, M, N, A, lda, ipiv);
+#else
+  return LAPACKE_dgetrf(CblasRowMajor, M, N, A, lda, ipiv);
+#endif
 }
 
 template<>
 int getri<float>(const CBLAS_ORDER Order, const int N, float *A,
                   const int lda, const int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
   return clapack_sgetri(CblasRowMajor, N, A, lda, ipiv);
+#else
+  return LAPACKE_sgetri(CblasRowMajor, N, A, lda, ipiv);
+#endif
 }
 
 template<>
 int getri<double>(const CBLAS_ORDER Order, const int N, double *A,
                   const int lda, const int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
   return clapack_dgetri(CblasRowMajor, N, A, lda, ipiv);
+#else
+  return LAPACKE_dgetri(CblasRowMajor, N, A, lda, ipiv);
+#endif
 }
 
 template<>
