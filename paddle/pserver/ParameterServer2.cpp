@@ -265,7 +265,13 @@ void ParameterServer2::setParameter(const SendParameterRequest& request,
   blockIds.reserve(request.blocks_size());
   int bufferIndex = 0;
 
-  if (!request.blocks().size()) { return; }
+  if (!request.blocks().size()) {
+    LOG(INFO)
+          << "Might --ports_num or --ports_num_for_sparse is too large, "
+          << "might all dense or sparse parameters size is too small, "
+          << "some virtual pserver stores nothing, just ignore it";
+    return; 
+  }
 
   for (const auto& block : request.blocks()) {
     /// block size for parameter(e.g. 128 for sparse row, 1K for dense)
