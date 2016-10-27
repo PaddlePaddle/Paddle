@@ -40,7 +40,7 @@ limitations under the License. */
 #include "TrainerConfigHelper.h"
 
 P_DEFINE_string(config, "", "Trainer config file");
-P_DEFINE_int32(test_period, 1000,
+P_DEFINE_int32(test_period, 0,
                "Run test every so many train batches."
                " 0 for testing after each pass."
                " If not 0, test log_period batches."
