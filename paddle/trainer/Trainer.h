@@ -94,6 +94,11 @@ public:
    */
   real checkGradient();
 
+  void startTrain();
+  void finishTrain();
+  void startTrainPass();
+  void finishTrainPass();
+  void trainOneDataBatch(DataBatch& dataBatch);
 
   /**
    * given a dataBatch and the current parameter value
@@ -144,11 +149,11 @@ public:
 
 protected:
   /**
-   * Train one pass of data. passId starts from 0
+   * Train one pass of data.
    *
    * SGD Method.
    */
-  void trainOnePass(int passId);
+  void trainOnePass();
 
   /**
    * Train one pass in one batch.
@@ -161,6 +166,8 @@ protected:
    */
   void clearGradient();
 
+  void createTester();
+
 private:
   std::unique_ptr<TesterConfig> createTesterConfig();
 
@@ -172,6 +179,17 @@ protected:
   DataProviderPtr testDataProvider_;
   MachineState trainState_;
   MachineState testState_;
+
+  struct TrainPassContext {
+    int64_t batchId;
+    real avgTestCost;
+    int64_t numAvgTests;
+    int passId;
+    int passInnerId;
+  };
+  std::vector<paddle::Argument> forwardOutput_;
+
+  TrainPassContext trainPassContext_;
 
   std::unique_ptr<Evaluator> evaluator_;
   std::unique_ptr<Evaluator> currentEvaluator_;
