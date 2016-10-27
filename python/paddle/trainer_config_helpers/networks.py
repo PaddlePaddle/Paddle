@@ -20,7 +20,7 @@ from activations import LinearActivation, ReluActivation, SoftmaxActivation, \
     IdentityActivation, TanhActivation, SequenceSoftmaxActivation
 from attrs import ExtraAttr
 from default_decorators import wrap_name_default, wrap_act_default, \
-    wrap_param_default
+    wrap_param_default, wrap_bias_attr_default, wrap_param_attr_default
 from layers import *  # There are too many layers used in network, so import *
 from poolings import MaxPooling, SumPooling
 from paddle.trainer.config_parser import *
@@ -30,7 +30,7 @@ __all__ = ['sequence_conv_pool', 'simple_lstm', "simple_img_conv_pool",
            'lstmemory_unit', 'small_vgg', 'img_conv_group', 'vgg_16_network',
            'gru_unit', 'gru_group', 'simple_gru', 'simple_attention',
            'text_conv_pool',
-           'bidirectional_lstm', 'outputs']
+           'bidirectional_lstm', 'inputs', 'outputs']
 
 
 ######################################################
@@ -133,7 +133,7 @@ def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
                          pool_type=None, act=None, groups=1, conv_stride=1,
                          conv_padding=0, bias_attr=None, num_channel=None,
                          param_attr=None, shared_bias=True,
-                         conv_layer_attr=None, pool_stride=1, pool_start=None,
+                         conv_layer_attr=None, pool_stride=1,
                          pool_padding=0, pool_layer_attr=None):
     """
     Simple image convolution and pooling group.
@@ -170,13 +170,11 @@ def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
     :type shared_bias: bool
     :param conv_layer_attr: see img_conv_layer for details
     :type conv_layer_attr: ExtraLayerAttribute
-    :param pool_stride: see img_conv_layer for details
+    :param pool_stride: see img_pool_layer for details
     :type pool_stride: int
-    :param pool_start: see img_conv_layer for details
-    :type pool_start: int
-    :param pool_padding: see img_conv_layer for details
+    :param pool_padding: see img_pool_layer for details
     :type pool_padding: int
-    :param pool_layer_attr: see img_conv_layer for details
+    :param pool_layer_attr: see img_pool_layer for details
     :type pool_layer_attr: ExtraLayerAttribute
     :return: Layer's output
     :rtype: LayerOutput
@@ -192,7 +190,7 @@ def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
     return img_pool_layer(name="%s_pool" % name, input=_conv_,
                           pool_size=pool_size,
                           pool_type=pool_type, stride=pool_stride,
-                          start=pool_start, padding=pool_padding,
+                          padding=pool_padding,
                           layer_attr=pool_layer_attr)
 
 
@@ -203,7 +201,7 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
                      conv_param_attr=None, shared_bias=True,
                      conv_layer_attr=None, bn_param_attr=None,
                      bn_bias_attr=None, bn_layer_attr=None, pool_stride=1,
-                     pool_start=None, pool_padding=0, pool_layer_attr=None):
+                     pool_padding=0, pool_layer_attr=None):
     """
     Convolution, batch normalization, pooling group.
 
@@ -243,8 +241,6 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
     :param bn_layer_attr: ParameterAttribute.
     :param pool_stride: see img_pool_layer's document.
     :type pool_stride: int
-    :param pool_start: see img_pool_layer's document.
-    :type pool_start: int
     :param pool_padding: see img_pool_layer's document.
     :type pool_padding: int
     :param pool_layer_attr: see img_pool_layer's document.
@@ -268,7 +264,7 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
     return img_pool_layer(name="%s_pool" % name,
                           input=__bn__, pool_type=pool_type,
                           pool_size=pool_size, stride=pool_stride,
-                          start=pool_start, padding=pool_padding,
+                          padding=pool_padding,
                           layer_attr=pool_layer_attr)
 
 
@@ -372,8 +368,8 @@ def small_vgg(input_image, num_channels, num_classes):
     tmp = __vgg__(tmp, 128, 2, [0.4, 0])
     tmp = __vgg__(tmp, 256, 3, [0.4, 0.4, 0])
     tmp = __vgg__(tmp, 512, 3, [0.4, 0.4, 0])
-    tmp = img_pool_layer(input = tmp, stride = 2,
-                         pool_size = 2, pool_type = MaxPooling())
+    tmp = img_pool_layer(input=tmp, stride=2,
+                         pool_size=2, pool_type=MaxPooling())
     tmp = dropout_layer(input=tmp, dropout_rate=0.5)
     tmp = fc_layer(input=tmp, size=512, layer_attr=ExtraAttr(drop_rate=0.5),
                    act=LinearActivation())
@@ -505,7 +501,7 @@ def simple_lstm(input, size, name=None, reverse=False, mat_param_attr=None,
 def lstmemory_unit(input, name=None, size=None, param_attr=None,
                    act=None, gate_act=None, state_act=None,
                    mixed_bias_attr=None, lstm_bias_attr=None,
-                   mixed_layer_attr=None,lstm_layer_attr=None,
+                   mixed_layer_attr=None, lstm_layer_attr=None,
                    get_output_layer_attr=None):
     """
     Define calculations that a LSTM unit performs in a single time step.
@@ -555,7 +551,7 @@ def lstmemory_unit(input, name=None, size=None, param_attr=None,
     :type gate_act: BaseActivation
     :param state_act: lstm state activiation type.
     :type state_act: BaseActivation
-    :param mixed_bias_attr: bias parameter attribute of mixed layer. 
+    :param mixed_bias_attr: bias parameter attribute of mixed layer.
                             False means no bias, None means default bias.
     :type mixed_bias_attr: ParameterAttribute|False
     :param lstm_bias_attr: bias parameter attribute of lstm layer.
@@ -616,7 +612,7 @@ def lstmemory_group(input, size=None, name=None,
     cell states, or hidden states in every time step are accessible to for the
     user. This is especially useful in attention model. If you do not need to
     access to the internal states of the lstm, but merely use its outputs,
-    it is recommanded to use the lstmemory, which is relatively faster than
+    it is recommended to use the lstmemory, which is relatively faster than
     lstmemory_group.
 
     NOTE: In PaddlePaddle's implementation, the following input-to-hidden
@@ -745,7 +741,6 @@ def gru_group(input,
               gru_bias_attr=None,
               act=None, gate_act=None,
               gru_layer_attr=None):
-
     """
     gru_group is a recurrent layer group version Gated Recurrent Unit. It
     does exactly the same calculation as the grumemory layer does. A promising
@@ -919,12 +914,12 @@ def bidirectional_lstm(input, size, name=None, return_seq=False,
 
     fw = simple_lstm(name='%s_fw' % name, input=input, size=size,
                      **dict((k[len('fwd_'):], v) for k, v in args.iteritems()
-                        if k.startswith('fwd_')))
+                            if k.startswith('fwd_')))
 
     bw = simple_lstm(name="%s_bw" % name, input=input, size=size,
                      reverse=True,
                      **dict((k[len('bwd_'):], v) for k, v in args.iteritems()
-                        if k.startswith('bwd_')))
+                            if k.startswith('bwd_')))
 
     if return_seq:
         return concat_layer(name=name, input=[fw, bw], layer_attr=concat_attr,
@@ -1052,14 +1047,30 @@ def dropout_layer(input, dropout_rate, name=None):
                        layer_attr=ExtraAttr(drop_rate=dropout_rate))
 
 
-def outputs(layers):
+def inputs(layers, *args):
     """
-    Declare the end of network. Currently it will only calculate the
-    input/output order of network. It will calculate the predict network or
-    train network's output automatically.
+    Declare the inputs of network. The order of input should be as same as
+    the data provider's return order.
+
+    :param layers: Input Layers.
+    :type layers: list|tuple|LayerOutput.
+    :return:
+    """
+
+    if isinstance(layers, LayerOutput) or isinstance(layers, basestring):
+        layers = [layers]
+    if len(args) != 0:
+        layers.extend(args)
+
+    Inputs(*[l.name for l in layers])
 
 
-    :param layers:
+def outputs(layers, *args):
+    """
+    Declare the outputs of network. If user have not defined the inputs of
+    network, this method will calculate the input order by dfs travel.
+
+    :param layers: Output layers.
     :type layers: list|tuple|LayerOutput
     :return:
     """
@@ -1089,9 +1100,17 @@ def outputs(layers):
     if isinstance(layers, LayerOutput):
         layers = [layers]
 
+    if len(args) != 0:
+        layers.extend(args)
+
     assert len(layers) > 0
+
+    if HasInputsSet():  # input already set
+        Outputs(*[l.name for l in layers])
+        return  # just return outputs.
+
     if len(layers) != 1:
-        logger.warning("EndOfNetwork routine try to calculate network's"
+        logger.warning("`outputs` routine try to calculate network's"
                        " inputs and outputs order. It might not work well."
                        "Please see follow log carefully.")
     inputs = []
@@ -1121,12 +1140,13 @@ def outputs(layers):
     logger.info(
         "".join(["The input order is [", ", ".join(final_inputs), "]"])
     )
+
+    if len(final_outputs) == 0:
+        final_outputs = map(lambda x: x.name, layers)
+
     logger.info(
         "".join(["The output order is [", ", ".join(final_outputs), "]"
                  ]))
 
     Inputs(*final_inputs)
-    if len(final_outputs) != 0:
-        Outputs(*final_outputs)
-    else:
-        Outputs(*map(lambda x: x.name, layers))
+    Outputs(*final_outputs)

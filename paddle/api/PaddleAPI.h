@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/utils/GlobalConstants.h"
+#include "paddle/utils/TypeDefs.h"
 
 /// Import PaddlePaddle's enumeration into global namespace.
 using namespace paddle::enumeration_wrapper;  // NOLINT

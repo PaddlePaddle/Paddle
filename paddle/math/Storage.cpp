@@ -25,8 +25,8 @@ namespace paddle {
 // Initialization StorageEngine singleton.
 // Other modules may rely on storage management,
 // so StorageEngine need to be initialized before other modules.
-static InitFunction __init_storage_engine(
-  StorageEngine::singleton, std::numeric_limits<int>::max());
+static InitFunction __init_storage_engine([](){StorageEngine::singleton();},
+                                          std::numeric_limits<int>::max());
 
 StorageEngine::StorageEngine() : cpuAllocator_(nullptr) {
 }

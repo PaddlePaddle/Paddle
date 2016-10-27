@@ -1,2 +1,8 @@
 *.DS_Store
 build/
+*.user
+
+.vscode
+.idea
+.project
+.pydevproject

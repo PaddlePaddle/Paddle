@@ -88,7 +88,8 @@ message PoolConfig {
   required uint32 size_x = 3;
 
   // Tell the net where in the input image to start the pooling.
-  required uint32 start = 4;
+  // start is deprecated now.
+  optional uint32 start = 4;
 
   // Defines the stride size between successive pooling squares.
   required uint32 stride = 5;
@@ -169,6 +170,15 @@ message BlockExpandConfig {
   required uint32 img_size_y = 11;
 }
 
+message MaxOutConfig {
+  required uint32 channels = 1;
+  required uint32 groups = 2;
+
+  // The size of input feature map.
+  required uint32 img_size_x = 3;
+  required uint32 img_size_y = 4;
+}
+
 message ProjectionConfig {
   required string type = 1;
   required string name = 2;
@@ -224,6 +234,7 @@ message LayerInputConfig {
   // If the input layer has multi-output.
   // Set the argument name.
   optional string input_layer_argument = 9;
+  optional MaxOutConfig maxout_conf = 10;
 }
 
 message LayerConfig {
@@ -299,7 +310,7 @@ sinclude(`ModelConfigLayer.proto.m4')
   optional bool norm_by_times = 25;
 
   // for CostLayers
-  optional real coeff = 26;
+  optional real coeff = 26 [default = 1.0];
 
   // for AverageLayer
   // can be set to: 'average', 'sum' or 'squarerootn'
@@ -452,6 +463,9 @@ message SubModelConfig {
   repeated LinkConfig out_links = 10;
 
   optional GeneratorConfig generator = 11;
+
+  // the id of inlink which share info with outlinks, used in recurrent layer group
+  optional int32 target_inlinkid = 12;
 }
 
 message ModelConfig {

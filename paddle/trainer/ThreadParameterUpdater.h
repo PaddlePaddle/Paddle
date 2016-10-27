@@ -79,7 +79,7 @@ protected:
   // The update function for after update operations, such as averager.
   void threadTraverse(const ParameterOptimizer::TraverseCallback& callback,
                       int tid, size_t numThreads, Parameter* para);
-  typedef std::function<const ParameterOptimizer::TraverseCallback&(Parameter*)>
+  typedef std::function<const ParameterOptimizer::TraverseCallback(Parameter*)>
     GetTraverseCallback;
   void traverse(GetTraverseCallback getTraverseCallback);
 };

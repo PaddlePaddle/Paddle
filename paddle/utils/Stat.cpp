@@ -13,23 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Stat.h"
-
-#include <sys/syscall.h>  // for syscall()
-#include <sys/types.h>
+#include "Util.h"
 #include <iomanip>
 #include <algorithm>
 
 namespace paddle {
-
-// return the thread id used by glog
-pid_t getTID() {
-#ifndef __NR_gettid
-#define __NR_gettid 224
-#endif
-  pid_t tid = syscall(__NR_gettid);
-  CHECK_NE(tid, -1);
-  return tid;
-}
 
 StatSet globalStat("GlobalStatInfo");
 

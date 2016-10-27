@@ -73,6 +73,12 @@ img_pool_layer
     :members: img_pool_layer
     :noindex:
 
+maxout_layer
+------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: maxout_layer
+    :noindex:
+
 Norm Layer
 ==========
 
@@ -80,12 +86,6 @@ img_cmrnorm_layer
 -----------------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: img_cmrnorm_layer
-    :noindex:
-
-img_rnorm_layer
------------------
-..  automodule:: paddle.trainer_config_helpers.layers
-    :members: img_rnorm_layer
     :noindex:
 
 batch_norm_layer
@@ -136,6 +136,12 @@ gru_step_layer
 Recurrent Layer Group
 =====================
 
+memory
+------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: memory
+    :noindex:
+
 recurrent_group
 ---------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -173,6 +179,12 @@ dotmul_projection
 -----------------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: dotmul_projection
+    :noindex:
+
+dotmul_operator
+---------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: dotmul_operator
     :noindex:
 
 full_matrix_projection
@@ -251,10 +263,10 @@ addto_layer
     :members: addto_layer
     :noindex:
 
-convex_comb_layer
+linear_comb_layer
 -----------------
 ..  automodule:: paddle.trainer_config_helpers.layers
-    :members: convex_comb_layer
+    :members: linear_comb_layer
     :noindex:
 
 interpolation_layer
@@ -286,7 +298,13 @@ tensor_layer
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: tensor_layer
     :noindex:
-    
+
+cos_sim
+-------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: cos_sim
+    :noindex:
+
 trans_layer
 ------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -347,12 +365,6 @@ rank_cost
     :members: rank_cost
     :noindex:
 
-cos_sim
--------
-..  automodule:: paddle.trainer_config_helpers.layers
-    :members: cos_sim
-    :noindex:
-
 crf_layer
 -----------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -369,6 +381,12 @@ ctc_layer
 -----------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: ctc_layer
+    :noindex:
+
+nce_layer
+-----------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: nce_layer
     :noindex:
 
 hsigmoid

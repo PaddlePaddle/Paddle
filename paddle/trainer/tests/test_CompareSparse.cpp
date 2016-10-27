@@ -57,7 +57,7 @@ std::vector<ParameterPtr> trainerOnePassTest(const string& configFile,
             << " sparseUpdate=" << sparseUpdate;
   srand(FLAGS_seed);
   *ThreadLocalRand::getSeed() = FLAGS_seed;
-
+  ThreadLocalRandomEngine::get().seed(FLAGS_seed);
   if (useGpu) {
     CHECK_LE(trainerCount, gNumDevices);
   }
@@ -146,12 +146,12 @@ TEST(compareSparse, remote_cpu) {
 TEST(compareSparse, cpu10_local_vs_remote) {
   FLAGS_local = 1;  // disable remote sparse update in parameter config
   std::vector<ParameterPtr> localParameters =
-      trainerOnePassTest(configFile1, true, 10);
+      trainerOnePassTest(configFile1, true, 2);
 
   FLAGS_local = 0;  // will enable remote sparse update
   FLAGS_ports_num_for_sparse = 5;
   std::vector<ParameterPtr> remoteParameters =
-      trainerOnePassTest(configFile1, true, 10);
+      trainerOnePassTest(configFile1, true, 2);
 
   compareValue(localParameters, remoteParameters);
 }
@@ -174,7 +174,7 @@ TEST(compareSparse, multiGradientMachine) {
       FLAGS_parallel_nn = useGpu;
       LOG(INFO) << " local=" << local
                 << " useGpu=" << useGpu;
-      int trainerCount = useGpu ? numGpu : 10;
+      int trainerCount = useGpu ? numGpu : 2;
       std::vector<ParameterPtr> parameters =
           trainerOnePassTest(configFile1, true, trainerCount, useGpu);
       compareValue(getDenseParameters(), parameters, eps);

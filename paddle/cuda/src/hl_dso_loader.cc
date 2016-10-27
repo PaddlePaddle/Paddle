@@ -69,23 +69,40 @@ static inline void GetDsoHandleWithSearchPath(
 
     CHECK(nullptr != *dso_handle)
       << "For Gpu version of PaddlePaddle, it couldn't find CUDA library: "
-      << dlPath.c_str() << " Please make sure you already specify its path."
-      << "Note: for training data on Cpu using Gpu version of PaddlePaddle,"
-      << "you must specify libcudart.so via LD_LIBRARY_PATH.";
+      << dlPath.c_str() << ". Please make sure you already specify its path. "
+      << "Note: for training data on Cpu using Gpu version of PaddlePaddle, "
+      << "you must specify libcudart via export LD_LIBRARY_PATH for Linux or "
+      << "export DYLD_LIBRARY_PATH for MAC OS.";
 }
 
 void GetCublasDsoHandle(void** dso_handle) {
+#if defined(__APPLE__) || defined(__OSX__)
+    GetDsoHandleWithSearchPath(FLAGS_cuda_dir, "libcublas.dylib", dso_handle);
+#else
     GetDsoHandleWithSearchPath(FLAGS_cuda_dir, "libcublas.so", dso_handle);
+#endif
 }
 
 void GetCudnnDsoHandle(void** dso_handle) {
+#if defined(__APPLE__) || defined(__OSX__)
+    GetDsoHandleWithSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", dso_handle);
+#else
     GetDsoHandleWithSearchPath(FLAGS_cudnn_dir, "libcudnn.so", dso_handle);
+#endif
 }
 
 void GetCudartDsoHandle(void** dso_handle) {
+#if defined(__APPLE__) || defined(__OSX__)
+    GetDsoHandleWithSearchPath("", "libcudart.dylib", dso_handle);
+#else
     GetDsoHandleWithSearchPath("", "libcudart.so", dso_handle);
+#endif
 }
 
 void GetCurandDsoHandle(void** dso_handle) {
+#if defined(__APPLE__) || defined(__OSX__)
+    GetDsoHandleWithSearchPath(FLAGS_cuda_dir, "libcurand.dylib", dso_handle);
+#else
     GetDsoHandleWithSearchPath(FLAGS_cuda_dir, "libcurand.so", dso_handle);
+#endif
 }

@@ -15,7 +15,7 @@ list(APPEND CUDNN_CHECK_LIBRARY_DIRS
     $ENV{CUDNN_ROOT}/lib64
     $ENV{CUDNN_ROOT}/lib
     /usr/lib)
-find_library(CUDNN_LIBRARY NAMES libcudnn.so # libcudnn_static.a
+find_library(CUDNN_LIBRARY NAMES libcudnn.so libcudnn.dylib # libcudnn_static.a
     PATHS ${CUDNN_CHECK_LIBRARY_DIRS} ${CUDNN_INCLUDE_DIR} ${__libpath_hist}
           NO_DEFAULT_PATH
     DOC "Path to cuDNN library.")

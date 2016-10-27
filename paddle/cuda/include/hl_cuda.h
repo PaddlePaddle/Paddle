@@ -321,13 +321,14 @@ extern const char* hl_get_device_error_string(size_t err);
 extern int hl_get_device_last_error();
 
 /**
- * @brief   hppl query event.
+ * @brief   check cuda event is ready
  *
- * @param[in]   event       cuda event to query.
- * @param[out]  isNotReady  this work under device has not yet been
- *                          completed, vice versa.
+ * @param[in]  event        cuda event to query.
+ *
+ * @return     true    cuda event is ready.
+ *             false   cuda event is not ready.
  */
-extern void hl_cuda_event_query(hl_event_t event, bool& isNotReady);
+extern bool hl_cuda_event_is_ready(hl_event_t event);
 
 /**
  * @brief   hppl device synchronization.

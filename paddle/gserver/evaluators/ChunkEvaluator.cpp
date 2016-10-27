@@ -75,7 +75,6 @@ class ChunkEvaluator : public Evaluator {
 
 public:
   virtual void init(const EvaluatorConfig& config) {
-    CHECK(!FLAGS_use_gpu) << "Not supported";
     Evaluator::init(config);
     if (config.chunk_scheme() == "IOB") {
       numTagTypes_ = 2;
@@ -137,6 +136,7 @@ public:
     CHECK_EQ(arguments.size(), (size_t)2);
     IVectorPtr& output = arguments[0].ids;
     IVectorPtr& label = arguments[1].ids;
+    CHECK(!output->useGpu() && !label->useGpu()) << "Not supported";
     auto sequenceStartPositions =
         arguments[1].sequenceStartPositions->getVector(false);
     CHECK_EQ(output->getSize(), label->getSize());

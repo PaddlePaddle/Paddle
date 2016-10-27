@@ -146,6 +146,12 @@ public:
     }
   }
 
+  void enableBufType(ParameterType type) {
+    if (bufs_[type]) return;
+    bufs_[type] = Vector::createParallelVector(config_.size(), useGpu_);
+    bufs_[type]->zeroMem();
+  }
+
   void enableIntType(ParameterType type, size_t intStoreSize = 0) {
     if (!intBufs_[type]) {
       SetDevice device(deviceId_);

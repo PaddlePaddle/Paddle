@@ -22,15 +22,21 @@
 # It same as PYTHONPATH=${YOUR_PYTHON_PATH}:$PYTHONPATH {exec...}
 #
 
-PYPATH=""
-set -x
-while getopts "d:" opt; do
-  case $opt in
-    d)
-      PYPATH=$OPTARG
-      ;;
-  esac
-done
-shift $(($OPTIND - 1))
-export PYTHONPATH=$PYPATH
-$@
+if ! python -c "import paddle" >/dev/null 2>/dev/null; then
+  PYPATH=""
+  set -x
+  while getopts "d:" opt; do
+    case $opt in
+      d)
+        PYPATH=$OPTARG
+        ;;
+    esac
+  done
+  shift $(($OPTIND - 1))
+  export PYTHONPATH=$PYPATH:$PYTHONPATH
+  $@
+else
+  echo "paddle package is already in your PYTHONPATH. But unittest need a clean environment."
+  echo "Please uninstall paddle package before start unittest. Try to 'pip uninstall paddle'"
+  exit 1
+fi

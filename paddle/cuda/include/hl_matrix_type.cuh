@@ -21,14 +21,16 @@ limitations under the License. */
 #ifdef __CUDA_ARCH__
 // typedef void*  vecType;
 #include <vector_types.h>
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
 typedef float4 vecType;
 #else
 typedef double2 vecType;
 #endif
 #else
+#include <mmintrin.h>
+#include <xmmintrin.h>
 #include <emmintrin.h>
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
 typedef __m128  vecType;
 #else
 typedef __m128d vecType;

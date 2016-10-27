@@ -31,8 +31,8 @@ message ParameterUpdaterHookConfig {
 message ParameterConfig {
   required string name = 1;
   required uint64 size = 2;
-  required real learning_rate = 3;
-  required real momentum = 4;
+  optional real learning_rate = 3 [default = 1.0];
+  optional real momentum = 4 [default = 0.0];
   optional real initial_mean = 5 [default = 0.0];
   optional real initial_std = 6 [default = 0.01];
   // use L2-regularization if decay_rate set and decay_rate_l1 not set
@@ -54,8 +54,8 @@ message ParameterConfig {
   optional int32 num_batches_regularization = 13 [default = 1];
   // if is_sparse is true, para is sparse, else para is dense
   optional bool is_sparse = 14[default = false];
-  // if para is sparse, format should be "csc" or "csr"
-  optional string format = 15[default = "csr"];
+  // if para is sparse, format should be "csc" or "csr", empty means is not sparse
+  optional string format = 15 [default = ""];
   // sparse remote update or not
   optional bool sparse_remote_update = 16 [default = false];
   // gradient clipping threshold, no clipping by default

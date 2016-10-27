@@ -71,16 +71,41 @@ class BaseSGDOptimizer(Optimizer):
 
 
 class MomentumOptimizer(BaseSGDOptimizer):
+    """
+    MomentumOptimizer.
+
+    When sparse=True, the update scheme:
+
+    ..  math::
+
+        \\alpha_t &= \\alpha_{t-1} / k \\\\
+        \\beta_t &= \\beta_{t-1} / (1 + \\lambda \\gamma_t) \\\\
+        u_t &= u_{t-1} - \\alpha_t \\gamma_t g_t \\\\
+        v_t &= v_{t-1} + \\tau_{t-1} \\alpha_t \\gamma_t g_t \\\\
+        \\tau_t &= \\tau_{t-1} + \\beta_t / \\alpha_t
+    
+    where :math:`k` is momentum, :math:`\\lambda` is decay rate, 
+    :math:`\\gamma_t` is learning rate at the t'th step.
+
+    :param sparse: with sparse support or not.
+    :type sparse: bool
+    """
     def extra_settings(self):
         default_momentum(self.momentum)
 
     def to_setting_kwargs(self):
-        return {
-            'learning_method': 'momentum'
-        }
+        if self.sparse:
+            return {
+                'learning_method': 'sparse_momentum'
+            }
+        else:
+            return {
+                'learning_method': 'momentum'
+            }
 
-    def __init__(self, momentum=1e-3):
+    def __init__(self, momentum=None, sparse=False):
         self.momentum = momentum
+        self.sparse = sparse
 
 
 class AdamOptimizer(BaseSGDOptimizer):
@@ -337,6 +362,13 @@ def __extends__(dict1, dict2):
                     default_factory=lambda _: BaseRegularization())
 def settings(batch_size,
              learning_rate=1e-3,
+             learning_rate_decay_a=0.,
+             learning_rate_decay_b=0.,
+             learning_rate_schedule='poly',
+             learning_rate_args='',
+             average_window=0,
+             do_average_in_cpu=False,
+             max_average_window=None,
              learning_method=None,
              regularization=None,
              is_async=False,
@@ -383,10 +415,14 @@ def settings(batch_size,
     else:
         algorithm = 'owlqn'
 
+    args=['batch_size', 'learning_rate', 'learning_rate_decay_a',
+          'learning_rate_decay_b', 'learning_rate_schedule',
+          'learning_rate_args', 'average_window', 'do_average_in_cpu',
+          'max_average_window']
     kwargs = dict()
-    kwargs['batch_size'] = batch_size
-    kwargs['learning_rate'] = learning_rate
     kwargs['algorithm'] = algorithm
+    for arg in args:
+        kwargs[arg] = locals()[arg]
 
     kwargs = __extends__(kwargs, learning_method.to_setting_kwargs())
     learning_method.extra_settings()
