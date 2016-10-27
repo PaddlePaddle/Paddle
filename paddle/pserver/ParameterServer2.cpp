@@ -266,11 +266,11 @@ void ParameterServer2::setParameter(const SendParameterRequest& request,
   int bufferIndex = 0;
 
   if (!request.blocks().size()) {
-    LOG(INFO)
-          << "Might --ports_num or --ports_num_for_sparse is too large, "
-          << "might all dense or sparse parameters size is too small, "
-          << "some virtual pserver stores nothing, just ignore it";
-    return; 
+    LOG(WARNING)
+          << "--ports_num or --ports_num_for_sparse might be too large, "
+          << "or total dense parameter size or sparse parameters size "
+          << "might be too small, this psever doesn't store any parameter.";
+    return;
   }
 
   for (const auto& block : request.blocks()) {
