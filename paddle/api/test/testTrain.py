@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from py_paddle import swig_paddle, DataProviderWrapperConverter
+from py_paddle import swig_paddle
 import paddle.trainer.config_parser
-from paddle.trainer.PyDataProviderWrapper import DenseSlot, IndexSlot
 import numpy
 import util
 
