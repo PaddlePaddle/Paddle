@@ -3344,6 +3344,9 @@ def block_expand_layer(input,
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
     Layer(name=name,
           inputs=Input(input.name,
                        block_expand=BlockExpand(channels=num_channels,
