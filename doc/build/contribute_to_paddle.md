@@ -20,16 +20,30 @@ It's just that simple.
 
 ## Clone
 
+Paddle is currently using [git-flow branching model](http://nvie.com/posts/a-successful-git-branching-model/).
+The **develop** is the main branch, and other user's branches are feature branches.
+
 Once you've created a fork, you can use your favorite git client to clone your
 repo or just head straight to the command line:
  
 ```shell
 # Clone your fork to your local machine
-git clone https://github.com/USERNAME/Paddle.git
+git clone --branch develop https://github.com/USERNAME/Paddle.git
 ```
-Then you can start to develop by making a local developement branch
+If your repository doesn't contain **develop** branch, just create it by your own.
+
 ```shell
-git checkout -b MY_COOL_STUFF_BRANCH origin/master
+git clone https://github.com/USERNAME/Paddle.git Paddle
+cd Paddle
+git checkout -b develop  # create develop branch.
+git remote add upstream https://github.com/baidu/Paddle.git  # add upstream to baidu/Paddle
+git pull upstream develop  # update to upstream
+```
+
+Then you can start to develop by making a local developement branch
+
+```shell
+git checkout -b MY_COOL_STUFF_BRANCH
 ```
 
 ## Commit
@@ -41,7 +55,7 @@ Commit your changes by following command lines:
 git status
 # add modified files
 git add xx
-git commit -m "commit info"
+env EDITOR=vim git commit  # You can write your comments by vim/nano/emacs.
 ```
 The first line of commit infomation is the title. The second and later lines
 are the details if any.
@@ -63,7 +77,7 @@ git remote -v
 Update your fork with the latest upstream changes:
 
 ```shell
-git pull --rebase upstream HEAD
+git pull --rebase upstream develop
 ```
 
 If there are no unique commits locally, git will simply perform a fast-forward.
@@ -76,7 +90,7 @@ Now, your local master branch is up-to-date with everything modified upstream.
 
 ```shell
 # push to your repository in Github
-git push origin HEAD
+git push -u origin MY_COOL_STUFF_BRANCH  # create remote branch MY_COOL_STUFF_BRANCH to origin.
 ```
 
 ## Pull Request
@@ -93,10 +107,10 @@ of conflict, you need to do the update manually. You need to do the following on
 your local repository:
 ```shell
 git checkout MY_COOL_STUFF_BRANCH
-git pull --rebase upstream HEAD
+git pull upstream develop
 # You may need to resolve the conflict according to the git prompt.
 # Make and test your code.
-git push -f origin HEAD
+git push origin MY_COOL_STUFF_BRANCH
 ```
 Now your Pull Request is updated with the latest version.
 
