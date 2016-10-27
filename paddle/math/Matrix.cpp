@@ -1461,6 +1461,7 @@ void CpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
   }
 
   CHECK_EQ(height_, matInv->getHeight());
+  CHECK_EQ(width_, matInv->getWidth());
   matInv->copyFrom(*this);
 
   real* data = getData();
@@ -1474,15 +1475,13 @@ void CpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
   }
 
   /* Compute the LU decomposition of the matrix */
-  int *ipiv = new int[height_];
-  CHECK(ipiv != NULL);
+  std::vector<int> ipiv(height_);
   CBLAS_ORDER order = (matInv->isTransposed() ? CblasColMajor : CblasRowMajor);
-  int info = getrf<real>(order, height_, height_, dataInv, ldc, ipiv);
+  int info = getrf<real>(order, height_, height_, dataInv, ldc, ipiv.data());
   CHECK_EQ(info, 0);
 
   /* Compute the inverse of the matrix given its LU decompsotion */
-  info = getri<real>(order, height_, dataInv, ldc, ipiv);
-  delete [] ipiv;
+  info = getri<real>(order, height_, dataInv, ldc, ipiv.data());
   CHECK_EQ(info, 0);
 }
 

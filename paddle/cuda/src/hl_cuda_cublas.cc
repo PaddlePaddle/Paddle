@@ -175,49 +175,41 @@ void hl_matrix_inverse(real *A_d, real *C_d, int dimN, int lda, int ldc) {
   CHECK_NOTNULL(C_d);
 
   /* Step 1: Compute the LU decomposition of matrix A */
-  const unsigned int nMatrices = 1;
+  real **inout_h = (real **)hl_malloc_host(sizeof(real *));
+  inout_h[0] = A_d;
 
-  real **inout_h = (real **)hl_malloc_host(nMatrices*sizeof(real *));
-  for (size_t i = 0; i < nMatrices; i++) {
-    inout_h[i] = (real *)((char*)A_d+i*((size_t)dimN*lda)*sizeof(real));
-  }
-  real **inout_d = (real **)hl_malloc_device(nMatrices*sizeof(real *));
-  hl_memcpy(inout_d, inout_h, nMatrices*sizeof(real *));
+  real **inout_d = (real **)hl_malloc_device(sizeof(real *));
+  hl_memcpy(inout_d, inout_h, sizeof(real *));
   hl_free_mem_host(inout_h);
 
-  int *pivot_d = (int *)hl_malloc_device(dimN*nMatrices*sizeof(int));  
-  int *info_h = (int *)hl_malloc_host(nMatrices*sizeof(int));
-  int *info_d = (int *)hl_malloc_device(nMatrices*sizeof(int));
+  int *pivot_d = (int *)hl_malloc_device(dimN*sizeof(int));  
+  int *info_h = (int *)hl_malloc_host(sizeof(int));
+  int *info_d = (int *)hl_malloc_device(sizeof(int));
 
   CHECK_CUBLAS(CUBLAS_GETRF(t_resource.handle,
 	       dimN, inout_d, lda, pivot_d,
-               info_d, nMatrices));
+               info_d, 1));
 
-  hl_memcpy(info_h, info_d, nMatrices*sizeof(int));
-  for (size_t i = 0; i < nMatrices; i++) {
-    if (info_h[i] != 0) {
+  hl_memcpy(info_h, info_d, sizeof(int));
+  if (info_h[0] != 0) {
       LOG(FATAL) << "Factorization of matrix failed: matrix may be singular.\n";
-    }
   }
 
-  /* Step 2: Computer the inverse of the matrix given its LU decomposition */
-  real **out_h = (real **)hl_malloc_host(nMatrices*sizeof(real *));
-  for (size_t i = 0; i < nMatrices; i++) {
-    out_h[i] = (real *)((char*)C_d+i*((size_t)dimN*ldc)*sizeof(real));
-  }
-  real **out_d = (real **)hl_malloc_device(nMatrices*sizeof(real *));
-  hl_memcpy(out_d, out_h, nMatrices*sizeof(real *));
+  /* Step 2: Compute the inverse of the matrix given its LU decomposition */
+  real **out_h = (real **)hl_malloc_host(sizeof(real *));
+  out_h[0] = C_d;
+
+  real **out_d = (real **)hl_malloc_device(sizeof(real *));
+  hl_memcpy(out_d, out_h, sizeof(real *));
   hl_free_mem_host(out_h);
 
   CHECK_CUBLAS(CUBLAS_GETRI(t_resource.handle,
 	       dimN, (const real **)inout_d, lda, pivot_d,
-	       out_d, ldc, info_d, nMatrices));
+	       out_d, ldc, info_d, 1));
 
-  hl_memcpy(info_h, info_d, nMatrices*sizeof(int));
-  for (size_t i = 0; i < nMatrices; i++) {
-    if (info_h[i] != 0) {
+  hl_memcpy(info_h, info_d, sizeof(int));
+  if (info_h[0] != 0) {
       LOG(FATAL) << "Inversion of matrix failed: matrix may be singular.\n";
-    }
   }
 
   hl_free_mem_device(inout_d);

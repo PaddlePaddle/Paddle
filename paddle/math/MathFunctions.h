@@ -17,18 +17,17 @@ limitations under the License. */
 
 #ifdef PADDLE_USE_MKL
 #include <mkl.h>
-#include <mkl_lapacke.h>
 #else
 extern "C" {
 #include <cblas.h>
 }
-#endif
 #ifdef PADDLE_USE_ATLAS
 extern "C" {
 #include <clapack.h>
 }
 #else
 #include <lapacke.h>
+#endif
 #endif
 
 #include <cmath>

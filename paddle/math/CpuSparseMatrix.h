@@ -43,11 +43,6 @@ public:
 
   MatrixPtr getTranspose();
 
-  MatrixPtr getInverse() { LOG(FATAL) << "Not implemented"; return NULL; }
-  void inverse(MatrixPtr matInv, bool memAlloc) {
-    LOG(FATAL) << "Not implemented";
-  }
-
   SparseValueType getValueType();
 
   real* getRowValues(size_t i) const {

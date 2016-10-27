@@ -328,7 +328,16 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  virtual MatrixPtr getInverse() = 0;
+  virtual MatrixPtr getInverse() {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  /**
+   * @brief  inverse.
+   *
+   * if allocate matInv's memory outside, then set memAlloc as false;
+   * else set as true.
+   */
   virtual void inverse(MatrixPtr matInv, bool memAlloc) {
     LOG(FATAL) << "Not implemented";
   }

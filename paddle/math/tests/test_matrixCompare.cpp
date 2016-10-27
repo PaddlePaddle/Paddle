@@ -653,6 +653,13 @@ void testMatrixInverse(int height) {
   MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, height);
   outputCheck->copyFrom(*gpuI);
   MatrixCheckErr(*cpuI, *outputCheck);
+
+  outputCheck->mul(cpu, cpuI);
+  cpu->zeroMem();
+  for (int i = 0; i < height; i++) {
+    cpu->getRowBuf(i)[i] = 1.0;
+  }
+  MatrixCheckErr(*cpu, *outputCheck);
 }
 
 TEST(Matrix, unary) {

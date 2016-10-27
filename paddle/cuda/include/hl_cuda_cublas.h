@@ -21,8 +21,8 @@ limitations under the License. */
 /**
  * @brief   Matrix transpose: C_d = T(A_d)
  *
- * @param[in]   A_d     input matrix (M x N).
- * @param[out]  C_d     output matrix (N x M).
+ * @param[in]   A_d     input matrix (dimM x dimN).
+ * @param[out]  C_d     output matrix (dimN x dimM).
  * @param[in]   dimM    matrix height.
  * @param[in]   dimN    matrix width.
  * @param[in]   lda     the first dimension of A_d.
@@ -39,8 +39,8 @@ extern void hl_matrix_transpose(real *A_d,
 /*
  * @brief Matrix transpose, while lda = dimN, ldc = dimM.
  *
- * @param[in]   A_d     input matrix (M x N).
- * @param[out]  C_d     output matrix (N x M).
+ * @param[in]   A_d     input matrix (dimM x dimN).
+ * @param[out]  C_d     output matrix (dimN x dimM).
  * @param[in]   dimM    matrix height.
  * @param[in]   dimN    matrix width.
  *
@@ -53,8 +53,8 @@ extern void hl_matrix_transpose(real *A_d,
 /*
  * @brief Matrix inverse
  *
- * @param[in]   A_d    input matrix (M x M).
- * @param[out]  C_d    output matrix (M x M).
+ * @param[in]   A_d    input matrix (dimN x dimN).
+ * @param[out]  C_d    output matrix (dimN x dimN).
  * @param[in]   dimN   matrix height = matrix width
  * @param[in]   lda    the first dimension of A_d
  * @param[in]   ldc    the first dimension of C_d
