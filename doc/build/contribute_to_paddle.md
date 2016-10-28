@@ -4,7 +4,7 @@ We sincerely appreciate your contributions. You can use fork and pull request
 workflow to merge your code. 
  
 ## Code Requirements
-- Your code mush be fully documented by
+- Your code must be fully documented by
   [doxygen](http://www.stack.nl/~dimitri/doxygen/) style.
 - Make sure the compiler option WITH\_STYLE\_CHECK is on and the compiler
   passes the code style check.
@@ -117,3 +117,14 @@ Now your Pull Request is updated with the latest version.
 ## Revise your pull request
 
 When you revise your pull request according to reviewer's comments, please use 'git commit' instead of 'git commit --amend' to commit your changes so that the reviewers can see the difference between the new pull requrest and the old pull request.
+
+The possible commands are
+
+```shell
+git checkout MY_COOL_STUFF_BRANCH
+git pull upstream develop   # update local to newest code base.
+# May be some conflicts will occured.
+# And develop your cool stuff
+env EDITOR=vim git commit  # add your revise log
+git push origin MY_COOL_STUFF_BRANCH
+```
