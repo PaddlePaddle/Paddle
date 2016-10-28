@@ -196,7 +196,8 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
   if (!dataProvider_ && config_->hasDataConfig()) {
     dataProvider_.reset(DataProvider::create(*config_, *config_, gpuData));
   }
-  if (dataProvider_) {
+  if (!testDataProvider_) {
+    // No evaluator_ if there is testDataProvider but no dataProvider.
     evaluator_.reset(trainerInternal_.getGradientMachine()->makeEvaluator());
     currentEvaluator_.reset(
         trainerInternal_.getGradientMachine()->makeEvaluator());
@@ -215,10 +216,7 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
         DataProvider::create(config_->getTestDataConfig(), *config_, gpuData));
   }
   if (testDataProvider_) {
-    tester_.reset(new Tester(config_, createTesterConfig(),
-                 trainerInternal_.getGradientMachine(),
-                 trainerInternal_.getParameterUpdater(),
-                 testDataProvider_));
+    createTester();
   }
 
   if (!testing &&
@@ -258,34 +256,25 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
     }
   }
 
-
   // set current evaluator and evalutor
   trainerInternal_.setCurrentEvaluator(currentEvaluator_.get());
   trainerInternal_.setEvaluator(evaluator_.get());
 }
 
 void Trainer::train(size_t numPasses) {
-  srand(config_->getConfig().start_pass() + 1);
-  dataProvider_->reset();
-
-  if (this->testDataProvider_) {
-    this->testDataProvider_->reset();
-  }
-
-  trainerInternal_.getGradientMachine()->start(*config_, dataProvider_);
-
+  startTrain();
   for (size_t i = 0; i < numPasses; ++i) {
     if (IGradientMachineMode::trainWholeDataInOneBatch(mode_)) {
       trainOnePassBatch(config_->getConfig().start_pass() + i);
     } else {
-      trainOnePass(config_->getConfig().start_pass() + i);
+      trainOnePass();
     }
     if (i < numPasses - 1) {
       dataProvider_->reset();
     }
   }
 
-  trainerInternal_.getGradientMachine()->finish();
+  finishTrain();
 }
 
 
@@ -387,13 +376,30 @@ real Trainer::checkGradient() {
   return maxDiff;
 }
 
-void Trainer::trainOnePass(int passId) {
-  this->stats_->reset();
-  int64_t batchId = 0;
-  int32_t batchSize = config_->getOptConfig().batch_size();
-  real avgTestCost = 0;
-  int64_t numAvgTests = 0;
-  int passInnerId = 1;
+void Trainer::startTrain() {
+  trainPassContext_.passId = config_->getConfig().start_pass();
+  srand(config_->getConfig().start_pass() + 1);
+  if (dataProvider_) {
+    dataProvider_->reset();
+  }
+
+  if (this->testDataProvider_) {
+    this->testDataProvider_->reset();
+  }
+
+  trainerInternal_.getGradientMachine()->start(*config_, dataProvider_);
+}
+
+void Trainer::finishTrain() {
+  trainerInternal_.getGradientMachine()->finish();
+}
+
+void Trainer::startTrainPass() {
+  stats_->reset();
+  trainPassContext_.batchId = 0;
+  trainPassContext_.avgTestCost = 0;
+  trainPassContext_.numAvgTests = 0;
+  trainPassContext_.passInnerId = 1;
 
   trainerInternal_.getParameterUpdater()->startPass();
   evaluator_->start();
@@ -401,81 +407,83 @@ void Trainer::trainOnePass(int passId) {
     trainerInternal_.getGradientMachine()->resetState();
     trainerInternal_.getGradientMachine()->getState(testState_);
   }
-  while (true) {
-    DataBatch dataBatch;
+}
 
-    int num = 0;
-    {
-      REGISTER_TIMER("getTrainBatch");
-      num = dataProvider_->getNextBatch(batchSize, &dataBatch);
-    }
-    if (num == 0) break;
-
-    if (averageEvaluator_) {
-      int64_t mod = batchId % FLAGS_average_test_period;
-      if (mod >= FLAGS_average_test_period - FLAGS_log_period) {
-        if (mod == FLAGS_average_test_period - FLAGS_log_period) {
-          averageEvaluator_->start();
-        }
-        trainerInternal_.getParameterUpdater()->apply();
-        if (FLAGS_prev_batch_state) {
-          trainerInternal_.getGradientMachine()->getState(trainState_);
-        }
-        avgTestCost +=
-            tester_->testOneBatch(dataBatch, averageEvaluator_.get());
-        if (FLAGS_prev_batch_state) {
-          trainerInternal_.getGradientMachine()->setState(trainState_);
-        }
-        numAvgTests += num;
-        trainerInternal_.getParameterUpdater()->restore();
+void Trainer::trainOneDataBatch(DataBatch& dataBatch) {
+  int num = dataBatch.getSize();
+  if (averageEvaluator_) {
+    int64_t mod = trainPassContext_.batchId % FLAGS_average_test_period;
+    if (mod >= FLAGS_average_test_period - FLAGS_log_period) {
+      if (mod == FLAGS_average_test_period - FLAGS_log_period) {
+        averageEvaluator_->start();
       }
-    }
-    {
-      REGISTER_TIMER("TrainBatch");
-      trainerInternal_.trainOneBatch(batchId, dataBatch);
-    }
-
-    if (averageEvaluator_ &&
-        batchId % FLAGS_average_test_period == FLAGS_average_test_period - 1) {
-      averageEvaluator_->finish();
-      LOG(INFO) << " Averaged parameter:"
-                << " cost=" << avgTestCost / numAvgTests
-                << " Eval: " << *averageEvaluator_;
-      numAvgTests = 0;
-      avgTestCost = 0;
-    }
-
-    ++batchId;
-
-    if (batchId % FLAGS_log_period == 0) {
-      FOR_TIMING(globalStat.setThreadInfo(true));
-      FOR_TIMING(globalStat.printAllStatus());
-      FOR_TIMING(globalStat.reset());
-    }
-
-    if (testDataProvider_ && FLAGS_test_period > 0 &&
-        batchId % FLAGS_test_period == 0) {
-      tester_->testOnePeriod();
-    }
-
-    if (FLAGS_saving_period_by_batches > 0 &&
-        batchId > FLAGS_saving_period_by_batches * passInnerId &&
-        0 == FLAGS_trainer_id) {
-      trainerInternal_.getParameterUpdater()->catchUpWith();
-      if (testDataProvider_) {
-        tester_->testOnePeriod();
+      trainerInternal_.getParameterUpdater()->apply();
+      if (FLAGS_prev_batch_state) {
+        trainerInternal_.getGradientMachine()->getState(trainState_);
       }
-      paramUtil_->saveParametersOnePass(passId, passInnerId);
-      ++passInnerId;
+      trainPassContext_.avgTestCost +=
+          tester_->forwardOneBatch(
+            dataBatch, averageEvaluator_.get(), &forwardOutput_);
+      if (FLAGS_prev_batch_state) {
+        trainerInternal_.getGradientMachine()->setState(trainState_);
+      }
+      trainPassContext_.numAvgTests += num;
+      trainerInternal_.getParameterUpdater()->restore();
     }
   }
+  {
+    REGISTER_TIMER("TrainBatch");
+    trainerInternal_.trainOneBatch(
+      trainPassContext_.batchId, dataBatch, &forwardOutput_);
+  }
 
-  if (batchId == 0) {
+  if (averageEvaluator_ &&
+      trainPassContext_.batchId % FLAGS_average_test_period
+        == FLAGS_average_test_period - 1) {
+    averageEvaluator_->finish();
+    LOG(INFO) << " Averaged parameter:"
+              << " cost=" << trainPassContext_.avgTestCost
+                             / trainPassContext_.numAvgTests
+              << " Eval: " << *averageEvaluator_;
+    trainPassContext_.numAvgTests = 0;
+    trainPassContext_.avgTestCost = 0;
+  }
+
+  ++trainPassContext_.batchId;
+
+  if (trainPassContext_.batchId % FLAGS_log_period == 0) {
+    FOR_TIMING(globalStat.setThreadInfo(true));
+    FOR_TIMING(globalStat.printAllStatus());
+    FOR_TIMING(globalStat.reset());
+  }
+
+  if (testDataProvider_ && FLAGS_test_period > 0 &&
+      trainPassContext_.batchId % FLAGS_test_period == 0) {
+    tester_->testOnePeriod();
+  }
+
+  if (FLAGS_saving_period_by_batches > 0 &&
+      trainPassContext_.batchId
+          > FLAGS_saving_period_by_batches * trainPassContext_.passInnerId &&
+      0 == FLAGS_trainer_id) {
+    trainerInternal_.getParameterUpdater()->catchUpWith();
+    if (testDataProvider_) {
+      tester_->testOnePeriod();
+    }
+    paramUtil_->saveParametersOnePass(
+      trainPassContext_.passId, trainPassContext_.passInnerId);
+    ++trainPassContext_.passInnerId;
+  }
+}
+
+void Trainer::finishTrainPass() {
+  if (trainPassContext_.batchId == 0) {
     // This means no more data from DataProvider
     return;
   }
 
-  trainerInternal_.finishTrainPass(passId, batchId);
+  trainerInternal_.finishTrainPass(
+    trainPassContext_.passId, trainPassContext_.batchId);
 
   FOR_TIMING(globalStat.setThreadInfo(true));
   FOR_TIMING(globalStat.printAllStatus());
@@ -485,9 +493,30 @@ void Trainer::trainOnePass(int passId) {
     tester_->testOnePeriod();
   }
 
-  if (passId % FLAGS_saving_period == 0 && FLAGS_trainer_id == 0) {
-    paramUtil_->saveParametersOnePass(passId);
+  if (trainPassContext_.passId % FLAGS_saving_period == 0
+      && FLAGS_trainer_id == 0) {
+    paramUtil_->saveParametersOnePass(trainPassContext_.passId);
   }
+  ++trainPassContext_.passId;
+}
+
+void Trainer::trainOnePass() {
+  startTrainPass();
+  size_t batchSize = config_->getOptConfig().batch_size();
+  while (true) {
+    DataBatch dataBatch;
+
+    int num = 0;
+    {
+      REGISTER_TIMER("getTrainBatch");
+      num = dataProvider_->getNextBatch(batchSize, &dataBatch);
+    }
+    if (num == 0) break;
+    CHECK_EQ(num, dataBatch.getSize());
+    trainOneDataBatch(dataBatch);
+  }
+
+  finishTrainPass();
 }
 
 void Trainer::trainOnePassBatch(int passId) {
@@ -581,6 +610,13 @@ void Trainer::clearGradient() {
 }
 
 int Trainer::getBatchSize() { return config_->getOptConfig().batch_size(); }
+
+void Trainer::createTester() {
+  tester_.reset(new paddle::Tester(config_, createTesterConfig(),
+                                   trainerInternal_.getGradientMachine(),
+                                   trainerInternal_.getParameterUpdater(),
+                                   testDataProvider_));
+}
 
 void Trainer::test() {
   tester_->test();

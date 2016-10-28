@@ -46,8 +46,8 @@ class SentimentPrediction():
         conf = parse_config(train_conf, "is_predict=1")
         self.network = swig_paddle.GradientMachine.createFromConfigProto(conf.model_config)
         self.network.loadParameters(self.model_dir)
-        slots = [integer_value_sequence(self.dict_dim)]
-        self.converter = DataProviderConverter(slots)
+        input_types = [integer_value_sequence(self.dict_dim)]
+        self.converter = DataProviderConverter(input_types)
 
     def load_dict(self):
         """

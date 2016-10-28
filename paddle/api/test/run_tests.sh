@@ -30,7 +30,7 @@ source .test_env/bin/activate
 
 pip --timeout 600  install ../../dist/*.whl
 
-test_list="testArguments.py testGradientMachine.py testMatrix.py  testVector.py testTrain.py"
+test_list="testArguments.py testGradientMachine.py testMatrix.py  testVector.py testTrain.py testTrainer.py"
 
 export PYTHONPATH=$PWD/../../../python/
 

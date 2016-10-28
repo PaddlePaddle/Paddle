@@ -14,19 +14,16 @@
 # limitations under the License.
 set -e
 
-cfg=trainer_config.lr.py
-#cfg=trainer_config.emb.py
-#cfg=trainer_config.cnn.py
-#cfg=trainer_config.lstm.py
-#cfg=trainer_config.bidi-lstm.py
-#cfg=trainer_config.db-lstm.py
-paddle train \
-  --config=$cfg \
-  --save_dir=./output \
-  --trainer_count=4 \
-  --log_period=100 \
+# Note: if using trainer_config.emb.py, trainer_config.cnn.py
+# or trainer_config.lstm.py, you need to change --seq to --seq=1
+# because they are sequence models.
+python api_train.py \
+  --config=trainer_config.lr.py \
+  --trainer_count=2 \
   --num_passes=15 \
-  --use_gpu=false \
-  --show_parameter_stats_period=100 \
-  --test_all_data_in_one_period=1 \
+  --use_gpu=0 \
+  --seq=0 \
+  --train_data=data/train.txt \
+  --test_data=data/test.txt \
+  --dict_file=data/dict.txt \
   2>&1 | tee 'train.log'
