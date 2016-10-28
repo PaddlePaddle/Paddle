@@ -4,7 +4,7 @@ We sincerely appreciate your contributions. You can use fork and pull request
 workflow to merge your code. 
  
 ## Code Requirements
-- Your code mush be fully documented by
+- Your code must be fully documented by
   [doxygen](http://www.stack.nl/~dimitri/doxygen/) style.
 - Make sure the compiler option WITH\_STYLE\_CHECK is on and the compiler
   passes the code style check.
