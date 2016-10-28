@@ -3284,7 +3284,7 @@ convex_comb_layer = linear_comb_layer
 @wrap_name_default()
 @layer_support()
 def block_expand_layer(input,
-                       num_channels=0,
+                       num_channels=None,
                        block_x=0,
                        block_y=0,
                        stride_x=0,
@@ -3324,7 +3324,7 @@ def block_expand_layer(input,
     :param input: The input layer.
     :type input: LayerOutput
     :param num_channels: The channel number of input layer.
-    :type num_channels: int
+    :type num_channels: int|None
     :param block_x: The width of sub block.
     :type block_x: int
     :param block_y: The width of sub block.
