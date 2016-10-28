@@ -3284,13 +3284,13 @@ convex_comb_layer = linear_comb_layer
 @wrap_name_default()
 @layer_support()
 def block_expand_layer(input,
-                       num_channels=None,
                        block_x=0,
                        block_y=0,
                        stride_x=0,
                        stride_y=0,
                        padding_x=0,
                        padding_y=0,
+                       num_channels=None,
                        name=None,
                        layer_attr=None):
     """
