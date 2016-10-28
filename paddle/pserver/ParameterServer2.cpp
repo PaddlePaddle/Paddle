@@ -264,6 +264,15 @@ void ParameterServer2::setParameter(const SendParameterRequest& request,
   std::vector<int64_t> blockIds;
   blockIds.reserve(request.blocks_size());
   int bufferIndex = 0;
+
+  if (!request.blocks().size()) {
+    LOG(WARNING)
+          << "--ports_num or --ports_num_for_sparse might be too large, "
+          << "or total dense parameter size or sparse parameters size "
+          << "might be too small, this psever doesn't store any parameter.";
+    return;
+  }
+
   for (const auto& block : request.blocks()) {
     /// block size for parameter(e.g. 128 for sparse row, 1K for dense)
     uint64_t blockSize = getParameterConfig(block).parameter_block_size();
