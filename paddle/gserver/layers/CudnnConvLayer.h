@@ -35,7 +35,6 @@ class CudnnConvLayer : public ConvBaseLayer {
 protected:
   std::vector<ProjectionConfig*> projConf_;
   std::vector<std::unique_ptr<Projection>> projections_;
-  std::vector<Argument> projOutput_;
 
   hl_tensor_descriptor biasDesc_;
   hl_tensor_descriptor outputDesc_;

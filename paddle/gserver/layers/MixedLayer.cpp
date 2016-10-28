@@ -143,11 +143,7 @@ void MixedLayer::forward(PassType passType) {
   /* add the bias-vector */
   if (biases_.get() != NULL) {
     REGISTER_TIMER_INFO("FwBiasTimer", getName().c_str());
-    if (sharedBias_) {
-      outV->addSharedBias(*(biases_->getW()), 1);
-    } else {
-      outV->addBias(*(biases_->getW()), 1);
-    }
+    outV->addBias(*(biases_->getW()), 1, sharedBias_);
   }
 
   /* activation */ {
@@ -164,11 +160,7 @@ void MixedLayer::backward(const UpdateCallback& callback) {
 
   if (biases_ && biases_->getWGrad()) {
     REGISTER_TIMER_INFO("BpBiasTimer", getName().c_str());
-    if (sharedBias_) {
-      biases_->getWGrad()->collectSharedBias(*getOutputGrad(), 1);
-    } else {
-      biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
-    }
+    biases_->getWGrad()->collectBias(*getOutputGrad(), 1, sharedBias_);
 
     /* Increasing the number of gradient */
     biases_->getParameterPtr()->incUpdate(callback);

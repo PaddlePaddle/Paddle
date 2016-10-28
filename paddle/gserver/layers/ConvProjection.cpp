@@ -18,7 +18,7 @@ limitations under the License. */
 
 namespace paddle {
 
-static ThreadLocal<std::vector<MemoryHandlePtr>> convMem_;
+static ThreadLocal<std::vector<MemoryHandle*>> convMem_;
 static __thread bool convMemInit = false;
 void* getSpaceBytes(size_t size) {
   if (!convMemInit) {
@@ -28,9 +28,9 @@ void* getSpaceBytes(size_t size) {
   }
 
   int devId = hl_get_device();
-  MemoryHandlePtr* localMem = &(*convMem_.get())[devId];
-  if (NULL == (*localMem).get() || size > (*localMem)->getAllocSize()) {
-    *localMem = std::make_shared<GpuMemoryHandle>(size);
+  MemoryHandle** localMem = &(*convMem_.get())[devId];
+  if (NULL == *localMem || size > (*localMem)->getAllocSize()) {
+    *localMem = new GpuMemoryHandle(size);
   }
   return (*localMem)->getBuf();
 }

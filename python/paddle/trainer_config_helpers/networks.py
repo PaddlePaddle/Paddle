@@ -939,7 +939,7 @@ def simple_gru2(input,
 
 
 @wrap_name_default("bidirectional_gru")
-def bidirectional_gru(input, size, name, return_seq=False,
+def bidirectional_gru(input, size, name=None, return_seq=False,
                       fwd_mixed_param_attr=None, fwd_mixed_bias_attr=None,
                       fwd_gru_param_attr=None, fwd_gru_bias_attr=None,
                       fwd_act=None, fwd_gate_act=None,

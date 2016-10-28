@@ -108,8 +108,6 @@ public:
   virtual void backward(const UpdateCallback& callback = nullptr);
 
 protected:
-  bool sharedBiases_;
-
   std::vector<std::unique_ptr<Projection>> projections_;
   std::vector<Argument> projOutput_;
   std::vector<std::pair<size_t, size_t>> projCol_;
@@ -177,11 +175,7 @@ void ConcatenateLayer2::forward(PassType passType) {
   /* add the bias-vector */
   if (biases_.get() != NULL) {
     REGISTER_TIMER_INFO("FwBiasTimer", getName().c_str());
-    if (sharedBias_) {
-      output_.value->addSharedBias(*(biases_->getW()), 1);
-    } else {
-      output_.value->addBias(*(biases_->getW()), 1);
-    }
+    output_.value->addBias(*(biases_->getW()), 1, sharedBias_);
   }
 
   /* activation */ {
@@ -198,11 +192,7 @@ void ConcatenateLayer2::backward(const UpdateCallback& callback) {
 
   if (biases_ && biases_->getWGrad()) {
     REGISTER_TIMER_INFO("Concat2BpBiasTimer", getName().c_str());
-    if (sharedBias_) {
-      biases_->getWGrad()->collectSharedBias(*getOutputGrad(), 1);
-    } else {
-      biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
-    }
+    biases_->getWGrad()->collectBias(*getOutputGrad(), 1, sharedBias_);
     biases_->getParameterPtr()->incUpdate(callback);
   }
 

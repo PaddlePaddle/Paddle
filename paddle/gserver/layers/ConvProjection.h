@@ -54,8 +54,8 @@ protected:
     outputH_ = outputSize(imageH_, filterH_, paddingH_, strideH_);
     outputW_ = outputSize(imageW_, filterW_, paddingW_, strideW_);
 
-    out_->setFrameHeight(outputH_);
-    out_->setFrameWidth(outputW_);
+    const_cast<Argument*>(out_)->setFrameHeight(outputH_);
+    const_cast<Argument*>(out_)->setFrameWidth(outputW_);
 
     inputOffset_ = (channels_ / groups_) * imageH_ * imageW_;
     outputOffset_ = (numFilters_ / groups_) * outputH_ * outputW_;

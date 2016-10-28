@@ -52,10 +52,11 @@ inline __device__ double paddleAtomicAdd(double* address, double val) {
  * @brief  sum reduction
  *
  * @param[in,out]  smem       input data, better to use __shared__ memory.
- * @param[in]      tid        local thread index.
- * @param[in]      blockDimX  the size of blockDim.x.
+ * @param[in]      tid        thread index.
+ * @param[in]      threads    the total thread number used to reduce,
+ *                            such as, blockDim.x.
  *
- * note: return smem[0]: the sum of each elements of smem.
+ * @return smem[0]: the sum of each elements in smem.
  */
 __device__ __forceinline__
 void simpleReduce(real* smem, int tid, int threads) {

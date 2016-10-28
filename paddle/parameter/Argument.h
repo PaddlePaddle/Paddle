@@ -79,8 +79,8 @@ struct Argument {
   SVectorPtr strs;
 
   // A dataBatch includes batchSize frames, one frame maybe not only vector
-  mutable size_t frameHeight;
-  mutable size_t frameWidth;
+  size_t frameHeight;
+  size_t frameWidth;
 
   // If NULL, each position is treated independently.
   // Otherwise, its size should be #NumberOfSequences + 1.
@@ -144,8 +144,8 @@ struct Argument {
   }
   size_t getFrameHeight() const { return frameHeight; }
   size_t getFrameWidth() const { return frameWidth; }
-  void setFrameHeight(size_t h) const { frameHeight = h; }
-  void setFrameWidth(size_t w) const { frameWidth = w; }
+  void setFrameHeight(size_t h) { frameHeight = h; }
+  void setFrameWidth(size_t w) { frameWidth = w; }
 
   int64_t getNumSequences() const {
     return sequenceStartPositions ? sequenceStartPositions->getSize() - 1

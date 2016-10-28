@@ -348,6 +348,7 @@ void GpuMatrix::addSharedBias(Matrix& b, real scale) {
                             getHeight(), getWidth(), scale);
 }
 
+
 void GpuMatrix::collectBias(Matrix& a, real scale) {
   CHECK_EQ(getHeight(), (size_t)1);
   CHECK_EQ(width_, a.getWidth());

@@ -347,6 +347,14 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void addBias(Matrix& b, real scale, bool sharedBias) {
+    if (!sharedBias) {
+      addBias(b, scale);
+    } else {
+      addSharedBias(b, scale);
+    }
+  }
+
   /// add each sample from a to this.
   virtual void collectBias(Matrix& a, real scale) {
     LOG(FATAL) << "Not implemented";
@@ -354,6 +362,14 @@ public:
 
   virtual void collectSharedBias(Matrix& a, real scale) {
     LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void collectBias(Matrix& a, real scale, bool sharedBias) {
+    if (!sharedBias) {
+      collectBias(a, scale);
+    } else {
+      collectSharedBias(a, scale);
+    }
   }
 
   virtual void sequenceAvgForward(Matrix& a, const IVector& startsPos,

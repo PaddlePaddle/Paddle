@@ -5,6 +5,7 @@ a5d9259ff1fd7ca23d0ef090052cb1f2  last_first_seq.protostr
 7334ba0a4544f0623231330fc51d390d  shared_fc.protostr
 bb8e233b05b8e07f9ed386b7aee4f2c6  shared_lstm.protostr
 6b39e34beea8dfb782bee9bd3dea9eb5  simple_rnn_layers.protostr
+f98e79e1630d5eb827c300e64836d269  test_bi_grumemory.protostr
 0fc1409600f1a3301da994ab9d28b0bf  test_cost_layers.protostr
 6cd5f28a3416344f20120698470e0a4c  test_cost_layers_with_weight.protostr
 144bc6d3a509de74115fa623741797ed  test_expand_layer.protostr

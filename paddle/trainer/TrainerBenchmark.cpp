@@ -43,10 +43,11 @@ void Trainer::time() {
 
   CHECK(dataBatch.getSize()) << "No data from data provider";
 
+  std::vector<paddle::Argument> outputs;
   // burning time
   LOG(INFO) << "Burning time...";
   for (int n = 0; n < 10; ++n) {
-    trainerInternal_.trainOneBatch(n, dataBatch);
+    trainerInternal_.trainOneBatch(n, dataBatch, &outputs);
   }
   LOG(INFO) << "Burning time end.";
 
@@ -62,7 +63,7 @@ void Trainer::time() {
 
     {
       REGISTER_TIMER("FwdBwd");
-      trainerInternal_.trainOneBatch(n, dataBatch);
+      trainerInternal_.trainOneBatch(n, dataBatch, &outputs);
     }
   }
   globalStat.setThreadInfo(true);
