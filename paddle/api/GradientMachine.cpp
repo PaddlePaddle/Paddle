@@ -14,30 +14,22 @@ limitations under the License. */
 
 
 #include "PaddleAPI.h"
-#include "paddle/gserver/gradientmachines/GradientMachine.h"
+#include "PaddleAPIPrivate.h"
+
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "Internal.h"
 
 std::vector<int> GradientMachine::defaultParamTypes = {
     PARAMETER_VALUE, PARAMETER_GRADIENT, PARAMETER_MOMENTUM};
 
-struct GradientMachinePrivate {
-  std::shared_ptr<paddle::GradientMachine> machine;
-
-  template <typename T>
-  inline T& cast(void* ptr) {
-    return *(T*)(ptr);
-  }
-};
-
 GradientMachine::GradientMachine() : m(new GradientMachinePrivate()) {}
 
 GradientMachine::~GradientMachine() { delete m; }
 
 GradientMachine* GradientMachine::createFromPaddleModelPtr(
-    void* confPtr, GradientMatchineCreateMode mode,
+    const void* confPtr, GradientMatchineCreateMode mode,
     const std::vector<int>& types) {
-  auto& conf = *(paddle::ModelConfig*)(confPtr);
+  auto& conf = *(const paddle::ModelConfig*)(confPtr);
   std::vector<ParameterType> realTypes;
   staticCastVector(&realTypes, types);
   auto machineRawPtr = paddle::GradientMachine::create(conf, mode, realTypes);
@@ -66,7 +58,7 @@ GradientMachine* GradientMachine::createByConfigProtoStr(
 GradientMachine* GradientMachine::createByModelConfig(
     ModelConfig* conf, GradientMatchineCreateMode mode,
     const std::vector<int>& types) {
-  auto confPtr = (paddle::ModelConfig*)conf->getPaddleModelConfig();
+  auto confPtr = &conf->m->conf->getModelConfig();
   return GradientMachine::createFromPaddleModelPtr(confPtr, mode, types);
 }
 

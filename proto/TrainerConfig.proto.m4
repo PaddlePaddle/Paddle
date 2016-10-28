@@ -130,7 +130,7 @@ message OptimizationConfig {
 };
 
 message TrainerConfig {
-  required ModelConfig model_config = 1;
+  optional ModelConfig model_config = 1;
   optional DataConfig data_config = 2;
   required OptimizationConfig opt_config = 3;
   optional DataConfig test_data_config = 4;

@@ -133,7 +133,7 @@ def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
                          pool_type=None, act=None, groups=1, conv_stride=1,
                          conv_padding=0, bias_attr=None, num_channel=None,
                          param_attr=None, shared_bias=True,
-                         conv_layer_attr=None, pool_stride=1, pool_start=None,
+                         conv_layer_attr=None, pool_stride=1,
                          pool_padding=0, pool_layer_attr=None):
     """
     Simple image convolution and pooling group.
@@ -172,8 +172,6 @@ def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
     :type conv_layer_attr: ExtraLayerAttribute
     :param pool_stride: see img_pool_layer for details
     :type pool_stride: int
-    :param pool_start: see img_pool_layer for details. It is deprecated now.
-    :type pool_start: int
     :param pool_padding: see img_pool_layer for details
     :type pool_padding: int
     :param pool_layer_attr: see img_pool_layer for details
@@ -192,7 +190,7 @@ def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
     return img_pool_layer(name="%s_pool" % name, input=_conv_,
                           pool_size=pool_size,
                           pool_type=pool_type, stride=pool_stride,
-                          start=pool_start, padding=pool_padding,
+                          padding=pool_padding,
                           layer_attr=pool_layer_attr)
 
 
@@ -203,7 +201,7 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
                      conv_param_attr=None, shared_bias=True,
                      conv_layer_attr=None, bn_param_attr=None,
                      bn_bias_attr=None, bn_layer_attr=None, pool_stride=1,
-                     pool_start=None, pool_padding=0, pool_layer_attr=None):
+                     pool_padding=0, pool_layer_attr=None):
     """
     Convolution, batch normalization, pooling group.
 
@@ -243,8 +241,6 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
     :param bn_layer_attr: ParameterAttribute.
     :param pool_stride: see img_pool_layer's document.
     :type pool_stride: int
-    :param pool_start: see img_pool_layer's document. It is deprecated now.
-    :type pool_start: int
     :param pool_padding: see img_pool_layer's document.
     :type pool_padding: int
     :param pool_layer_attr: see img_pool_layer's document.
@@ -268,7 +264,7 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
     return img_pool_layer(name="%s_pool" % name,
                           input=__bn__, pool_type=pool_type,
                           pool_size=pool_size, stride=pool_stride,
-                          start=pool_start, padding=pool_padding,
+                          padding=pool_padding,
                           layer_attr=pool_layer_attr)
 
 

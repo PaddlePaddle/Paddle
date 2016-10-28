@@ -16,7 +16,7 @@
 
 from paddle.trainer_config_helpers import *
 
-dict_file = "./data/dict.txt"
+dict_file = get_config_arg('dict_file', str, "./data/dict.txt")
 word_dict = dict()
 with open(dict_file, 'r') as f:
     for i, line in enumerate(f):
@@ -63,7 +63,6 @@ if not is_predict:
     label = data_layer(name="label", size=2)
 
     # Define cross-entropy classification loss and error.
-    classification_cost(input=output, label=label)
     cls = classification_cost(input=output, label=label)
     outputs(cls)
 else:
