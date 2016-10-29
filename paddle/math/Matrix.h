@@ -930,6 +930,22 @@ public:
   virtual void paramReluBackwardDiff(Matrix& oGrad, Matrix& data, Matrix& W) {
     LOG(FATAL) << "Not implemented";
   }
+  virtual void bilinearForward(const Matrix& in,
+                               const size_t inImgH,
+                               const size_t inImgW,
+                               const size_t outImgH,
+                               const size_t outImgW,
+                               const size_t numChannels) {
+    LOG(FATAL) << "Not implemented";
+  }
+  virtual void bilinearBackward(const Matrix& out,
+                                const size_t outImgH,
+                                const size_t outImgW,
+                                const size_t inImgH,
+                                const size_t inImgW,
+                                const size_t numChannels) {
+    LOG(FATAL) << "Not implemented";
+  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Matrix& mat) {
@@ -1191,6 +1207,20 @@ public:
                                        int contextLength,
                                        int contextStart, int totalPad,
                                        size_t beginPad);
+
+  void bilinearForward(const Matrix& in,
+                       const size_t inImgH,
+                       const size_t inImgW,
+                       const size_t outImgH,
+                       const size_t outImgW,
+                       const size_t numChannels);
+
+  void bilinearBackward(const Matrix& out,
+                        const size_t outImgH,
+                        const size_t outImgW,
+                        const size_t inImgH,
+                        const size_t inImgW,
+                        const size_t numChannels);
 };
 
 class CpuMatrix : public Matrix {
@@ -1469,6 +1499,20 @@ public:
   void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
   void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label);
   void classificationErrorMulti(Matrix& output, Matrix& label, real threshold);
+
+  void bilinearForward(const Matrix& in,
+                       const size_t inImgH,
+                       const size_t inImgW,
+                       const size_t outImgH,
+                       const size_t outImgW,
+                       const size_t numChannels);
+
+  void bilinearBackward(const Matrix& out,
+                        const size_t outImgH,
+                        const size_t outImgW,
+                        const size_t inImgH,
+                        const size_t inImgW,
+                        const size_t numChannels);
 };
 
 class SharedCpuMatrix : public CpuMatrix {

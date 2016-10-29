@@ -203,6 +203,15 @@ message OperatorConfig {
   optional int32 num_filters = 7;
 }
 
+message BilinearInterpConfig {
+  // The size if input feature map.
+  required uint32 img_size_x = 1;
+  required uint32 img_size_y = 2;
+  // The size if output feature map.
+  required uint32 out_size_x = 3;
+  required uint32 out_size_y = 4;
+  required uint32 num_channels = 5;
+}
 
 message ImageConfig {
   // The image data dimensionality.
@@ -225,6 +234,7 @@ message LayerInputConfig {
   // If the input layer has multi-output.
   // Set the argument name.
   optional string input_layer_argument = 9;
+  optional BilinearInterpConfig bilinear_interp_conf = 10;
 }
 
 message LayerConfig {

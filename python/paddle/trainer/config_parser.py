@@ -461,6 +461,7 @@ class Input(Cfg):
             sparse_update=None,
             gradient_clipping_threshold=None,
             conv=None,
+            bilinear_interp=None,
             norm=None,
             pool=None,
             image=None,
@@ -725,6 +726,18 @@ class Conv(Cfg):
 
 # please refer to the comments in proto/ModelConfig.proto
 @config_class
+class BilinearInterp(Cfg):
+    def __init__(
+            self,
+            img_size_x = None,
+            img_size_y=None,
+            out_size_x = None,
+            out_size_y = None,
+            num_channels = None):
+        self.add_keys(locals())
+
+# please refer to the comments in proto/ModelConfig.proto
+@config_class
 class Pool(Cfg):
     def __init__(
             self,
@@ -952,6 +965,13 @@ def TestData(data_config, async_load_data=None):
         logger.warning("Deprecated: async_load_data should be used inside"
                        " Data definition")
         g_config.test_data_config.async_load_data = async_load_data
+
+def parse_bilinear(bilinear, input_layer_name, bilinear_conf):
+    bilinear_conf.img_size_x = bilinear.img_size_x;
+    bilinear_conf.img_size_y = bilinear.img_size_y;
+    bilinear_conf.out_size_x = bilinear.out_size_x;
+    bilinear_conf.out_size_y = bilinear.out_size_y;
+    bilinear_conf.num_channels = bilinear.num_channels;
 
 def parse_pool(pool, input_layer_name, pool_conf):
     pool_conf.pool_type = pool.pool_type
@@ -2306,6 +2326,21 @@ class InterpolationLayer(LayerBase):
         config_assert(input_layer1.size == input_layer2.size,
                       'the two vector inputs should be of the same size')
 
+@config_layer('bilinear_interp')
+class BilinearInterpLayer(LayerBase):
+    def __init__(
+            self,
+            name,
+            inputs,
+            device=None):
+        super(BilinearInterpLayer, self).__init__(
+            name, 'bilinear_interp', 0, inputs=inputs, device=device)
+        input_layer = self.get_input_layer(0)
+        self.set_layer_size(input_layer.size)
+        parse_bilinear(self.inputs[0].bilinear_interp,
+                       input_layer.name,
+                       self.config.inputs[0].bilinear_interp_conf);
+  
 @config_layer('sum_to_one_norm')
 class SumToOneNormLayer(LayerBase):
     def __init__(

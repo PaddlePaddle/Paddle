@@ -522,7 +522,7 @@ void hl_CMRNorm_backward(size_t frameCnt, const real* inV,
                          size_t height, size_t width, size_t sizeX,
                          real alpha, real beta) {
   size_t threadsNum = frameCnt * height * width;
-  size_t blocksX = (threadsNum + 1024 -1) / 1024;
+  size_t blocksX = (threadsNum + 1024 - 1) / 1024;
   size_t blocksY = 1;
   dim3 threads(1024, 1);
   dim3 grid(blocksX, blocksY);
@@ -530,4 +530,136 @@ void hl_CMRNorm_backward(size_t frameCnt, const real* inV,
            (threadsNum, inV, outV, scale, outDiff, channels,
            height, width, sizeX, alpha, beta, inDiff);
   CHECK_SYNC("hl_CMRNorm_backward");
+}
+
+__global__ void KeBilinearInterpFw(const size_t nthreads,
+                                   const real* in,
+                                   const size_t inImgH,
+                                   const size_t inImgW,
+                                   const size_t inputH,
+                                   const size_t inputW,
+                                   real* out,
+                                   const size_t outImgH,
+                                   const size_t outImgW,
+                                   const size_t outputH,
+                                   const size_t outputW,
+                                   const size_t numChannels,
+                                   const real ratioH,
+                                   const real ratioW) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if(tid < nthreads) {
+    int outIdH = tid / (outputW / numChannels);
+    int outIdW = tid % (outputW / numChannels);
+
+    int inIdH = ratioH * (outIdW / outImgW);
+    int hId = (inIdH < inImgH - 1) ? 1 : 0;
+    real hlambda = ratioH * (outIdW / outImgW) - inIdH;
+
+    int inIdW = ratioW * (tid % outImgW);
+    int wId = (inIdW < inImgW - 1) ? 1 : 0;
+    real wlambda = ratioW * (tid % outImgW) - inIdW;
+
+    const real* inPos = &in[outIdH * inputW + inIdH * inImgW + inIdW];
+    real* outPos = &out[outIdH * outputW + outIdW];
+    for (int c = 0; c < numChannels; ++c) {
+      // bilinear interpolation
+      outPos[0] = (1.f - hlambda) *
+        ((1.f - wlambda) * inPos[0] + wlambda * inPos[wId]) + 
+        hlambda * ((1.f - wlambda) * inPos[hId * inImgW] +
+        wlambda * inPos[hId * inImgW + wId]);
+      inPos += inImgH * inImgW;
+      outPos += outImgH * outImgW;
+    }
+  }
+}
+
+void hl_bilinear_forward(const real* inData,
+                         const size_t inImgH,
+                         const size_t inImgW,
+                         const size_t inputH,
+                         const size_t inputW,
+                         real* outData,
+                         const size_t outImgH,
+                         const size_t outImgW,
+                         const size_t outputH,
+                         const size_t outputW,
+                         const size_t numChannels) {
+  int threadNum = outputH * outImgH * outImgW;
+  int blocks = (threadNum + 1024 - 1) / 1024;
+
+  real ratioH = (outImgH > 1) ?
+      static_cast<float>(inImgH - 1) / (outImgH - 1) : 0.f;
+  real ratioW = (outImgW > 1) ?
+      static_cast<float>(inImgW - 1) / (outImgW - 1) : 0.f;
+
+  KeBilinearInterpFw<<< blocks, 1024, 0, STREAM_DEFAULT>>>(
+    threadNum, inData, inImgH, inImgW, inputH, inputW, outData,
+    outImgH, outImgW, outputH, outputW, numChannels, ratioH, ratioW);
+  CHECK_SYNC("hl_bilinear_forward failed");
+}
+
+__global__ void KeBilinearInterpBw(const size_t nthreads,
+                                   real* in,
+                                   const size_t inImgH,
+                                   const size_t inImgW,
+                                   const size_t inputH,
+                                   const size_t inputW,
+                                   const real* out,
+                                   const size_t outImgH,
+                                   const size_t outImgW,
+                                   const size_t outputH,
+                                   const size_t outputW,
+                                   const size_t numChannels,
+                                   const real ratioH,
+                                   const real ratioW) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if(tid < nthreads) {
+    int outIdH = tid / (outputW / numChannels);
+    int outIdW = tid % (outputW / numChannels);
+
+    int inIdH = ratioH * (outIdW / outImgW);
+    int hId = (inIdH < inImgH - 1) ? 1 : 0;
+    real hlambda = ratioH * (outIdW / outImgW) - inIdH;
+
+    int inIdW = ratioW * (tid % outImgW);
+    int wId = (inIdW < inImgW - 1) ? 1 : 0;
+    real wlambda = ratioW * (tid % outImgW) - inIdW;
+
+    const real* outPos = &out[outIdH * outputW + outIdW];
+    real* inPos = &in[outIdH * inputW + inIdH * inImgW + inIdW];
+    for (int c = 0; c < numChannels; ++c) {
+      atomicAdd(&inPos[0], (1.f - hlambda) * (1.f - wlambda) * outPos[0]);
+      atomicAdd(&inPos[wId], (1.f - hlambda) * wlambda * outPos[0]);
+      atomicAdd(&inPos[hId * inImgW], hlambda * (1.f - wlambda) * outPos[0]);
+      atomicAdd(&inPos[hId * inImgW + wId], hlambda * wlambda * outPos[0]);
+      inPos += inImgH * inImgW;
+      outPos += outImgH * outImgW;
+    }
+  }
+}
+
+void hl_bilinear_backward(real* inGrad,
+                          const size_t inImgH,
+                          const size_t inImgW,
+                          const size_t inputH,
+                          const size_t inputW,
+                          const real* outGrad,
+                          const size_t outImgH,
+                          const size_t outImgW,
+                          const size_t outputH,
+                          const size_t outputW,
+                          const size_t numChannels) {
+  int threadNum = outputH * outImgH * outImgW;
+  int blocks = (threadNum + 1024 - 1) / 1024;
+ 
+  real ratioH = (outImgH > 1) ?
+      static_cast<float>(inImgH - 1) / (outImgH - 1) : 0.f;
+  real ratioW = (outImgW > 1) ?
+      static_cast<float>(inImgW - 1) / (outImgW - 1) : 0.f;
+
+  KeBilinearInterpBw<<< blocks, 1024, 0, STREAM_DEFAULT>>>(
+    threadNum, inGrad, inImgH, inImgW, inputH, inputW, outGrad,
+    outImgH, outImgW, outputH, outputW, numChannels, ratioH, ratioW);
+  CHECK_SYNC("hl_bilinear_backward failed");
 }

@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/utils/Logging.h"
 #include <string.h>
+#include "hl_cnn.h"
 #include "hl_gpu.h"
 #include "hl_table_apply.h"
 #include "hl_top_k.h"
@@ -1142,6 +1143,56 @@ void GpuMatrix::paramReluBackwardDiff(Matrix& oGrad, Matrix& data, Matrix& W) {
 
 void GpuMatrix::addColumnVector(const Matrix& b) {
   BaseMatrix::addColVector(const_cast<Matrix&>(b));
+}
+
+void GpuMatrix::bilinearForward(const Matrix& in,
+                                const size_t inImgH,
+                                const size_t inImgW,
+                                const size_t outImgH,
+                                const size_t outImgW,
+                                const size_t numChannels) {
+  CHECK(dynamic_cast<const GpuMatrix*>(&in));
+
+  const size_t outputW = getWidth();
+  const size_t outputH = getHeight();
+  const size_t inputW = in.getWidth();
+  const size_t inputH = in.getHeight();
+
+  real* outData = getData();
+  const real* inData  = in.getData();
+
+  if (inImgH == outImgW && inImgW == outImgW) {
+    this->copyFrom(in);
+  } else {
+    hl_bilinear_forward(inData, inImgH, inImgW,
+      inputH, inputW, outData, outImgH, outImgW,
+      outputH, outputW, numChannels);
+  }
+}
+
+void GpuMatrix::bilinearBackward(const Matrix& out,
+                                 const size_t outImgH,
+                                 const size_t outImgW,
+                                 const size_t inImgH,
+                                 const size_t inImgW,
+                                 const size_t numChannels) {
+  CHECK(dynamic_cast<const GpuMatrix*>(&out));
+
+  const size_t inputW = getWidth();
+  const size_t inputH = getHeight();
+  const size_t outputW = out.getWidth();
+  const size_t outputH = out.getHeight();
+
+  real* inGrad = getData();
+  const real* outGrad = out.getData();
+
+  if (outImgH == inImgH && outImgW == inImgW) {
+    this->copyFrom(out);
+  } else {
+    hl_bilinear_backward(inGrad, inImgH, inImgW,
+      inputH, inputW, outGrad, outImgH, outImgW,
+      outputH, outputW, numChannels);
+  }
 }
 
 /**
@@ -3595,6 +3646,109 @@ void CpuMatrix::classificationErrorMulti(Matrix& output, Matrix& label,
       }
     }
     result[i] = sum / dim;
+  }
+}
+
+void CpuMatrix::bilinearForward(const Matrix& in,
+                                const size_t inImgH,
+                                const size_t inImgW,
+                                const size_t outImgH,
+                                const size_t outImgW,
+                                const size_t numChannels) {
+  CHECK(dynamic_cast<const CpuMatrix*>(&in));
+
+  size_t outputW = getWidth();
+  size_t outputH = getHeight();
+  size_t inputW = in.getWidth();
+  size_t inputH = in.getHeight();
+
+  real* outData = getData();
+  const real* inData  = in.getData();
+
+  const real ratioH = (outImgH > 1) ?
+    static_cast<real>(inImgH - 1) / (outImgH - 1) : 0.f;
+  const real ratioW = (outImgW > 1) ?
+    static_cast<real>(inImgW - 1) / (outImgW - 1) : 0.f;
+
+  if (inImgH == outImgH && inImgW == outImgW) {
+    this->copyFrom(in);
+  } else {
+    for (int k = 0; k < outputH; ++k) {   // loop for batches
+      for (int i = 0; i < outImgH; ++i) {  // loop for images
+        int h = ratioH * i;
+        int hid = (h < inImgH - 1) ? 1 : 0;
+        real hlambda = ratioH * i - h;
+
+        for (int j = 0; j < outImgW; ++j) {
+          int w = ratioW * j;
+          int wid = (w < inImgW - 1) ? 1 : 0;
+          real wlambda = ratioW * j - w;
+          // calculate four position for bilinear interpolation
+          const real* inPos = &inData[k * inputW + h * inImgW + w];
+          real* outPos = &outData[k * outputW + i * outImgW + j];
+          for (int c = 0; c < numChannels; ++c) {  // loop for channels
+            // bilinear interpolation
+            outPos[0] = (1.f - hlambda) *
+              ((1.f - wlambda) * inPos[0] + wlambda * inPos[wid]) +
+              hlambda * ((1.f - wlambda) * inPos[hid * inImgW] +
+              wlambda * inPos[hid * inImgW + wid]);
+            inPos += inImgH * inImgW;
+            outPos += outImgH * outImgW;
+          }
+        }
+      }
+    }
+  }
+}
+
+void CpuMatrix::bilinearBackward(const Matrix& out,
+                                 const size_t outImgH,
+                                 const size_t outImgW,
+                                 const size_t inImgH,
+                                 const size_t inImgW,
+                                 const size_t numChannels) {
+  CHECK(dynamic_cast<const CpuMatrix*>(&out));
+
+  size_t inputW = getWidth();
+  size_t inputH = getHeight();
+  size_t outputW = out.getWidth();
+  size_t outputH = out.getHeight();
+
+  real* inGrad = getData();
+  const real* outGrad = out.getData();
+
+  const real ratioH = (outImgH > 1) ?
+    static_cast<real>(inImgH - 1) / (outImgH - 1) : 0.f;
+  const real ratioW = (outImgW > 1) ?
+    static_cast<real>(inImgW - 1) / (outImgW - 1) : 0.f;
+
+  if (inImgH == outImgH && inImgW == outImgW) {
+    this->copyFrom(out);
+  } else {
+    for (int k = 0; k < outputH; ++k) {   // loop for batches
+      for (int i = 0; i < outImgH; ++i) {  // loop for images
+        int h = ratioH * i;
+        int hid = (h < inImgH - 1) ? 1 : 0;
+        real hlambda = ratioH * i - h;
+
+        for (int j = 0; j < outImgW; ++j) {
+          int w = ratioW * j;
+          int wid = (w < inImgW - 1) ? 1 : 0;
+          real wlambda = ratioW * j - w;
+
+          real* inPos = &inGrad[k * inputW + h * inImgW + w];
+          const real* outPos = &outGrad[k * outputW + i * outImgW + j];
+          for (int c = 0; c < numChannels; ++c) {  // loop for channels
+            inPos[0] += (1.f - hlambda) * (1.f - wlambda) * outPos[0];
+            inPos[wid] += (1.f - hlambda) * wlambda * outPos[0];
+            inPos[hid * inImgW] += hlambda * (1.f - wlambda) * outPos[0];
+            inPos[hid * inImgW + wid] += hlambda * wlambda * outPos[0];
+            inPos += inImgH * inImgW;
+            outPos += outImgH * outImgW;
+          }
+        }
+      }
+    }
   }
 }
 

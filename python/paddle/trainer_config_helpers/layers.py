@@ -40,8 +40,8 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'img_cmrnorm_layer', 'addto_layer',
            'concat_layer', 'lstm_step_layer', 'recurrent_group',
            'memory', 'StaticInput', 'expand_layer', 'scaling_layer',
-           'power_layer', 'interpolation_layer', 'trans_layer',
-           'sum_to_one_norm_layer',
+           'power_layer', 'interpolation_layer', 'bilinear_interp_layer',
+           'trans_layer', 'sum_to_one_norm_layer',
            'get_output_layer', 'LayerType', 'context_projection',
            'beam_search', 'maxid_layer', 'GeneratedInput', 'SubsequenceInput',
            'gru_step_layer', 'recurrent_layer',
@@ -92,6 +92,7 @@ class LayerType(object):
 
     EXPAND_LAYER = 'expand'
     INTERPOLATION_LAYER = 'interpolation'
+    BILINEAR_INTERP_LAYER = 'bilinear_interp'
     POWER_LAYER = 'power'
     SCALING_LAYER = 'scaling'
     TRANS_LAYER = 'trans'
@@ -1251,6 +1252,70 @@ def interpolation_layer(input, weight, name=None, layer_attr=None):
                        parents=[weight, input[0], input[1]],
                        size=input[0].size)
 
+
+@wrap_name_default()
+@layer_support()
+def bilinear_interp_layer(input,
+                          img_size_x=None,   
+                          img_size_y=None,
+                          out_size_x=None,
+                          out_size_y=None,
+                          num_channels=None,
+                          name=None,
+                          layer_attr=None):
+    """
+    This layer is to implement bilinear interpolation on conv layer output.
+
+    Please refer to Wikipedia: https://en.wikipedia.org/wiki/Bilinear_interpolation
+
+    The simple usage is:
+
+    .. code-block:: python
+
+       bilinear = bilinear_interp_layer(input,
+                                        img_size_x,
+                                        img_size_y,
+                                        out_size_x,
+                                        out_size_y,
+                                        num_channels)
+    
+    :para    input:        A input layer.
+    :type    input:        LayerOutput.
+    :para    img_size_x:   previous layer output width.
+    :type    img_size_x:   int|None 
+    :para    img_size_y:   previous layer output height.
+    :type    img_size_y:   int|None
+    :para    out_size_x:   bilinear interpolation output width.
+    :type    out_size_x:   int|None 
+    :para    out_size_y:   bilinear interpolation output height.
+    :type    out_size_y:   int|None
+    :para    num_channels: number of channels of input layer. If None,
+                           it will be set automatically from previous output.
+    :type    num_channels: int|None
+    :para    name:         The layer's name, which cna not be specified.
+    :type    name:         None|basestring
+    :para    layer_attr:   Extra Layer attribute.
+    :type    layer_attr:   ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype:  LayerOutput
+    """
+    assert input.layer_type == LayerType.CONV_LAYER
+    assert isinstance(input.activation, LinearActivation)
+    assert img_size_x > 0 and img_size_y > 0
+    assert out_size_x > 0 and out_size_y > 0
+    if num_channels is None:
+        assert input.numfilters is not None
+        num_channels = input.num_filters
+    Layer(name=name,
+          inputs=Input(input.name,
+                       bilinear_interp=BilinearInterp(img_size_x=img_size_x,
+                                                      img_size_y=img_size_y,
+                                                      out_size_x=out_size_x,
+                                                      out_size_y=out_size_y,
+                                                      num_channels=num_channels)),
+          type=LayerType.BILINEAR_INTERP_LAYER,
+          **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(name, LayerType.BILINEAR_INTERP_LAYER, parents=[input])
 
 @wrap_name_default()
 @layer_support()
