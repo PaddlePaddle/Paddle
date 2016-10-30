@@ -20,6 +20,8 @@
 
 set -e
 
+export LC_ALL=C
+
 mkdir -p data/tmp
 python preprocess.py -i data/reviews_Electronics_5.json.gz
 # uniq and shuffle

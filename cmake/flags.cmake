@@ -64,7 +64,9 @@ set(COMMON_FLAGS
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
     -Wno-error=literal-suffix
-    -Wno-error=unused-local-typedefs)
+    -Wno-error=unused-local-typedefs
+    -Wno-error=unused-function  # Warnings in Numpy Header.
+)
 
 foreach(flag ${COMMON_FLAGS})
     safe_set_cflag(CMAKE_C_FLAGS ${flag})

@@ -96,12 +96,12 @@ def gru_encoder_decoder(data_conf,
     encoded_vector = concat_layer(input=[src_forward, src_backward])
 
     with mixed_layer(size=decoder_size) as encoded_proj:
-        encoded_proj += full_matrix_projection(encoded_vector)
+        encoded_proj += full_matrix_projection(input=encoded_vector)
 
     backward_first = first_seq(input=src_backward)
     with mixed_layer(size=decoder_size,
                      act=TanhActivation(), ) as decoder_boot:
-        decoder_boot += full_matrix_projection(backward_first)
+        decoder_boot += full_matrix_projection(input=backward_first)
 
     def gru_decoder_with_attention(enc_vec, enc_proj, current_word):
         decoder_mem = memory(name='gru_decoder',
@@ -113,8 +113,8 @@ def gru_encoder_decoder(data_conf,
                                    decoder_state=decoder_mem, )
 
         with mixed_layer(size=decoder_size * 3) as decoder_inputs:
-            decoder_inputs += full_matrix_projection(context)
-            decoder_inputs += full_matrix_projection(current_word)
+            decoder_inputs += full_matrix_projection(input=context)
+            decoder_inputs += full_matrix_projection(input=current_word)
 
         gru_step = gru_step_layer(name='gru_decoder',
                                   input=decoder_inputs,

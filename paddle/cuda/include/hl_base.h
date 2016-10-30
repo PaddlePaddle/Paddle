@@ -185,7 +185,7 @@ typedef struct {
     size_t                  nnz;
 } _hl_sparse_matrix_s, *hl_sparse_matrix_s;
 
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
 /**
  * HPPL data type: real (float or double)
  *

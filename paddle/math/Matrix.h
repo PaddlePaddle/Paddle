@@ -253,7 +253,7 @@ public:
     LOG(FATAL) << "copy data from int vector only available on CpuMatrix.";
   }
 
-  virtual void copyByRowIndex(Matrix& b, IVector& rowIndex) {
+  virtual void copyByRowIndex(Matrix& b, const IVector& rowIndex) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -493,7 +493,31 @@ public:
     LOG(FATAL) << "Not implemeted";
   }
 
+  /**
+   * set the max of each column of this to mat
+   */
   virtual void colMax(Matrix& max) { LOG(FATAL) << "not implemented"; }
+
+  /**
+   * @brief Get the top k elements of each column of this matrix.
+   *
+   * The row ids and values of these elements are stored in
+   * maxIds and max respectively. where k is the size of maxIds.
+   * And note that the top k elements are not sorted.
+   */
+  virtual void colMax(IVector& maxIds, Matrix& maxVal) {
+    LOG(FATAL) << "not implemented";
+  }
+
+  virtual void maxoutForward(Matrix& a, IVector& id, size_t channels,
+                             size_t groups) {
+    LOG(FATAL) << "not implemented";
+  }
+
+  virtual void maxoutBackward(Matrix& a, IVector& id, size_t channels,
+                              size_t groups) {
+    LOG(FATAL) << "not implemented";
+  }
 
   virtual void rowMaxId(IVector& maxIds) { LOG(FATAL) << "Not implemented"; }
 
@@ -501,8 +525,8 @@ public:
    * @brief Get the top k elements of each row of this matrix.
    *
    * The column ids and values of these elements are stored in
-   * maxIds and max respectively. Note that the top k
-   * elements are not sorted.
+   * maxIds and max respectively. where k is the size of maxIds.
+   * And note that the top k elements are not sorted.
    */
   virtual void rowMax(IVector& maxIds, Matrix& max) {
     LOG(FATAL) << "Not implemented";
@@ -995,7 +1019,7 @@ public:
 
   void copyFrom(const IVector& src);
 
-  void copyByRowIndex(Matrix& b, IVector& rowIndex);
+  void copyByRowIndex(Matrix& b, const IVector& rowIndex);
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
 
@@ -1101,6 +1125,9 @@ public:
   void rowMax(Matrix& max);
   void rowMax(IVector& maxIds, Matrix& max);
   void colMax(Matrix& max);
+  void colMax(IVector& maxIds, Matrix& max);
+  void maxoutForward(Matrix& a, IVector& id, size_t channels, size_t groups);
+  void maxoutBackward(Matrix& a, IVector& id, size_t channels, size_t groups);
 
   void oneHotCrossEntropy(Matrix& output, IVector& label);
   void oneHotCrossEntropyBp(Matrix& outputV, IVector& label);
@@ -1271,7 +1298,7 @@ public:
 
   void copyFrom(CpuSparseMatrix& src);
 
-  void copyByRowIndex(Matrix& b, IVector& rowIndex);
+  void copyByRowIndex(Matrix& b, const IVector& rowIndex);
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
 
@@ -1425,6 +1452,9 @@ public:
   void rowMax(Matrix& max);
   void rowMax(IVector& maxIds, Matrix& maxVal);
   void colMax(Matrix& max);
+  void colMax(IVector& maxIds, Matrix& maxVal);
+  void maxoutForward(Matrix& a, IVector& id, size_t channels, size_t groups);
+  void maxoutBackward(Matrix& a, IVector& id, size_t channels, size_t groups);
   void rowNormalizeL1(Matrix& out);
 
   void oneHotCrossEntropy(Matrix& output, IVector& label);

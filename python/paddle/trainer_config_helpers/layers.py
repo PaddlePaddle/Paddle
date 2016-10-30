@@ -50,11 +50,12 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'slope_intercept_layer', 'trans_full_matrix_projection',
            'linear_comb_layer',
            'convex_comb_layer', 'ctc_layer', 'crf_layer', 'crf_decoding_layer',
+           'nce_layer',
            'cross_entropy_with_selfnorm', 'cross_entropy',
            'multi_binary_label_cross_entropy',
            'rank_cost', 'lambda_cost', 'huber_cost',
            # 'block_expand_layer',  # TODO(yuyang18): this layer is not correct
-           'out_prod_layer', 'print_layer'
+           'maxout_layer', 'out_prod_layer', 'print_layer'
            ]
 
 
@@ -110,12 +111,14 @@ class LayerType(object):
     SLOPE_INTERCEPT_LAYER = "slope_intercept"
     LINEAR_COMBINATION_LAYER = "convex_comb"
     BLOCK_EXPAND = "blockexpand"
+    MAXOUT = "maxout"
 
     PRINT_LAYER = "print"
 
     CTC_LAYER = "ctc"
     CRF_LAYER = "crf"
     CRF_DECODING_LAYER = "crf_decoding"
+    NCE_LAYER = 'nce'
 
     RANK_COST = "rank-cost"
     LAMBDA_COST = "lambda_cost"
@@ -169,7 +172,7 @@ class LayerOutput(object):
     :param activation: Layer Activation.
     :type activation: BaseActivation.
     :param parents: Layer's parents.
-    :type parents: list|tuple|collection.Sequence
+    :type parents: list|tuple|collections.Sequence
     """
 
     def __init__(self, name, layer_type, parents=None, activation=None,
@@ -1692,7 +1695,7 @@ def img_conv_layer(input, filter_size, num_filters,
 @layer_support()
 def img_pool_layer(input, pool_size, name=None,
                    num_channels=None, pool_type=None,
-                   stride=1, start=None, padding=0, layer_attr=None,
+                   stride=1, padding=0, layer_attr=None,
                    pool_size_y=None, stride_y=None, padding_y=None,
                    img_width=None):
     """
@@ -1723,8 +1726,6 @@ def img_pool_layer(input, pool_size, name=None,
     :type stride: int
     :param stride_y: stride height of pooling. It is equal to stride by default.
     :type stride_y: int|None
-    :param start: start position of pooling operation. Note it is deprecated now.
-    :type start: int|None
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
     :param img_width: the width of input feature map. If it is None, the input feature
@@ -1758,7 +1759,7 @@ def img_pool_layer(input, pool_size, name=None,
                           pool_type=type_name,
                           channels=num_channels,
                           size_x=pool_size,
-                          start=start,
+                          start=None,
                           stride=stride,
                           padding=padding,
                           size_y=pool_size_y,
@@ -2053,10 +2054,16 @@ def concat_layer(input, act=None, name=None, layer_attr=None):
     Concat all input vector into one huge vector.
     Inputs can be list of LayerOutput or list of projection.
 
+    The example usage is:
+
+    ..  code-block:: python
+
+        concat = concat_layer(input=[layer1, layer2])
+
     :param name: Layer name.
     :type name: basestring
     :param input: input layers or projections
-    :type input: list|tuple|collection.Sequence
+    :type input: list|tuple|collections.Sequence
     :param act: Activation type.
     :type act: BaseActivation
     :param layer_attr: Extra Layer Attribute.
@@ -2842,30 +2849,52 @@ def beam_search(step, input, bos_id, eos_id, beam_size,
 
     return tmp
 
+def __cost_input__(input, label, weight=None):
+    """
+    inputs and parents for cost layers. 
+    """
+    ipts = [Input(input.name), Input(label.name)]
+    parents = [input, label]
+    if weight is not None:
+        assert weight.layer_type == LayerType.DATA
+        ipts.append(Input(weight.name))
+        parents.append(weight)
+    return ipts, parents
+    
 
 @wrap_name_default()
-def regression_cost(input, label, cost='square_error', name=None):
+@layer_support()
+def regression_cost(input, label, weight=None, name=None,
+                    layer_attr=None):
     """
     Regression Layer.
 
     TODO(yuyang18): Complete this method.
 
     :param name: layer name.
+    :type name: basestring
     :param input: Network prediction.
+    :type input: LayerOutput
     :param label: Data label.
-    :param cost: Cost method.
+    :type label: LayerOutput
+    :param weight: The weight affects the cost, namely the scale of cost.
+                   It is an optional argument.
+    :type weight: LayerOutput
+    :param layer_attr: layer's extra attribute.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
+    :rtype: LayerOutput
     """
-    Layer(inputs=[Input(input.name), Input(label.name)], type=cost, name=name)
-    return LayerOutput(
-        name, LayerType.COST, parents=[input, label]
-    )
+    ipts, parents = __cost_input__(input, label, weight)
+
+    Layer(inputs=ipts, type="square_error", name=name,
+          **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(name, LayerType.COST, parents=parents)
 
 
 @wrap_name_default("cost")
 @layer_support()
-def classification_cost(input, label, name=None,
-                        cost="multi-class-cross-entropy",
+def classification_cost(input, label, weight=None, name=None,
                         evaluator=classification_error_evaluator,
                         layer_attr=None):
     """
@@ -2877,8 +2906,9 @@ def classification_cost(input, label, name=None,
     :type input: LayerOutput
     :param label: label layer name. data_layer often.
     :type label: LayerOutput
-    :param cost: cost method.
-    :type cost: basestring
+    :param weight: The weight affects the cost, namely the scale of cost.
+                   It is an optional argument.
+    :type weight: LayerOutput
     :param evaluator: Evaluator method.
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -2888,7 +2918,10 @@ def classification_cost(input, label, name=None,
     assert input.layer_type != LayerType.DATA
     assert isinstance(input.activation, SoftmaxActivation)
     assert label.layer_type == LayerType.DATA
-    Layer(name=name, type=cost, inputs=[Input(input.name), Input(label.name)],
+
+    ipts, parents = __cost_input__(input, label, weight)
+
+    Layer(name=name, type="multi-class-cross-entropy", inputs=ipts,
           **ExtraLayerAttribute.to_kwargs(layer_attr))
 
     def __add_evaluator__(e):
@@ -2900,7 +2933,7 @@ def classification_cost(input, label, name=None,
         assert isinstance(e.for_classification, bool)
         assert e.for_classification
 
-        e(name=e.__name__, input=input, label=label)
+        e(name=e.__name__, input=input, label=label, weight=weight)
 
     if not isinstance(evaluator, collections.Sequence):
         evaluator = [evaluator]
@@ -2908,7 +2941,7 @@ def classification_cost(input, label, name=None,
     for each_evaluator in evaluator:
         __add_evaluator__(each_evaluator)
 
-    return LayerOutput(name, LayerType.COST, parents=[input, label])
+    return LayerOutput(name, LayerType.COST, parents=parents)
 
 
 def conv_operator(img, filter, filter_size, num_filters,
@@ -2984,7 +3017,8 @@ def conv_operator(img, filter, filter_size, num_filters,
 
 
 @wrap_name_default()
-def conv_shift_layer(a, b, name=None):
+@layer_support()
+def conv_shift_layer(a, b, name=None, layer_attr=None):
     """
     This layer performs cyclic convolution for two input. For example:
       - a[in]: contains M elements.
@@ -3013,6 +3047,8 @@ def conv_shift_layer(a, b, name=None):
     :type a: LayerOutput
     :param b: input layer b
     :type b: LayerOutput
+    :param layer_attr: layer's extra attribute.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3022,6 +3058,7 @@ def conv_shift_layer(a, b, name=None):
         name=name,
         type=LayerType.CONV_SHIFT_LAYER,
         inputs=[a.name, b.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
 
     return LayerOutput(name, LayerType.CONV_SHIFT_LAYER, parents=[a, b],
@@ -3095,6 +3132,7 @@ def tensor_layer(a, b, size, act=None, name=None,
 @wrap_param_attr_default()
 @wrap_bias_attr_default()
 @wrap_act_default()
+@layer_support()
 def selective_fc_layer(input, select, size, act=None, name=None,
                        pass_generation=False,
                        has_selected_colums=True,
@@ -3167,7 +3205,8 @@ def selective_fc_layer(input, select, size, act=None, name=None,
 
 
 @wrap_name_default()
-def sampling_id_layer(input, name=None):
+@layer_support()
+def sampling_id_layer(input, name=None, layer_attr=None):
     """
     A layer for sampling id from multinomial distribution from the input layer.
     Sampling one id for one sample.
@@ -3182,6 +3221,8 @@ def sampling_id_layer(input, name=None):
     :type input: LayerOutput
     :param name: The Layer Name.
     :type name: basestring
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3189,12 +3230,15 @@ def sampling_id_layer(input, name=None):
         name=name,
         type=LayerType.SAMPLING_ID_LAYER,
         inputs=[Input(input.name)],
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
     return LayerOutput(name, LayerType.SAMPLING_ID_LAYER, input)
 
 
 @wrap_name_default()
-def slope_intercept_layer(input, name=None, slope=1.0, intercept=0.0):
+@layer_support()
+def slope_intercept_layer(input, name=None, slope=1.0, intercept=0.0,
+                          layer_attr=None):
     """
     This layer for applying a slope and an intercept to the input
     element-wise. There is no activation and weight.
@@ -3216,6 +3260,8 @@ def slope_intercept_layer(input, name=None, slope=1.0, intercept=0.0):
     :type slope: float.
     :param intercept: the offset.
     :type intercept: float.
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3225,12 +3271,15 @@ def slope_intercept_layer(input, name=None, slope=1.0, intercept=0.0):
         slope=slope,
         intercept=intercept,
         inputs=[Input(input.name)],
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
     return LayerOutput(name, LayerType.SLOPE_INTERCEPT_LAYER, input)
 
 
 @wrap_name_default()
-def linear_comb_layer(weights, vectors, size=None, name=None):
+@layer_support()
+def linear_comb_layer(weights, vectors, size=None, name=None,
+                      layer_attr=None):
     """
     A layer for weighted sum of vectors takes two inputs.
       - Input: size of weights is M
@@ -3271,6 +3320,8 @@ def linear_comb_layer(weights, vectors, size=None, name=None):
     :type size: int
     :param name: The Layer Name.
     :type name: basestring
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3286,6 +3337,7 @@ def linear_comb_layer(weights, vectors, size=None, name=None):
         type=LayerType.LINEAR_COMBINATION_LAYER,
         size=size,
         inputs=[Input(weights.name), Input(vectors.name)],
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
     return LayerOutput(name, LayerType.LINEAR_COMBINATION_LAYER,
                        [weights, vectors], size=size)
@@ -3295,6 +3347,7 @@ convex_comb_layer = linear_comb_layer
 
 
 @wrap_name_default()
+@layer_support()
 def block_expand_layer(input,
                        channel=0,
                        block_x=0,
@@ -3303,7 +3356,8 @@ def block_expand_layer(input,
                        stride_y=0,
                        padding_x=0,
                        padding_y=0,
-                       name=None):
+                       name=None,
+                       layer_attr=None):
     """
     Expand feature map to minibatch matrix.
        - matrix width is: block_y * block_x * channel
@@ -3350,6 +3404,8 @@ def block_expand_layer(input,
     :type padding_y: int
     :param name: The name of this layer, which can not specify.
     :type name: None|basestring.
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3364,13 +3420,83 @@ def block_expand_layer(input,
                                                padding_y=padding_y)
                       ),
           type=LayerType.BLOCK_EXPAND,
+          **ExtraLayerAttribute.to_kwargs(layer_attr)
           )
 
     return LayerOutput(name, LayerType.BLOCK_EXPAND, parents=[input])
 
 
 @wrap_name_default()
-def ctc_layer(input, label, size=None, name=None, norm_by_times=False):
+@layer_support()
+def maxout_layer(input,
+                 groups,
+                 num_channels=None,
+                 size_x=None,
+                 size_y=None,
+                 name=None,
+                 layer_attr=None):
+    """
+    A layer to do max out on conv layer output.
+      - Input: output of a conv layer.
+      - Output: feature map size same as input. Channel is (input channel) / groups.
+
+    So groups should be larger than 1, and the num of channels should be able 
+    to devided by groups.
+
+    Please refer to Paper: 
+      - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
+      - Multi-digit Number Recognition from Street View \
+        Imagery using Deep Convolutional Neural Networks: \
+        https://arxiv.org/pdf/1312.6082v4.pdf
+    
+    The simple usage is:
+
+    .. code-block:: python
+
+       maxout = maxout_layer(input,
+                             num_channels=128,
+                             groups=4)
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param num_channels: The channel number of input layer. If None will be set
+                     automatically from previous output.
+    :type num_channels: int|None
+    :param groups: The group number of input layer.
+    :type groups: int
+    :param size_x: conv output width. If None will be set
+                   automatically from previous output.
+    :type size_x: int|None
+    :param size_y: conv output height. If None will be set
+                   automatically from previous output.
+    :type size_y: int|None
+    :param name: The name of this layer, which can not specify.
+    :type name: None|basestring.
+    :param layer_attr: Extra Layer attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert input.layer_type == LayerType.CONV_LAYER
+    assert isinstance(input.activation, LinearActivation)
+    assert groups > 1
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+    assert num_channels % groups == 0
+    Layer(name=name,
+          inputs=Input(input.name,
+                       maxout=MaxOut(channels=num_channels,
+                                     groups=groups)),
+          type=LayerType.MAXOUT,
+          **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(name, LayerType.MAXOUT, parents=[input])
+
+
+@wrap_name_default()
+@layer_support()
+def ctc_layer(input, label, size=None, name=None, norm_by_times=False,
+              layer_attr=None):
     """
     Connectionist Temporal Classification (CTC) is designed for temporal
     classication task. That is, for sequence labeling problems where the
@@ -3407,6 +3533,8 @@ def ctc_layer(input, label, size=None, name=None, norm_by_times=False):
     :type name: basestring|None
     :param norm_by_times: Whether to normalization by times. False by default.
     :type norm_by_times: bool
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3422,14 +3550,17 @@ def ctc_layer(input, label, size=None, name=None, norm_by_times=False):
         type=LayerType.CTC_LAYER,
         size=size,
         norm_by_times=norm_by_times,
-        inputs=[input.name, label.name]
+        inputs=[input.name, label.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
     return LayerOutput(name, LayerType.CTC_LAYER, [input, label], size=size)
 
 
 @wrap_name_default()
 @wrap_param_attr_default()
-def crf_layer(input, label, size=None, weight=None, param_attr=None, name=None):
+@layer_support()
+def crf_layer(input, label, size=None, weight=None, param_attr=None, name=None,
+              layer_attr=None):
     """
     A layer for calculating the cost of sequential conditional random
     field model.
@@ -3455,6 +3586,8 @@ def crf_layer(input, label, size=None, weight=None, param_attr=None, name=None):
     :type param_attr: ParameterAttribute
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3478,6 +3611,7 @@ def crf_layer(input, label, size=None, weight=None, param_attr=None, name=None):
         type=LayerType.CRF_LAYER,
         size=size,
         inputs=ipts,
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
     parents = [input, label]
     if weight is not None:
@@ -3487,7 +3621,9 @@ def crf_layer(input, label, size=None, weight=None, param_attr=None, name=None):
 
 @wrap_name_default()
 @wrap_param_attr_default()
-def crf_decoding_layer(input, size, label=None, param_attr=None, name=None):
+@layer_support()
+def crf_decoding_layer(input, size, label=None, param_attr=None, name=None,
+                       layer_attr=None):
     """
     A layer for calculating the decoding sequence of sequential conditional
     random field model. The decoding sequence is stored in output.ids.
@@ -3505,6 +3641,8 @@ def crf_decoding_layer(input, size, label=None, param_attr=None, name=None):
     :type param_attr: ParameterAttribute
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3521,12 +3659,90 @@ def crf_decoding_layer(input, size, label=None, param_attr=None, name=None):
         type=LayerType.CRF_DECODING_LAYER,
         size=size,
         inputs=ipts,
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
     parents = [input]
     if label is not None:
         parents.append(label)
     return LayerOutput(name, LayerType.CRF_DECODING_LAYER, parents, size=size)
 
+@wrap_bias_attr_default(has_bias=True)
+@wrap_name_default()
+@layer_support()
+def nce_layer(input, label, num_classes, weight=None,
+              num_neg_samples=10, neg_distribution=None,
+              name=None, bias_attr=None, layer_attr=None):
+    """
+    Noise-contrastive estimation.
+    Implements the method in the following paper:
+    A fast and simple algorithm for training neural probabilistic language models.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       cost = nce_layer(input=layer1, label=layer2, weight=layer3,
+                        num_classes=3, neg_distribution=[0.1,0.3,0.6])
+
+    :param name: layer name
+    :type name: basestring
+    :param input: input layers. It could be a LayerOutput of list/tuple of LayerOutput.
+    :type input: LayerOutput|list|tuple|collections.Sequence
+    :param label: label layer
+    :type label: LayerOutput
+    :param weight: weight layer, can be None(default)
+    :type weight: LayerOutput
+    :param num_classes: number of classes.
+    :type num_classes: int 
+    :param num_neg_samples: number of negative samples. Default is 10.
+    :type num_neg_samples: int 
+    :param neg_distribution: The distribution for generating the random negative labels.
+                             A uniform distribution will be used if not provided.
+                             If not None, its length must be equal to num_classes.
+    :type neg_distribution: list|tuple|collections.Sequence|None
+    :param bias_attr: Bias parameter attribute. True if no bias.
+    :type bias_attr: ParameterAttribute|None|False
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: layer name.
+    :rtype: LayerOutput
+    """
+    if isinstance(input, LayerOutput):
+        input = [input]
+    assert isinstance(input, collections.Sequence)
+    assert isinstance(label, LayerOutput)
+    assert label.layer_type == LayerType.DATA
+    if neg_distribution is not None:
+        assert isinstance(neg_distribution, collections.Sequence)
+        assert len(neg_distribution) == num_classes
+        assert sum(neg_distribution) == 1
+    
+    ipts_for_layer = []
+    parents = []
+    for each_input in input:
+        assert isinstance(each_input, LayerOutput)
+        ipts_for_layer.append(each_input.name)
+        parents.append(each_input)
+    ipts_for_layer.append(label.name)
+    parents.append(label)
+
+    if weight is not None:
+        assert isinstance(weight, LayerOutput)
+        assert weight.layer_type == LayerType.DATA
+        ipts_for_layer.append(weight.name)
+        parents.append(weight)
+
+    Layer(
+        name=name,
+        type=LayerType.NCE_LAYER,
+        num_classes=num_classes,
+        neg_sampling_dist=neg_distribution,
+        num_neg_samples=num_neg_samples,
+        inputs=ipts_for_layer,
+        bias=ParamAttr.to_bias(bias_attr),
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
+    )
+    return LayerOutput(name, LayerType.NCE_LAYER, parents=parents)
 
 """
 following are cost Layers.
@@ -3534,7 +3750,8 @@ following are cost Layers.
 
 
 @wrap_name_default()
-def rank_cost(left, right, label, weight=None, name=None, coeff=1.0):
+@layer_support()
+def rank_cost(left, right, label, weight=None, name=None, coeff=1.0, layer_attr=None):
     """
     A cost Layer for learning to rank using gradient descent. Details can refer
     to `papers <http://research.microsoft.com/en-us/um/people/cburges/papers/
@@ -3578,6 +3795,8 @@ def rank_cost(left, right, label, weight=None, name=None, coeff=1.0):
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3595,13 +3814,15 @@ def rank_cost(left, right, label, weight=None, name=None, coeff=1.0):
           type=LayerType.RANK_COST,
           inputs=ipts,
           coeff=coeff,
+          **ExtraLayerAttribute.to_kwargs(layer_attr)
           )
 
     return LayerOutput(name, LayerType.RANK_COST, parents=parents)
 
 
 @wrap_name_default()
-def lambda_cost(input, score, name, NDCG_num=5, max_sort_size=-1):
+@layer_support()
+def lambda_cost(input, score, name, NDCG_num=5, max_sort_size=-1, layer_attr=None):
     """
     lambdaCost for lambdaRank LTR approach.
 
@@ -3632,6 +3853,8 @@ def lambda_cost(input, score, name, NDCG_num=5, max_sort_size=-1):
     :type max_sort_size: int
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3642,14 +3865,16 @@ def lambda_cost(input, score, name, NDCG_num=5, max_sort_size=-1):
           type=LayerType.LAMBDA_COST,
           inputs=[input.name, score.name],
           NDCG_num=NDCG_num,
-          max_sort_size=max_sort_size
+          max_sort_size=max_sort_size,
+          **ExtraLayerAttribute.to_kwargs(layer_attr)
           )
 
     return LayerOutput(name, LayerType.LAMBDA_COST, parents=[input, score])
 
 
 @wrap_name_default()
-def cross_entropy(input, label, name=None, coeff=1.0):
+@layer_support()
+def cross_entropy(input, label, name=None, coeff=1.0, layer_attr=None):
     """
     A loss layer for multi class entropy.
 
@@ -3667,6 +3892,8 @@ def cross_entropy(input, label, name=None, coeff=1.0):
     :type name: None|basestring.
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float.
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput.
     """
@@ -3675,13 +3902,16 @@ def cross_entropy(input, label, name=None, coeff=1.0):
           type=LayerType.CROSS_ENTROPY,
           inputs=[input.name, label.name],
           coeff=coeff,
+          **ExtraLayerAttribute.to_kwargs(layer_attr)
           )
     return LayerOutput(name, LayerType.CROSS_ENTROPY, parents=[input, label])
 
 
 @wrap_name_default()
+@layer_support()
 def cross_entropy_with_selfnorm(input, label, name=None, coeff=1.0,
-                                softmax_selfnorm_alpha=0.1):
+                                softmax_selfnorm_alpha=0.1,
+                                layer_attr=None):
     """
     A loss layer for multi class entropy with selfnorm.
 
@@ -3701,6 +3931,8 @@ def cross_entropy_with_selfnorm(input, label, name=None, coeff=1.0,
     :type coeff: float.
     :param softmax_selfnorm_alpha: The scale factor affects the cost.
     :type softmax_selfnorm_alpha: float.
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput.
     """
@@ -3709,6 +3941,7 @@ def cross_entropy_with_selfnorm(input, label, name=None, coeff=1.0,
           inputs=[input.name, label.name],
           coeff=coeff,
           softmax_selfnorm_alpha=softmax_selfnorm_alpha,
+          **ExtraLayerAttribute.to_kwargs(layer_attr)
           )
 
     return LayerOutput(name,
@@ -3717,7 +3950,8 @@ def cross_entropy_with_selfnorm(input, label, name=None, coeff=1.0,
 
 
 @wrap_name_default()
-def huber_cost(input, label, name=None, coeff=1.0):
+@layer_support()
+def huber_cost(input, label, name=None, coeff=1.0, layer_attr=None):
     """
     A loss layer for huber loss.
 
@@ -3733,6 +3967,8 @@ def huber_cost(input, label, name=None, coeff=1.0):
     :type name: None|basestring.
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float.
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput.
     """
@@ -3743,12 +3979,15 @@ def huber_cost(input, label, name=None, coeff=1.0):
           type=LayerType.HUBER,
           inputs=[input.name, label.name],
           coeff=coeff,
+          **ExtraLayerAttribute.to_kwargs(layer_attr)
           )
     return LayerOutput(name, LayerType.HUBER, parents=[input, label])
 
 
 @wrap_name_default()
-def multi_binary_label_cross_entropy(input, label, name=None, coeff=1.0):
+@layer_support()
+def multi_binary_label_cross_entropy(input, label, name=None, coeff=1.0,
+                                     layer_attr=None):
     """
     A loss layer for multi binary label cross entropy.
 
@@ -3766,6 +4005,8 @@ def multi_binary_label_cross_entropy(input, label, name=None, coeff=1.0):
     :type name: None|basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3773,13 +4014,14 @@ def multi_binary_label_cross_entropy(input, label, name=None, coeff=1.0):
     if input.activation is None or \
             not isinstance(input.activation, SigmoidActivation):
         logger.log(logging.WARN,
-                   "%s is not recommend for batch normalization's activation, "
-                   "maybe the relu is better" % repr(input.activation))
+                   "%s is not recommend for multi_binary_label_cross_entropy's activation, "
+                   "maybe the sigmoid is better" % repr(input.activation))
 
     Layer(name=name,
           type=LayerType.MULTI_BIN_LABEL_CROSS_ENTROPY,
           inputs=[input.name, label.name],
           coeff=coeff,
+          **ExtraLayerAttribute.to_kwargs(layer_attr)
           )
     return LayerOutput(name, LayerType.MULTI_BIN_LABEL_CROSS_ENTROPY,
                        parents=[input, label])

@@ -113,4 +113,12 @@ inline void hl_bilinear_backward(real* inGrad,
                                 const size_t outputW,
                                 const size_t numChannels) {}
 
+inline void hl_maxout_forward(
+    const real* inData, real* outData, int* idData,
+    size_t batchSize, size_t size, size_t featLen, size_t group) {}
+
+inline void hl_maxout_backward(
+    real* inGrad, const real* outGrad, const int* idData,
+    size_t batchSize, size_t size, size_t featLen, size_t group) {}
+
 #endif  // HL_CNN_STUB_H_

@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/math/MathFunctions.h"
 
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
 #define     CBLAS_GEMM     paddle::gemm<float>
 #else
 #define     CBLAS_GEMM     paddle::gemm<double>
