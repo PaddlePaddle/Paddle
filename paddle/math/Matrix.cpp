@@ -3786,6 +3786,7 @@ void CpuMatrix::bilinearForward(const Matrix& in,
   size_t outputH = getHeight();
   size_t inputW = in.getWidth();
   size_t inputH = in.getHeight();
+  (void)(inputH);
 
   real* outData = getData();
   const real* inData  = in.getData();
@@ -3798,20 +3799,20 @@ void CpuMatrix::bilinearForward(const Matrix& in,
   if (inImgH == outImgH && inImgW == outImgW) {
     this->copyFrom(in);
   } else {
-    for (int k = 0; k < outputH; ++k) {   // loop for batches
-      for (int i = 0; i < outImgH; ++i) {  // loop for images
-        int h = ratioH * i;
-        int hid = (h < inImgH - 1) ? 1 : 0;
+    for (size_t k = 0; k < outputH; ++k) {   // loop for batches
+      for (size_t i = 0; i < outImgH; ++i) {  // loop for images
+        size_t h = ratioH * i;
+        size_t hid = (h < inImgH - 1) ? 1 : 0;
         real hlambda = ratioH * i - h;
 
-        for (int j = 0; j < outImgW; ++j) {
-          int w = ratioW * j;
-          int wid = (w < inImgW - 1) ? 1 : 0;
+        for (size_t j = 0; j < outImgW; ++j) {
+          size_t w = ratioW * j;
+          size_t wid = (w < inImgW - 1) ? 1 : 0;
           real wlambda = ratioW * j - w;
           // calculate four position for bilinear interpolation
           const real* inPos = &inData[k * inputW + h * inImgW + w];
           real* outPos = &outData[k * outputW + i * outImgW + j];
-          for (int c = 0; c < numChannels; ++c) {  // loop for channels
+          for (size_t c = 0; c < numChannels; ++c) {  // loop for channels
             // bilinear interpolation
             outPos[0] = (1.f - hlambda) *
               ((1.f - wlambda) * inPos[0] + wlambda * inPos[wid]) +
@@ -3838,6 +3839,7 @@ void CpuMatrix::bilinearBackward(const Matrix& out,
   size_t inputH = getHeight();
   size_t outputW = out.getWidth();
   size_t outputH = out.getHeight();
+  (void)(inputH);
 
   real* inGrad = getData();
   const real* outGrad = out.getData();
@@ -3850,20 +3852,20 @@ void CpuMatrix::bilinearBackward(const Matrix& out,
   if (inImgH == outImgH && inImgW == outImgW) {
     this->copyFrom(out);
   } else {
-    for (int k = 0; k < outputH; ++k) {   // loop for batches
-      for (int i = 0; i < outImgH; ++i) {  // loop for images
-        int h = ratioH * i;
-        int hid = (h < inImgH - 1) ? 1 : 0;
+    for (size_t k = 0; k < outputH; ++k) {   // loop for batches
+      for (size_t i = 0; i < outImgH; ++i) {  // loop for images
+        size_t h = ratioH * i;
+        size_t hid = (h < inImgH - 1) ? 1 : 0;
         real hlambda = ratioH * i - h;
 
-        for (int j = 0; j < outImgW; ++j) {
-          int w = ratioW * j;
-          int wid = (w < inImgW - 1) ? 1 : 0;
+        for (size_t j = 0; j < outImgW; ++j) {
+          size_t w = ratioW * j;
+          size_t wid = (w < inImgW - 1) ? 1 : 0;
           real wlambda = ratioW * j - w;
 
           real* inPos = &inGrad[k * inputW + h * inImgW + w];
           const real* outPos = &outGrad[k * outputW + i * outImgW + j];
-          for (int c = 0; c < numChannels; ++c) {  // loop for channels
+          for (size_t c = 0; c < numChannels; ++c) {  // loop for channels
             inPos[0] += (1.f - hlambda) * (1.f - wlambda) * outPos[0];
             inPos[wid] += (1.f - hlambda) * wlambda * outPos[0];
             inPos[hid * inImgW] += hlambda * (1.f - wlambda) * outPos[0];
