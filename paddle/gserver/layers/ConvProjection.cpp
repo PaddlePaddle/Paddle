@@ -18,24 +18,10 @@ limitations under the License. */
 
 namespace paddle {
 
-static ThreadLocal<std::vector<MemoryHandle*>> convMem_;
-static __thread bool convMemInit = false;
-void* getSpaceBytes(size_t size) {
-  if (!convMemInit) {
-    int numDevices = hl_get_device_count();
-    convMem_.get()->resize(numDevices);
-    convMemInit = true;
-  }
-
-  int devId = hl_get_device();
-  MemoryHandle** localMem = &(*convMem_.get())[devId];
-  if (NULL == *localMem || size > (*localMem)->getAllocSize()) {
-    *localMem = new GpuMemoryHandle(size);
-  }
-  return (*localMem)->getBuf();
-}
 
 REGISTER_PROJECTION(conv, ConvProjection);
+
+ThreadLocalD<std::vector<MemoryHandle*>> ConvProjection::convMem_;
 
 ConvProjection::ConvProjection(const ProjectionConfig& config,
                                ParameterPtr parameter, bool useGpu)
@@ -48,8 +34,6 @@ ConvProjection::ConvProjection(const ProjectionConfig& config,
   size_t height = filterH_ * filterW_ * channels_ / groups_;
   size_t width = numFilters_;
   weight_.reset(new Weight(height, width, parameter));
-
-
   weightOffset_ = height * width / groups_;
 }
 
@@ -108,6 +92,7 @@ void ConvProjection::reshapeTensorDesc(int batchSize) {
   // for example, in the case of layer ConcatenateLayer2 with two
   // ConvProjection, the stride is the output_size of layer ConcatenateLayer2.
   // So the calculation of nStride is different from CudnnConvLayer.
+  // In fact, only "nStride = out_->value->getStride()" is ok.
   size_t nStride = numFilters_ * outputH_ * outputW_;
   if (out_->value->isContiguous()) {
     CHECK_EQ(nStride, out_->value->getWidth());
@@ -120,7 +105,8 @@ void ConvProjection::reshapeTensorDesc(int batchSize) {
 }
 
 void ConvProjection::reshape(int batchSize) {
-  calOutputSize();
+  size_t width = calOutputSize();
+  CHECK_EQ(width, out_->value->getWidth());
 
   isSelectAlgo_ = (batchSize == batchNum_);
   batchNum_ = batchSize;
@@ -199,6 +185,21 @@ void ConvProjection::backward(const UpdateCallback& callback) {
   }
 
   weight_->getParameterPtr()->incUpdate(callback);
+}
+
+void* ConvProjection::getSpaceBytes(size_t size) {
+  std::vector<MemoryHandle*>& convMem = *convMem_;
+  if (convMem.empty()) {
+    int numDevices = hl_get_device_count();
+    convMem.resize(numDevices);
+  }
+
+  int devId = hl_get_device();
+  MemoryHandle** localMem = &(convMem[devId]);
+  if (NULL == *localMem || size > (*localMem)->getAllocSize()) {
+    *localMem = new GpuMemoryHandle(size);
+  }
+  return (*localMem)->getBuf();
 }
 
 ConvProjection::~ConvProjection() {

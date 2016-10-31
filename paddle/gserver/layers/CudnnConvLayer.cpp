@@ -27,6 +27,7 @@ bool CudnnConvLayer::init(const LayerMap &layerMap,
 
   CHECK_EQ(inputLayers_.size(), parameters_.size());
   projections_.reserve(inputLayers_.size());
+  projConf_.reserve(inputLayers_.size());
 
   numFilters_ = config_.num_filters();
   CHECK(config_.shared_biases());
@@ -100,7 +101,7 @@ void CudnnConvLayer::backward(const UpdateCallback &callback) {
 }
 
 CudnnConvLayer::~CudnnConvLayer() {
-  if (biases_.get()) {
+  if (biases_) {
     hl_destroy_tensor_descriptor(biasDesc_);
     hl_destroy_tensor_descriptor(outputDesc_);
   }

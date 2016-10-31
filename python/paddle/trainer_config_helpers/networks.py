@@ -895,6 +895,7 @@ def simple_gru2(input,
     """
     simple_gru2 is the same with simple_gru, but using grumemory instead
     Please see grumemory in layers.py for more detail about the maths.
+    simple_gru2 is faster than simple_gru.
 
     The example usage is:
 

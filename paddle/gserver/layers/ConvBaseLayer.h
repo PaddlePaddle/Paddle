@@ -27,7 +27,6 @@ class ConvBaseLayer : public Layer {
 protected:
   typedef std::vector<int> IntV;
 
-
   /// The number of filters.
   int numFilters_;
   /// The x dimension of the padding.
@@ -79,6 +78,12 @@ public:
   explicit ConvBaseLayer(const LayerConfig& config) : Layer(config) {}
 
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+
+  /**
+   * imgSizeH_ and imgSizeW_ will be set according to the previous input layers
+   * in this function. Then it will calculate outputH_ and outputW_ and set them
+   * into output argument.
+   */
   virtual size_t calOutputSize();
 
   Weight& getWeight(int idx) { return *weights_[idx]; }

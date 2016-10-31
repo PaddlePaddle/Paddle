@@ -46,7 +46,7 @@ protected:
     return (imageSize - filterSize + 2 * padding) / stride + 1;
   }
 
-  void calOutputSize() {
+  size_t calOutputSize() {
     imageH_ = in_->getFrameHeight();
     imageW_ = in_->getFrameWidth();
     if (imageH_ == 0) imageH_ = configImgH_;
@@ -59,7 +59,10 @@ protected:
 
     inputOffset_ = (channels_ / groups_) * imageH_ * imageW_;
     outputOffset_ = (numFilters_ / groups_) * outputH_ * outputW_;
+    return outputH_ * outputW_ * numFilters_;
   }
+
+  static void* getSpaceBytes(size_t size);
 
   /// imageH_ and imageW_ is calculated from the input layer.
   int imageH_, imageW_;
@@ -87,13 +90,13 @@ protected:
   /// Cudnn tensor descriptor for a convolution operation.
   hl_convolution_descriptor convDesc_;
 
-  /// Save the algorithm for forward convolution, which is obtained by cudnn
+  /// Record the algorithm for forward convolution, which is obtained by cudnn
   /// api to search the best suited algorithm.
   int fwdAlgo_;
-  /// Save the algorithm for computing convolution gradient with respect to
+  /// Record the algorithm for computing convolution gradient with respect to
   /// filter coefficients.
   int bwdFilterAlgo_;
-  /// Save the algorithm for computing convolution gradient with respect to
+  /// Record the algorithm for computing convolution gradient with respect to
   /// the output.
   int bwdDataAlgo_;
   /// Amount of GPU memory needed as workspace to be able to execute a
@@ -108,15 +111,15 @@ protected:
   /// Size of total work space.
   size_t workSpaceInBytes_;
 
-  /// Is or not select conv algorihtm.
+  /// Whether to call cuDNN api to choose conv algorithm.
   bool isSelectAlgo_;
   /// batchNum is used to record batch size. If the batch size is changed,
   /// the selection algorithm will be called.
   int batchNum_;
-
   bool bias_;
 
   std::unique_ptr<Weight> weight_;
+  static ThreadLocalD<std::vector<MemoryHandle*>> convMem_;
 };
 
 }  // namespace paddle

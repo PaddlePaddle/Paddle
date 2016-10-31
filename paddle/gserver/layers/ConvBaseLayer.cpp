@@ -62,10 +62,14 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
 }
 
 size_t ConvBaseLayer::calOutputSize() {
-  imgSizeH_.clear();
-  imgSizeW_.clear();
-  outputH_.clear();
-  outputW_.clear();
+  auto clearAndReserve = [this](IntV* vec) {
+    vec->clear();
+    vec->reserve(this->inputLayers_.size());
+  };
+  clearAndReserve(&imgSizeH_);
+  clearAndReserve(&imgSizeW_);
+  clearAndReserve(&outputH_);
+  clearAndReserve(&outputW_);
   size_t layerSize = 0;
   for (size_t i = 0; i < inputLayers_.size(); i++) {
     imgSizeH_.push_back(inputLayers_[i]->getOutput().getFrameHeight());

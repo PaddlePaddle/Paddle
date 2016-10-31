@@ -668,9 +668,6 @@ class ConvProjection(Projection):
 
     def calc_parameter_dims(self, input_size, output_size):
         return None
-        # or [self.proj_conf.conv_conf.channels *
-        #     self.proj_conf.conv_conf.filter_size * self.proj_conf.conv_conf.filter_size_y,
-        #     self.config.num_filters]
 
 
 # Define a operator for mixed layer
@@ -2569,17 +2566,12 @@ class MixedLayer(LayerBase):
             record_operator_conf = self.config.operator_confs.add()
             record_operator_conf.CopyFrom(operator_conf)
 
-        shared_biases=None
-
         psize = self.config.size
         if isinstance(self.inputs[0], ConvProjection):
-            shared_biases = True
+            self.config.shared_biases = True
             psize = 0
             for input in self.inputs:
                 psize += input.calc_bias_size()
-
-        if shared_biases is not None:
-            self.config.shared_biases = shared_biases
 
         self.config.bias_size = psize
         self.create_bias_parameter(bias, psize)
@@ -2632,7 +2624,8 @@ class ConcatenateLayer2(LayerBase):
           for input_index in xrange(len(self.inputs) - 1):
               input = self.inputs[input_index + 1]
               config_assert(isinstance(input, ConvProjection),
-                  "All the inputs of ConcatenateLayer2 should be ConvProjection.")
+                  "The first input of ConcatenateLayer2 is ConvProjection, "
+                  "the other inputs should also be ConvProjection.")
 
         size = 0
         for input_index in xrange(len(self.inputs)):
@@ -2659,17 +2652,12 @@ class ConcatenateLayer2(LayerBase):
               input.proj_conf.output_size)
             self.create_input_parameter(input_index, psize, dims)
 
-        shared_biases=None
-
         psize = self.config.size
         if isinstance(self.inputs[0], ConvProjection):
-            shared_biases = True
+            self.config.shared_biases = True
             psize = 0
             for input in self.inputs:
                 psize += input.calc_bias_size()
-
-        if shared_biases is not None:
-            self.config.shared_biases = shared_biases
 
         self.config.bias_size = psize
         self.create_bias_parameter(bias, psize)

@@ -24,19 +24,14 @@ P_DEFINE_bool(feed_data, false, "Wether to read data from DataProvider.");
 
 namespace paddle {
 
-
 void Trainer::time() {
-  srand(config_->getConfig().start_pass() + 1);
-  dataProvider_->reset();
+  startTrain();
 
-  this->stats_->reset();
   trainerInternal_.getParameterUpdater()->startPass();
   evaluator_->start();
 
-  trainerInternal_.getGradientMachine()->start(*config_, dataProvider_);
   DataBatch dataBatch;
   int32_t batchSize = config_->getOptConfig().batch_size();
-
   int32_t num = dataProvider_->getNextBatch(batchSize, &dataBatch);
   CHECK_EQ(num, batchSize) << "The sample number is less than batch size "
                            << num << " != " << batchSize;
@@ -70,7 +65,7 @@ void Trainer::time() {
   globalStat.printSegTimerStatus();
   globalStat.reset();
 
-  trainerInternal_.getGradientMachine()->finish();
+  finishTrain();
 }
 
 }  // namespace paddle

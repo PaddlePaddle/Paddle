@@ -44,9 +44,7 @@ bool MixedLayer::init(const LayerMap& layerMap,
 
   /* initialize biases_ */
   if (biasParameter_.get() != NULL) {
-    if (config_.has_shared_biases()) {
-      sharedBias_ = config_.shared_biases();
-    }
+    sharedBias_ = config_.shared_biases();
     size_t psize = config_.bias_size();
     biases_ = std::unique_ptr<Weight>(
         new Weight(1, psize, biasParameter_));
