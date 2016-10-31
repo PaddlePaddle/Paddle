@@ -40,6 +40,9 @@ option(WITH_TESTING "Compile and run unittest for PaddlePaddle" ${GTEST_FOUND})
 option(WITH_DOC "Compile PaddlePaddle with documentation" OFF)
 option(WITH_SWIG_PY "Compile PaddlePaddle with py PaddlePaddle prediction api" ${SWIG_FOUND})
 option(ON_TRAVIS "Running test on travis-ci or not." OFF)
+option(ON_COVERALLS "Generating code coverage data on coveralls or not." OFF)
+option(COVERALLS_UPLOAD "Uploading the generated coveralls json." ON)
+
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING 
         "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
@@ -54,6 +57,7 @@ include(flags)
 include(cudnn)
 include(FindPythonModule)
 include(check_packages)
+include(coveralls)
 
 # add PaddlePaddle version
 if(DEFINED ENV{PADDLE_VERSION})
