@@ -3,7 +3,7 @@ PaddlePaddle文档
 
 使用指南
 --------
-
+* `介绍 <introduction/index.html>`_
 * `快速入门 <demo/quick_start/index.html>`_
 * `编译与安装 <build_and_install/index.html>`_
 * `用户接口 <ui/index.html>`_
