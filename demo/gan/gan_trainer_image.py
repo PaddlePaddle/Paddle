@@ -197,7 +197,7 @@ def main():
     
     curr_train = "dis"
     curr_strike = 0
-    MAX_strike = 100
+    MAX_strike = 10
      
     for train_pass in xrange(100):
         dis_trainer.startTrainPass()

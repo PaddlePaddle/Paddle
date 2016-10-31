@@ -117,10 +117,12 @@ def generator(noise):
     """
     generator generates a sample given noise
     """
-    param_attr = ParamAttr(is_static=is_discriminator_training)
+    param_attr = ParamAttr(is_static=is_discriminator_training,
+                           initial_mean=0.0,
+                           initial_std=0.02)
     bias_attr = ParamAttr(is_static=is_discriminator_training,
-                           initial_mean=1.0,
-                           initial_std=0)
+                           initial_mean=0.0,
+                           initial_std=0.0)
     
     param_attr_bn=ParamAttr(is_static=is_discriminator_training,
                            initial_mean=1.0,
