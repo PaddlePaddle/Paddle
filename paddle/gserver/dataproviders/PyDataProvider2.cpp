@@ -201,7 +201,7 @@ public:
  * Here, we start a thread to read data. It is totally asynchronous for reading
  * data. And it support cache strategies.
  */
-class PyDataProvider2 : public DataProvider {
+class PyDataProvider2 : public DataProvider, private WaitMethodDone {
 public:
   /**
    * Ctor
@@ -433,26 +433,33 @@ private:
 
   inline void resetImpl(bool startNewThread) {
     DBG << "Reseting " << startNewThread;
+    exit_.store(true);
     if (loadThread_) {  // is loading.
-      exit_.store(true);
       loadThread_->join();
       loadThread_.reset();
     }
     {
       PyGuard g;
       callingContexts_.clear();
+      this->pullCV_.notify_one();
+    }
+    this->waitNotCalling();
+    {
+      PyGuard g;
       dataPool_.clear();
     }
     poolActualSize_ = 0;
-    exit_ = false;
+
     if (startNewThread && cache_->reset()) {
       DBG << "Start new thread.";
       loadThread_.reset(new std::thread([this] {
+        exit_ = false;
         loadThread();
       }));
       callingContextCreated_.wait();
     }
     DBG << "Reset done";
+    exit_ = false;
   }
 
 private:
@@ -529,6 +536,7 @@ public:
    * Loading a batch of data.
    */
   int64_t getNextBatchInternal(int64_t size_, DataBatch *batch) {
+    auto guard = this->guard();
     REGISTER_TIMER("PyDP2.getNextBatchInternal")
     CHECK_GE(size_, 0);
     size_t size = (size_t) size_;
@@ -553,6 +561,10 @@ public:
       poolPtr = &this->dataPool_;
     } else {  // loading from cache.
       poolPtr = this->cache_->load();
+    }
+    if (exit_) {
+      // PyDataProvider is destructing.
+      return 0;
     }
     CHECK(poolPtr != nullptr);
 

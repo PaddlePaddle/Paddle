@@ -240,4 +240,77 @@ protected:
   std::mutex mutex_;
 };
 
+
+/**
+ * @brief Wait Some Method Done.
+ *
+ * It provide a guard when invoke a method, and give the ability to wait calling
+ * some method is done in another thread. The example usage are:
+ *
+ * @code{.cpp}
+ * class A {
+ * private:
+ *   WaitMethodDone done_;
+ * public:
+ *   void foo() {
+ *     auto guard = done_.guard();
+ *     // your code.
+ *   }
+ *
+ *   void clear() {
+ *     done_.waitNotCalling();
+ *     // ensure the foo() is not calling here.
+ *     // do some job.
+ *   }
+ * }
+ * @endcode
+ */
+class WaitMethodDone {
+public:
+  DISABLE_COPY(WaitMethodDone);
+
+  class CallingGuard {
+  public:
+    CallingGuard(const CallingGuard& other) = delete;
+    CallingGuard(CallingGuard&& other) {
+     self_ = other.self_;
+     other.self_ = nullptr;
+    }
+
+    explicit CallingGuard(WaitMethodDone* self): self_(self) {
+      self_->cv_.notify_all([this] {
+        self_->isCalling_ = true;
+      });
+    }
+
+    ~CallingGuard() {
+      if (self_) {
+        self_->cv_.notify_all([this] {
+          self_->isCalling_ = false;
+        });
+      }
+    }
+
+  private:
+    WaitMethodDone* self_;
+  };
+
+  WaitMethodDone(): isCalling_(false) {}
+
+  CallingGuard guard() {
+    return CallingGuard(this);
+  }
+
+  void waitNotCalling() {
+    cv_.wait([this] {
+      return !isCalling_;
+    });
+  }
+
+private:
+  bool isCalling_;
+  LockedCondition cv_;
+  friend class CallingGuard;
+};
+
 }  // namespace paddle
