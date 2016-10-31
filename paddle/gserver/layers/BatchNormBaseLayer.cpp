@@ -68,10 +68,10 @@ void BatchNormBaseLayer::calFeatureMapSize() {
   } else {
     imageH_ = inputLayers_[0]->getOutput().getFrameHeight();
     imageW_ = inputLayers_[0]->getOutput().getFrameWidth();
+    getOutput().setFrameHeight(imageH_);
+    getOutput().setFrameWidth(imageW_);
   }
   imgPixels_ = imageH_ * imageW_;
-  getOutput().setFrameHeight(imageH_);
-  getOutput().setFrameWidth(imageW_);
 }
 
 }  // namespace paddle
