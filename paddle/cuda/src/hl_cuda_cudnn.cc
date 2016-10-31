@@ -340,7 +340,7 @@ void hl_create_tensor_descriptor(hl_tensor_descriptor* image_desc,
         (cudnn_tensor_descriptor)malloc(sizeof(_cudnn_tensor_descriptor));
     CHECK_NOTNULL(hl_desc);
 
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
     cudnnDataType_t data_type = CUDNN_DATA_FLOAT;
 #else
     cudnnDataType_t data_type = CUDNN_DATA_DOUBLE;
@@ -373,7 +373,7 @@ void hl_create_tensor_descriptor(hl_tensor_descriptor* image_desc) {
         (cudnn_tensor_descriptor)malloc(sizeof(_cudnn_tensor_descriptor));
     CHECK_NOTNULL(hl_desc);
 
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
     cudnnDataType_t data_type = CUDNN_DATA_FLOAT;
 #else
     cudnnDataType_t data_type = CUDNN_DATA_DOUBLE;
@@ -611,7 +611,7 @@ void hl_create_filter_descriptor(hl_filter_descriptor* filter,
 
     CHECK_CUDNN(dynload::cudnnCreateFilterDescriptor(&hl_filter->desc));
 
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
     cudnnDataType_t data_type = CUDNN_DATA_FLOAT;
 #else
     cudnnDataType_t data_type = CUDNN_DATA_DOUBLE;
@@ -921,7 +921,7 @@ void hl_softmax_forward(real *input,
                         int height,
                         int width)
 {
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
     cudnnDataType_t data_type = CUDNN_DATA_FLOAT;
 #else
     cudnnDataType_t data_type = CUDNN_DATA_DOUBLE;
@@ -955,7 +955,7 @@ void hl_softmax_backward(real *output_value,
                          int height,
                          int width)
 {
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
     cudnnDataType_t data_type = CUDNN_DATA_FLOAT;
 #else
     cudnnDataType_t data_type = CUDNN_DATA_DOUBLE;

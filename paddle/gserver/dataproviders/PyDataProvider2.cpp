@@ -14,13 +14,20 @@ limitations under the License. */
 
 #ifndef PADDLE_NO_PYTHON
 
+#include <Python.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unordered_set>
 #include <list>
+#include <numpy/numpyconfig.h>
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include <numpy/ndarrayobject.h>
 
 #include "DataProvider.h"
+
 #include "paddle/utils/PythonUtil.h"
+#include "paddle/utils/Locks.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 
@@ -202,7 +209,10 @@ public:
   PyDataProvider2(const DataConfig& config,
                   const ModelConfig& modelConfig,
                   bool useGpu)
-    :DataProvider(config, useGpu), callingContextCreated_(2) {
+    :DataProvider(config, useGpu),
+      callingContextCreated_(2) {
+    if (PyArray_API == NULL)
+      import_array();
     auto& args = config.load_data_args();
     PyObjectPtr kwargs = PyObjectPtr(PyDict_New());
     if (!args.empty()) {
@@ -246,8 +256,7 @@ private:
                        PyObjectPtr && kwargs) {
     LOG(INFO) << "loading dataprovider " << model <<"::" << className;
 
-    PyObjectPtr module(PyImport_ImportModule(model.c_str()));
-    CHECK_PY(module) << "Cannot imort module " << model.c_str();
+    PyObjectPtr module = py::import(model);
     PyObjectPtr moduleDict(PyModule_GetDict(module.get()));
     CHECK_PY(moduleDict) << "Invoke module.__dict__ error";
     PyObjectPtr cls(PyDict_GetItemString(moduleDict.get(),
@@ -455,6 +464,7 @@ private:
   std::condition_variable pushCV_;
   std::condition_variable pullCV_;
   std::mutex mtx_;
+
   ThreadBarrier callingContextCreated_;
   std::unique_ptr<IPyDataProviderCache> cache_;
 
@@ -497,8 +507,8 @@ public:
    * Resetting the PyDataProvider. May start reading thread here.
    */
   virtual void reset() {
-    DataProvider::reset();
     resetImpl(true);
+    DataProvider::reset();
   }
 
   /**
@@ -519,6 +529,7 @@ public:
    * Loading a batch of data.
    */
   int64_t getNextBatchInternal(int64_t size_, DataBatch *batch) {
+    REGISTER_TIMER("PyDP2.getNextBatchInternal")
     CHECK_GE(size_, 0);
     size_t size = (size_t) size_;
     if (loadThread_) {  // loading from thread should wait for data pool ready.
@@ -699,10 +710,22 @@ public:
    */
   virtual void fill(Argument &argument, PyObject *obj) {
     real* dat = argument.value->getData() + height_ * headerPtr_->dim;
-    py::SequenceHelper s(obj);
-    // TODO(yuyang18): Here we can use AVX or SSE to accelerate memory copy.
-    for (size_t i=0; i < headerPtr_->dim; ++i) {
-      dat[i] = (real) s.getDouble(i);
+    if (PyArray_Check(obj)) {
+        auto dtype = PyArray_DTYPE((PyArrayObject*)obj);
+        if (dtype->type == 'f' && dtype->elsize == sizeof(real)) {
+            real * data = (real*)PyArray_DATA((PyArrayObject*)obj);
+            auto sz = PyArray_SIZE((PyArrayObject*)obj);
+            std::copy(data, data + sz, dat);
+        } else {
+            LOG(FATAL) << "You should yield float" << sizeof(real) * 8
+                       << " array";
+        }
+     } else {
+        py::SequenceHelper s(obj);
+        // TODO(yuyang18): Here we can use AVX or SSE to accelerate memory copy.
+        for (size_t i=0; i < headerPtr_->dim; ++i) {
+          dat[i] = (real) s.getDouble(i);
+        }
     }
     ++height_;
   }

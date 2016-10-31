@@ -143,7 +143,7 @@ extern void hl_context_projection_backward_weight(real* outputGrad,
  */
 extern void hl_sequence2batch_copy(real *batch,
                                    real *sequence,
-                                   int *batchIndex,
+                                   const int *batchIndex,
                                    int seqWidth,
                                    int batchCount,
                                    bool seq2batch);

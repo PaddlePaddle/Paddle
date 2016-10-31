@@ -21,14 +21,18 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * Noise-contrastive estimation
+ * Noise-contrastive estimation.
  * Implements the method in the following paper:
- * A fast and simple algorithm for training neural probabilistic language models
+ * A fast and simple algorithm for training neural probabilistic language models.
+ *
+ * The config file api is nce_layer.
  */
 class NCELayer : public Layer {
   int numClasses_;
-  int numInputs_;  // number of input layer besides labelLayer and weightLayer
+  /// number of input layer besides labelLayer and weightLayer
+  int numInputs_;
   LayerPtr labelLayer_;
+  /// weight layer, can be None
   LayerPtr weightLayer_;
   WeightList weights_;
   std::unique_ptr<Weight> biases_;
@@ -43,7 +47,8 @@ class NCELayer : public Layer {
     real weight;
   };
   std::vector<Sample> samples_;
-  bool prepared_;  // whether samples_ is prepared
+  /// whether samples_ is prepared
+  bool prepared_;
   Argument sampleOut_;
 
   IVectorPtr labelIds_;

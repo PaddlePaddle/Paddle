@@ -307,6 +307,24 @@ TEST(Layer, blockExpandLayer) {
   }
 }
 
+TEST(Layer, maxoutLayer) {
+  TestConfig config;
+  config.biasSize = 0;
+  config.layerConfig.set_type("maxout");
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 4096, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  MaxOutConfig* maxout = input->mutable_maxout_conf();
+
+  maxout->set_img_size_x(32);
+  maxout->set_img_size_y(32);
+  maxout->set_channels(4);
+  maxout->set_groups(2);
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "maxout", 10, false, useGpu);
+  }
+}
 void testFcLayer(string format, size_t nnz) {
   TestConfig config;
   config.biasSize = 4096;
