@@ -40,6 +40,11 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 # CMake list format.
 string(REGEX REPLACE "\\*" ";" COVERAGE_SRCS ${COVERAGE_SRCS})
 
+find_program(GCOV_EXECUTABLE gcov)
+if (NOT GCOV_EXECUTABLE)
+	message(FATAL_ERROR "gcov not found! Aborting...")
+endif()
+
 find_package(Git)
 
 # TODO: Add these git things to the coveralls json.
@@ -104,7 +109,7 @@ endmacro()
 ##############################################################################
 
 # Get the coverage data.
-file(GLOB_RECURSE GCDA_FILES "${COV_PATH}/*.gcda")
+file(GLOB_RECURSE GCDA_FILES "${COV_PATH}" "*.gcda")
 message("GCDA files:")
 
 # Get a list of all the object directories needed by gcov
@@ -131,12 +136,12 @@ foreach(GCDA ${GCDA_FILES})
 	#
 	execute_process(
 		COMMAND ${GCOV_EXECUTABLE} -p -o ${GCDA_DIR} ${GCDA}
-		WORKING_DIRECTORY ${COV_PATH}
+		WORKING_DIRECTORY ${GCDA_DIR}
 	)
 endforeach()
 
 # TODO: Make these be absolute path
-file(GLOB ALL_GCOV_FILES ${COV_PATH}/*.gcov)
+file(GLOB_RECURSE ALL_GCOV_FILES "${COV_PATH}" "*.gcov")
 
 # Get only the filenames to use for filtering.
 #set(COVERAGE_SRCS_NAMES "")

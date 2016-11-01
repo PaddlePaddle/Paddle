@@ -8,10 +8,6 @@ function(code_coverage _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
     # clean previous gcov data.
     file(REMOVE_RECURSE ${PROJECT_BINARY_DIR}/*.gcda)
 
-    find_program(GCOV_EXECUTABLE gcov)
-    if (NOT GCOV_EXECUTABLE)
-	    message(FATAL_ERROR "gcov not found! Aborting...")
-    endif()
     # find curl for upload JSON soon.
     if (_COVERALLS_UPLOAD)
         find_program(CURL_EXECUTABLE curl)
