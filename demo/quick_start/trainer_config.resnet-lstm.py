@@ -49,12 +49,16 @@ bias_attr = ParamAttr(initial_std=0.,l2_rate=0.)
 data = data_layer(name="word", size=len(word_dict))
 emb = embedding_layer(input=data, size=128)
 lstm = simple_lstm(input=emb, size=128, lstm_cell_attr=ExtraAttr(drop_rate=0.1))
+# The first element in the queue is the residuals.
+# The second element is the output from previous layer.
 memory = deque([emb, lstm])
 
 for i in range(8):
+    # For the current layer, we feed the previous layer, i.e. memory[-1]
+    # and add the residuals to it using the addto_layer().
     memory.append(simple_lstm(
                     input=addto_layer(input=[memory[-1], memory.popleft()]),
-                     size=128, lstm_cell_attr=ExtraAttr(drop_rate=0.1)))
+                    size=128, lstm_cell_attr=ExtraAttr(drop_rate=0.1)))
 
 lstm = memory.pop()
 memory.clear()
