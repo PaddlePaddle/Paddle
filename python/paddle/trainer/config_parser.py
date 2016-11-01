@@ -216,6 +216,10 @@ def Inputs(*args):
         if g_current_submodel is g_root_submodel:
             g_config.model_config.input_layer_names.append(name)
 
+@config_func
+def HasInputsSet():
+    return len(g_config.model_config.input_layer_names) != 0
+
 
 # Define the name of the output layers of the NeuralNetwork.
 # Usually the output is simply the cost layer.
@@ -465,6 +469,7 @@ class Input(Cfg):
             pool=None,
             image=None,
             block_expand=None,
+            maxout=None,
             format=None,
             nnz=None,
             is_static=None,
@@ -781,6 +786,16 @@ class BlockExpand(Cfg):
             output_y = 0):
         self.add_keys(locals())
 
+@config_class
+class MaxOut(Cfg):
+    def __init__(
+            self,
+            channels,
+            groups,
+            img_size_x = 0,
+            img_size_y = 0):
+        self.add_keys(locals())
+
 def DataBase(async_load_data=False,
              constant_slots=None,
              data_ratio=1,
@@ -1078,6 +1093,12 @@ def parse_block_expand(block_expand, input_layer_name, block_expand_conf):
             int(math.ceil((2 * block_expand.padding_y + block_expand.img_size_y \
             - block_expand.block_y) / float(block_expand.stride_y)))
 
+def parse_maxout(maxout, input_layer_name, maxout_conf):
+    maxout_conf.channels = maxout.channels
+    maxout_conf.groups = maxout.groups
+    maxout_conf.img_size_x = maxout.img_size_x
+    maxout_conf.img_size_y = maxout.img_size_y
+    
 # Define an evaluator
 @config_func
 def Evaluator(
@@ -1701,6 +1722,21 @@ class BlockExpandLayer(LayerBase):
             self.set_layer_size(block_expand_conf.block_x * block_expand_conf.block_y
                 * block_expand_conf.channels)
 
+@config_layer('maxout')
+class MaxOutLayer(LayerBase):
+    def __init__(
+            self,
+            name,
+            inputs,
+            **xargs):
+        super(MaxOutLayer, self).__init__(name, 'maxout', 0, inputs=inputs, **xargs)
+        input_layer = self.get_input_layer(0)
+        parse_maxout(self.inputs[0].maxout,
+                     input_layer.name,
+                     self.config.inputs[0].maxout_conf)
+        maxout_conf = self.config.inputs[0].maxout_conf
+        self.set_layer_size(g_layer_map[input_layer.name].size / maxout_conf.groups)
+            
 # key: cost type
 # value: cost class
 g_cost_map = {}
@@ -1715,7 +1751,6 @@ def define_cost(class_name, cost_type):
     g_cost_map[cost_type] = cls
 
 define_cost('MultiClassCrossEntropy', 'multi-class-cross-entropy')
-define_cost('ClassificationErrorLayer', 'classification_error')
 define_cost('RankingCost', 'rank-cost')
 define_cost('AucValidation', 'auc-validation')
 define_cost('PnpairValidation', 'pnpair-validation')

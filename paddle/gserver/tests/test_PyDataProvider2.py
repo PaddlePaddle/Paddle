@@ -86,7 +86,7 @@ def test_can_over_batch_size(setting, filename):
         yield [random.randint(0, 100 - 1) for _ in xrange(seq_len)]
 
 
-@provider(input_types=[index_slot(10), index_slot(10)])
+@provider(input_types={'input1':index_slot(10), 'input2': index_slot(10)})
 def test_input_order(setting, filename):
     for _ in xrange(1000):
         yield {

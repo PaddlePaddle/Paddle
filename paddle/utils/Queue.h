@@ -135,6 +135,21 @@ public:
     queueCV_.wait(lock, [this]() { return numElements_ == 0; });
   }
 
+  /**
+   * @brief wait queue is not empty at most for some seconds.
+   * @param seconds wait time limit.
+   * @return true if queue is not empty. false if timeout.
+   */
+  bool waitNotEmptyFor(int seconds) {
+    std::unique_lock<std::mutex> lock(queueLock_);
+    return queueCV_.wait_for(
+          lock,
+          std::chrono::seconds(seconds),
+          [this] {
+      return numElements_ != 0;
+    });
+  }
+
 private:
   std::deque<T> elements_;
   int numElements_;

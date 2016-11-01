@@ -47,7 +47,7 @@ void hl_matrix_add(real *A_d,
   CHECK_SYNC("hl_matrix_add failed");
 }
 
-#ifdef HPPL_TYPE_DOUBLE
+#ifdef PADDLE_TYPE_DOUBLE
     #define THRESHOLD   128
 #else
     #define THRESHOLD   64
@@ -102,7 +102,7 @@ void subMaxAndExp(real* I,
       val = -THRESHOLD;
     }
     I[nextIdx] = val;
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
     O[nextIdx] = __expf(val);
 #else
     O[nextIdx] = exp(val);

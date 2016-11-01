@@ -374,7 +374,7 @@ template<int blockDimX, int blockDimY, int gridDimX, bool seq2batch, bool isAdd>
 __global__
 void KeSequence2Batch(real *batch,
                       real *sequence,
-                      int *batchIndex,
+                      const int *batchIndex,
                       int seqWidth,
                       int batchCount) {
   int idx = threadIdx.x;
@@ -405,7 +405,7 @@ void KeSequence2Batch(real *batch,
 
 void hl_sequence2batch_copy(real *batch,
                             real *sequence,
-                            int *batchIndex,
+                            const int *batchIndex,
                             int seqWidth,
                             int batchCount,
                             bool seq2batch) {
