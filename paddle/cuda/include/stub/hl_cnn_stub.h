@@ -44,7 +44,8 @@ inline void hl_maxpool_forward(
     const int pooledH, const int pooledW,
     const int sizeX, const int sizeY,
     const int strideH, const int strideW,
-    const int paddingH, const int paddingW, real* tgtData) {}
+    const int paddingH, const int paddingW,
+    real* tgtData, const int tgtStride) {}
 
 inline void hl_maxpool_backward(
     const int frameCnt, const real* inputData,
@@ -56,7 +57,7 @@ inline void hl_maxpool_backward(
     const int strideH, const int strideW,
     const int paddingH, const int paddingW,
     real scaleA, real scaleB,
-    real* targetGrad) {}
+    real* targetGrad, const int outStride) {}
 
 inline void hl_avgpool_forward(
     const int frameCnt, const real* inputData,
@@ -65,7 +66,8 @@ inline void hl_avgpool_forward(
     const int pooledH, const int pooledW,
     const int sizeX, const int sizeY,
     const int strideH, const int strideW,
-    const int paddingH, const int paddingW, real* tgtData) {}
+    const int paddingH, const int paddingW,
+    real* tgtData, const int tgtStride) {}
 
 inline void hl_avgpool_backward(
     const int frameCnt, const real* outGrad,
@@ -76,7 +78,7 @@ inline void hl_avgpool_backward(
     const int strideH, const int strideW,
     int paddingH, int paddingW,
     real scaleA, real scaleB,
-    real* backGrad) {}
+    real* backGrad, const int outStride) {}
 
 inline void hl_CMRNorm_forward(
     size_t frameCnt, const real* in, real* scale, real* out,

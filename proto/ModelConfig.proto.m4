@@ -120,6 +120,14 @@ message PoolConfig {
   optional uint32 padding_y = 13 [default = 0];
 }
 
+message SppConfig {
+  required string pool_type = 1;
+  required uint32 pyramid_height = 2;
+  required uint32 channels = 3;
+  required uint32 img_size = 4;
+  optional uint32 img_size_y = 5;
+}
+
 message NormConfig {
   // rnorm or cmrnorm
   required string norm_type = 1;
@@ -194,6 +202,9 @@ message ProjectionConfig {
   optional ConvConfig conv_conf = 8;
   optional int32 num_filters = 9;
 
+  // For pool
+  optional PoolConfig pool_conf = 10;
+
   // For IdentityOffsetProjection
   optional uint64 offset = 11 [default = 0];
 }
@@ -235,6 +246,7 @@ message LayerInputConfig {
   // Set the argument name.
   optional string input_layer_argument = 9;
   optional MaxOutConfig maxout_conf = 10;
+  optional SppConfig spp_conf = 11;
 }
 
 message LayerConfig {

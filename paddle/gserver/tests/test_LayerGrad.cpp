@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <string>
-#include "paddle/gserver/layers/DataLayer.h"
+#include <vector>
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/trainer/Trainer.h"
 
-#include "TestUtil.h"
 #include "LayerGradUtil.h"
+#include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -878,6 +878,32 @@ TEST(Layer, PoolLayer) {
   testPoolLayer2("cudnn-max-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
 #endif
+}
+
+void testSppLayer(const string& poolType, const int pyramidHeight, bool trans,
+                  bool useGpu) {
+  TestConfig config;
+  config.layerConfig.set_type("spp");
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 3200, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  SppConfig* sppConfig = input->mutable_spp_conf();
+  sppConfig->set_pool_type(poolType);
+  sppConfig->set_pyramid_height(pyramidHeight);
+  sppConfig->set_channels(16);
+  sppConfig->set_img_size(10);
+  sppConfig->set_img_size_y(20);
+  testLayerGrad(config, "spp", 100, trans, useGpu);
+}
+
+TEST(Layer, SpatialPyramidPoolLayer) {
+  for (auto useGpu : {false, true}) {
+    testSppLayer("avg", 1, false, useGpu);
+    testSppLayer("avg", 3, false, useGpu);
+    testSppLayer("avg", 5, false, useGpu);
+    testSppLayer("max", 1, false, useGpu);
+    testSppLayer("max", 3, false, useGpu);
+    testSppLayer("avg", 5, false, useGpu);
+  }
 }
 
 TEST(Layer, rankCostLayer) {

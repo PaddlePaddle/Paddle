@@ -91,6 +91,7 @@ extern void hl_expand_feature2col(
  * @param[in]   paddingH    padding height.
  * @param[in]   paddingW    padding width.
  * @param[out]  tgtData     output data.
+ * @param[in]   tgtStride   output data stride.
  *
  */
 extern void hl_maxpool_forward(
@@ -100,7 +101,8 @@ extern void hl_maxpool_forward(
     const int pooledH, const int pooledW,
     const int sizeX, const int sizeY,
     const int strideH, const int strideW,
-    const int paddingH, const int paddingW, real* tgtData);
+    const int paddingH, const int paddingW,
+    real* tgtData, const int tgtStride);
 
 /**
  * @brief   Maximum pool backward.
@@ -123,6 +125,7 @@ extern void hl_maxpool_forward(
  * @param[in]   paddingH    padding height.
  * @param[in]   paddingW    padding width.
  * @param[out]  targetGrad  output grad.
+ * @param[in]   outStride   output grad data stride. 
  *
  */
 extern void hl_maxpool_backward(
@@ -135,7 +138,7 @@ extern void hl_maxpool_backward(
     const int strideH, const int strideW,
     const int paddingH, const int paddingW,
     real scaleA, real scaleB,
-    real* targetGrad);
+    real* targetGrad, const int outStride);
 
 /**
  * @brief   Averge pool forward.
@@ -154,6 +157,7 @@ extern void hl_maxpool_backward(
  * @param[in]   paddingH    padding height.
  * @param[in]   paddingW    padding width.
  * @param[out]  tgtData     output data.
+ * @param[in]   tgtStride   output data stride.
  *
  */
 extern void hl_avgpool_forward(
@@ -163,7 +167,8 @@ extern void hl_avgpool_forward(
     const int pooledH, const int pooledW,
     const int sizeX, const int sizeY,
     const int strideH, const int strideW,
-    const int paddingH, const int paddingW, real* tgtData);
+    const int paddingH, const int paddingW,
+    real* tgtData, const int tgtStride);
 
 /**
  * @brief   Maximum pool backward.
@@ -184,6 +189,7 @@ extern void hl_avgpool_forward(
  * @param[in]   scaleA      scale.
  * @param[in]   scaleB      scale.
  * @param[out]  backGrad    output grad.
+ * @param[in]   outStride   output grad data stride. 
  *
  */
 extern void hl_avgpool_backward(
@@ -195,7 +201,7 @@ extern void hl_avgpool_backward(
     const int strideH, const int strideW,
     int paddingH, int paddingW,
     real scaleA, real scaleB,
-    real* backGrad);
+    real* backGrad, const int outStride);
 
 /**
  * @brief   Cross-map-respose normalize forward.
