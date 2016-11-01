@@ -27,11 +27,15 @@ function(code_coverage _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
         set(COVERAGE_SRCS "${COVERAGE_SRCS}*${SINGLE_SRC}")		
     endforeach()
 
+    # query number of logical cores
+    cmake_host_system_information(RESULT core_size QUERY NUMBER_OF_LOGICAL_CORES)
     # coveralls json file.
 	set(COVERALLS_FILE ${PROJECT_BINARY_DIR}/coveralls.json)
  	add_custom_target(coveralls_generate
         # Run regress tests.
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+        COMMAND ${CMAKE_CTEST_COMMAND}
+                -j ${core_size}
+                --output-on-failure
         # Generate Gcov and translate it into coveralls JSON.
         COMMAND ${CMAKE_COMMAND}
                 -DCOVERAGE_SRCS="${COVERAGE_SRCS}"
