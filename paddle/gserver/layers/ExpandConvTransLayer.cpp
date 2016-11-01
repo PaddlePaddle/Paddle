@@ -29,18 +29,7 @@ REGISTER_LAYER(exconvt, ExpandConvTransLayer);
 bool ExpandConvTransLayer::init(const LayerMap &layerMap,
                            const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
-  ConvBaseLayer::init(layerMap, parameterMap);
-
-  /* Initialize the projection */
-  for (auto &inputConfig : config_.inputs()) {
-    const ConvConfig &conf = inputConfig.conv_conf();
-    subM_.push_back(conf.channels() / conf.groups());
-    subN_.push_back(conf.output_x() * conf.output_x());
-    subK_.push_back(numFilters_ * conf.filter_size() * conf.filter_size() /
-                    conf.groups());
-    /* Consistent caffe mode for multiple input */
-    caffeMode_ = conf.caffe_mode();
-  }
+  ConvBaseLayerCpu::init(layerMap, parameterMap);
 
   return true;
 }
@@ -73,67 +62,6 @@ size_t ExpandConvTransLayer::getSize() {
   return layerSize;
 }
 
-void ExpandConvTransLayer::resetExpandInput(size_t height, size_t width) {
-  Matrix::resizeOrCreate(expandInput_, height, width, false, useGpu_);
-}
-
-/*void ExpandConvTransLayer::resetConvOutput(size_t batchSize, int inIdx) {
-  Matrix::resizeOrCreate(transOutValue_, batchSize * numFilters_, subN_[inIdx],
-                         false, useGpu_);
-}*/
-
-
-
-void ExpandConvTransLayer::expandOneFrame(MatrixPtr image, size_t startIdx,
-                                     int inIdx) {
-  resetExpandInput(subK_[inIdx] * groups_[inIdx], subN_[inIdx]);
-  real *imgData = image->getData() + startIdx * image->getWidth();
-  MatrixPtr imageTmp = Matrix::create(
-      imgData, 1, imgSizeH_[inIdx] * imgSizeW_[inIdx] * channel_, false,
-      useGpu_);
-  expandInput_->convExpand(*imageTmp, imgSizeH_[inIdx], imgSizeW_[inIdx],
-                           channel_, filterSize_[inIdx],
-                           filterSize_[inIdx], stride_[inIdx], stride_[inIdx],
-                           padding_[inIdx], padding_[inIdx],
-                           outputH_[inIdx], outputW_[inIdx]);
-  imageTmp->clear();
-}
-
-void ExpandConvTransLayer::expandBackOnce(MatrixPtr imageGrad, int inIdx,
-                                        int startIdx) {
-  int subM = subM_[inIdx];
-  int subN = subN_[inIdx];
-  int subK = subK_[inIdx];
-
-  LayerPtr prevLayer = getPrev(inIdx);
-  if (NULL == prevLayer->getOutputGrad()) {
-    return;
-  }
-
-  expandOneFrame(imageGrad, startIdx, inIdx);
-
-  real *outGradData =
-      prevLayer -> getOutputGrad()->getData()
-                  + startIdx * subN * numFilters_[inIdx];
-
-  real *wgtData = weights_[inIdx]->getW()->getData();
-  real *expInData = expandInput_->getData();
-  for (int g = 0; g < groups_[inIdx]; ++g) {
-    MatrixPtr A =
-        Matrix::create(wgtData, subK, subM, true, useGpu_);  // mark transpose
-    MatrixPtr B = Matrix::create(expInData, subK, subN, false, useGpu_);
-    MatrixPtr C = Matrix::create(outGradData, subM, subN, false, useGpu_);
-    C->mul(A, B, 1, 1);
-
-    A->clear();
-    B->clear();
-    C->clear();
-    wgtData += subK * subM;
-    expInData += subK * subN;
-    outGradData += subM * subN;
-  }
-}
-
 void ExpandConvTransLayer::forward(PassType passType) {
   Layer::forward(passType);
 
@@ -148,7 +76,7 @@ void ExpandConvTransLayer::forward(PassType passType) {
     LayerPtr prevLayer = getPrev(i);
     output = prevLayer->getOutputValue();
     REGISTER_TIMER_INFO("shrinkFwd", getName().c_str());
-    shrinkFwd(output, i);
+    bpropActs(output, getOutputValue(), i);
   }
 
   /* add the bias-vector */
@@ -164,84 +92,6 @@ void ExpandConvTransLayer::forward(PassType passType) {
   forwardActivation();
 }
 
-void ExpandConvTransLayer::shrinkFwd(MatrixPtr output, int inpIdx) {
-  int subM = subM_[inpIdx];
-  int subN = subN_[inpIdx];
-  int subK = subK_[inpIdx];
-
-  size_t batchSize = output->getHeight();
-  MatrixPtr image = getOutputValue();
-
-  /* reset the expand-grad memory */
-  resetExpandInput(subK * groups_[inpIdx], subN);
-
-  real *localData = output->getData();
-  real *imageData = image->getData();
-  for (size_t n = 0; n < batchSize; n++) {
-    real *wgtData = weights_[inpIdx]->getW()->getData();
-    real *expandInData = expandInput_->getData();
-
-    for (int g = 0; g < groups_[inpIdx]; g++) {
-      // create temporary matrix
-      MatrixPtr C = Matrix::create(expandInData, subK, subN, false, useGpu_);
-      MatrixPtr B = Matrix::create(localData, subM, subN, false, useGpu_);
-      MatrixPtr A = Matrix::create(wgtData, subK, subM, false, useGpu_);
-      C->mul(A, B);  // mul
-
-      // clear the temporary matrix
-      A->clear();
-      B->clear();
-      C->clear();
-
-      expandInData += subK * subN;
-      localData += subM * subN;
-      wgtData += subK * subM;
-    }
-
-    // shrink one frame outGrad
-    MatrixPtr oneTmp = Matrix::create(
-        expandInput_->getData(), subK * groups_[inpIdx], subN, false, useGpu_);
-    MatrixPtr vTmp = Matrix::create(
-        imageData, 1,
-        imgSizeH_[inpIdx] * imgSizeW_[inpIdx] * channel_, false,
-        useGpu_);
-    vTmp->convShrink(*oneTmp, imgSizeH_[inpIdx], imgSizeW_[inpIdx],
-                     channel_, filterSize_[inpIdx],
-                     filterSize_[inpIdx], stride_[inpIdx], stride_[inpIdx],
-                     padding_[inpIdx], padding_[inpIdx],
-                     outputH_[inpIdx], outputW_[inpIdx], 1.0f, 1.0f);
-    vTmp->clear();
-    oneTmp->clear();
-
-    // move the data-pointer
-    imageData += imgSizeH_[inpIdx] * imgSizeW_[inpIdx] * channel_;
-  }
-}
-
-void ExpandConvTransLayer::bpropSharedBias(MatrixPtr biases, MatrixPtr v) {
-  size_t mapW = getSize() / channel_;
-  size_t mapH = v->getElementCnt() / mapW;
-  MatrixPtr vTmp = Matrix::create(v->getData(), mapH, mapW, false, useGpu_);
-
-  Matrix::resizeOrCreate(transOutValue_, mapW, mapH, false, useGpu_);
-
-  vTmp->transpose(transOutValue_, false);  // false means no memory allocation
-  vTmp->reshape(transOutValue_->getElementCnt() / channel_, channel_);
-  biases->collectBias(*vTmp, 1.0f);
-}
-
-void ExpandConvTransLayer::bpropBiases(MatrixPtr v) {
-  MatrixPtr biases =
-      Matrix::create(biases_->getWGrad()->getData(), 1,
-                     biases_->getWGrad()->getElementCnt(), false, useGpu_);
-  if (sharedBiases_) {
-    bpropSharedBias(biases, v);
-  } else {
-    biases->collectBias(*v, 1.0f);
-  }
-  biases->clear();
-}
-
 void ExpandConvTransLayer::backward(const UpdateCallback &callback) {
   backwardActivation();
 
@@ -255,48 +105,15 @@ void ExpandConvTransLayer::backward(const UpdateCallback &callback) {
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
     /* First, calculate the input layers error */
     for (size_t off = 0; off < imageGrad->getHeight(); off++) {
-        expandBackOnce(imageGrad, i, off);
+      if (NULL != getPrev(i)->getOutputGrad()) {
+        expandFwdOnce(imageGrad, getPrev(i)->getOutputGrad(), i, off);
+      }
     }
     if (weights_[i]->getWGrad()) {
       /* Then, calculate the W-gradient for the current layer */
-      bpropWeights(imageGrad, i);
+      bpropWeights(imageGrad, getPrev(i)->getOutputValue(), i);
       /* Increasing the number of gradient */
       weights_[i]->getParameterPtr()->incUpdate(callback);
-    }
-  }
-}
-
-void ExpandConvTransLayer::bpropWeights(MatrixPtr v, int inpIdx) {
-  MatrixPtr weightGrad = weights_[inpIdx]->getWGrad();
-  MatrixPtr outputV = getPrev(inpIdx)->getOutputValue();
-
-  int subM = subM_[inpIdx];
-  int subN = subN_[inpIdx];
-  int subK = subK_[inpIdx];
-  size_t batchSize = outputV->getHeight();
-  resetExpandInput(subK * groups_[inpIdx], subN);
-
-  real *outputData = outputV -> getData();
-
-  for (size_t n = 0; n < batchSize; n++) {  // frame by frame
-    // expand
-    expandOneFrame(v, n, inpIdx);
-    real *wGradData = weightGrad->getData();
-    real *expandInData = expandInput_->getData();
-
-    // expand-mul one-group by one
-    for (int g = 0; g < groups_[inpIdx]; g++) {
-      MatrixPtr A = Matrix::create(expandInData, subK, subN, false, useGpu_);
-      MatrixPtr B = Matrix::create(outputData, subM, subN, true, useGpu_);
-      MatrixPtr C = Matrix::create(wGradData, subK, subM, false, useGpu_);
-      C->mul(A, B, 1, 1);
-
-      A->clear();
-      B->clear();
-      C->clear();
-      outputData += subM * subN;
-      wGradData += subK * subM;
-      expandInData += subK * subN;
     }
   }
 }

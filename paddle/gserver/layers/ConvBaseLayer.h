@@ -78,12 +78,7 @@ protected:
   /// of output size.
   bool caffeMode_;
 
-  /*The expandInput_ and transOutValue_ are used for CPU expand conv calc*/
-  /// Expand one sample at a time. shape:
-  /// (numChannels * filterPixels_, outputSizeH * outputSizeW)
-  MatrixPtr expandInput_;
-  /// The transpose of output, which is an auxiliary matrix.
-  MatrixPtr transOutValue_;
+
 
 public:
   explicit ConvBaseLayer(const LayerConfig& config) : Layer(config) {}
@@ -135,26 +130,6 @@ public:
     CHECK_GE(imageSize, 1);
     return imageSize;
   }
-
-  /**
-   * Create or resize expandInput_.
-   */
-  void resetExpandInput(size_t height, size_t width);
-
-  /**
-   * Create or resize transOutValue_.
-   */
-  void resetConvOutput(size_t batchSize, int inIdx);
-
-  /**
-   * Add shared bias.
-   */
-  void addSharedBias();
-
-  /**
-   * Add unshared bias.
-   */
-  void addUnsharedBias();
 };
 
 }  // namespace paddle

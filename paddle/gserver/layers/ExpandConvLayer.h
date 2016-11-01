@@ -15,7 +15,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "ConvBaseLayer.h"
+#include "ConvBaseLayerCpu.h"
 #include "paddle/math/Matrix.h"
 #include <vector>
 
@@ -28,24 +28,11 @@ namespace paddle {
  *
  * The config file api is img_conv_layer.
  */
-class ExpandConvLayer : public ConvBaseLayer {
-protected:
-  /// For expand convolution.
-  /// subM_ = numFilters_ / groups_.
-  IntV subM_;
-  /// subN_ = outputH_ * outputW_.
-  IntV subN_;
-  /// subK_ = channels_ * filterPixels_ * groups_.
-  IntV subK_;
-  /// Expand one sample at a time. shape:
-  /// (numChannels * filterPixels_, outputSizeH * outputSizeW)
-  MatrixPtr expandInput_;
-  /// The transpose of output, which is an auxiliary matrix.
-  MatrixPtr transOutValue_;
 
-
+class ExpandConvLayer : public ConvBaseLayerCpu {
 public:
-  explicit ExpandConvLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
+  explicit ExpandConvLayer(const LayerConfig& config) :
+    ConvBaseLayerCpu(config) {}
 
   ~ExpandConvLayer() {}
 
@@ -53,23 +40,8 @@ public:
 
   size_t getOutputSize();
 
-  /**
-   * Expand one input sample.
-   */
-  void expandOneFrame(MatrixPtr image, size_t startIdx, int inIdx);
-
-  /**
-   * Expand one input sample and perform matrix multiplication.
-   */
-  void expandFwdOnce(MatrixPtr image, int inIdx, int startIdx);
-
-
   void forward(PassType passType);
-  void bpropSharedBias(MatrixPtr biases, MatrixPtr v);
-  void bpropBiases(MatrixPtr v);
   void backward(const UpdateCallback& callback);
-  void bpropWeights(MatrixPtr v, int inpIdx);
-  void bpropActs(MatrixPtr v, int inpIdx);
 };
 
 }  // namespace paddle

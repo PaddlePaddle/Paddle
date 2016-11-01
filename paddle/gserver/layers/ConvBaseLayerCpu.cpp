@@ -1,0 +1,241 @@
+/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+
+#include "paddle/utils/Logging.h"
+#include "ConvBaseLayerCpu.h"
+namespace paddle {
+
+bool ConvBaseLayerCpu::init(const LayerMap &layerMap,
+                           const ParameterMap &parameterMap) {
+  /* Initialize the basic convolutional parent class */
+  ConvBaseLayer::init(layerMap, parameterMap);
+
+  int channel;
+  /* Initialize the projection */
+  for (auto &inputConfig : config_.inputs()) {
+    const ConvConfig &conf = inputConfig.conv_conf();
+    subM_.push_back(numFilters_ / conf.groups());
+    subN_.push_back(conf.output_x() * conf.output_x());
+    channel = isConv_ ? conf.channels() : numFilters_;
+    subK_.push_back(channel * conf.filter_size() * conf.filter_size() /
+                    conf.groups());
+    /* Consistent caffe mode for multiple input */
+    caffeMode_ = conf.caffe_mode();
+  }
+
+  return true;
+}
+
+void ConvBaseLayerCpu::resetExpandInput(size_t height, size_t width) {
+  Matrix::resizeOrCreate(expandInput_, height, width, false, useGpu_);
+}
+
+void ConvBaseLayerCpu::addSharedBias() {
+  size_t mapW = getSize() / numFilters_;
+  size_t mapH = getOutputValue()->getElementCnt() / mapW;
+  MatrixPtr out =
+      Matrix::create(getOutputValue()->getData(), mapH, mapW, false, useGpu_);
+
+  Matrix::resizeOrCreate(transOutValue_, mapW, mapH, false, useGpu_);
+
+  out->transpose(transOutValue_, false);  // false means no memory allocation
+  transOutValue_->reshape(transOutValue_->getElementCnt() / numFilters_,
+                          numFilters_);
+
+  MatrixPtr bias =
+      Matrix::create(biases_->getW()->getData(), 1,
+                     biases_->getW()->getElementCnt(), false, useGpu_);
+  transOutValue_->addBias(*bias, 1.0f);
+
+  transOutValue_->reshape(mapW, mapH);
+  transOutValue_->transpose(out, false);  // false means no memory allocation
+
+  out->clear();
+  bias->clear();
+}
+
+void ConvBaseLayerCpu::addUnsharedBias() {
+  MatrixPtr outValue = getOutputValue();
+  MatrixPtr bias =
+      Matrix::create(biases_->getW()->getData(), 1,
+                     biases_->getW()->getElementCnt(), false, useGpu_);
+  outValue->addBias(*bias, 1.0f);
+}
+
+
+void ConvBaseLayerCpu::expandOneFrame(MatrixPtr image, size_t startIdx,
+                                     int inIdx) {
+  int channel = isConv_ ? channels_[inIdx] : numFilters_;
+
+  resetExpandInput(subK_[inIdx] * groups_[inIdx], subN_[inIdx]);
+  real *imgData = image->getData() + startIdx * image->getWidth();
+  MatrixPtr imageTmp = Matrix::create(
+      imgData, 1, imgSizeH_[inIdx] * imgSizeW_[inIdx] * channel, false,
+      useGpu_);
+  expandInput_->convExpand(*imageTmp, imgSizeH_[inIdx], imgSizeW_[inIdx],
+                           channel, filterSize_[inIdx],
+                           filterSize_[inIdx], stride_[inIdx], stride_[inIdx],
+                           padding_[inIdx], padding_[inIdx],
+                           outputH_[inIdx], outputW_[inIdx]);
+  imageTmp->clear();
+}
+
+void ConvBaseLayerCpu::expandFwdOnce(MatrixPtr image, MatrixPtr out,
+                                     int inIdx, int startIdx) {
+  int subM = subM_[inIdx];
+  int subN = subN_[inIdx];
+  int subK = subK_[inIdx];
+
+  expandOneFrame(image, startIdx, inIdx);
+
+  int nf = isConv_ ? numFilters_ : channels_[inIdx];
+
+  real *outData =
+      out->getData() + startIdx * subN * nf;
+
+  real *wgtData = weights_[inIdx]->getW()->getData();
+  real *expInData = expandInput_->getData();
+  for (int g = 0; g < groups_[inIdx]; ++g) {
+    MatrixPtr A =
+        Matrix::create(wgtData, subK, subM, true, useGpu_);  // mark transpose
+    MatrixPtr B = Matrix::create(expInData, subK, subN, false, useGpu_);
+    MatrixPtr C = Matrix::create(outData, subM, subN, false, useGpu_);
+    C->mul(A, B, 1, 1);
+
+    A->clear();
+    B->clear();
+    C->clear();
+    wgtData += subK * subM;
+    expInData += subK * subN;
+    outData += subM * subN;
+  }
+}
+
+void ConvBaseLayerCpu::bpropActs(MatrixPtr image, MatrixPtr out, int inpIdx) {
+  int channel = isConv_ ? channels_[inpIdx] : numFilters_;
+
+  int subM = subM_[inpIdx];
+  int subN = subN_[inpIdx];
+  int subK = subK_[inpIdx];
+  size_t batchSize = image->getHeight();
+  MatrixPtr tgtGrad = out;
+
+  /* reset the expand-grad memory */
+  resetExpandInput(subK * groups_[inpIdx], subN);
+
+  real *localGradData = image->getData();
+  real *tgtGradData = tgtGrad->getData();
+  for (size_t n = 0; n < batchSize; n++) {
+    real *wgtData = weights_[inpIdx]->getW()->getData();
+    real *expandInData = expandInput_->getData();
+
+    for (int g = 0; g < groups_[inpIdx]; g++) {
+      // create temporary matrix
+      MatrixPtr C = Matrix::create(expandInData, subK, subN, false, useGpu_);
+      MatrixPtr B = Matrix::create(localGradData, subM, subN, false, useGpu_);
+      MatrixPtr A = Matrix::create(wgtData, subK, subM, false, useGpu_);
+      C->mul(A, B);  // mul
+
+      // clear the temporary matrix
+      A->clear();
+      B->clear();
+      C->clear();
+
+      expandInData += subK * subN;
+      localGradData += subM * subN;
+      wgtData += subK * subM;
+    }
+
+    // shrink one frame outGrad
+    MatrixPtr oneGradTmp = Matrix::create(
+        expandInput_->getData(), subK * groups_[inpIdx], subN, false, useGpu_);
+    MatrixPtr vTmp = Matrix::create(
+        tgtGradData, 1,
+        imgSizeH_[inpIdx] * imgSizeW_[inpIdx] * channel, false,
+        useGpu_);
+    vTmp->convShrink(*oneGradTmp, imgSizeH_[inpIdx], imgSizeW_[inpIdx],
+                     channel, filterSize_[inpIdx],
+                     filterSize_[inpIdx], stride_[inpIdx], stride_[inpIdx],
+                     padding_[inpIdx], padding_[inpIdx],
+                     outputH_[inpIdx], outputW_[inpIdx], 1.0f, 1.0f);
+    vTmp->clear();
+    oneGradTmp->clear();
+
+    // move the data-pointer
+    tgtGradData += imgSizeH_[inpIdx] * imgSizeW_[inpIdx] * channel;
+  }
+}
+
+void ConvBaseLayerCpu::bpropWeights(MatrixPtr image, MatrixPtr out,
+                                    int inpIdx) {
+  MatrixPtr weightGrad = weights_[inpIdx]->getWGrad();
+
+  int subM = subM_[inpIdx];
+  int subN = subN_[inpIdx];
+  int subK = subK_[inpIdx];
+  size_t batchSize = image->getHeight();
+  resetExpandInput(subK * groups_[inpIdx], subN);
+
+  real *gradData = out->getData();
+
+  for (size_t n = 0; n < batchSize; n++) {  // frame by frame
+    // expand
+    expandOneFrame(image, n, inpIdx);
+    real *wGradData = weightGrad->getData();
+    real *expandInData = expandInput_->getData();
+
+    // expand-mul one-group by one
+    for (int g = 0; g < groups_[inpIdx]; g++) {
+      MatrixPtr A = Matrix::create(expandInData, subK, subN, false, useGpu_);
+      MatrixPtr B = Matrix::create(gradData, subM, subN, true, useGpu_);
+      MatrixPtr C = Matrix::create(wGradData, subK, subM, false, useGpu_);
+      C->mul(A, B, 1, 1);
+
+      A->clear();
+      B->clear();
+      C->clear();
+      gradData += subM * subN;
+      wGradData += subK * subM;
+      expandInData += subK * subN;
+    }
+  }
+}
+
+void ConvBaseLayerCpu::bpropSharedBias(MatrixPtr biases, MatrixPtr v) {
+  size_t mapW = getSize() / numFilters_;
+  size_t mapH = v->getElementCnt() / mapW;
+  MatrixPtr vTmp = Matrix::create(v->getData(), mapH, mapW, false, useGpu_);
+
+  Matrix::resizeOrCreate(transOutValue_, mapW, mapH, false, useGpu_);
+
+  vTmp->transpose(transOutValue_, false);  // false means no memory allocation
+  transOutValue_->reshape(transOutValue_->getElementCnt() / numFilters_,
+                          numFilters_);
+  biases->collectBias(*transOutValue_, 1.0f);
+}
+
+void ConvBaseLayerCpu::bpropBiases(MatrixPtr v) {
+  MatrixPtr biases =
+      Matrix::create(biases_->getWGrad()->getData(), 1,
+                     biases_->getWGrad()->getElementCnt(), false, useGpu_);
+  if (sharedBiases_) {
+    bpropSharedBias(biases, v);
+  } else {
+    biases->collectBias(*v, 1.0f);
+  }
+  biases->clear();
+}
+
+}  // namespace paddle

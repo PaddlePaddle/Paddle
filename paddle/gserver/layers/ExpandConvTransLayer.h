@@ -15,7 +15,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "ConvBaseLayer.h"
+#include "ConvBaseLayerCpu.h"
 #include "paddle/math/Matrix.h"
 #include <vector>
 
@@ -24,32 +24,14 @@ namespace paddle {
 /**
  * @brief A subclass of convolution layer.
  * This layer expands input and use matrix multiplication to
- * calculate convolution operation.
+ * calculate convolution transpose (deconv) operation.
  *
  * The config file api is img_convTrans_layer.
  */
-class ExpandConvTransLayer : public ConvBaseLayer {
-protected:
-  /// For expand convolution.
-  /// subM_ = numFilters_ / groups_.
-  IntV subM_;
-  /// subN_ = outputH_ * outputW_.
-  IntV subN_;
-  /// subK_ = channels_ * filterPixels_ * groups_.
-  IntV subK_;
-  /// The spatial dimensions of height of input feature map.
-  IntV imgSizeH_;
-  /// The spatial dimensions of width of input feature map.
-  IntV imgSizeW_;
-  /// The spatial dimensions of height of output feature map.
-  IntV outputH_;
-  /// The spatial dimensions of width of output feature map.
-  IntV outputW_;
-
-
+class ExpandConvTransLayer : public ConvBaseLayerCpu {
 public:
   explicit ExpandConvTransLayer(const LayerConfig& config) :
-      ConvBaseLayer(config) {}
+    ConvBaseLayerCpu(config) {}
 
   ~ExpandConvTransLayer() {}
 
@@ -57,38 +39,8 @@ public:
 
   size_t getSize();
 
-  /**
-   * Create or resize expandInput_.
-   */
-  void resetExpandInput(size_t height, size_t width);
-
-  /**
-   * Create or resize transOutValue_.
-   */
-  void resetConvOutput(size_t batchSize, int inIdx);
-
-  /**
-   * Expand one input sample.
-   */
-  void expandOneFrame(MatrixPtr image, size_t startIdx, int inIdx);
-
-  /**
-   * Expand one output image and perform matrix multiplication.
-   */
-  void expandBackOnce(MatrixPtr image, int inIdx, int startIdx);
-
-  /**
-   * Perform matrix multiplication on one output and then shrink.
-   */
-  void shrinkFwd(MatrixPtr output, int inpIdx);
-
-
   void forward(PassType passType);
-  void bpropSharedBias(MatrixPtr biases, MatrixPtr v);
-  void bpropBiases(MatrixPtr v);
   void backward(const UpdateCallback& callback);
-  void bpropWeights(MatrixPtr v, int inpIdx);
-  void bpropActs(MatrixPtr v, int inpIdx);
 };
 
 }  // namespace paddle

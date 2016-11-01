@@ -302,6 +302,8 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
                               config.layerConfig.num_filters());
 
   testLayerGrad(config, "conv", 100, trans, useGpu);
+  // Use small batch_size and useWeight=true to test biasGrad
+  testLayerGrad(config, "conv", 2, trans, useGpu, true, 0.02);
 }
 
 TEST(Layer, convLayer) {
