@@ -70,14 +70,16 @@ if(ON_COVERALLS)
         "demo/"
         "build/"
         "tests/"
+        ".test_env/"
       )
 
     if(WITH_GPU)
-        file(GLOB_RECURSE PADDLE_SOURCES RELATIVE "${PROJECT_SOURCE_DIR}/paddle" "*.cpp" "*.cc" ".c" "*.cu")
+        file(GLOB_RECURSE PADDLE_SOURCES RELATIVE "${PROJECT_SOURCE_DIR}" "*.cpp" "*.cc" ".c" "*.cu")
     else()
         file(GLOB_RECURSE PADDLE_SOURCES RELATIVE "${PROJECT_SOURCE_DIR}" "*.cpp" "*.cc" "*.c")
     endif()
-    
+
+    # exclude trivial files in PADDLE_SOURCES
     foreach(EXCLUDE_DIR ${EXCLUDE_DIRS})
         foreach(TMP_PATH ${PADDLE_SOURCES})
             string(FIND ${TMP_PATH} ${EXCLUDE_DIR} EXCLUDE_DIR_FOUND)
@@ -87,8 +89,14 @@ if(ON_COVERALLS)
         endforeach(TMP_PATH)
     endforeach()
 
+    # convert to absolute path
+    set(PADDLE_SRCS "")
+    foreach(PADDLE_SRC ${PADDLE_SOURCES})
+        set(PADDLE_SRCS "${PADDLE_SRCS};${PROJECT_SOURCE_DIR}/${PADDLE_SRC}")
+    endforeach()
+
     code_coverage(
-        "${PADDLE_SOURCES}" 
+        "${PADDLE_SRCS}" 
         ${COVERALLS_UPLOAD}                 
         "${PROJECT_SOURCE_DIR}/cmake"
     )

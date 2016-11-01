@@ -34,36 +34,11 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
-#
-# Make sure we have the needed arguments.
-#
-if (NOT COVERALLS_OUTPUT_FILE)
-	message(FATAL_ERROR "Coveralls: No coveralls output file specified. Please set COVERALLS_OUTPUT_FILE")
-endif()
-
-if (NOT COV_PATH)
-	message(FATAL_ERROR "Coveralls: Missing coverage directory path where gcov files will be generated. Please set COV_PATH")
-endif()
-
-if (NOT COVERAGE_SRCS)
-	message(FATAL_ERROR "Coveralls: Missing the list of source files that we should get the coverage data for COVERAGE_SRCS")
-endif()
-
-if (NOT PROJECT_ROOT)
-	message(FATAL_ERROR "Coveralls: Missing PROJECT_ROOT.")
-endif()
-
 # Since it's not possible to pass a CMake list properly in the
 # "1;2;3" format to an external process, we have replaced the
 # ";" with "*", so reverse that here so we get it back into the
 # CMake list format.
 string(REGEX REPLACE "\\*" ";" COVERAGE_SRCS ${COVERAGE_SRCS})
-
-find_program(GCOV_EXECUTABLE gcov)
-
-if (NOT GCOV_EXECUTABLE)
-	message(FATAL_ERROR "gcov not found! Aborting...")
-endif()
 
 find_package(Git)
 
