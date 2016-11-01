@@ -63,14 +63,6 @@ size_t ExpandConvLayer::getOutputSize() {
   return layerSize;
 }
 
-void ExpandConvLayer::resetExpandInput(size_t height, size_t width) {
-  Matrix::resizeOrCreate(expandInput_, height, width, false, useGpu_);
-}
-
-void ExpandConvLayer::resetConvOutput(size_t batchSize, int inIdx) {
-  Matrix::resizeOrCreate(transOutValue_, batchSize * numFilters_, subN_[inIdx],
-                         false, useGpu_);
-}
 
 void ExpandConvLayer::expandOneFrame(MatrixPtr image, size_t startIdx,
                                      int inIdx) {
@@ -135,17 +127,7 @@ void ExpandConvLayer::addSharedBias() {
   transOutValue_->reshape(mapW, mapH);
   transOutValue_->transpose(out, false);  // false means no memory allocation
 
-  out->clear();
-  bias->clear();
-}
 
-void ExpandConvLayer::addUnsharedBias() {
-  MatrixPtr outValue = getOutputValue();
-  MatrixPtr bias =
-      Matrix::create(biases_->getW()->getData(), 1,
-                     biases_->getW()->getElementCnt(), false, useGpu_);
-  outValue->addBias(*bias, 1.0f);
-}
 
 void ExpandConvLayer::forward(PassType passType) {
   Layer::forward(passType);

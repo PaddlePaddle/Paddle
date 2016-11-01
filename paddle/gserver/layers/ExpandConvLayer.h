@@ -43,6 +43,7 @@ protected:
   /// The transpose of output, which is an auxiliary matrix.
   MatrixPtr transOutValue_;
 
+
 public:
   explicit ExpandConvLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
 
@@ -51,16 +52,6 @@ public:
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
   size_t getOutputSize();
-
-  /**
-   * Create or resize expandInput_.
-   */
-  void resetExpandInput(size_t height, size_t width);
-
-  /**
-   * Create or resize transOutValue_.
-   */
-  void resetConvOutput(size_t batchSize, int inIdx);
 
   /**
    * Expand one input sample.
@@ -72,15 +63,7 @@ public:
    */
   void expandFwdOnce(MatrixPtr image, int inIdx, int startIdx);
 
-  /**
-   * Add shared bias.
-   */
-  void addSharedBias();
 
-  /**
-   * Add unshared bias.
-   */
-  void addUnsharedBias();
   void forward(PassType passType);
   void bpropSharedBias(MatrixPtr biases, MatrixPtr v);
   void bpropBiases(MatrixPtr v);

@@ -29,14 +29,14 @@ REGISTER_LAYER(exconvt, ExpandConvTransLayer);
 bool ExpandConvTransLayer::init(const LayerMap &layerMap,
                            const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
-  ConvTransBaseLayer::init(layerMap, parameterMap);
+  ConvBaseLayer::init(layerMap, parameterMap);
 
   /* Initialize the projection */
   for (auto &inputConfig : config_.inputs()) {
     const ConvConfig &conf = inputConfig.conv_conf();
     subM_.push_back(conf.channels() / conf.groups());
     subN_.push_back(conf.output_x() * conf.output_x());
-    subK_.push_back(channel_ * conf.filter_size() * conf.filter_size() /
+    subK_.push_back(numFilters_ * conf.filter_size() * conf.filter_size() /
                     conf.groups());
     /* Consistent caffe mode for multiple input */
     caffeMode_ = conf.caffe_mode();
@@ -65,8 +65,8 @@ size_t ExpandConvTransLayer::getSize() {
         imageSize(outputW_[i], filterSize_[i], padding_[i], stride_[i]));
     subN_.push_back(outputH_[i] * outputW_[i]);
     CHECK(layerSize == 0 ||
-            imgSizeH_[i] * imgSizeW_[i] * (size_t)channel_ == layerSize);
-    layerSize = imgSizeH_[i] * imgSizeW_[i] * channel_;
+            imgSizeH_[i] * imgSizeW_[i] * (size_t)numFilters_ == layerSize);
+    layerSize = imgSizeH_[i] * imgSizeW_[i] * numFilters_;
   }
   getOutput().setFrameHeight(imgSizeH_[0]);
   getOutput().setFrameWidth(imgSizeW_[0]);
@@ -82,38 +82,6 @@ void ExpandConvTransLayer::resetExpandInput(size_t height, size_t width) {
                          false, useGpu_);
 }*/
 
-
-void ExpandConvTransLayer::addSharedBias() {
-  size_t mapW = getSize() / channel_;
-  size_t mapH = getOutputValue()->getElementCnt() / mapW;
-  MatrixPtr out =
-      Matrix::create(getOutputValue()->getData(), mapH, mapW, false, useGpu_);
-
-  Matrix::resizeOrCreate(transOutValue_, mapW, mapH, false, useGpu_);
-
-  out->transpose(transOutValue_, false);  // false means no memory allocation
-  transOutValue_->reshape(transOutValue_->getElementCnt() / channel_,
-                          channel_);
-
-  MatrixPtr bias =
-      Matrix::create(biases_->getW()->getData(), 1,
-                     biases_->getW()->getElementCnt(), false, useGpu_);
-  transOutValue_->addBias(*bias, 1.0f);
-
-  transOutValue_->reshape(mapW, mapH);
-  transOutValue_->transpose(out, false);  // false means no memory allocation
-
-  out->clear();
-  bias->clear();
-}
-
-void ExpandConvTransLayer::addUnsharedBias() {
-  MatrixPtr outValue = getOutputValue();
-  MatrixPtr bias =
-      Matrix::create(biases_->getW()->getData(), 1,
-                     biases_->getW()->getElementCnt(), false, useGpu_);
-  outValue->addBias(*bias, 1.0f);
-}
 
 
 void ExpandConvTransLayer::expandOneFrame(MatrixPtr image, size_t startIdx,

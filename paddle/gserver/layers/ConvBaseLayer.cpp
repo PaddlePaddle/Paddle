@@ -21,6 +21,12 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
 
+  if (config_.type() == "exconv" || config_.type() == "cudnn_conv") {
+    isConv_ = true;
+  } else {
+    isConv_ = false;
+  }
+
   /* Initialize the convolutional layer parameter */
   numFilters_ = config_.num_filters();
   sharedBiases_ = config_.shared_biases();
@@ -88,6 +94,7 @@ size_t ConvBaseLayer::calOutputSize() {
   getOutput().setFrameWidth(outputW_[0]);
   layerSize = outputH_[0] * outputW_[0] * size_t(numFilters_);
   return layerSize;
+
 }
 
 }  // namespace paddle

@@ -15,7 +15,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "ConvTransBaseLayer.h"
+#include "ConvBaseLayer.h"
 #include "paddle/math/Matrix.h"
 #include <vector>
 
@@ -28,7 +28,7 @@ namespace paddle {
  *
  * The config file api is img_convTrans_layer.
  */
-class ExpandConvTransLayer : public ConvTransBaseLayer {
+class ExpandConvTransLayer : public ConvBaseLayer {
 protected:
   /// For expand convolution.
   /// subM_ = numFilters_ / groups_.
@@ -45,15 +45,11 @@ protected:
   IntV outputH_;
   /// The spatial dimensions of width of output feature map.
   IntV outputW_;
-  /// Expand one sample at a time. shape:
-  /// (numChannels * filterPixels_, outputSizeH * outputSizeW)
-  MatrixPtr expandInput_;
-  /// The transpose of output, which is an auxiliary matrix.
-  MatrixPtr transOutValue_;
+
 
 public:
   explicit ExpandConvTransLayer(const LayerConfig& config) :
-      ConvTransBaseLayer(config) {}
+      ConvBaseLayer(config) {}
 
   ~ExpandConvTransLayer() {}
 
@@ -86,15 +82,7 @@ public:
    */
   void shrinkFwd(MatrixPtr output, int inpIdx);
 
-  /**
-   * Add shared bias.
-   */
-  void addSharedBias();
 
-  /**
-   * Add unshared bias.
-   */
-  void addUnsharedBias();
   void forward(PassType passType);
   void bpropSharedBias(MatrixPtr biases, MatrixPtr v);
   void bpropBiases(MatrixPtr v);

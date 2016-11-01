@@ -28,6 +28,9 @@ class ConvBaseLayer : public Layer {
 protected:
   typedef std::vector<int> IntV;
 
+  /// True if it's convolution layer, false if it's deconv layer
+  bool isConv_;
+
   /// The number of filters.
   int numFilters_;
   /// The x dimension of the padding.
@@ -75,6 +78,13 @@ protected:
   /// of output size.
   bool caffeMode_;
 
+  /*The expandInput_ and transOutValue_ are used for CPU expand conv calc*/
+  /// Expand one sample at a time. shape:
+  /// (numChannels * filterPixels_, outputSizeH * outputSizeW)
+  MatrixPtr expandInput_;
+  /// The transpose of output, which is an auxiliary matrix.
+  MatrixPtr transOutValue_;
+
 public:
   explicit ConvBaseLayer(const LayerConfig& config) : Layer(config) {}
 
@@ -88,6 +98,63 @@ public:
   virtual size_t calOutputSize();
 
   Weight& getWeight(int idx) { return *weights_[idx]; }
+
+  /**
+   * Calculate output size based on caffeMode_.
+   * - input(+padding): 0123456789
+   * - imageSize(+padding) = 10;
+   * - filterSize = 3;
+   * - stride = 2;
+   * - caffeMode_ is true:
+       - output: (012), (234), (456), (678)
+       - outputSize = 4;
+   * - caffeMode_ is false:
+   *   - output: (012), (234), (456), (678), (9)
+   *   - outputSize = 5;
+   */
+  int outputSize(int imageSize, int filterSize, int padding, int stride) {
+    int outputSize;
+    if (!caffeMode_) {
+     outputSize =
+          (imageSize - filterSize + 2 * padding + stride - 1) / stride + 1;
+    } else {
+      outputSize = (imageSize - filterSize + 2 * padding) / stride + 1;
+    }
+    CHECK_GE(outputSize, 1);
+    return outputSize;
+  }
+
+  int imageSize(int outputSize, int filterSize, int padding, int stride) {
+    int imageSize;
+    if (!caffeMode_) {
+     imageSize =
+         (outputSize - 1) * stride + filterSize - 2 * padding - stride + 1;
+    } else {
+     imageSize = (outputSize - 1) * stride + filterSize - 2 * padding;
+    }
+    CHECK_GE(imageSize, 1);
+    return imageSize;
+  }
+
+  /**
+   * Create or resize expandInput_.
+   */
+  void resetExpandInput(size_t height, size_t width);
+
+  /**
+   * Create or resize transOutValue_.
+   */
+  void resetConvOutput(size_t batchSize, int inIdx);
+
+  /**
+   * Add shared bias.
+   */
+  void addSharedBias();
+
+  /**
+   * Add unshared bias.
+   */
+  void addUnsharedBias();
 };
 
 }  // namespace paddle
