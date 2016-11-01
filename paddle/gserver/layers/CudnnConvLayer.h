@@ -33,7 +33,7 @@ namespace paddle {
  */
 class CudnnConvLayer : public ConvBaseLayer {
 protected:
-  std::vector<ProjectionConfig*> projConf_;
+  std::vector<std::unique_ptr<ProjectionConfig>> projConf_;
   std::vector<std::unique_ptr<Projection>> projections_;
 
   hl_tensor_descriptor biasDesc_;

@@ -39,7 +39,7 @@ bool CudnnConvLayer::init(const LayerMap &layerMap,
         config_.mutable_inputs(i)->mutable_conv_conf());
     conf->set_input_size(getPrev(i)->getSize());
     conf->set_output_size(getSize());
-    projConf_.push_back(conf);
+    projConf_.emplace_back(conf);
     projections_.emplace_back(Projection::create(*projConf_[i],
                                                  parameters_[i], useGpu_));
   }

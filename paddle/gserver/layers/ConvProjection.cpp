@@ -18,7 +18,6 @@ limitations under the License. */
 
 namespace paddle {
 
-
 REGISTER_PROJECTION(conv, ConvProjection);
 
 ThreadLocalD<std::vector<MemoryHandle*>> ConvProjection::convMem_;
@@ -39,7 +38,6 @@ ConvProjection::ConvProjection(const ProjectionConfig& config,
 
 void ConvProjection::getConvParams() {
   const ConvConfig &conf = config_.conv_conf();
-
   paddingH_ = conf.padding_y();
   paddingW_ = conf.padding();
 
