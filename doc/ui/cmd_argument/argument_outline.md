@@ -183,7 +183,7 @@ It looks like there are a lot of arguments. However, most of them are for develo
 </tr>
 
 <tr>
-<td class="left" rowspan = "5">GPU</td><td class="left">gpu_id</td>
+<td class="left" rowspan = "6">GPU</td><td class="left">gpu_id</td>
 <td class="left">√</td><td class="left">√</td><td class="left">√</td><td class="left">√</td>
 </tr>
 
@@ -204,6 +204,11 @@ It looks like there are a lot of arguments. However, most of them are for develo
 
 <tr>
 <td class="left">cuda_dir</td>
+<td class="left">√</td><td class="left">√</td><td class="left">√</td><td class="left">√</td>
+</tr>
+
+<tr>
+<td class="left">cudnn_conv_workspace_limit_in_mb</td>
 <td class="left">√</td><td class="left">√</td><td class="left">√</td><td class="left">√</td>
 </tr>
 

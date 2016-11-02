@@ -34,7 +34,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            "table_projection", "mixed_layer", "data_layer",
            "embedding_layer", "fc_layer", "grumemory",
            "pooling_layer", "lstmemory", "last_seq", "first_seq",
-           "cos_sim", "hsigmoid",
+           "cos_sim", "hsigmoid", "conv_projection",
            "regression_cost", 'classification_cost', "LayerOutput",
            'img_conv_layer', 'img_pool_layer', 'batch_norm_layer',
            'img_cmrnorm_layer', 'addto_layer',
@@ -54,7 +54,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'cross_entropy_with_selfnorm', 'cross_entropy',
            'multi_binary_label_cross_entropy',
            'rank_cost', 'lambda_cost', 'huber_cost',
-           # 'block_expand_layer',  # TODO(yuyang18): this layer is not correct
+           'block_expand_layer',
            'maxout_layer', 'out_prod_layer', 'print_layer'
            ]
 
@@ -1984,7 +1984,7 @@ def addto_layer(input, act=None, name=None, bias_attr=None,
 @wrap_act_default(act=IdentityActivation())
 @wrap_name_default("concat")
 @layer_support()
-def concat_layer(input, act=None, name=None, layer_attr=None):
+def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
     """
     Concat all input vector into one huge vector.
     Inputs can be list of LayerOutput or list of projection.
@@ -2043,10 +2043,14 @@ def concat_layer(input, act=None, name=None, layer_attr=None):
     layer_type = (LayerType.CONCAT_LAYER if is_concat_layer
                   else LayerType.CONCAT_PROJ_LAYER)
 
+    if layer_type == LayerType.CONCAT_LAYER:
+        assert not bias_attr
+    
     Layer(
         name=name, type=layer_type,
         inputs=[x.name for x in input] if is_concat_layer else input,
         active_type=act.name,
+        bias=ParamAttr.to_bias(bias_attr),
         **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
 
@@ -2950,6 +2954,103 @@ def conv_operator(img, filter, filter_size, num_filters,
     op.origin = [img, filter]
     return op
 
+@wrap_param_attr_default()
+def conv_projection(input, filter_size, num_filters,
+                    num_channels=None, stride=1, padding=0,
+                    filter_size_y=None, stride_y=None, padding_y=None,
+                    groups=1, param_attr=None):
+    """
+    ConvProjection with a layer as input.
+    It performs element-wise multiplication with weight.
+
+    Different from img_conv_layer and conv_op, conv_projection is an Projection,
+    which can be used in mixed_layer and conat_layer. It use cudnn to implement
+    conv and only support GPU mode.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       proj = conv_projection(img=input1,
+                              filter_size=3,
+                              num_filters=64,
+                              num_channels=64)
+
+    :param input: input layer
+    :type input: LayerOutput
+    :param filter_size: The x dimension of a filter kernel.
+    :type filter_size: int
+    :param filter_size_y: The y dimension of a filter kernel. Since
+                          PaddlePaddle now supports rectangular filters,
+                          the filter's shape can be (filter_size, filter_size_y).
+    :type filter_size_y: int
+    :param num_filters: channel of output data.
+    :type num_filters: int
+    :param num_channel: channel of input data.
+    :type num_channel: int
+    :param stride: The x dimension of the stride.
+    :type stride: int
+    :param stride_y: The y dimension of the stride.
+    :type stride_y: int
+    :param padding: The x dimension of padding.
+    :type padding: int
+    :param padding_y: The y dimension of padding.
+    :type padding_y: int
+    :param groups: The group number.
+    :type groups: int
+    :param param_attr: Convolution param attribute. None means default attribute
+    :type param_attr: ParameterAttribute
+    :return: A DotMulProjection Object.
+    :rtype: DotMulProjection
+    """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+
+    if filter_size_y is None:
+        if isinstance(filter_size, collections.Sequence):
+            assert len(filter_size) == 2
+            filter_size, filter_size_y = filter_size
+        else:
+            filter_size_y = filter_size
+
+    if stride_y is None:
+        if isinstance(stride, collections.Sequence):
+            assert len(stride) == 2
+            stride, stride_y = stride
+        else:
+            stride_y = stride
+
+    if padding_y is None:
+        if isinstance(padding, collections.Sequence):
+            assert len(padding) == 2
+            padding, padding_y = padding
+        else:
+            padding_y = padding
+
+    if param_attr.attr.get('initial_smart'):
+        # special initial for conv layers.
+        init_w = (2.0 / (filter_size ** 2 * num_channels)) ** 0.5
+        param_attr.attr["initial_mean"] = 0.0
+        param_attr.attr["initial_std"] = init_w
+        param_attr.attr["initial_strategy"] = 0
+        param_attr.attr["initial_smart"] = False
+
+    proj = ConvProjection(input_layer_name=input.name,
+                          num_filters=num_filters,
+                          conv_conf=Conv(filter_size=filter_size,
+                                         padding=padding,
+                                         stride=stride,
+                                         channels=num_channels,
+                                         filter_size_y=filter_size_y,
+                                         padding_y=padding_y,
+                                         stride_y=stride_y,
+                                         groups=groups),
+                          **param_attr.attr)
+
+    proj.origin = input
+    return proj
+
 
 @wrap_name_default()
 @layer_support()
@@ -3284,18 +3385,18 @@ convex_comb_layer = linear_comb_layer
 @wrap_name_default()
 @layer_support()
 def block_expand_layer(input,
-                       channel=0,
                        block_x=0,
                        block_y=0,
                        stride_x=0,
                        stride_y=0,
                        padding_x=0,
                        padding_y=0,
+                       num_channels=None,
                        name=None,
                        layer_attr=None):
     """
     Expand feature map to minibatch matrix.
-       - matrix width is: block_y * block_x * channel
+       - matrix width is: block_y * block_x * num_channels
        - matirx height is: outputH * outputW
 
     .. math::
@@ -3307,7 +3408,7 @@ def block_expand_layer(input,
     The expand method is the same with ExpandConvLayer, but saved the transposed
     value. After expanding, output.sequenceStartPositions will store timeline.
     The number of time steps are outputH * outputW and the dimension of each
-    time step is block_y * block_x * channel. This layer can be used after
+    time step is block_y * block_x * num_channels. This layer can be used after
     convolution neural network, and before recurrent neural network.
 
     The simple usage is:
@@ -3315,7 +3416,7 @@ def block_expand_layer(input,
     .. code-block:: python
 
        block_expand = block_expand_layer(input,
-                                         channel=128,
+                                         num_channels=128,
                                          stride_x=1,
                                          stride_y=1,
                                          block_x=1,
@@ -3323,8 +3424,8 @@ def block_expand_layer(input,
 
     :param input: The input layer.
     :type input: LayerOutput
-    :param channel: The channel number of input layer.
-    :type channel: int
+    :param num_channels: The channel number of input layer.
+    :type num_channels: int|None
     :param block_x: The width of sub block.
     :type block_x: int
     :param block_y: The width of sub block.
@@ -3344,16 +3445,18 @@ def block_expand_layer(input,
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
     Layer(name=name,
-          input=Input(input.name,
-                      block_expand=BlockExpand(channels=channel,
-                                               block_x=block_x,
-                                               block_y=block_y,
-                                               stride_x=stride_x,
-                                               stride_y=stride_y,
-                                               padding_x=padding_x,
-                                               padding_y=padding_y)
-                      ),
+          inputs=Input(input.name,
+                       block_expand=BlockExpand(channels=num_channels,
+                                                block_x=block_x,
+                                                block_y=block_y,
+                                                stride_x=stride_x,
+                                                stride_y=stride_y,
+                                                padding_x=padding_x,
+                                                padding_y=padding_y)),
           type=LayerType.BLOCK_EXPAND,
           **ExtraLayerAttribute.to_kwargs(layer_attr)
           )

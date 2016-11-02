@@ -632,6 +632,44 @@ class ContextProjection(Projection):
     _total_pad = 0
 
 
+@config_class
+class ConvProjection(Projection):
+    type = 'conv'
+
+    def __init__(
+            self,
+            input_layer_name,
+            num_filters=None,
+            conv_conf=None,
+            **xargs):
+        super(ConvProjection, self).__init__(input_layer_name, **xargs)
+
+        if num_filters is not None:
+            self.proj_conf.num_filters = num_filters
+
+        parse_conv(conv_conf,
+                   input_layer_name,
+                   self.proj_conf.conv_conf)
+        # TODO: support rectangle input
+        self.proj_conf.output_size = (self.proj_conf.conv_conf.output_x  ** 2) * num_filters
+
+    def calc_output_size(self, input_layer_config):
+        return self.proj_conf.output_size
+
+    def calc_parameter_size(self, input_size, output_size):
+        co = self.proj_conf.num_filters
+        ci = self.proj_conf.conv_conf.channels
+        fh = self.proj_conf.conv_conf.filter_size
+        fw = self.proj_conf.conv_conf.filter_size_y
+        return co * ci * fh * fw
+
+    def calc_bias_size(self):
+        return self.proj_conf.num_filters
+
+    def calc_parameter_dims(self, input_size, output_size):
+        return None
+
+
 # Define a operator for mixed layer
 @config_class
 class Operator(Cfg):
@@ -2528,8 +2566,15 @@ class MixedLayer(LayerBase):
             record_operator_conf = self.config.operator_confs.add()
             record_operator_conf.CopyFrom(operator_conf)
 
+        psize = self.config.size
+        if isinstance(self.inputs[0], ConvProjection):
+            self.config.shared_biases = True
+            psize = 0
+            for input in self.inputs:
+                psize += input.calc_bias_size()
 
-        self.create_bias_parameter(bias, self.config.size)
+        self.config.bias_size = psize
+        self.create_bias_parameter(bias, psize)
 
         if error_clipping_threshold is not None:
             self.config.error_clipping_threshold = error_clipping_threshold
@@ -2547,8 +2592,10 @@ class ConcatenateLayer(LayerBase):
             self,
             name,
             inputs,
+            bias=False,
             **xargs):
         config_assert(inputs, 'inputs cannot be empty')
+        config_assert(not bias, 'ConcatenateLayer cannot support bias.')
         super(ConcatenateLayer, self).__init__(
             name, 'concat', 0, inputs=inputs, **xargs)
         size = 0
@@ -2567,10 +2614,19 @@ class ConcatenateLayer2(LayerBase):
             self,
             name,
             inputs,
+            bias=False,
             **xargs):
         config_assert(inputs, 'inputs cannot be empty')
         super(ConcatenateLayer2, self).__init__(
             name, 'concat2', 0, inputs=inputs, **xargs)
+
+        if isinstance(self.inputs[0], ConvProjection):
+          for input_index in xrange(len(self.inputs) - 1):
+              input = self.inputs[input_index + 1]
+              config_assert(isinstance(input, ConvProjection),
+                  "The first input of ConcatenateLayer2 is ConvProjection, "
+                  "the other inputs should also be ConvProjection.")
+
         size = 0
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
@@ -2595,6 +2651,16 @@ class ConcatenateLayer2(LayerBase):
             dims = input.calc_parameter_dims(input.proj_conf.input_size,
               input.proj_conf.output_size)
             self.create_input_parameter(input_index, psize, dims)
+
+        psize = self.config.size
+        if isinstance(self.inputs[0], ConvProjection):
+            self.config.shared_biases = True
+            psize = 0
+            for input in self.inputs:
+                psize += input.calc_bias_size()
+
+        self.config.bias_size = psize
+        self.create_bias_parameter(bias, psize)
 
 @config_layer('recurrent')
 class RecurrentLayer(LayerBase):

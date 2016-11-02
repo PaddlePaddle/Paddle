@@ -153,12 +153,12 @@ As a simple example, consider the following:
 - **Only CPU**
 
   ```bash
-  cmake  .. -DWITH_GPU=OFF -DWITH_DOC=OFF
+  cmake  .. -DWITH_GPU=OFF
   ```
 - **GPU**
 
   ```bash
-  cmake .. -DWITH_GPU=ON -DWITH_DOC=OFF
+  cmake .. -DWITH_GPU=ON
   ```
 
 - **GPU with doc and swig**
@@ -171,7 +171,7 @@ Finally, you can build PaddlePaddle:
 
 ```bash
 # you can add build option here, such as:    
-cmake .. -DWITH_GPU=ON -DWITH_DOC=OFF -DCMAKE_INSTALL_PREFIX=<path to install>
+cmake .. -DWITH_GPU=ON -DCMAKE_INSTALL_PREFIX=<path to install>
 # please use sudo make install, if you want to install PaddlePaddle into the system
 make -j `nproc` && make install
 # set PaddlePaddle installation path in ~/.bashrc
@@ -246,7 +246,7 @@ easy_install pip
 
         ```bash
         sudo tar -xzf cudnn-7.5-osx-x64-v5.0-ga.tgz -C /usr/local
-        sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
+        sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib/libcudnn*
         ```
     2. Then you need to set DYLD\_LIBRARY\_PATH, PATH environment variables in ~/.bashrc.
 
@@ -273,12 +273,12 @@ As a simple example, consider the following:
 - **Only CPU**
 
   ```bash
-  cmake  .. -DWITH_GPU=OFF -DWITH_DOC=OFF
+  cmake  .. -DWITH_GPU=OFF
   ```
 - **GPU**
 
   ```bash
-  cmake .. -DWITH_GPU=ON -DWITH_DOC=OFF
+  cmake .. -DWITH_GPU=ON
   ```
 
 - **GPU with doc and swig**
@@ -291,9 +291,9 @@ Finally, you can build PaddlePaddle:
 
 ```bash
 # you can add build option here, such as:    
-cmake .. -DWITH_GPU=ON -DWITH_DOC=OFF -DCMAKE_INSTALL_PREFIX=<installation path>
+cmake .. -DWITH_GPU=ON -DCMAKE_INSTALL_PREFIX=<installation path>
 # please use sudo make install, if you want to install PaddlePaddle into the system
-make -j `nproc` && make install
+make -j `sysctl -n hw.ncpu` && make install
 # set PaddlePaddle installation path in ~/.bashrc
 export PATH=<installation path>/bin:$PATH
 ```

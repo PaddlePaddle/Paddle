@@ -14,26 +14,9 @@ limitations under the License. */
 
 
 #include "PaddleAPI.h"
+#include "PaddleAPIPrivate.h"
 
 #include "paddle/parameter/Argument.h"
-
-struct ArgumentsPrivate {
-  std::vector<paddle::Argument> outputs;
-
-  inline paddle::Argument& getArg(size_t idx) throw(RangeError) {
-    if (idx < outputs.size()) {
-      return outputs[idx];
-    } else {
-      RangeError e;
-      throw e;
-    }
-  }
-
-  template <typename T>
-  std::shared_ptr<T>& cast(void* rawPtr) const {
-    return *(std::shared_ptr<T>*)(rawPtr);
-  }
-};
 
 size_t Arguments::getSlotNum() const { return m->outputs.size(); }
 
