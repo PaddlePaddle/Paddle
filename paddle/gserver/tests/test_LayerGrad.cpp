@@ -897,12 +897,10 @@ void testSppLayer(const string& poolType, const int pyramidHeight, bool trans,
 
 TEST(Layer, SpatialPyramidPoolLayer) {
   for (auto useGpu : {false, true}) {
-    testSppLayer("avg", 1, false, useGpu);
-    testSppLayer("avg", 3, false, useGpu);
-    testSppLayer("avg", 5, false, useGpu);
-    testSppLayer("max", 1, false, useGpu);
-    testSppLayer("max", 3, false, useGpu);
-    testSppLayer("avg", 5, false, useGpu);
+    for (auto pyramidHeight : {1, 2, 3}) {
+      testSppLayer("avg-projection", pyramidHeight, false, useGpu);
+      testSppLayer("max-projection", pyramidHeight, false, useGpu);
+    }
   }
 }
 

@@ -21,9 +21,9 @@ REGISTER_PROJECTION_CREATE_FUNC(pool2, &PoolProjection::create);
 PoolProjection* PoolProjection::create(const ProjectionConfig& config,
                                        ParameterPtr parameter, bool useGpu) {
   const std::string& pool = config.pool_conf().pool_type();
-  if (pool == "max") {
+  if (pool == "max-projection") {
     return new MaxPoolProjection(config, parameter, useGpu);
-  } else if (pool == "avg") {
+  } else if (pool == "avg-projection") {
     return new AvgPoolProjection(config, parameter, useGpu);
   } else {
     LOG(FATAL) << "Unknown pool type: " << pool;
