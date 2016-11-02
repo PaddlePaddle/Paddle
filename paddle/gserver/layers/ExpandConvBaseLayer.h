@@ -34,14 +34,6 @@ protected:
   IntV subN_;
   /// subK_ = channels_ * filterPixels_ * groups_.
   IntV subK_;
-  /// The spatial dimensions of height of input feature map.
-  IntV imgSizeH_;
-  /// The spatial dimensions of width of input feature map.
-  IntV imgSizeW_;
-  /// The spatial dimensions of height of output feature map.
-  IntV outputH_;
-  /// The spatial dimensions of width of output feature map.
-  IntV outputW_;
 
   /*The expandInput_ and transOutValue_ are used for CPU expand conv calc
    * Expand one sample at a time. shape:
@@ -59,6 +51,7 @@ public:
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
+  size_t getOutputSize();
   /**
    * Create or resize expandInput_.
    */

@@ -45,7 +45,19 @@ bool ExpandConvBaseLayer::init(const LayerMap &layerMap,
     caffeMode_ = conf.caffe_mode();
   }
 
+  getOutputSize();
+
   return true;
+}
+
+size_t ExpandConvBaseLayer::getOutputSize() {
+  CHECK_NE(inputLayers_.size(), 0UL);
+  size_t layerSize = ConvBaseLayer::calOutputSize();
+  subN_.clear();
+  for (size_t i = 0; i < inputLayers_.size(); i++) {
+    subN_.push_back(outputH_[i] * outputW_[i]);
+  }
+  return layerSize;
 }
 
 void ExpandConvBaseLayer::resetExpandInput(size_t height, size_t width) {
@@ -53,7 +65,7 @@ void ExpandConvBaseLayer::resetExpandInput(size_t height, size_t width) {
 }
 
 void ExpandConvBaseLayer::addSharedBias() {
-  size_t mapW = getSize() / numFilters_;
+  size_t mapW = getOutputSize() / numFilters_;
   size_t mapH = getOutputValue()->getElementCnt() / mapW;
   MatrixPtr out =
       Matrix::create(getOutputValue()->getData(), mapH, mapW, false, useGpu_);
@@ -224,7 +236,7 @@ void ExpandConvBaseLayer::bpropWeights(MatrixPtr image, MatrixPtr out,
 }
 
 void ExpandConvBaseLayer::bpropSharedBias(MatrixPtr biases, MatrixPtr v) {
-  size_t mapW = getSize() / numFilters_;
+  size_t mapW = getOutputSize() / numFilters_;
   size_t mapH = v->getElementCnt() / mapW;
   MatrixPtr vTmp = Matrix::create(v->getData(), mapH, mapW, false, useGpu_);
 

@@ -48,8 +48,20 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
     outputW_.push_back(conf.output_x());
   }
 
+  CHECK(inputLayers_.size() == parameters_.size());
+  for (size_t i = 0; i < inputLayers_.size(); i++) {
+    size_t height, width;
+    height = filterPixels_[i] * filterChannels_[i];
+    width = (!isDeconv_) ? numFilters_ : channels_[i];
+
+    // create a new weight
+    CHECK_EQ(parameters_[i]->getSize(), width * height);
+    Weight* w = new Weight(height, width, parameters_[i]);
+    weights_.emplace_back(w);
+  }
+
   /* initialize the biases_ */
-  if (biasParameter_.get() != NULL) {
+  if (biasParameter_.get()) {
     if (sharedBiases_) {
       CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
       biases_ =
@@ -76,25 +88,46 @@ size_t ConvBaseLayer::calOutputSize() {
   clearAndReserve(&outputH_);
   clearAndReserve(&outputW_);
   size_t layerSize = 0;
-  for (size_t i = 0; i < inputLayers_.size(); i++) {
-    imgSizeH_.push_back(inputLayers_[i]->getOutput().getFrameHeight());
-    imgSizeW_.push_back(inputLayers_[i]->getOutput().getFrameWidth());
-    if (imgSizeH_[i] == 0)
-      imgSizeH_[i] = config_.inputs(i).conv_conf().img_size();
-    if (imgSizeW_[i] == 0)
-      imgSizeW_[i] = config_.inputs(i).conv_conf().img_size();
-    outputH_.push_back(outputSize(imgSizeH_[i], filterSizeY_[i], paddingY_[i],
-                                  strideY_[i], caffeMode_));
-    outputW_.push_back(outputSize(imgSizeW_[i], filterSize_[i], padding_[i],
-                                  stride_[i], caffeMode_));
-    CHECK_EQ(outputH_[i], outputH_[0]);
-    CHECK_EQ(outputW_[i], outputW_[0]);
-  }
-  getOutput().setFrameHeight(outputH_[0]);
-  getOutput().setFrameWidth(outputW_[0]);
-  layerSize = outputH_[0] * outputW_[0] * size_t(numFilters_);
-  return layerSize;
 
+  if (!isDeconv_) {
+    for (size_t i = 0; i < inputLayers_.size(); i++) {
+      imgSizeH_.push_back(inputLayers_[i]->getOutput().getFrameHeight());
+      imgSizeW_.push_back(inputLayers_[i]->getOutput().getFrameWidth());
+      if (imgSizeH_[i] == 0)
+        imgSizeH_[i] = config_.inputs(i).conv_conf().img_size();
+      if (imgSizeW_[i] == 0)
+        imgSizeW_[i] = config_.inputs(i).conv_conf().img_size();
+      outputH_.push_back(
+          outputSize(imgSizeH_[i], filterSizeY_[i], paddingY_[i], strideY_[i]));
+      outputW_.push_back(
+          outputSize(imgSizeW_[i], filterSize_[i], padding_[i], stride_[i]));
+      CHECK_EQ(outputH_[i], outputH_[0]);
+      CHECK_EQ(outputW_[i], outputW_[0]);
+    }
+    getOutput().setFrameHeight(outputH_[0]);
+    getOutput().setFrameWidth(outputW_[0]);
+    layerSize = outputH_[0] * outputW_[0] * size_t(numFilters_);
+  } else {
+    for (size_t i = 0; i < inputLayers_.size(); i++) {
+      outputH_.push_back(inputLayers_[i]->getOutput().getFrameHeight());
+      outputW_.push_back(inputLayers_[i]->getOutput().getFrameWidth());
+      if (outputH_[i] == 0)
+        outputH_[i] = config_.inputs(i).conv_conf().output_x();
+      if (outputW_[i] == 0)
+        outputW_[i] = config_.inputs(i).conv_conf().output_x();
+      imgSizeH_.push_back(
+          imageSize(outputH_[i], filterSizeY_[i], paddingY_[i], strideY_[i]));
+      imgSizeW_.push_back(
+          imageSize(outputW_[i], filterSize_[i], padding_[i], stride_[i]));
+      CHECK_EQ(imgSizeH_[i], imgSizeH_[0]);
+      CHECK_EQ(imgSizeW_[i], imgSizeW_[0]);
+    }
+    getOutput().setFrameHeight(imgSizeH_[0]);
+    getOutput().setFrameWidth(imgSizeW_[0]);
+    layerSize = imgSizeH_[0] * imgSizeW_[0] * size_t(numFilters_);
+  }
+
+  return layerSize;
 }
 
 }  // namespace paddle

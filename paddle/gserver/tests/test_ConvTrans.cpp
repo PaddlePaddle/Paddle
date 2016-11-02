@@ -43,11 +43,11 @@ TEST(Layer, convTransLayerFwd) {
     configt.layerConfig.set_partial_sum(1);
     configt.layerConfig.set_shared_biases(true);
 
-    configt.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 288});
+    configt.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 384});
     LayerInputConfig* input = configt.layerConfig.add_inputs();
     ConvConfig* conv = input->mutable_conv_conf();
     conv->set_filter_size(2);
-    conv->set_filter_size_y(3);
+    conv->set_filter_size_y(4);
     conv->set_channels(16);
     conv->set_padding(0);
     conv->set_padding_y(1);
@@ -86,11 +86,11 @@ TEST(Layer, convTransLayerFwd) {
     config.layerConfig.set_partial_sum(1);
     config.layerConfig.set_shared_biases(true);
 
-    config.inputDefs.push_back({INPUT_DATA, "layer_1", 768, 288});
+    config.inputDefs.push_back({INPUT_DATA, "layer_1", 768, 384});
     input = config.layerConfig.add_inputs();
     conv = input->mutable_conv_conf();
     conv->set_filter_size(2);
-    conv->set_filter_size_y(3);
+    conv->set_filter_size_y(4);
     conv->set_channels(3);
     conv->set_padding(0);
     conv->set_padding_y(1);

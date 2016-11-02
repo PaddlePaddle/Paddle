@@ -37,8 +37,6 @@ public:
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
-  size_t getSize();
-
   void forward(PassType passType);
   void backward(const UpdateCallback& callback);
 };

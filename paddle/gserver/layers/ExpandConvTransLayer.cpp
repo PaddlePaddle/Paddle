@@ -34,34 +34,6 @@ bool ExpandConvTransLayer::init(const LayerMap &layerMap,
   return true;
 }
 
-// Why this is necessary after calling init?
-size_t ExpandConvTransLayer::getSize() {
-  CHECK_NE(inputLayers_.size(), 0UL);
-  imgSizeH_.clear();
-  imgSizeW_.clear();
-  outputH_.clear();
-  outputW_.clear();
-  subN_.clear();
-  size_t layerSize = 0;
-  for (size_t i = 0; i < inputLayers_.size(); i++) {
-    outputH_.push_back(inputLayers_[i]->getOutput().getFrameHeight());
-    outputW_.push_back(inputLayers_[i]->getOutput().getFrameWidth());
-    if (outputH_[i] == 0) outputH_[i] = outputX_[i];
-    if (outputW_[i] == 0) outputW_[i] = outputX_[i];
-    imgSizeH_.push_back(
-        imageSize(outputH_[i], filterSize_[i], padding_[i], stride_[i]));
-    imgSizeW_.push_back(
-        imageSize(outputW_[i], filterSize_[i], padding_[i], stride_[i]));
-    subN_.push_back(outputH_[i] * outputW_[i]);
-    CHECK(layerSize == 0 ||
-            imgSizeH_[i] * imgSizeW_[i] * (size_t)numFilters_ == layerSize);
-    layerSize = imgSizeH_[i] * imgSizeW_[i] * numFilters_;
-  }
-  getOutput().setFrameHeight(imgSizeH_[0]);
-  getOutput().setFrameWidth(imgSizeW_[0]);
-  return layerSize;
-}
-
 void ExpandConvTransLayer::forward(PassType passType) {
   Layer::forward(passType);
 
@@ -69,7 +41,7 @@ void ExpandConvTransLayer::forward(PassType passType) {
   /* note: one sample correspond to one colum, and the
    *   transOutValue correspond sample to one row */
   int batchSize = inputLayers_[0]->getOutputValue()->getHeight();
-  resetOutput(batchSize, getSize());
+  resetOutput(batchSize, getOutputSize());
 
   MatrixPtr output = nullptr;
   for (size_t i = 0; i < inputLayers_.size(); ++i) {

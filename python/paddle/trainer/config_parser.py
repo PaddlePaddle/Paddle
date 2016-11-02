@@ -1670,11 +1670,13 @@ class ConvTransLayerBase(LayerBase):
         if self.layer_type == "cudnn_convt":
             config_assert(use_gpu, "cudnn_convt only support GPU")
 
-        if (use_gpu == 1 and self.layer_type != "exconvt" and
-           (parallel_nn == 0 or self.config.device > -1)):
-            self.layer_type = "cudnn_convt"
-        else:
-            self.layer_type = "exconvt"
+#         if (use_gpu == 1 and self.layer_type != "exconvt" and
+#            (parallel_nn == 0 or self.config.device > -1)):
+#             self.layer_type = "cudnn_convt"
+#         else:
+#             self.layer_type = "exconvt"
+        # cudnn_convt has not been implemented so use exconvt only
+        self.layer_type = "exconvt"
         # need to specify layer in config
         self.config.type = self.layer_type
 
