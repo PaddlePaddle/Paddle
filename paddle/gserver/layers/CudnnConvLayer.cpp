@@ -35,8 +35,8 @@ bool CudnnConvLayer::init(const LayerMap &layerMap,
     ProjectionConfig* conf = new ProjectionConfig();
     conf->set_type("conv");
     conf->set_num_filters(numFilters_);
-    conf->set_allocated_conv_conf(
-        config_.mutable_inputs(i)->mutable_conv_conf());
+    ConvConfig* convConf = conf->mutable_conv_conf();
+    *convConf = *(config_.mutable_inputs(i)->mutable_conv_conf());
     conf->set_input_size(getPrev(i)->getSize());
     conf->set_output_size(getSize());
     projConf_.emplace_back(conf);
