@@ -101,4 +101,17 @@ inline void hl_cossim_derivative(real* grad,
                                  int input2_height,
                                  real scale) {}
 
+inline void hl_matrix_add_shared_bias(real* A_d,
+                                      real* B_d,
+                                      const int channel,
+                                      const int dimM,
+                                      const int dimN,
+                                      real scale) {}
+
+inline void hl_matrix_collect_shared_bias(real* B_d,
+                                          real* A_d,
+                                          const int channel,
+                                          const int dimM,
+                                          const int dimN,
+                                          real scale) {}
 #endif  // HL_MATRIX_STUB_H_

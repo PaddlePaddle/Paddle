@@ -813,7 +813,6 @@ void TrainerThread::mergeGradSparse(
       para->getMat(PARAMETER_GRADIENT).get());
   std::vector<uint32_t>& ids = mainMat->getIds(threadId_);
 
-  ids.clear();
   for (auto slaveParams : slaveParameters) {
     SparseRowCpuMatrix* mat =
         dynamic_cast<SparseRowCpuMatrix*>((*slaveParams)[pid]

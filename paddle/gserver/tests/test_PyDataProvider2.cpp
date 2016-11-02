@@ -117,7 +117,7 @@ TEST(PyDataProvider2, index_no_seq) {
 }
 
 TEST(PyDataProvider2, init_hook) {
-  paddle::PyObjectPtr pickle(PyImport_ImportModule("pickle"));
+  paddle::PyObjectPtr pickle = paddle::py::import("pickle");
   paddle::PyObjectPtr globals(
       PyModule_GetDict(PyImport_AddModule("__main__")));
   PyDict_SetItemString(globals.get(), "pickle", pickle.get());

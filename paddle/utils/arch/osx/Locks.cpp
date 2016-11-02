@@ -15,11 +15,8 @@ limitations under the License. */
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Logging.h"
 #include <dispatch/dispatch.h>
+#include <atomic>
 #include <libkern/OSAtomic.h>
-
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
-#include <os/lock.h>
-#endif
 
 namespace paddle {
 
@@ -55,12 +52,7 @@ void Semaphore::post() {
 
 class SpinLockPrivate {
 public:
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
-  os_unfair_lock lock_;
-#else
-  SpinLockPrivate(): lock_(OS_SPINLOCK_INIT) {}
-  OSSpinLock lock_;
-#endif
+  std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
   char padding_[64 - sizeof(lock_)];  // Padding to cache line size
 };
 
@@ -68,19 +60,11 @@ SpinLock::SpinLock(): m(new SpinLockPrivate()) {}
 SpinLock::~SpinLock() { delete m; }
 
 void SpinLock::lock() {
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
-  os_unfair_lock_lock(&m->lock_);
-#else
-  OSSpinLockLock(&m->lock_);
-#endif
+  while (m->lock_.test_and_set(std::memory_order_acquire)) {}
 }
 
 void SpinLock::unlock() {
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
-  os_unfair_lock_unlock(&m->lock_);
-#else
-  OSSpinLockUnlock(&m->lock_);
-#endif
+  m->lock_.clear(std::memory_order_release);
 }
 
 

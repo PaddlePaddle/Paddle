@@ -40,6 +40,8 @@ configure_file(
 
 generate_python_api(python_swig_sources)
 
+file(GLOB PY_PADDLE_PYTHON_FILES ${PROJ_ROOT}/paddle/py_paddle/*.py)
+
 # TODO(yuyang18) : make wheel name calculated by cmake
 add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/dist/.timestamp
     COMMAND ${PYTHON_EXECUTABLE} setup.py  bdist_wheel
@@ -55,6 +57,7 @@ add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/dist/.timestamp
             paddle_trainer
             paddle_api
             paddle_cuda
+	    ${PY_PADDLE_PYTHON_FILES}
 )
 
 install(DIRECTORY ${PROJ_ROOT}/paddle/dist/
