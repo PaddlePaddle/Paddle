@@ -15,6 +15,7 @@ PaddlePaddle文档
 开发指南
 --------
 * `新写Layer <../doc/dev/new_layer/index.html>`_
+* `如何贡献文档 <howto/how_to_write_docs/index.html>`_
 
 算法教程
 --------
