@@ -203,7 +203,7 @@ Theoretically, most layers can be configured with ```sparse```training, however 
 
 It's recommend that use sparse setting with first hidden layer attach with HIGH dimension sparse input data layer. 
 
-The best supported layer type for sparse training is fc_layer\ProjectedLayer\NCE layer.
+The best supported layer type for sparse training is fc_layer\table_projection\nce_layer.
 
 Supported Optimisers
 --------------------
