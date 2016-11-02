@@ -24,7 +24,7 @@ REGISTER_LAYER(exconv, ExpandConvLayer);
 bool ExpandConvLayer::init(const LayerMap &layerMap,
                            const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
-  ConvBaseLayerCpu::init(layerMap, parameterMap);
+  ExpandConvBaseLayer::init(layerMap, parameterMap);
   return true;
 }
 
@@ -49,16 +49,17 @@ void ExpandConvLayer::forward(PassType passType) {
   resetOutput(batchSize, getOutputSize());
 
   MatrixPtr image = nullptr;
-  for (size_t i = 0; i != inputLayers_.size(); ++i) {
+  MatrixPtr outV = getOutputValue();
+  for (size_t i = 0; i < inputLayers_.size(); ++i) {
     LayerPtr prevLayer = getPrev(i);
     image = prevLayer->getOutputValue();
     for (size_t off = 0; off < image->getHeight(); off++) {
       REGISTER_TIMER_INFO("expandFwdOnce", getName().c_str());
-      expandFwdOnce(image, getOutputValue(), i, off);
+      expandFwdOnce(image, outV, i, off);
     }
   }
   /* add the bias-vector */
-  if (biases_.get() != NULL) {
+  if (biases_.get()) {
     if (sharedBiases_) {
       addSharedBias();
     } else {
@@ -81,9 +82,9 @@ void ExpandConvLayer::backward(const UpdateCallback &callback) {
     biases_->getParameterPtr()->incUpdate(callback);
   }
 
-  for (size_t i = 0; i != inputLayers_.size(); ++i) {
+  for (size_t i = 0; i < inputLayers_.size(); ++i) {
     /* First, calculate the input layers error */
-    if (NULL != getPrev(i)->getOutputGrad()) {
+    if (getPrev(i)->getOutputGrad()) {
       bpropActs(outGrad, getPrev(i)->getOutputGrad(), i);
     }
     if (weights_[i]->getWGrad()) {

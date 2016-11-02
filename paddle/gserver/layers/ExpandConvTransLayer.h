@@ -15,9 +15,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "ConvBaseLayerCpu.h"
 #include "paddle/math/Matrix.h"
 #include <vector>
+#include "ExpandConvBaseLayer.h"
 
 namespace paddle {
 
@@ -28,10 +28,10 @@ namespace paddle {
  *
  * The config file api is img_convTrans_layer.
  */
-class ExpandConvTransLayer : public ConvBaseLayerCpu {
+class ExpandConvTransLayer : public ExpandConvBaseLayer {
 public:
   explicit ExpandConvTransLayer(const LayerConfig& config) :
-    ConvBaseLayerCpu(config) {}
+    ExpandConvBaseLayer(config) {}
 
   ~ExpandConvTransLayer() {}
 

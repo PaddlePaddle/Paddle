@@ -22,9 +22,9 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
   Layer::init(layerMap, parameterMap);
 
   if (config_.type() == "exconv" || config_.type() == "cudnn_conv") {
-    isConv_ = true;
+    isDeconv_ = false;
   } else {
-    isConv_ = false;
+    isDeconv_ = true;
   }
 
   /* Initialize the convolutional layer parameter */

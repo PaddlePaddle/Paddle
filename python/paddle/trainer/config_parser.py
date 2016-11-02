@@ -1107,7 +1107,7 @@ def parse_conv(conv, input_layer_name, conv_conf):
                                          conv_conf.caffe_mode)
 
 
-def parse_convt(conv, input_layer_name, conv_conf, num_filters):
+def parse_conv_trans(conv, input_layer_name, conv_conf, num_filters):
     conv_conf.filter_size = conv.filter_size
     conv_conf.filter_size_y = conv.filter_size_y
     conv_conf.channels = conv.channels
@@ -1683,7 +1683,7 @@ class ConvTransLayerBase(LayerBase):
 
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
-            parse_convt(
+            parse_conv_trans(
                 self.inputs[input_index].conv,
                 input_layer.name,
                 self.config.inputs[input_index].conv_conf, num_filters)

@@ -25,7 +25,7 @@ namespace paddle {
  * @brief A subclass of ConvBaseLayer that is a superclass of both
  * ExpandConvLayer and ExpandConvTransLayer
  */
-class ConvBaseLayerCpu : public ConvBaseLayer {
+class ExpandConvBaseLayer : public ConvBaseLayer {
 protected:
   /// For expand convolution.
   /// subM_ = numFilters_ / groups_.
@@ -43,18 +43,19 @@ protected:
   /// The spatial dimensions of width of output feature map.
   IntV outputW_;
 
-  /*The expandInput_ and transOutValue_ are used for CPU expand conv calc*/
-  /// Expand one sample at a time. shape:
-  /// (numChannels * filterPixels_, outputSizeH * outputSizeW)
+  /*The expandInput_ and transOutValue_ are used for CPU expand conv calc
+   * Expand one sample at a time. shape:
+   * (numChannels * filterPixels_, outputSizeH * outputSizeW)
+   * */
   MatrixPtr expandInput_;
   /// The transpose of output, which is an auxiliary matrix.
   MatrixPtr transOutValue_;
 
 public:
-  explicit ConvBaseLayerCpu(const LayerConfig& config)
+  explicit ExpandConvBaseLayer(const LayerConfig& config)
     : ConvBaseLayer(config) {}
 
-  ~ConvBaseLayerCpu() {}
+  ~ExpandConvBaseLayer() {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 

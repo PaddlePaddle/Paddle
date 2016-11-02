@@ -29,7 +29,7 @@ REGISTER_LAYER(exconvt, ExpandConvTransLayer);
 bool ExpandConvTransLayer::init(const LayerMap &layerMap,
                            const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
-  ConvBaseLayerCpu::init(layerMap, parameterMap);
+  ExpandConvBaseLayer::init(layerMap, parameterMap);
 
   return true;
 }
@@ -72,7 +72,7 @@ void ExpandConvTransLayer::forward(PassType passType) {
   resetOutput(batchSize, getSize());
 
   MatrixPtr output = nullptr;
-  for (size_t i = 0; i != inputLayers_.size(); ++i) {
+  for (size_t i = 0; i < inputLayers_.size(); ++i) {
     LayerPtr prevLayer = getPrev(i);
     output = prevLayer->getOutputValue();
     REGISTER_TIMER_INFO("shrinkFwd", getName().c_str());
@@ -80,7 +80,7 @@ void ExpandConvTransLayer::forward(PassType passType) {
   }
 
   /* add the bias-vector */
-  if (biases_.get() != NULL) {
+  if (biases_.get()) {
     if (sharedBiases_) {
       addSharedBias();
     } else {
@@ -102,10 +102,10 @@ void ExpandConvTransLayer::backward(const UpdateCallback &callback) {
     biases_->getParameterPtr()->incUpdate(callback);
   }
 
-  for (size_t i = 0; i != inputLayers_.size(); ++i) {
+  for (size_t i = 0; i < inputLayers_.size(); ++i) {
     /* First, calculate the input layers error */
     for (size_t off = 0; off < imageGrad->getHeight(); off++) {
-      if (NULL != getPrev(i)->getOutputGrad()) {
+      if (getPrev(i)->getOutputGrad()) {
         expandFwdOnce(imageGrad, getPrev(i)->getOutputGrad(), i, off);
       }
     }

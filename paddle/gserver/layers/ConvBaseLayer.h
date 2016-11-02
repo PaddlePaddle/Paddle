@@ -28,8 +28,8 @@ class ConvBaseLayer : public Layer {
 protected:
   typedef std::vector<int> IntV;
 
-  /// True if it's convolution layer, false if it's deconv layer
-  bool isConv_;
+  /// True if it's deconv layer, false if it's convolution layer
+  bool isDeconv_;
 
   /// The number of filters.
   int numFilters_;
