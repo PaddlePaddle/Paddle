@@ -669,12 +669,14 @@ void testLayerGrad(TestConfig testConf, string testLayerName, size_t batchSize,
 
 void testProjectionGrad(ProjectionConfig conf, InputType inputType,
                         size_t parameterSize, size_t batchSize, bool useGpu,
-                        bool testState) {
+                        bool testState, int biasSize, bool sharedBias) {
   TestConfig config;
   conf.set_name(conf.type());
   config.layerConfig.set_type("mixed");
   config.layerConfig.set_size(conf.output_size());
-  config.biasSize = config.layerConfig.size();
+  config.biasSize = biasSize == 0 ? config.layerConfig.size() : biasSize;
+  config.layerConfig.set_bias_size(config.biasSize);
+  config.layerConfig.set_shared_biases(sharedBias);
   config.inputDefs.push_back(
       {inputType, "layer_0", conf.input_size(), parameterSize});
   *config.layerConfig.add_inputs()->mutable_proj_conf() = conf;

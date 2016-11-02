@@ -20,6 +20,11 @@ limitations under the License. */
 #include "hl_thread.ph"
 #include "hl_dso_loader.h"
 #include "paddle/utils/Logging.h"
+#include "paddle/utils/CommandLineParser.h"
+
+P_DEFINE_int32(cudnn_conv_workspace_limit_in_mb, 4096,
+                "Specify cuDNN max workspace limit, in units MB, "
+                "4096MB=4GB by default.");
 
 namespace dynload {
 
@@ -242,7 +247,7 @@ void hl_conv_workspace(hl_tensor_descriptor input,
     CHECK_NOTNULL(conv);
 
     // Specify workspace limit directly
-    size_t memoryLimitBytes = 8 * 1024 * 1024;
+    size_t memoryLimitBytes = (1LL << 20) * FLAGS_cudnn_conv_workspace_limit_in_mb;
 
     // cudnn convolution forward configuration
     cudnnTensorDescriptor_t       fwd_src_desc = GET_TENSOR_DESCRIPTOR(input);

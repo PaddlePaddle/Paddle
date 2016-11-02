@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/math/SparseMatrix.h"
 #include <gtest/gtest.h>
 #include "paddle/gserver/tests/TestUtil.h"
+#include "paddle/utils/Stat.h"
+
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -2066,6 +2068,60 @@ TEST(Matrix, MaxOutFwdBwd) {
             testMaxOutFwdBwd(numSamples, imgSizeH, imgSizeW, channels, groups);
           }
         }
+      }
+    }
+  }
+}
+
+void testAddSharedBias(int numSamples, int dim, int channel) {
+  MatrixPtr cpuData = std::make_shared<CpuMatrix>(numSamples, dim);
+  MatrixPtr gpuData = std::make_shared<GpuMatrix>(numSamples, dim);
+
+  MatrixPtr cpuBias = std::make_shared<CpuMatrix>(1, channel);
+  MatrixPtr gpuBias = std::make_shared<GpuMatrix>(1, channel);
+
+  cpuData->randomizeUniform();
+  gpuData->copyFrom(*cpuData);
+  cpuBias->randomizeUniform();
+  gpuBias->copyFrom(*cpuBias);
+
+  cpuData->addSharedBias(*cpuBias, 1.0);
+  gpuData->addSharedBias(*gpuBias, 1.0);
+
+  MatrixPtr check = std::make_shared<CpuMatrix>(numSamples, dim);
+  check->copyFrom(*gpuData);
+  MatrixCheckErr(*cpuData, *check);
+}
+
+void testCollectSharedBias(int numSamples, int dim, int channel) {
+  MatrixPtr cpuData = std::make_shared<CpuMatrix>(numSamples, dim);
+  MatrixPtr gpuData = std::make_shared<GpuMatrix>(numSamples, dim);
+
+  MatrixPtr cpuBias = std::make_shared<CpuMatrix>(1, channel);
+  MatrixPtr gpuBias = std::make_shared<GpuMatrix>(1, channel);
+
+  cpuData->randomizeUniform();
+  gpuData->copyFrom(*cpuData);
+  cpuBias->randomizeUniform();
+  gpuBias->copyFrom(*cpuBias);
+
+  cpuBias->collectSharedBias(*cpuData, 1.0);
+  gpuBias->collectSharedBias(*gpuData, 1.0);
+
+  MatrixPtr check = std::make_shared<CpuMatrix>(1, channel);
+  check->copyFrom(*gpuBias);
+  MatrixCheckErr(*cpuBias, *check);
+}
+
+
+TEST(Matrix, sharedBias) {
+  for (auto numSamples : {1, 100, 520}) {
+    for (auto dim : {100 * 16, 100 * 32}) {
+      for (auto channel : {8, 16}) {
+        VLOG(3) << " numSamples=" << numSamples << " dim=" << dim
+                << " channel=" << channel;
+        testAddSharedBias(numSamples, dim, channel);
+        testCollectSharedBias(numSamples, dim, channel);
       }
     }
   }

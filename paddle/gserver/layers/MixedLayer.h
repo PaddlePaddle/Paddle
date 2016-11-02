@@ -58,5 +58,6 @@ protected:
   /// the matrix size of projection state
   std::vector<int> projectionStateMatrixSize_;
   std::unique_ptr<Weight> biases_;
+  bool sharedBias_;
 };
 }  // namespace paddle
