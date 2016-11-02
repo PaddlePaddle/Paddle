@@ -31,7 +31,7 @@
     <link rel="top" title="PaddlePaddle  documentation" href="../index.html" />
     <link rel="up" title="Build And Install PaddlePaddle" href="index.html" />
     <link rel="next" title="Debian Package installation guide" href="ubuntu_install.html" />
-    <link rel="prev" title="Build And Install PaddlePaddle" href="index.html" /> 
+    <link rel="prev" title="Contribute to PaddlePaddle" href="contribute_to_paddle.html" /> 
 <script>
 var _hmt = _hmt || [];
 (function() {
@@ -57,7 +57,7 @@ var _hmt = _hmt || [];
           <a href="ubuntu_install.html" title="Debian Package installation guide"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Build And Install PaddlePaddle"
+          <a href="contribute_to_paddle.html" title="Contribute to PaddlePaddle"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Build And Install PaddlePaddle</a> &#187;</li> 
@@ -70,115 +70,64 @@ var _hmt = _hmt || [];
           <div class="body" role="main">
             
   <div class="section" id="docker-installation-guide">
-<h1>Docker installation guide<a class="headerlink" href="#docker-installation-guide" title="Permalink to this headline">¶</a></h1>
-<p>PaddlePaddle provide the <a class="reference external" href="https://www.docker.com/">Docker</a> image. <a class="reference external" href="https://www.docker.com/">Docker</a> is a lightweight container utilities. The performance of PaddlePaddle in <a class="reference external" href="https://www.docker.com/">Docker</a> container is basically as same as run it in a normal linux. The <a class="reference external" href="https://www.docker.com/">Docker</a> is a very convenient way to deliver the binary release for linux programs.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The <a class="reference external" href="https://www.docker.com/">Docker</a> image is the recommended way to run PaddlePaddle</p>
-</div>
+<span id="docker-installation-guide"></span><h1>Docker installation guide<a class="headerlink" href="#docker-installation-guide" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle provides some pre-compiled binary, including Docker images, ubuntu deb packages. It is welcomed to contributed more installation package of different linux distribution (such as ubuntu, centos, debian, gentoo and so on). We recommend to use Docker images to deploy PaddlePaddle.</p>
+<div class="section" id="docker-installation">
+<span id="docker-installation"></span><h2>Docker installation<a class="headerlink" href="#docker-installation" title="Permalink to this headline">¶</a></h2>
+<p>Docker is a tool designed to make it easier to create, deploy, and run applications by using containers.</p>
 <div class="section" id="paddlepaddle-docker-images">
-<h2>PaddlePaddle Docker images<a class="headerlink" href="#paddlepaddle-docker-images" title="Permalink to this headline">¶</a></h2>
-<p>There are 12 <a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/tags/">images</a> for PaddlePaddle, and the name is <code class="code docutils literal"><span class="pre">paddle-dev/paddle</span></code>,  tags are:</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="21%" />
-<col width="22%" />
-<col width="29%" />
-<col width="28%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">&nbsp;</th>
-<th class="head">normal</th>
-<th class="head">devel</th>
-<th class="head">demo</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>CPU</td>
-<td>cpu-latest</td>
-<td>cpu-devel-latest</td>
-<td>cpu-demo-latest</td>
-</tr>
-<tr class="row-odd"><td>GPU</td>
-<td>gpu-latest</td>
-<td>gpu-devel-latest</td>
-<td>gpu-demo-latest</td>
-</tr>
-<tr class="row-even"><td>CPU WITHOUT AVX</td>
-<td>cpu-noavx-latest</td>
-<td>cpu-devel-noavx-latest</td>
-<td>cpu-demo-noavx-latest</td>
-</tr>
-<tr class="row-odd"><td>GPU WITHOUT AVX</td>
-<td>gpu-noavx-latest</td>
-<td>gpu-devel-noavx-latest</td>
-<td>gpu-demo-noavx-latest</td>
-</tr>
-</tbody>
-</table>
-<p>And the three columns are:</p>
+<span id="paddlepaddle-docker-images"></span><h3>PaddlePaddle Docker images<a class="headerlink" href="#paddlepaddle-docker-images" title="Permalink to this headline">¶</a></h3>
+<p>There are six Docker images:</p>
 <ul class="simple">
-<li>normal: The docker image only contains binary of PaddlePaddle.</li>
-<li>devel: The docker image contains PaddlePaddle binary, source code and essential build environment.</li>
-<li>demo: The docker image contains the dependencies to run PaddlePaddle demo.</li>
+<li>paddledev/paddle:cpu-latest: PaddlePaddle CPU binary image.</li>
+<li>paddledev/paddle:gpu-latest: PaddlePaddle GPU binary image.</li>
+<li>paddledev/paddle:cpu-devel-latest: PaddlePaddle CPU binary image plus source code.</li>
+<li>paddledev/paddle:gpu-devel-latest: PaddlePaddle GPU binary image plus source code.</li>
+<li>paddledev/paddle:cpu-demo-latest: PaddlePaddle CPU binary image plus source code and demo</li>
+<li>paddledev/paddle:gpu-demo-latest: PaddlePaddle GPU binary image plus source code and demo</li>
 </ul>
-<p>And the four rows are:</p>
-<ul class="simple">
-<li>CPU: CPU Version. Support CPU which has <code class="code docutils literal"><span class="pre">AVX</span></code> instructions.</li>
-<li>GPU: GPU Version. Support GPU, and cpu has <code class="code docutils literal"><span class="pre">AVX</span></code> instructions.</li>
-<li>CPU WITHOUT AVX: CPU Version, which support most CPU even doesn&#8217;t have <code class="code docutils literal"><span class="pre">AVX</span></code> instructions.</li>
-<li>GPU WITHOUT AVX: GPU Version, which support most CPU even doesn&#8217;t have <code class="code docutils literal"><span class="pre">AVX</span></code> instructions.</li>
-</ul>
-<p>User can choose any version depends on machine. The following script can help you to detect your CPU support <code class="code docutils literal"><span class="pre">AVX</span></code> or not.</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="k">if</span> cat /proc/cpuinfo <span class="p">|</span> grep -q avx <span class="p">;</span> <span class="k">then</span> <span class="nb">echo</span> <span class="s2">&quot;Support AVX&quot;</span><span class="p">;</span> <span class="k">else</span> <span class="nb">echo</span> <span class="s2">&quot;Not support AVX&quot;</span><span class="p">;</span> <span class="k">fi</span>
-</pre></div>
-</div>
-<p>If the output is <code class="code docutils literal"><span class="pre">Support</span> <span class="pre">AVX</span></code>, then you can choose the AVX version of PaddlePaddle, otherwise, you need select <code class="code docutils literal"><span class="pre">noavx</span></code> version of PaddlePaddle. For example, the CPU develop version of PaddlePaddle is <code class="code docutils literal"><span class="pre">paddle-dev/paddle:cpu-devel-latest</span></code>.</p>
-<p>The PaddlePaddle images don&#8217;t contain any entry command. You need to write your entry command to use this image. See <code class="code docutils literal"><span class="pre">Remote</span> <span class="pre">Access</span></code> part or just use following command to run a <code class="code docutils literal"><span class="pre">bash</span></code></p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it paddledev/paddle:cpu-latest /bin/bash
-</pre></div>
-</div>
+<p>Tags with latest will be replaced by a released version.</p>
 </div>
 <div class="section" id="download-and-run-docker-images">
-<h2>Download and Run Docker images<a class="headerlink" href="#download-and-run-docker-images" title="Permalink to this headline">¶</a></h2>
-<p>You have to install Docker in your machine which has linux kernel version 3.10+ first. You can refer to the official guide <a class="reference external" href="https://docs.docker.com/engine/installation/">https://docs.docker.com/engine/installation/</a> for further information.</p>
-<p>You can use <code class="code docutils literal"><span class="pre">docker</span> <span class="pre">pull</span> <span class="pre">`</span> <span class="pre">to</span> <span class="pre">download</span> <span class="pre">images</span> <span class="pre">first,</span> <span class="pre">or</span> <span class="pre">just</span> <span class="pre">launch</span> <span class="pre">a</span> <span class="pre">container</span> <span class="pre">with</span> <span class="pre">:code:`docker</span> <span class="pre">run</span></code> :</p>
+<span id="download-and-run-docker-images"></span><h3>Download and Run Docker images<a class="headerlink" href="#download-and-run-docker-images" title="Permalink to this headline">¶</a></h3>
+<p>You have to install Docker in your machine which has linux kernel version 3.10+ first. You can refer to the official guide https://docs.docker.com/engine/installation/ for further information.</p>
+<p>You can use <code class="docutils literal"><span class="pre">docker</span> <span class="pre">pull</span></code>to download images first, or just launch a container with <code class="docutils literal"><span class="pre">docker</span> <span class="pre">run</span></code>:</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>docker run -it paddledev/paddle:cpu-latest
 </pre></div>
 </div>
 <p>If you want to launch container with GPU support, you need to set some environment variables at the same time:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
-docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddle:gpu-latest
+<div class="highlight-bash"><div class="highlight"><pre><span></span>export CUDA_SO=&quot;$(\ls /usr/lib64/libcuda* | xargs -I{} echo &#39;-v {}:{}&#39;) $(\ls /usr/lib64/libnvidia* | xargs -I{} echo &#39;-v {}:{}&quot;
+export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo &#39;--device {}:{}&#39;)
+docker run -it paddledev/paddle:gpu-latest
 </pre></div>
 </div>
 </div>
-<div class="section" id="some-notes-for-docker">
-<h2>Some notes for docker<a class="headerlink" href="#some-notes-for-docker" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="notice">
+<span id="notice"></span><h3>Notice<a class="headerlink" href="#notice" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="performance">
-<h3>Performance<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h3>
+<span id="performance"></span><h4>Performance<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h4>
 <p>Since Docker is based on the lightweight virtual containers, the CPU computing performance maintains well. And GPU driver and equipments are all mapped to the container, so the GPU computing performance would not be seriously affected.</p>
 <p>If you use high performance nic, such as RDMA(RoCE 40GbE or IB 56GbE), Ethernet(10GbE), it is recommended to use config &#8220;-net = host&#8221;.</p>
 </div>
 <div class="section" id="remote-access">
-<h3>Remote access<a class="headerlink" href="#remote-access" title="Permalink to this headline">¶</a></h3>
-<p>If you want to enable ssh access background, you need to build an image by yourself. Please refer to official guide <a class="reference external" href="https://docs.docker.com/engine/reference/builder/">https://docs.docker.com/engine/reference/builder/</a> for further information.</p>
+<span id="remote-access"></span><h4>Remote access<a class="headerlink" href="#remote-access" title="Permalink to this headline">¶</a></h4>
+<p>If you want to enable ssh access background, you need to build an image by yourself. Please refer to official guide https://docs.docker.com/engine/reference/builder/ for further information.</p>
 <p>Following is a simple Dockerfile with ssh:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">FROM</span> <span class="n">paddledev</span><span class="o">/</span><span class="n">paddle</span><span class="p">:</span><span class="n">cpu</span><span class="o">-</span><span class="n">latest</span>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>FROM paddledev/paddle
 
-<span class="n">MAINTAINER</span> <span class="n">PaddlePaddle</span> <span class="n">dev</span> <span class="n">team</span> <span class="o">&lt;</span><span class="n">paddle</span><span class="o">-</span><span class="n">dev</span><span class="nd">@baidu</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
+MAINTAINER PaddlePaddle dev team &lt;paddle-dev@baidu.com&gt;
 
-<span class="n">RUN</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">update</span>
-<span class="n">RUN</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="o">-</span><span class="n">y</span> <span class="n">openssh</span><span class="o">-</span><span class="n">server</span>
-<span class="n">RUN</span> <span class="n">mkdir</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">run</span><span class="o">/</span><span class="n">sshd</span>
-<span class="n">RUN</span> <span class="n">echo</span> <span class="s1">&#39;root:root&#39;</span> <span class="o">|</span> <span class="n">chpasswd</span>
+RUN apt-get update
+RUN apt-get install -y openssh-server
+RUN mkdir /var/run/sshd
+RUN <span class="nb">echo</span> <span class="s1">&#39;root:root&#39;</span> <span class="p">|</span> chpasswd
 
-<span class="n">RUN</span> <span class="n">sed</span> <span class="o">-</span><span class="n">ri</span> <span class="s1">&#39;s/^PermitRootLogin\s+.*/PermitRootLogin yes/&#39;</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ssh</span><span class="o">/</span><span class="n">sshd_config</span>
-<span class="n">RUN</span> <span class="n">sed</span> <span class="o">-</span><span class="n">ri</span> <span class="s1">&#39;s/UsePAM yes/#UsePAM yes/g&#39;</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ssh</span><span class="o">/</span><span class="n">sshd_config</span>
+RUN sed -ri <span class="s1">&#39;s/^PermitRootLogin\s+.*/PermitRootLogin yes/&#39;</span> /etc/ssh/sshd_config
+RUN sed -ri <span class="s1">&#39;s/UsePAM yes/#UsePAM yes/g&#39;</span> /etc/ssh/sshd_config
 
-<span class="n">EXPOSE</span> <span class="mi">22</span>
+EXPOSE 22
 
-<span class="n">CMD</span>    <span class="p">[</span><span class="s2">&quot;/usr/sbin/sshd&quot;</span><span class="p">,</span> <span class="s2">&quot;-D&quot;</span><span class="p">]</span>
+CMD    <span class="o">[</span><span class="s2">&quot;/usr/sbin/sshd&quot;</span>, <span class="s2">&quot;-D&quot;</span><span class="o">]</span>
 </pre></div>
 </div>
 <p>Then you can build an image with Dockerfile and launch a container:</p>
@@ -202,6 +151,7 @@ docker rm paddle_ssh_machine
 </div>
 </div>
 </div>
+</div>
 
 
           </div>
@@ -212,9 +162,10 @@ docker rm paddle_ssh_machine
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Docker installation guide</a><ul>
+<li><a class="reference internal" href="#docker-installation">Docker installation</a><ul>
 <li><a class="reference internal" href="#paddlepaddle-docker-images">PaddlePaddle Docker images</a></li>
 <li><a class="reference internal" href="#download-and-run-docker-images">Download and Run Docker images</a></li>
-<li><a class="reference internal" href="#some-notes-for-docker">Some notes for docker</a><ul>
+<li><a class="reference internal" href="#notice">Notice</a><ul>
 <li><a class="reference internal" href="#performance">Performance</a></li>
 <li><a class="reference internal" href="#remote-access">Remote access</a></li>
 </ul>
@@ -222,10 +173,12 @@ docker rm paddle_ssh_machine
 </ul>
 </li>
 </ul>
+</li>
+</ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="index.html"
-                        title="previous chapter">Build And Install PaddlePaddle</a></p>
+  <p class="topless"><a href="contribute_to_paddle.html"
+                        title="previous chapter">Contribute to PaddlePaddle</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="ubuntu_install.html"
                         title="next chapter">Debian Package installation guide</a></p>
@@ -263,7 +216,7 @@ docker rm paddle_ssh_machine
           <a href="ubuntu_install.html" title="Debian Package installation guide"
              >next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Build And Install PaddlePaddle"
+          <a href="contribute_to_paddle.html" title="Contribute to PaddlePaddle"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="index.html" >Build And Install PaddlePaddle</a> &#187;</li> 

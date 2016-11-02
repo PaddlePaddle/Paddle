@@ -99,7 +99,3 @@ git pull --rebase upstream HEAD
 git push -f origin HEAD
 ```
 Now your Pull Request is updated with the latest version.
-
-## Revise your pull request
-
-When you revise your pull request according to reviewer's comments, please use 'git commit' instead of 'git commit --amend' to commit your changes so that the reviewers can see the difference between the new pull requrest and the old pull request.

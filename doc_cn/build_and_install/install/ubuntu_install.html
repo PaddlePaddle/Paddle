@@ -58,38 +58,25 @@ var _hmt = _hmt || [];
             
   <div class="section" id="debubuntupaddlepaddle">
 <h1>使用deb包在Ubuntu上安装PaddlePaddle<a class="headerlink" href="#debubuntupaddlepaddle" title="Permalink to this headline">¶</a></h1>
-<p>PaddlePaddle目前支持使用deb包安装。Paddle的 <code class="code docutils literal"><span class="pre">deb</span></code> 安装包在ubuntu 14.04中正确，但理论上支持其他的 debian 发行版。</p>
-<p>PaddlePaddle的ubuntu安装包分为四个版本，他们是 cpu、gpu、cpu-noavx、gpu-noavx 四个版本。其中 noavx 用于不支持AVX指令集的cpu。安装包的下载地址是: <a class="reference external" href="https://github.com/baidu/Paddle/releases/">https://github.com/baidu/Paddle/releases/</a></p>
-<p>用户需要先将PaddlePaddle安装包下载到本地，然后执行如下 <code class="code docutils literal"><span class="pre">gdebi</span></code> 命令即可完成安装。</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>gdebi paddle-*-cpu.deb
-</pre></div>
-</div>
-<p>如果 <code class="code docutils literal"><span class="pre">gdebi</span></code> 没有安装,则需要使用 <code class="code docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">gdebi</span></code>, 来安装 <code class="code docutils literal"><span class="pre">gdebi</span></code> 。</p>
-<p>或者使用下面一条命令安装.</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>dpkg -i paddle-*-cpu.deb
+<p>PaddlePaddle目前支持ubuntu 14.04版本使用deb包安装。更多的安装包PaddlePaddle会在近期提供。
+欢迎大家贡献各个发行版的安装包(例如，ubuntu，centos，debian，gentoo)。</p>
+<p>PaddlePaddle的ubuntu安装包分为两个版本，即CPU版本，和GPU版本，他们的下载地址是:
+<a class="reference external" href="https://github.com/baidu/Paddle/releases/tag/V0.8.0b0">https://github.com/baidu/Paddle/releases/tag/V0.8.0b0</a></p>
+<p>需要注意的是，目前PaddlePaddle的安装包只支持
+<a class="reference external" href="https://en.wikipedia.org/wiki/Advanced_Vector_Extensions">AVX</a>
+指令集的X86 CPU。如果系统使用不支持 <a class="reference external" href="https://en.wikipedia.org/wiki/Advanced_Vector_Extensions">AVX</a> 指令集的CPU运行PaddlePaddle，那么需要从源码
+编译PaddlePaddle，请参考 <a class="reference external" href="../cmake/index.html">编译文档</a> 。</p>
+<p>用户需要先将PaddlePaddle安装包下载到本地，然后执行如下命令即可完成安装。</p>
+<div class="highlight-shell"><div class="highlight"><pre><span></span>dpkg -i paddle-0.8.0b-cpu.deb
 apt-get install -f
 </pre></div>
 </div>
 <p>在 <code class="code docutils literal"><span class="pre">dpkg</span> <span class="pre">-i</span></code> 的时候如果报一些依赖未找到的错误是正常的，
-在 <code class="code docutils literal"><span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">-f</span></code> 里会继续安装 PaddlePaddle。</p>
-<p>需要注意的是，如果使用GPU版本的PaddlePaddle，请安装CUDA 7.5 和CUDNN 5到本地环境中，
+在 <code class="code docutils literal"><span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">-f</span></code> 里会继续安装 PaddlePaddle。
+需要注意的是，如果使用GPU版本的PaddlePaddle，请安装CUDA 7.5 和CUDNN 5到本地环境中，
 并设置好对应的环境变量(LD_LIBRARY_PATH等等)。</p>
-<p>安装完成后,可以使用命令 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">version</span></code> 查看安装后的paddle 版本。可能的输出为</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">PaddlePaddle</span> <span class="mf">0.8</span><span class="o">.</span><span class="mb">0b1</span><span class="p">,</span> <span class="n">compiled</span> <span class="k">with</span>
-    <span class="n">with_avx</span><span class="p">:</span> <span class="n">ON</span>
-    <span class="n">with_gpu</span><span class="p">:</span> <span class="n">OFF</span>
-    <span class="n">with_double</span><span class="p">:</span> <span class="n">OFF</span>
-    <span class="n">with_python</span><span class="p">:</span> <span class="n">ON</span>
-    <span class="n">with_rdma</span><span class="p">:</span> <span class="n">OFF</span>
-    <span class="n">with_glog</span><span class="p">:</span> <span class="n">ON</span>
-    <span class="n">with_gflags</span><span class="p">:</span> <span class="n">ON</span>
-    <span class="n">with_metric_learning</span><span class="p">:</span>
-    <span class="n">with_timer</span><span class="p">:</span> <span class="n">OFF</span>
-    <span class="n">with_predict_sdk</span><span class="p">:</span>
-</pre></div>
-</div>
-<div class="section" id="id1">
-<h2>可能遇到的问题<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id2">
+<h2>可能遇到的问题<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="libcudart-so-libcudnn-so">
 <h3>libcudart.so/libcudnn.so找不到<a class="headerlink" href="#libcudart-so-libcudnn-so" title="Permalink to this headline">¶</a></h3>
 <p>安装完成PaddlePaddle后，运行 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code> 报错:</p>
@@ -136,7 +123,7 @@ driver添加到LD_LIBRARY_PATH中。比较可能的命令如下。</p>
   <h3><a href="../../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">使用deb包在Ubuntu上安装PaddlePaddle</a><ul>
-<li><a class="reference internal" href="#id1">可能遇到的问题</a><ul>
+<li><a class="reference internal" href="#id2">可能遇到的问题</a><ul>
 <li><a class="reference internal" href="#libcudart-so-libcudnn-so">libcudart.so/libcudnn.so找不到</a></li>
 <li><a class="reference internal" href="#cuda-driver">CUDA Driver找不到</a></li>
 <li><a class="reference internal" href="#config">config文件找不到</a></li>

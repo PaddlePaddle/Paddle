@@ -78,7 +78,7 @@ var _hmt = _hmt || [];
 <dt id="_CPPv2N6paddle5LayerE">
 <span id="paddle::Layer"></span><span class="target" id="paddleclasspaddle_1_1Layer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Layer</code><a class="headerlink" href="#_CPPv2N6paddle5LayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base class for layer. Define necessary variables and functions for every layer. </p>
-<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AddtoLayer"><span class="std std-ref">paddle::AddtoLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AgentLayer"><span class="std std-ref">paddle::AgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1BatchNormBaseLayer"><span class="std std-ref">paddle::BatchNormBaseLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1BlockExpandLayer"><span class="std std-ref">paddle::BlockExpandLayer</span></a>, paddle::BootBiasLayer, <a class="reference internal" href="#paddleclasspaddle_1_1ConcatenateLayer"><span class="std std-ref">paddle::ConcatenateLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConcatenateLayer2"><span class="std std-ref">paddle::ConcatenateLayer2</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvBaseLayer"><span class="std std-ref">paddle::ConvBaseLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvexCombinationLayer"><span class="std std-ref">paddle::ConvexCombinationLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvShiftLayer"><span class="std std-ref">paddle::ConvShiftLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CosSimLayer"><span class="std std-ref">paddle::CosSimLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CosSimVecMatLayer"><span class="std std-ref">paddle::CosSimVecMatLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span class="std std-ref">paddle::CostLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CRFLayer"><span class="std std-ref">paddle::CRFLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CTCLayer"><span class="std std-ref">paddle::CTCLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DataLayer"><span class="std std-ref">paddle::DataLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DataNormLayer"><span class="std std-ref">paddle::DataNormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1EosIdCheckLayer"><span class="std std-ref">paddle::EosIdCheckLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ExpandLayer"><span class="std std-ref">paddle::ExpandLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1FeatureMapExpandLayer"><span class="std std-ref">paddle::FeatureMapExpandLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1FullyConnectedLayer"><span class="std std-ref">paddle::FullyConnectedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GatedRecurrentLayer"><span class="std std-ref">paddle::GatedRecurrentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GatherAgentLayer"><span class="std std-ref">paddle::GatherAgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GetOutputLayer"><span class="std std-ref">paddle::GetOutputLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GruStepLayer"><span class="std std-ref">paddle::GruStepLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1HierarchicalSigmoidLayer"><span class="std std-ref">paddle::HierarchicalSigmoidLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1InterpolationLayer"><span class="std std-ref">paddle::InterpolationLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LambdaCost"><span class="std std-ref">paddle::LambdaCost</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmLayer"><span class="std std-ref">paddle::LstmLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmStepLayer"><span class="std std-ref">paddle::LstmStepLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MaxIdLayer"><span class="std std-ref">paddle::MaxIdLayer</span></a>, paddle::MaxOutLayer, <a class="reference internal" href="#paddleclasspaddle_1_1MixedLayer"><span class="std std-ref">paddle::MixedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiplexLayer"><span class="std std-ref">paddle::MultiplexLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NCELayer"><span class="std std-ref">paddle::NCELayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NormLayer"><span class="std std-ref">paddle::NormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OuterProdLayer"><span class="std std-ref">paddle::OuterProdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ParameterReluLayer"><span class="std std-ref">paddle::ParameterReluLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PoolLayer"><span class="std std-ref">paddle::PoolLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PowerLayer"><span class="std std-ref">paddle::PowerLayer</span></a>, paddle::PrintLayer, <a class="reference internal" href="#paddleclasspaddle_1_1RankingCost"><span class="std std-ref">paddle::RankingCost</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentLayer"><span class="std std-ref">paddle::RecurrentLayer</span></a>, paddle::RecurrentLayerGroup, <a class="reference internal" href="#paddleclasspaddle_1_1ResizeLayer"><span class="std std-ref">paddle::ResizeLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SamplingIdLayer"><span class="std std-ref">paddle::SamplingIdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ScalingLayer"><span class="std std-ref">paddle::ScalingLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ScatterAgentLayer"><span class="std std-ref">paddle::ScatterAgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SelectiveFullyConnectedLayer"><span class="std std-ref">paddle::SelectiveFullyConnectedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceConcatLayer"><span class="std std-ref">paddle::SequenceConcatLayer</span></a>, paddle::SequencePoolLayer, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceReshapeLayer"><span class="std std-ref">paddle::SequenceReshapeLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SlopeInterceptLayer"><span class="std std-ref">paddle::SlopeInterceptLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SubSequenceLayer"><span class="std std-ref">paddle::SubSequenceLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SumToOneNormLayer"><span class="std std-ref">paddle::SumToOneNormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1TensorLayer"><span class="std std-ref">paddle::TensorLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1TransLayer"><span class="std std-ref">paddle::TransLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ValidationLayer"><span class="std std-ref">paddle::ValidationLayer</span></a></p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AddtoLayer"><span class="std std-ref">paddle::AddtoLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AgentLayer"><span class="std std-ref">paddle::AgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AverageLayer"><span class="std std-ref">paddle::AverageLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1BatchNormBaseLayer"><span class="std std-ref">paddle::BatchNormBaseLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1BlockExpandLayer"><span class="std std-ref">paddle::BlockExpandLayer</span></a>, paddle::BootBiasLayer, <a class="reference internal" href="#paddleclasspaddle_1_1ConcatenateLayer"><span class="std std-ref">paddle::ConcatenateLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConcatenateLayer2"><span class="std std-ref">paddle::ConcatenateLayer2</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvBaseLayer"><span class="std std-ref">paddle::ConvBaseLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvexCombinationLayer"><span class="std std-ref">paddle::ConvexCombinationLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvShiftLayer"><span class="std std-ref">paddle::ConvShiftLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CosSimLayer"><span class="std std-ref">paddle::CosSimLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CosSimVecMatLayer"><span class="std std-ref">paddle::CosSimVecMatLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span class="std std-ref">paddle::CostLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CRFLayer"><span class="std std-ref">paddle::CRFLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CTCLayer"><span class="std std-ref">paddle::CTCLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DataLayer"><span class="std std-ref">paddle::DataLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DataNormLayer"><span class="std std-ref">paddle::DataNormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1EosIdCheckLayer"><span class="std std-ref">paddle::EosIdCheckLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ExpandLayer"><span class="std std-ref">paddle::ExpandLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1FeatureMapExpandLayer"><span class="std std-ref">paddle::FeatureMapExpandLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1FullyConnectedLayer"><span class="std std-ref">paddle::FullyConnectedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GatedRecurrentLayer"><span class="std std-ref">paddle::GatedRecurrentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GatherAgentLayer"><span class="std std-ref">paddle::GatherAgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GetOutputLayer"><span class="std std-ref">paddle::GetOutputLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GruStepLayer"><span class="std std-ref">paddle::GruStepLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1HierarchicalSigmoidLayer"><span class="std std-ref">paddle::HierarchicalSigmoidLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1InterpolationLayer"><span class="std std-ref">paddle::InterpolationLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LambdaCost"><span class="std std-ref">paddle::LambdaCost</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmLayer"><span class="std std-ref">paddle::LstmLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmStepLayer"><span class="std std-ref">paddle::LstmStepLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MaxIdLayer"><span class="std std-ref">paddle::MaxIdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MaxLayer"><span class="std std-ref">paddle::MaxLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MixedLayer"><span class="std std-ref">paddle::MixedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiplexLayer"><span class="std std-ref">paddle::MultiplexLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NCELayer"><span class="std std-ref">paddle::NCELayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NormLayer"><span class="std std-ref">paddle::NormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OuterProdLayer"><span class="std std-ref">paddle::OuterProdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ParameterReluLayer"><span class="std std-ref">paddle::ParameterReluLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PoolLayer"><span class="std std-ref">paddle::PoolLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PowerLayer"><span class="std std-ref">paddle::PowerLayer</span></a>, paddle::PrintLayer, <a class="reference internal" href="#paddleclasspaddle_1_1RankingCost"><span class="std std-ref">paddle::RankingCost</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentLayer"><span class="std std-ref">paddle::RecurrentLayer</span></a>, paddle::RecurrentLayerGroup, <a class="reference internal" href="#paddleclasspaddle_1_1ResizeLayer"><span class="std std-ref">paddle::ResizeLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SamplingIdLayer"><span class="std std-ref">paddle::SamplingIdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ScalingLayer"><span class="std std-ref">paddle::ScalingLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ScatterAgentLayer"><span class="std std-ref">paddle::ScatterAgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SelectiveFullyConnectedLayer"><span class="std std-ref">paddle::SelectiveFullyConnectedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceConcatLayer"><span class="std std-ref">paddle::SequenceConcatLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceLastInstanceLayer"><span class="std std-ref">paddle::SequenceLastInstanceLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceReshapeLayer"><span class="std std-ref">paddle::SequenceReshapeLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SlopeInterceptLayer"><span class="std std-ref">paddle::SlopeInterceptLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SubSequenceLayer"><span class="std std-ref">paddle::SubSequenceLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SumToOneNormLayer"><span class="std std-ref">paddle::SumToOneNormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1TensorLayer"><span class="std std-ref">paddle::TensorLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1TransLayer"><span class="std std-ref">paddle::TransLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ValidationLayer"><span class="std std-ref">paddle::ValidationLayer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -1794,12 +1794,6 @@ virtual <span class="target" id="paddleclasspaddle_1_1Layer_1a80e1752698b6140998
 <dd><p>Intialization. For example, adding input layers from layerMap and parameterMap. </p>
 </dd></dl>
 
-<dl class="function">
-<dt id="_CPPv2N6paddle9PoolLayer10outputSizeEiiii">
-<span id="paddle::PoolLayer::outputSize__i.i.i.i"></span><span class="target" id="paddleclasspaddle_1_1PoolLayer_1a2bfec8a881edba8da3ec60aeb5a73605"></span>int <code class="descname">outputSize</code><span class="sig-paren">(</span>int <em>imageSize</em>, int <em>windowSize</em>, int <em>padding</em>, int <em>stride</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9PoolLayer10outputSizeEiiii" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate output size according window size and padding size. </p>
-</dd></dl>
-
 </div>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
@@ -1835,6 +1829,11 @@ virtual <span class="target" id="paddleclasspaddle_1_1Layer_1a80e1752698b6140998
 <dl class="member">
 <dt id="_CPPv2N6paddle9PoolLayer8imgSize_E">
 <span id="paddle::PoolLayer::imgSize___s"></span><span class="target" id="paddleclasspaddle_1_1PoolLayer_1a34f5c074e7b51c3b1c726007f995a165"></span>size_t <code class="descname">imgSize_</code><a class="headerlink" href="#_CPPv2N6paddle9PoolLayer8imgSize_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9PoolLayer6start_E">
+<span id="paddle::PoolLayer::start___i"></span><span class="target" id="paddleclasspaddle_1_1PoolLayer_1af66d237b885e1cc1a8e8ed737744b0e4"></span>int <code class="descname">start_</code><a class="headerlink" href="#_CPPv2N6paddle9PoolLayer6start_E" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="member">
@@ -1965,6 +1964,12 @@ virtual <span class="target" id="paddleclasspaddle_1_1Layer_1a80e1752698b6140998
 <dt id="_CPPv2N6paddle14CudnnPoolLayer8backwardERK14UpdateCallback">
 <span id="paddle::CudnnPoolLayer::backward__UpdateCallbackCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1CudnnPoolLayer_1affeb9d7a007856660977078c58a00b1a"></span>void <code class="descname">backward</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14CudnnPoolLayer8backwardERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
 <dd><p>Backward propagation. Should only be called after <a class="reference internal" href="#paddleclasspaddle_1_1Layer_1a12386b3f20dd731e7ceaa2c61667cbe1"><span class="std std-ref">Layer::forward()</span></a> function. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14CudnnPoolLayer10outputSizeEiiii">
+<span id="paddle::CudnnPoolLayer::outputSize__i.i.i.i"></span><span class="target" id="paddleclasspaddle_1_1CudnnPoolLayer_1a4565d36cd90fc19c389fd1d76f97537c"></span>int <code class="descname">outputSize</code><span class="sig-paren">(</span>int <em>imageSize</em>, int <em>windowSize</em>, int <em>padding</em>, int <em>stride</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14CudnnPoolLayer10outputSizeEiiii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate output size according window size of pooling. </p>
 </dd></dl>
 
 </div>
@@ -4624,8 +4629,13 @@ The config file api if gru_step_layer. <dl class="docutils">
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
+<dt id="_CPPv2N6paddle25SequenceScatterAgentLayer17cpuInputStartPos_E">
+<span id="paddle::SequenceScatterAgentLayer::cpuInputStartPos___IVectorPtr"></span><span class="target" id="paddleclasspaddle_1_1SequenceScatterAgentLayer_1a0fd54096dd1552a7e42b9ca1cbbf50ae"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">cpuInputStartPos_</code><a class="headerlink" href="#_CPPv2N6paddle25SequenceScatterAgentLayer17cpuInputStartPos_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
 <dt id="_CPPv2N6paddle25SequenceScatterAgentLayer14inputStartPos_E">
-<span id="paddle::SequenceScatterAgentLayer::inputStartPos___ICpuGpuVectorPtr"></span><span class="target" id="paddleclasspaddle_1_1SequenceScatterAgentLayer_1acfcf479183ea7b96c05968d2a5ce414e"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle16ICpuGpuVectorPtrE" title="paddle::ICpuGpuVectorPtr">ICpuGpuVectorPtr</a> <code class="descname">inputStartPos_</code><a class="headerlink" href="#_CPPv2N6paddle25SequenceScatterAgentLayer14inputStartPos_E" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SequenceScatterAgentLayer::inputStartPos___IVectorPtr"></span><span class="target" id="paddleclasspaddle_1_1SequenceScatterAgentLayer_1a3026312851c50c9952446a7440a07870"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">inputStartPos_</code><a class="headerlink" href="#_CPPv2N6paddle25SequenceScatterAgentLayer14inputStartPos_E" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -5042,9 +5052,8 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dl class="class">
 <dt id="_CPPv2N6paddle12AverageLayerE">
 <span id="paddle::AverageLayer"></span><span class="target" id="paddleclasspaddle_1_1AverageLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">AverageLayer</code><a class="headerlink" href="#_CPPv2N6paddle12AverageLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A layer for &#8220;internal average&#8221; for sequence input. Input: one or more sequences. Each sequence contains some instances. If SequenceLevel = kNonSeq: Output: output size is the number of input sequences (NOT input instances) output[i] = average_{for each instance in this sequence}{input[i]} If SequenceLevel = kSeq: Check input sequence must has sub-sequence Output: output size is the number of input sub-sequences output[i] = average_{for each instance in this sub-sequence}{input[i]}</p>
-<p>The config file api is pooling_layer. </p>
-<p>Inherits from paddle::SequencePoolLayer</p>
+<dd><p>A layer for &#8220;internal average&#8221; for sequence input. Input: one or more sequences. Each sequence contains some instances. If AverageLevel = kNonSeq: Output: output size is the number of input sequences (NOT input instances) output[i] = average_{for each instance in this sequence}{input[i]} If AverageLevel = kSeq: Check input sequence must has sub-sequence Output: output size is the number of input sub-sequences output[i] = average_{for each instance in this sub-sequence}{input[i]} </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
@@ -5064,6 +5073,22 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dl class="member">
 <dt id="_CPPv2N6paddle12AverageLayer19kAverageSquareRootNE">
 <span id="paddle::AverageLayer::kAverageSquareRootN"></span><span class="target" id="paddleclasspaddle_1_1AverageLayer_1aa26f5a4f7be61eaf8dfc44c16b943e4ca7edfae11ceb3c1cee072b749bf9ce26f"></span><code class="descname">kAverageSquareRootN</code> = 2<a class="headerlink" href="#_CPPv2N6paddle12AverageLayer19kAverageSquareRootNE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle12AverageLayer12AverageLevelE">
+<span id="paddle::AverageLayer::AverageLevel"></span><span class="target" id="paddleclasspaddle_1_1AverageLayer_1a2c1cef4e2325e6681a47c6d96095a503"></span><em class="property">enum </em><code class="descname">AverageLevel</code><a class="headerlink" href="#_CPPv2N6paddle12AverageLayer12AverageLevelE" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv2N6paddle12AverageLayer7kNonSeqE">
+<span id="paddle::AverageLayer::kNonSeq"></span><span class="target" id="paddleclasspaddle_1_1AverageLayer_1a2c1cef4e2325e6681a47c6d96095a503aab8184470f84cca154893ebcddf061f6"></span><code class="descname">kNonSeq</code> = 0<a class="headerlink" href="#_CPPv2N6paddle12AverageLayer7kNonSeqE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12AverageLayer4kSeqE">
+<span id="paddle::AverageLayer::kSeq"></span><span class="target" id="paddleclasspaddle_1_1AverageLayer_1a2c1cef4e2325e6681a47c6d96095a503a817af5ba612a3bcf8b13cb6277eb7caf"></span><code class="descname">kSeq</code> = 1<a class="headerlink" href="#_CPPv2N6paddle12AverageLayer4kSeqE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -5103,6 +5128,11 @@ The config file api if gru_step_layer. <dl class="docutils">
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
+<dt id="_CPPv2N6paddle12AverageLayer7biases_E">
+<span id="paddle::AverageLayer::biases___std::unique_ptr:Weight:"></span><span class="target" id="paddleclasspaddle_1_1AverageLayer_1aae3e30cd0eed37e369356175dd110926"></span>std::unique_ptr&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle6WeightE" title="paddle::Weight">Weight</a>&gt; <code class="descname">biases_</code><a class="headerlink" href="#_CPPv2N6paddle12AverageLayer7biases_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
 <dt id="_CPPv2N6paddle12AverageLayer7outMtx_E">
 <span id="paddle::AverageLayer::outMtx___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1AverageLayer_1a2c4e23c7f31232e8cf37500f15f99501"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">outMtx_</code><a class="headerlink" href="#_CPPv2N6paddle12AverageLayer7outMtx_E" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -5117,6 +5147,11 @@ The config file api if gru_step_layer. <dl class="docutils">
 <span id="paddle::AverageLayer::mode___i"></span><span class="target" id="paddleclasspaddle_1_1AverageLayer_1a42e68dd62e779c9d528313569f695d9c"></span>int <code class="descname">mode_</code><a class="headerlink" href="#_CPPv2N6paddle12AverageLayer5mode_E" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="member">
+<dt id="_CPPv2N6paddle12AverageLayer5type_E">
+<span id="paddle::AverageLayer::type___i"></span><span class="target" id="paddleclasspaddle_1_1AverageLayer_1aa5a9764a2ea29cc3c75977b179922c61"></span>int <code class="descname">type_</code><a class="headerlink" href="#_CPPv2N6paddle12AverageLayer5type_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </div>
 </dd></dl>
 
@@ -5126,9 +5161,27 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dl class="class">
 <dt id="_CPPv2N6paddle8MaxLayerE">
 <span id="paddle::MaxLayer"></span><span class="target" id="paddleclasspaddle_1_1MaxLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MaxLayer</code><a class="headerlink" href="#_CPPv2N6paddle8MaxLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A layer for &#8220;internal max&#8221; for sequence input. Input: one or more sequences. Each sequence contains some instances. If SequenceLevel = kNonSeq: Output: output size is the number of input sequences (NOT input instances) output[i] = max_{for each instance in this sequence}{input[i]} If SequenceLevel = kSeq: Check input sequence must has sub-sequence Output: output size is the number of input sub-sequences output[i] = max_{for each instance in this sub-sequence}{input[i]}</p>
-<p>The config file api is pooling_layer. </p>
-<p>Inherits from paddle::SequencePoolLayer</p>
+<dd><p>A layer for &#8220;internal max&#8221; for sequence input. Input: one or more sequences. Each sequence contains some instances. If MaxLevel = kNonSeq: Output: output size is the number of input sequences (NOT input instances) output[i] = max_{for each instance in this sequence}{input[i]} If MaxLevel = kSeq: Check input sequence must has sub-sequence Output: output size is the number of input sub-sequences output[i] = max_{for each instance in this sub-sequence}{input[i]} </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle8MaxLayer8MaxLevelE">
+<span id="paddle::MaxLayer::MaxLevel"></span><span class="target" id="paddleclasspaddle_1_1MaxLayer_1a1a74a7fec44b4ecfb0a7874b793eb05b"></span><em class="property">enum </em><code class="descname">MaxLevel</code><a class="headerlink" href="#_CPPv2N6paddle8MaxLayer8MaxLevelE" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv2N6paddle8MaxLayer7kNonSeqE">
+<span id="paddle::MaxLayer::kNonSeq"></span><span class="target" id="paddleclasspaddle_1_1MaxLayer_1a1a74a7fec44b4ecfb0a7874b793eb05bad93d7fa9376bcf28d15fd68e7f62f0a7"></span><code class="descname">kNonSeq</code> = 0<a class="headerlink" href="#_CPPv2N6paddle8MaxLayer7kNonSeqE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8MaxLayer4kSeqE">
+<span id="paddle::MaxLayer::kSeq"></span><span class="target" id="paddleclasspaddle_1_1MaxLayer_1a1a74a7fec44b4ecfb0a7874b793eb05baae7ea03cfee699b08be29a361aeb542f"></span><code class="descname">kSeq</code> = 1<a class="headerlink" href="#_CPPv2N6paddle8MaxLayer4kSeqE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -5163,8 +5216,18 @@ The config file api if gru_step_layer. <dl class="docutils">
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
+<dt id="_CPPv2N6paddle8MaxLayer7biases_E">
+<span id="paddle::MaxLayer::biases___std::unique_ptr:Weight:"></span><span class="target" id="paddleclasspaddle_1_1MaxLayer_1a512d3d636c80d683fb41742e2921713f"></span>std::unique_ptr&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle6WeightE" title="paddle::Weight">Weight</a>&gt; <code class="descname">biases_</code><a class="headerlink" href="#_CPPv2N6paddle8MaxLayer7biases_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
 <dt id="_CPPv2N6paddle8MaxLayer9maxIndex_E">
 <span id="paddle::MaxLayer::maxIndex___IVectorPtr"></span><span class="target" id="paddleclasspaddle_1_1MaxLayer_1a5dbae052a0a5b706455256c1a94618f9"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">maxIndex_</code><a class="headerlink" href="#_CPPv2N6paddle8MaxLayer9maxIndex_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8MaxLayer5type_E">
+<span id="paddle::MaxLayer::type___i"></span><span class="target" id="paddleclasspaddle_1_1MaxLayer_1a23cd68062313a4d3e20d2eb60147169d"></span>int <code class="descname">type_</code><a class="headerlink" href="#_CPPv2N6paddle8MaxLayer5type_E" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -5176,9 +5239,8 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dl class="class">
 <dt id="_CPPv2N6paddle25SequenceLastInstanceLayerE">
 <span id="paddle::SequenceLastInstanceLayer"></span><span class="target" id="paddleclasspaddle_1_1SequenceLastInstanceLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SequenceLastInstanceLayer</code><a class="headerlink" href="#_CPPv2N6paddle25SequenceLastInstanceLayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>A layer for extracting the last instance of the input sequence. Input: a sequence If SequenceLevel = kNonseq: Output: a sequence containing only the last instance of the input sequence If SequenceLevel = kSeq: Check input sequence must has sub-sequence Output: a sequence containing only the last instance of each sub-sequence of the input sequence</p>
-<p>The config file api is last_seq and first_seq. </p>
-<p>Inherits from paddle::SequencePoolLayer</p>
+<dd><p>A layer for extracting the last instance of the input sequence. Input: a sequence If SequenceLevel = kNonseq: Output: a sequence containing only the last instance of the input sequence If SequenceLevel = kSeq: Check input sequence must has sub-sequence Output: a sequence containing only the last instance of each sub-sequence of the input sequence </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -5211,7 +5273,31 @@ The config file api if gru_step_layer. <dl class="docutils">
 
 </div>
 <div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle25SequenceLastInstanceLayer13SequenceLevelE">
+<span id="paddle::SequenceLastInstanceLayer::SequenceLevel"></span><span class="target" id="paddleclasspaddle_1_1SequenceLastInstanceLayer_1a2ba08bbca765a432ca31d9f98f91c41e"></span><em class="property">enum </em><code class="descname">SequenceLevel</code><a class="headerlink" href="#_CPPv2N6paddle25SequenceLastInstanceLayer13SequenceLevelE" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv2N6paddle25SequenceLastInstanceLayer7kNonSeqE">
+<span id="paddle::SequenceLastInstanceLayer::kNonSeq"></span><span class="target" id="paddleclasspaddle_1_1SequenceLastInstanceLayer_1a2ba08bbca765a432ca31d9f98f91c41eaaa1986998c248891b926aa8b31d8a6f3"></span><code class="descname">kNonSeq</code> = 0<a class="headerlink" href="#_CPPv2N6paddle25SequenceLastInstanceLayer7kNonSeqE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle25SequenceLastInstanceLayer4kSeqE">
+<span id="paddle::SequenceLastInstanceLayer::kSeq"></span><span class="target" id="paddleclasspaddle_1_1SequenceLastInstanceLayer_1a2ba08bbca765a432ca31d9f98f91c41ea5e903202a61fc88daebfd1bfd2ce4c31"></span><code class="descname">kSeq</code> = 1<a class="headerlink" href="#_CPPv2N6paddle25SequenceLastInstanceLayer4kSeqE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle25SequenceLastInstanceLayer7biases_E">
+<span id="paddle::SequenceLastInstanceLayer::biases___std::unique_ptr:Weight:"></span><span class="target" id="paddleclasspaddle_1_1SequenceLastInstanceLayer_1ac5d300cc294b26a63639a3a4eeff3e57"></span>std::unique_ptr&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle6WeightE" title="paddle::Weight">Weight</a>&gt; <code class="descname">biases_</code><a class="headerlink" href="#_CPPv2N6paddle25SequenceLastInstanceLayer7biases_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="member">
 <dt id="_CPPv2N6paddle25SequenceLastInstanceLayer7tmpSrc_E">
 <span id="paddle::SequenceLastInstanceLayer::tmpSrc___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1SequenceLastInstanceLayer_1a9db7bc18cfdbf89f918775fb91a28997"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">tmpSrc_</code><a class="headerlink" href="#_CPPv2N6paddle25SequenceLastInstanceLayer7tmpSrc_E" title="Permalink to this definition">¶</a></dt>
@@ -5220,6 +5306,11 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dl class="member">
 <dt id="_CPPv2N6paddle25SequenceLastInstanceLayer8tmpDest_E">
 <span id="paddle::SequenceLastInstanceLayer::tmpDest___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1SequenceLastInstanceLayer_1acc2c7bd3935a38ee14c24b66d29fe716"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">tmpDest_</code><a class="headerlink" href="#_CPPv2N6paddle25SequenceLastInstanceLayer8tmpDest_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle25SequenceLastInstanceLayer5type_E">
+<span id="paddle::SequenceLastInstanceLayer::type___i"></span><span class="target" id="paddleclasspaddle_1_1SequenceLastInstanceLayer_1a00193567de5c1a11dba9ad77e255a936"></span>int <code class="descname">type_</code><a class="headerlink" href="#_CPPv2N6paddle25SequenceLastInstanceLayer5type_E" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -5662,9 +5753,15 @@ sequence is one) to sequence data.&#8221;</p>
 </dd></dl>
 
 <dl class="member">
-<dt id="_CPPv2N6paddle11ExpandLayer16expandStartsPos_E">
-<span id="paddle::ExpandLayer::expandStartsPos___ICpuGpuVectorPtr"></span><span class="target" id="paddleclasspaddle_1_1ExpandLayer_1a4243425f33452a5d1ac468d257ce111a"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle16ICpuGpuVectorPtrE" title="paddle::ICpuGpuVectorPtr">ICpuGpuVectorPtr</a> <code class="descname">expandStartsPos_</code><a class="headerlink" href="#_CPPv2N6paddle11ExpandLayer16expandStartsPos_E" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2N6paddle11ExpandLayer19cpuExpandStartsPos_E">
+<span id="paddle::ExpandLayer::cpuExpandStartsPos___IVectorPtr"></span><span class="target" id="paddleclasspaddle_1_1ExpandLayer_1af081e0e3d584c24737be9e9f431914b8"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">cpuExpandStartsPos_</code><a class="headerlink" href="#_CPPv2N6paddle11ExpandLayer19cpuExpandStartsPos_E" title="Permalink to this definition">¶</a></dt>
 <dd><p>expanded sequenceStartPositions or subSequenceStartPositions of input[1] </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle11ExpandLayer16expandStartsPos_E">
+<span id="paddle::ExpandLayer::expandStartsPos___IVectorPtr"></span><span class="target" id="paddleclasspaddle_1_1ExpandLayer_1a6528e39055e5de7245e6fcdd83a96c74"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">expandStartsPos_</code><a class="headerlink" href="#_CPPv2N6paddle11ExpandLayer16expandStartsPos_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>point to cpuExpandStartsPos_ when useGpu_ is false, copy from cpuExpandStartsPos_ when useGpu_ is true </p>
 </dd></dl>
 
 </div>
@@ -7702,8 +7799,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <dl class="class">
 <dt id="_CPPv2N6paddle8NCELayerE">
 <span id="paddle::NCELayer"></span><span class="target" id="paddleclasspaddle_1_1NCELayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">NCELayer</code><a class="headerlink" href="#_CPPv2N6paddle8NCELayerE" title="Permalink to this definition">¶</a></dt>
-<dd><p>Noise-contrastive estimation. Implements the method in the following paper: A fast and simple algorithm for training neural probabilistic language models.</p>
-<p>The config file api is nce_layer. </p>
+<dd><p>Noise-contrastive estimation Implements the method in the following paper: A fast and simple algorithm for training neural probabilistic language models </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>

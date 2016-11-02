@@ -202,6 +202,7 @@ False if no bias.</li>
 <li><strong>bn_bias_attr</strong> &#8211; see batch_norm_layer&#8217;s document.</li>
 <li><strong>bn_layer_attr</strong> &#8211; ParameterAttribute.</li>
 <li><strong>pool_stride</strong> (<em>int</em>) &#8211; see img_pool_layer&#8217;s document.</li>
+<li><strong>pool_start</strong> (<em>int</em>) &#8211; see img_pool_layer&#8217;s document.</li>
 <li><strong>pool_padding</strong> (<em>int</em>) &#8211; see img_pool_layer&#8217;s document.</li>
 <li><strong>pool_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_pool_layer&#8217;s document.</li>
 </ul>
@@ -279,9 +280,10 @@ False if no bias.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; see img_conv_layer for details</li>
 <li><strong>shared_bias</strong> (<em>bool</em>) &#8211; see img_conv_layer for details</li>
 <li><strong>conv_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_conv_layer for details</li>
-<li><strong>pool_stride</strong> (<em>int</em>) &#8211; see img_pool_layer for details</li>
-<li><strong>pool_padding</strong> (<em>int</em>) &#8211; see img_pool_layer for details</li>
-<li><strong>pool_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_pool_layer for details</li>
+<li><strong>pool_stride</strong> (<em>int</em>) &#8211; see img_conv_layer for details</li>
+<li><strong>pool_start</strong> (<em>int</em>) &#8211; see img_conv_layer for details</li>
+<li><strong>pool_padding</strong> (<em>int</em>) &#8211; see img_conv_layer for details</li>
+<li><strong>pool_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_conv_layer for details</li>
 </ul>
 </td>
 </tr>
@@ -749,13 +751,14 @@ compute attention weight.</li>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">outputs</code><span class="sig-paren">(</span><em>layers</em>, <em>*args</em><span class="sig-paren">)</span></dt>
-<dd><p>Declare the outputs of network. If user have not defined the inputs of
-network, this method will calculate the input order by dfs travel.</p>
+<dd><p>Declare the end of network. Currently it will only calculate the
+input/output order of network. It will calculate the predict network or
+train network&#8217;s output automatically.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>layers</strong> (<em>list|tuple|LayerOutput</em>) &#8211; Output layers.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>layers</strong> (<em>list|tuple|LayerOutput</em>) &#8211; </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
 </tr>
