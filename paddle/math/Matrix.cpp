@@ -340,6 +340,15 @@ void GpuMatrix::addBias(Matrix& b, real scale) {
   BaseMatrix::addBias(b, scale);
 }
 
+void GpuMatrix::addSharedBias(Matrix& b, real scale) {
+  CHECK(b.getHeight() == 1) << "the Bias should be a vector";
+  CHECK_LE(b.getWidth(), getWidth());
+  CHECK_EQ(getWidth() % b.getWidth(), 0UL);
+  hl_matrix_add_shared_bias(getData(), b.getData(), b.getWidth(),
+                            getHeight(), getWidth(), scale);
+}
+
+
 void GpuMatrix::collectBias(Matrix& a, real scale) {
   CHECK_EQ(getHeight(), (size_t)1);
   CHECK_EQ(width_, a.getWidth());
@@ -353,7 +362,17 @@ void GpuMatrix::collectBias(Matrix& a, real scale) {
   }
 }
 
-void GpuMatrix::sequenceAvgForward(Matrix& a, const IVector& startsPos,
+
+void GpuMatrix::collectSharedBias(Matrix& a, real scale) {
+  CHECK_EQ(getHeight(), (size_t)1);
+  CHECK_EQ(a.getWidth() % getWidth(), 0UL);
+  hl_matrix_collect_shared_bias(getData(), a.getData(), getWidth(),
+                                a.getHeight(), a.getWidth(), scale);
+}
+
+
+void GpuMatrix::sequenceAvgForward(Matrix& a,
+                                   const IVector& startsPos,
                                    int mode) {
   size_t height = getHeight();
   size_t width = getWidth();
@@ -1972,6 +1991,24 @@ void CpuMatrix::addBias(Matrix& b, real scale) {
   }
 }
 
+void CpuMatrix::addSharedBias(Matrix& b, real scale) {
+  CHECK_EQ(b.getHeight(), (size_t)1);
+  real* aData = getData();
+  real* bData = b.getData();
+  size_t numSamples = getHeight();
+  size_t channel = b.getWidth();
+  CHECK_EQ(getWidth() % channel, 0UL);
+  size_t dim = getWidth() / channel;
+
+  for (size_t i = 0; i < numSamples; i++) {
+    for (size_t c = 0; c < channel; c++) {
+      for (size_t j = 0; j < dim; j++) {
+        aData[i * getStride() + c * dim + j] += scale * bData[c];
+      }
+    }
+  }
+}
+
 void CpuMatrix::collectBias(Matrix& a, real scale) {
   CHECK_EQ(getHeight(), (size_t)1);
   CHECK_EQ(width_, a.getWidth());
@@ -1989,7 +2026,25 @@ void CpuMatrix::collectBias(Matrix& a, real scale) {
   }
 }
 
-void CpuMatrix::sequenceAvgForward(Matrix& a, const IVector& startsPos,
+void CpuMatrix::collectSharedBias(Matrix& a, real scale) {
+  CHECK_EQ(getHeight(), (size_t)1);
+  real* B = getData();
+  real* A = a.getData();
+  size_t numSamples = a.getHeight();
+  size_t channel = getWidth();
+  CHECK_EQ(a.getWidth() % channel, 0UL);
+  size_t dim = a.getWidth() / channel;
+  for (size_t i = 0; i < numSamples; i++) {
+    for (size_t c = 0; c < channel; c++) {
+      for (size_t j = 0; j < dim; j++) {
+        B[c] += scale * A[i * channel * dim + c * dim + j];
+      }
+    }
+  }
+}
+
+void CpuMatrix::sequenceAvgForward(Matrix& a,
+                                   const IVector& startsPos,
                                    int mode) {
   size_t height = getHeight();
   size_t width = getWidth();

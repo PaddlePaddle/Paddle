@@ -267,7 +267,7 @@ sinclude(`ModelConfigLayer.proto.m4')
   // (which is how convnets are usually trained). Setting this to
   // false will untie the biases, yielding a separate bias for
   // every location at which the filter is applied.
-  optional bool shared_biases = 8;
+  optional bool shared_biases = 8 [default = false];
 
   // Valid values are ones that divide the area of the output
   // grid in this convolutional layer. For example if this layer
@@ -391,6 +391,9 @@ sinclude(`ModelConfigLayer.proto.m4')
 
   // use to compute moving mean and variance.
   optional real moving_average_fraction = 47 [default = 0.9];
+
+  // bias size
+  optional uint32 bias_size = 48 [default = 0];
 }
 
 message EvaluatorConfig {
