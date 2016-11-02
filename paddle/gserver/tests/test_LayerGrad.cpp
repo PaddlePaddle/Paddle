@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/gserver/layers/DataLayer.h"
 #include "ModelConfig.pb.h"
 #include "paddle/trainer/Trainer.h"
+#include "paddle/math/MathUtils.h"
 
 #include "TestUtil.h"
 #include "LayerGradUtil.h"
@@ -134,7 +135,6 @@ TEST(Projection, identity) {
   }
 }
 
-
 #ifndef PADDLE_ONLY_CPU
 TEST(Projection, conv) {
   const int NUM_FILTERS = 16;
@@ -158,20 +158,22 @@ TEST(Projection, conv) {
   conv->set_groups(1);
   conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(IMAGE_SIZE);
-  int outputSize = (2 * conv->padding() + conv->img_size() -
-      conv->filter_size()) / conv->stride() + 1;
-  int outputSizeY = (2 * conv->padding_y() + conv->img_size() -
-      conv->filter_size_y()) / conv->stride_y() + 1;
-  conv->set_output_x(outputSize);
+  int output_x =
+      outputSize(conv->img_size(), conv->filter_size(), conv->padding(),
+                 conv->stride(), /* caffeMode */ true);
+  int output_y =
+      outputSize(conv->img_size(), conv->filter_size_y(), conv->padding_y(),
+                 conv->stride_y(), /* caffeMode */ true);
+  conv->set_output_x(output_x);
   conf.set_input_size(IMAGE_SIZE * IMAGE_SIZE * CHANNELS);
-  conf.set_output_size(outputSize * outputSizeY * NUM_FILTERS);
+  conf.set_output_size(output_x * output_y * NUM_FILTERS);
 
-  testProjectionGrad(conf, INPUT_DATA,
+  testProjectionGrad(
+      conf, INPUT_DATA,
       /* parameterSize */ NUM_FILTERS * CHANNELS * FILTER_SIZE * FILTER_SIZE_Y,
       /* batchSize */ 100, true, false, NUM_FILTERS, true);
 }
 #endif
-
 
 TEST(Layer, concat) {
   TestConfig config;
@@ -293,10 +295,9 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
   conv->set_groups(1);
   conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(16);
-  conv->set_output_x(
-      (2 * conv->padding() + conv->img_size() - conv->filter_size()) /
-          ((float)conv->stride()) +
-      1.5);
+  conv->set_output_x(outputSize(conv->img_size(), conv->filter_size(),
+                                conv->padding(), conv->stride(),
+                                /* caffeMode */ true));
   config.layerConfig.set_size(conv->output_x() * conv->output_x() *
                               config.layerConfig.num_filters());
 
@@ -329,15 +330,13 @@ TEST(Layer, blockExpandLayer) {
   blockExpand->set_stride_x(2);
   blockExpand->set_stride_y(2);
   blockExpand->set_output_x(
-      1 +
-      (2 * blockExpand->padding_x() + blockExpand->img_size_x() -
-       blockExpand->block_x() + blockExpand->stride_x() - 1) /
-          blockExpand->stride_x());
+      outputSize(blockExpand->img_size_x(), blockExpand->block_x(),
+                 blockExpand->padding_x(), blockExpand->stride_x(),
+                 /* caffeMode */ false));
   blockExpand->set_output_y(
-      1 +
-      (2 * blockExpand->padding_y() + blockExpand->img_size_y() -
-       blockExpand->block_y() + blockExpand->stride_y() - 1) /
-          blockExpand->stride_y());
+      outputSize(blockExpand->img_size_y(), blockExpand->block_y(),
+                 blockExpand->padding_y(), blockExpand->stride_y(),
+                 /* caffeMode */ false));
   config.layerConfig.set_size(blockExpand->block_x() * blockExpand->block_y() *
                               blockExpand->channels());
 
@@ -862,8 +861,8 @@ void setPoolConfig(TestConfig* config, PoolConfig* pool,
   pool->set_stride(sw);
   pool->set_stride_y(sh);
 
-  int ow = (pool->img_size() - kw + 2 * pw + sw - 1) / sw + 1;
-  int oh = (pool->img_size_y() - kh + 2 * ph + sh - 1) / sh + 1;
+  int ow = outputSize(pool->img_size(), kw, pw, sw, /* caffeMode */ false);
+  int oh = outputSize(pool->img_size_y(), kh, ph, sh, /* caffeMode */ false);
   pool->set_output_x(ow);
   pool->set_output_y(oh);
 }
@@ -1255,12 +1254,11 @@ TEST(Operator, conv) {
   conv->set_groups(1);
   conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(IMAGE_SIZE);
-  int outputSize =
-      int(1.0 * (2 * conv->padding() + conv->img_size() - conv->filter_size()) /
-          conv->stride()) +
-      1;
-  conv->set_output_x(outputSize);
-  config.layerConfig.set_size(outputSize * outputSize *
+  int output_x =
+      outputSize(conv->img_size(), conv->filter_size(), conv->padding(),
+                 conv->stride(), /* caffeMode */ true);
+  conv->set_output_x(output_x);
+  config.layerConfig.set_size(output_x * output_x *
                               config.layerConfig.num_filters());
   config.layerConfig.set_size(conv->output_x() * conv->output_x() *
                               NUM_FILTERS);
