@@ -335,6 +335,30 @@ void GpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   hl_matrix_transpose(data, dataTrans, height_, width_, lda, ldc);
 }
 
+
+MatrixPtr GpuMatrix::getInverse() {
+  MatrixPtr matInv;
+  inverse(matInv, true);
+  return matInv;
+}
+
+void GpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+  CHECK_EQ(height_, width_);
+
+  if (memAlloc) {
+    matInv = std::make_shared<GpuMatrix>(height_, width_);
+  } else {
+    CHECK(matInv != NULL);
+  }
+
+  real* data = getData();
+  real* dataInv = matInv->getData();
+  int lda = getStride();
+  int ldc = matInv->getStride();
+
+  hl_matrix_inverse(data, dataInv, height_, lda, ldc);
+}
+
 void GpuMatrix::addBias(Matrix& b, real scale) {
   CHECK(b.getHeight() == 1) << "the Bias should be a vector";
   BaseMatrix::addBias(b, scale);
@@ -1435,6 +1459,47 @@ void CpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
       dataTrans[j * ldc + i] = data[i * lda + j];
     }
   }
+}
+
+
+MatrixPtr CpuMatrix::getInverse() {
+  MatrixPtr matInv;
+  inverse(matInv, true);
+  return matInv;
+}
+
+void CpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+  CHECK_EQ(height_, width_);
+
+  if (memAlloc) {
+    matInv = std::make_shared<CpuMatrix>(height_, width_);
+  } else {
+    CHECK(matInv != NULL);
+  }
+
+  CHECK_EQ(height_, matInv->getHeight());
+  CHECK_EQ(width_, matInv->getWidth());
+  matInv->copyFrom(*this);
+
+  real* data = getData();
+  real* dataInv = matInv->getData();
+  int ldc = matInv->getStride();
+
+  if (height_ == 1) {
+    CHECK_NE(*data, 0);
+    *dataInv = 1.0 / (*data);
+    return;
+  }
+
+  /* Compute the LU decomposition of the matrix */
+  std::vector<int> ipiv(height_);
+  CBLAS_ORDER order = (matInv->isTransposed() ? CblasColMajor : CblasRowMajor);
+  int info = getrf<real>(order, height_, height_, dataInv, ldc, ipiv.data());
+  CHECK_EQ(info, 0);
+
+  /* Compute the inverse of the matrix given its LU decompsotion */
+  info = getri<real>(order, height_, dataInv, ldc, ipiv.data());
+  CHECK_EQ(info, 0);
 }
 
 void CpuMatrix::convExpand(Matrix& feature, int feaImgHeight, int feaImgWidth,
