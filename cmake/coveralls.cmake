@@ -71,7 +71,7 @@ if(ON_COVERALLS)
         "build/"
         "tests/"
         ".test_env/"
-      )
+    )
 
     if(WITH_GPU)
         file(GLOB_RECURSE PADDLE_SOURCES RELATIVE "${PROJECT_SOURCE_DIR}" "*.cpp" "*.cc" ".c" "*.cu")
