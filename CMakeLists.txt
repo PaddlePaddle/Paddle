@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1)
 
 project(paddle CXX C)
 set(PADDLE_MAJOR_VERSION 0)
