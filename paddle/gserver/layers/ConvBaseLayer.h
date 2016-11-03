@@ -78,8 +78,6 @@ protected:
   /// of output size.
   bool caffeMode_;
 
-
-
 public:
   explicit ConvBaseLayer(const LayerConfig& config) : Layer(config) {}
 

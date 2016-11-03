@@ -31,14 +31,14 @@ bool ExpandConvBaseLayer::init(const LayerMap &layerMap,
    * convTrans, and in other functions too.
    * */
   int channel;
-  int nf;
+  int numFilters;
   /* Initialize the projection */
   for (auto &inputConfig : config_.inputs()) {
     const ConvConfig &conf = inputConfig.conv_conf();
-    nf = (!isDeconv_) ? numFilters_ : conf.channels();
-    subM_.push_back(nf / conf.groups());
+    numFilters = isDeconv_ ? conf.channels() : numFilters_;
+    subM_.push_back(numFilters / conf.groups());
     subN_.push_back(conf.output_x() * conf.output_x());
-    channel = (!isDeconv_) ? conf.channels() : numFilters_;
+    channel = isDeconv_ ? numFilters_ : conf.channels();
     subK_.push_back(channel * conf.filter_size() * conf.filter_size() /
                     conf.groups());
     /* Consistent caffe mode for multiple input */
@@ -99,7 +99,7 @@ void ExpandConvBaseLayer::addUnsharedBias() {
 
 void ExpandConvBaseLayer::expandOneFrame(MatrixPtr image, size_t startIdx,
                                      int inIdx) {
-  int channel = (!isDeconv_) ? channels_[inIdx] : numFilters_;
+  int channel = isDeconv_ ? numFilters_ : channels_[inIdx];
 
   resetExpandInput(subK_[inIdx] * groups_[inIdx], subN_[inIdx]);
   real *imgData = image->getData() + startIdx * image->getWidth();
@@ -122,10 +122,10 @@ void ExpandConvBaseLayer::expandFwdOnce(MatrixPtr image, MatrixPtr out,
 
   expandOneFrame(image, startIdx, inIdx);
 
-  int nf = (!isDeconv_) ? numFilters_ : channels_[inIdx];
+  int numFilters = isDeconv_ ? channels_[inIdx] : numFilters_;
 
   real *outData =
-      out->getData() + startIdx * subN * nf;
+      out->getData() + startIdx * subN * numFilters;
 
   real *wgtData = weights_[inIdx]->getW()->getData();
   real *expInData = expandInput_->getData();
@@ -147,7 +147,7 @@ void ExpandConvBaseLayer::expandFwdOnce(MatrixPtr image, MatrixPtr out,
 
 void ExpandConvBaseLayer::bpropActs(MatrixPtr out, MatrixPtr image,
                                     int inpIdx) {
-  int channel = (!isDeconv_) ? channels_[inpIdx] : numFilters_;
+  int channel = isDeconv_ ? numFilters_ : channels_[inpIdx];
 
   int subM = subM_[inpIdx];
   int subN = subN_[inpIdx];

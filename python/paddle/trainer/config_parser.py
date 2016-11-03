@@ -1082,7 +1082,11 @@ def parse_norm(norm, input_layer_name, norm_conf):
     else:
         norm_conf.scale /= norm.size ** 2
 
-def parse_conv(conv, input_layer_name, conv_conf):
+'''
+caffe_mode: compute the output size using floor instead of ceil,
+            which is consistent of caffe and CuDNN's convention.
+'''
+def parse_conv(conv, input_layer_name, conv_conf, trans=False):
     conv_conf.filter_size = conv.filter_size
     conv_conf.filter_size_y = conv.filter_size_y
     conv_conf.channels = conv.channels
@@ -1093,49 +1097,41 @@ def parse_conv(conv, input_layer_name, conv_conf):
     conv_conf.groups = conv.groups
     conv_conf.filter_channels = conv.channels / conv.groups
     conv_conf.caffe_mode = conv.caffe_mode
-
-    img_pixels = g_layer_map[input_layer_name].size / conv.channels
-    print('channels=%d size=%d'%(conv.channels,
-      g_layer_map[input_layer_name].size))
-    conv_conf.img_size = int(img_pixels ** 0.5)
-    config_assert((conv_conf.img_size ** 2) == img_pixels,
-                  ("Input layer %s: Incorrect input image size %d for input "
-                   + "image pixels %d")
-                  % (input_layer_name, conv_conf.img_size, img_pixels))
-    conv_conf.output_x = cnn_output_size(conv_conf.img_size, conv_conf.filter_size,
-                                         conv_conf.padding, conv_conf.stride,
-                                         conv_conf.caffe_mode)
-
-
-def parse_conv_trans(conv, input_layer_name, conv_conf, num_filters):
-    conv_conf.filter_size = conv.filter_size
-    conv_conf.filter_size_y = conv.filter_size_y
-    conv_conf.channels = conv.channels
-    conv_conf.padding = conv.padding
-    conv_conf.padding_y = conv.padding_y
-    conv_conf.stride = conv.stride
-    conv_conf.stride_y = conv.stride_y
-    conv_conf.groups = conv.groups
-    conv_conf.filter_channels = num_filters / conv.groups
-    conv_conf.caffe_mode = conv.caffe_mode
-
-    outputSize = g_layer_map[input_layer_name].size / conv.channels
-    print('channels=%d size=%d'%(conv.channels,
-      g_layer_map[input_layer_name].size))
-    conv_conf.output_x = int(outputSize ** 0.5)
-    config_assert((conv_conf.output_x ** 2) == outputSize,
-                  ("Input layer %s: Incorrect input image size %d for input "
-                   + "image pixels %d")
-                  % (input_layer_name, conv_conf.output_x, outputSize))
-    if conv.caffe_mode:
-        conv_conf.img_size = \
-            (conv_conf.output_x - 1) * conv.stride \
-            + conv.filter_size - 2 * conv.padding
+    
+    if not trans:
+        img_pixels = g_layer_map[input_layer_name].size / conv.channels
+        print('channels=%d size=%d'%(conv.channels,
+          g_layer_map[input_layer_name].size))
+        conv_conf.img_size = int(img_pixels ** 0.5)
+        config_assert((conv_conf.img_size ** 2) == img_pixels,
+                      ("Input layer %s: Incorrect input image size %d for input "
+                       + "image pixels %d")
+                      % (input_layer_name, conv_conf.img_size, img_pixels))
+        if conv.caffe_mode:
+            conv_conf.output_x = \
+                1 + int(math.floor((2 * conv.padding + conv_conf.img_size \
+                - conv.filter_size) / float(conv.stride)))
+        else:
+            conv_conf.output_x = \
+                1 + int(math.ceil((2 * conv.padding + conv_conf.img_size \
+                - conv.filter_size) / float(conv.stride)))
     else:
-        conv_conf.img_size = \
-            (conv_conf.output_x - 2) * conv.stride \
-            + conv.filter_size - 2 * conv.padding + 1
-
+        outputSize = g_layer_map[input_layer_name].size / conv.channels
+        print('channels=%d size=%d'%(conv.channels,
+          g_layer_map[input_layer_name].size))
+        conv_conf.output_x = int(outputSize ** 0.5)
+        config_assert((conv_conf.output_x ** 2) == outputSize,
+                      ("Input layer %s: Incorrect input image size %d for input "
+                       + "image pixels %d")
+                      % (input_layer_name, conv_conf.output_x, outputSize))
+        if conv.caffe_mode:
+            conv_conf.img_size = \
+                (conv_conf.output_x - 1) * conv.stride \
+                + conv.filter_size - 2 * conv.padding
+        else:
+            conv_conf.img_size = \
+                (conv_conf.output_x - 2) * conv.stride \
+                + conv.filter_size - 2 * conv.padding + 1 
 
 def parse_block_expand(block_expand, input_layer_name, block_expand_conf):
     block_expand_conf.channels = block_expand.channels
@@ -1685,10 +1681,11 @@ class ConvTransLayerBase(LayerBase):
 
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
-            parse_conv_trans(
+            parse_conv(
                 self.inputs[input_index].conv,
                 input_layer.name,
-                self.config.inputs[input_index].conv_conf, num_filters)
+                self.config.inputs[input_index].conv_conf, num_filters,
+                trans=True)
             conv_conf = self.config.inputs[input_index].conv_conf
             psize = self.calc_parameter_size(conv_conf)
             print("output size for %s is %d " % (name, conv_conf.output_x))

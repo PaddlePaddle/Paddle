@@ -189,58 +189,55 @@ void doOneConvtTest(size_t imgSize, size_t output_x, size_t stride,
 }
 
 TEST(Layer, convTransLayerFwd2) {
-    size_t imgSize, output_x, stride, padding, filter_size;
     MatrixPtr result;
-
-    imgSize = 5;
-    output_x = 1;
-    stride = 1;
-    padding = 0;
-    filter_size = 5;
-    result = Matrix::create(1, imgSize * imgSize, false, false);
+    result = Matrix::create(1, 5 * 5, false, false);
     result->zeroMem();
     result->add(1.0);
-    doOneConvtTest(imgSize, output_x, stride, padding, filter_size, result);
+    doOneConvtTest(/* imgSize */ 5,
+                   /* output_x */ 1,
+                   /* stride */ 1,
+                   /* padding */ 0,
+                   /* filter_size */ 5,
+                   result);
 
-    imgSize = 5;
-    output_x = 2;
-    stride = 1;
-    padding = 0;
-    filter_size = 4;
     float resultData[] = {1, 2, 2, 2, 1,
                           2, 4, 4, 4, 2,
                           2, 4, 4, 4, 2,
                           2, 4, 4, 4, 2,
                           1, 2, 2, 2, 1};
-    result = Matrix::create(resultData, 1, imgSize * imgSize, false, false);
-    doOneConvtTest(imgSize, output_x, stride, padding, filter_size, result);
+    result->setData(resultData);
+    doOneConvtTest(/* imgSize */ 5,
+                   /* output_x */ 2,
+                   /* stride */ 1,
+                   /* padding */ 0,
+                   /* filter_size */ 4,
+                   result);
 
-    imgSize = 5;
-    output_x = 2;
-    stride = 2;
-    padding = 1;
-    filter_size = 5;
     float resultData2[] = {1, 2, 2, 2, 1,
                            2, 4, 4, 4, 2,
                            2, 4, 4, 4, 2,
                            2, 4, 4, 4, 2,
                            1, 2, 2, 2, 1};
-    result = Matrix::create(resultData2, 1, imgSize * imgSize, false, false);
-    doOneConvtTest(imgSize, output_x, stride, padding, filter_size, result);
+    result->setData(resultData2);
+    doOneConvtTest(/* imgSize */ 5,
+                   /* output_x */ 2,
+                   /* stride */ 2,
+                   /* padding */ 1,
+                   /* filter_size */ 5,
+                   result);
 
-    imgSize = 5;
-    output_x = 2;
-    stride = 2;
-    padding = 0;
-    filter_size = 3;
     float resultData3[] = {1, 1, 2, 1, 1,
                            1, 1, 2, 1, 1,
                            2, 2, 4, 2, 2,
                            1, 1, 2, 1, 1,
                            1, 1, 2, 1, 1};
-    result = Matrix::create(resultData3, 1, imgSize * imgSize, false, false);
-    doOneConvtTest(imgSize, output_x, stride, padding, filter_size, result);
-}
+    result->setData(resultData3);
+    doOneConvtTest(/* imgSize */ 5,
+                   /* output_x */ 2,
+                   /* stride */ 2,
+                   /* padding */ 0,
+                   /* filter_size */ 3,
+                   result);}
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

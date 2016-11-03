@@ -89,42 +89,41 @@ size_t ConvBaseLayer::calOutputSize() {
   clearAndReserve(&outputW_);
   size_t layerSize = 0;
 
-  if (!isDeconv_) {
+  auto setLayerSize = [&](IntV& inH, IntV& inW, IntV& outH, IntV& outW) {
     for (size_t i = 0; i < inputLayers_.size(); i++) {
-      imgSizeH_.push_back(inputLayers_[i]->getOutput().getFrameHeight());
-      imgSizeW_.push_back(inputLayers_[i]->getOutput().getFrameWidth());
-      if (imgSizeH_[i] == 0)
-        imgSizeH_[i] = config_.inputs(i).conv_conf().img_size();
-      if (imgSizeW_[i] == 0)
-        imgSizeW_[i] = config_.inputs(i).conv_conf().img_size();
-      outputH_.push_back(
-          outputSize(imgSizeH_[i], filterSizeY_[i], paddingY_[i], strideY_[i]));
-      outputW_.push_back(
-          outputSize(imgSizeW_[i], filterSize_[i], padding_[i], stride_[i]));
-      CHECK_EQ(outputH_[i], outputH_[0]);
-      CHECK_EQ(outputW_[i], outputW_[0]);
+       inH.push_back(inputLayers_[i]->getOutput().getFrameHeight());
+       inW.push_back(inputLayers_[i]->getOutput().getFrameWidth());
+       if (isDeconv_) {
+         if (inH[i] == 0)
+           inH[i] = config_.inputs(i).conv_conf().output_x();
+         if (inW[i] == 0)
+           inW[i] = config_.inputs(i).conv_conf().output_x();
+         outH.push_back(
+             imageSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i]));
+         outW.push_back(
+             imageSize(inW[i], filterSize_[i], padding_[i], stride_[i]));
+       } else {
+         if (inH[i] == 0)
+           inH[i] = config_.inputs(i).conv_conf().img_size();
+         if (inW[i] == 0)
+           inW[i] = config_.inputs(i).conv_conf().img_size();
+         outH.push_back(
+             outputSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i]));
+         outW.push_back(
+             outputSize(inW[i], filterSize_[i], padding_[i], stride_[i]));
+         CHECK_EQ(outH[i], outH[0]);
+         CHECK_EQ(outW[i], outW[0]);
+       }
     }
-    getOutput().setFrameHeight(outputH_[0]);
-    getOutput().setFrameWidth(outputW_[0]);
-    layerSize = outputH_[0] * outputW_[0] * size_t(numFilters_);
+    getOutput().setFrameHeight(outH[0]);
+    getOutput().setFrameWidth(outW[0]);
+    layerSize = outH[0] * outW[0] * size_t(numFilters_);
+  };
+
+  if (isDeconv_) {
+    setLayerSize(outputH_, outputW_, imgSizeH_, imgSizeW_);
   } else {
-    for (size_t i = 0; i < inputLayers_.size(); i++) {
-      outputH_.push_back(inputLayers_[i]->getOutput().getFrameHeight());
-      outputW_.push_back(inputLayers_[i]->getOutput().getFrameWidth());
-      if (outputH_[i] == 0)
-        outputH_[i] = config_.inputs(i).conv_conf().output_x();
-      if (outputW_[i] == 0)
-        outputW_[i] = config_.inputs(i).conv_conf().output_x();
-      imgSizeH_.push_back(
-          imageSize(outputH_[i], filterSizeY_[i], paddingY_[i], strideY_[i]));
-      imgSizeW_.push_back(
-          imageSize(outputW_[i], filterSize_[i], padding_[i], stride_[i]));
-      CHECK_EQ(imgSizeH_[i], imgSizeH_[0]);
-      CHECK_EQ(imgSizeW_[i], imgSizeW_[0]);
-    }
-    getOutput().setFrameHeight(imgSizeH_[0]);
-    getOutput().setFrameWidth(imgSizeW_[0]);
-    layerSize = imgSizeH_[0] * imgSizeW_[0] * size_t(numFilters_);
+    setLayerSize(imgSizeH_, imgSizeW_, outputH_, outputW_);
   }
 
   return layerSize;
