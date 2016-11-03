@@ -1,7 +1,7 @@
 # CMake script for code coverage.
-# If _COVERALLS_UPLOAD is ON, it will upload json files to overalls.io automatically. 
+# If _COVERALLS_UPLOAD is ON, it will upload json files to overalls.io automatically.
 
-# Param _COVERAGE_SRCS	        A list of coverage source files.
+# Param _COVERAGE_SRCS          A list of coverage source files.
 # Param _COVERALLS_UPLOAD       Upload the result to coveralls.
 # Param _CMAKE_SCRIPT_PATH      CMake script path.
 function(code_coverage _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
@@ -15,19 +15,19 @@ function(code_coverage _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
             message(FATAL_ERROR "Coveralls: curl not found!")
         endif()
     endif()
-    
-    # When passing a CMake list to an external process, the list		
-    # will be converted from the format "1;2;3" to "1 2 3".		
-    set(COVERAGE_SRCS "")		
-    foreach (SINGLE_SRC ${_COVERAGE_SRCS})		
-        set(COVERAGE_SRCS "${COVERAGE_SRCS}*${SINGLE_SRC}")		
+
+    # When passing a CMake list to an external process, the list
+    # will be converted from the format "1;2;3" to "1 2 3".
+    set(COVERAGE_SRCS "")
+    foreach (SINGLE_SRC ${_COVERAGE_SRCS})
+        set(COVERAGE_SRCS "${COVERAGE_SRCS}*${SINGLE_SRC}")
     endforeach()
 
     # query number of logical cores
     cmake_host_system_information(RESULT core_size QUERY NUMBER_OF_LOGICAL_CORES)
     # coveralls json file.
-	set(COVERALLS_FILE ${PROJECT_BINARY_DIR}/coveralls.json)
- 	add_custom_target(coveralls_generate
+    set(COVERALLS_FILE ${PROJECT_BINARY_DIR}/coveralls.json)
+    add_custom_target(coveralls_generate
         # Run regress tests.
         COMMAND ${CMAKE_CTEST_COMMAND}
                 -j ${core_size}
@@ -41,9 +41,9 @@ function(code_coverage _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
                 -P "${_CMAKE_SCRIPT_PATH}/coverallsGcovJsons.cmake"
         WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
         COMMENT "Coveralls: generating coveralls output..."
-        )
+    )
 
-	if (_COVERALLS_UPLOAD)
+    if (_COVERALLS_UPLOAD)
         message("COVERALLS UPLOAD: ON")
         # Upload the JSON to coveralls.
         add_custom_target(coveralls_upload
@@ -55,17 +55,17 @@ function(code_coverage _COVERAGE_SRCS _COVERALLS_UPLOAD _CMAKE_SCRIPT_PATH)
             COMMENT "Coveralls: uploading coveralls output...")
 
         add_custom_target(coveralls DEPENDS coveralls_upload)
-	else()
+    else()
         message("COVERALLS UPLOAD: OFF")
         add_custom_target(coveralls DEPENDS coveralls_generate)
-	endif()
+    endif()
 endfunction()
 
 if(ON_COVERALLS)
     set(CMAKE_BUILD_TYPE "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
-    
+
     set(EXCLUDE_DIRS
         "demo/"
         "build/"
@@ -84,7 +84,7 @@ if(ON_COVERALLS)
         foreach(TMP_PATH ${PADDLE_SOURCES})
             string(FIND ${TMP_PATH} ${EXCLUDE_DIR} EXCLUDE_DIR_FOUND)
             if(NOT ${EXCLUDE_DIR_FOUND} EQUAL -1)
-                list(REMOVE_ITEM PADDLE_SOURCES ${TMP_PATH}) 
+                list(REMOVE_ITEM PADDLE_SOURCES ${TMP_PATH})
             endif()
         endforeach(TMP_PATH)
     endforeach()
@@ -96,8 +96,8 @@ if(ON_COVERALLS)
     endforeach()
 
     code_coverage(
-        "${PADDLE_SRCS}" 
-        ${COVERALLS_UPLOAD}                 
+        "${PADDLE_SRCS}"
+        ${COVERALLS_UPLOAD}
         "${PROJECT_SOURCE_DIR}/cmake"
     )
 endif()
