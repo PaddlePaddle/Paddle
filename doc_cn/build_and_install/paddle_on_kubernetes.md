@@ -1,14 +1,25 @@
 # Paddle On Kubernetes
 
+>在这篇文档里，我们介绍如何在 Kubernetes 集群上启动一个单机使用CPU的Paddle训练作业。在下一篇中，我们将介绍如何启动分布式训练作业。
+
 ## 制作Docker镜像
 
-  本文使用QucikStart的例子来作为镜像，详细的Paddle镜像请参考[Docker installation guide](http://www.paddlepaddle.org/doc/build/docker_install.html),使用paddledev/paddle:cpu-demo-latest作为基础镜像。
+在一个功能齐全的Kubernetes机群里，通常我们会安装Ceph等分布式操作系统来存储训练数据。这样的话，一个分布式Paddle训练任务中的每个进程都可以从Ceph读取数据。在这个例子里，我们只演示一个单机作业，所以可以简化对环境的要求，把训练数据直接放在
+Paddle的Docker Image里。为此，我们需要制作一个包含训练数据的Paddle镜像。
 
+Paddle 的 [Quick Start Tutorial](http://www.paddlepaddle.org/doc/demo/quick_start/index_en.html) 
+里介绍了用Paddle源码中的脚本下载训练数据的过程。
+而 `paddledev/paddle:cpu-demo-latest` 镜像里有 Paddle 源码与Demo，（ 请注意，默认的
+Paddle镜像 `paddledev/paddle:cpu-latest` 是不包括源码的, Paddle的各版本镜像可以参考 [Docker installation guide](http://www.paddlepaddle.org/doc/build/docker_install.html) ），所以我们使用这个镜像来下载训练数据到Docker Container中，然后把这个包含了训练数据的container保存为一个新的镜像。
+  
 ### 运行容器
 
 ```
 $ docker run --name quick_start_data -it paddledev/paddle:cpu-demo-latest
 ```
+
+### 下载数据
+
 进入容器`/root/paddle/demo/quick_start/data`目录，使用`get_data.sh`下载数据
 
 ```
@@ -22,9 +33,11 @@ HTTP request sent, awaiting response... 200 OK
 Length: 495854086 (473M) [application/x-gzip]
 Saving to: 'reviews_Electronics_5.json.gz'
 
- 0% [                                                                ] 874,279     64.7KB/s  eta 2h 13m
+ 10% [=======>                                         ] 874,279     64.7KB/s  eta 2h 13m
 
 ```
+
+### 修改启动脚本
 
 下载完数据后，修改`/root/paddle/demo/quick_start/train.sh`文件，内容如下（增加了一条cd命令）
 ```
@@ -58,9 +71,11 @@ $ docker commit quick_start_data mypaddle/paddle:quickstart
 
 ## 使用 Kubernetes 进行训练
 
+>针对任务运行完成后容器自动退出的场景，Kubernetes有Job类型的资源来支持。下文就是用Job类型的资源来进行训练。
+
 ### 编写yaml文件
 
-在训练时，输出结果可能会随着容器的消耗而被删除，需要在创建Job时，挂载卷。使用前面构造的镜像，可以创建一个Kubernetes Job，简单的yaml文件如下：
+在训练时，输出结果可能会随着容器的消耗而被删除，需要在创建容器前挂载卷以便我们保存训练结果。使用我们之前构造的镜像，可以创建一个 [Kubernetes Job](http://kubernetes.io/docs/user-guide/jobs/#what-is-a-job)，简单的yaml文件如下：
 
 ```
 apiVersion: batch/v1
@@ -90,7 +105,7 @@ spec:
 
 ### 创建Paddle Job
 
-使用上文创建的yaml文件创建kubernetes job，命令为：
+使用上文创建的yaml文件创建Kubernetes Job，命令为：
 
 ```
 $ kubectl  create -f paddle.yaml
@@ -125,7 +140,7 @@ Events:
 
 ### 查看训练结果
 
-根据job对应的pod信息，可以查看此Pod运行的宿主机。
+根据Job对应的Pod信息，可以查看此Pod运行的宿主机。
 
 ```
 kubectl  describe pod quickstart-fa0wx
@@ -167,7 +182,7 @@ Volumes:
     Path:	/home/work/paddle_output
 ```
 
-登录宿主机，查看结果。
+我们还可以登录到宿主机上查看训练结果。
 
 ```
 [root@paddle-demo-let02 paddle_output]# ll
