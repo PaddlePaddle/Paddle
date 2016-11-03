@@ -394,6 +394,15 @@ sinclude(`ModelConfigLayer.proto.m4')
 
   // bias size
   optional uint32 bias_size = 48 [default = 0];
+
+  // this parameter can be used as a user-defined parameter when necessary, 
+  // without changing the proto file.
+  // e.g., when a new layer with a user-defined parameter is implemented, 
+  // it can be used to pass that parameter, without modifying the proto file.
+  // string type is used for flexibility: different types can be converted
+  // to string and reinterpreted in the user's own layer implementation.  
+  optional string user_arg = 49;
+
 }
 
 message EvaluatorConfig {
