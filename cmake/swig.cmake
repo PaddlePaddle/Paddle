@@ -1,4 +1,4 @@
-find_package(SWIG 3.0 REQUIRED)
+find_package(SWIG 3.0 QUIET)
 
 function(generate_python_api target_name)
     add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/py_paddle/swig_paddle.py
