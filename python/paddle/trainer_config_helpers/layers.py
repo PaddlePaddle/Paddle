@@ -52,7 +52,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'convex_comb_layer', 'ctc_layer', 'crf_layer', 'crf_decoding_layer',
            'nce_layer',
            'cross_entropy_with_selfnorm', 'cross_entropy',
-           'multi_binary_label_cross_entropy',
+           'multi_binary_label_cross_entropy', 'sum_cost',
            'rank_cost', 'lambda_cost', 'huber_cost',
            'block_expand_layer',
            'maxout_layer', 'out_prod_layer', 'print_layer'
@@ -126,6 +126,7 @@ class LayerType(object):
     CROSS_ENTROPY_WITH_SELFNORM = "multi_class_cross_entropy_with_selfnorm"
     SOFT_BIN_CLASS_CROSS_ENTROPY = "soft_binary_class_cross_entropy"
     MULTI_BIN_LABEL_CROSS_ENTROPY = "multi_binary_label_cross_entropy"
+    SUM_COST = "sum_cost"
 
     @staticmethod
     def is_layer_type(type_name):
@@ -3924,8 +3925,6 @@ def cross_entropy(input, label, name=None, coeff=1.0, layer_attr=None):
     :type input: LayerOutput.
     :param label: The input label.
     :type input: LayerOutput.
-    :param type: The type of cost.
-    :type type: basestring.
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring.
     :param coeff: The coefficient affects the gradient in the backward.
@@ -3961,8 +3960,6 @@ def cross_entropy_with_selfnorm(input, label, name=None, coeff=1.0,
     :type input: LayerOutput.
     :param label: The input label.
     :type input: LayerOutput.
-    :param type: The type of cost.
-    :type type: basestring.
     :param name: The name of this layers. It is not necessary.
     :type name: None|basestring.
     :param coeff: The coefficient affects the gradient in the backward.
@@ -3985,6 +3982,36 @@ def cross_entropy_with_selfnorm(input, label, name=None, coeff=1.0,
     return LayerOutput(name,
                        LayerType.CROSS_ENTROPY_WITH_SELFNORM,
                        parents=[input, label])
+
+
+@wrap_name_default()
+@layer_support()
+def sum_cost(input, name=None, layer_attr=None):
+    """
+    A loss layer which calculate the sum of the input as loss
+
+    .. code-block:: python
+
+       cost = sum_cost(input)
+
+    :param input: The first input layer.
+    :type input: LayerOutput.
+    :param name: The name of this layers. It is not necessary.
+    :type name: None|basestring.
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput.
+    """
+    Layer(name=name,
+          type=LayerType.SUM_COST,
+          inputs=[input.name],
+          **ExtraLayerAttribute.to_kwargs(layer_attr)
+          )
+
+    return LayerOutput(name,
+                       LayerType.SUM_COST,
+                       parents=[input])
 
 
 @wrap_name_default()
