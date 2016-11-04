@@ -1684,7 +1684,7 @@ class ConvTransLayerBase(LayerBase):
             parse_conv(
                 self.inputs[input_index].conv,
                 input_layer.name,
-                self.config.inputs[input_index].conv_conf, num_filters,
+                self.config.inputs[input_index].conv_conf,
                 trans=True)
             conv_conf = self.config.inputs[input_index].conv_conf
             psize = self.calc_parameter_size(conv_conf)
