@@ -2573,8 +2573,9 @@ class MixedLayer(LayerBase):
             for input in self.inputs:
                 psize += input.calc_bias_size()
 
-        self.config.bias_size = psize
-        self.create_bias_parameter(bias, psize)
+        if bias:
+            self.config.bias_size = psize
+            self.create_bias_parameter(bias, psize)
 
         if error_clipping_threshold is not None:
             self.config.error_clipping_threshold = error_clipping_threshold
@@ -2659,8 +2660,9 @@ class ConcatenateLayer2(LayerBase):
             for input in self.inputs:
                 psize += input.calc_bias_size()
 
-        self.config.bias_size = psize
-        self.create_bias_parameter(bias, psize)
+        if bias:
+            self.config.bias_size = psize
+            self.create_bias_parameter(bias, psize)
 
 @config_layer('recurrent')
 class RecurrentLayer(LayerBase):

@@ -20,6 +20,13 @@ add_unittest_without_exec(test_LayerGrad
 add_test(NAME test_LayerGrad
     COMMAND test_LayerGrad)
 
+add_unittest_without_exec(test_ActivationGrad
+    test_ActivationGrad.cpp
+    LayerGradUtil.cpp
+    TestUtil.cpp)
+add_test(NAME test_ActivationGrad
+    COMMAND test_ActivationGrad)
+
 ################## test_Evaluator #######################
 add_unittest(test_Evaluator
     test_Evaluator.cpp

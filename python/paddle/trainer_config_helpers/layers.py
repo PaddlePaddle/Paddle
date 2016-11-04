@@ -564,7 +564,7 @@ class MixedLayerType(LayerOutput):
         self.inputs = []
         self.finalized = False
 
-    def __add__(self, other):
+    def __iadd__(self, other):
         """
         + += operator
         :param other: Other projection.
