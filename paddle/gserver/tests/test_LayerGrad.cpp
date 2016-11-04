@@ -538,9 +538,10 @@ TEST(Layer, multi_binary_label) {
   config.layerConfig.add_inputs();
   config.layerConfig.add_inputs();
 
-  // Not support GPU now
-  testLayerGrad(config, "multi_binary_label_cross_entropy", 100,
-                /* trans */ false, /* useGpu */ false);
+  for (auto useGpu : {false, true}) {
+      testLayerGrad(config, "multi_binary_label_cross_entropy", 100,
+                    /* trans */ false, useGpu);
+  }
 }
 
 TEST(Layer, multi_cross_with_selfnorm) {

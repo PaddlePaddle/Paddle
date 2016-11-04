@@ -1303,6 +1303,10 @@ public:
                         const size_t numChannels,
                         const real ratioH,
                         const real ratioW);
+
+  void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
+
+  void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label);
 };
 
 class CpuMatrix : public Matrix {

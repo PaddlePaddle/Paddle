@@ -2208,7 +2208,6 @@ void testCollectSharedBias(int numSamples, int dim, int channel) {
   MatrixCheckErr(*cpuBias, *check);
 }
 
-
 TEST(Matrix, sharedBias) {
   for (auto numSamples : {1, 100, 520}) {
     for (auto dim : {100 * 16, 100 * 32}) {
@@ -2218,6 +2217,71 @@ TEST(Matrix, sharedBias) {
         testAddSharedBias(numSamples, dim, channel);
         testCollectSharedBias(numSamples, dim, channel);
       }
+    }
+  }
+}
+
+void testMultiBinaryLabelCrossEntropy(int numSamples, int dim) {
+  MatrixPtr output = std::make_shared<CpuMatrix>(numSamples, dim);
+  MatrixPtr cpuOutput = std::make_shared<CpuMatrix>(numSamples, dim);
+  MatrixPtr gpuOutput = std::make_shared<GpuMatrix>(numSamples, dim);
+
+  MatrixPtr cpuEntropy = std::make_shared<CpuMatrix>(numSamples, 1);
+  MatrixPtr gpuEntropy = std::make_shared<GpuMatrix>(numSamples, 1);
+
+  MatrixPtr cpuGrad = std::make_shared<CpuMatrix>(numSamples, dim);
+  MatrixPtr gpuGrad = std::make_shared<GpuMatrix>(numSamples, dim);
+
+  auto cpuRows = IVector::create(numSamples + 1, false);
+  auto cpuCols = IVector::create(numSamples, false);
+  auto gpuRows = IVector::create(numSamples + 1, true);
+  auto gpuCols = IVector::create(numSamples, true);
+  cpuRows->setElement(0, 0);
+  gpuRows->setElement(0, 0);
+  for (int i = 0; i < numSamples; i ++) {
+    int id = rand() % dim; // NOLINT
+    cpuRows->setElement(i + 1, i + 1);
+    gpuRows->setElement(i + 1, i + 1);
+    cpuCols->setElement(i, id);
+    gpuCols->setElement(i, id);
+  }
+
+  MatrixPtr cpuLabel = std::make_shared<CpuSparseMatrix>
+          (nullptr, cpuRows->getData(), cpuCols->getData(),
+           numSamples, dim, numSamples, NO_VALUE, SPARSE_CSR, false);
+  MatrixPtr gpuLabel = std::make_shared<GpuSparseMatrix>
+          (nullptr, gpuRows->getData(), gpuCols->getData(),
+           numSamples, dim, numSamples, NO_VALUE, SPARSE_CSR, false);
+
+  output->randomizeUniform();
+  cpuOutput->zeroMem();
+  output->softmax(*cpuOutput);
+  gpuOutput->copyFrom(*cpuOutput);
+
+  cpuEntropy->zeroMem();
+  gpuEntropy->zeroMem();
+  cpuEntropy->multiBinaryLabelCrossEntropy(*cpuOutput, *cpuLabel);
+  gpuEntropy->multiBinaryLabelCrossEntropy(*gpuOutput, *gpuLabel);
+
+  MatrixPtr check1 = std::make_shared<CpuMatrix>(numSamples, 1);
+  check1->copyFrom(*gpuEntropy);
+  MatrixCheckErr(*cpuEntropy, *check1);
+
+  cpuGrad->zeroMem();
+  gpuGrad->zeroMem();
+  cpuGrad->multiBinaryLabelCrossEntropyBp(*cpuOutput, *cpuLabel);
+  gpuGrad->multiBinaryLabelCrossEntropyBp(*gpuOutput, *gpuLabel);
+
+  MatrixPtr check2 = std::make_shared<CpuMatrix>(numSamples, dim);
+  check2->copyFrom(*gpuGrad);
+  MatrixCheckErr(*cpuGrad, *check2);
+}
+
+TEST(Matrix, multiBinaryCrossEntropy) {
+  for (auto numSamples : {1, 100, 500}) {
+    for (auto dim : {1000, 10000, 100000}) {
+      VLOG(3) << " numSamples=" << numSamples << " dim=" << dim;
+      testMultiBinaryLabelCrossEntropy(numSamples, dim);
     }
   }
 }

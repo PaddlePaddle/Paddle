@@ -462,6 +462,8 @@ bool MultiBinaryLabelCrossEntropy::init(const LayerMap& layerMap,
 
 void MultiBinaryLabelCrossEntropy::forwardImp(Matrix& output, Argument& label,
                                               Matrix& target) {
+  label.idsToSparseMatrix(output.getWidth(), useGpu_);
+
   if (dynamic_cast<CpuSparseMatrix*>(label.value.get()) ||
       dynamic_cast<GpuSparseMatrix*>(label.value.get())) {
     target.multiBinaryLabelCrossEntropy(output, *label.value);
@@ -476,6 +478,8 @@ void MultiBinaryLabelCrossEntropy::forwardImp(Matrix& output, Argument& label,
 
 void MultiBinaryLabelCrossEntropy::backwardImp(
     Matrix& output, Argument& label, Matrix& outputG) {
+  label.idsToSparseMatrix(output.getWidth(), useGpu_);
+
   if (dynamic_cast<CpuSparseMatrix*>(label.value.get()) ||
       dynamic_cast<GpuSparseMatrix*>(label.value.get())) {
     outputG.multiBinaryLabelCrossEntropyBp(output, *label.value);

@@ -1268,6 +1268,42 @@ void GpuMatrix::bilinearBackward(const Matrix& out,
   }
 }
 
+void GpuMatrix::multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label) {
+    GpuMatrix* output_ptr = dynamic_cast<GpuMatrix*>(&output);
+    auto label_ptr = dynamic_cast<GpuSparseMatrix*>(&label);
+
+    CHECK(output_ptr && label_ptr) << "Invalid argument pointer";
+    CHECK(label_ptr->format_ == SPARSE_CSR) << "Matrix format not supported";
+    CHECK(height_ == output_ptr->height_ && width_ == 1
+          && output_ptr->width_ == label_ptr->getWidth()
+          && output_ptr->height_ == label_ptr->getHeight())
+            << "Matrix dimensions are not equal";
+
+    real* output_d = output_ptr->data_;
+    real* entropy_d = data_;
+    hl_sparse_matrix_s mat_d = label_ptr->sMatrix_.get();
+    hl_matrix_multi_binary_cross_entropy(
+        output_d, entropy_d, mat_d, height_, output_ptr->width_);
+}
+
+void GpuMatrix::multiBinaryLabelCrossEntropyBp(Matrix &output, Matrix &label) {
+    GpuMatrix* output_ptr = dynamic_cast<GpuMatrix*>(&output);
+    auto label_ptr = dynamic_cast<GpuSparseMatrix*>(&label);
+
+    CHECK(output_ptr && label_ptr) << "Invalid argument pointer";
+    CHECK(label_ptr->format_ == SPARSE_CSR) << "Matrix format not supported";
+    CHECK(height_ == output_ptr->height_ && width_ == output_ptr->width_
+          && output_ptr->width_ == label_ptr->getWidth()
+          && output_ptr->height_ == label_ptr->getHeight())
+            << "Matrix dimensions are not equal";
+
+    real* output_d = output_ptr->data_;
+    real* grad_d = data_;
+    hl_sparse_matrix_s mat_d = label_ptr->sMatrix_.get();
+    hl_matrix_multi_binary_cross_entropy_bp(
+        output_d, grad_d, mat_d, height_, width_);
+}
+
 /**
  * CpuMatrix
  */

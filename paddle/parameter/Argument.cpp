@@ -572,4 +572,26 @@ void Argument::subArgFrom(const Argument& input, size_t offset, size_t height,
   }
 }
 
+void Argument::idsToSparseMatrix(int width, bool useGpu) {
+  if (ids) {
+    CHECK(!value);
+    int height = ids->getSize();
+    int nnz = height;
+    auto rows = IVector::create(height + 1, useGpu);
+    auto cols = IVector::create(nnz, useGpu);
+    rows->setElement(0, 0);
+    for (int i = 0; i < height; i ++) {
+      int id = ids->getElement(i);
+      CHECK_LT(id, width);
+      rows->setElement(i + 1, i + 1);
+      cols->setElement(i, id);
+    }
+    value = Matrix::createSparseMatrix(
+        nullptr, rows->getData(), cols->getData(),
+        height, width, nnz, NO_VALUE, SPARSE_CSR, false, useGpu);
+  } else {
+    CHECK(value);
+  }
+}
+
 }  // namespace paddle
