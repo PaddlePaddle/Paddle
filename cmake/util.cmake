@@ -68,19 +68,7 @@ endmacro()
 # It will handle WITH_PYTHON/WITH_GLOG etc.
 function(link_paddle_exe TARGET_NAME)
     if(WITH_RDMA)
-        #redirect to current DIR to isolate the pollution from system runtime environment
-        #it can benifits unified control for different gcc environment. 
-        #e.g, by default gcc48 did not refer /usr/lib64 which could contain low version
-        #runtime libraries that will crash process while loading it. That redirect trick
-        #can fix it.
-        execute_process(
-          COMMAND mkdir -p librdma
-          COMMAND ln -s -f /usr/lib64/libibverbs.so.1.0.0 librdma/libibverbs.so.1
-          COMMAND ln -s -f /usr/lib64/libibverbs.so.1.0.0 librdma/libibverbs.so
-          COMMAND ln -s -f /usr/lib64/librdmacm.so.1.0.0 librdma/librdmacm.so.1
-          COMMAND ln -s -f /usr/lib64/librdmacm.so.1.0.0 librdma/librdmacm.so 
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        )
+        generate_rdma_links()
     endif()
 
     if(WITH_METRIC)

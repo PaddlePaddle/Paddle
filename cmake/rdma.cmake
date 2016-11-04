@@ -7,6 +7,22 @@
 
 set(RDMA_ROOT $ENV{RDMA_ROOT} CACHE PATH "Folder contains RDMA sock library and thirdparty library")
 
+function(generate_rdma_links)
+  #redirect to current DIR to isolate the pollution from system runtime environment
+  #it can benifits unified control for different gcc environment. 
+  #e.g, by default gcc48 did not refer /usr/lib64 which could contain low version
+  #runtime libraries that will crash process while loading it. That redirect trick
+  #can fix it.
+  execute_process(
+    COMMAND mkdir -p librdma
+    COMMAND ln -s -f /usr/lib64/libibverbs.so.1.0.0 librdma/libibverbs.so.1
+    COMMAND ln -s -f /usr/lib64/libibverbs.so.1.0.0 librdma/libibverbs.so
+    COMMAND ln -s -f /usr/lib64/librdmacm.so.1.0.0 librdma/librdmacm.so.1
+    COMMAND ln -s -f /usr/lib64/librdmacm.so.1.0.0 librdma/librdmacm.so 
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
+endfunction(generate_rdma_links)
+
 
 #check and set headers
 find_path(RDMA_INC_SXISOCK sxi_sock.h PATHS ${RDMA_ROOT}/sockrdmav1/output/include)
@@ -56,6 +72,5 @@ if(
 endif()
 
 #if this module is not called, RDMA_INC_DIR RDMA_LIBS will be null, so top module always refer this variable
-
 
 message(FATAL_ERROR, "RDMA libraries are not found, try to set RDMA_ROOT or check all related libraries.")
