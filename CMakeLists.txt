@@ -140,6 +140,7 @@ endif(WITH_RDMA)
 
 if(WITH_GLOG)
     add_definitions(-DPADDLE_USE_GLOG)
+    include_directories(${LIBGLOG_INCLUDE_DIR})
 endif()
 
 if(WITH_GFLAGS)

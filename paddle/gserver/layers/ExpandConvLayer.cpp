@@ -37,32 +37,29 @@ bool ExpandConvLayer::init(const LayerMap &layerMap,
     caffeMode_ = conf.caffe_mode();
   }
 
+  /* initialize the weightList */
+  CHECK(inputLayers_.size() == parameters_.size());
+  for (size_t i = 0; i < inputLayers_.size(); i++) {
+    size_t height, width;
+    height = filterPixels_[i] * filterChannels_[i];
+    width = numFilters_;
+
+    // create a new weight
+    CHECK_EQ(parameters_[i]->getSize(), width * height);
+    Weight* w = new Weight(height, width, parameters_[i]);
+    weights_.emplace_back(w);
+  }
+
   return true;
 }
 
-size_t ExpandConvLayer::getSize() {
+size_t ExpandConvLayer::getOutputSize() {
   CHECK_NE(inputLayers_.size(), 0UL);
-  imgSizeH_.clear();
-  imgSizeW_.clear();
-  outputH_.clear();
-  outputW_.clear();
+  size_t layerSize = ConvBaseLayer::calOutputSize();
   subN_.clear();
-  size_t layerSize = 0;
   for (size_t i = 0; i < inputLayers_.size(); i++) {
-    imgSizeH_.push_back(inputLayers_[i]->getOutput().getFrameHeight());
-    imgSizeW_.push_back(inputLayers_[i]->getOutput().getFrameWidth());
-    if (imgSizeH_[i] == 0) imgSizeH_[i] = imgSize_[i];
-    if (imgSizeW_[i] == 0) imgSizeW_[i] = imgSize_[i];
-    outputH_.push_back(
-        outputSize(imgSizeH_[i], filterSize_[i], padding_[i], stride_[i]));
-    outputW_.push_back(
-        outputSize(imgSizeW_[i], filterSize_[i], padding_[i], stride_[i]));
     subN_.push_back(outputH_[i] * outputW_[i]);
-    CHECK(layerSize == 0 || subN_[i] * size_t(numFilters_) == layerSize);
-    layerSize = subN_[i] * numFilters_;
   }
-  getOutput().setFrameHeight(outputH_[0]);
-  getOutput().setFrameWidth(outputW_[0]);
   return layerSize;
 }
 
@@ -119,7 +116,7 @@ void ExpandConvLayer::expandFwdOnce(MatrixPtr image, int inIdx, int startIdx) {
 }
 
 void ExpandConvLayer::addSharedBias() {
-  size_t mapW = getSize() / numFilters_;
+  size_t mapW = getOutputValue()->getWidth() / numFilters_;
   size_t mapH = getOutputValue()->getElementCnt() / mapW;
   MatrixPtr out =
       Matrix::create(getOutputValue()->getData(), mapH, mapW, false, useGpu_);
@@ -158,7 +155,7 @@ void ExpandConvLayer::forward(PassType passType) {
    *   transOutValue correspond sample to one row */
   int batchSize = inputLayers_[0]->getOutputValue()->getWidth();
   batchSize = inputLayers_[0]->getOutputValue()->getHeight();
-  resetOutput(batchSize, getSize());
+  resetOutput(batchSize, getOutputSize());
 
   MatrixPtr image = nullptr;
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
@@ -183,7 +180,7 @@ void ExpandConvLayer::forward(PassType passType) {
 }
 
 void ExpandConvLayer::bpropSharedBias(MatrixPtr biases, MatrixPtr v) {
-  size_t mapW = getSize() / numFilters_;
+  size_t mapW = v->getWidth() / numFilters_;
   size_t mapH = v->getElementCnt() / mapW;
   MatrixPtr vTmp = Matrix::create(v->getData(), mapH, mapW, false, useGpu_);
 

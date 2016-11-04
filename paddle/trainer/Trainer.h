@@ -99,6 +99,7 @@ public:
   void startTrainPass();
   void finishTrainPass();
   void trainOneDataBatch(DataBatch& dataBatch);
+  void time();
 
   /**
    * given a dataBatch and the current parameter value

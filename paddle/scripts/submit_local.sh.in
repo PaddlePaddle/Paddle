@@ -68,7 +68,7 @@ EOF
 if [ $? -eq 1 ]; then  # Older version installed, or not installed at all
    echo "First time run paddle, need to install some python dependencies."
    BASEDIR=$(dirname "$0")
-   pip install ${BASEDIR}/../opt/paddle/share/wheels/*.whl
+   pip install ${BASEDIR}/../opt/paddle/share/wheels/*-@PADDLE_VERSION@-*.whl
    if [ $? -ne 0 ]; then
       echo "pip install wheels failed. "
       echo "Please use 'sudo paddle' at the first time you use PaddlePaddle"
