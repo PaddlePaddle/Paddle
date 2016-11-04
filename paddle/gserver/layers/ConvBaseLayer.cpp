@@ -20,12 +20,8 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
-
-  if (config_.type() == "exconv" || config_.type() == "cudnn_conv") {
-    isDeconv_ = false;
-  } else {
-    isDeconv_ = true;
-  }
+  isDeconv_ = (config_.type() == "exconv" || config_.type() == "cudnn_conv")
+              ? false : true;
 
   /* Initialize the convolutional layer parameter */
   numFilters_ = config_.num_filters();
@@ -111,9 +107,9 @@ size_t ConvBaseLayer::calOutputSize() {
              outputSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i]));
          outW.push_back(
              outputSize(inW[i], filterSize_[i], padding_[i], stride_[i]));
-         CHECK_EQ(outH[i], outH[0]);
-         CHECK_EQ(outW[i], outW[0]);
        }
+       CHECK_EQ(outH[i], outH[0]);
+       CHECK_EQ(outW[i], outW[0]);
     }
     getOutput().setFrameHeight(outH[0]);
     getOutput().setFrameWidth(outW[0]);
