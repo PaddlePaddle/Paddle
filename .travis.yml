@@ -35,6 +35,8 @@ addons:
       - libgoogle-glog-dev
       - libgflags-dev
       - libgtest-dev
+      - curl
+      - lcov
       - graphviz
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo paddle/scripts/travis/before_install.linux.sh; fi
