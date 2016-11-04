@@ -199,3 +199,12 @@ class ExpActivation(BaseActivation):
        f(z) = e^z.
     """
     def __init__(self): BaseActivation.__init__(self, 'exponential', False)
+
+class LogActivation(BaseActivation):
+    """
+    Exponential Activation.
+
+    .. math::
+       f(z) = log(z)
+    """
+    def __init__(self): BaseActivation.__init__(self, 'log', False)
