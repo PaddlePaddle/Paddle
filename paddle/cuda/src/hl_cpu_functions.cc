@@ -30,7 +30,7 @@ namespace hppl {
   }
 
   real tanh(const real a) {
-    real tmp = -2 * a;
+    real tmp = -2.0 * a;
     tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
     return (2.0 / (1.0 + exp(tmp))) - 1.0;
   }

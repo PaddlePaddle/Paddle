@@ -32,6 +32,7 @@ limitations under the License. */
 #include <fenv.h>
 #include <gtest/gtest.h>
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/Excepts.h"
 
 using namespace paddle;     // NOLINT
 

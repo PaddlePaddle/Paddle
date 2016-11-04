@@ -161,7 +161,7 @@ void vLog1p(const int n, const T* a, T* r) {
 }
 
 DEFINE_MATRIX_BINARY_OP(vTanh,
-    T tmp = -2 * a;
+    T tmp = -2.0 * a;
     tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
     b = 2.0 / (1.0 + std::exp(tmp)) - 1.0);
 template<class T>

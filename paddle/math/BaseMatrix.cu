@@ -626,7 +626,7 @@ void BaseMatrixT<T>::squareDerivative(BaseMatrixT& b) {
 }
 
 DEFINE_MATRIX_BINARY_OP(Tanh,
-    T tmp = -2 * a;
+    T tmp = -2.0 * a;
     tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
     b = 2.0 / (1.0 + std::exp(tmp)) - 1.0);
 template<>
