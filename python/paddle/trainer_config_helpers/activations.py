@@ -202,7 +202,7 @@ class ExpActivation(BaseActivation):
 
 class LogActivation(BaseActivation):
     """
-    Exponential Activation.
+    Logarithm Activation.
 
     .. math::
        f(z) = log(z)
