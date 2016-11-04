@@ -219,10 +219,9 @@ easy_install pip
   # Install google test on Mac OS X
   # Download gtest 1.7.0
   wget https://github.com/google/googletest/archive/release-1.7.0.tar.gz
-  tar -xvf googletest-release-1.7.0.tar.gz && cd googletest-release-1.7.0
+  tar -xzf googletest-release-1.7.0.tar.gz && cd googletest-release-1.7.0
   # Build gtest
-  mkdir build && cmake ..
-  make
+  mkdir build && cd build && cmake .. && make
   # Install gtest library
   sudo cp -r ../include/gtest /usr/local/include/
   sudo cp lib*.a /usr/local/lib
