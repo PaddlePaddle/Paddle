@@ -1,4 +1,4 @@
-Thank you for contibuting to PaddlePaddle. Submitting an issue is a great help for us.
+Thank you for contributing to PaddlePaddle. Submitting an issue is a great help for us.
 Both Chinese and English issues are welcome.
 
 Before you submitting the issue, there are several things should be check.
