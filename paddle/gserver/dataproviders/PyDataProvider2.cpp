@@ -201,7 +201,7 @@ public:
  * Here, we start a thread to read data. It is totally asynchronous for reading
  * data. And it support cache strategies.
  */
-class PyDataProvider2 : public DataProvider, private WaitMethodDone {
+class PyDataProvider2 : public DataProvider {
 public:
   /**
    * Ctor
@@ -443,7 +443,8 @@ private:
       callingContexts_.clear();
       this->pullCV_.notify_one();
     }
-    this->waitNotCalling();
+
+    std::lock_guard<std::mutex> guard(mutexForReset_);
     {
       PyGuard g;
       dataPool_.clear();
@@ -471,6 +472,8 @@ private:
   std::condition_variable pushCV_;
   std::condition_variable pullCV_;
   std::mutex mtx_;
+
+  std::mutex mutexForReset_;
 
   ThreadBarrier callingContextCreated_;
   std::unique_ptr<IPyDataProviderCache> cache_;
@@ -536,7 +539,7 @@ public:
    * Loading a batch of data.
    */
   int64_t getNextBatchInternal(int64_t size_, DataBatch *batch) {
-    auto guard = this->guard();
+    std::lock_guard<std::mutex> guard(mutexForReset_);
     REGISTER_TIMER("PyDP2.getNextBatchInternal")
     CHECK_GE(size_, 0);
     size_t size = (size_t) size_;
