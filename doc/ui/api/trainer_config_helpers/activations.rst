@@ -32,6 +32,13 @@ LinearActivation
 ..  automodule:: paddle.trainer_config_helpers.activations
     :members: LinearActivation
     :noindex:
+
+LogActivation
+==================
+
+..  automodule:: paddle.trainer_config_helpers.activations
+    :members: LogActivation
+    :noindex:
     
 SquareActivation
 ================
