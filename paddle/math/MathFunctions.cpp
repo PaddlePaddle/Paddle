@@ -160,7 +160,10 @@ void vLog1p(const int n, const T* a, T* r) {
     binary::vLog1p<T>(), const_cast<T*>(a), r, 1, n, n, n);
 }
 
-DEFINE_MATRIX_BINARY_OP(vTanh, b = 2.0 / (1.0 + std::exp(-2 * a)) - 1.0);
+DEFINE_MATRIX_BINARY_OP(vTanh,
+    T tmp = -2 * a;
+    tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
+    b = 2.0 / (1.0 + std::exp(tmp)) - 1.0);
 template<class T>
 void vTanh(const int n, const T* a, T* r) {
   hl_cpu_apply_binary_op<T, binary::vTanh<T>, 0, 0>(
