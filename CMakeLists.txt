@@ -54,7 +54,7 @@ include(flags)
 include(cudnn)
 include(FindPythonModule)
 include(check_packages)
-include(py_paddle)
+include(swig)
 
 # add PaddlePaddle version
 if(DEFINED ENV{PADDLE_VERSION})
