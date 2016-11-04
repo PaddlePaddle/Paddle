@@ -27,12 +27,11 @@ def register_unary_math_op(op_name, act):
                            act=act)
     op = wrap_name_default(op_name)(op)
     op.__doc__ = type(act).__doc__
-    globals()[op_name]= op
+    globals()[op_name] = op
     __all__.append(op_name)
 
-# register_unary_math_op('log', act.LogActivation())
 register_unary_math_op('exp', act.ExpActivation())
-register_unary_math_op('log', act.ExpActivation())
+register_unary_math_op('log', act.LogActivation())
 register_unary_math_op('abs', act.AbsActivation())
 register_unary_math_op('sigmoid', act.SigmoidActivation())
 register_unary_math_op('tanh', act.TanhActivation())

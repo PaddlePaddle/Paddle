@@ -20,4 +20,4 @@ e6ff04e70aea27c7b06d808cc49c9497  test_print_layer.protostr
 67d6fde3afb54f389d0ce4ff14726fe1  test_sequence_pooling.protostr
 f586a548ef4350ba1ed47a81859a64cb  unused_layers.protostr
 8122477f4f65244580cec09edc590041  util_layers.protostr
-16318fc102bc474cf845e6a438d85ac1  math_ops.protostr
+dcd76bebb5f9c755f481c26192917818  math_ops.protostr
