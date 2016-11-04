@@ -3,7 +3,7 @@ Both Chinese and English issues are welcome.
 
 Before you submitting the issue, there are several things should be check.
 
-- [ ] Was there a similar issue submitted and resolved before? You could search issue in github.
+- [ ] Was there a similar issue submitted or resolved before? You could search issue in the github.
 - [ ] Did you go to the search engine for your question?
 - [ ] Is my description of issue clear enough for this problem?
    * If there are some errors occured, we need details about `how do you run your code?`, `what system do you use?`, `Are you using GPU or not?`, etc.
