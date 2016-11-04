@@ -1,7 +1,7 @@
 Thank you for contibuting to PaddlePaddle. Submitting an issue is a great help for us.
 Both Chinese and English issues are welcome.
 
-Before you submitting the issue, there are several things you need to check.
+Before you submitting the issue, there are several things should be check.
 
 - [ ] Was there a similar issue submitted and resolved before? You could search issue in github.
 - [ ] Did you go to the search engine for your question?
