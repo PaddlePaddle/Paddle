@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from paddle.trainer_config_helpers import *
-from paddle.trainer_config_helpers.layers import img_convTrans_layer
 from paddle.trainer_config_helpers.activations import LinearActivation
 from numpy.distutils.system_info import tmp
 
@@ -55,13 +54,14 @@ def convTrans_bn(input, channels, output_x, num_filters, imgSize, stride, name,
         padding = 0
         
         
-    convTrans = img_convTrans_layer(input, filter_size=filter_size, 
+    convTrans = img_conv_layer(input, filter_size=filter_size, 
                    num_filters=num_filters,
                    name=name + "_convt", num_channels=channels,
                    act=LinearActivation(), groups=1, stride=stride, 
                    padding=padding, bias_attr=bias_attr,
                    param_attr=param_attr, shared_biases=True, layer_attr=None,
-                   filter_size_y=None, stride_y=None, padding_y=None)
+                   filter_size_y=None, stride_y=None, padding_y=None, 
+                   trans=True)
     
     convTrans_bn = batch_norm_layer(convTrans, 
                      act=ReluActivation(), 

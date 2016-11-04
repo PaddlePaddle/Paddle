@@ -22,6 +22,23 @@ from paddle.trainer.config_parser import logger
 import py_paddle.swig_paddle as api
 from py_paddle import DataProviderConverter
 
+import matplotlib.pyplot as plt
+
+
+def plot2DScatter(data, outputfile):
+    # Generate some test data
+    x = data[:, 0]
+    y = data[:, 1]
+    print "The mean vector is %s" % numpy.mean(data, 0)
+    print "The std vector is %s" % numpy.std(data, 0)
+
+    heatmap, xedges, yedges = numpy.histogram2d(x, y, bins=50)
+    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+
+    plt.clf()
+    plt.scatter(x, y)
+    # plt.show()
+    plt.savefig(outputfile, bbox_inches='tight')
 
 def CHECK_EQ(a, b):
     assert a == b, "a=%s, b=%s" % (a, b)
@@ -31,6 +48,7 @@ def copy_shared_parameters(src, dst):
     src_params = [src.getParameter(i)
                for i in xrange(src.getParameterSize())]
     src_params = dict([(p.getName(), p) for p in src_params])
+
 
     for i in xrange(dst.getParameterSize()):
         dst_param = dst.getParameter(i)
@@ -42,19 +60,37 @@ def copy_shared_parameters(src, dst):
         CHECK_EQ(len(src_value), len(dst_value))
         dst_value.copyFrom(src_value)
         dst_param.setValueUpdated()
+        
+def print_parameters(src):
+    src_params = [src.getParameter(i)
+               for i in xrange(src.getParameterSize())]
 
-
+    print "***************"
+    for p in src_params:
+        print "Name is %s" % p.getName()
+        print "value is %s \n" % p.getBuf(api.PARAMETER_VALUE).copyToNumpyArray()
+        
 def get_real_samples(batch_size, sample_dim):
-    return numpy.random.rand(batch_size, sample_dim).astype('float32')
+    return numpy.random.rand(batch_size, sample_dim).astype('float32') * 10.0 - 10.0
+    # return numpy.random.normal(loc=100.0, scale=100.0, size=(batch_size, sample_dim)).astype('float32')
 
-
-def prepare_discriminator_data_batch(
-        generator_machine, batch_size, noise_dim, sample_dim):
-    gen_inputs = prepare_generator_data_batch(batch_size / 2, noise_dim)
+def get_fake_samples(generator_machine, batch_size, noise_dim, sample_dim):
+    gen_inputs = prepare_generator_data_batch(batch_size, noise_dim)
     gen_inputs.resize(1)
     gen_outputs = api.Arguments.createArguments(0)
     generator_machine.forward(gen_inputs, gen_outputs, api.PASS_TEST)
     fake_samples = gen_outputs.getSlotValue(0).copyToNumpyMat()
+    return fake_samples
+
+def get_training_loss(training_machine, inputs):
+    outputs = api.Arguments.createArguments(0)
+    training_machine.forward(inputs, outputs, api.PASS_TEST)
+    loss = outputs.getSlotValue(0).copyToNumpyMat()
+    return numpy.mean(loss)
+
+def prepare_discriminator_data_batch(
+        generator_machine, batch_size, noise_dim, sample_dim):
+    fake_samples = get_fake_samples(generator_machine, batch_size / 2, noise_dim, sample_dim)
     real_samples = get_real_samples(batch_size / 2, sample_dim)
     all_samples = numpy.concatenate((fake_samples, real_samples), 0)
     all_labels = numpy.concatenate(
@@ -65,6 +101,21 @@ def prepare_discriminator_data_batch(
     inputs.setSlotIds(1, api.IVector.createCpuVectorFromNumpy(all_labels))
     return inputs
 
+def prepare_discriminator_data_batch_pos(batch_size, noise_dim, sample_dim):
+    real_samples = get_real_samples(batch_size, sample_dim)
+    labels = numpy.ones(batch_size, dtype='int32')
+    inputs = api.Arguments.createArguments(2)
+    inputs.setSlotValue(0, api.Matrix.createCpuDenseFromNumpy(real_samples))
+    inputs.setSlotIds(1, api.IVector.createCpuVectorFromNumpy(labels))
+    return inputs
+
+def prepare_discriminator_data_batch_neg(generator_machine, batch_size, noise_dim, sample_dim):
+    fake_samples = get_fake_samples(generator_machine, batch_size, noise_dim, sample_dim)
+    labels = numpy.zeros(batch_size, dtype='int32')
+    inputs = api.Arguments.createArguments(2)
+    inputs.setSlotValue(0, api.Matrix.createCpuDenseFromNumpy(fake_samples))
+    inputs.setSlotIds(1, api.IVector.createCpuVectorFromNumpy(labels))
+    return inputs
 
 def prepare_generator_data_batch(batch_size, dim):
     noise = numpy.random.normal(size=(batch_size, dim)).astype('float32')
@@ -118,22 +169,63 @@ def main():
 
     dis_trainer.startTrain()
     gen_trainer.startTrain()
+    copy_shared_parameters(gen_training_machine, dis_training_machine)
+    copy_shared_parameters(gen_training_machine, generator_machine)
+    curr_train = "dis"
+    curr_strike = 0
+    MAX_strike = 5
+    
     for train_pass in xrange(10):
         dis_trainer.startTrainPass()
         gen_trainer.startTrainPass()
         for i in xrange(100000):
-            copy_shared_parameters(gen_training_machine, generator_machine)
-            copy_shared_parameters(gen_training_machine, dis_training_machine)
-            data_batch = prepare_discriminator_data_batch(
+#             data_batch_dis = prepare_discriminator_data_batch(
+#                     generator_machine, batch_size, noise_dim, sample_dim)
+#             dis_loss = get_training_loss(dis_training_machine, data_batch_dis)
+            data_batch_dis_pos = prepare_discriminator_data_batch_pos(
+                batch_size, noise_dim, sample_dim)
+            dis_loss_pos = get_training_loss(dis_training_machine, data_batch_dis_pos)
+            
+            data_batch_dis_neg = prepare_discriminator_data_batch_neg(
                 generator_machine, batch_size, noise_dim, sample_dim)
-            dis_trainer.trainOneDataBatch(batch_size, data_batch)
+            dis_loss_neg = get_training_loss(dis_training_machine, data_batch_dis_neg)            
+            
+            dis_loss = (dis_loss_pos + dis_loss_neg) / 2.0
+            
+            data_batch_gen = prepare_generator_data_batch(
+                    batch_size, noise_dim)
+            gen_loss = get_training_loss(gen_training_machine, data_batch_gen)
+            
+            if i % 1000 == 0:
+                print "d_loss is %s    g_loss is %s" % (dis_loss, gen_loss)
+                            
+            if (not (curr_train == "dis" and curr_strike == MAX_strike)) and ((curr_train == "gen" and curr_strike == MAX_strike) or dis_loss > 0.690 or dis_loss > gen_loss):
+                if curr_train == "dis":
+                    curr_strike += 1
+                else:
+                    curr_train = "dis"
+                    curr_strike = 1                
+                dis_trainer.trainOneDataBatch(batch_size, data_batch_dis_neg)
+                dis_trainer.trainOneDataBatch(batch_size, data_batch_dis_pos)
+#                 dis_loss = numpy.mean(dis_trainer.getForwardOutput()[0]["value"])
+#                 print "getForwardOutput loss is %s" % dis_loss                
+                copy_shared_parameters(dis_training_machine, gen_training_machine)
 
-            copy_shared_parameters(dis_training_machine, gen_training_machine)
-            data_batch = prepare_generator_data_batch(
-                batch_size, noise_dim)
-            gen_trainer.trainOneDataBatch(batch_size, data_batch)
+            else:
+                if curr_train == "gen":
+                    curr_strike += 1
+                else:
+                    curr_train = "gen"
+                    curr_strike = 1
+                gen_trainer.trainOneDataBatch(batch_size, data_batch_gen)    
+                copy_shared_parameters(gen_training_machine, dis_training_machine)
+                copy_shared_parameters(gen_training_machine, generator_machine)
+
         dis_trainer.finishTrainPass()
         gen_trainer.finishTrainPass()
+
+        fake_samples = get_fake_samples(generator_machine, batch_size, noise_dim, sample_dim)
+        plot2DScatter(fake_samples, "./train_pass%s.png" % train_pass)
     dis_trainer.finishTrain()
     gen_trainer.finishTrain()
 

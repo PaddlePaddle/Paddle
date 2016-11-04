@@ -26,11 +26,12 @@ is_discriminator = mode == "discriminator"
 
 print('mode=%s' % mode)
 noise_dim = 10
+hidden_dim = 15
 sample_dim = 2
 
 settings(
-    batch_size=100,
-    learning_rate=1e-2,
+    batch_size=128,
+    learning_rate=1e-4,
     learning_method=AdamOptimizer()
 )
 
@@ -44,9 +45,30 @@ def discriminator(sample):
     """
     param_attr = ParamAttr(is_static=is_generator_training)
     bias_attr = ParamAttr(is_static=is_generator_training,
-                          initial_mean=0,
+                          initial_mean=1.0,
                           initial_std=0)
-    return fc_layer(input=sample, name="dis_prob", size=2,
+    hidden = fc_layer(input=sample, name="dis_hidden", size=hidden_dim,
+                    bias_attr=bias_attr,
+                    param_attr=param_attr,
+                    act=ReluActivation())
+                    #act=LinearActivation())
+
+    hidden2 = fc_layer(input=hidden, name="dis_hidden2", size=hidden_dim,
+                    bias_attr=bias_attr,
+                    param_attr=param_attr,
+                    #act=ReluActivation())
+                    act=LinearActivation())
+    
+    hidden_bn = batch_norm_layer(hidden2, 
+                     act=ReluActivation(), 
+                     name="dis_hidden_bn", 
+                     bias_attr=bias_attr, 
+                     param_attr=ParamAttr(is_static=is_generator_training,
+                           initial_mean=1.0,
+                           initial_std=0.02),
+                     use_global_stats=False)
+    
+    return fc_layer(input=hidden_bn, name="dis_prob", size=2,
                     bias_attr=bias_attr,
                     param_attr=param_attr,
                     act=SoftmaxActivation())
@@ -57,9 +79,33 @@ def generator(noise):
     """
     param_attr = ParamAttr(is_static=is_discriminator_training)
     bias_attr = ParamAttr(is_static=is_discriminator_training,
-                           initial_mean=0,
+                           initial_mean=1.0,
                            initial_std=0)
-    return fc_layer(input=noise,
+    
+    hidden = fc_layer(input=noise,
+                    name="gen_layer_hidden",
+                    size=hidden_dim,
+                    bias_attr=bias_attr,
+                    param_attr=param_attr,
+                    act=ReluActivation())
+                    #act=LinearActivation())
+
+    hidden2 = fc_layer(input=hidden, name="gen_hidden2", size=hidden_dim,
+                    bias_attr=bias_attr,
+                    param_attr=param_attr,
+                    #act=ReluActivation())
+                    act=LinearActivation())
+    
+    hidden_bn = batch_norm_layer(hidden2, 
+                     act=ReluActivation(), 
+                     name="gen_layer_hidden_bn", 
+                     bias_attr=bias_attr, 
+                     param_attr=ParamAttr(is_static=is_discriminator_training,
+                           initial_mean=1.0,
+                           initial_std=0.02),
+                     use_global_stats=False)
+    
+    return fc_layer(input=hidden_bn,
                     name="gen_layer1",
                     size=sample_dim,
                     bias_attr=bias_attr,
