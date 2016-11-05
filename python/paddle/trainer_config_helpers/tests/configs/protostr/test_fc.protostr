@@ -1,0 +1,98 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 100
+  active_type: ""
+}
+layers {
+  name: "__trans_layer_0__"
+  type: "trans"
+  size: 100
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+  }
+}
+layers {
+  name: "__fc_layer_0__"
+  type: "fc"
+  size: 100
+  active_type: "tanh"
+  inputs {
+    input_layer_name: "__trans_layer_0__"
+    input_parameter_name: "___fc_layer_0__.w0"
+  }
+}
+layers {
+  name: "mask"
+  type: "data"
+  size: 100
+  active_type: ""
+}
+layers {
+  name: "__selective_fc_layer_0__"
+  type: "selective_fc"
+  size: 100
+  active_type: "sigmoid"
+  inputs {
+    input_layer_name: "data"
+    input_parameter_name: "___selective_fc_layer_0__.w0"
+  }
+  inputs {
+    input_layer_name: "mask"
+  }
+  bias_parameter_name: "___selective_fc_layer_0__.wbias"
+  selective_fc_pass_generation: false
+  has_selected_colums: true
+  selective_fc_full_mul_ratio: 0.02
+}
+parameters {
+  name: "___fc_layer_0__.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "___selective_fc_layer_0__.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+  is_sparse: false
+}
+parameters {
+  name: "___selective_fc_layer_0__.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+input_layer_names: "data"
+input_layer_names: "mask"
+output_layer_names: "__fc_layer_0__"
+output_layer_names: "__selective_fc_layer_0__"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "__trans_layer_0__"
+  layer_names: "__fc_layer_0__"
+  layer_names: "mask"
+  layer_names: "__selective_fc_layer_0__"
+  input_layer_names: "data"
+  input_layer_names: "mask"
+  output_layer_names: "__fc_layer_0__"
+  output_layer_names: "__selective_fc_layer_0__"
+  is_recurrent_layer_group: false
+}
+
