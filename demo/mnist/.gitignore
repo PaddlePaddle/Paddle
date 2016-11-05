@@ -1,0 +1,6 @@
+data/raw_data
+data/*.list
+mnist_vgg_model
+plot.png
+train.log
+*pyc

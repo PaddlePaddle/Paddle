@@ -229,4 +229,40 @@ extern void hl_cossim_derivative(real* grad,
                                  int input2_height,
                                  real scale);
 
+/**
+ * @brief   Matrix addition: A_d[i][j] += scale * B_d[j/channel].
+ *
+ * @param[in]   A_d     input matrix (M x N).
+ * @param[in]   B_d     input matrix (1 x channel).
+ * @param[in]   channel width of B.
+ * @param[in]   dimM    height of A.
+ * @param[in]   dimN    width of A.
+ * @param[in]   scale   scalar used for addition.
+ *
+ */
+extern void hl_matrix_add_shared_bias(real* A_d,
+                                      real* B_d,
+                                      const int channel,
+                                      const int dimM,
+                                      const int dimN,
+                                      real scale);
+
+/**
+ * @brief   Matrix addition: A_d[i][j] += scale * B_d[j/channel].
+ *
+ * @param[in]   B_d     input matrix (1 x channel).
+ * @param[in]   A_d     input matrix (M x N).
+ * @param[in]   channel width of B.
+ * @param[in]   dimM    height of A.
+ * @param[in]   dimN    width of A.
+ * @param[in]   scale   scalar used for addition.
+ *
+ */
+extern void hl_matrix_collect_shared_bias(real* B_d,
+                                          real* A_d,
+                                          const int channel,
+                                          const int dimM,
+                                          const int dimN,
+                                          real scale);
+
 #endif /* HL_MATRIX_H_ */

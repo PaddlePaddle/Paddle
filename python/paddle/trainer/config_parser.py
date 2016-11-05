@@ -114,15 +114,15 @@ g_layer_type_map = {}
 # Initialize global variables. We use this function so that we can
 # call parse_config() multiple times
 def init_config_environment(
-        g_default_momentum = 0.,
-        g_default_decay_rate = 0.,
+        g_default_momentum = None,
+        g_default_decay_rate = None,
         g_default_initial_mean = 0.,
         g_default_initial_std = 0.01,
-        g_default_num_batches_regularization = 1,
+        g_default_num_batches_regularization = None,
         g_default_initial_strategy = 0,
         g_default_initial_smart = False,
-        g_default_gradient_clipping_threshold = 0.,
-        g_default_device = -1,
+        g_default_gradient_clipping_threshold = None,
+        g_default_device = None,
         g_default_update_hooks = None,
         g_default_compact_func = None,
 
@@ -216,6 +216,10 @@ def Inputs(*args):
         if g_current_submodel is g_root_submodel:
             g_config.model_config.input_layer_names.append(name)
 
+@config_func
+def HasInputsSet():
+    return len(g_config.model_config.input_layer_names) != 0
+
 
 # Define the name of the output layers of the NeuralNetwork.
 # Usually the output is simply the cost layer.
@@ -262,8 +266,8 @@ def SubModelEnd(name = None):
 
 def MakeLayerNameInParentSubmodel(name):
     suffix = ""
-    for submodel in g_submodel_stack[1:]:
-        suffix = "@" + submodel.name + suffix
+    if len(g_submodel_stack) > 1:
+        suffix = "@" + g_submodel_stack[-1].name
     return name + suffix
 
 def GetLayerBaseName(name):
@@ -303,7 +307,8 @@ def MakeLayerNameInSubmodel(name, submodel_name = None):
 @config_func
 def RecurrentLayerGroupWithoutOutLinksBegin(name,
                                             in_links,
-                                            seq_reversed=False):
+                                            seq_reversed=False,
+                                            target_inlinkname=""):
     global g_current_submodel
     config_assert(g_config.model_config.type == "recurrent_nn",
                   "RecurrentLayerGroup should be used only in recurrent_nn")
@@ -311,14 +316,19 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
     SubModelBegin(name)
     g_current_submodel.is_recurrent_layer_group = True
     g_current_submodel.reversed = seq_reversed
+    g_current_submodel.target_inlinkid = -1
     in_links_count = 0
-    for link in in_links:
+    for linkid, link in enumerate(in_links):
         if isinstance(link, basestring):
             name = link
             has_subseq = False
         else:
             name = link.link_name
             has_subseq = link.has_subseq
+        # assign target_inlinkid according to target_inlinkname
+        if target_inlinkname == name:
+            g_current_submodel.target_inlinkid = linkid
+
         if in_links_count == 0:
             in_links_has_subseq = has_subseq
         else:
@@ -331,6 +341,7 @@ def RecurrentLayerGroupWithoutOutLinksBegin(name,
             SequenceScatterAgentLayer(name=name, size=layer.size)
         else:
             ScatterAgentLayer(name=name, size=layer.size)
+
         pair = g_current_submodel.in_links.add()
         pair.layer_name = layer_name
         pair.link_name = MakeLayerNameInSubmodel(name)
@@ -362,10 +373,12 @@ def RecurrentLayerGroupBegin(name,
                              in_links,
                              out_links,
                              generator=None,
+                             target_inlinkname="",
                              seq_reversed=False):
     RecurrentLayerGroupWithoutOutLinksBegin(name,
                                             in_links,
-                                            seq_reversed)
+                                            seq_reversed,
+                                            target_inlinkname)
     for link in out_links:
         RecurrentLayerGroupSetOutLink(link)
 
@@ -456,6 +469,7 @@ class Input(Cfg):
             pool=None,
             image=None,
             block_expand=None,
+            maxout=None,
             format=None,
             nnz=None,
             is_static=None,
@@ -618,6 +632,44 @@ class ContextProjection(Projection):
     _total_pad = 0
 
 
+@config_class
+class ConvProjection(Projection):
+    type = 'conv'
+
+    def __init__(
+            self,
+            input_layer_name,
+            num_filters=None,
+            conv_conf=None,
+            **xargs):
+        super(ConvProjection, self).__init__(input_layer_name, **xargs)
+
+        if num_filters is not None:
+            self.proj_conf.num_filters = num_filters
+
+        parse_conv(conv_conf,
+                   input_layer_name,
+                   self.proj_conf.conv_conf)
+        # TODO: support rectangle input
+        self.proj_conf.output_size = (self.proj_conf.conv_conf.output_x  ** 2) * num_filters
+
+    def calc_output_size(self, input_layer_config):
+        return self.proj_conf.output_size
+
+    def calc_parameter_size(self, input_size, output_size):
+        co = self.proj_conf.num_filters
+        ci = self.proj_conf.conv_conf.channels
+        fh = self.proj_conf.conv_conf.filter_size
+        fw = self.proj_conf.conv_conf.filter_size_y
+        return co * ci * fh * fw
+
+    def calc_bias_size(self):
+        return self.proj_conf.num_filters
+
+    def calc_parameter_dims(self, input_size, output_size):
+        return None
+
+
 # Define a operator for mixed layer
 @config_class
 class Operator(Cfg):
@@ -627,7 +679,6 @@ class Operator(Cfg):
             input_layer_names,
             ):
         self.add_keys(locals())
-
         self.operator_conf = OperatorConfig()
         self.operator_conf.type = self.type
 
@@ -677,12 +728,15 @@ class ConvOperator(Operator):
         if num_filters is not None:
             self.operator_conf.num_filters = num_filters
 
-        parse_conv(conv_conf, input_layer_names[0], self.operator_conf.conv_conf, True)
+        parse_conv(conv_conf,
+                   MakeLayerNameInSubmodel(input_layer_names[0]),
+                   self.operator_conf.conv_conf)
         self.operator_conf.output_size = (self.operator_conf.conv_conf.output_x  ** 2) * num_filters
 
         config_assert(len(input_layer_names) == 2, "Conv is binary operator")
 
-
+    def calc_output_size(self, input_sizes):
+        return self.operator_conf.output_size
 
 
 # please refer to the comments in proto/ModelConfig.proto
@@ -768,6 +822,16 @@ class BlockExpand(Cfg):
             img_size_y = 0,
             output_x = 0,
             output_y = 0):
+        self.add_keys(locals())
+
+@config_class
+class MaxOut(Cfg):
+    def __init__(
+            self,
+            channels,
+            groups,
+            img_size_x = 0,
+            img_size_y = 0):
         self.add_keys(locals())
 
 def DataBase(async_load_data=False,
@@ -950,10 +1014,6 @@ def parse_pool(pool, input_layer_name, pool_conf):
                   "['max-projection', 'avg-projection', "
                   "'cudnn-max-pool', 'cudnn-avg-pool']"
                   % pool.pool_type)
-    if pool.size_y or pool.stride_y or pool.img_width or pool.padding_y:
-        config_assert(pool.pool_type.startswith('cudnn'),
-                      "'size_y', 'stride_y' and 'img_width' and 'padding_y'"
-                      "can only be used for cudnn")
 
     pool_conf.channels = pool.channels
     pool_conf.size_x = pool.size_x
@@ -963,36 +1023,25 @@ def parse_pool(pool, input_layer_name, pool_conf):
     pool_conf.stride_y = default(pool.stride_y, pool_conf.stride);
 
     img_pixels = g_layer_map[input_layer_name].size / pool.channels
+    # the img_width may be removed,
+    # and it can be calculated automatically later.
     pool_conf.img_size = default(pool.img_width, int(img_pixels ** 0.5))
     pool_conf.img_size_y = img_pixels / pool_conf.img_size
     config_assert(pool_conf.img_size * pool_conf.img_size_y == img_pixels,
                   "Incorrect input image size %d for input image pixels %d"
                   % (pool_conf.img_size, img_pixels))
 
-    if pool.start is not None:
-        config_assert(pool.padding is None,
-              'At most one of start and padding can be set.')
-        pool_conf.start = pool.start
-        pool_conf.padding = 0
-        pool_conf.output_x = int(math.ceil((pool_conf.img_size - \
-            pool_conf.start - pool_conf.size_x) / \
-            float(pool_conf.stride))) + 1
+    config_assert(not pool.start, "start is deprecated in pooling.")
 
-        pool_conf.output_y = int(math.ceil((pool_conf.img_size_y - \
-            pool_conf.start - pool_conf.size_y) / \
-            float(pool_conf.stride_y))) + 1
-    elif pool.padding is not None:
+    if pool.padding is not None:
         pool_conf.padding = pool.padding
         pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
-        pool_conf.start = 0
         pool_conf.output_x = int(math.ceil((pool_conf.img_size + \
             2*pool_conf.padding - pool_conf.size_x) / \
             float(pool_conf.stride))) + 1
         pool_conf.output_y = int(math.ceil((pool_conf.img_size_y + \
             2*pool_conf.padding_y - pool_conf.size_y) / \
             float(pool_conf.stride_y))) + 1
-    else:
-        raise ValueError('At least one of start and padding should be set.')
 
 def parse_image(image, input_layer_name, image_conf):
     image_conf.channels = image.channels
@@ -1082,6 +1131,12 @@ def parse_block_expand(block_expand, input_layer_name, block_expand_conf):
             int(math.ceil((2 * block_expand.padding_y + block_expand.img_size_y \
             - block_expand.block_y) / float(block_expand.stride_y)))
 
+def parse_maxout(maxout, input_layer_name, maxout_conf):
+    maxout_conf.channels = maxout.channels
+    maxout_conf.groups = maxout.groups
+    maxout_conf.img_size_x = maxout.img_size_x
+    maxout_conf.img_size_y = maxout.img_size_y
+    
 # Define an evaluator
 @config_func
 def Evaluator(
@@ -1090,12 +1145,12 @@ def Evaluator(
         inputs,
         chunk_scheme = None,
         num_chunk_types = None,
-        classification_threshold = 0.5,
-        positive_label = -1,
-        dict_file = "",
-        result_file = "",
-        num_results = 1,
-        delimited = True,
+        classification_threshold = None,
+        positive_label = None,
+        dict_file = None,
+        result_file = None,
+        num_results = None,
+        delimited = None,
         ):
     evaluator = g_config.model_config.evaluators.add()
     evaluator.type = type
@@ -1111,12 +1166,19 @@ def Evaluator(
         evaluator.num_chunk_types = num_chunk_types
     g_current_submodel.evaluator_names.append(evaluator.name)
 
-    evaluator.classification_threshold = classification_threshold
-    evaluator.positive_label = positive_label
-    evaluator.dict_file = dict_file
-    evaluator.result_file = result_file
-    evaluator.num_results = num_results
-    evaluator.delimited = delimited
+    if classification_threshold is not None:
+        evaluator.classification_threshold = classification_threshold
+    if positive_label is not None:
+        evaluator.positive_label = positive_label
+    if dict_file is not None:
+        evaluator.dict_file = dict_file
+
+    if result_file is not None:
+        evaluator.result_file = result_file
+    if num_results is not None:
+        evaluator.num_results = num_results
+    if delimited is not None:
+        evaluator.delimited = delimited
 
 class LayerBase(object):
     def __init__(
@@ -1128,7 +1190,7 @@ class LayerBase(object):
             device=None,
             active_type="",
             drop_rate=0.,
-            coeff=1.):
+            coeff=None):
         config_assert('@' not in name,
                 "layer name: %s contain special character @" % name)
         global g_current_submodel
@@ -1146,10 +1208,12 @@ class LayerBase(object):
             self.inputs = [self.inputs]
 
         self.config = g_config.model_config.layers.add()
+        assert isinstance(self.config, LayerConfig)
         self.config.name = name
         self.config.type = type
         self.config.active_type = active_type
-        self.config.coeff = coeff
+        if coeff is not None:
+            self.config.coeff = float(coeff)
         if size != 0:
             self.config.size = size
         if drop_rate != 0:
@@ -1157,7 +1221,7 @@ class LayerBase(object):
 
         if device is not None:
             self.config.device = device
-        else:
+        elif g_default_device is not None:
             self.config.device = g_default_device
 
         for input_index in xrange(len(self.inputs)):
@@ -1227,10 +1291,12 @@ class LayerBase(object):
             if bias.parameter_name is None:
                 bias.parameter_name = gen_bias_parameter_name(self.config.name)
             if bias.parameter_name not in g_parameter_map:
+                assert isinstance(self.config, LayerConfig)
+
                 Parameter(
                     bias.parameter_name,
                     size,
-                    self.config.device,
+                    self.config.device if self.config.HasField('device') else None,
                     dims,
                     bias.learning_rate,
                     bias.momentum,
@@ -1256,8 +1322,8 @@ class LayerBase(object):
             input_index,
             size,
             dims=None,
-            sparse = False,
-            format = "csr"):
+            sparse = None,
+            format = None):
         if dims is None:
             # TODO(yuyang18): print warning and callstack here!
             dims = list()
@@ -1284,7 +1350,7 @@ class LayerBase(object):
         Parameter(
             input_config.parameter_name,
             size,
-            self.config.device,
+            self.config.device if self.config.HasField("device") else None,
             dims,
             input_config.learning_rate,
             input_config.momentum,
@@ -1344,6 +1410,8 @@ class FCLayer(LayerBase):
 
             if sparse:
                 psize = self.inputs[input_index].nnz
+            else:
+                sparse = None
 
             self.create_input_parameter(input_index, psize, dims, sparse, format)
         self.create_bias_parameter(bias, self.config.size)
@@ -1398,6 +1466,14 @@ class SelectiveFCLayer(LayerBase):
             self.create_input_parameter(
                 input_index, psize, dims, sparse, format)
         self.create_bias_parameter(bias, self.config.size)
+
+@config_layer('print')
+class PrintLayer(LayerBase):
+    def __init__(
+            self,
+            name,
+            inputs):
+        super(PrintLayer, self).__init__(name, 'print', 0, inputs)
 
 @config_layer('data')
 class DataLayer(LayerBase):
@@ -1571,7 +1647,7 @@ class PoolLayer(LayerBase):
             pool_conf = self.config.inputs[input_index].pool_conf
             print("output size for %s is %d*%d " % (
                 name, pool_conf.output_y, pool_conf.output_x))
-            self.set_layer_size((pool_conf.output_x ** 2) * pool_conf.channels)
+            self.set_layer_size((pool_conf.output_x * pool_conf.output_y) * pool_conf.channels)
 
 @config_layer('batch_norm')
 class BatchNormLayer(LayerBase):
@@ -1614,7 +1690,7 @@ class BatchNormLayer(LayerBase):
         # Also based on cudnn version.
         use_cudnn = use_gpu and batch_norm_type != "batch_norm" and \
             ((not parallel_nn) or self.config.device > -1) and \
-            cudnn_version >= 4000
+            cudnn_version >= 4007
         self.layer_type = "cudnn_batch_norm" if use_cudnn else "batch_norm"
         super(BatchNormLayer, self).__init__(name, self.layer_type, 0,
                                              active_type=active_type,
@@ -1684,6 +1760,21 @@ class BlockExpandLayer(LayerBase):
             self.set_layer_size(block_expand_conf.block_x * block_expand_conf.block_y
                 * block_expand_conf.channels)
 
+@config_layer('maxout')
+class MaxOutLayer(LayerBase):
+    def __init__(
+            self,
+            name,
+            inputs,
+            **xargs):
+        super(MaxOutLayer, self).__init__(name, 'maxout', 0, inputs=inputs, **xargs)
+        input_layer = self.get_input_layer(0)
+        parse_maxout(self.inputs[0].maxout,
+                     input_layer.name,
+                     self.config.inputs[0].maxout_conf)
+        maxout_conf = self.config.inputs[0].maxout_conf
+        self.set_layer_size(g_layer_map[input_layer.name].size / maxout_conf.groups)
+            
 # key: cost type
 # value: cost class
 g_cost_map = {}
@@ -1698,7 +1789,6 @@ def define_cost(class_name, cost_type):
     g_cost_map[cost_type] = cls
 
 define_cost('MultiClassCrossEntropy', 'multi-class-cross-entropy')
-define_cost('ClassificationErrorLayer', 'classification_error')
 define_cost('RankingCost', 'rank-cost')
 define_cost('AucValidation', 'auc-validation')
 define_cost('PnpairValidation', 'pnpair-validation')
@@ -2042,7 +2132,7 @@ class MaxLayer(LayerBase):
             active_type='linear',
             device=None,
             bias=False,
-            output_max_index=False):
+            output_max_index=None):
         super(MaxLayer, self).__init__(name, 'max', 0, inputs=inputs, device=device)
         config_assert(len(self.inputs) == 1, 'MaxLayer must have 1 input')
         self.config.trans_type =  trans_type
@@ -2051,7 +2141,8 @@ class MaxLayer(LayerBase):
             input_layer = self.get_input_layer(input_index)
             self.set_layer_size(input_layer.size)
         self.create_bias_parameter(bias, self.config.size)
-        self.config.output_max_index=output_max_index
+        if output_max_index is not None:
+            self.config.output_max_index = output_max_index
 
 
 @config_layer('maxid')
@@ -2264,6 +2355,9 @@ class ConvexCombinationLayer(LayerBase):
            name, 'convex_comb', size, inputs=inputs, device=device)
         config_assert(len(self.inputs) == 2,
           'ConvexCombinationLayer must have 2 inputs')
+        config_assert(
+            size * self.get_input_layer(0).size == self.get_input_layer(1).size,
+            'Wrong input size for ConvexCombinationLayer')
         self.set_layer_size(size)
 
 @config_layer('interpolation')
@@ -2313,6 +2407,9 @@ class CosSimVecMatLayer(LayerBase):
         self.config.cos_scale = cos_scale
         config_assert(len(self.inputs) == 2,
           'CosSimVecMatLayer must have 2 inputs')
+        config_assert(
+            size * self.get_input_layer(0).size == self.get_input_layer(1).size,
+            'Wrong input size for CosSimVecMatLayer')
 
 @config_layer('sampling_id')
 class SamplingIdLayer(LayerBase):
@@ -2361,6 +2458,7 @@ class CosSimLayer(LayerBase):
             self,
             name,
             inputs,
+            cos_scale=5,
             device=None):
         super(CosSimLayer, self).__init__(
             name, 'cos', 1, inputs=inputs, device=device)
@@ -2368,6 +2466,7 @@ class CosSimLayer(LayerBase):
         config_assert(
             self.get_input_layer(0).size == self.get_input_layer(1).size,
             'inputs of CosSimLayer must have same dim')
+        self.config.cos_scale = cos_scale
 
 
 @config_layer('tensor')
@@ -2400,12 +2499,11 @@ class MixedLayer(LayerBase):
             inputs,
             size=0,
             bias=True,
-            error_clipping_threshold=0.0,
+            error_clipping_threshold=None,
             **xargs):
         config_assert(inputs, 'inputs cannot be empty')
         super(MixedLayer, self).__init__(
             name, 'mixed', size, inputs=inputs, **xargs)
-
         operator_input_index = []
         for operator in self.operators:
             operator_conf = operator.operator_conf
@@ -2420,21 +2518,31 @@ class MixedLayer(LayerBase):
                 input_layer = self.get_input_layer(input_index)
                 operator_conf.input_sizes.append(input_layer.size)
                 operator_input_index.append(input_index)
-            if self.config.size ==  0:
+            if self.config.size == 0:
                 size = operator.calc_output_size(operator_conf.input_sizes)
                 if size != 0:
                     self.set_layer_size(size)
-
+            else:
+                sz = operator.calc_output_size(operator_conf.input_sizes)
+                if sz != 0:
+                    config_assert(sz == self.config.size,
+                                  "different inputs have different size: %s vs. %s" %
+                                  (sz, self.config.size))
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             input = self.inputs[input_index]
             if input_index not in operator_input_index:
                 config_assert(isinstance(input, Projection), "input should be projection or operation")
-            if self.config.size ==  0 and isinstance(input, Projection):
+            if self.config.size == 0 and isinstance(input, Projection):
                 size = input.calc_output_size(input_layer)
                 if size != 0:
                     self.set_layer_size(size)
-
+            elif isinstance(input, Projection):
+            	sz = input.calc_output_size(input_layer)
+            	if sz != 0:
+            		config_assert(sz == self.config.size,
+            		"different inputs have different size: %s vs. %s" %
+            		(sz, self.config.size))
         config_assert(size != 0, "size is not set")
 
         for input_index in xrange(len(self.inputs)):
@@ -2458,10 +2566,19 @@ class MixedLayer(LayerBase):
             record_operator_conf = self.config.operator_confs.add()
             record_operator_conf.CopyFrom(operator_conf)
 
+        psize = self.config.size
+        if isinstance(self.inputs[0], ConvProjection):
+            self.config.shared_biases = True
+            psize = 0
+            for input in self.inputs:
+                psize += input.calc_bias_size()
 
-        self.create_bias_parameter(bias, self.config.size)
+        if bias:
+            self.config.bias_size = psize
+            self.create_bias_parameter(bias, psize)
 
-        self.config.error_clipping_threshold = error_clipping_threshold
+        if error_clipping_threshold is not None:
+            self.config.error_clipping_threshold = error_clipping_threshold
 
 # like MixedLayer, but no bias parameter
 @config_func
@@ -2476,8 +2593,10 @@ class ConcatenateLayer(LayerBase):
             self,
             name,
             inputs,
+            bias=False,
             **xargs):
         config_assert(inputs, 'inputs cannot be empty')
+        config_assert(not bias, 'ConcatenateLayer cannot support bias.')
         super(ConcatenateLayer, self).__init__(
             name, 'concat', 0, inputs=inputs, **xargs)
         size = 0
@@ -2496,10 +2615,19 @@ class ConcatenateLayer2(LayerBase):
             self,
             name,
             inputs,
+            bias=False,
             **xargs):
         config_assert(inputs, 'inputs cannot be empty')
         super(ConcatenateLayer2, self).__init__(
             name, 'concat2', 0, inputs=inputs, **xargs)
+
+        if isinstance(self.inputs[0], ConvProjection):
+          for input_index in xrange(len(self.inputs) - 1):
+              input = self.inputs[input_index + 1]
+              config_assert(isinstance(input, ConvProjection),
+                  "The first input of ConcatenateLayer2 is ConvProjection, "
+                  "the other inputs should also be ConvProjection.")
+
         size = 0
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
@@ -2524,6 +2652,17 @@ class ConcatenateLayer2(LayerBase):
             dims = input.calc_parameter_dims(input.proj_conf.input_size,
               input.proj_conf.output_size)
             self.create_input_parameter(input_index, psize, dims)
+
+        psize = self.config.size
+        if isinstance(self.inputs[0], ConvProjection):
+            self.config.shared_biases = True
+            psize = 0
+            for input in self.inputs:
+                psize += input.calc_bias_size()
+
+        if bias:
+            self.config.bias_size = psize
+            self.create_bias_parameter(bias, psize)
 
 @config_layer('recurrent')
 class RecurrentLayer(LayerBase):
@@ -2802,27 +2941,44 @@ def Parameter(
     para = g_config.model_config.parameters.add()
     para.name = name
     para.size = size
-    para.device = device
-    para.dims.extend(dims);
-    para.learning_rate = default(learning_rate, 1.)
-    para.momentum = default(momentum, g_default_momentum)
+    if device is not None:
+        para.device = int(device)
+    para.dims.extend(dims)
+
+    if learning_rate is not None:
+        para.learning_rate = float(learning_rate)
+
+    momentum = default(momentum, g_default_momentum)
+    if momentum is not None:
+        para.momentum = float(momentum)
+
     config_assert(not momentum or not decay_rate_l1,
                   "momentum and decay_rate_l1 cannot both be non-zero")
-    para.decay_rate = default(decay_rate, g_default_decay_rate)
+
+    decay_rate = default(decay_rate, g_default_decay_rate)
+    if decay_rate is not None:
+        para.decay_rate = decay_rate
+
     if decay_rate_l1 is not None:
         para.decay_rate_l1 = decay_rate_l1
     para.initial_std = default(initial_std, g_default_initial_std)
     para.initial_mean = default(initial_mean, g_default_initial_mean)
-    para.num_batches_regularization = default(
+
+    num_batches_regularization = default(
         num_batches_regularization, g_default_num_batches_regularization)
+    if num_batches_regularization is not None:
+        para.num_batches_regularization = int(num_batches_regularization)
+
     if sparse_remote_update is not None:
         para.sparse_remote_update = sparse_remote_update
         if sparse_remote_update:
             g_config.opt_config.use_sparse_remote_updater = True
     if sparse_update is not None:
         para.sparse_update = sparse_update
-    para.gradient_clipping_threshold = default(
-        gradient_clipping_threshold, g_default_gradient_clipping_threshold);
+    gradient_clipping_threshold = default(
+        gradient_clipping_threshold, g_default_gradient_clipping_threshold)
+    if gradient_clipping_threshold is not None:
+        para.gradient_clipping_threshold = gradient_clipping_threshold
     para.initial_strategy = default(initial_strategy, g_default_initial_strategy)
     para.initial_smart = default(initial_smart, g_default_initial_smart)
     if para.initial_smart:
@@ -2835,15 +2991,19 @@ def Parameter(
             para.initial_std = 1. / math.sqrt(para.size)
     if g_default_compact_func is not None:
         sparse, format, need_compact = g_default_compact_func(para.name)
-    para.is_sparse = default(sparse, False)
-    para.format = default(format, "")
-    para.need_compact = default(need_compact, False)
+
+    if sparse is not None:
+        para.is_sparse = sparse
+    if format is not None:
+        para.format = format
+    if need_compact is not None:
+        para.need_compact = need_compact
     if is_static is not None:
         para.is_static = is_static
     config_assert(not para.sparse_remote_update or not para.is_static,
                   "sparse_remote_update and is_static cannot both be true")
-
-    para.is_shared = default(is_shared, False)
+    if is_shared is not None:
+        para.is_shared = is_shared
 
     update_hooks = default(update_hooks, g_default_update_hooks)
 

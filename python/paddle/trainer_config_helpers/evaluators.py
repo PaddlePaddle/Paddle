@@ -65,12 +65,12 @@ def evaluator_base(
         name=None,
         chunk_scheme=None,
         num_chunk_types=None,
-        classification_threshold=0.5,
-        positive_label=-1,
-        dict_file="",
-        result_file="",
-        num_results=1,
-        delimited=True):
+        classification_threshold=None,
+        positive_label=None,
+        dict_file=None,
+        result_file=None,
+        num_results=None,
+        delimited=None):
     """
     Evaluator will evaluate the network status while training/testing.
 
@@ -94,7 +94,7 @@ def evaluator_base(
          Batch=200 samples=20000 AvgCost=0.679655 CurrentCost=0.662179 Eval:
          classification_error_evaluator=0.4486
          CurrentEval: ErrorRate=0.3964
-         
+
     :param input: Input layers, a object of LayerOutput or a list of
                   LayerOutput.
     :type input: list|LayerOutput
@@ -105,9 +105,10 @@ def evaluator_base(
     :type weight: LayerOutput.
     """
     # inputs type assertions.
-    assert isinstance(classification_threshold, float)
-    assert isinstance(positive_label, int)
-    assert isinstance(num_results, int)
+    assert classification_threshold is None or isinstance(
+        classification_threshold, float)
+    assert positive_label is None or isinstance(positive_label, int)
+    assert num_results is None or isinstance(num_results, int)
 
     if not isinstance(input, list):
         input = [input]
@@ -136,7 +137,7 @@ def classification_error_evaluator(
         label,
         name=None,
         weight=None,
-        threshold=0.5):
+        threshold=None):
     """
     Classification Error Evaluator. It will print error rate for classification.
 
@@ -253,7 +254,7 @@ def pnpair_evaluator(
 def precision_recall_evaluator(
         input,
         label,
-        positive_label=-1,
+        positive_label=None,
         weight=None,
         name=None,
         ):
@@ -296,6 +297,7 @@ def precision_recall_evaluator(
 @wrap_name_default()
 def ctc_error_evaluator(
         input,
+        label,
         name=None,
         ):
     """
@@ -305,16 +307,20 @@ def ctc_error_evaluator(
 
     .. code-block:: python
 
-       eval = ctc_error_evaluator(input)
+       eval = ctc_error_evaluator(input=input, label=lbl)
 
     :param name: Evaluator name.
     :type name: None|basestring
-    :param input: Input Layer.
+    :param input: Input Layer. Should be the same as the input for ctc_layer.
     :type input: LayerOutput
+    :param label: input label, which is a data_layer. Should be the same as the
+                  label for ctc_layer
+    :type label: LayerOutput
     """
     evaluator_base(name=name,
                    type="ctc_edit_distance",
-                   input=input)
+                   input=input,
+                   label=label)
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
 @wrap_name_default()
@@ -489,7 +495,7 @@ def gradient_printer_evaluator(
 @wrap_name_default()
 def maxid_printer_evaluator(
         input,
-        num_results=1,
+        num_results=None,
         name=None,
         ):
     """
@@ -513,13 +519,14 @@ def maxid_printer_evaluator(
     """
     evaluator_base(name=name,
                    type="max_id_printer",
-                   input=input)
+                   input=input,
+                   num_results=num_results)
 
 @evaluator(EvaluatorAttribute.FOR_PRINT)
 @wrap_name_default()
 def maxframe_printer_evaluator(
         input,
-        num_results=1,
+        num_results=None,
         name=None,
         ):
     """
@@ -551,20 +558,20 @@ def maxframe_printer_evaluator(
 @wrap_name_default()
 def seqtext_printer_evaluator(
         input,
-        dict_file="",
-        result_file="",
-        delimited=True,
+        result_file,
+        id_input=None,
+        dict_file=None,
+        delimited=None,
         name=None,
         ):
     """
     Sequence text printer will print text according to index matrix and a
     dictionary. There can be multiple input to this layer:
 
-    1. If there is only one input, the input must be a matrix containing
+    1. If there is no id_input, the input must be a matrix containing
     the sequence of indices;
 
-    2. If there are more than one input, the first input should be ids,
-    and are interpreted as sample ids.
+    2. If there is id_input, it should be ids, and interpreted as sample ids.
 
     The output format will be:
 
@@ -595,25 +602,43 @@ def seqtext_printer_evaluator(
 
     .. code-block:: python
 
-       eval = seqtext_printer_evaluator(input,
+       eval = seqtext_printer_evaluator(input=maxid_layer,
+                                        id_input=sample_id,
                                         dict_file=dict_file,
                                         result_file=result_file)
 
     :param input: Input Layer name.
     :type input: LayerOutput|list
-    :param dict_file: The input dictionary which contains a list of tokens.
-    :type dict_file: basestring
-    :param result_file: The file is to save the results.
+    :param result_file: Path of the file to store the generated results.
     :type result_file: basestring
+    :param id_input: Index of the input sequence, and the specified index will
+                     be prited in the gereated results. This an optional
+                     parameter.
+    :type id_input: LayerOutput
+    :param dict_file: Path of dictionary. This is an optional parameter.
+                      Every line is a word in the dictionary with
+                      (line number - 1) as the word index.
+                      If this parameter is set to None, or to an empty string,
+                      only word index are printed in the generated results.
+    :type dict_file: basestring
     :param delimited: Whether to use space to separate output tokens.
                 Default is True. No space is added if set to False.
     :type delimited: bool
     :param name: Evaluator name.
     :type name: None|basestring
+    :return: The seq_text_printer that prints the generated sequence to a file.
+    :rtype: evaluator
     """
+    assert isinstance(result_file, basestring)
+    if id_input is None:
+        inputs = [input]
+    else:
+        inputs = [id_input, input]
+        input.parents.append(id_input)
+
     evaluator_base(name=name,
                    type="seq_text_printer",
-                   input=input,
+                   input=inputs,
                    dict_file=dict_file,
                    result_file=result_file,
                    delimited=delimited)

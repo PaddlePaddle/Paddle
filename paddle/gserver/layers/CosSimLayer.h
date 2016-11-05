@@ -36,7 +36,7 @@ namespace paddle {
 class CosSimLayer : public Layer {
 public:
   explicit CosSimLayer(const LayerConfig& config)
-      : Layer(config), kCosSimScale_(5.0f) {}
+      : Layer(config) {}
 
   ~CosSimLayer() {}
 
@@ -44,8 +44,6 @@ public:
 
   void forward(PassType passType);
   void backward(const UpdateCallback& callback = nullptr);
-
-  const real kCosSimScale_;
 };
 
 }  // namespace paddle

@@ -59,7 +59,7 @@ To build your text classification system, your code will need to perform five st
 ## Preprocess data into standardized format
 In this example, you are going to use [Amazon electronic product review dataset](http://jmcauley.ucsd.edu/data/amazon/) to build a bunch of deep neural network models for text classification. Each text in this dataset is a product review. This dataset has two categories: “positive” and “negative”. Positive means the reviewer likes the product, while negative means the reviewer does not like the product.
 
-`demo/quick_start` provides scripts for downloading data and preprocessing data as shown below. The data process takes several minutes (about 3 minutes in our machine).
+`demo/quick_start` in the [source code](https://github.com/baidu/Paddle) provides scripts for downloading data and preprocessing data as shown below. The data process takes several minutes (about 3 minutes in our machine).
 
 ```bash
 cd demo/quick_start
@@ -423,7 +423,7 @@ paddle train \
 
 mv rank-00000 result.txt
 ```
-There are several differences between training and inference network configurations.
+User can choose the best model base on the training log instead of model `output/pass-00003`. There are several differences between training and inference network configurations.
 - You do not need labels during inference.
 - Outputs need to be specified to the classification probability layer (the output of softmax layer), or the id of maximum probability (`max_id` layer). An example to output the id and probability is given in the code snippet.
 - batch_size = 1.

@@ -1,10 +1,6 @@
 Utils
 =======
 
-Bits
--------
-.. doxygenfile:: paddle/math/Bits.h
-
 Memory Handle
 --------------
 .. doxygenfile:: paddle/math/MemoryHandle.h

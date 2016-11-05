@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/utils/PythonUtil.h"
 #include <fenv.h>
 #include "paddle/utils/Util.h"
+#include "paddle/utils/Excepts.h"
+
 
 namespace paddle {
 
@@ -44,7 +46,6 @@ PyDataProvider::PyDataProvider(const DataConfig& config, bool useGpu,
 }
 
 void PyDataProvider::loadData(const std::vector<std::string>& fileList) {
-  int feFlag = fegetexcept();
   VLOG(1) << "module:" << pyModuleName_ << " class:" << pyClassName_;
   classInstance_ =
       createPythonClass(pyModuleName_, pyClassName_, fileList, pyUserArgs_);
@@ -55,7 +56,7 @@ void PyDataProvider::loadData(const std::vector<std::string>& fileList) {
   std::string headerInfo =
       std::string(PyString_AsString(obj.get()), PyString_Size(obj.get()));
   parseHeaderData(headerInfo);
-  feenableexcept(feFlag);
+  feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW);
 }
 
 void PyDataProvider::parseHeaderData(const std::string& headerData) {

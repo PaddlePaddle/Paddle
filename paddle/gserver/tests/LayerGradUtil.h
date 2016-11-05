@@ -217,7 +217,8 @@ void testLayerGrad(TestConfig testConf, string testLayerName, size_t batchSize,
 
 void testProjectionGrad(ProjectionConfig conf, InputType inputType,
                         size_t parameterSize, size_t batchSize, bool useGpu,
-                        bool testState = false);
+                        bool testState = false, int biasSize = 0,
+                        bool sharedBias = false);
 
 void testOperatorGrad(TestConfig& config, OperatorConfig& operatorConf,
                       size_t batchSize, bool useGpu, bool testState = false);

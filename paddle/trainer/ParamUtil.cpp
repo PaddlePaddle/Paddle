@@ -89,6 +89,9 @@ void ParameterUtil::saveParameters(int passId, int passInnerId) {
   }
 
   std::string basePath = config_->getSaveDir();
+  if (basePath.find('/') == std::string::npos) {
+    basePath = "./" + basePath;
+  }
   mkDirRecursively(basePath.c_str());
 
   std::string saveDir = path::join(basePath, buf);

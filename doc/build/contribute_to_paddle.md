@@ -4,7 +4,7 @@ We sincerely appreciate your contributions. You can use fork and pull request
 workflow to merge your code. 
  
 ## Code Requirements
-- Your code mush be fully documented by
+- Your code must be fully documented by
   [doxygen](http://www.stack.nl/~dimitri/doxygen/) style.
 - Make sure the compiler option WITH\_STYLE\_CHECK is on and the compiler
   passes the code style check.
@@ -20,14 +20,31 @@ It's just that simple.
 
 ## Clone
 
+Paddle is currently using [git-flow branching model](http://nvie.com/posts/a-successful-git-branching-model/).
+The **develop** is the main branch, and other user's branches are feature branches.
+
 Once you've created a fork, you can use your favorite git client to clone your
 repo or just head straight to the command line:
  
 ```shell
 # Clone your fork to your local machine
-git clone git@github.com:USERNAME/paddle.git
+git clone --branch develop https://github.com/USERNAME/Paddle.git
 ```
-Then you can start to develop. 
+If your repository doesn't contain **develop** branch, just create it by your own.
+
+```shell
+git clone https://github.com/USERNAME/Paddle.git Paddle
+cd Paddle
+git checkout -b develop  # create develop branch.
+git remote add upstream https://github.com/baidu/Paddle.git  # add upstream to baidu/Paddle
+git pull upstream develop  # update to upstream
+```
+
+Then you can start to develop by making a local developement branch
+
+```shell
+git checkout -b MY_COOL_STUFF_BRANCH
+```
 
 ## Commit
 
@@ -38,21 +55,21 @@ Commit your changes by following command lines:
 git status
 # add modified files
 git add xx
-git commit -m "commit info"
+env EDITOR=vim git commit  # You can write your comments by vim/nano/emacs.
 ```
 The first line of commit infomation is the title. The second and later lines
 are the details if any.
 
 ## Keeping Fork Up to Date
 
-Before pull your request, you shold sync you code from the latest PaddlePaddle.
+Before pull your request, you should sync your code from the latest PaddlePaddle.
 To do this, you'll need to add a remote at first:
 
 ```shell
 # see the current configured remote repository
 git remote -v
 # add upstream repository
-git remote add upstream https://github.com/paddle/paddle.git
+git remote add upstream https://github.com/baidu/Paddle.git
 # verify the new upstream
 git remote -v
 ```
@@ -60,8 +77,7 @@ git remote -v
 Update your fork with the latest upstream changes:
 
 ```shell
-git fetch upstream
-git pull upstream master
+git pull --rebase upstream develop
 ```
 
 If there are no unique commits locally, git will simply perform a fast-forward.
@@ -74,10 +90,41 @@ Now, your local master branch is up-to-date with everything modified upstream.
 
 ```shell
 # push to your repository in Github
-git push origin master
+git push -u origin MY_COOL_STUFF_BRANCH  # create remote branch MY_COOL_STUFF_BRANCH to origin.
 ```
 
 ## Pull Request
 
 Go to the page for your fork on GitHub, select your development branch,
 and click the **pull request button**.
+
+## Update your pull request with the lastest version
+
+During the code review, your pull request may become stale because new commits in
+baidu/Paddle. GitHub allows autmotic update if there is no conflict. You can do this
+by clicking the "Update Branch" button in your pull request page. However, in the case
+of conflict, you need to do the update manually. You need to do the following on
+your local repository:
+```shell
+git checkout MY_COOL_STUFF_BRANCH
+git pull upstream develop
+# You may need to resolve the conflict according to the git prompt.
+# Make and test your code.
+git push origin MY_COOL_STUFF_BRANCH
+```
+Now your Pull Request is updated with the latest version.
+
+## Revise your pull request
+
+When you revise your pull request according to reviewer's comments, please use 'git commit' instead of 'git commit --amend' to commit your changes so that the reviewers can see the difference between the new pull requrest and the old pull request.
+
+The possible commands are
+
+```shell
+git checkout MY_COOL_STUFF_BRANCH
+git pull upstream develop   # update local to newest code base.
+# May be some conflicts will occured.
+# And develop your cool stuff
+env EDITOR=vim git commit  # add your revise log
+git push origin MY_COOL_STUFF_BRANCH
+```

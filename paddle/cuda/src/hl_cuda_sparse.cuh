@@ -85,6 +85,15 @@ __global__ void KeSMatrixCsc2Dense(real * csc_val,
   C_d[row*dimN + col] = sum;
 }
 
+__device__ __forceinline__
+void _calculate_c(real &c, real sum) {
+  c = sum;
+}
+__device__ __forceinline__
+void _calculate_c(real &c, real sum, real beta) {
+  c = sum + beta * c;
+}
+
 #define     CU_CSRMM_N                  4
 #define     CU_CSRMM_THREAD_X           32
 #define     CU_CSRMM_THREAD_Y           32
@@ -191,11 +200,19 @@ __global__ void KeSMatrixCsrMulDense(real *C_d,
   }
 
   C_d += __mul24(index_m, dimN);
-  #pragma unroll
-  for (int n = 0; n < CU_CSRMM_N; n++) {
-    if (index_n < dimN) {
-      C_d[index_n] = alpha*sum[n] + beta*C_d[index_n];
-      index_n += CU_CSRMM_THREAD_X;
+  if (beta == 0.0) {
+    for (int n = 0; n < CU_CSRMM_N; n++) {
+      if (index_n < dimN) {
+        _calculate_c(C_d[index_n], alpha * sum[n]);
+        index_n += CU_CSRMM_THREAD_X;
+      }
+    }
+  } else {
+    for (int n = 0; n < CU_CSRMM_N; n++) {
+      if (index_n < dimN) {
+        _calculate_c(C_d[index_n], alpha * sum[n], beta);
+        index_n += CU_CSRMM_THREAD_X;
+      }
     }
   }
 }
@@ -280,7 +297,7 @@ __global__ void KeSMatrixCscMulDense(real *C_d,
         if (index_n_t < dimN) {
           real tmp;
           tmp = alpha*a_r*b_r[n];
-          atomicAdd(C_d_r, tmp);
+          paddle::paddleAtomicAdd(C_d_r, tmp);
           C_d_r += CU_CSC_MUL_DENSE_THREAD_X;
           index_n_t += CU_CSC_MUL_DENSE_THREAD_X;
         }
@@ -328,7 +345,7 @@ __global__ void KeSMatrixCscMulDense(real *C_d,
         if (index_n_t < dimN) {
           real tmp;
           tmp = alpha*a_r*b_r[n];
-          atomicAdd(C_d_r, tmp);
+          paddle::paddleAtomicAdd(C_d_r, tmp);
           C_d_r += CU_CSC_MUL_DENSE_THREAD_X;
           index_n_t += CU_CSC_MUL_DENSE_THREAD_X;
         }
@@ -338,7 +355,7 @@ __global__ void KeSMatrixCscMulDense(real *C_d,
 }
 
 /* best perf */
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
 #define CU_CSCMM_THREAD_M_BEST          9
 #else
 #define CU_CSCMM_THREAD_M_BEST          4
@@ -544,13 +561,22 @@ TEMP_TEST:
   int index_m_c = ibx + idy;
   int index_n_c = blockIdx.y*CU_CSCMM_BLOCK_N_BEST + idx;
   C_d += index_n_c + __mul24(index_m_c, dimN);
-  #pragma unroll
-  for (int m = 0; m < CU_CSCMM_THREAD_M_BEST; m++) {
-    if (index_m_c < dimM && index_n_c < dimN) {
-      C_d[0] = A_s[idy+m*32][idx] + beta*C_d[0];
+  if (beta == 0.0) {
+    for (int m = 0; m < CU_CSCMM_THREAD_M_BEST; m++) {
+      if (index_m_c < dimM && index_n_c < dimN) {
+        _calculate_c(C_d[0], A_s[idy + m * 32][idx]);
+      }
+      index_m_c += 32;
+      C_d += dimN*32;
     }
-    index_m_c += 32;
-    C_d += dimN*32;
+  } else {
+    for (int m = 0; m < CU_CSCMM_THREAD_M_BEST; m++) {
+      if (index_m_c < dimM && index_n_c < dimN) {
+        _calculate_c(C_d[0], A_s[idy + m * 32][idx], beta);
+      }
+      index_m_c += 32;
+      C_d += dimN*32;
+    }
   }
 }
 
@@ -629,7 +655,7 @@ __global__ void KeSMatrixDenseMulCsr(real *C_d,
       for (int n=0; n < CU_DM_CSR_N; n++) {
         if (index_m_t++ < dimM) {
           tmp = alpha * b_r * a_r[n];
-          atomicAdd(C_d_r, tmp);
+          paddle::paddleAtomicAdd(C_d_r, tmp);
           C_d_r += dimN;
         }
       }
@@ -660,7 +686,7 @@ __global__ void KeSMatrixDenseMulCsr(real *C_d,
       for (int n=0; n < CU_DM_CSR_N; n++) {
         if (index_m_t++ < dimM) {
           tmp = alpha * b_r * a_r[n];
-          atomicAdd(C_d_r, tmp);
+          paddle::paddleAtomicAdd(C_d_r, tmp);
           C_d_r += dimN;
         }
       }
@@ -882,24 +908,6 @@ int findIndex(int* indice, int num, int index) {
   return (end - 1);
 }
 
-/**
- * @brief  sum reduction
- *
- * @param[in,out]  smem       input data, better to use __shared__ memory.
- * @param[in]      tid        local thread index.
- * @param[in]      blockDimX  the size of blockDim.x.
- *
- * note: return smem[0]: the sum of each elements of smem.
- */
-__device__ __forceinline__
-void reduce(real* smem, int tid, int blockDimX) {
-  for (unsigned int s = blockDimX / 2; s > 0; s >>= 1) {
-    if (tid < s) {
-      smem[tid] += smem[tid + s];
-    }
-    __syncthreads();
-  }
-}
 
 /**
  * @brief sum columns of csr sparse matrix (csr_val), then add to a_val.
@@ -912,7 +920,7 @@ __global__ void KeSMatrixCsrColumnSum(real* a_val, real* csr_val,
   for (int idx = gid; idx < dimNNZ; idx += gridDim.x * blockDim.x) {
     int colIdx = csr_col[idx];
     real val = csr_val[idx];
-    atomicAdd(a_val + colIdx, val);
+    paddle::paddleAtomicAdd(a_val + colIdx, val);
   }
 }
 

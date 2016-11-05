@@ -1,0 +1,50 @@
+language: cpp
+cache: ccache
+sudo: required
+dist: trusty
+os:
+  - linux
+  - osx
+env:
+  - JOB=DOCS
+  - JOB=BUILD_AND_TEST
+matrix:
+  exclude:
+    - os: osx
+      env: JOB=DOCS  # Only generate documentation in linux
+
+addons:
+  apt:
+    packages:
+      - gcc-4.8
+      - g++-4.8
+      - wget
+      - git
+      - build-essential
+      - libatlas-base-dev
+      - python
+      - python-pip
+      - python2.7-dev
+      - m4
+      - libprotobuf-dev
+      - doxygen
+      - protobuf-compiler
+      - python-protobuf
+      - python-numpy
+      - python-wheel
+      - libgoogle-glog-dev
+      - libgflags-dev
+      - libgtest-dev
+      - curl
+      - lcov
+      - graphviz
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo paddle/scripts/travis/before_install.linux.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
+  - pip install wheel protobuf sphinx breathe recommonmark
+script:
+  - paddle/scripts/travis/main.sh
+notifications:
+  email:
+    on_success: change
+    on_failure: always

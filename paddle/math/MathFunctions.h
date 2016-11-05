@@ -17,11 +17,21 @@ limitations under the License. */
 
 #ifdef PADDLE_USE_MKL
 #include <mkl.h>
+#include <mkl_lapacke.h>
 #else
 extern "C" {
 #include <cblas.h>
 }
+#ifdef PADDLE_USE_ATLAS
+extern "C" {
+#include <clapack.h>
+}
+#else
+#include <lapacke.h>
 #endif
+#endif
+
+#include <cmath>
 
 namespace paddle {
 
@@ -31,6 +41,14 @@ void gemm(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
           const T alpha, const T* A, const int lda,
           const T* B, const int ldb,
           const T beta, T* C, const int ldc);
+
+template<class T>
+int getrf(const CBLAS_ORDER Order, const int M, const int N,
+          T *A, const int lda, int *ipiv);
+
+template<class T>
+int getri(const CBLAS_ORDER Order, const int N, T *A,
+          const int lda, const int *ipiv);
 
 template<class T>
 void axpy(const int n, const T alpha, const T* x, T* y);

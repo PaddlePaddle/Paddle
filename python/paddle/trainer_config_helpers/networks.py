@@ -20,7 +20,7 @@ from activations import LinearActivation, ReluActivation, SoftmaxActivation, \
     IdentityActivation, TanhActivation, SequenceSoftmaxActivation
 from attrs import ExtraAttr
 from default_decorators import wrap_name_default, wrap_act_default, \
-    wrap_param_default
+    wrap_param_default, wrap_bias_attr_default, wrap_param_attr_default
 from layers import *  # There are too many layers used in network, so import *
 from poolings import MaxPooling, SumPooling
 from paddle.trainer.config_parser import *
@@ -29,8 +29,8 @@ __all__ = ['sequence_conv_pool', 'simple_lstm', "simple_img_conv_pool",
            "img_conv_bn_pool", 'dropout_layer', 'lstmemory_group',
            'lstmemory_unit', 'small_vgg', 'img_conv_group', 'vgg_16_network',
            'gru_unit', 'gru_group', 'simple_gru', 'simple_attention',
-           'text_conv_pool',
-           'bidirectional_lstm', 'outputs']
+           'simple_gru2', 'bidirectional_gru', 'text_conv_pool',
+           'bidirectional_lstm', 'inputs', 'outputs']
 
 
 ######################################################
@@ -133,7 +133,7 @@ def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
                          pool_type=None, act=None, groups=1, conv_stride=1,
                          conv_padding=0, bias_attr=None, num_channel=None,
                          param_attr=None, shared_bias=True,
-                         conv_layer_attr=None, pool_stride=1, pool_start=None,
+                         conv_layer_attr=None, pool_stride=1,
                          pool_padding=0, pool_layer_attr=None):
     """
     Simple image convolution and pooling group.
@@ -170,13 +170,11 @@ def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
     :type shared_bias: bool
     :param conv_layer_attr: see img_conv_layer for details
     :type conv_layer_attr: ExtraLayerAttribute
-    :param pool_stride: see img_conv_layer for details
+    :param pool_stride: see img_pool_layer for details
     :type pool_stride: int
-    :param pool_start: see img_conv_layer for details
-    :type pool_start: int
-    :param pool_padding: see img_conv_layer for details
+    :param pool_padding: see img_pool_layer for details
     :type pool_padding: int
-    :param pool_layer_attr: see img_conv_layer for details
+    :param pool_layer_attr: see img_pool_layer for details
     :type pool_layer_attr: ExtraLayerAttribute
     :return: Layer's output
     :rtype: LayerOutput
@@ -192,7 +190,7 @@ def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
     return img_pool_layer(name="%s_pool" % name, input=_conv_,
                           pool_size=pool_size,
                           pool_type=pool_type, stride=pool_stride,
-                          start=pool_start, padding=pool_padding,
+                          padding=pool_padding,
                           layer_attr=pool_layer_attr)
 
 
@@ -203,7 +201,7 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
                      conv_param_attr=None, shared_bias=True,
                      conv_layer_attr=None, bn_param_attr=None,
                      bn_bias_attr=None, bn_layer_attr=None, pool_stride=1,
-                     pool_start=None, pool_padding=0, pool_layer_attr=None):
+                     pool_padding=0, pool_layer_attr=None):
     """
     Convolution, batch normalization, pooling group.
 
@@ -243,8 +241,6 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
     :param bn_layer_attr: ParameterAttribute.
     :param pool_stride: see img_pool_layer's document.
     :type pool_stride: int
-    :param pool_start: see img_pool_layer's document.
-    :type pool_start: int
     :param pool_padding: see img_pool_layer's document.
     :type pool_padding: int
     :param pool_layer_attr: see img_pool_layer's document.
@@ -268,7 +264,7 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
     return img_pool_layer(name="%s_pool" % name,
                           input=__bn__, pool_type=pool_type,
                           pool_size=pool_size, stride=pool_stride,
-                          start=pool_start, padding=pool_padding,
+                          padding=pool_padding,
                           layer_attr=pool_layer_attr)
 
 
@@ -372,8 +368,8 @@ def small_vgg(input_image, num_channels, num_classes):
     tmp = __vgg__(tmp, 128, 2, [0.4, 0])
     tmp = __vgg__(tmp, 256, 3, [0.4, 0.4, 0])
     tmp = __vgg__(tmp, 512, 3, [0.4, 0.4, 0])
-    tmp = img_pool_layer(input = tmp, stride = 2,
-                         pool_size = 2, pool_type = MaxPooling())
+    tmp = img_pool_layer(input=tmp, stride=2,
+                         pool_size=2, pool_type=MaxPooling())
     tmp = dropout_layer(input=tmp, dropout_rate=0.5)
     tmp = fc_layer(input=tmp, size=512, layer_attr=ExtraAttr(drop_rate=0.5),
                    act=LinearActivation())
@@ -505,7 +501,7 @@ def simple_lstm(input, size, name=None, reverse=False, mat_param_attr=None,
 def lstmemory_unit(input, name=None, size=None, param_attr=None,
                    act=None, gate_act=None, state_act=None,
                    mixed_bias_attr=None, lstm_bias_attr=None,
-                   mixed_layer_attr=None,lstm_layer_attr=None,
+                   mixed_layer_attr=None, lstm_layer_attr=None,
                    get_output_layer_attr=None):
     """
     Define calculations that a LSTM unit performs in a single time step.
@@ -555,7 +551,7 @@ def lstmemory_unit(input, name=None, size=None, param_attr=None,
     :type gate_act: BaseActivation
     :param state_act: lstm state activiation type.
     :type state_act: BaseActivation
-    :param mixed_bias_attr: bias parameter attribute of mixed layer. 
+    :param mixed_bias_attr: bias parameter attribute of mixed layer.
                             False means no bias, None means default bias.
     :type mixed_bias_attr: ParameterAttribute|False
     :param lstm_bias_attr: bias parameter attribute of lstm layer.
@@ -616,7 +612,7 @@ def lstmemory_group(input, size=None, name=None,
     cell states, or hidden states in every time step are accessible to for the
     user. This is especially useful in attention model. If you do not need to
     access to the internal states of the lstm, but merely use its outputs,
-    it is recommanded to use the lstmemory, which is relatively faster than
+    it is recommended to use the lstmemory, which is relatively faster than
     lstmemory_group.
 
     NOTE: In PaddlePaddle's implementation, the following input-to-hidden
@@ -745,7 +741,6 @@ def gru_group(input,
               gru_bias_attr=None,
               act=None, gate_act=None,
               gru_layer_attr=None):
-
     """
     gru_group is a recurrent layer group version Gated Recurrent Unit. It
     does exactly the same calculation as the grumemory layer does. A promising
@@ -816,22 +811,37 @@ def simple_gru(input,
                gru_layer_attr=None
                ):
     """
-    simple_gru is also a recurrent layer group version Gated Recurrent Unit as
-    gru_group. The difference only lies in implemention details.
+    You maybe see gru_step_layer, grumemory in layers.py, gru_unit, gru_group,
+    simple_gru in network.py. The reason why there are so many interfaces is
+    that we have two ways to implement recurrent neural network. One way is to
+    use one complete layer to implement rnn (including simple rnn, gru and lstm)
+    with multiple time steps, such as recurrent_layer, lstmemory, grumemory. But,
+    the multiplication operation :math:`W x_t` is not computed in these layers.
+    See details in their interfaces in layers.py. 
+    The other implementation is to use an recurrent group which can ensemble a
+    series of layers to compute rnn step by step. This way is flexible for
+    attenion mechanism or other complex connections.
+
+    - gru_step_layer: only compute rnn by one step. It needs an memory as input
+      and can be used in recurrent group.
+    - gru_unit: a wrapper of gru_step_layer with memory. 
+    - gru_group: a GRU cell implemented by a combination of multiple layers in
+      recurrent group.
+      But :math:`W x_t` is not done in group.  
+    - gru_memory: a GRU cell implemented by one layer, which does same calculation
+      with gru_group and is faster than gru_group. 
+    - simple_gru: a complete GRU implementation inlcuding :math:`W x_t` and 
+      gru_group. :math:`W` contains :math:`W_r`, :math:`W_z` and :math:`W`, see
+      formula in grumemory. 
+
     The computational speed is that, grumemory is relatively better than
     gru_group, and gru_group is relatively better than simple_gru.
-
-    simple_gru does exactly the same calculation as the grumemory layer does.
-    Please see grumemory in layers.py for more detail about the maths.
 
     The example usage is:
 
     ..  code-block:: python
 
-        gru = gur_group(input=[layer1],
-                        size=256,
-                        act=TanhActivation(),
-                        gate_act=SigmoidActivation())
+        gru = simple_gru(input=[layer1], size=256)
 
     :param input: input layer name.
     :type input: LayerOutput
@@ -868,6 +878,132 @@ def simple_gru(input,
                      gru_layer_attr=gru_layer_attr)
 
 
+@wrap_name_default('simple_gru2')
+def simple_gru2(input,
+                size,
+                name=None,
+                reverse=False,
+                mixed_param_attr=None,
+                mixed_bias_attr=None,
+                gru_param_attr=None,
+                gru_bias_attr=None,
+                act=None,
+                gate_act=None,
+                mixed_layer_attr=None,
+                gru_cell_attr=None
+                ):
+    """
+    simple_gru2 is the same with simple_gru, but using grumemory instead
+    Please see grumemory in layers.py for more detail about the maths.
+    simple_gru2 is faster than simple_gru.
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        gru = simple_gru2(input=[layer1], size=256)
+
+    :param input: input layer name.
+    :type input: LayerOutput
+    :param name: name of the gru group.
+    :type name: basestring
+    :param size: hidden size of the gru.
+    :type size: int
+    :param reverse: whether to process the input data in a reverse order
+    :type reverse: bool
+    :param act: type of the activiation
+    :type act: BaseActivation
+    :param gate_act: type of the gate activiation
+    :type gate_act: BaseActivation
+    :param gru_bias_attr: bias. False means no bias, None means default bias.
+    :type gru_bias_attr: ParameterAttribute|False
+    :param gru_layer_attr: Extra parameter attribute of the gru layer.
+    :type gru_layer_attr: ParameterAttribute|False
+    :return: the gru group.
+    :rtype: LayerOutput
+    """
+    with mixed_layer(name='%s_transform' % name,
+                     size=size * 3,
+                     bias_attr=mixed_bias_attr,
+                     layer_attr=mixed_layer_attr) as m:
+        m += full_matrix_projection(input=input, param_attr=mixed_param_attr)
+
+    return grumemory(name=name,
+                     size=size,
+                     input=m,
+                     reverse=reverse,
+                     bias_attr=gru_bias_attr,
+                     param_attr=gru_param_attr,
+                     act=act,
+                     gate_act=gate_act,
+                     layer_attr=gru_cell_attr)
+
+
+@wrap_name_default("bidirectional_gru")
+def bidirectional_gru(input, size, name=None, return_seq=False,
+                      fwd_mixed_param_attr=None, fwd_mixed_bias_attr=None,
+                      fwd_gru_param_attr=None, fwd_gru_bias_attr=None,
+                      fwd_act=None, fwd_gate_act=None,
+                      fwd_mixed_layer_attr=None, fwd_gru_cell_attr=None,
+
+                      bwd_mixed_param_attr=None, bwd_mixed_bias_attr=None,
+                      bwd_gru_param_attr=None, bwd_gru_bias_attr=None,
+                      bwd_act=None, bwd_gate_act=None,
+                      bwd_mixed_layer_attr=None, bwd_gru_cell_attr=None,
+
+                      last_seq_attr=None, first_seq_attr=None,
+                      concat_attr=None, concat_act=None):
+    """
+    A bidirectional_gru is a recurrent unit that iterates over the input
+    sequence both in forward and bardward orders, and then concatenate two
+    outputs to form a final output. However, concatenation of two outputs
+    is not the only way to form the final output, you can also, for example,
+    just add them together.
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        bi_gru = bidirectional_gru(input=[input1], size=512)
+
+    :param name: bidirectional gru layer name.
+    :type name: basestring
+    :param input: input layer.
+    :type input: LayerOutput
+    :param size: gru layer size.
+    :type size: int
+    :param return_seq: If set False, outputs of the last time step are
+                       concatenated and returned.
+                       If set True, the entire output sequences that are
+                       processed in forward and backward directions are
+                       concatenated and returned.
+    :type return_seq: bool
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    args = locals()
+
+    fw = simple_gru2(name='%s_fw' % name, input=input, size=size,
+                     **dict((k[len('fwd_'):], v) for k, v in args.iteritems()
+                        if k.startswith('fwd_')))
+
+    bw = simple_gru2(name="%s_bw" % name, input=input, size=size,
+                     reverse=True,
+                     **dict((k[len('bwd_'):], v) for k, v in args.iteritems()
+                        if k.startswith('bwd_')))
+
+    if return_seq:
+        return concat_layer(name=name, input=[fw, bw], layer_attr=concat_attr,
+                            act=concat_act)
+    else:
+        fw_seq = last_seq(name="%s_fw_last" % name, input=fw,
+                          layer_attr=last_seq_attr)
+        bw_seq = first_seq(name="%s_bw_last" % name, input=bw,
+                           layer_attr=first_seq_attr)
+        return concat_layer(name=name, input=[fw_seq, bw_seq],
+                            layer_attr=concat_attr, act=concat_act)
+
+
 @wrap_name_default("bidirectional_lstm")
 def bidirectional_lstm(input, size, name=None, return_seq=False,
                        fwd_mat_param_attr=None, fwd_bias_param_attr=None,
@@ -898,7 +1034,7 @@ def bidirectional_lstm(input, size, name=None, return_seq=False,
 
     ..  code-block:: python
 
-        lstm_step = bidirectional_lstm(input=[input1], size=512)
+        bi_lstm = bidirectional_lstm(input=[input1], size=512)
 
     :param name: bidirectional lstm layer name.
     :type name: basestring
@@ -912,19 +1048,19 @@ def bidirectional_lstm(input, size, name=None, return_seq=False,
                        processed in forward and backward directions are
                        concatenated and returned.
     :type return_seq: bool
-    :return: lstm layer name.
+    :return: LayerOutput object accroding to the return_seq.
     :rtype: LayerOutput
     """
     args = locals()
 
     fw = simple_lstm(name='%s_fw' % name, input=input, size=size,
                      **dict((k[len('fwd_'):], v) for k, v in args.iteritems()
-                        if k.startswith('fwd_')))
+                            if k.startswith('fwd_')))
 
     bw = simple_lstm(name="%s_bw" % name, input=input, size=size,
                      reverse=True,
                      **dict((k[len('bwd_'):], v) for k, v in args.iteritems()
-                        if k.startswith('bwd_')))
+                            if k.startswith('bwd_')))
 
     if return_seq:
         return concat_layer(name=name, input=[fw, bw], layer_attr=concat_attr,
@@ -1052,14 +1188,30 @@ def dropout_layer(input, dropout_rate, name=None):
                        layer_attr=ExtraAttr(drop_rate=dropout_rate))
 
 
-def outputs(layers):
+def inputs(layers, *args):
     """
-    Declare the end of network. Currently it will only calculate the
-    input/output order of network. It will calculate the predict network or
-    train network's output automatically.
+    Declare the inputs of network. The order of input should be as same as
+    the data provider's return order.
+
+    :param layers: Input Layers.
+    :type layers: list|tuple|LayerOutput.
+    :return:
+    """
+
+    if isinstance(layers, LayerOutput) or isinstance(layers, basestring):
+        layers = [layers]
+    if len(args) != 0:
+        layers.extend(args)
+
+    Inputs(*[l.name for l in layers])
 
 
-    :param layers:
+def outputs(layers, *args):
+    """
+    Declare the outputs of network. If user have not defined the inputs of
+    network, this method will calculate the input order by dfs travel.
+
+    :param layers: Output layers.
     :type layers: list|tuple|LayerOutput
     :return:
     """
@@ -1089,9 +1241,17 @@ def outputs(layers):
     if isinstance(layers, LayerOutput):
         layers = [layers]
 
+    if len(args) != 0:
+        layers.extend(args)
+
     assert len(layers) > 0
+
+    if HasInputsSet():  # input already set
+        Outputs(*[l.name for l in layers])
+        return  # just return outputs.
+
     if len(layers) != 1:
-        logger.warning("EndOfNetwork routine try to calculate network's"
+        logger.warning("`outputs` routine try to calculate network's"
                        " inputs and outputs order. It might not work well."
                        "Please see follow log carefully.")
     inputs = []

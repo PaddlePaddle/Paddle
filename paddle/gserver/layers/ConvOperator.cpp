@@ -248,7 +248,7 @@ void ConvOperator::forward() {
   CHECK_EQ(ins_[1]->value->getHeight(), batchSize);
   checkFilterSize(ins_[1]->value);
   Matrix::resizeOrCreate(out_->value, batchSize,
-                         outputH_ * outputW_ * numFilters_);
+                         outputH_ * outputW_ * numFilters_, false, useGpu_);
   {
     AsyncGpuBlock block;
     for (size_t batchId = 0; batchId < batchSize; ++batchId) {

@@ -16,7 +16,7 @@ limitations under the License. */
 #pragma once
 
 #include <mutex>
-#include <malloc.h>
+#include <stdlib.h>
 #include "hl_gpu.h"
 #include "paddle/utils/Logging.h"
 
@@ -48,9 +48,10 @@ public:
    * @return Pointer to the allocated memory
    */
   virtual void* alloc(size_t size) {
-    void* ptr = memalign(32ul, size);
-    CHECK(ptr) << "Fail to allocate CPU memory: size=" << size;
-    return ptr;
+      void* ptr;
+      CHECK_EQ(posix_memalign(&ptr, 32ul, size), 0);
+      CHECK(ptr) << "Fail to allocate CPU memory: size=" << size;
+      return ptr;
   }
 
   /**

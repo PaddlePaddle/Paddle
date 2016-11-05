@@ -20,6 +20,18 @@ limitations under the License. */
 #include "paddle/gserver/dataproviders/DataProvider.h"
 
 P_DEFINE_string(train_list, "unittest.list", "file list for unittest");
+
+namespace paddle {
+namespace unittest {
+namespace pydp2 {
+extern void setOnPoolFilledHook(const std::function<void(size_t)>& func);
+extern void clearOnPoolFilledHook();
+
+}  // namespace pydp2
+}  // namespace unittest
+}  // namespace paddle
+
+
 const paddle::real epsilon = 1e-5;
 
 static inline int64_t readDataBatch(
@@ -105,7 +117,7 @@ TEST(PyDataProvider2, index_no_seq) {
 }
 
 TEST(PyDataProvider2, init_hook) {
-  paddle::PyObjectPtr pickle(PyImport_ImportModule("pickle"));
+  paddle::PyObjectPtr pickle = paddle::py::import("pickle");
   paddle::PyObjectPtr globals(
       PyModule_GetDict(PyImport_AddModule("__main__")));
   PyDict_SetItemString(globals.get(), "pickle", pickle.get());
@@ -232,6 +244,112 @@ TEST(PyDataProvider2, index_sub_seq) {
       ++idx;
     }
     ASSERT_EQ((size_t)arg.sequenceStartPositions->getData(false)[i+1], tmp);
+  }
+}
+
+TEST(PyDataProvider2, min_pool_size) {
+  paddle::DataConfig config;
+  config.set_type("py2");
+  config.set_files(FLAGS_train_list.c_str());
+  config.set_load_data_module("test_PyDataProvider2");
+  config.set_load_data_object("test_min_pool_size");
+  config.set_load_data_args("");
+  size_t totalData = 1 << 14;
+  constexpr size_t batchSize = 100;
+  constexpr size_t minPoolSize = 1000;
+  paddle::DataBatch batch;
+  std::unique_ptr<paddle::DataProvider> provider(
+      paddle::DataProvider::create(config, false));
+  provider->reset();
+
+  paddle::unittest::pydp2::setOnPoolFilledHook([&](size_t poolSize) {
+    if (totalData > batchSize) {
+      CHECK_GE(poolSize, std::min(totalData-batchSize, minPoolSize));
+    }
+  });
+  while (true) {
+    size_t realBatchSize = provider->getNextBatchInternal(batchSize, &batch);
+    if (realBatchSize) {
+      totalData -= realBatchSize;
+    } else {
+      break;
+    }
+  }
+  paddle::unittest::pydp2::clearOnPoolFilledHook();
+}
+
+TEST(PyDataProvider2, can_over_batch_size) {
+  paddle::DataConfig config;
+  config.set_type("py2");
+  config.set_files(FLAGS_train_list.c_str());
+  config.set_load_data_module("test_PyDataProvider2");
+  config.set_load_data_object("test_can_over_batch_size");
+  config.set_load_data_args("");
+  paddle::DataBatch batch;
+  std::unique_ptr<paddle::DataProvider> provider(
+  paddle::DataProvider::create(config, false));
+  provider->reset();
+  constexpr size_t batchSize = 100;
+  while (true) {
+    size_t realBatchSize = provider->getNextBatchInternal(batchSize, &batch);
+    if (realBatchSize) {
+      CHECK_LE(realBatchSize, batchSize);
+    } else {
+      break;
+    }
+  }
+}
+
+TEST(PyDataProvider2, input_order) {
+  paddle::DataConfig config;
+  config.set_type("py2");
+  config.set_files(FLAGS_train_list.c_str());
+  config.set_load_data_module("test_PyDataProvider2");
+  config.set_load_data_object("test_input_order");
+  config.set_load_data_args("");
+
+  paddle::ModelConfig modelConfig;
+  *modelConfig.add_input_layer_names() = "input1";
+  *modelConfig.add_input_layer_names() = "input2";
+  paddle::DataBatch batch;
+  std::unique_ptr<paddle::DataProvider> provider(
+  paddle::DataProvider::create(config, modelConfig, false));
+  provider->reset();
+  constexpr size_t batchSize = 100;
+  while (true) {
+    size_t realBatchSize = provider->getNextBatchInternal(batchSize, &batch);
+    if (!realBatchSize) {
+      break;
+    }
+    ASSERT_EQ(batch.getStreams().size(), (size_t)2);
+    for (size_t i = 0; i < realBatchSize; ++i) {
+      ASSERT_EQ(batch.getStream(0).ids->getData()[i], 0);
+      ASSERT_EQ(batch.getStream(1).ids->getData()[i], 1);
+    }
+  }
+}
+
+TEST(PyDataProvider2, test_check) {
+  paddle::DataConfig config;
+  config.set_type("py2");
+  config.set_files(FLAGS_train_list.c_str());
+  config.set_load_data_module("test_PyDataProvider2");
+  config.set_load_data_object("test_check");
+  config.set_load_data_args("");
+  paddle::DataBatch batch;
+  std::unique_ptr<paddle::DataProvider> provider(
+  paddle::DataProvider::create(config, false));
+  provider->reset();
+  while (true) {
+    size_t realBatchSize = provider->getNextBatchInternal(100, &batch);
+    if (!realBatchSize) {
+      break;
+    } else {
+      auto& ivec = batch.getStream(0).ids;
+      for (size_t i=0; i < ivec->getSize(); ++i) {
+        CHECK_LT(ivec->getData()[i], 10);
+      }
+    }
   }
 }
 

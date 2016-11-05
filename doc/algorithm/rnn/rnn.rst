@@ -30,7 +30,7 @@ Then at the :code:`process` function, each :code:`yield` function will return th
     yield src_ids, trg_ids, trg_ids_next
 
 
-For more details description of how to write a data provider, please refer to :doc:`Python Data Provider <../py_data_provider_wrapper>`. The full data provider file is located at :code:`demo/seqToseq/dataprovider.py`.
+For more details description of how to write a data provider, please refer to `PyDataProvider2 <../../ui/data_provider/index.html>`_. The full data provider file is located at :code:`demo/seqToseq/dataprovider.py`.
 
 ===============================================
 Configure Recurrent Neural Network Architecture
@@ -106,7 +106,7 @@ We will use the sequence to sequence model with attention as an example to demon
 
 In this model, the source sequence :math:`S = \{s_1, \dots, s_T\}` is encoded with a bidirectional gated recurrent neural networks. The hidden states of the bidirectional gated recurrent neural network :math:`H_S = \{H_1, \dots, H_T\}` is called *encoder vector* The decoder is a gated recurrent neural network. When decoding each token :math:`y_t`, the gated recurrent neural network generates a set of weights :math:`W_S^t = \{W_1^t, \dots, W_T^t\}`, which are used to compute a weighted sum of the encoder vector. The weighted sum of the encoder vector is utilized to condition the generation of the token :math:`y_t`.
 
-The encoder part of the model is listed below. It calls :code:`grumemory` to represent gated recurrent neural network. It is the recommended way of using recurrent neural network if the network architecture is simple, because it is faster than :code:`recurrent_group`. We have implemented most of the commonly used recurrent neural network architectures, you can refer to :doc:`Layers <../trainer_config_helpers/layers>`  for more details.
+The encoder part of the model is listed below. It calls :code:`grumemory` to represent gated recurrent neural network. It is the recommended way of using recurrent neural network if the network architecture is simple, because it is faster than :code:`recurrent_group`. We have implemented most of the commonly used recurrent neural network architectures, you can refer to `Layers <../../ui/api/trainer_config_helpers/layers_index.html>`_  for more details.
 
 We also project the encoder vector to :code:`decoder_size` dimensional space, get the first instance of the backward recurrent network, and project it to :code:`decoder_size` dimensional space:
 
@@ -143,11 +143,15 @@ The decoder uses :code:`recurrent_group` to define the recurrent neural network.
 
 .. code-block:: python
 
+    group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
+                  StaticInput(input=encoded_proj,is_seq=True)]
     trg_embedding = embedding_layer(
         input=data_layer(name='target_language_word',
                          size=target_dict_dim),
         size=word_vector_dim,
         param_attr=ParamAttr(name='_target_language_embedding'))
+    group_inputs.append(trg_embedding)
+
     # For decoder equipped with attention mechanism, in training,
     # target embedding (the groudtruth) is the data input,
     # while encoded source sequence is accessed to as an unbounded memory.
@@ -156,13 +160,7 @@ The decoder uses :code:`recurrent_group` to define the recurrent neural network.
     # All sequence inputs should have the same length.
     decoder = recurrent_group(name=decoder_group_name,
                               step=gru_decoder_with_attention,
-                              input=[
-                                  StaticInput(input=encoded_vector,
-                                              is_seq=True),
-                                  StaticInput(input=encoded_proj,
-                                              is_seq=True),
-                                  trg_embedding
-                              ])
+                              input=group_inputs)
 
 
 The implementation of the step function is listed as below. First, it defines the **memory** of the decoder network. Then it defines attention, gated recurrent unit step function, and the output function:
@@ -205,22 +203,23 @@ After training the model, we can use it to generate sequences. A common practice
 * use :code:`GeneratedInput` for trg_embedding. :code:`GeneratedInput` computes the embedding of the generated token at the last time step for the input at the current time step.
 * use :code:`beam_search` function. This function needs to set:
 
-  - :code:`id_input`: the integer ID of the data, used to identify the corresponding output in the generated files.
-  - :code:`dict_file`: the dictionary file for converting word id to word.
   - :code:`bos_id`: the start token. Every sentence starts with the start token.
   - :code:`eos_id`: the end token. Every sentence ends with the end token.
   - :code:`beam_size`: the beam size used in beam search.
   - :code:`max_length`: the maximum length of the generated sentences.
-  - :code:`result_file`: the path of the generation result file.
 
+* use :code:`seqtext_printer_evaluator` to print text according to index matrix and dictionary. This function needs to set:
+
+  - :code:`id_input`: the integer ID of the data, used to identify the corresponding output in the generated files.
+  - :code:`dict_file`: the dictionary file for converting word id to word.
+  - :code:`result_file`: the path of the generation result file.
+    
 The code is listed below:
 
 .. code-block:: python
 
-    gen_inputs = [StaticInput(input=encoded_vector,
-                              is_seq=True),
-                  StaticInput(input=encoded_proj,
-                              is_seq=True), ]
+    group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
+                  StaticInput(input=encoded_proj,is_seq=True)]
     # In generation, decoder predicts a next target word based on
     # the encoded source sequence and the last generated target word.
     # The encoded source sequence (encoder's output) must be specified by
@@ -231,21 +230,22 @@ The code is listed below:
         size=target_dict_dim,
         embedding_name='_target_language_embedding',
         embedding_size=word_vector_dim)
-    gen_inputs.append(trg_embedding)
+    group_inputs.append(trg_embedding)
     beam_gen = beam_search(name=decoder_group_name,
                            step=gru_decoder_with_attention,
-                           input=gen_inputs,
-                           id_input=data_layer(name="sent_id",
-                                               size=1),
-                           dict_file=trg_dict_path,
+                           input=group_inputs,
                            bos_id=0, # Beginnning token.
                            eos_id=1, # End of sentence token.
                            beam_size=beam_size,
-                           max_length=max_length,
-                           result_file=gen_trans_file)
+                           max_length=max_length)
+
+    seqtext_printer_evaluator(input=beam_gen,
+                              id_input=data_layer(name="sent_id", size=1),
+                              dict_file=trg_dict_path,
+                              result_file=gen_trans_file)
     outputs(beam_gen)
 
 
-Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to :doc:`Semantic Role Labeling Demo <../../../demo/semantic_role_labeling>` for more details.
+Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to `Semantic Role Labeling Demo <../../demo/semantic_role_labeling/index.html>`_ for more details.
 
 The full configuration file is located at :code:`demo/seqToseq/seqToseq_net.py`.

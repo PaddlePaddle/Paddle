@@ -19,6 +19,8 @@ __all__ = [
     "BasePoolingType",
     "MaxPooling",
     "AvgPooling",
+    "CudnnMaxPooling",
+    "CudnnAvgPooling",
     "SumPooling",
     "SquareRootNPooling"
 ]
@@ -26,7 +28,7 @@ __all__ = [
 
 class BasePoolingType(object):
     """
-    Base Pooling Type. 
+    Base Pooling Type.
     Note these pooling types are used for sequence input, not for images.
     Each PoolingType contains one parameter:
 
@@ -47,10 +49,32 @@ class MaxPooling(BasePoolingType):
     ..  math::
 
         max(samples\\_of\\_a\\_sequence)
+
+    :param output_max_index: True if output sequence max index instead of max
+                             value. None means use default value in proto.
+    :type output_max_index: bool|None
+    """
+    def __init__(self, output_max_index=None):
+        BasePoolingType.__init__(self, "max")
+        self.output_max_index = output_max_index
+
+
+class CudnnMaxPooling(BasePoolingType):
+    """
+    Cudnn max pooling only support GPU. Return the maxinum value in the
+    pooling window.
     """
     def __init__(self):
-        BasePoolingType.__init__(self, "max")
-        
+        BasePoolingType.__init__(self, "cudnn-max-pool")
+
+
+class CudnnAvgPooling(BasePoolingType):
+    """
+    Cudnn average pooling only support GPU. Return the average value in the
+    pooling window.
+    """
+    def __init__(self):
+        BasePoolingType.__init__(self, "cudnn-avg-pool")
 
 class AvgPooling(BasePoolingType):
     """

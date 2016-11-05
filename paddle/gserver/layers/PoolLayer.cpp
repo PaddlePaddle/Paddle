@@ -35,7 +35,6 @@ bool PoolLayer::init(const LayerMap& layerMap,
   poolType_ = conf.pool_type();
   channels_ = conf.channels();
   sizeX_ = conf.size_x();
-  start_ = conf.start();
   stride_ = conf.stride();
   outputX_ = conf.output_x();
   imgSize_ = conf.img_size();
@@ -46,22 +45,6 @@ bool PoolLayer::init(const LayerMap& layerMap,
   strideY_ = conf.has_stride_y() ? conf.stride_y() : conf.stride();
   confPaddingY_ = conf.has_padding_y() ? conf.padding_y() : conf.padding();
   outputY_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
-
-  bool cudnnTypeCheck = true;
-#ifndef PADDLE_ONLY_CPU
-  cudnnTypeCheck = !CudnnPoolLayer::typeCheck(poolType_);
-#endif
-
-  if ((sizeY_ != sizeX_ || imgSizeY_ != imgSize_ || strideY_ != stride_ ||
-       confPaddingY_ != confPadding_ || outputY_ != outputX_) &&
-      cudnnTypeCheck) {
-    LOG(FATAL) << poolType_ << " does not supported non-square "
-                               "filter, image, stride or padding";
-  }
-
-  if (confPadding_ != 0 && cudnnTypeCheck) {
-    LOG(FATAL) << poolType_ << " does not supported 'padding'";
-  }
 
   return true;
 }

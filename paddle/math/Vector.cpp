@@ -800,6 +800,7 @@ void CpuGpuVectorT<T>::resizeOrCreate(size_t size, bool useGpu) {
   } else if ((!useGpu) && (!cpuVectorT_)) {
     cpuVectorT_ = VectorT<T>::create(size, false);
   } else {
+    CHECK((useGpu && gpuVectorT_) || (!useGpu && cpuVectorT_));
     this->resize(size, useGpu);
   }
 }

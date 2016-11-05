@@ -26,7 +26,7 @@ cd paddle
 mkdir build
 cd build
 cmake .. -DWITH_DOC=OFF -DWITH_GPU=${WITH_GPU} -DWITH_SWIG_PY=ON\
-   -DCUDNN_ROOT=/usr/ -DWITH_STYLE_CHECK=OFF
+   -DCUDNN_ROOT=/usr/ -DWITH_STYLE_CHECK=OFF -DWITH_AVX=${WITH_AVX}
 make -j `nproc`
 # because durning make install, there are several warning, so set +e, do not cause abort
 make install

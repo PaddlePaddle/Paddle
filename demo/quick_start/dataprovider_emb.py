@@ -16,6 +16,7 @@ from paddle.trainer.PyDataProvider2 import *
 
 UNK_IDX = 0
 
+
 def initializer(settings, dictionary, **kwargs):
     settings.word_dict = dictionary
     settings.input_types = [
@@ -47,6 +48,6 @@ def predict_initializer(settings, dictionary, **kwargs):
 def process_predict(settings, file_name):
     with open(file_name, 'r') as f:
         for line in f:
-            comment = line.strip()
+            comment = line.strip().split()
             word_slot = [settings.word_dict.get(w, UNK_IDX) for w in comment]
             yield word_slot

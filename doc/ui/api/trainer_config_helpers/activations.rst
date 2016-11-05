@@ -12,6 +12,13 @@ AbsActivation
     :members: AbsActivation
     :noindex:
     
+ExpActivation
+===============
+
+..  automodule:: paddle.trainer_config_helpers.activations
+    :members: ExpActivation
+    :noindex:
+    
 IdentityActivation
 ==================
 
@@ -24,6 +31,13 @@ LinearActivation
 
 ..  automodule:: paddle.trainer_config_helpers.activations
     :members: LinearActivation
+    :noindex:
+
+LogActivation
+==================
+
+..  automodule:: paddle.trainer_config_helpers.activations
+    :members: LogActivation
     :noindex:
     
 SquareActivation

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <fstream>
 
 #include <paddle/utils/PythonUtil.h>
@@ -24,6 +23,8 @@ using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
 static const string& CONFIG_FILE = "trainer/tests/sample_trainer_rnn_gen.conf";
+static const string& NEST_CONFIG_FILE =
+    "trainer/tests/sample_trainer_nest_rnn_gen.conf";
 static const string& OUTPUT_DIR = "trainer/tests/dump_text.test";
 static string modelDir = "trainer/tests/rnn_gen_test_model_dir/t1";  // NOLINT
 static string expectFile =                                           // NOLINT
@@ -50,32 +51,52 @@ void checkOutput(const string& expRetFile) {
   }
 }
 
-void prepareInArgs(vector<Argument>& inArgs,
-                   const size_t batchSize, bool useGpu) {
+void prepareInArgs(vector<Argument>& inArgs, const size_t batchSize,
+                   bool useGpu, bool hasSubseq) {
   inArgs.clear();
   // sentence id
   Argument sentId;
   sentId.value = nullptr;
-  IVector::resizeOrCreate(sentId.ids, batchSize, useGpu);
-  for (size_t i = 0; i < batchSize; ++i) sentId.ids->setElement(i, i);
+  if (hasSubseq) {
+    // as there is only one sequence, there is only one label.
+    IVector::resizeOrCreate(sentId.ids, 1, useGpu);
+    sentId.ids->setElement(0, 0);
+  } else {
+    // as there is batchSize word, there is batchSize label.
+    IVector::resizeOrCreate(sentId.ids, batchSize, useGpu);
+    for (size_t i = 0; i < batchSize; ++i) sentId.ids->setElement(i, i);
+  }
   inArgs.emplace_back(sentId);
 
   // a dummy layer to decide batch size
   Argument dummyInput;
   dummyInput.value = Matrix::create(batchSize, 2, false, useGpu);
   dummyInput.value->randomizeUniform();
+  if (hasSubseq) {
+    // generate one sequence with batchSize subsequence,
+    // and each subsequence has only one word.
+    dummyInput.sequenceStartPositions = ICpuGpuVector::create(2, false);
+    int* buf = dummyInput.sequenceStartPositions->getMutableData(false);
+    dummyInput.subSequenceStartPositions =
+        ICpuGpuVector::create(batchSize + 1, false);
+    int* subBuf = dummyInput.subSequenceStartPositions->getMutableData(false);
+    buf[0] = 0;
+    buf[1] = batchSize;
+    for (size_t i = 0; i < batchSize + 1; i++) subBuf[i] = i;
+  }
   inArgs.emplace_back(dummyInput);
 }
 
-void testGeneration(bool useGpu, const string& expRetFile) {
+void testGeneration(const string& configFile, bool useGpu, bool hasSubseq,
+                    const string& expRetFile) {
   FLAGS_use_gpu = useGpu;
-  auto config = std::make_shared<TrainerConfigHelper>(CONFIG_FILE);
+  auto config = std::make_shared<TrainerConfigHelper>(configFile);
   unique_ptr<GradientMachine> gradientMachine(GradientMachine::create(*config));
   gradientMachine->loadParameters(modelDir);
   vector<Argument> inArgs(2);
 
   const size_t batchSize = 15;
-  prepareInArgs(inArgs, batchSize, useGpu);
+  prepareInArgs(inArgs, batchSize, useGpu, hasSubseq);
   vector<Argument> outArgs;
   unique_ptr<Evaluator> testEvaluator(gradientMachine->makeEvaluator());
   testEvaluator->start();
@@ -93,16 +114,21 @@ TEST(RecurrentGradientMachine, test_generation) {
 #else
   const auto useGpuConfs = {true, false};
 #endif
-  FLAGS_config_args = "beam_search=0";  // no beam search
-  string expectRetFileNoBeam = expectFile + ".nobeam";
-  for (auto useGpu : useGpuConfs) {
-    testGeneration(useGpu, expectRetFileNoBeam);
-  }
-  FLAGS_config_args = "beam_search=1";  // no beam search
-  string expectRetFileBeam = expectFile + ".beam";
-  for (auto useGpu : useGpuConfs) {
-    testGeneration(useGpu, expectRetFileBeam);
-  }
+  auto testGen = [&](const string& configFile, bool hasSubseq,
+                     const string& expRetFile, bool beam_search) {
+    FLAGS_config_args = beam_search ? "beam_search=1" : "beam_search=0";
+    for (auto useGpu : useGpuConfs) {
+      testGeneration(configFile, useGpu, hasSubseq, expRetFile);
+    }
+  };
+  testGen(CONFIG_FILE, false, expectFile + ".nobeam", false);  // no beam search
+  testGen(CONFIG_FILE, false, expectFile + ".beam", true);     // beam search
+  // In hierarchical RNN, beam search and one way search are only in inner-RNN,
+  // outer-RNN will concat the generated inner-results (first for beam search)
+  // from inner-RNN. Thus, they have the same outer-results.
+  testGen(NEST_CONFIG_FILE, true, expectFile + ".nest",
+          false);  // no beam search
+  testGen(NEST_CONFIG_FILE, true, expectFile + ".nest", true);  // beam search
 }
 #endif
 

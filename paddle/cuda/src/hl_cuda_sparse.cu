@@ -562,6 +562,22 @@ void hl_memcpy_sparse_matrix(hl_sparse_matrix_s dst,
   }
 }
 
+/**
+ * Calculate beta * C, if beta is zero, C does not have to be a valid input.
+ */
+static void _beta_mul_c(real *c, int dimM, int dimN, real beta) {
+  if (beta == 0.0) {
+    hl_gpu_apply_unary_op(unary::Zero<real>(), c, dimM, dimN, dimN);
+  } else {
+    if (beta != 1.0){
+      hl_gpu_apply_unary_op(
+        unary::mul_scalar<real>(beta), c, dimM, dimN, dimN);
+    }
+  }
+
+  return;
+}
+
 void hl_matrix_csr_mul_dense(hl_sparse_matrix_s A_d, hl_trans_op_t transa,
                              real *B_d, hl_trans_op_t transb,
                              real *C_d,
@@ -580,15 +596,8 @@ void hl_matrix_csr_mul_dense(hl_sparse_matrix_s A_d, hl_trans_op_t transa,
   }
 
   if (A_d->nnz == 0) {
-    if (beta != 1.0) {
-        hl_gpu_apply_unary_op(unary::mul_scalar<real>(beta),
-                              C_d,
-                              dimM,
-                              dimN,
-                              dimN);
-    } else {
-      return;
-    }
+    _beta_mul_c(C_d, dimM, dimN, beta);
+    return;
   }
 
   /* nnz != 0 */
@@ -633,13 +642,7 @@ void hl_matrix_csr_mul_dense(hl_sparse_matrix_s A_d, hl_trans_op_t transa,
                                                beta);
     }
   } else if (HPPL_OP_T == transa) {
-    if (beta != 1.0) {
-      hl_gpu_apply_unary_op(unary::mul_scalar<real>(beta),
-                            C_d,
-                            dimM,
-                            dimN,
-                            dimN);
-    }
+    _beta_mul_c(C_d, dimM, dimN, beta);
 
     int blocksX = (dimN + CU_CSC_MUL_DENSE_BLOCK_N - 1) /
                   CU_CSC_MUL_DENSE_BLOCK_N;
@@ -699,15 +702,8 @@ void hl_matrix_dense_mul_csc(real *A_d, hl_trans_op_t transa,
     << "matrix format error!";
 
   if (B_d->nnz == 0) {
-    if (beta != 1.0) {
-      hl_gpu_apply_unary_op(unary::mul_scalar<real>(beta),
-                            C_d,
-                            dimM,
-                            dimN,
-                            dimN);
-    } else {
-      return;
-    }
+    _beta_mul_c(C_d, dimM, dimN, beta);
+    return;
   }
 
   /* nnz != 0 */
@@ -750,13 +746,7 @@ void hl_matrix_dense_mul_csc(real *A_d, hl_trans_op_t transa,
                                                beta);
     }
   } else if (transb == HPPL_OP_T) {
-    if (beta != 1.0) {
-      hl_gpu_apply_unary_op(unary::mul_scalar<real>(beta),
-                            C_d,
-                            dimM,
-                            dimN,
-                            dimN);
-    }
+    _beta_mul_c(C_d, dimM, dimN, beta);
     int blocksX = 1 + (dimK-1)/CU_DM_CSR_THREAD_X;
     int blocksY = 1 + (dimM-1)/CU_DM_CSR_BLOCK_M;
     dim3 threads(CU_DM_CSR_THREAD_X, CU_DM_CSR_THREAD_Y);
@@ -813,15 +803,8 @@ void hl_matrix_dense_mul_csr(real *A_d, hl_trans_op_t transa,
     << "matrix format error!";
 
   if (B_d->nnz == 0) {
-    if (beta != 1.0) {
-      hl_gpu_apply_unary_op(unary::mul_scalar<real>(beta),
-                            C_d,
-                            dimM,
-                            dimN,
-                            dimN);
-    } else {
-      return;
-    }
+    _beta_mul_c(C_d, dimM, dimN, beta);
+    return;
   }
 
   /* nnz != 0 */
@@ -833,14 +816,7 @@ void hl_matrix_dense_mul_csr(real *A_d, hl_trans_op_t transa,
   }
 
   if (transb == HPPL_OP_N) {
-    if (beta != 1.0) {
-      hl_gpu_apply_unary_op(unary::mul_scalar<real>(beta),
-                            C_d,
-                            dimM,
-                            dimN,
-                            dimN);
-    }
-
+    _beta_mul_c(C_d, dimM, dimN, beta);
     int blocksX = 1 + (dimK-1)/CU_DM_CSR_THREAD_X;
     int blocksY = 1 + (dimM-1)/CU_DM_CSR_BLOCK_M;
     dim3 threads(CU_DM_CSR_THREAD_X, CU_DM_CSR_THREAD_Y);
@@ -925,15 +901,8 @@ void hl_matrix_csc_mul_dense(hl_sparse_matrix_s A_d, hl_trans_op_t transa,
   }
 
   if (A_d->nnz == 0) {
-    if (beta != 1.0) {
-      hl_gpu_apply_unary_op(unary::mul_scalar<real>(beta),
-                            C_d,
-                            dimM,
-                            dimN,
-                            dimN);
-    } else {
-      return;
-    }
+    _beta_mul_c(C_d, dimM, dimN, beta);
+    return;
   }
 
   /* nnz != 0 */
@@ -945,13 +914,7 @@ void hl_matrix_csc_mul_dense(hl_sparse_matrix_s A_d, hl_trans_op_t transa,
   }
 
   if (HPPL_OP_N == transa) {
-    if (beta != 1.0) {
-      hl_gpu_apply_unary_op(unary::mul_scalar<real>(beta),
-                            C_d,
-                            dimM,
-                            dimN,
-                            dimN);
-    }
+    _beta_mul_c(C_d, dimM, dimN, beta);
 
     int blocksX = (dimN + CU_CSC_MUL_DENSE_BLOCK_N -1)/CU_CSC_MUL_DENSE_BLOCK_N;
     int blocksY = (dimK + CU_CSC_MUL_DENSE_BLOCK_K -1)/CU_CSC_MUL_DENSE_BLOCK_K;
@@ -1113,7 +1076,7 @@ void hl_sparse_matrix_mul(real *A_d, hl_trans_op_t transa,
       CHECK(!transA) << "Not supported A is trans and B is not trans!";
 
       dim3 block(CU_BLOCK_SIZE, 1);
-      int avgNnzPerRow = C_d2->nnz_s / dimM;
+      int avgNnzPerRow = C_d->nnz / dimM;
       avgNnzPerRow = avgNnzPerRow > 0 ? avgNnzPerRow : 1;
       int gridx = DIVUP(avgNnzPerRow, CU_BLOCK_SIZE);
       dim3 grid(gridx, dimM);
@@ -1242,9 +1205,9 @@ void hl_matrix_csr_column_sum(real* A_d, hl_sparse_matrix_s B_d,
     LOG(FATAL) << "parameter B is null!";
   }
 
-  if (B_d2->nnz_s == 0) return;
+  if (B_d->nnz == 0) return;
 
-  int nnz = B_d2->nnz_s;
+  int nnz = B_d->nnz;
   int block = 512;
   int grid = DIVUP(nnz, 512);
   KeSMatrixCsrColumnSum<<<grid, block, 0, STREAM_DEFAULT>>>(
@@ -1273,9 +1236,9 @@ void hl_matrix_csr_add_bias(hl_sparse_matrix_s A_d, real* B_d,
     LOG(FATAL) << "parameter A_d is null!";
   }
 
-  if (A_d2->nnz_s == 0) return;
+  if (A_d->nnz == 0) return;
 
-  int nnz = A_d2->nnz_s;
+  int nnz = A_d->nnz;
   int block = 512;
   int grid = DIVUP(nnz, 512);
   KeSMatrixCsrAddBias<<<grid, block, 0, STREAM_DEFAULT>>>(
@@ -1308,9 +1271,9 @@ void hl_matrix_csr_add_dense(hl_sparse_matrix_s A_d, real* B_d, int dimM,
     LOG(FATAL) << "parameter A_d is null!";
   }
 
-  if (A_d2->nnz_s == 0) return;
+  if (A_d->nnz == 0) return;
 
-  int gridX = DIVUP((A_d2->nnz_s / dimM), 512);
+  int gridX = DIVUP((A_d->nnz / dimM), 512);
   gridX = gridX > 0 ? gridX : 1;
   dim3 block(512, 1);
   dim3 grid(gridX, dimM);

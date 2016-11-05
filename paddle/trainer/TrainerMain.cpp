@@ -16,6 +16,7 @@ limitations under the License. */
 #include <fenv.h>
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/StringUtil.h"
+#include "paddle/utils/Excepts.h"
 #include "paddle/pserver/ParameterServer2.h"
 
 #include "ParamUtil.h"
@@ -102,6 +103,8 @@ int main(int argc, char** argv) {
     trainer.checkGradient();
   } else if (FLAGS_job == "test") {
     trainer.test();
+  } else if (FLAGS_job == "time") {
+    trainer.time();
   } else {
     LOG(FATAL) << "Unknown job type: " << FLAGS_job;
   }

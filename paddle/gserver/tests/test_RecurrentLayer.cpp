@@ -299,7 +299,6 @@ void checkRecurrentLayer(LayerConfig layerConfig, size_t batchSize,
   Argument& cpuInput = testCpu.dataLayer_->getOutput();
   Argument& gpuInput = testGpu.dataLayer_->getOutput();
   gpuInput.resizeAndCopyFrom(cpuInput, true);
-  hl_stream_synchronize(HPPL_STREAM_DEFAULT);
 
   const VectorPtr& cpuVec = testCpu.para_->getBuf(PARAMETER_VALUE);
   const VectorPtr& gpuVec = testGpu.para_->getBuf(PARAMETER_VALUE);

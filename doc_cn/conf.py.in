@@ -22,6 +22,7 @@ AutoStructify = transform.AutoStructify
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, '@PROJ_ROOT@/python')
+templates_path = ["@PROJ_ROOT@/doc/templates"]
 
 # -- General configuration ------------------------------------------------
 
@@ -46,13 +47,11 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
+    'sphinx.ext.graphviz'
 ]
 table_styling_embed_css = True
 
 autodoc_member_order = 'bysource'
-
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:

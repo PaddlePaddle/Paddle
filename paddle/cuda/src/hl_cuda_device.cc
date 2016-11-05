@@ -85,42 +85,22 @@ void* cudart_dso_handle = nullptr;
 #define DYNAMIC_LOAD_CUDART_WRAP(__name)                            \
   struct DynLoad__##__name {                                        \
     template <typename... Args>                                     \
-    cudaError_t operator()(Args... args) {                          \
-      typedef cudaError_t (*cudartFunc)(Args...);                   \
+    auto operator()(Args... args) -> decltype(__name(args...)) {    \
+      using cudart_func = decltype(__name(args...))(*)(Args...);    \
       std::call_once(cudart_dso_flag, GetCudartDsoHandle,           \
                      &cudart_dso_handle);                           \
       void* p_##__name = dlsym(cudart_dso_handle, #__name);         \
-      return reinterpret_cast<cudartFunc>(p_##__name)(args...);     \
+      return reinterpret_cast<cudart_func>(p_##__name)(args...);    \
     }                                                               \
   } __name;  /* struct DynLoad__##__name */
 #else
 #define DYNAMIC_LOAD_CUDART_WRAP(__name)                            \
   struct DynLoad__##__name {                                        \
     template <typename... Args>                                     \
-    cudaError_t operator()(Args... args) {                          \
+    auto operator()(Args... args) -> decltype(__name(args...)) {    \
       return __name(args...);                                       \
     }                                                               \
   } __name;  /* struct DynLoad__##__name */
-#endif
-
-#ifdef PADDLE_USE_DSO
-  struct DynLoad__cudaGetErrorString {
-    template <typename... Args>
-    const char* operator()(Args... args) {
-      typedef const char* (*cudaFunc)(Args...);
-      std::call_once(cudart_dso_flag, GetCudartDsoHandle,
-                     &cudart_dso_handle);
-      void* p_func = dlsym(cudart_dso_handle, "cudaGetErrorString");
-      return reinterpret_cast<cudaFunc>(p_func)(args...);
-    }
-  } cudaGetErrorString;  /* struct DynLoad__cudaGetErrorString */
-#else
-struct DynLoad__cudaGetErrorString {
-  template <typename... Args>
-  const char* operator()(Args... args) {
-    return cudaGetErrorString(args...);
-  }
-} cudaGetErrorString;  /* struct DynLoad__cudaGetErrorString */
 #endif
 
 /* include all needed cuda functions in HPPL */
@@ -152,7 +132,8 @@ struct DynLoad__cudaGetErrorString {
   __macro(cudaSetDeviceFlags)             \
   __macro(cudaGetLastError)               \
   __macro(cudaFuncSetCacheConfig)         \
-  __macro(cudaRuntimeGetVersion)
+  __macro(cudaRuntimeGetVersion)          \
+  __macro(cudaGetErrorString)
 
 CUDA_ROUTINE_EACH(DYNAMIC_LOAD_CUDART_WRAP)
 
@@ -209,7 +190,22 @@ __thread cudaStream_t default_stream = 0;
 __thread bool g_sync_flag = true;
 bool hl_start_flag = false;
 
-#define gettid() syscall(SYS_gettid)
+inline pid_t gettid() {
+#if defined(__APPLE__) || defined(__OSX__)
+  // syscall is deprecated: first deprecated in macOS 10.12.
+  // syscall is unsupported;
+  // syscall pid_t tid = syscall(SYS_thread_selfid);
+  uint64_t tid;
+  pthread_threadid_np(NULL, &tid);
+#else
+  #ifndef __NR_gettid
+  #define __NR_gettid 224
+  #endif
+  pid_t tid = syscall(__NR_gettid);
+#endif
+  CHECK_NE(tid, -1);
+  return tid;    
+}
 
 void hl_init(int device) {
   CHECK(hl_start_flag)
@@ -611,7 +607,7 @@ void hl_specify_devices_start(int* device, int number) {
 void hl_rand(real *dest_d, size_t num) {
   pthread_mutex_lock(t_resource.gen_mutex);
   CHECK_EQ(
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
   dynload::curandGenerateUniform(t_resource.gen, dest_d, num),
 #else
   dynload::curandGenerateUniformDouble(t_resource.gen, dest_d, num),
