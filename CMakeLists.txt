@@ -9,7 +9,7 @@ set(PADDLE_VERSION ${PADDLE_MAJOR_VERSION}.${PADDLE_MINOR_VERSION}.${PADDLE_PATC
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 set(PROJ_ROOT ${CMAKE_SOURCE_DIR})
 include(package)
-include(swig)
+find_package(SWIG 2.0)
 find_package(CUDA QUIET)
 find_package(Protobuf REQUIRED)
 find_package(PythonLibs 2.7 REQUIRED)
@@ -60,6 +60,7 @@ include(flags)
 include(cudnn)
 include(FindPythonModule)
 include(check_packages)
+include(swig)
 include(coveralls)
 
 # add PaddlePaddle version
