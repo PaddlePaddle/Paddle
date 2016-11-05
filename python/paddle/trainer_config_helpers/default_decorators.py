@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+import inspect
 from .attrs import ParamAttr
 from .activations import TanhActivation
 from paddle.trainer.config_parser import *
@@ -37,8 +38,12 @@ def wrap_param_default(param_names=None, default_factory=None,
         @functools.wraps(func)
         def __wrapper__(*args, **kwargs):
             if len(args) != 0:
-                logger.warning("please use keyword arguments in paddle config.")
-
+                argspec = inspect.getargspec(func)
+                num_positional = len(argspec.args)
+                if argspec.defaults:
+                    num_positional -= len(argspec.defaults)
+                if not argspec.varargs and len(args) > num_positional:
+                    logger.fatal("Must use keyword arguments for non-positional args")
             for name in param_names:
                 if not_set_callback(kwargs, name):  # Not set
                     kwargs[name] = default_factory(func)

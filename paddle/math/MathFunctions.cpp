@@ -40,6 +40,46 @@ void gemm<double>(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
 }
 
 template<>
+int getrf<float>(const CBLAS_ORDER order, const int M, const int N,
+                  float *A, const int lda, int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
+  return clapack_sgetrf(order, M, N, A, lda, ipiv);
+#else
+  return LAPACKE_sgetrf(order, M, N, A, lda, ipiv);
+#endif
+}
+
+template<>
+int getrf<double>(const CBLAS_ORDER order, const int M, const int N,
+                   double *A, const int lda, int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
+  return clapack_dgetrf(order, M, N, A, lda, ipiv);
+#else
+  return LAPACKE_dgetrf(order, M, N, A, lda, ipiv);
+#endif
+}
+
+template<>
+int getri<float>(const CBLAS_ORDER order, const int N, float *A,
+                  const int lda, const int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
+  return clapack_sgetri(order, N, A, lda, ipiv);
+#else
+  return LAPACKE_sgetri(order, N, A, lda, ipiv);
+#endif
+}
+
+template<>
+int getri<double>(const CBLAS_ORDER order, const int N, double *A,
+                  const int lda, const int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
+  return clapack_dgetri(order, N, A, lda, ipiv);
+#else
+  return LAPACKE_dgetri(order, N, A, lda, ipiv);
+#endif
+}
+
+template<>
 void axpy<float>(const int n, const float alpha, const float* x, float* y) {
   cblas_saxpy(n, alpha, x, 1, y, 1);
 }

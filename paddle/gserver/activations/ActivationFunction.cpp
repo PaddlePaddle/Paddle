@@ -295,6 +295,7 @@ void forward(Argument& act) {
 
 void backward(Argument& act) { act.grad->squareDerivative(*act.in); }
 END_DEFINE_ACTIVATION(square)
+
 /**
  * @brief Exponential Activation.
  * \f[
@@ -307,8 +308,36 @@ void forward(Argument& act) { act.value->exp(*act.value); }
 void backward(Argument& act) { act.grad->expDerivative(*act.value); }
 END_DEFINE_ACTIVATION(exponential)
 
+/**
+ * @brief Logarithm Activation.
+ * \f[
+ * f(z) = log(z)
+ * \f]
+ */
+BEGIN_DEFINE_ACTIVATION(log)
+void forward(Argument& act) {
+  SetDevice device(act.deviceId);
+  Matrix::resizeOrCreate(act.in, act.value->getHeight(), act.value->getWidth(),
+                         /* trans */ false, useGpu(act.deviceId));
+
+  act.in->copyFrom(*act.value);
+  act.value->log(*act.value);
+}
+
+void backward(Argument& act) { act.grad->dotDiv(*act.grad, *act.in); }
+END_DEFINE_ACTIVATION(log)
+
 ActivationFunction* ActivationFunction::create(const std::string& type) {
   return gActivationRegistrar.createByType(type);
 }
+
+std::vector<std::string> ActivationFunction::getAllRegisteredTypes() {
+  std::vector<std::string> types;
+  gActivationRegistrar.forEachType([&](const std::string& type) {
+      types.push_back(type);
+    });
+  return types;
+}
+
 
 }  // namespace paddle

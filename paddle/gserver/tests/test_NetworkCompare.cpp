@@ -236,6 +236,15 @@ TEST(Compare, img_pool) {
   compareNetwork(config_file_a, config_file_b);
   FLAGS_use_gpu = useGpu;
 }
+
+TEST(Compare, img_conv) {
+  std::string config_file_a = "./gserver/tests/img_conv_a.conf";
+  std::string config_file_b = "./gserver/tests/img_conv_b.conf";
+  bool useGpu = FLAGS_use_gpu;
+  FLAGS_use_gpu = true;
+  compareNetwork(config_file_a, config_file_b);
+  FLAGS_use_gpu = useGpu;
+}
 #endif
 
 

@@ -5,6 +5,7 @@ PaddlePaddle文档
 --------
 * `介绍 <introduction/index.html>`_
 * `快速入门 <demo/quick_start/index.html>`_
+* `基本使用概念 <concepts/use_concepts.html>`_
 * `编译与安装 <build_and_install/index.html>`_
 * `用户接口 <ui/index.html>`_
 * `使用示例 <demo/index.html>`_
@@ -14,6 +15,7 @@ PaddlePaddle文档
 开发指南
 --------
 * `新写Layer <../doc/dev/new_layer/index.html>`_
+* `如何贡献文档 <howto/how_to_write_docs/index.html>`_
 
 算法教程
 --------

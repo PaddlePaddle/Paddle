@@ -166,4 +166,14 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
 这里 :code:`hidden_a` 和 :code:`hidden_b` 使用了同样的parameter和bias。并且softmax层的两个输入也使用了同样的参数 :code:`softmax_param`。
 
+7. *-cp27mu-linux_x86_64.whl is not a supported wheel on this platform.
+-----------------------------------------------------------------------
+
+出现这个问题的主要原因是，系统编译wheel包的时候，使用的 :code:`wheel` 包是最新的，
+而系统中的 :code:`pip` 包比较老。具体的解决方法是，更新 :code:`pip` 包并重新编译PaddlePaddle。
+更新 :code:`pip` 包的方法是\:
+
+..  code-block:: bash
+
+    pip install --upgrade pip
 

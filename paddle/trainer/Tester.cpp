@@ -116,6 +116,7 @@ void Tester::testOnePeriod() {
     }
     testOneDataBatch(dataBatch, &outArgs);
   }
+  finishTestPeriod();
 }
 
 void Tester::finishTestPeriod() {

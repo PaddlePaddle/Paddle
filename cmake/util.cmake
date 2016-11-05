@@ -67,6 +67,10 @@ endmacro()
 #
 # It will handle WITH_PYTHON/WITH_GLOG etc.
 function(link_paddle_exe TARGET_NAME)
+    if(WITH_RDMA)
+        generate_rdma_links()
+    endif()
+
     if(WITH_METRIC)
         if(WITH_GPU)
             set(METRIC_LIBS paddle_metric_learning paddle_dserver_lib metric metric_cpu)
@@ -109,6 +113,12 @@ function(link_paddle_exe TARGET_NAME)
         ${ZLIB_LIBRARIES}
         ${INTERAL_LIBS}
         ${CMAKE_DL_LIBS})
+
+    if(WITH_RDMA)
+        target_link_libraries(${TARGET_NAME}
+            ${RDMA_LD_FLAGS}
+            ${RDMA_LIBS})
+    endif()
     
     if(WITH_PYTHON)
         target_link_libraries(${TARGET_NAME}

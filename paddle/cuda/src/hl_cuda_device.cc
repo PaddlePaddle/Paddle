@@ -85,42 +85,22 @@ void* cudart_dso_handle = nullptr;
 #define DYNAMIC_LOAD_CUDART_WRAP(__name)                            \
   struct DynLoad__##__name {                                        \
     template <typename... Args>                                     \
-    cudaError_t operator()(Args... args) {                          \
-      typedef cudaError_t (*cudartFunc)(Args...);                   \
+    auto operator()(Args... args) -> decltype(__name(args...)) {    \
+      using cudart_func = decltype(__name(args...))(*)(Args...);    \
       std::call_once(cudart_dso_flag, GetCudartDsoHandle,           \
                      &cudart_dso_handle);                           \
       void* p_##__name = dlsym(cudart_dso_handle, #__name);         \
-      return reinterpret_cast<cudartFunc>(p_##__name)(args...);     \
+      return reinterpret_cast<cudart_func>(p_##__name)(args...);    \
     }                                                               \
   } __name;  /* struct DynLoad__##__name */
 #else
 #define DYNAMIC_LOAD_CUDART_WRAP(__name)                            \
   struct DynLoad__##__name {                                        \
     template <typename... Args>                                     \
-    cudaError_t operator()(Args... args) {                          \
+    auto operator()(Args... args) -> decltype(__name(args...)) {    \
       return __name(args...);                                       \
     }                                                               \
   } __name;  /* struct DynLoad__##__name */
-#endif
-
-#ifdef PADDLE_USE_DSO
-  struct DynLoad__cudaGetErrorString {
-    template <typename... Args>
-    const char* operator()(Args... args) {
-      typedef const char* (*cudaFunc)(Args...);
-      std::call_once(cudart_dso_flag, GetCudartDsoHandle,
-                     &cudart_dso_handle);
-      void* p_func = dlsym(cudart_dso_handle, "cudaGetErrorString");
-      return reinterpret_cast<cudaFunc>(p_func)(args...);
-    }
-  } cudaGetErrorString;  /* struct DynLoad__cudaGetErrorString */
-#else
-struct DynLoad__cudaGetErrorString {
-  template <typename... Args>
-  const char* operator()(Args... args) {
-    return cudaGetErrorString(args...);
-  }
-} cudaGetErrorString;  /* struct DynLoad__cudaGetErrorString */
 #endif
 
 /* include all needed cuda functions in HPPL */
@@ -152,7 +132,8 @@ struct DynLoad__cudaGetErrorString {
   __macro(cudaSetDeviceFlags)             \
   __macro(cudaGetLastError)               \
   __macro(cudaFuncSetCacheConfig)         \
-  __macro(cudaRuntimeGetVersion)
+  __macro(cudaRuntimeGetVersion)          \
+  __macro(cudaGetErrorString)
 
 CUDA_ROUTINE_EACH(DYNAMIC_LOAD_CUDART_WRAP)
 

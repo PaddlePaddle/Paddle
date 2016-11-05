@@ -49,14 +49,14 @@ static inline std::string join(const std::string& part1, const std::string& part
 static inline void GetDsoHandleFromDefaultPath(
         std::string& dso_path, void** dso_handle, int dynload_flags) {
     LOG(INFO) << "Try to find cuda library: " << dso_path
-              << "from default system path.";
+              << " from default system path.";
     // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH 
     *dso_handle = dlopen(dso_path.c_str(), dynload_flags);
     
     // DYLD_LIBRARY_PATH is disabled after Mac OS 10.11 to
     // bring System Integrity Projection (SIP), if dso_handle
     // is null, search from default package path in Mac OS.
-    #if defined(__APPLE__) or defined(__OSX__)
+    #if defined(__APPLE__) || defined(__OSX__)
     if (nullptr == *dso_handle) {
         dso_path = join("/usr/local/cuda/lib/", dso_path);
         *dso_handle = dlopen(dso_path.c_str(), dynload_flags);
