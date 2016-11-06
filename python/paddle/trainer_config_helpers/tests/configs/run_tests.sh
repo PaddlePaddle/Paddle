@@ -2,6 +2,7 @@
 cd `dirname $0`
 
 protostr=`dirname $0`/protostr
+
 files=`ls $protostr | grep -v "unitest"`
 
 ./generate_protostr.sh
