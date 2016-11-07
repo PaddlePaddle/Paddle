@@ -41,39 +41,9 @@ settings(
     learning_method=AdamOptimizer()
 )
 
-def convTrans_bn(input, channels, output_x, num_filters, imgSize, stride, name, 
-                 param_attr, bias_attr, param_attr_bn):
-    tmp =  imgSize - (output_x - 1) * stride
-    if tmp <= 1 or tmp > 5:
-        raise ValueError("convTrans input-output dimension does not fit")
-    elif tmp <= 3:
-        filter_size = tmp + 2
-        padding = 1
-    else:
-        filter_size = tmp
-        padding = 0
-        
-        
-    convTrans = img_conv_layer(input, filter_size=filter_size, 
-                   num_filters=num_filters,
-                   name=name + "_convt", num_channels=channels,
-                   act=LinearActivation(), groups=1, stride=stride, 
-                   padding=padding, bias_attr=bias_attr,
-                   param_attr=param_attr, shared_biases=True, layer_attr=None,
-                   filter_size_y=None, stride_y=None, padding_y=None, 
-                   trans=True)
-    
-    convTrans_bn = batch_norm_layer(convTrans, 
-                     act=ReluActivation(), 
-                     name=name + "_convt_bn", 
-                     bias_attr=bias_attr, 
-                     param_attr=param_attr_bn,
-                     use_global_stats=False)
-    
-    return convTrans_bn
-
 def conv_bn(input, channels, imgSize, num_filters, output_x, stride, name, 
-                 param_attr, bias_attr, param_attr_bn, bn):
+                 param_attr, bias_attr, param_attr_bn, bn, trans=False, 
+                 act=ReluActivation()):
     tmp =  imgSize - (output_x - 1) * stride
     if tmp <= 1 or tmp > 5:
         raise ValueError("conv input-output dimension does not fit")
@@ -85,19 +55,25 @@ def conv_bn(input, channels, imgSize, num_filters, output_x, stride, name,
         padding = 0
 
     print (imgSize, output_x, stride, filter_size, padding)
-        
+    
+    if trans:
+        nameApx = "_conv"
+    else:
+        nameApx = "_convt"
+    
     if bn:
         conv = img_conv_layer(input, filter_size=filter_size, 
                    num_filters=num_filters,
-                   name=name + "_conv", num_channels=channels,
+                   name=name + nameApx, num_channels=channels,
                    act=LinearActivation(), groups=1, stride=stride, 
                    padding=padding, bias_attr=bias_attr,
                    param_attr=param_attr, shared_biases=True, layer_attr=None,
-                   filter_size_y=None, stride_y=None, padding_y=None)
+                   filter_size_y=None, stride_y=None, padding_y=None, 
+                   trans=trans)
         
         conv_bn = batch_norm_layer(conv, 
-                         act=ReluActivation(), 
-                         name=name + "_conv_bn", 
+                         act=act, 
+                         name=name + nameApx + "_bn", 
                          bias_attr=bias_attr, 
                          param_attr=param_attr_bn,
                          use_global_stats=False)
@@ -106,11 +82,12 @@ def conv_bn(input, channels, imgSize, num_filters, output_x, stride, name,
     else:
         conv = img_conv_layer(input, filter_size=filter_size, 
                    num_filters=num_filters,
-                   name=name + "_conv", num_channels=channels,
-                   act=ReluActivation(), groups=1, stride=stride, 
+                   name=name + nameApx, num_channels=channels,
+                   act=act, groups=1, stride=stride, 
                    padding=padding, bias_attr=bias_attr,
                    param_attr=param_attr, shared_biases=True, layer_attr=None,
-                   filter_size_y=None, stride_y=None, padding_y=None)
+                   filter_size_y=None, stride_y=None, padding_y=None,
+                   trans=trans)
         return conv
     
 def generator(noise):
@@ -143,39 +120,46 @@ def generator(noise):
                      param_attr=param_attr_bn,
                      use_global_stats=False)
     
-    h2_bn = convTrans_bn(h1_bn, 
-                        channels=gf_dim*4, 
-                        output_x=s8,
-                        num_filters=gf_dim*2, 
-                        imgSize=s4,
-                        stride=2,
-                        name="gen_layer_h2", 
-                        param_attr=param_attr, 
-                        bias_attr=bias_attr, 
-                        param_attr_bn=param_attr_bn)
+    h2_bn = conv_bn(h1_bn, 
+                    channels=gf_dim*4, 
+                    output_x=s8,
+                    num_filters=gf_dim*2, 
+                    imgSize=s4,
+                    stride=2,
+                    name="gen_layer_h2", 
+                    param_attr=param_attr, 
+                    bias_attr=bias_attr, 
+                    param_attr_bn=param_attr_bn,
+                    bn=True,
+                    trans=True)
     
-    h3_bn = convTrans_bn(h2_bn, 
-                        channels=gf_dim*2, 
-                        output_x=s4,
-                        num_filters=gf_dim, 
-                        imgSize=s2,
-                        stride=2,
-                        name="gen_layer_h3", 
-                        param_attr=param_attr, 
-                        bias_attr=bias_attr, 
-                        param_attr_bn=param_attr_bn)
+    h3_bn = conv_bn(h2_bn, 
+                    channels=gf_dim*2, 
+                    output_x=s4,
+                    num_filters=gf_dim, 
+                    imgSize=s2,
+                    stride=2,
+                    name="gen_layer_h3", 
+                    param_attr=param_attr, 
+                    bias_attr=bias_attr, 
+                    param_attr_bn=param_attr_bn,
+                    bn=True,
+                    trans=True)
      
     
-    return convTrans_bn(h3_bn,
-                        channels=gf_dim, 
-                        output_x=s2,
-                        num_filters=c_dim, 
-                        imgSize=sample_dim,
-                        stride=2,
-                        name="gen_layer_h4", 
-                        param_attr=param_attr, 
-                        bias_attr=bias_attr, 
-                        param_attr_bn=param_attr_bn)
+    return conv_bn(h3_bn,
+                   channels=gf_dim, 
+                   output_x=s2,
+                   num_filters=c_dim, 
+                   imgSize=sample_dim,
+                   stride=2,
+                   name="gen_layer_h4", 
+                   param_attr=param_attr, 
+                   bias_attr=bias_attr, 
+                   param_attr_bn=param_attr_bn,
+                   bn=False,
+                   trans=True,
+                   act=TanhActivation())
 
 
 def discriminator(sample):
@@ -186,10 +170,12 @@ def discriminator(sample):
     of the sample is from generator and dimension 1 is the probabblity
     of the sample is from real data.
     """
-    param_attr = ParamAttr(is_static=is_generator_training)
+    param_attr = ParamAttr(is_static=is_generator_training,
+                           initial_mean=0.0,
+                           initial_std=0.02)
     bias_attr = ParamAttr(is_static=is_generator_training,
-                          initial_mean=1.0,
-                          initial_std=0)
+                          initial_mean=0.0,
+                          initial_std=0.0)
     
     param_attr_bn=ParamAttr(is_static=is_generator_training,
                            initial_mean=1.0,

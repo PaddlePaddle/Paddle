@@ -16,7 +16,7 @@ import argparse
 import itertools
 import random
 import numpy
-import sys,os
+import sys,os,gc
 from PIL import Image
 
 from paddle.trainer.config_parser import parse_config
@@ -94,10 +94,19 @@ def load_mnist_data(imageFile):
     f.close()
     return data
 
+def merge(images, size):
+    h, w = 28, 28
+    img = numpy.zeros((h * size[0], w * size[1]))
+    for idx in xrange(size[0] * size[1]):
+        i = idx % size[1]
+        j = idx // size[1]
+        img[j*h:j*h+h, i*w:i*w+w] = (images[idx, :].reshape((h, w)) + 1.0) / 2.0 * 255.0
+    return img
+
 def saveImages(images, path):
-    for i in xrange(10):
-        im = Image.fromarray(images[i, :].reshape((28, 28)) * 255.0).convert('RGB')
-        im.save(path + "/image_" + str(i) + ".png")
+    merged_img = merge(images, [8, 8])
+    im = Image.fromarray(merged_img).convert('RGB')
+    im.save(path)
     
 def get_real_samples(batch_size, data_np):
     return data_np[numpy.random.choice(data_np.shape[0], batch_size, 
@@ -124,8 +133,8 @@ def prepare_discriminator_data_batch_pos(batch_size, data_np):
     real_samples = get_real_samples(batch_size, data_np)
     labels = numpy.ones(batch_size, dtype='int32')
     inputs = api.Arguments.createArguments(2)
-    inputs.setSlotValue(0, api.Matrix.createCpuDenseFromNumpy(real_samples))
-    inputs.setSlotIds(1, api.IVector.createCpuVectorFromNumpy(labels))
+    inputs.setSlotValue(0, api.Matrix.createGpuDenseFromNumpy(real_samples))
+    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumpy(labels))
     return inputs
 
 def prepare_discriminator_data_batch_neg(generator_machine, batch_size, noise):
@@ -133,16 +142,16 @@ def prepare_discriminator_data_batch_neg(generator_machine, batch_size, noise):
     #print fake_samples.shape
     labels = numpy.zeros(batch_size, dtype='int32')
     inputs = api.Arguments.createArguments(2)
-    inputs.setSlotValue(0, api.Matrix.createCpuDenseFromNumpy(fake_samples))
-    inputs.setSlotIds(1, api.IVector.createCpuVectorFromNumpy(labels))
+    inputs.setSlotValue(0, api.Matrix.createGpuDenseFromNumpy(fake_samples))
+    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumpy(labels))
     return inputs
 
 def prepare_generator_data_batch(batch_size, noise):
     label = numpy.ones(batch_size, dtype='int32')
     #label = numpy.zeros(batch_size, dtype='int32')
     inputs = api.Arguments.createArguments(2)
-    inputs.setSlotValue(0, api.Matrix.createCpuDenseFromNumpy(noise))
-    inputs.setSlotIds(1, api.IVector.createCpuVectorFromNumpy(label))
+    inputs.setSlotValue(0, api.Matrix.createGpuDenseFromNumpy(noise))
+    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumpy(label))
     return inputs
 
 
@@ -160,7 +169,7 @@ def get_layer_size(model_conf, layer_name):
 
 
 def main():
-    api.initPaddle('--use_gpu=0', '--dot_period=10', '--log_period=100')
+    api.initPaddle('--use_gpu=1', '--dot_period=10', '--log_period=100')
     gen_conf = parse_config("gan_conf_image.py", "mode=generator_training")
     dis_conf = parse_config("gan_conf_image.py", "mode=discriminator_training")
     generator_conf = parse_config("gan_conf_image.py", "mode=generator")
@@ -169,7 +178,7 @@ def main():
     sample_dim = get_layer_size(dis_conf.model_config, "sample")
     
     data_np = load_mnist_data("./data/raw_data/train-images-idx3-ubyte")
-
+    
     # this create a gradient machine for discriminator
     dis_training_machine = api.GradientMachine.createFromConfigProto(
         dis_conf.model_config)
@@ -252,10 +261,7 @@ def main():
         
         
         fake_samples = get_fake_samples(generator_machine, batch_size, noise)
-        save_dir = "./pass_" + str(train_pass)
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        saveImages(fake_samples, save_dir)
+        saveImages(fake_samples, "train_pass%s.png" % train_pass)
     dis_trainer.finishTrain()
     gen_trainer.finishTrain()
 

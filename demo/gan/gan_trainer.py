@@ -97,32 +97,32 @@ def prepare_discriminator_data_batch(
         (numpy.zeros(batch_size / 2, dtype='int32'),
          numpy.ones(batch_size / 2, dtype='int32')), 0)
     inputs = api.Arguments.createArguments(2)
-    inputs.setSlotValue(0, api.Matrix.createCpuDenseFromNumpy(all_samples))
-    inputs.setSlotIds(1, api.IVector.createCpuVectorFromNumpy(all_labels))
+    inputs.setSlotValue(0, api.Matrix.createGpuDenseFromNumpy(all_samples))
+    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumy(all_labels))
     return inputs
 
 def prepare_discriminator_data_batch_pos(batch_size, noise_dim, sample_dim):
     real_samples = get_real_samples(batch_size, sample_dim)
     labels = numpy.ones(batch_size, dtype='int32')
     inputs = api.Arguments.createArguments(2)
-    inputs.setSlotValue(0, api.Matrix.createCpuDenseFromNumpy(real_samples))
-    inputs.setSlotIds(1, api.IVector.createCpuVectorFromNumpy(labels))
+    inputs.setSlotValue(0, api.Matrix.createGpuDenseFromNumpy(real_samples))
+    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumy(labels))
     return inputs
 
 def prepare_discriminator_data_batch_neg(generator_machine, batch_size, noise_dim, sample_dim):
     fake_samples = get_fake_samples(generator_machine, batch_size, noise_dim, sample_dim)
     labels = numpy.zeros(batch_size, dtype='int32')
     inputs = api.Arguments.createArguments(2)
-    inputs.setSlotValue(0, api.Matrix.createCpuDenseFromNumpy(fake_samples))
-    inputs.setSlotIds(1, api.IVector.createCpuVectorFromNumpy(labels))
+    inputs.setSlotValue(0, api.Matrix.createGpuDenseFromNumpy(fake_samples))
+    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumy(labels))
     return inputs
 
 def prepare_generator_data_batch(batch_size, dim):
     noise = numpy.random.normal(size=(batch_size, dim)).astype('float32')
     label = numpy.ones(batch_size, dtype='int32')
     inputs = api.Arguments.createArguments(2)
-    inputs.setSlotValue(0, api.Matrix.createCpuDenseFromNumpy(noise))
-    inputs.setSlotIds(1, api.IVector.createCpuVectorFromNumpy(label))
+    inputs.setSlotValue(0, api.Matrix.createGpuDenseFromNumpy(noise))
+    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumy(label))
     return inputs
 
 
@@ -140,7 +140,7 @@ def get_layer_size(model_conf, layer_name):
 
 
 def main():
-    api.initPaddle('--use_gpu=0', '--dot_period=100', '--log_period=10000')
+    api.initPaddle('--use_gpu=1', '--dot_period=100', '--log_period=10000')
     gen_conf = parse_config("gan_conf.py", "mode=generator_training")
     dis_conf = parse_config("gan_conf.py", "mode=discriminator_training")
     generator_conf = parse_config("gan_conf.py", "mode=generator")
