@@ -531,3 +531,62 @@ void hl_CMRNorm_backward(size_t frameCnt, const real* inV,
            height, width, sizeX, alpha, beta, inDiff);
   CHECK_SYNC("hl_CMRNorm_backward");
 }
+
+__global__ void maxoutFpCompute(size_t nthreads, const real * inData,
+                                real * outData, int* idData, 
+                                size_t size, size_t featLen, size_t groups) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if(index < nthreads) {
+    size_t batch_idx = index / size;
+    size_t i = index % size;
+    size_t channel_idx = i / featLen;
+    size_t feat_idx = i % featLen;
+    size_t data_idx = (batch_idx * size + channel_idx * featLen) * groups + feat_idx;
+    real max = inData[data_idx];
+    int maxId = 0;
+    for (size_t g = 1; g < groups; ++g) {
+      real tmp = inData[data_idx + g * featLen];
+      if (tmp > max) {
+        max = tmp;
+        maxId = g;
+      }
+    }
+    outData[index] = max;
+    idData[index] = maxId;
+  }
+}
+
+void hl_maxout_forward(const real* inData, real* outData,
+                       int* idData, size_t batchSize, size_t size,
+                       size_t featLen, size_t groups) {
+  int num_kernels = size * batchSize;
+  int blocks = (num_kernels + 1024 - 1) / 1024;
+  maxoutFpCompute<<< blocks, 1024, 0, STREAM_DEFAULT>>>(
+    num_kernels, inData, outData, idData, size, featLen, groups);
+  CHECK_SYNC("hl_maxout_forward failed");
+}
+
+__global__ void maxoutBpCompute(size_t nthreads, real* inGrad,
+                                const real* outGrad, const int* idData,
+                                size_t size, size_t featLen, size_t groups) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if(index < nthreads) {
+    size_t batch_idx = index / size;
+    size_t i = index % size;
+    size_t channel_idx = i / featLen;
+    size_t feat_idx = i % featLen;
+    size_t newIndex = batch_idx * size;
+    size_t gradIdx = (channel_idx * groups + (idData + newIndex)[i]) * featLen + feat_idx;
+    (inGrad + newIndex * groups)[gradIdx] += (outGrad + newIndex)[i];
+  }
+}
+
+void hl_maxout_backward(real* inGrad, const real* outGrad,
+                        const int* idData, size_t batchSize, size_t size,
+                        size_t featLen, size_t groups) {
+  int num_kernels = size * batchSize;
+  int blocks = (num_kernels + 1024 - 1) / 1024;
+  maxoutBpCompute<<< blocks, 1024, 0, STREAM_DEFAULT >>>(
+    num_kernels, inGrad, outGrad, idData, size, featLen, groups);
+  CHECK_SYNC("hl_maxout_backward failed");
+}

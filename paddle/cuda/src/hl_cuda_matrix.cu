@@ -20,6 +20,7 @@ limitations under the License. */
 #include "hl_sequence.h"
 #include "paddle/utils/Logging.h"
 #include "hl_device_functions.cuh"
+#include "hl_gpu_matrix_kernel.cuh"
 
 DEFINE_MATRIX_UNARY_OP(Zero, a = 0);
 DEFINE_MATRIX_TERNARY_PARAMETER_OP(_add, TWO_PARAMETER, c = p1*a + p2*b);
@@ -47,7 +48,7 @@ void hl_matrix_add(real *A_d,
   CHECK_SYNC("hl_matrix_add failed");
 }
 
-#ifdef HPPL_TYPE_DOUBLE
+#ifdef PADDLE_TYPE_DOUBLE
     #define THRESHOLD   128
 #else
     #define THRESHOLD   64
@@ -102,7 +103,7 @@ void subMaxAndExp(real* I,
       val = -THRESHOLD;
     }
     I[nextIdx] = val;
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
     O[nextIdx] = __expf(val);
 #else
     O[nextIdx] = exp(val);
@@ -672,4 +673,90 @@ void hl_cossim_derivative(real* grad,
     (grad, output, prevOutX, prevOutY, prevGradX, prevGradY, width,
         input1_height, input2_height, scale);
   CHECK_SYNC("hl_cossim_derivate failed");
+}
+
+__global__ void KeMatrixAddSharedBias(real* A,
+                                      real* B,
+                                      const int channel,
+                                      const int M,
+                                      const int N,
+                                      real scale) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int dim = N / channel;
+  if (index < M * N) {
+    int i = index % N;
+    i = i / dim; 
+    A[index] += scale * B[i];
+  }
+}
+
+void hl_matrix_add_shared_bias(real* A_d,
+                               real* B_d,
+                               const int channel,
+                               const int dimM,
+                               const int dimN,
+                               real scale) {
+  const int blocks = 512;
+  const int grids = DIVUP(dimM * dimN, blocks);
+  KeMatrixAddSharedBias<<<grids, blocks, 0, STREAM_DEFAULT>>>
+    (A_d, B_d, channel, dimM, dimN, scale);
+  CHECK_SYNC("hl_matrix_add_shared_bias failed");
+}
+
+
+template <int blockSize>
+__global__ void KeMatrixCollectSharedBias(real *B,
+                                          real *A,
+                                          const int channel,
+                                          const int M,
+                                          const int N,
+                                          const int dim,
+                                          const int limit,
+                                          real scale) {
+  if (dim < limit) { 
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < channel) {
+      real sum = 0.0;
+      for (int i = 0; i < M; ++i) {
+        for (int j = 0; j < dim; ++j) {
+          sum += A[i * N + index * dim + j];
+        }
+      }
+      B[index] += scale * sum;
+    }
+  } else {
+    const int tid = threadIdx.x;
+    const int bid = blockIdx.x;
+    __shared__ real smem[blockSize];
+    real sum = 0.0;
+    for (int j = 0; j < ((dim * M + blockSize - 1) / blockSize); ++j) {
+      int n = j * blockSize + tid;
+      int m = n / dim;
+      int w = n % dim;
+      smem[tid] =  (m < M && w < dim) ? A[m * N + bid * dim + w] : 0.0;
+      __syncthreads();
+      simpleReduce(smem, tid, blockSize);
+      sum += smem[0];
+    }
+    if (tid == 0) {
+      B[bid] += scale * sum;
+    }
+  }
+}
+
+void hl_matrix_collect_shared_bias(real* B_d,
+                                   real* A_d,
+                                   const int channel,
+                                   const int dimM,
+                                   const int dimN,
+                                   real scale) {
+  const int dim = dimN / channel;
+  const int blocks = 256;
+  const int limit = 64;
+  int grids = (dimM * dim) < limit ? DIVUP(channel, blocks) : channel;
+
+  KeMatrixCollectSharedBias<blocks>
+      <<< grids, blocks, 0, STREAM_DEFAULT>>>
+      (B_d, A_d, channel, dimM, dimN, dim, limit, scale);
+  CHECK_SYNC("hl_matrix_collect_shared_bias failed");
 }

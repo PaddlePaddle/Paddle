@@ -4,3 +4,5 @@ build/
 
 .vscode
 .idea
+.project
+.pydevproject

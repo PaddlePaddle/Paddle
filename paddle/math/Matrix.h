@@ -253,7 +253,7 @@ public:
     LOG(FATAL) << "copy data from int vector only available on CpuMatrix.";
   }
 
-  virtual void copyByRowIndex(Matrix& b, IVector& rowIndex) {
+  virtual void copyByRowIndex(Matrix& b, const IVector& rowIndex) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -328,6 +328,20 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual MatrixPtr getInverse() {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  /**
+   * @brief  inverse.
+   *
+   * if allocate matInv's memory outside, then set memAlloc as false;
+   * else set as true.
+   */
+  virtual void inverse(MatrixPtr matInv, bool memAlloc) {
+    LOG(FATAL) << "Not implemented";
+  }
+
 public:
   /// Only set all variables to 0 or NULL but not free them.
   virtual void clear() {
@@ -343,9 +357,33 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void addSharedBias(Matrix& b, real scale) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void addBias(Matrix& b, real scale, bool sharedBias) {
+    if (!sharedBias) {
+      addBias(b, scale);
+    } else {
+      addSharedBias(b, scale);
+    }
+  }
+
   /// add each sample from a to this.
   virtual void collectBias(Matrix& a, real scale) {
     LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void collectSharedBias(Matrix& a, real scale) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void collectBias(Matrix& a, real scale, bool sharedBias) {
+    if (!sharedBias) {
+      collectBias(a, scale);
+    } else {
+      collectSharedBias(a, scale);
+    }
   }
 
   virtual void sequenceAvgForward(Matrix& a, const IVector& startsPos,
@@ -493,7 +531,31 @@ public:
     LOG(FATAL) << "Not implemeted";
   }
 
+  /**
+   * set the max of each column of this to mat
+   */
   virtual void colMax(Matrix& max) { LOG(FATAL) << "not implemented"; }
+
+  /**
+   * @brief Get the top k elements of each column of this matrix.
+   *
+   * The row ids and values of these elements are stored in
+   * maxIds and max respectively. where k is the size of maxIds.
+   * And note that the top k elements are not sorted.
+   */
+  virtual void colMax(IVector& maxIds, Matrix& maxVal) {
+    LOG(FATAL) << "not implemented";
+  }
+
+  virtual void maxoutForward(Matrix& a, IVector& id, size_t channels,
+                             size_t groups) {
+    LOG(FATAL) << "not implemented";
+  }
+
+  virtual void maxoutBackward(Matrix& a, IVector& id, size_t channels,
+                              size_t groups) {
+    LOG(FATAL) << "not implemented";
+  }
 
   virtual void rowMaxId(IVector& maxIds) { LOG(FATAL) << "Not implemented"; }
 
@@ -501,8 +563,8 @@ public:
    * @brief Get the top k elements of each row of this matrix.
    *
    * The column ids and values of these elements are stored in
-   * maxIds and max respectively. Note that the top k
-   * elements are not sorted.
+   * maxIds and max respectively. where k is the size of maxIds.
+   * And note that the top k elements are not sorted.
    */
   virtual void rowMax(IVector& maxIds, Matrix& max) {
     LOG(FATAL) << "Not implemented";
@@ -979,7 +1041,7 @@ public:
 
   void copyFrom(const IVector& src);
 
-  void copyByRowIndex(Matrix& b, IVector& rowIndex);
+  void copyByRowIndex(Matrix& b, const IVector& rowIndex);
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
 
@@ -995,8 +1057,12 @@ public:
   MatrixPtr getTranspose();
   void transpose(MatrixPtr matTrans, bool memAlloc);
 
+  MatrixPtr getInverse();
+  void inverse(MatrixPtr matInv, bool memAlloc);
+
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
+  void addSharedBias(Matrix& b, real scale);
 
   /**
    * @code
@@ -1004,6 +1070,7 @@ public:
    * @endcode
    */
   void collectBias(Matrix& a, real scale);
+  void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
 
@@ -1085,6 +1152,9 @@ public:
   void rowMax(Matrix& max);
   void rowMax(IVector& maxIds, Matrix& max);
   void colMax(Matrix& max);
+  void colMax(IVector& maxIds, Matrix& max);
+  void maxoutForward(Matrix& a, IVector& id, size_t channels, size_t groups);
+  void maxoutBackward(Matrix& a, IVector& id, size_t channels, size_t groups);
 
   void oneHotCrossEntropy(Matrix& output, IVector& label);
   void oneHotCrossEntropyBp(Matrix& outputV, IVector& label);
@@ -1229,6 +1299,9 @@ public:
   MatrixPtr getTranspose();
   void transpose(MatrixPtr matTrans, bool memAlloc);
 
+  MatrixPtr getInverse();
+  void inverse(MatrixPtr matInv, bool memAlloc);
+
   void copyFrom(const Matrix& src);
 
   void copyFrom(const Matrix& src, hl_stream_t stream);
@@ -1241,7 +1314,7 @@ public:
 
   void copyFrom(CpuSparseMatrix& src);
 
-  void copyByRowIndex(Matrix& b, IVector& rowIndex);
+  void copyByRowIndex(Matrix& b, const IVector& rowIndex);
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
 
@@ -1314,9 +1387,11 @@ public:
 public:
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
+  void addSharedBias(Matrix& b, real scale);
 
   /// add each sample of a to this.
   void collectBias(Matrix& a, real scale);
+  void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
 
@@ -1395,6 +1470,9 @@ public:
   void rowMax(Matrix& max);
   void rowMax(IVector& maxIds, Matrix& maxVal);
   void colMax(Matrix& max);
+  void colMax(IVector& maxIds, Matrix& maxVal);
+  void maxoutForward(Matrix& a, IVector& id, size_t channels, size_t groups);
+  void maxoutBackward(Matrix& a, IVector& id, size_t channels, size_t groups);
   void rowNormalizeL1(Matrix& out);
 
   void oneHotCrossEntropy(Matrix& output, IVector& label);

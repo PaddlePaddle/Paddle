@@ -170,6 +170,15 @@ message BlockExpandConfig {
   required uint32 img_size_y = 11;
 }
 
+message MaxOutConfig {
+  required uint32 channels = 1;
+  required uint32 groups = 2;
+
+  // The size of input feature map.
+  required uint32 img_size_x = 3;
+  required uint32 img_size_y = 4;
+}
+
 message ProjectionConfig {
   required string type = 1;
   required string name = 2;
@@ -225,6 +234,7 @@ message LayerInputConfig {
   // If the input layer has multi-output.
   // Set the argument name.
   optional string input_layer_argument = 9;
+  optional MaxOutConfig maxout_conf = 10;
 }
 
 message LayerConfig {
@@ -245,7 +255,7 @@ sinclude(`ModelConfigLayer.proto.m4')
   // (which is how convnets are usually trained). Setting this to
   // false will untie the biases, yielding a separate bias for
   // every location at which the filter is applied.
-  optional bool shared_biases = 8;
+  optional bool shared_biases = 8 [default = false];
 
   // Valid values are ones that divide the area of the output
   // grid in this convolutional layer. For example if this layer
@@ -369,6 +379,18 @@ sinclude(`ModelConfigLayer.proto.m4')
 
   // use to compute moving mean and variance.
   optional real moving_average_fraction = 47 [default = 0.9];
+
+  // bias size
+  optional uint32 bias_size = 48 [default = 0];
+
+  // this parameter can be used as a user-defined parameter when necessary, 
+  // without changing the proto file.
+  // e.g., when a new layer with a user-defined parameter is implemented, 
+  // it can be used to pass that parameter, without modifying the proto file.
+  // string type is used for flexibility: different types can be converted
+  // to string and reinterpreted in the user's own layer implementation.  
+  optional string user_arg = 49;
+
 }
 
 message EvaluatorConfig {
