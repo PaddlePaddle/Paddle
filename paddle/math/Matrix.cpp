@@ -3912,7 +3912,7 @@ void CpuMatrix::bilinearForward(const Matrix& in,
   CHECK(dynamic_cast<const CpuMatrix*>(&in));
 
   size_t outputW = getWidth();
-  size_t outputH = getHeight();
+  size_t batchSize = getHeight();
   size_t inputW = in.getWidth();
   size_t inputH = in.getHeight();
   (void)(inputH);
@@ -3928,7 +3928,7 @@ void CpuMatrix::bilinearForward(const Matrix& in,
   if (inImgH == outImgH && inImgW == outImgW) {
     this->copyFrom(in);
   } else {
-    for (size_t k = 0; k < outputH; ++k) {   // loop for batches
+    for (size_t k = 0; k < batchSize; ++k) {   // loop for batches
       for (size_t i = 0; i < outImgH; ++i) {  // loop for images
         size_t h = ratioH * i;
         size_t hid = (h < inImgH - 1) ? 1 : 0;
@@ -3967,7 +3967,7 @@ void CpuMatrix::bilinearBackward(const Matrix& out,
   size_t inputW = getWidth();
   size_t inputH = getHeight();
   size_t outputW = out.getWidth();
-  size_t outputH = out.getHeight();
+  size_t batchSize = out.getHeight();
   (void)(inputH);
 
   real* inGrad = getData();
@@ -3981,7 +3981,7 @@ void CpuMatrix::bilinearBackward(const Matrix& out,
   if (inImgH == outImgH && inImgW == outImgW) {
     this->addBias(const_cast<Matrix&>(out), 1.f);
   } else {
-    for (size_t k = 0; k < outputH; ++k) {   // loop for batches
+    for (size_t k = 0; k < batchSize; ++k) {   // loop for batches
       for (size_t i = 0; i < outImgH; ++i) {  // loop for images
         size_t h = ratioH * i;
         size_t hid = (h < inImgH - 1) ? 1 : 0;
