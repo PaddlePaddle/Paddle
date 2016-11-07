@@ -16,6 +16,7 @@ from paddle.trainer.PyDataProvider2 import *
 
 UNK_IDX = 0
 
+
 def initializer(settings, dictionary, **kwargs):
     settings.word_dict = dictionary
     settings.input_types = [

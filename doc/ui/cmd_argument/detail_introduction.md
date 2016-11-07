@@ -163,6 +163,10 @@
   - Choose path to dynamic load NVIDIA CUDA library, for instance, /usr/local/cuda/lib64. [Default]: LD_LIBRARY_PATH
   - type: string (default: "", null)
 
+* `--cudnn_conv_workspace_limit_in_mb`
+  - Specify cuDNN max workspace limit, in units MB, 4096MB=4GB by default. 
+  - type: int32 (default: 4096MB=4GB)
+
 ## NLP: RNN/LSTM/GRU
 * `--rnn_use_batch`
   - Whether to use batch method for calculation in simple RecurrentLayer.

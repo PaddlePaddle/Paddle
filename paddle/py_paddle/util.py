@@ -79,6 +79,20 @@ class __ParameterCallbackWrapper__(swig_paddle.UpdateCallback):
         else:
             return __ParameterCallbackWrapper__(callback).__disown__()
 
+def __arguments_to_numpy__(i, arg):
+    assert isinstance(arg, swig_paddle.Arguments)
+    value = arg.getSlotValue(i)
+    if value is not None:
+        assert isinstance(value, swig_paddle.Matrix)
+        value = value.copyToNumpyMat()
+        ids = arg.getSlotIds(i)
+    if ids is not None:
+        assert isinstance(ids, swig_paddle.IVector)
+        ids = ids.copyToNumpyArray()
+    return {
+        "value": value,
+        "id": ids
+    }
 
 def __monkeypatch_gradient_machine__():
     """
@@ -88,20 +102,6 @@ def __monkeypatch_gradient_machine__():
     swig_paddle.GradientMachine.loadFromConfigFile = \
         staticmethod(loadGradientMachine)
 
-    def __arguments_to_numpy__(i, arg):
-        assert isinstance(arg, swig_paddle.Arguments)
-        value = arg.getSlotValue(i)
-        if value is not None:
-            assert isinstance(value, swig_paddle.Matrix)
-            value = value.copyToNumpyMat()
-        ids = arg.getSlotIds(i)
-        if ids is not None:
-            assert isinstance(ids, swig_paddle.IVector)
-            ids = ids.copyToNumpyArray()
-        return {
-            "value": value,
-            "id": ids
-        }
 
     def __matrix_to_numpy__(m):
         if isinstance(m, swig_paddle.Matrix):
@@ -126,7 +126,7 @@ def __monkeypatch_gradient_machine__():
         :type paramTypes: list of int
         :return: paddle.GradientMachine
         """
-        assert isinstance(protoObj, paddle.proto.ModelConfig_pb2.ModelConfig)
+        assert isinstance(protoObj, paddle.proto.ModelConfig)
         return swig_paddle.GradientMachine.createByConfigProtoStr(
             protoObj.SerializeToString(), createMode, paramTypes)
 
@@ -460,12 +460,28 @@ def __monkey_patch_protobuf_objects__():
         """
 
         assert isinstance(protoObj,
-                          paddle.proto.TrainerConfig_pb2.OptimizationConfig)
+                          paddle.proto.OptimizationConfig)
         return swig_paddle.OptimizationConfig.createFromProtoString(
             protoObj.SerializeToString())
 
     swig_paddle.OptimizationConfig.createFromProto = staticmethod(
         OptimizationConfig_createFromProto)
+
+    def TrainerConfig_createFromProto(protoObj):
+        """
+        Create a new paddle.TrainerConfig from
+        proto.OptimizationConfig
+
+        :param protoObj: proto.TrainerConfig
+        :return: paddle.TrainerConfig
+        """
+        assert isinstance(protoObj,
+                          paddle.proto.TrainerConfig)
+        return swig_paddle.TrainerConfig.createFromProtoString(
+            protoObj.SerializeToString())
+
+    swig_paddle.TrainerConfig.createFromProto = staticmethod(
+        TrainerConfig_createFromProto)
 
 
 def __monkey_patch_parameter__():
@@ -483,9 +499,66 @@ def __monkey_patch_parameter__():
     swig_paddle.Parameter.getBufs = getBufs
 
 
+def __monkey_patch_trainer__():
+    swig_paddle.Trainer.__create__ = staticmethod(swig_paddle.Trainer.create)
+
+    def Trainer_create(config, model=None):
+        """
+        Create a trainer for model with TrainerCOnfig trainer_config
+        trainer_config.model_config will be ignored when model is supplied.
+        Trainer.trainOneBatch() and Trainer.forwardOneBatch() can be used only
+        when trainer_config.data_config is set.
+
+        A typical usage for Trainer is:
+        .. code-block:: python
+           trainer = Trainer.create(trainer_config, model)
+           for p in xrange(num_passes)
+               while True:
+                   data = get_next_batch(batch_size)
+                   if not data:
+                       break
+                   trainer.trainOneDataBatch(batch_size, data)
+               trainer.finishTrainPass()
+           trainer.finishTrain()
+
+        The trainer will take care of logging, model saving, distributed
+        training, etc.
+
+        :param config: trainer configuration
+        :type config: paddle.proto.TrainerConfig
+        :param model: the model to be trained
+        :type model: swig_paddle.GradientMachine
+        :return: a trainer
+        :rtype swig_paddle.Trainer
+
+        """
+        assert isinstance(config, paddle.proto.TrainerConfig)
+        if model is not None:
+            assert isinstance(model, swig_paddle.GradientMachine)
+        return swig_paddle.Trainer.__create__(
+            swig_paddle.TrainerConfig.createFromProto(config), model)
+    swig_paddle.Trainer.create = staticmethod(Trainer_create)
+
+    swig_paddle.Trainer.__getForwardOutput__ = \
+        swig_paddle.Trainer.getForwardOutput
+
+    def getForwardOutput(self):
+        """
+        Get the netword outputs from the previous trainOneBatch(),
+        trainOneDataBatch(), testOneDataPatch(), or forwardOneBatch() call.
+
+        :return: list of dictionary with keys ['id', 'value'], each value is a
+                 numpy.ndarray.
+        """
+        outArgs = self.__getForwardOutput__()
+        return [__arguments_to_numpy__(i, outArgs) for i in xrange(
+            outArgs.getSlotNum())]
+
+    swig_paddle.Trainer.getForwardOutput = getForwardOutput
+
 def monkeypatches():
     patches = [__monkeypatch_init_paddle__, __monkeypatch_gradient_machine__,
                __monkey_patch_protobuf_objects__,
-               __monkey_patch_parameter__]
+               __monkey_patch_parameter__, __monkey_patch_trainer__]
     for patch in patches:
         patch()

@@ -328,6 +328,20 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual MatrixPtr getInverse() {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  /**
+   * @brief  inverse.
+   *
+   * if allocate matInv's memory outside, then set memAlloc as false;
+   * else set as true.
+   */
+  virtual void inverse(MatrixPtr matInv, bool memAlloc) {
+    LOG(FATAL) << "Not implemented";
+  }
+
 public:
   /// Only set all variables to 0 or NULL but not free them.
   virtual void clear() {
@@ -343,9 +357,33 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void addSharedBias(Matrix& b, real scale) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void addBias(Matrix& b, real scale, bool sharedBias) {
+    if (!sharedBias) {
+      addBias(b, scale);
+    } else {
+      addSharedBias(b, scale);
+    }
+  }
+
   /// add each sample from a to this.
   virtual void collectBias(Matrix& a, real scale) {
     LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void collectSharedBias(Matrix& a, real scale) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void collectBias(Matrix& a, real scale, bool sharedBias) {
+    if (!sharedBias) {
+      collectBias(a, scale);
+    } else {
+      collectSharedBias(a, scale);
+    }
   }
 
   virtual void sequenceAvgForward(Matrix& a, const IVector& startsPos,
@@ -1035,8 +1073,12 @@ public:
   MatrixPtr getTranspose();
   void transpose(MatrixPtr matTrans, bool memAlloc);
 
+  MatrixPtr getInverse();
+  void inverse(MatrixPtr matInv, bool memAlloc);
+
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
+  void addSharedBias(Matrix& b, real scale);
 
   /**
    * @code
@@ -1044,6 +1086,7 @@ public:
    * @endcode
    */
   void collectBias(Matrix& a, real scale);
+  void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
 
@@ -1286,6 +1329,9 @@ public:
   MatrixPtr getTranspose();
   void transpose(MatrixPtr matTrans, bool memAlloc);
 
+  MatrixPtr getInverse();
+  void inverse(MatrixPtr matInv, bool memAlloc);
+
   void copyFrom(const Matrix& src);
 
   void copyFrom(const Matrix& src, hl_stream_t stream);
@@ -1371,9 +1417,11 @@ public:
 public:
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
+  void addSharedBias(Matrix& b, real scale);
 
   /// add each sample of a to this.
   void collectBias(Matrix& a, real scale);
+  void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
 
