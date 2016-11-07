@@ -20,7 +20,11 @@ namespace paddle {
 
 REGISTER_LAYER(bilinear_interp, BilinearInterpLayer);
 
-size_t BilinearInterpLayer::getDataDimSize() {
+size_t BilinearInterpLayer::getSize() {
+  inImgH_ = inputLayers_[0]->getOutput().getFrameHeight();
+  inImgW_ = inputLayers_[0]->getOutput().getFrameWidth();
+  CHECK(inImgH_ > 0 && inImgW_ > 0);
+
   getOutput().setFrameHeight(outImgH_);
   getOutput().setFrameWidth(outImgW_);
   return outImgH_ * outImgW_ * numChannels_;
@@ -34,20 +38,12 @@ bool BilinearInterpLayer::init(const LayerMap& layerMap,
   CHECK_EQ(1, config_.inputs_size());
 
   const BilinearInterpConfig& conf = config_.inputs(0).bilinear_interp_conf();
-  inImgH_ = inputLayers_[0]->getOutput().getFrameHeight();
-  inImgW_ = inputLayers_[0]->getOutput().getFrameWidth();
-  if (inImgH_ == 0) {
-    inImgH_ = conf.img_size_y();
-  }
-  if (inImgW_ == 0) {
-    inImgW_ = conf.img_size_x();
-  }
+
   outImgH_ = conf.out_size_y();
   outImgW_ = conf.out_size_x();
   numChannels_ = conf.num_channels();
 
   CHECK(outImgH_ > 0 && outImgW_ > 0);
-  CHECK(inImgH_ > 0 && inImgW_ > 0);
   CHECK(numChannels_);
 
   return true;
@@ -55,8 +51,9 @@ bool BilinearInterpLayer::init(const LayerMap& layerMap,
 
 void BilinearInterpLayer::forward(PassType passType) {
   Layer::forward(passType);
+
   size_t batchSize = getInput(0).getBatchSize();
-  size_t size = getDataDimSize();
+  size_t size = getSize();
   {
     REGISTER_TIMER_INFO("FwResetTimer", getName().c_str());
     resetOutput(batchSize, size);

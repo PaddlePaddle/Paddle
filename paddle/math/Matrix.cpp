@@ -1197,12 +1197,18 @@ void GpuMatrix::bilinearForward(const Matrix& in,
   real* outData = getData();
   const real* inData  = in.getData();
 
+  real ratioH = (outImgH > 1) ?
+      static_cast<real>(inImgH - 1) / (outImgH - 1) : 0.f;
+  real ratioW = (outImgW > 1) ?
+      static_cast<real>(inImgW - 1) / (outImgW - 1) : 0.f;
+
   if (inImgH == outImgW && inImgW == outImgW) {
     this->copyFrom(in);
   } else {
-    hl_bilinear_forward(inData, inImgH, inImgW,
-      inputH, inputW, outData, outImgH, outImgW,
-      outputH, outputW, numChannels);
+    hl_bilinear_forward(
+      inData, inImgH, inImgW, inputH, inputW, outData,
+      outImgH, outImgW, outputH, outputW, numChannels,
+      ratioH, ratioW);
   }
 }
 
@@ -1222,12 +1228,18 @@ void GpuMatrix::bilinearBackward(const Matrix& out,
   real* inGrad = getData();
   const real* outGrad = out.getData();
 
+  real ratioH = (outImgH > 1) ?
+      static_cast<real>(inImgH - 1) / (outImgH - 1) : 0.f;
+  real ratioW = (outImgW > 1) ?
+      static_cast<real>(inImgW - 1) / (outImgW - 1) : 0.f;
+
   if (outImgH == inImgH && outImgW == inImgW) {
     this->copyFrom(out);
   } else {
-    hl_bilinear_backward(inGrad, inImgH, inImgW,
-      inputH, inputW, outGrad, outImgH, outImgW,
-      outputH, outputW, numChannels);
+    hl_bilinear_backward(
+      inGrad, inImgH, inImgW, inputH, inputW, outGrad,
+      outImgH, outImgW, outputH, outputW, numChannels,
+      ratioH, ratioW);
   }
 }
 

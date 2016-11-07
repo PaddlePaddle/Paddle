@@ -16,11 +16,8 @@ conv = img_conv_layer(input=data,
                       bias_attr=True)
 
 bilinear = bilinear_interp_layer(input=conv,
-                                 img_size_x=32,
-                                 img_size_y=32,
                                  out_size_x=64,
-                                 out_size_y=64,
-                                 num_channels=16)
+                                 out_size_y=64)
 
 pool = img_pool_layer(input=bilinear,
                       num_channels=4,

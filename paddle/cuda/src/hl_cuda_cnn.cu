@@ -547,29 +547,32 @@ __global__ void KeBilinearInterpFw(const size_t nthreads,
                                    const real ratioH,
                                    const real ratioW) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  if(tid < nthreads) {
-    int outIdH = tid / (outputW / numChannels);
-    int outIdW = tid % (outputW / numChannels);
+  if (tid < nthreads) {
+    int outIdH = tid / outputW;
+    int outIdW = tid % outputW;
+    int inImgSize = inputW / numChannels;
+    int outImgSize = outputW / numChannels;
+    int channelId = outIdW / outImgSize;
 
-    int inIdH = ratioH * (outIdW / outImgW);
-    int hId = (inIdH < inImgH - 1) ? 1 : 0;
-    real hlambda = ratioH * (outIdW / outImgW) - inIdH;
+    int outImgIdy = (outIdW % outImgSize) / outImgW;
+    int inImgIdy = ratioH * outImgIdy;
+    int hId = (inImgIdy < inImgH - 1) ? 1 : 0;
+    real h1lambda = ratioH * outImgIdy - inImgIdy;
+    real h2lambda = 1.f - h1lambda;
 
-    int inIdW = ratioW * (tid % outImgW);
-    int wId = (inIdW < inImgW - 1) ? 1 : 0;
-    real wlambda = ratioW * (tid % outImgW) - inIdW;
+    int outImgIdx = tid % outImgW;
+    int inImgIdx = ratioW * outImgIdx;
+    int wId = (inImgIdx < inImgW - 1) ? 1 : 0;
+    real w1lambda = ratioW * outImgIdx - inImgIdx;
+    real w2lambda = 1.f - w1lambda;
 
-    const real* inPos = &in[outIdH * inputW + inIdH * inImgW + inIdW];
-    real* outPos = &out[outIdH * outputW + outIdW];
-    for (int c = 0; c < numChannels; ++c) {
-      // bilinear interpolation
-      outPos[0] = (1.f - hlambda) *
-        ((1.f - wlambda) * inPos[0] + wlambda * inPos[wId]) + 
-        hlambda * ((1.f - wlambda) * inPos[hId * inImgW] +
-        wlambda * inPos[hId * inImgW + wId]);
-      inPos += inImgH * inImgW;
-      outPos += outImgH * outImgW;
-    }
+    const real* inPos =
+      &in[outIdH * inputW + channelId * inImgSize + inImgIdy * inImgW + inImgIdx];
+
+    // bilinear interpolation
+    out[outIdH * outputW + outIdW] =
+      h2lambda * (w2lambda * inPos[0]            + w1lambda * inPos[wId]) + 
+      h1lambda * (w2lambda * inPos[hId * inImgW] + w1lambda * inPos[hId * inImgW + wId]);
   }
 }
 
@@ -583,14 +586,11 @@ void hl_bilinear_forward(const real* inData,
                          const size_t outImgW,
                          const size_t outputH,
                          const size_t outputW,
-                         const size_t numChannels) {
-  int threadNum = outputH * outImgH * outImgW;
+                         const size_t numChannels,
+                         const real ratioH,
+                         const real ratioW) {
+  int threadNum = outputH * outputW;
   int blocks = (threadNum + 1024 - 1) / 1024;
-
-  real ratioH = (outImgH > 1) ?
-      static_cast<float>(inImgH - 1) / (outImgH - 1) : 0.f;
-  real ratioW = (outImgW > 1) ?
-      static_cast<float>(inImgW - 1) / (outImgW - 1) : 0.f;
 
   KeBilinearInterpFw<<< blocks, 1024, 0, STREAM_DEFAULT>>>(
     threadNum, inData, inImgH, inImgW, inputH, inputW, outData,
@@ -613,29 +613,32 @@ __global__ void KeBilinearInterpBw(const size_t nthreads,
                                    const real ratioH,
                                    const real ratioW) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid < nthreads) {
+    int outIdH = tid / outputW;
+    int outIdW = tid % outputW;
+    int inImgSize = inputW / numChannels;
+    int outImgSize = outputW / numChannels;
+    int channelId = outIdW / outImgSize;
 
-  if(tid < nthreads) {
-    int outIdH = tid / (outputW / numChannels);
-    int outIdW = tid % (outputW / numChannels);
+    int outImgIdy = (outIdW % outImgSize) / outImgW;
+    int inImgIdy = ratioH * outImgIdy;
+    int hId = (inImgIdy < inImgH - 1) ? 1 : 0;
+    real h1lambda = ratioH * outImgIdy - inImgIdy;
+    real h2lambda = 1.f - h1lambda;
 
-    int inIdH = ratioH * (outIdW / outImgW);
-    int hId = (inIdH < inImgH - 1) ? 1 : 0;
-    real hlambda = ratioH * (outIdW / outImgW) - inIdH;
+    int outImgIdx = tid % outImgW;
+    int inImgIdx = ratioW * outImgIdx;
+    int wId = (inImgIdx < inImgW - 1) ? 1 : 0;
+    real w1lambda = ratioW * outImgIdx - inImgIdx;
+    real w2lambda = 1.f - w1lambda;
 
-    int inIdW = ratioW * (tid % outImgW);
-    int wId = (inIdW < inImgW - 1) ? 1 : 0;
-    real wlambda = ratioW * (tid % outImgW) - inIdW;
-
+    real* inPos =
+      &in[outIdH * inputW + channelId * inImgSize + inImgIdy * inImgW + inImgIdx];
     const real* outPos = &out[outIdH * outputW + outIdW];
-    real* inPos = &in[outIdH * inputW + inIdH * inImgW + inIdW];
-    for (int c = 0; c < numChannels; ++c) {
-      atomicAdd(&inPos[0], (1.f - hlambda) * (1.f - wlambda) * outPos[0]);
-      atomicAdd(&inPos[wId], (1.f - hlambda) * wlambda * outPos[0]);
-      atomicAdd(&inPos[hId * inImgW], hlambda * (1.f - wlambda) * outPos[0]);
-      atomicAdd(&inPos[hId * inImgW + wId], hlambda * wlambda * outPos[0]);
-      inPos += inImgH * inImgW;
-      outPos += outImgH * outImgW;
-    }
+    atomicAdd(&inPos[0], h2lambda * w2lambda * outPos[0]);
+    atomicAdd(&inPos[wId], h2lambda * w1lambda * outPos[0]);
+    atomicAdd(&inPos[hId * inImgW], h1lambda * w2lambda * outPos[0]);
+    atomicAdd(&inPos[hId * inImgW + wId], h1lambda * w1lambda * outPos[0]);
   }
 }
 
@@ -649,14 +652,11 @@ void hl_bilinear_backward(real* inGrad,
                           const size_t outImgW,
                           const size_t outputH,
                           const size_t outputW,
-                          const size_t numChannels) {
-  int threadNum = outputH * outImgH * outImgW;
+                          const size_t numChannels,
+                          const real ratioH,
+                          const real ratioW) {
+  int threadNum = outputH * outputW;
   int blocks = (threadNum + 1024 - 1) / 1024;
- 
-  real ratioH = (outImgH > 1) ?
-      static_cast<float>(inImgH - 1) / (outImgH - 1) : 0.f;
-  real ratioW = (outImgW > 1) ?
-      static_cast<float>(inImgW - 1) / (outImgW - 1) : 0.f;
 
   KeBilinearInterpBw<<< blocks, 1024, 0, STREAM_DEFAULT>>>(
     threadNum, inGrad, inImgH, inImgW, inputH, inputW, outGrad,

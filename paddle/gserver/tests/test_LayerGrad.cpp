@@ -40,8 +40,6 @@ TEST(Layer, BilinearInterpLayer) {
   LayerInputConfig* input = config.layerConfig.add_inputs();
   BilinearInterpConfig* bilinear = input->mutable_bilinear_interp_conf();
 
-  bilinear->set_img_size_x(32);
-  bilinear->set_img_size_y(32);
   bilinear->set_out_size_x(64);
   bilinear->set_out_size_y(64);
   bilinear->set_num_channels(4);

@@ -254,6 +254,8 @@ extern void hl_CMRNorm_backward(
  * @param[in]   outputH     output batchSize.
  * @param[in]   outputW     output image data dim.
  * @param[in]   numChannels number of channels.
+ * @param[in]   ratioH      inImgH / outImgH.
+ * @param[in]   ratioW      inImgW / outImgW.
  *
  */
 extern void hl_bilinear_forward(const real* inData,
@@ -266,7 +268,9 @@ extern void hl_bilinear_forward(const real* inData,
                                 const size_t outImgW,
                                 const size_t outputH,
                                 const size_t outputW,
-                                const size_t numChannels);
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW);
 
  /**
  * @brief   Bilinear interpolation backward.
@@ -282,6 +286,8 @@ extern void hl_bilinear_forward(const real* inData,
  * @param[in]   outputH     output batchSize.
  * @param[in]   outputW     output image data dim.
  * @param[in]   numChannels number of channels.
+ * @param[in]   ratioH      inImgH / outImgH.
+ * @param[in]   ratioW      inImgW / outImgW.
  *
  */                               
 extern void hl_bilinear_backward(real* inGrad,
@@ -294,7 +300,9 @@ extern void hl_bilinear_backward(real* inGrad,
                                  const size_t outImgW,
                                  const size_t outputH,
                                  const size_t outputW,
-                                 const size_t numChannels);
+                                 const size_t numChannels,
+                                 const real ratioH,
+                                 const real ratioW);
 
 /**
  * @brief   MaxOut forward.

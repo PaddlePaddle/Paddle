@@ -57,9 +57,9 @@ endif()
 set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
-    -Wall
-    -Wextra
-    -Werror
+#    -Wall
+#    -Wextra
+#    -Werror
     -Wnon-virtual-dtor
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter

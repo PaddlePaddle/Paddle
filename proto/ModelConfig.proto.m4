@@ -213,13 +213,10 @@ message OperatorConfig {
 }
 
 message BilinearInterpConfig {
-  // The size if input feature map.
-  required uint32 img_size_x = 1;
-  required uint32 img_size_y = 2;
   // The size if output feature map.
-  required uint32 out_size_x = 3;
-  required uint32 out_size_y = 4;
-  required uint32 num_channels = 5;
+  required uint32 out_size_x = 1;
+  required uint32 out_size_y = 2;
+  required uint32 num_channels = 3;
 }
 
 message ImageConfig {

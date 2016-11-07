@@ -1259,11 +1259,8 @@ def interpolation_layer(input, weight, name=None, layer_attr=None):
 @wrap_name_default()
 @layer_support()
 def bilinear_interp_layer(input,
-                          img_size_x=None,   
-                          img_size_y=None,
                           out_size_x=None,
                           out_size_y=None,
-                          num_channels=None,
                           name=None,
                           layer_attr=None):
     """
@@ -1276,25 +1273,15 @@ def bilinear_interp_layer(input,
     .. code-block:: python
 
        bilinear = bilinear_interp_layer(input,
-                                        img_size_x,
-                                        img_size_y,
                                         out_size_x,
-                                        out_size_y,
-                                        num_channels)
+                                        out_size_y)
     
     :para    input:        A input layer.
     :type    input:        LayerOutput.
-    :para    img_size_x:   previous layer output width.
-    :type    img_size_x:   int|None 
-    :para    img_size_y:   previous layer output height.
-    :type    img_size_y:   int|None
     :para    out_size_x:   bilinear interpolation output width.
     :type    out_size_x:   int|None 
     :para    out_size_y:   bilinear interpolation output height.
     :type    out_size_y:   int|None
-    :para    num_channels: number of channels of input layer. If None,
-                           it will be set automatically from previous output.
-    :type    num_channels: int|None
     :para    name:         The layer's name, which cna not be specified.
     :type    name:         None|basestring
     :para    layer_attr:   Extra Layer attribute.
@@ -1304,21 +1291,18 @@ def bilinear_interp_layer(input,
     """
     assert input.layer_type == LayerType.CONV_LAYER
     assert isinstance(input.activation, LinearActivation)
-    assert img_size_x > 0 and img_size_y > 0
     assert out_size_x > 0 and out_size_y > 0
-    if num_channels is None:
-        assert input.numfilters is not None
-        num_channels = input.num_filters
+    assert input.numfilters is not None
+    num_channels = input.num_filters
     Layer(name=name,
           inputs=Input(input.name,
-                       bilinear_interp=BilinearInterp(img_size_x=img_size_x,
-                                                      img_size_y=img_size_y,
-                                                      out_size_x=out_size_x,
+                       bilinear_interp=BilinearInterp(out_size_x=out_size_x,
                                                       out_size_y=out_size_y,
                                                       num_channels=num_channels)),
           type=LayerType.BILINEAR_INTERP_LAYER,
           **ExtraLayerAttribute.to_kwargs(layer_attr))
-    return LayerOutput(name, LayerType.BILINEAR_INTERP_LAYER, parents=[input])
+    return LayerOutput(name, LayerType.BILINEAR_INTERP_LAYER, parents=[input],
+           num_filters=num_filters)
 
 @wrap_name_default()
 @layer_support()

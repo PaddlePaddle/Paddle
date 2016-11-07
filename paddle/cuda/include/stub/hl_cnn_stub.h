@@ -99,7 +99,9 @@ inline void hl_bilinear_forward(const real* inData,
                                 const size_t outImgW,
                                 const size_t outputH,
                                 const size_t outputW,
-                                const size_t numChannels) {}
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {}
 
 inline void hl_bilinear_backward(real* inGrad,
                                 const size_t inImgH,
@@ -111,7 +113,9 @@ inline void hl_bilinear_backward(real* inGrad,
                                 const size_t outImgW,
                                 const size_t outputH,
                                 const size_t outputW,
-                                const size_t numChannels) {}
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {}
 
 inline void hl_maxout_forward(
     const real* inData, real* outData, int* idData,
