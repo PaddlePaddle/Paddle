@@ -395,6 +395,12 @@ hsigmoid
     :members: hsigmoid
     :noindex:
 
+sum_cost
+---------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: sum_cost
+    :noindex:
+
 Check Layer 
 ============
 

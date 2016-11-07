@@ -562,6 +562,12 @@ void HuberTwoClass::backwardImpIn(
   }
 }
 
+/**
+ * This cost layer compute the sum of its input as loss.
+ * \f[
+ * o(i) = \sum_{j=1}^D y_{ij}
+ * \f]
+ */
 class SumCostLayer : public Layer {
 public:
   explicit SumCostLayer(const LayerConfig& config) : Layer(config) {}
