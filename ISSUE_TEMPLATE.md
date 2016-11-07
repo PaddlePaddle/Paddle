@@ -7,7 +7,7 @@ Before submitting the issue, look over the following criteria before handing you
 - [ ] Was there a similar issue submitted or resolved before ? You could search issue in the github.
 - [ ] Did you retrieve your issue from widespread search engines ?
 - [ ] Is my description of the issue clear enough to reproduce this problem?
-   * If some errors occured, we need details about `how do you run your code?`, `what system do you use?`, `Are you using GPU or not?`, etc.
+   * If some errors occurred, we need details about `how do you run your code?`, `what system do you use?`, `Are you using GPU or not?`, etc.
    * If you use an recording [asciinema](https://asciinema.org/) to show what you are doing to make it happen, that's awesome! We could help you solve the problem more quickly.
 - [ ] Is my description of the issue use the github markdown correctly?
    * Please use the proper markdown syntaxes for styling all forms of writing, e.g, source code, error information, etc.
