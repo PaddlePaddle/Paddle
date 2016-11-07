@@ -28,6 +28,14 @@ addons:
       - libgflags-dev
       - libgtest-dev
 before_install:
+  - |
+    if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
+      TRAVIS_COMMIT_RANGE="FETCH_HEAD...$TRAVIS_BRANCH"
+    fi
+    git diff --name-only $TRAVIS_COMMIT_RANGE | grep -qvE '(\.md$)' || {
+      echo "Only markdown docs were updated, stopping build process."
+      exit
+    }
   - pip install wheel protobuf sphinx breathe recommonmark
   - sudo paddle/scripts/travis/before_install.sh
 script:
