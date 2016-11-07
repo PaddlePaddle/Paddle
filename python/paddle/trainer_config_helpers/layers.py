@@ -1619,10 +1619,7 @@ def img_conv_layer(input, filter_size, num_filters,
         param_attr.attr["initial_strategy"] = 0
         param_attr.attr["initial_smart"] = False
     
-    if trans:
-        lt = LayerType.CONVTRANS_LAYER
-    else:
-        lt = LayerType.CONV_LAYER
+    lt = LayerType.CONVTRANS_LAYER if trans else LayerType.CONV_LAYER
     
     Layer(
         name=name,

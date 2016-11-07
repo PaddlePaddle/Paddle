@@ -353,7 +353,6 @@ TEST(Layer, convTransLayer) {
   testConvTransLayer("exconvt", /* trans= */ false, /* useGpu= */ false);
 #ifndef PADDLE_ONLY_CPU
   testConvTransLayer("exconvt", /* trans= */ false, /* useGpu= */ true);
-  // testConvLayer("cudnn_conv", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
 
