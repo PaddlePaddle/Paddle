@@ -14,5 +14,4 @@ do
     base_protostr=$protostr/$file
     new_protostr=$protostr/$file.unitest
     diff $base_protostr $new_protostr
-    mv $new_protostr $protostr/$file.unitest.bak
 done
