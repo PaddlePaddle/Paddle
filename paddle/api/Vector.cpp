@@ -39,6 +39,17 @@ IVector* IVector::create(const std::vector<int>& data, bool useGpu) {
   return v;
 }
 
+IVector* IVector::createVectorFromNumpy(int* data, int dim, bool copy,
+                                        bool useGpu) {
+  if (useGpu) {
+    /// if use gpu only copy=true is supported
+    CHECK(copy);
+    return IVector::createGpuVectorFromNumpy(data, dim);
+  } else {
+    return IVector::createCpuVectorFromNumpy(data, dim, copy);
+  }
+}
+
 IVector* IVector::createCpuVectorFromNumpy(int* data, int dim, bool copy) {
   auto v = new IVector();
   if (copy) {
@@ -50,7 +61,7 @@ IVector* IVector::createCpuVectorFromNumpy(int* data, int dim, bool copy) {
   return v;
 }
 
-IVector* IVector::createGpuVectorFromNumy(int* data, int dim) {
+IVector* IVector::createGpuVectorFromNumpy(int* data, int dim) {
   auto v = new IVector();
   v->m->vec = paddle::IVector::create(dim, true);
   v->m->vec->copyFrom(data, dim);
@@ -185,6 +196,17 @@ Vector* Vector::createByPaddleVectorPtr(void* ptr) {
     auto retVec = new Vector();
     retVec->m->vec = v;
     return retVec;
+  }
+}
+
+Vector* Vector::createVectorFromNumpy(float* data, int dim, bool copy,
+                                      bool useGpu) {
+  if (useGpu) {
+    /// if use gpu only copy=True is supported
+    CHECK(copy);
+    return Vector::createGpuVectorFromNumpy(data, dim);
+  } else {
+    return Vector::createCpuVectorFromNumpy(data, dim, copy);
   }
 }
 

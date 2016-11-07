@@ -42,6 +42,9 @@ using namespace paddle::enumeration_wrapper;  // NOLINT
  */
 void initPaddle(int argc, char** argv);
 
+/// Return FLAGS_use_gpu
+bool isUseGpu();
+
 /// Return true if this py_paddle is compiled in GPU Version
 bool isGpuVersion();
 
@@ -101,7 +104,8 @@ public:
   /**
    * Create A Matrix with height,width, which is filled by zero.
    */
-  static Matrix* createZero(size_t height, size_t width, bool useGpu = false);
+  static Matrix* createZero(size_t height, size_t width,
+                            bool useGpu = isUseGpu());
 
   /**
    * Create Sparse Matrix.
@@ -114,7 +118,7 @@ public:
    */
   static Matrix* createSparse(size_t height, size_t width, size_t nnz,
                               bool isNonVal = true, bool trans = false,
-                              bool useGpu = false);
+                              bool useGpu = isUseGpu());
 
   /**
    * Create Dense Matrix.
@@ -123,7 +127,11 @@ public:
    * @note        the value will be copy into a new matrix.
    */
   static Matrix* createDense(const std::vector<float>& data, size_t height,
-                             size_t width, bool useGpu = false);
+                             size_t width, bool useGpu = isUseGpu());
+
+  static Matrix* createDenseFromNumpy(float* data, int dim1, int dim2,
+                                      bool copy = true,
+                                      bool useGpu = isUseGpu());
 
   /**
    *  Create Cpu Dense Matrix from numpy matrix, dtype=float32
@@ -221,15 +229,18 @@ public:
   ~Vector();
 
   /// Create Vector filled with zero.
-  static Vector* createZero(size_t sz, bool useGpu = false);
+  static Vector* createZero(size_t sz, bool useGpu = isUseGpu());
 
   /**
    * Create Vector from list of float.
    *
    * It will create a new vector, and copy data into it.
    */
-  static Vector* create(const std::vector<float>& data, bool useGpu = false);
+  static Vector* create(const std::vector<float>& data,
+                        bool useGpu = isUseGpu());
 
+  static Vector* createVectorFromNumpy(float* data, int dim, bool copy = true,
+                                       bool useGpu = isUseGpu());
   /**
    * Create Cpu Vector from numpy array, which dtype=float32
    *
@@ -279,13 +290,17 @@ class IVector {
 
 public:
   /// Create IVector filled with zero
-  static IVector* createZero(size_t sz, bool useGpu = false);
+  static IVector* createZero(size_t sz, bool useGpu = isUseGpu());
 
   /**
    * Create IVector from list of int.
    * It will create a new vector, and copy data into it.
    */
-  static IVector* create(const std::vector<int>& data, bool useGpu = false);
+  static IVector* create(const std::vector<int>& data,
+                         bool useGpu = isUseGpu());
+
+  static IVector* createVectorFromNumpy(int* data, int dim, bool copy = true,
+                                        bool useGpu = isUseGpu());
 
   /**
    * Create Cpu IVector from numpy array, which dtype=int32
@@ -297,7 +312,7 @@ public:
   /**
    * Create Gpu IVector from numpy array, which dtype=int32
    */
-  static IVector* createGpuVectorFromNumy(int* data, int dim);
+  static IVector* createGpuVectorFromNumpy(int* data, int dim);
 
   /// Cast to numpy array inplace.
   void toNumpyArrayInplace(int** view_data, int* dim1) throw(UnsupportError);
