@@ -195,6 +195,8 @@ public:
 
   virtual void resetOne() { LOG(FATAL) << "Not implemented"; }
 
+  virtual void setDiag(real value) { LOG(FATAL) << "Not implemented"; }
+
   virtual void copyFrom(const Matrix& src) { LOG(FATAL) << "Not implemented"; }
 
   virtual void trimFrom(const CpuSparseMatrix& src) {
@@ -330,6 +332,7 @@ public:
 
   virtual MatrixPtr getInverse() {
     LOG(FATAL) << "Not implemented";
+    return nullptr;
   }
 
   /**
@@ -1016,6 +1019,7 @@ public:
 
   void zeroMem();
   void resetOne();
+  void setDiag(real value);
 
   void resize(size_t newHeight, size_t newWidth);
   void resize(size_t newHeight, size_t newWidth,
@@ -1280,6 +1284,8 @@ public:
 
   void zeroMem();
   void resetOne();
+  void setDiag(real value);
+
   void resize(size_t newHeight, size_t newWidth);
   void resize(size_t newHeight, size_t newWidth,
               size_t newNnz, /* used to allocate space */
