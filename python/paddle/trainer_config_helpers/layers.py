@@ -1292,7 +1292,7 @@ def bilinear_interp_layer(input,
     assert input.layer_type == LayerType.CONV_LAYER
     assert isinstance(input.activation, LinearActivation)
     assert out_size_x > 0 and out_size_y > 0
-    assert input.numfilters is not None
+    assert input.num_filters is not None
     num_channels = input.num_filters
     Layer(name=name,
           inputs=Input(input.name,
@@ -1301,8 +1301,7 @@ def bilinear_interp_layer(input,
                                                       num_channels=num_channels)),
           type=LayerType.BILINEAR_INTERP_LAYER,
           **ExtraLayerAttribute.to_kwargs(layer_attr))
-    return LayerOutput(name, LayerType.BILINEAR_INTERP_LAYER, parents=[input],
-           num_filters=num_filters)
+    return LayerOutput(name, LayerType.BILINEAR_INTERP_LAYER, parents=[input])
 
 @wrap_name_default()
 @layer_support()
