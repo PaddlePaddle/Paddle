@@ -1275,7 +1275,7 @@ void GpuMatrix::bilinearBackward(const Matrix& out,
       static_cast<real>(inImgW - 1) / (outImgW - 1) : 0.f;
 
   if (outImgH == inImgH && outImgW == inImgW) {
-    this->copyFrom(out);
+    this->addBias(const_cast<Matrix&>(out), 1.f);
   } else {
     hl_bilinear_backward(
       inGrad, inImgH, inImgW, inputH, inputW, outGrad,
@@ -3979,7 +3979,7 @@ void CpuMatrix::bilinearBackward(const Matrix& out,
     static_cast<real>(inImgW - 1) / (outImgW - 1) : 0.f;
 
   if (inImgH == outImgH && inImgW == outImgW) {
-    this->copyFrom(out);
+    this->addBias(const_cast<Matrix&>(out), 1.f);
   } else {
     for (size_t k = 0; k < outputH; ++k) {   // loop for batches
       for (size_t i = 0; i < outImgH; ++i) {  // loop for images
