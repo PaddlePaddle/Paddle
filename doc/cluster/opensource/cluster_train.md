@@ -1,12 +1,12 @@
-# Cluster Training
+# Distributed Training
 
-We provide some simple scripts ```paddle/scripts/cluster_train``` to help you to launch cluster training Job to harness PaddlePaddle's distributed trainning. For MPI and other cluster scheduler refer this naive script to implement more robust cluster training platform by yourself.
+In this article, we explain how to run distributed Paddle training jobs on clusters.  We will create the distributed version of the single-process training example, [recommendation example](https://github.com/baidu/Paddle/tree/develop/demo/recommendation).
 
-The following cluster demo is based on RECOMMENDATION local training demo in PaddlePaddle ```demo/recommendation``` directory.  Assuming you enter the ```paddle/scripts/cluster_train/``` directory.
+All scripts used in this article are in directory [`paddle/scripts/cluster_train`](https://github.com/baidu/Paddle/tree/develop/paddle/scripts/cluster_train).  They launch distributed Paddle training jobs via SSH.  They also work as a reference solution for users running cluster management systems like MPI and Kubernetes.
 
-## Pre-requirements
+## Prerequisite
 
-Firstly,
+To make it easy for a Python script to run SSH commands, it is recommended to install Python library [fabric](http://www.fabfile.org/):
 
 ```bash
 pip install fabric
