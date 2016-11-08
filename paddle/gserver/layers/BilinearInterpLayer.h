@@ -29,6 +29,7 @@ class BilinearInterpLayer : public Layer {
 protected:
   size_t outImgH_, outImgW_;
   size_t inImgH_, inImgW_;
+  real ratioH_, ratioW_;
   size_t numChannels_;
 
 public:

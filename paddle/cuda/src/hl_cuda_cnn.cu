@@ -532,8 +532,7 @@ void hl_CMRNorm_backward(size_t frameCnt, const real* inV,
   CHECK_SYNC("hl_CMRNorm_backward");
 }
 
-__global__ void KeBilinearInterpFw(const size_t nthreads,
-                                   const real* in,
+__global__ void KeBilinearInterpFw(const real* in,
                                    const size_t inImgH,
                                    const size_t inImgW,
                                    const size_t inputH,
@@ -546,6 +545,7 @@ __global__ void KeBilinearInterpFw(const size_t nthreads,
                                    const size_t numChannels,
                                    const real ratioH,
                                    const real ratioW) {
+  int nthreads = outputH * outputW;                      
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < nthreads) {
     int outIdH = tid / outputW;
@@ -593,13 +593,12 @@ void hl_bilinear_forward(const real* inData,
   int blocks = (threadNum + 1024 - 1) / 1024;
 
   KeBilinearInterpFw<<< blocks, 1024, 0, STREAM_DEFAULT>>>(
-    threadNum, inData, inImgH, inImgW, inputH, inputW, outData,
-    outImgH, outImgW, outputH, outputW, numChannels, ratioH, ratioW);
+    inData, inImgH, inImgW, inputH, inputW, outData, outImgH,
+    outImgW, outputH, outputW, numChannels, ratioH, ratioW);
   CHECK_SYNC("hl_bilinear_forward failed");
 }
 
-__global__ void KeBilinearInterpBw(const size_t nthreads,
-                                   real* in,
+__global__ void KeBilinearInterpBw(real* in,
                                    const size_t inImgH,
                                    const size_t inImgW,
                                    const size_t inputH,
@@ -612,6 +611,7 @@ __global__ void KeBilinearInterpBw(const size_t nthreads,
                                    const size_t numChannels,
                                    const real ratioH,
                                    const real ratioW) {
+  int nthreads = outputH * outputW;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < nthreads) {
     int outIdH = tid / outputW;
@@ -659,8 +659,8 @@ void hl_bilinear_backward(real* inGrad,
   int blocks = (threadNum + 1024 - 1) / 1024;
 
   KeBilinearInterpBw<<< blocks, 1024, 0, STREAM_DEFAULT>>>(
-    threadNum, inGrad, inImgH, inImgW, inputH, inputW, outGrad,
-    outImgH, outImgW, outputH, outputW, numChannels, ratioH, ratioW);
+    inGrad, inImgH, inImgW, inputH, inputW, outGrad, outImgH,
+    outImgW, outputH, outputW, numChannels, ratioH, ratioW);
   CHECK_SYNC("hl_bilinear_backward failed");
 }
 

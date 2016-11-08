@@ -94,7 +94,8 @@ void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
                         int channels) {
   int inWidth = imgSizeH * imgSizeW * channels;
   int outWidth = 2 * imgSizeH * 2 * imgSizeW * channels;
-
+  real ratioH = 0.5;
+  real ratioW = 0.5;
   // forward
   MatrixPtr input = CpuMatrix::create(numSamples, inWidth, false, false);
   MatrixPtr inputGpu = GpuMatrix::create(numSamples, inWidth, false, true);
@@ -107,9 +108,9 @@ void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
   inputGpu->copyFrom(*input);
 
   target->bilinearForward(*input, imgSizeH, imgSizeW,
-      2 * imgSizeH, 2 * imgSizeW, channels);
+      2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
   targetGpu->bilinearForward(*inputGpu, imgSizeH, imgSizeW,
-      2 * imgSizeH, 2 * imgSizeW, channels);
+      2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
 
   // check
   targetCheck->copyFrom(*targetGpu);
@@ -131,9 +132,9 @@ void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
   targetGpuGrad->copyFrom(*targetGrad);
 
   inputGrad->bilinearBackward(*targetGrad, 2 * imgSizeH, 2 * imgSizeW,
-      imgSizeH, imgSizeW, channels);
+      imgSizeH, imgSizeW, channels, ratioH, ratioW);
   inputGpuGrad->bilinearBackward(*targetGpuGrad, 2 * imgSizeH, 2 * imgSizeW,
-      imgSizeH, imgSizeW, channels);
+      imgSizeH, imgSizeW, channels, ratioH, ratioW);
 
   // check
   targetCheckGrad->copyFrom(*inputGpuGrad);

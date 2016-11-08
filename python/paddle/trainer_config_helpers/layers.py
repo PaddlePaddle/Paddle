@@ -1272,19 +1272,17 @@ def bilinear_interp_layer(input,
 
     .. code-block:: python
 
-       bilinear = bilinear_interp_layer(input,
-                                        out_size_x,
-                                        out_size_y)
+       bilinear = bilinear_interp_layer(input=layer1, out_size_x=64, out_size_y=64)
     
-    :para    input:        A input layer.
+    :param   input:        A input layer.
     :type    input:        LayerOutput.
-    :para    out_size_x:   bilinear interpolation output width.
+    :param   out_size_x:   bilinear interpolation output width.
     :type    out_size_x:   int|None 
-    :para    out_size_y:   bilinear interpolation output height.
+    :param   out_size_y:   bilinear interpolation output height.
     :type    out_size_y:   int|None
-    :para    name:         The layer's name, which cna not be specified.
+    :param   name:         The layer's name, which cna not be specified.
     :type    name:         None|basestring
-    :para    layer_attr:   Extra Layer attribute.
+    :param   layer_attr:   Extra Layer attribute.
     :type    layer_attr:   ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype:  LayerOutput
@@ -1301,7 +1299,8 @@ def bilinear_interp_layer(input,
                                                       num_channels=num_channels)),
           type=LayerType.BILINEAR_INTERP_LAYER,
           **ExtraLayerAttribute.to_kwargs(layer_attr))
-    return LayerOutput(name, LayerType.BILINEAR_INTERP_LAYER, parents=[input])
+    return LayerOutput(name, LayerType.BILINEAR_INTERP_LAYER, parents=[input],
+           num_filters=num_channels)
 
 @wrap_name_default()
 @layer_support()

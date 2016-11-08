@@ -50,6 +50,16 @@ TEST(Layer, BilinearInterpLayer) {
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "bilinear_interp", 10, false, useGpu);
   }
+
+  bilinear->set_img_size_x(32);
+  bilinear->set_img_size_y(32);
+  bilinear->set_out_size_x(32);
+  bilinear->set_out_size_y(32);
+  bilinear->set_num_channels(4);
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "bilinear_interp", 10, false, useGpu);
+  }
 }
 
 TEST(Operator, dot_mul) {

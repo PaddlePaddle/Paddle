@@ -1227,7 +1227,9 @@ void GpuMatrix::bilinearForward(const Matrix& in,
                                 const size_t inImgW,
                                 const size_t outImgH,
                                 const size_t outImgW,
-                                const size_t numChannels) {
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {
   CHECK(dynamic_cast<const GpuMatrix*>(&in));
 
   const size_t outputW = getWidth();
@@ -1237,11 +1239,6 @@ void GpuMatrix::bilinearForward(const Matrix& in,
 
   real* outData = getData();
   const real* inData  = in.getData();
-
-  real ratioH = (outImgH > 1) ?
-      static_cast<real>(inImgH - 1) / (outImgH - 1) : 0.f;
-  real ratioW = (outImgW > 1) ?
-      static_cast<real>(inImgW - 1) / (outImgW - 1) : 0.f;
 
   if (inImgH == outImgW && inImgW == outImgW) {
     this->copyFrom(in);
@@ -1258,7 +1255,9 @@ void GpuMatrix::bilinearBackward(const Matrix& out,
                                  const size_t outImgW,
                                  const size_t inImgH,
                                  const size_t inImgW,
-                                 const size_t numChannels) {
+                                 const size_t numChannels,
+                                 const real ratioH,
+                                 const real ratioW) {
   CHECK(dynamic_cast<const GpuMatrix*>(&out));
 
   const size_t inputW = getWidth();
@@ -1269,13 +1268,8 @@ void GpuMatrix::bilinearBackward(const Matrix& out,
   real* inGrad = getData();
   const real* outGrad = out.getData();
 
-  real ratioH = (outImgH > 1) ?
-      static_cast<real>(inImgH - 1) / (outImgH - 1) : 0.f;
-  real ratioW = (outImgW > 1) ?
-      static_cast<real>(inImgW - 1) / (outImgW - 1) : 0.f;
-
   if (outImgH == inImgH && outImgW == inImgW) {
-    this->addBias(const_cast<Matrix&>(out), 1.f);
+    this->add(const_cast<Matrix&>(out));
   } else {
     hl_bilinear_backward(
       inGrad, inImgH, inImgW, inputH, inputW, outGrad,
@@ -3908,7 +3902,9 @@ void CpuMatrix::bilinearForward(const Matrix& in,
                                 const size_t inImgW,
                                 const size_t outImgH,
                                 const size_t outImgW,
-                                const size_t numChannels) {
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {
   CHECK(dynamic_cast<const CpuMatrix*>(&in));
 
   size_t outputW = getWidth();
@@ -3920,11 +3916,6 @@ void CpuMatrix::bilinearForward(const Matrix& in,
   real* outData = getData();
   const real* inData  = in.getData();
 
-  const real ratioH = (outImgH > 1) ?
-    static_cast<real>(inImgH - 1) / (outImgH - 1) : 0.f;
-  const real ratioW = (outImgW > 1) ?
-    static_cast<real>(inImgW - 1) / (outImgW - 1) : 0.f;
-
   if (inImgH == outImgH && inImgW == outImgW) {
     this->copyFrom(in);
   } else {
@@ -3932,21 +3923,23 @@ void CpuMatrix::bilinearForward(const Matrix& in,
       for (size_t i = 0; i < outImgH; ++i) {  // loop for images
         size_t h = ratioH * i;
         size_t hid = (h < inImgH - 1) ? 1 : 0;
-        real hlambda = ratioH * i - h;
+        real h1lambda = ratioH * i - h;
+        real h2lambda = 1 - h1lambda;
 
         for (size_t j = 0; j < outImgW; ++j) {
           size_t w = ratioW * j;
           size_t wid = (w < inImgW - 1) ? 1 : 0;
-          real wlambda = ratioW * j - w;
+          real w1lambda = ratioW * j - w;
+          real w2lambda = 1 - w1lambda;
           // calculate four position for bilinear interpolation
           const real* inPos = &inData[k * inputW + h * inImgW + w];
           real* outPos = &outData[k * outputW + i * outImgW + j];
           for (size_t c = 0; c < numChannels; ++c) {  // loop for channels
             // bilinear interpolation
-            outPos[0] = (1.f - hlambda) *
-              ((1.f - wlambda) * inPos[0] + wlambda * inPos[wid]) +
-              hlambda * ((1.f - wlambda) * inPos[hid * inImgW] +
-              wlambda * inPos[hid * inImgW + wid]);
+            outPos[0] =
+              h2lambda * (w2lambda * inPos[0] + w1lambda * inPos[wid]) +
+              h1lambda * (w2lambda * inPos[hid * inImgW] +
+              w1lambda * inPos[hid * inImgW + wid]);
             inPos += inImgH * inImgW;
             outPos += outImgH * outImgW;
           }
@@ -3961,7 +3954,9 @@ void CpuMatrix::bilinearBackward(const Matrix& out,
                                  const size_t outImgW,
                                  const size_t inImgH,
                                  const size_t inImgW,
-                                 const size_t numChannels) {
+                                 const size_t numChannels,
+                                 const real ratioH,
+                                 const real ratioW) {
   CHECK(dynamic_cast<const CpuMatrix*>(&out));
 
   size_t inputW = getWidth();
@@ -3973,32 +3968,28 @@ void CpuMatrix::bilinearBackward(const Matrix& out,
   real* inGrad = getData();
   const real* outGrad = out.getData();
 
-  const real ratioH = (outImgH > 1) ?
-    static_cast<real>(inImgH - 1) / (outImgH - 1) : 0.f;
-  const real ratioW = (outImgW > 1) ?
-    static_cast<real>(inImgW - 1) / (outImgW - 1) : 0.f;
-
   if (inImgH == outImgH && inImgW == outImgW) {
-    this->addBias(const_cast<Matrix&>(out), 1.f);
+    this->add(const_cast<Matrix&>(out));
   } else {
     for (size_t k = 0; k < batchSize; ++k) {   // loop for batches
       for (size_t i = 0; i < outImgH; ++i) {  // loop for images
         size_t h = ratioH * i;
         size_t hid = (h < inImgH - 1) ? 1 : 0;
-        real hlambda = ratioH * i - h;
-
+        real h1lambda = ratioH * i - h;
+        real h2lambda = 1 - h1lambda;
         for (size_t j = 0; j < outImgW; ++j) {
           size_t w = ratioW * j;
           size_t wid = (w < inImgW - 1) ? 1 : 0;
-          real wlambda = ratioW * j - w;
+          real w1lambda = ratioW * j - w;
+          real w2lambda = 1 - w1lambda;
 
           real* inPos = &inGrad[k * inputW + h * inImgW + w];
           const real* outPos = &outGrad[k * outputW + i * outImgW + j];
           for (size_t c = 0; c < numChannels; ++c) {  // loop for channels
-            inPos[0] += (1.f - hlambda) * (1.f - wlambda) * outPos[0];
-            inPos[wid] += (1.f - hlambda) * wlambda * outPos[0];
-            inPos[hid * inImgW] += hlambda * (1.f - wlambda) * outPos[0];
-            inPos[hid * inImgW + wid] += hlambda * wlambda * outPos[0];
+            inPos[0] += h2lambda * w2lambda * outPos[0];
+            inPos[wid] += h2lambda * w1lambda * outPos[0];
+            inPos[hid * inImgW] += h1lambda * w2lambda * outPos[0];
+            inPos[hid * inImgW + wid] += h1lambda * w1lambda * outPos[0];
             inPos += inImgH * inImgW;
             outPos += outImgH * outImgW;
           }

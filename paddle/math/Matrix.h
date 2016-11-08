@@ -997,7 +997,9 @@ public:
                                const size_t inImgW,
                                const size_t outImgH,
                                const size_t outImgW,
-                               const size_t numChannels) {
+                               const size_t numChannels,
+                               const real ratioH,
+                               const real ratioW) {
     LOG(FATAL) << "Not implemented";
   }
   virtual void bilinearBackward(const Matrix& out,
@@ -1005,7 +1007,9 @@ public:
                                 const size_t outImgW,
                                 const size_t inImgH,
                                 const size_t inImgW,
-                                const size_t numChannels) {
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {
     LOG(FATAL) << "Not implemented";
   }
 };
@@ -1283,14 +1287,18 @@ public:
                        const size_t inImgW,
                        const size_t outImgH,
                        const size_t outImgW,
-                       const size_t numChannels);
+                       const size_t numChannels,
+                       const real ratioH,
+                       const real ratioW);
 
   void bilinearBackward(const Matrix& out,
                         const size_t outImgH,
                         const size_t outImgW,
                         const size_t inImgH,
                         const size_t inImgW,
-                        const size_t numChannels);
+                        const size_t numChannels,
+                        const real ratioH,
+                        const real ratioW);
 };
 
 class CpuMatrix : public Matrix {
@@ -1583,14 +1591,18 @@ public:
                        const size_t inImgW,
                        const size_t outImgH,
                        const size_t outImgW,
-                       const size_t numChannels);
+                       const size_t numChannels,
+                       const real ratioH,
+                       const real ratioW);
 
   void bilinearBackward(const Matrix& out,
                         const size_t outImgH,
                         const size_t outImgW,
                         const size_t inImgH,
                         const size_t inImgW,
-                        const size_t numChannels);
+                        const size_t numChannels,
+                        const real ratioH,
+                        const real ratioW);
 };
 
 class SharedCpuMatrix : public CpuMatrix {
