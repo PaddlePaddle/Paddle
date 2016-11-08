@@ -3528,9 +3528,7 @@ void CpuMatrix::tanh(Matrix& output) {
   size_t dim = getWidth();
   CHECK_EQ(output.getHeight(), numSamples);
   CHECK_EQ(output.getWidth(), dim);
-  errno = 0;
   vTanh(numSamples * dim, getData(), output.getData());
-  CHECK_EQ(errno, 0) << "vTanh error";
 }
 
 void CpuMatrix::tanhDerivative(Matrix& output) {
@@ -3552,10 +3550,8 @@ void CpuMatrix::softrelu(Matrix& output) {
       out[j] = x;
     }
   }
-  errno = 0;
   vExp(numSamples * dim, output.getData(), output.getData());
   vLog1p(numSamples * dim, output.getData(), output.getData());
-  CHECK_EQ(errno, 0) << "vExp+vLog1p error";
 }
 
 void CpuMatrix::softreluDerivative(Matrix& output) {
@@ -3570,9 +3566,7 @@ void CpuMatrix::softreluDerivative(Matrix& output) {
   MatrixPtr tmpMat = Matrix::create(numSamples, dim);
   real* tmp = tmpMat->getData();
 
-  errno = 0;
   vExp(size, output.getData(), tmpMat->getData());
-  CHECK_EQ(errno, 0) << "vExp error";
 
   for (size_t i = 0; i < size; ++i) {
     grad[i] *= (1.0 - 1.0 / tmp[i]);
@@ -3595,10 +3589,7 @@ void CpuMatrix::scaledTanh(Matrix& output, real p1, real p2) {
     out[i] = p2 * in[i];
   }
 
-  // out = tanh(out)
-  errno = 0;
   vTanh(numSamples * dim, out, out);
-  CHECK_EQ(errno, 0) << "vTanh error";
 
   // out = p1 * out
   for (size_t i = 0; i < numSamples * dim; ++i) {
