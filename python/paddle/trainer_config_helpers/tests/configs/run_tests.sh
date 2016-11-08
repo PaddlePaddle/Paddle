@@ -13,5 +13,5 @@ for file in $files
 do
     base_protostr=$protostr/$file
     new_protostr=$protostr/$file.unitest
-    diff $base_protostr $new_protostr
+    diff $base_protostr $new_protostr -u
 done
