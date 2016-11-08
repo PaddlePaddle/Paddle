@@ -48,6 +48,7 @@ void SetTensorValue(Matrix& matrix, real value) {
     } else if (typeid(matrix) == typeid(GpuMatrix)) {
       hl_memcpy(&data[i * stride + j], &value, sizeof(real));
     } else {
+      LOG(FATAL) << "should not reach here";
     }
   }
 }
