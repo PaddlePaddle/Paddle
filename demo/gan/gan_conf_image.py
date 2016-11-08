@@ -36,9 +36,9 @@ s2, s4 = int(sample_dim/2), int(sample_dim/4),
 s8, s16 = int(sample_dim/8), int(sample_dim/16)
 
 settings(
-    batch_size=100,
-    learning_rate=1e-4,
-    learning_method=AdamOptimizer()
+    batch_size=128,
+    learning_rate=2e-4,
+    learning_method=AdamOptimizer(beta1=0.5)
 )
 
 def conv_bn(input, channels, imgSize, num_filters, output_x, stride, name, 

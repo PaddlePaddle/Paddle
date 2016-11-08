@@ -88,7 +88,7 @@ def load_mnist_data(imageFile):
     for i in range(n):
         pixels = []
         for j in range(28 * 28):
-            pixels.append(float(ord(f.read(1))) / 255.0)
+            pixels.append(float(ord(f.read(1))) / 255.0 * 2.0 - 1.0)
         data[i, :] = pixels
 
     f.close()
