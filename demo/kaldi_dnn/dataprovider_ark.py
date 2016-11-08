@@ -24,7 +24,7 @@ def initializer(settings, num_senone, **kwargs):
 # `setting` is the same object used by initializer()
 # `file_name` is the name of a file listed train_list or test_list file given
 # to define_py_data_sources2(). See trainer_config.lr.py.
-@provider(init_hook=initializer, cache=CacheType.NO_CACHE, pool_size=16384, min_pool_size=16384)
+@provider(init_hook=initializer, cache=CacheType.CACHE_PASS_IN_MEM, pool_size=16384, min_pool_size=16384)
 def process(settings, file_name):
     # Open the input data file.
     const_tag = struct.pack('6c', *[chr(i) for i in (0x00, 0x42, 0x46, 0x4d, 0x20, 0x04)])
