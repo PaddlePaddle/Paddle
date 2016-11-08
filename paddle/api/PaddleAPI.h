@@ -272,6 +272,9 @@ public:
   /// Return is GPU vector or not.
   bool isGpu() const;
 
+  /// Return a list of float, the memory is alloced and copied.
+  FloatArray getData() const;
+
   /// __len__ in python
   size_t getSize() const;
 

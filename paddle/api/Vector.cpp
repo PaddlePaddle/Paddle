@@ -267,6 +267,21 @@ void Vector::copyFromNumpyArray(float* data, int dim) {
   m->vec->copyFrom(data, dim);
 }
 
+FloatArray Vector::getData() const {
+  if (this->isGpu()) {
+    float* src = m->vec->getData();
+    size_t len = m->vec->getSize();
+    float* dest = new float[len];
+    hl_memcpy_device2host(dest, src, len * sizeof(float));
+    FloatArray ret_val(dest, len);
+    ret_val.needFree = true;
+    return ret_val;
+  } else {
+    FloatArray ret_val(m->vec->getData(), m->vec->getSize());
+    return ret_val;
+  }
+}
+
 bool Vector::isGpu() const {
   return std::dynamic_pointer_cast<paddle::GpuVector>(m->vec) != nullptr;
 }
