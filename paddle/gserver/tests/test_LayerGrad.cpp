@@ -336,10 +336,9 @@ void testConvTransLayer(const string& type, bool trans, bool useGpu) {
   conv->set_groups(1);
   conv->set_filter_channels(3 / conv->groups());
   conv->set_img_size(16);
-  conv->set_output_x(
-      (2 * conv->padding() + conv->img_size() - conv->filter_size()) /
-          ((float)conv->stride()) +
-      1.5);
+  conv->set_output_x(outputSize(conv->img_size(), conv->filter_size(),
+                                conv->padding(), conv->stride(),
+                                /* caffeMode */ true));
 
   config.layerConfig.set_size(conv->img_size() * conv->img_size() *
                               config.layerConfig.num_filters());

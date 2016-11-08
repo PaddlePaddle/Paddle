@@ -60,4 +60,7 @@ void sparseRand(int* major, int* minor, int nnz, int majorLen, int minorMax,
 int outputSize(int imageSize, int filterSize, int padding, int stride,
                bool caffeMode);
 
+int imageSize(int outputSize, int filterSize, int padding, int stride,
+              bool caffeMode);
+
 }  // namespace paddle

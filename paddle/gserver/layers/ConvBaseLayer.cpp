@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/utils/Logging.h"
 #include "ConvBaseLayer.h"
+#include "paddle/math/MathUtils.h"
 namespace paddle {
 
 bool ConvBaseLayer::init(const LayerMap& layerMap,
@@ -95,18 +96,22 @@ size_t ConvBaseLayer::calOutputSize() {
          if (inW[i] == 0)
            inW[i] = config_.inputs(i).conv_conf().output_x();
          outH.push_back(
-             imageSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i]));
+             imageSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i],
+                       caffeMode_));
          outW.push_back(
-             imageSize(inW[i], filterSize_[i], padding_[i], stride_[i]));
+             imageSize(inW[i], filterSize_[i], padding_[i], stride_[i],
+                       caffeMode_));
        } else {
          if (inH[i] == 0)
            inH[i] = config_.inputs(i).conv_conf().img_size();
          if (inW[i] == 0)
            inW[i] = config_.inputs(i).conv_conf().img_size();
          outH.push_back(
-             outputSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i]));
+             outputSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i],
+                        caffeMode_));
          outW.push_back(
-             outputSize(inW[i], filterSize_[i], padding_[i], stride_[i]));
+             outputSize(inW[i], filterSize_[i], padding_[i], stride_[i],
+                        caffeMode_));
        }
        CHECK_EQ(outH[i], outH[0]);
        CHECK_EQ(outW[i], outW[0]);

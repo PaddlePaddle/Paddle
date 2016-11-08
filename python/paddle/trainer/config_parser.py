@@ -1107,14 +1107,10 @@ def parse_conv(conv, input_layer_name, conv_conf, trans=False):
                       ("Input layer %s: Incorrect input image size %d for input "
                        + "image pixels %d")
                       % (input_layer_name, conv_conf.img_size, img_pixels))
-        if conv.caffe_mode:
-            conv_conf.output_x = \
-                1 + int(math.floor((2 * conv.padding + conv_conf.img_size \
-                - conv.filter_size) / float(conv.stride)))
-        else:
-            conv_conf.output_x = \
-                1 + int(math.ceil((2 * conv.padding + conv_conf.img_size \
-                - conv.filter_size) / float(conv.stride)))
+                
+        conv_conf.output_x = cnn_output_size(
+            conv_conf.img_size, conv_conf.filter_size, 
+            conv_conf.padding, conv_conf.stride, conv_conf.caffe_mode)
     else:
         outputSize = g_layer_map[input_layer_name].size / conv.channels
         print('channels=%d size=%d'%(conv.channels,

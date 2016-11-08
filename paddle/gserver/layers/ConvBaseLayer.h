@@ -91,43 +91,6 @@ public:
   virtual size_t calOutputSize();
 
   Weight& getWeight(int idx) { return *weights_[idx]; }
-
-  /**
-   * Calculate output size based on caffeMode_.
-   * - input(+padding): 0123456789
-   * - imageSize(+padding) = 10;
-   * - filterSize = 3;
-   * - stride = 2;
-   * - caffeMode_ is true:
-       - output: (012), (234), (456), (678)
-       - outputSize = 4;
-   * - caffeMode_ is false:
-   *   - output: (012), (234), (456), (678), (9)
-   *   - outputSize = 5;
-   */
-  int outputSize(int imageSize, int filterSize, int padding, int stride) {
-    int outputSize;
-    if (!caffeMode_) {
-     outputSize =
-          (imageSize - filterSize + 2 * padding + stride - 1) / stride + 1;
-    } else {
-      outputSize = (imageSize - filterSize + 2 * padding) / stride + 1;
-    }
-    CHECK_GE(outputSize, 1);
-    return outputSize;
-  }
-
-  int imageSize(int outputSize, int filterSize, int padding, int stride) {
-    int imageSize;
-    if (!caffeMode_) {
-     imageSize =
-         (outputSize - 1) * stride + filterSize - 2 * padding - stride + 1;
-    } else {
-     imageSize = (outputSize - 1) * stride + filterSize - 2 * padding;
-    }
-    CHECK_GE(imageSize, 1);
-    return imageSize;
-  }
 };
 
 }  // namespace paddle

@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/trainer/Trainer.h"
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/gserver/layers/ExpandConvTransLayer.h"
+#include "paddle/math/MathUtils.h"
 
 #include "TestUtil.h"
 #include "LayerGradUtil.h"
@@ -56,11 +57,9 @@ TEST(Layer, convTransLayerFwd) {
     conv->set_groups(1);
     conv->set_filter_channels(3 / conv->groups());
     conv->set_img_size(16);
-    conv->set_output_x(
-        (2 * conv->padding() + conv->img_size() - conv->filter_size()) /
-            ((float)conv->stride()) +
-        1.5);
-
+    conv->set_output_x(outputSize(conv->img_size(), conv->filter_size(),
+                                  conv->padding(), conv->stride(),
+                                  /* caffeMode */ true));
     configt.layerConfig.set_size(conv->img_size() * conv->img_size() *
                                 configt.layerConfig.num_filters());
     configt.layerConfig.set_name("convTrans");
@@ -99,10 +98,9 @@ TEST(Layer, convTransLayerFwd) {
     conv->set_groups(1);
     conv->set_filter_channels(conv->channels() / conv->groups());
     conv->set_img_size(16);
-    conv->set_output_x(
-        (2 * conv->padding() + conv->img_size() - conv->filter_size()) /
-            ((float)conv->stride()) +
-        1.5);
+    conv->set_output_x(outputSize(conv->img_size(), conv->filter_size(),
+                                  conv->padding(), conv->stride(),
+                                  /* caffeMode */ true));
     config.layerConfig.set_size(conv->output_x() * conv->output_x() *
                                 config.layerConfig.num_filters());
     config.layerConfig.set_name("conv");
