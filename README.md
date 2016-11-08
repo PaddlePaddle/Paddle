@@ -14,7 +14,7 @@ developed by Baidu scientists and engineers for the purpose of applying deep
 learning to many products at Baidu.
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
-Please refer to our [release log](https://github.com/baidu/Paddle/releases) to track the latest feature of PaddlePaddle. 
+Please refer to our [release announcement](https://github.com/baidu/Paddle/releases) to track the latest feature of PaddlePaddle. 
 
 ## Features
 
