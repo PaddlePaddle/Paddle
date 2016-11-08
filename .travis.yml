@@ -39,14 +39,6 @@ addons:
       - lcov
       - graphviz
 before_install:
-  - |
-    if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
-      TRAVIS_COMMIT_RANGE="FETCH_HEAD...$TRAVIS_BRANCH"
-    fi
-    git diff --name-only $TRAVIS_COMMIT_RANGE | grep -qvE '(\.md$)' || {
-      echo "Only markdown docs were updated, stopping build process."
-      exit
-    }
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo paddle/scripts/travis/before_install.linux.sh; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
   - pip install wheel protobuf sphinx breathe recommonmark
