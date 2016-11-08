@@ -6,17 +6,15 @@ All scripts used in this article are in directory [`paddle/scripts/cluster_train
 
 ## Prerequisite
 
-To make it easy for a Python script to run SSH commands, it is recommended to install Python library [fabric](http://www.fabfile.org/):
+1. Aforementioned scripts use a Python library [fabric](http://www.fabfile.org/) to run SSH commands.  We can use `pip` to install fabric:
 
-```bash
+   ```bash
 pip install fabric
-```
+   ```
 
-Secondly, go through installing scripts to install PaddlePaddle at all nodes to make sure demo can run as local mode. For CUDA enabled training, we assume that CUDA is installed in ```/usr/local/cuda```, otherwise missed cuda runtime libraries error could be reported at cluster runtime. In one word, the local training environment should be well prepared for the simple scripts.
+1. We need to install PaddlePaddle on all nodes in the cluster.  To enable GPUs, we need to install CUDA in `/usr/local/cuda`; otherwise Paddle would report errors at runtime.
 
-Then you should prepare same ROOT_DIR directory in all nodes. ROOT_DIR is from in cluster_train/conf.py. Assuming that the ROOT_DIR = /home/paddle, you can create ```paddle``` user account as well, at last ```paddle.py``` can ssh connections to all nodes with ```paddle``` user automatically.
-
-At last you can create ssh mutual trust relationship between all nodes for easy ssh login, otherwise ```password``` should be provided at runtime from ```paddle.py```.
+1. Set the ROOT_DIR variable in [`cluster_train/conf.py`] all nodes.  For convenience, we often create a Unix account `paddle` on all nodes and set `ROOT_DIR=/home/paddle`.  In this way, we can write public SSH keys into `/home/paddle/.ssh/authorized_keys` so that users can SSH to all nodes as user `paddle` without password.
 
 ## Prepare Job Workspace
 
