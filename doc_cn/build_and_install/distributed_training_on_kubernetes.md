@@ -1,8 +1,7 @@
 
-# 使用Kubernetes进行分布式训练
+# Paddle on Kubernetes：分布式训练
 
->前一篇文章介绍了如何使用Kubernetes Job进行一次单机的Paddle训练。在这篇文档里，我们介绍如何使用 Kubernetes 进行Paddle的集群训练作业。
->关于Paddle的分布式集群训练，可以参考 [Cluster Training](https://github.com/baidu/Paddle/blob/develop/doc/cluster/opensource/cluster_train.md), 本文在此基础上，利用了Kubernetes快速构建Paddle集群，进行分布式训练任务。
+前一篇文章介绍了如何在Kubernetes集群上启动一个单机Paddle训练作业 (Job)。在这篇文章里，我们介绍如何在Kubernetes集群上启动分布式Paddle训练作业。关于Paddle的分布式集群训练，可以参考 [Cluster Training](https://github.com/baidu/Paddle/blob/develop/doc/cluster/opensource/cluster_train.md), 本文在此基础上，利用Kubernetes快速构建Paddle集群，进行分布式训练任务。
 
 ## 制作镜像
 
