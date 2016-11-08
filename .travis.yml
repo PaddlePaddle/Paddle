@@ -38,6 +38,7 @@ addons:
       - curl
       - lcov
       - graphviz
+      - swig
 before_install:
   - |
     if [ ${JOB} == "BUILD_AND_TEST" ]; then
@@ -51,7 +52,7 @@ before_install:
     fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo paddle/scripts/travis/before_install.linux.sh; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
-  - pip install wheel protobuf sphinx breathe recommonmark
+  - pip install wheel protobuf sphinx breathe recommonmark virtualenv numpy
 script:
   - paddle/scripts/travis/main.sh
 notifications:
