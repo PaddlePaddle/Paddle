@@ -349,10 +349,9 @@ void testConvTransLayer(const string& type, bool trans, bool useGpu) {
 }
 
 TEST(Layer, convTransLayer) {
-  testConvTransLayer("exconvt", /* trans= */ false, /* useGpu= */ false);
-#ifndef PADDLE_ONLY_CPU
-  testConvTransLayer("exconvt", /* trans= */ false, /* useGpu= */ true);
-#endif
+  for (auto useGpu : {false, true}) {
+    testConvTransLayer("exconvt", /* trans= */ false, /* useGpu= */ useGpu);
+  }
 }
 
 TEST(Layer, blockExpandLayer) {
