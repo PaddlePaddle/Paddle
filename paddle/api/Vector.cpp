@@ -223,7 +223,7 @@ Vector* Vector::createCpuVectorFromNumpy(float* data, int dim, bool copy) {
   auto retVec = new Vector();
   if (copy) {
     retVec->m->vec = paddle::Vector::create((size_t)dim, false);
-    return retVec;
+    retVec->m->vec->copyFrom(data, dim);
   } else {
     retVec->m->vec = paddle::Vector::create(data, (size_t)dim, false);
   }
