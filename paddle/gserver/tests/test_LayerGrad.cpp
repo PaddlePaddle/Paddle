@@ -931,6 +931,8 @@ void testSppLayer(const string& poolType, const int pyramidHeight, bool trans,
   sppConfig->set_channels(16);
   sppConfig->set_img_size(10);
   sppConfig->set_img_size_y(20);
+  int outputSize = (std::pow(4, sppConfig->pyramid_height()) - 1) / (4 - 1);
+  config.layerConfig.set_size(outputSize * sppConfig->channels());
   testLayerGrad(config, "spp", 100, trans, useGpu);
 }
 

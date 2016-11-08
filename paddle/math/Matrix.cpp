@@ -1510,18 +1510,19 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat, size_t imgSizeH,
   CHECK(inHeight * inWidth == inputMat.getWidth() / channels);
   CHECK_EQ(num, this->getHeight());
   CHECK_EQ(channels * outputH * outputW, this->getWidth());
+  size_t outStride = getStride();
 
   /* initialize the data_ */
   for (size_t i = 0; i < height_; i++) {
     for (size_t j = 0; j < width_; j++) {
-      outData[i * getStride() + j] = -(real)FLT_MAX;
+      outData[i * outStride + j] = -(real)FLT_MAX;
     }
   }
 
   /* pool max one by one */
   for (size_t n = 0; n < num; ++n) {  // frame by frame
     if (!isContiguous()) {
-      outData = data_ + n * getStride();
+      outData = data_ + n * outStride;
     }
     for (size_t c = 0; c < channels; ++c) {  // channel by channel
       for (size_t ph = 0; ph < outputH; ++ph) {
@@ -1564,10 +1565,15 @@ void CpuMatrix::maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
   real* inData = image.getData();
   real* otData = outV.getData();
   real* otGrad = outGrad.getData();
+
+  size_t outStride = outV.getStride();
+  real* origOutData = otData;
+  real* origOutGrad = otGrad;
+
   for (size_t n = 0; n < num; ++n) {
     if (!outV.isContiguous()) {
-      otData = outV.getData() + n * outV.getStride();
-      otGrad = outGrad.getData() + n * outGrad.getStride();
+      otData = origOutData + n * outStride;
+      otGrad = origOutGrad + n * outStride;
     }
     for (size_t c = 0; c < channels; ++c) {
       for (size_t ph = 0; ph < outputH; ++ph) {

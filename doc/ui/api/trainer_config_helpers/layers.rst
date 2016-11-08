@@ -46,6 +46,12 @@ conv_operator
     :members: conv_operator
     :noindex:
 
+conv_projection
+-------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: conv_projection
+    :noindex:
+
 conv_shift_layer
 ------------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -71,6 +77,12 @@ img_pool_layer
 --------------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: img_pool_layer
+    :noindex:   
+
+spp_layer
+--------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: spp_layer
     :noindex:
 
 maxout_layer

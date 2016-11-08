@@ -202,11 +202,11 @@ message ProjectionConfig {
   optional ConvConfig conv_conf = 8;
   optional int32 num_filters = 9;
 
-  // For pool
-  optional PoolConfig pool_conf = 10;
-
   // For IdentityOffsetProjection
   optional uint64 offset = 11 [default = 0];
+
+  // For pool
+  optional PoolConfig pool_conf = 12;
 }
 
 message OperatorConfig {

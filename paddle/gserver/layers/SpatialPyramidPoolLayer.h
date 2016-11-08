@@ -27,7 +27,6 @@ protected:
   size_t imgSizeW_;
   size_t imgSizeH_;
   size_t pyramidHeight_;
-  size_t outputSize_;
   std::string poolType_;
 
   std::vector<std::unique_ptr<PoolProjection>> poolProjections_;

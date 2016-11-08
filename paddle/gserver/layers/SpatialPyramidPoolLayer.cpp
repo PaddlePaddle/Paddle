@@ -24,7 +24,7 @@ ProjectionConfig SpatialPyramidPoolLayer::getConfig(size_t imgSizeW,
                                                     size_t pyramidLevel,
                                                     std::string& poolType) {
   ProjectionConfig config;
-  config.set_type("pool2");
+  config.set_type("pool");
   PoolConfig* conf = config.mutable_pool_conf();
   conf->set_channels(channels);
   conf->set_img_size(imgSizeW);
@@ -93,7 +93,7 @@ bool SpatialPyramidPoolLayer::init(const LayerMap& layerMap,
     startCol = endCol;
     projInput_.emplace_back(Argument());
   }
-  outputSize_ = endCol;
+  CHECK_EQ(endCol, getSize());
   return true;
 }
 
@@ -101,7 +101,7 @@ void SpatialPyramidPoolLayer::forward(PassType passType) {
   Layer::forward(passType);
 
   int batchSize = getInput(0).getBatchSize();
-  resetOutput(batchSize, outputSize_);
+  resetOutput(batchSize, getSize());
   for (size_t i = 0; i < pyramidHeight_; i++) {
     size_t startCol = projCol_[i].first;
     size_t endCol = projCol_[i].second;

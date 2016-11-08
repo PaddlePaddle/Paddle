@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace paddle {
 
-REGISTER_PROJECTION_CREATE_FUNC(pool2, &PoolProjection::create);
+REGISTER_PROJECTION_CREATE_FUNC(pool, &PoolProjection::create);
 
 PoolProjection* PoolProjection::create(const ProjectionConfig& config,
                                        ParameterPtr parameter, bool useGpu) {
