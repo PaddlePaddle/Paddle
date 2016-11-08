@@ -38,6 +38,7 @@ try:
             self.paddle_build_dir = os.path.abspath(self.paddle_build_dir)
             self.with_gpu = PaddleLDFlag.cmake_bool(WITH_GPU)
             self.protolib = PROTOBUF_LIB
+            self.zlib = ZLIB_LIB
             self.thread = CMAKE_THREAD_LIB
             self.dl_libs = CMAKE_DL_LIBS
             self.with_python = PaddleLDFlag.cmake_bool(WITH_PYTHON)
@@ -64,7 +65,7 @@ try:
 
         def parent_dir_str(self):
             libdirs = PARENT_LIB_DIRS
-            return " ".join(map(lambda x: "-L" + os.path.join(self.paddle_build_dir, '..', x), 
+            return " ".join(map(lambda x: "-L" + os.path.join(self.paddle_build_dir, '..', x),
                 libdirs))
 
         def libs_str(self):
@@ -82,6 +83,7 @@ try:
                 "-lpaddle_cuda",
                 "-lpaddle_api",
                 self.normalize_flag(self.protolib),
+                self.normalize_flag(self.zlib),
                 self.normalize_flag(self.thread),
                 self.normalize_flag(self.dl_libs),
                 self.normalize_flag(self.cblas_libs),
