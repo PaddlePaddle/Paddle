@@ -1021,7 +1021,7 @@ TEST(Layer, LstmLayer) {
   TestConfig config;
   config.layerConfig.set_type("lstmemory");
   config.layerConfig.set_size(4);
-  config.layerConfig.set_active_type("sigmoid");
+  config.layerConfig.set_active_type("tanh");
   config.layerConfig.set_active_state_type("sigmoid");
   config.layerConfig.set_active_gate_type("sigmoid");
   config.biasSize = 28;

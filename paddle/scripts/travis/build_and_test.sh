@@ -3,6 +3,8 @@ source ./common.sh
 CMAKE_EXTRA=""
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
   CMAKE_EXTRA="-DPYTHON_LIBRARY=/usr/local/Cellar/python/2.7.12_1/Frameworks/Python.framework/Versions/2.7/lib/python2.7/config/libpython2.7.dylib"
+else
+  CMAKE_EXTRA="-DWITH_SWIG_PY=ON"
 fi
 
 
