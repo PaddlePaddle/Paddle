@@ -782,7 +782,9 @@ class Pool(Cfg):
             padding = None,
             padding_y = None):
         self.add_keys(locals())
-
+        
+# please refer to the comments in proto/ModelConfig.proto
+@config_class
 class SpatialPyramidPool(Cfg):
     def __init__(
             self,
@@ -1015,6 +1017,17 @@ def TestData(data_config, async_load_data=None):
                        " Data definition")
         g_config.test_data_config.async_load_data = async_load_data
 
+'''
+caffe_mode: compute the output size using floor instead of ceil,
+            which is consistent of caffe and CuDNN's convention.
+'''
+def cnn_output_size(img_size, filter_size, padding, stride, caffe_mode):
+    output = (2 * padding + img_size - filter_size) / float(stride)
+    if caffe_mode:
+        return 1 + int(math.floor(output))
+    else:
+        return 1 + int(math.ceil(output))
+
 def parse_pool(pool, input_layer_name, pool_conf):
     pool_conf.pool_type = pool.pool_type
     config_assert(pool.pool_type in ['max-projection', 'avg-projection',
@@ -1045,12 +1058,10 @@ def parse_pool(pool, input_layer_name, pool_conf):
     if pool.padding is not None:
         pool_conf.padding = pool.padding
         pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
-        pool_conf.output_x = int(math.ceil((pool_conf.img_size + \
-            2*pool_conf.padding - pool_conf.size_x) / \
-            float(pool_conf.stride))) + 1
-        pool_conf.output_y = int(math.ceil((pool_conf.img_size_y + \
-            2*pool_conf.padding_y - pool_conf.size_y) / \
-            float(pool_conf.stride_y))) + 1
+        pool_conf.output_x = cnn_output_size(pool_conf.img_size, pool_conf.size_x,
+                                             pool_conf.padding, pool_conf.stride, False)
+        pool_conf.output_y = cnn_output_size(pool_conf.img_size_y, pool_conf.size_y,
+                                             pool_conf.padding_y, pool_conf.stride_y, False)
 
 def parse_spp(spp, input_layer_name, spp_conf):
     spp_conf.pool_type = spp.pool_type
@@ -1097,10 +1108,7 @@ def parse_norm(norm, input_layer_name, norm_conf):
         norm_conf.scale /= norm.size
     else:
         norm_conf.scale /= norm.size ** 2
-'''
-caffe_mode: compute the output size using floor instead of ceil,
-            which is consistent of caffe and CuDNN's convention.
-'''
+
 def parse_conv(conv, input_layer_name, conv_conf):
     conv_conf.filter_size = conv.filter_size
     conv_conf.filter_size_y = conv.filter_size_y
@@ -1121,14 +1129,9 @@ def parse_conv(conv, input_layer_name, conv_conf):
                   ("Input layer %s: Incorrect input image size %d for input "
                    + "image pixels %d")
                   % (input_layer_name, conv_conf.img_size, img_pixels))
-    if conv.caffe_mode:
-        conv_conf.output_x = \
-            1 + int(math.floor((2 * conv.padding + conv_conf.img_size \
-            - conv.filter_size) / float(conv.stride)))
-    else:
-        conv_conf.output_x = \
-            1 + int(math.ceil((2 * conv.padding + conv_conf.img_size \
-            - conv.filter_size) / float(conv.stride)))
+    conv_conf.output_x = cnn_output_size(conv_conf.img_size, conv_conf.filter_size,
+                                         conv_conf.padding, conv_conf.stride,
+                                         conv_conf.caffe_mode)
 
 def parse_block_expand(block_expand, input_layer_name, block_expand_conf):
     block_expand_conf.channels = block_expand.channels
@@ -1143,18 +1146,16 @@ def parse_block_expand(block_expand, input_layer_name, block_expand_conf):
     if block_expand_conf.img_size_x == 0:
         block_expand_conf.output_x = 0
     else:
-        block_expand_conf.output_x = \
-            1 + \
-            int(math.ceil((2 * block_expand.padding_x + block_expand.img_size_x \
-            - block_expand.block_x) / float(block_expand.stride_x)))
+        block_expand_conf.output_x = cnn_output_size(
+            block_expand.img_size_x, block_expand.block_x, 
+            block_expand.padding_x, block_expand.stride_x, False)
 
     if block_expand_conf.img_size_y == 0:
-      block_expand_conf.output_y = 0
+        block_expand_conf.output_y = 0
     else:
-        block_expand_conf.output_y = \
-            1 + \
-            int(math.ceil((2 * block_expand.padding_y + block_expand.img_size_y \
-            - block_expand.block_y) / float(block_expand.stride_y)))
+        block_expand_conf.output_y = cnn_output_size(
+            block_expand.img_size_y, block_expand.block_y, 
+            block_expand.padding_y, block_expand.stride_y, False)
 
 def parse_maxout(maxout, input_layer_name, maxout_conf):
     maxout_conf.channels = maxout.channels
@@ -2617,8 +2618,9 @@ class MixedLayer(LayerBase):
             for input in self.inputs:
                 psize += input.calc_bias_size()
 
-        self.config.bias_size = psize
-        self.create_bias_parameter(bias, psize)
+        if bias:
+            self.config.bias_size = psize
+            self.create_bias_parameter(bias, psize)
 
         if error_clipping_threshold is not None:
             self.config.error_clipping_threshold = error_clipping_threshold
@@ -2703,8 +2705,9 @@ class ConcatenateLayer2(LayerBase):
             for input in self.inputs:
                 psize += input.calc_bias_size()
 
-        self.config.bias_size = psize
-        self.create_bias_parameter(bias, psize)
+        if bias:
+            self.config.bias_size = psize
+            self.create_bias_parameter(bias, psize)
 
 @config_layer('recurrent')
 class RecurrentLayer(LayerBase):

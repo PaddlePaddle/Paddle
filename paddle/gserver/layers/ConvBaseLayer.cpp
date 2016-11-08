@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "ConvBaseLayer.h"
 namespace paddle {
@@ -78,10 +77,10 @@ size_t ConvBaseLayer::calOutputSize() {
       imgSizeH_[i] = config_.inputs(i).conv_conf().img_size();
     if (imgSizeW_[i] == 0)
       imgSizeW_[i] = config_.inputs(i).conv_conf().img_size();
-    outputH_.push_back(
-        outputSize(imgSizeH_[i], filterSizeY_[i], paddingY_[i], strideY_[i]));
-    outputW_.push_back(
-        outputSize(imgSizeW_[i], filterSize_[i], padding_[i], stride_[i]));
+    outputH_.push_back(outputSize(imgSizeH_[i], filterSizeY_[i], paddingY_[i],
+                                  strideY_[i], caffeMode_));
+    outputW_.push_back(outputSize(imgSizeW_[i], filterSize_[i], padding_[i],
+                                  stride_[i], caffeMode_));
     CHECK_EQ(outputH_[i], outputH_[0]);
     CHECK_EQ(outputW_[i], outputW_[0]);
   }

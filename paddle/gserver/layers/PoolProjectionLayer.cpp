@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 #include "PoolProjectionLayer.h"
@@ -32,8 +31,10 @@ size_t PoolProjectionLayer::getSize() {
     imgSizeW_ = imgSize_;
   }
 
-  outputH_ = outputSize(imgSizeH_, sizeY_, confPaddingY_, strideY_);
-  outputW_ = outputSize(imgSizeW_, sizeX_, confPadding_, stride_);
+  outputH_ = outputSize(imgSizeH_, sizeY_, confPaddingY_, strideY_,
+                        /* caffeMode */ false);
+  outputW_ = outputSize(imgSizeW_, sizeX_, confPadding_, stride_,
+                        /* caffeMode */ false);
 
   layerSize = outputH_ * outputW_ * channels_;
 

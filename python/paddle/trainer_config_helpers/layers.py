@@ -56,7 +56,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'rank_cost', 'lambda_cost', 'huber_cost',
            'block_expand_layer',
            'maxout_layer', 'out_prod_layer', 'print_layer', 
-           'spp_layer', 
+           # 'spp_layer', 
            ]
 
 
@@ -112,7 +112,7 @@ class LayerType(object):
     LINEAR_COMBINATION_LAYER = "convex_comb"
     BLOCK_EXPAND = "blockexpand"
     MAXOUT = "maxout"
-    SPP_LAYER = "spp"
+    # SPP_LAYER = "spp"
 
     PRINT_LAYER = "print"
 
@@ -566,7 +566,7 @@ class MixedLayerType(LayerOutput):
         self.inputs = []
         self.finalized = False
 
-    def __add__(self, other):
+    def __iadd__(self, other):
         """
         + += operator
         :param other: Other projection.
@@ -1711,60 +1711,60 @@ def img_pool_layer(input, pool_size, name=None,
                        num_filters=num_channels)
 
 
-@wrap_name_default("spp")
-@layer_support()
-def spp_layer(input, name=None, num_channels=None, pool_type=None,
-              pyramid_height=None, img_width=None, layer_attr=None):
-    pass
-    """
-    Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition.
-    The details please refer to
-    `Kaiming He's paper <https://arxiv.org/abs/1406.4729>`_.
+# @wrap_name_default("spp")
+# @layer_support()
+# def spp_layer(input, name=None, num_channels=None, pool_type=None,
+#               pyramid_height=None, img_width=None, layer_attr=None):
+#     pass
+#     """
+#     Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition.
+#     The details please refer to
+#     `Kaiming He's paper <https://arxiv.org/abs/1406.4729>`_.
 
-    :param name: layer name.
-    :type name: basestring
-    :param input: layer's input.
-    :type input: LayerOutput
-    :param num_channels: number of input channel.
-    :type num_channels: int
-    :param pool_type: Pooling type. MaxPooling or AveragePooling. Default is MaxPooling.
-    :type scale: BasePoolingType
-    :param pyramid_height: pyramid height.
-    :type pyramid_height: int
-    :param img_width: the width of input feature map. If it is None, the input feature
-                      map should be square.
-    :type img_width: int|None
-    :param layer_attr: Extra Layer Attribute.
-    :type layer_attr: ExtraLayerAttribute
-    :return: LayerOutput object.
-    :rtype: LayerOutput
-    """
-    if num_channels is None:
-        assert input.num_filters is not None
-        num_channels = input.num_filters
+#     :param name: layer name.
+#     :type name: basestring
+#     :param input: layer's input.
+#     :type input: LayerOutput
+#     :param num_channels: number of input channel.
+#     :type num_channels: int
+#     :param pool_type: Pooling type. MaxPooling or AveragePooling. Default is MaxPooling.
+#     :type scale: BasePoolingType
+#     :param pyramid_height: pyramid height.
+#     :type pyramid_height: int
+#     :param img_width: the width of input feature map. If it is None, the input feature
+#                       map should be square.
+#     :type img_width: int|None
+#     :param layer_attr: Extra Layer Attribute.
+#     :type layer_attr: ExtraLayerAttribute
+#     :return: LayerOutput object.
+#     :rtype: LayerOutput
+#     """
+#     if num_channels is None:
+#         assert input.num_filters is not None
+#         num_channels = input.num_filters
 
-    if pool_type is None:
-        pool_type = MaxPooling()
-    elif isinstance(pool_type, AvgPooling):
-        pool_type.name = 'avg'
+#     if pool_type is None:
+#         pool_type = MaxPooling()
+#     elif isinstance(pool_type, AvgPooling):
+#         pool_type.name = 'avg'
 
-    type_name = pool_type.name
-    if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)):
-        type_name += '-projection'
+#     type_name = pool_type.name
+#     if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)):
+#         type_name += '-projection'
 
-    Layer(
-        name=name,
-        type=LayerType.SPP_LAYER,
-        inputs=Input(input.name,
-                     spp=SpatialPyramidPool(pool_type=type_name,
-                                            channels=num_channels,
-                                            pyramid_height=pyramid_height,
-                                            img_width=img_width)
-        ),
-        **ExtraLayerAttribute.to_kwargs(layer_attr)
-    )
-    return LayerOutput(name, LayerType.SPP_LAYER, parents=[input], 
-                       num_filters=num_channels)
+#     Layer(
+#         name=name,
+#         type=LayerType.SPP_LAYER,
+#         inputs=Input(input.name,
+#                      spp=SpatialPyramidPool(pool_type=type_name,
+#                                             channels=num_channels,
+#                                             pyramid_height=pyramid_height,
+#                                             img_width=img_width)
+#         ),
+#         **ExtraLayerAttribute.to_kwargs(layer_attr)
+#     )
+#     return LayerOutput(name, LayerType.SPP_LAYER, parents=[input], 
+#                        num_filters=num_channels)
 
 
 def __img_norm_layer__(name, input, size, norm_type, scale, power,

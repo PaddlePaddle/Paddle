@@ -6,17 +6,19 @@ if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
 fi
 
 
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_TESTING=ON -DON_TRAVIS=ON ${CMAKE_EXTRA}
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=OFF -DWITH_TESTING=ON -DON_TRAVIS=ON -DON_COVERALLS=ON ${CMAKE_EXTRA}
 
 NPROC=1
 if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
   NRPOC=`nproc`
+  make -j $NPROC
+  make coveralls
 elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
   NPROC=`sysctl -n hw.ncpu`
+  make -j $NPROC
+  env CTEST_OUTPUT_ON_FAILURE=1 make test ARGS="-j $NPROC"
 fi
 
 
-make -j $NPROC
-env CTEST_OUTPUT_ON_FAILURE=1 make test ARGS="-j $NPROC"
 sudo make install
 sudo paddle version

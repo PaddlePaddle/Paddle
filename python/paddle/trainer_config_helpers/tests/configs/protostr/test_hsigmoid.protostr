@@ -1,0 +1,62 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 100
+  active_type: ""
+}
+layers {
+  name: "label"
+  type: "data"
+  size: 10
+  active_type: ""
+}
+layers {
+  name: "__hsigmoid_0__"
+  type: "hsigmoid"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+    input_parameter_name: "___hsigmoid_0__.w0"
+  }
+  inputs {
+    input_layer_name: "label"
+  }
+  bias_parameter_name: "___hsigmoid_0__.wbias"
+  num_classes: 10
+}
+parameters {
+  name: "___hsigmoid_0__.w0"
+  size: 900
+  initial_mean: 0.0
+  initial_std: 0.333333333333
+  dims: 9
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "___hsigmoid_0__.wbias"
+  size: 9
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 9
+  initial_strategy: 0
+  initial_smart: false
+}
+input_layer_names: "data"
+input_layer_names: "label"
+output_layer_names: "__hsigmoid_0__"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "label"
+  layer_names: "__hsigmoid_0__"
+  input_layer_names: "data"
+  input_layer_names: "label"
+  output_layer_names: "__hsigmoid_0__"
+  is_recurrent_layer_group: false
+}
+

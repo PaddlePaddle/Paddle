@@ -41,64 +41,27 @@ void* cudnn_dso_handle = nullptr;
 
 #ifdef PADDLE_USE_DSO
 
-#define DYNAMIC_LOAD_CUDNN_WRAP(__name)                         \
-  struct DynLoad__##__name {                                    \
-    template <typename... Args>                                 \
-    cudnnStatus_t operator()(Args... args) {                    \
-      typedef cudnnStatus_t (*cudnnFunc)(Args...);              \
-      std::call_once(cudnn_dso_flag, GetCudnnDsoHandle,         \
-                     &cudnn_dso_handle);                        \
-      void* p_##__name = dlsym(cudnn_dso_handle, #__name);      \
-      return reinterpret_cast<cudnnFunc>(p_##__name)(args...);  \
-    }                                                           \
+#define DYNAMIC_LOAD_CUDNN_WRAP(__name)                          \
+  struct DynLoad__##__name {                                     \
+    template <typename... Args>                                  \
+    auto operator()(Args... args) -> decltype(__name(args...)) { \
+      using cudnn_func = decltype(__name(args...))(*)(Args...);  \
+      std::call_once(cudnn_dso_flag, GetCudnnDsoHandle,          \
+                     &cudnn_dso_handle);                         \
+      void* p_##__name = dlsym(cudnn_dso_handle, #__name);       \
+      return reinterpret_cast<cudnn_func>(p_##__name)(args...);  \
+    }                                                            \
   } __name; /* struct DynLoad__##__name */
-
-struct DynLoad__cudnnGetVersion {
-  template <typename... Args>
-  size_t operator()(Args... args) {
-    typedef size_t (*cudnnFunc)(Args...);
-    std::call_once(cudnn_dso_flag, GetCudnnDsoHandle,
-                   &cudnn_dso_handle);
-    void* p_name = dlsym(cudnn_dso_handle, "cudnnGetVersion");
-    return reinterpret_cast<cudnnFunc>(p_name)(args...);
-  }
-} cudnnGetVersion; /* struct DynLoad__##__name */
-
-struct DynLoad__cudnnGetErrorString {
-  template <typename... Args>
-  const char* operator()(Args... args) {
-    typedef const char* (*cudnnFunc)(Args...);
-    std::call_once(cudnn_dso_flag, GetCudnnDsoHandle,
-                   &cudnn_dso_handle);
-    void* p_name = dlsym(cudnn_dso_handle, "cudnnGetErrorString");
-    return reinterpret_cast<cudnnFunc>(p_name)(args...);
-  }
-} cudnnGetErrorString; /* struct DynLoad__##__name */
-
 
 #else
 
-#define DYNAMIC_LOAD_CUDNN_WRAP(__name)                         \
-  struct DynLoad__##__name {                                    \
-    template <typename... Args>                                 \
-    cudnnStatus_t operator()(Args... args) {                    \
-      return __name(args...);                                   \
-    }                                                           \
+#define DYNAMIC_LOAD_CUDNN_WRAP(__name)                          \
+  struct DynLoad__##__name {                                     \
+    template <typename... Args>                                  \
+    auto operator()(Args... args) -> decltype(__name(args...)) { \
+      return __name(args...);                                    \
+    }                                                            \
   } __name; /* struct DynLoad__##__name */
-
-struct DynLoad__cudnnGetVersion {
-  template <typename... Args>
-  size_t operator()(Args... args) {
-    return cudnnGetVersion(args...);
-  }
-} cudnnGetVersion; /* struct DynLoad__##__name */
-
-struct DynLoad__cudnnGetErrorString {
-  template <typename... Args>
-  const char* operator()(Args... args) {
-    return cudnnGetErrorString(args...);
-  }
-} cudnnGetErrorString; /* struct DynLoad__##__name */
 
 #endif
 
@@ -133,7 +96,9 @@ struct DynLoad__cudnnGetErrorString {
   __macro(cudnnPoolingForward)                            \
   __macro(cudnnPoolingBackward)                           \
   __macro(cudnnSoftmaxBackward)                           \
-  __macro(cudnnSoftmaxForward)
+  __macro(cudnnSoftmaxForward)                            \
+  __macro(cudnnGetVersion)                                \
+  __macro(cudnnGetErrorString)
 CUDNN_DNN_ROUTINE_EACH(DYNAMIC_LOAD_CUDNN_WRAP)
 
 #define CUDNN_DNN_ROUTINE_EACH_R2(__macro)                \

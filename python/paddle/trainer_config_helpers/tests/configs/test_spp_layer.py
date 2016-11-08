@@ -7,7 +7,6 @@ settings(
 
 data = data_layer(name='data', size=3200)
 
-
 spp = spp_layer(input=data,
                 pyramid_height=2,
                 num_channels=16,

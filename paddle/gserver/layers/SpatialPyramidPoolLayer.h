@@ -18,6 +18,7 @@ limitations under the License. */
 #include "Layer.h"
 #include "PoolProjection.h"
 #include "paddle/utils/Logging.h"
+#include "paddle/math/MathUtils.h"
 
 namespace paddle {
 
@@ -30,7 +31,6 @@ protected:
   std::string poolType_;
 
   std::vector<std::unique_ptr<PoolProjection>> poolProjections_;
-  std::vector<Argument> projInput_;
   std::vector<Argument> projOutput_;
   std::vector<std::pair<size_t, size_t>> projCol_;
 
@@ -41,13 +41,8 @@ public:
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
   ProjectionConfig getConfig(size_t sizeX_, size_t sizeY_, size_t channels,
                              size_t pyamidLevel_, std::string& poolType_);
-
-  int outputSize(int imageSize, int windowSize, int padding, int stride) {
-    return (imageSize - windowSize + 2 * padding) / stride + 1;
-  }
-
+  size_t getSize();
   virtual void forward(PassType passType);
   virtual void backward(const UpdateCallback& callback = nullptr);
-  void splitInput(Argument& input, size_t height, size_t width, bool useGpu);
 };
 }  // namespace paddle
