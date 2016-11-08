@@ -187,6 +187,15 @@ MatrixPtr Matrix::subMatrix(size_t startRow, size_t endRow, size_t startCol,
                         trans_, useGpu_);
 }
 
+void Matrix::setDiag(real value) {
+  CHECK(data_ != NULL);
+  CHECK_EQ(height_, width_);
+
+  zeroMem();
+  BaseMatrix diag(height_, 1, stride_ + 1, data_, false, useGpu_);
+  diag.assign(value);
+}
+
 GpuMatrix::GpuMatrix(size_t height, size_t width, bool trans)
     : Matrix(std::make_shared<GpuMemoryHandle>(height * width * sizeof(real)),
              height, width, trans, true) {}
@@ -201,16 +210,6 @@ void GpuMatrix::zeroMem() {
 void GpuMatrix::resetOne() {
   CHECK(data_ != NULL);
   one();
-}
-
-void GpuMatrix::setDiag(real value) {
-  CHECK(data_ != NULL);
-  CHECK_EQ(height_, width_);
-
-  zeroMem();
-  for (size_t i = 0; i < height_; i++) {
-    hl_memcpy_host2device(&data_[i * stride_ + i], &value, sizeof(real));
-  }
 }
 
 void GpuMatrix::resize(size_t newHeight, size_t newWidth) {
@@ -1253,16 +1252,6 @@ void CpuMatrix::zeroMem() {
 void CpuMatrix::resetOne() {
   CHECK(data_ != NULL);
   BaseMatrix::one();
-}
-
-void CpuMatrix::setDiag(real value) {
-  CHECK(data_ != NULL);
-  CHECK_EQ(height_, width_);
-
-  zeroMem();
-  for (size_t i = 0; i < height_; i++) {
-    data_[i * stride_ + i] = value;
-  }
 }
 
 void CpuMatrix::copyFrom(const Matrix& src) {

@@ -195,7 +195,7 @@ public:
 
   virtual void resetOne() { LOG(FATAL) << "Not implemented"; }
 
-  virtual void setDiag(real value) { LOG(FATAL) << "Not implemented"; }
+  void setDiag(real value);
 
   virtual void copyFrom(const Matrix& src) { LOG(FATAL) << "Not implemented"; }
 
