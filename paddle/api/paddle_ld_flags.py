@@ -47,6 +47,7 @@ try:
             self.glog_libs = LIBGLOG_LIBRARY
 
             self.with_gflags = PaddleLDFlag.cmake_bool(WITH_GFLAGS)
+            self.with_coverage = PaddleLDFlag.cmake_bool(WITH_COVERALLS)
             self.gflags_libs = GFLAGS_LIBRARIES
             self.gflags_location = GFLAGS_LOCATION
             self.cblas_libs = CBLAS_LIBRARIES
@@ -95,6 +96,8 @@ try:
                 libs.append(self.normalize_flag(self.gflags_libs))
             if self.with_gpu:
                 libs.append(self.normalize_flag(self.curt))
+            if self.with_coverage:
+                libs.append("-fprofile-arcs")
             return " ".join(filter(lambda l: len(l) != 0, libs))
 
         def normalize_flag(self, cmake_flag):
@@ -131,8 +134,14 @@ try:
                 return False
             else:
                 return True
-
+        def c_flag(self):
+            if self.with_coverage:
+                return ["-fprofile-arcs", "-ftest-coverage", "-O0", "-g"]
+            else:
+                return None
 except ImportError:
     class PaddleLDFlag(object):
         def ldflag_str(self):
+            pass
+        def c_flag(self):
             pass
