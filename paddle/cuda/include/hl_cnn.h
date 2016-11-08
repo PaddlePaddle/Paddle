@@ -91,7 +91,7 @@ extern void hl_expand_feature2col(
  * @param[in]   paddingH    padding height.
  * @param[in]   paddingW    padding width.
  * @param[out]  tgtData     output data.
- * @param[in]   tgtStride   output data stride.
+ * @param[in]   tgtStride   stride between output data samples.
  *
  */
 extern void hl_maxpool_forward(
@@ -125,7 +125,7 @@ extern void hl_maxpool_forward(
  * @param[in]   paddingH    padding height.
  * @param[in]   paddingW    padding width.
  * @param[out]  targetGrad  output grad.
- * @param[in]   outStride   output grad data stride. 
+ * @param[in]   outStride   stride between output data samples. 
  *
  */
 extern void hl_maxpool_backward(
@@ -157,7 +157,7 @@ extern void hl_maxpool_backward(
  * @param[in]   paddingH    padding height.
  * @param[in]   paddingW    padding width.
  * @param[out]  tgtData     output data.
- * @param[in]   tgtStride   output data stride.
+ * @param[in]   tgtStride   stride between output data samples.
  *
  */
 extern void hl_avgpool_forward(
@@ -189,7 +189,7 @@ extern void hl_avgpool_forward(
  * @param[in]   scaleA      scale.
  * @param[in]   scaleB      scale.
  * @param[out]  backGrad    output grad.
- * @param[in]   outStride   output grad data stride. 
+ * @param[in]   outStride   stride between output data samples. 
  *
  */
 extern void hl_avgpool_backward(

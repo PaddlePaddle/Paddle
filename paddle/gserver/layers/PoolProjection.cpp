@@ -34,9 +34,9 @@ PoolProjection* PoolProjection::create(const ProjectionConfig& config,
 void MaxPoolProjection::forward() {
   MatrixPtr inputV = in_->value;
   MatrixPtr outV = out_->value;
-  outV->maxPoolForward(*inputV, imgSizeY_, imgSize_, channels_,
-                       sizeX_, sizeY_, strideY_, stride_,
-                       outputY_, outputX_, confPaddingY_, confPadding_);
+  outV->maxPoolForward(*inputV, imgSizeY_, imgSize_, channels_, sizeX_, sizeY_,
+                       strideY_, stride_, outputY_, outputX_, confPaddingY_,
+                       confPadding_);
 }
 
 void MaxPoolProjection::backward(const UpdateCallback& callback) {
@@ -50,17 +50,16 @@ void MaxPoolProjection::backward(const UpdateCallback& callback) {
     return;
   }
   inputGrad->maxPoolBackward(*inputV, imgSizeY_, imgSize_, *outGrad, *outV,
-                             sizeX_, sizeY_,
-                             strideY_, stride_, outputY_, outputX_, 1, 1,
-                             confPaddingY_, confPadding_);
+                             sizeX_, sizeY_, strideY_, stride_, outputY_,
+                             outputX_, 1, 1, confPaddingY_, confPadding_);
 }
 
 void AvgPoolProjection::forward() {
   MatrixPtr inputV = in_->value;
   MatrixPtr outV = out_->value;
-  outV->avgPoolForward(*inputV, imgSizeY_, imgSize_, channels_,
-                       sizeX_, sizeY_, strideY_, stride_,
-                       outputY_, outputX_, confPaddingY_, confPadding_);
+  outV->avgPoolForward(*inputV, imgSizeY_, imgSize_, channels_, sizeX_, sizeY_,
+                       strideY_, stride_, outputY_, outputX_, confPaddingY_,
+                       confPadding_);
 }
 
 void AvgPoolProjection::backward(const UpdateCallback& callback) {
@@ -73,9 +72,8 @@ void AvgPoolProjection::backward(const UpdateCallback& callback) {
     return;
   }
 
-  inputGrad->avgPoolBackward(*outputGrad, imgSizeY_, imgSize_,
-                             sizeX_, sizeY_, strideY_, stride_,
-                             outputY_, outputX_, 1, 1,
+  inputGrad->avgPoolBackward(*outputGrad, imgSizeY_, imgSize_, sizeX_, sizeY_,
+                             strideY_, stride_, outputY_, outputX_, 1, 1,
                              confPaddingY_, confPadding_);
 }
 }  // namespace paddle

@@ -56,8 +56,15 @@ ProjectionConfig SpatialPyramidPoolLayer::getConfig(size_t imgSizeW,
 size_t SpatialPyramidPoolLayer::getSize() {
   CHECK_EQ(inputLayers_.size(), 1UL);
   size_t layerSize = 0;
+  const SppConfig& sppConf = config_.inputs(0).spp_conf();
   imgSizeH_ = inputLayers_[0]->getOutput().getFrameHeight();
   imgSizeW_ = inputLayers_[0]->getOutput().getFrameWidth();
+  if (imgSizeH_ == 0) {
+    imgSizeH_ = sppConf.has_img_size_y() ? sppConf.img_size_y() : imgSizeW_;
+  }
+  if (imgSizeW_ == 0) {
+    imgSizeW_ = sppConf.img_size();
+  }
 
   size_t outputH = 1;
   size_t outputW = (std::pow(4, pyramidHeight_) - 1) / (4 - 1);
@@ -66,9 +73,9 @@ size_t SpatialPyramidPoolLayer::getSize() {
 
   getOutput().setFrameHeight(outputH);
   getOutput().setFrameWidth(outputW);
+
   return layerSize;
 }
-
 
 bool SpatialPyramidPoolLayer::init(const LayerMap& layerMap,
                                    const ParameterMap& parameterMap) {
@@ -90,8 +97,8 @@ bool SpatialPyramidPoolLayer::init(const LayerMap& layerMap,
   size_t endCol = 0;
   for (size_t i = 0; i < pyramidHeight_; i++) {
     poolProjections_.emplace_back(PoolProjection::create(
-      getConfig(imgSizeW_, imgSizeH_, channels_, i, poolType_),
-      nullptr, useGpu_));
+        getConfig(imgSizeW_, imgSizeH_, channels_, i, poolType_), nullptr,
+        useGpu_));
     endCol += poolProjections_[i]->getOutputSize();
     projCol_.push_back(std::make_pair(startCol, endCol));
     startCol = endCol;
@@ -125,4 +132,3 @@ void SpatialPyramidPoolLayer::backward(const UpdateCallback& callback) {
 }
 
 }  // namespace paddle
-

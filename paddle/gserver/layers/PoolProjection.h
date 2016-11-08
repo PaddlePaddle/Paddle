@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "Projection.h"
+#include "paddle/math/MathUtils.h"
 
 namespace paddle {
 
