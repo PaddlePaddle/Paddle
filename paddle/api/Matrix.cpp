@@ -53,10 +53,14 @@ Matrix* Matrix::createDense(const std::vector<float>& data, size_t height,
 }
 
 Matrix* Matrix::createDenseFromNumpy(float* data, int dim1, int dim2,
-                                      bool copy, bool useGpu) {
+                                      bool copy, bool useGpu)
+                                      throw (UnsupportError) {
   if (useGpu) {
     /// Gpu mode only supports copy=True
-    CHECK(copy);
+    if (!copy) {
+      UnsupportError e;
+      throw e;
+    }
     return Matrix::createGpuDenseFromNumpy(data, dim1, dim2);
   } else {
     return Matrix::createCpuDenseFromNumpy(data, dim1, dim2, copy);
