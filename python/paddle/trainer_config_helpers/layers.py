@@ -55,7 +55,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'multi_binary_label_cross_entropy',
            'rank_cost', 'lambda_cost', 'huber_cost',
            'block_expand_layer',
-           'maxout_layer', 'out_prod_layer', 'print_layer'
+           'maxout_layer', 'out_prod_layer', 'print_layer','table_operator_layer'
            ]
 
 
@@ -126,6 +126,7 @@ class LayerType(object):
     CROSS_ENTROPY_WITH_SELFNORM = "multi_class_cross_entropy_with_selfnorm"
     SOFT_BIN_CLASS_CROSS_ENTROPY = "soft_binary_class_cross_entropy"
     MULTI_BIN_LABEL_CROSS_ENTROPY = "multi_binary_label_cross_entropy"
+    TABLE_OPERATOR_LAYER = "table_operator"    
 
     @staticmethod
     def is_layer_type(type_name):
@@ -133,13 +134,13 @@ class LayerType(object):
         If type_name is a layer type.
 
         :param type_name: layer type name. Because layer type enumerations are
-                          strings.
+                          
         :type type_name: basestring
         :return: True if is a layer_type
         :rtype: bool
         """
         for key in dir(LayerType):
-            if key.isupper():
+            if key():
                 att = getattr(LayerType, key)
                 if isinstance(att, basestring) and type_name == att:
                     return True
@@ -1433,6 +1434,18 @@ def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
         )
     return LayerOutput(name, LayerType.COSINE_SIM, parents=[a, b])
 
+@wrap_name_default()
+@layer_support()
+def table_operator_layer(a,b,size,name=None,layer_attr=None):
+    assert isinstance(a,LayerOutput) and isinstance(b,LayerOutput)
+    Layer(
+        name = name,
+        type=LayerType.TABLE_OPERATOR_LAYER,
+        size = size,
+        inputs=[a.name,b.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
+         )
+    return LayerOutput(name,LayerType.TABLE_OPERATOR_LAYER,parents=[a,b])
 
 @wrap_name_default()
 @wrap_bias_attr_default(has_bias=True)
