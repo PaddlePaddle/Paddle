@@ -310,6 +310,18 @@ public:
    *
    * @code
    * for each row i & 0 <= j < b.width_, do:
+   *   dst = agg(op(b[i*ldb + j], c[i*ldc + j])
+   *   this[i] = sv(this[i], dst)
+   * @endcode
+   */
+  template <class Agg, class Op, class Saver>
+  int applyRow(Agg agg, Op op, Saver sv, BaseMatrixT& b, BaseMatrixT& c);
+
+  /**
+   * a aggregate expression that apply each row of matrix b.
+   *
+   * @code
+   * for each row i & 0 <= j < b.width_, do:
    *   dst = agg(b[i*ldb + j])
    *   this[i] = sv(this[i], dst)
    * @endcode
@@ -920,7 +932,9 @@ public:
   void addRowScale(size_t cCol, BaseMatrixT& b, BaseMatrixT& c);
 
   /// calculate the sum of each row of the matrix b.
-  void sumRows(BaseMatrixT& b);
+  /// this_i = scaleDest * this_i + scaleSum * \sum_j b_{ij}
+  void sumRows(BaseMatrixT& b, T scaleSum, T scaleDest);
+
   /// calculate the maximum value of each row of the matrix b.
   void maxRows(BaseMatrixT& b);
   /// calculate the minimum value of each row of the matrix b.
@@ -932,10 +946,18 @@ public:
   void maxCols(BaseMatrixT& b);
   /// calculate the minimum value of each column of the matrix b.
   void minCols(BaseMatrixT& b);
-  void sumCols(BaseMatrixT& b, T scale);
 
-  /// calculate the sum of each row of (b - c)^2.
-  void sumOfSquares(BaseMatrixT& b, BaseMatrixT& c);
+  /// calculate the sum of each column of the matrix b.
+  /// this_i = scaleDest * this_i + scaleSum * \sum_j b_{ji}
+  void sumCols(BaseMatrixT& b, T scaleSum, T scaleDest);
+
+  /// this_i = scaleDest * this_i + scaleSum * \sum_j (b_{ij} - c_{ij})^2
+  void sumOfSquaredDiffs(BaseMatrixT& b, BaseMatrixT& c,
+                         T scaleSum, T scaleDest);
+
+  /// this_i = scaleDest * this_i + scaleSum * \sum_j b_{ij} * c_{ij}
+  void sumOfProducts(BaseMatrixT& b, BaseMatrixT& c,
+                     T scaleSum, T scaleDest);
 
   /**
    * @code

@@ -29,6 +29,7 @@ except ImportError:
     import pickle
 import copy
 
+<<<<<<< 0ba0f02c685e52b14632f6b9bfca4321494505c7
 __all__ = [
     "full_matrix_projection",
     "AggregateLevel",
@@ -65,6 +66,7 @@ __all__ = [
     'StaticInput',
     'expand_layer',
     'scaling_layer',
+    'scaling_projection',
     'power_layer',
     'interpolation_layer',
     'bilinear_interp_layer',
@@ -458,7 +460,7 @@ def identity_projection(input, offset=None):
     :type input: LayerOutput
     :param offset: Offset, None if use default.
     :type offset: int
-    :return: A IdentityProjection or IdentityOffsetProjection Object
+    :return: A IdentityProjection or IdentityOffsetProjection object
     :rtype: IdentityProjection or IdentityOffsetProjection
     """
     if offset is None:
@@ -468,6 +470,34 @@ def identity_projection(input, offset=None):
         proj = IdentityOffsetProjection(
             input_layer_name=input.name, offset=offset)
         proj.origin = input
+    return proj
+
+
+@wrap_param_attr_default()
+def scaling_projection(input, param_attr=None):
+    """
+    scaling_projection multiplies the input with a scalar parameter and add to
+    the output.
+
+    .. math::
+       out += w * in
+
+    The example usage is:
+
+    .. code-block:: python
+
+       proj = scaling_projection(input=layer)
+
+    :param input: Input Layer.
+    :type input: LayerOutput
+    :param param_attr: Parameter config, None if use default.
+    :type param_attr: ParameterAttribute
+    :return: A ScalingProjection object
+    :rtype: ScalingProjection
+    """
+    proj = ScalingProjection(input_layer_name=input.name,
+                             **param_attr.attr)
+    proj.origin = input
     return proj
 
 

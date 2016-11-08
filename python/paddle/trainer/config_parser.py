@@ -592,6 +592,20 @@ class DotMulProjection(Projection):
     def calc_parameter_dims(self, input_size, output_size):
         return [1, output_size]
 
+# ScalingProjection
+@config_class
+class ScalingProjection(Projection):
+    type = 'scaling'
+
+    def calc_output_size(self, input_layer_config):
+        return input_layer_config.size
+
+    def calc_parameter_size(self, input_size, output_size):
+        return 1
+
+    def calc_parameter_dims(self, input_size, output_size):
+        return [1, 1]
+
 
 @config_class
 class TableProjection(Projection):

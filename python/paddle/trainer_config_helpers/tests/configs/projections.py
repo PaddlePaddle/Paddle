@@ -26,6 +26,7 @@ with mixed_layer() as m5:
 
 with mixed_layer() as m6:
     m6 += dotmul_operator(a=m3, b=m4)
+    m6 += scaling_projection(m3)
 
 img = data_layer(name='img', size=32 * 32)
 flt = data_layer(name='filter', size=3 * 3 * 1 * 64)
