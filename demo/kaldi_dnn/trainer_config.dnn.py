@@ -2,8 +2,8 @@
 
 from paddle.trainer_config_helpers import *
 
-trn = '/paddle/data/train.list'
-tst = '/paddle/data/test.list'
+trn = 'data/train.list'
+tst = 'data/test.list'
 process = 'process'
 
 define_py_data_sources2(train_list=trn,
