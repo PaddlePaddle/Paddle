@@ -25,8 +25,8 @@ if not is_predict:
           'img_size': 32,'num_classes': 10,
           'use_jpeg': 1,'color': "color"}
 
-  define_py_data_sources2(train_list="trn.list",
-                          test_list="tst.list",
+  define_py_data_sources2(train_list="train.list",
+                          test_list="train.list",
                           module='image_provider',
                           obj='processData',
                           args=args)

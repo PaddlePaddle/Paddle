@@ -18,5 +18,5 @@ data_dir=./data/cifar-out
 
 python preprocess.py -i $data_dir -s 32 -c 1
 
-echo "data/cifar-out/batches/train.list" > trn.list
-echo "data/cifar-out/batches/test.list" > tst.list
+echo "data/cifar-out/batches/train.txt" > train.list
+echo "data/cifar-out/batches/test.txt" > test.list

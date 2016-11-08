@@ -66,18 +66,21 @@ def processData(settings, file_list):
     file_list: the batch file list.
     """
     with open(file_list, 'r') as fdata:
-        for file_name in fdata:
-            data = cPickle.load(io.open(file_name.strip(), 'rb'))
-            indexes = list(range(len(data['images'])))
-            if settings.is_train:
-                random.shuffle(indexes)
-            for i in indexes:
-                if settings.use_jpeg == 1:
-                    img = image_util.decode_jpeg(data['images'][i])
-                else:
-                    img = data['images'][i]
-                img_feat = image_util.preprocess_img(img, settings.img_mean,
-                                                     settings.img_size, settings.is_train,
-                                                     settings.color)
-                label = data['labels'][i]
-                yield img_feat.astype('float32'), int(label)
+        lines = [line.strip() for line in fdata]
+        random.shuffle(lines)
+        for file_name in lines:
+            with io.open(file_name.strip(), 'rb') as file:
+                data = cPickle.load(file)
+                indexes = list(range(len(data['images'])))
+                if settings.is_train:
+                    random.shuffle(indexes)
+                for i in indexes:
+                    if settings.use_jpeg == 1:
+                        img = image_util.decode_jpeg(data['images'][i])
+                    else:
+                        img = data['images'][i]
+                    img_feat = image_util.preprocess_img(img, settings.img_mean,
+                                                         settings.img_size, settings.is_train,
+                                                         settings.color)
+                    label = data['labels'][i]
+                    yield img_feat.astype('float32'), int(label)

@@ -35,6 +35,8 @@ if __name__ == '__main__':
      data_creator = ImageClassificationDatasetCreater(data_dir,
                                                       processed_image_size,
                                                       color)
+     data_creator.train_list_name = "train.txt"
+     data_creator.test_list_name = "test.txt"
      data_creator.num_per_batch = 1000
      data_creator.overwrite = True
      data_creator.create_batches()
