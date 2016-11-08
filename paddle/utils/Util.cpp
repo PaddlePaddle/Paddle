@@ -106,7 +106,7 @@ pid_t getTID() {
       #endif
       pid_t tid = syscall(__NR_gettid);
   #endif
-  CHECK_NE(tid, -1);
+  CHECK_NE((int)tid, -1);
   return tid;
 }
 

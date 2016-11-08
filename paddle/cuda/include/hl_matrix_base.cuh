@@ -30,7 +30,7 @@ limitations under the License. */
 #define INLINE   inline
 #endif
 
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
 #define     DEVICE_FMAX     fmaxf
 #define     DEVICE_FMIN     fminf
 #else

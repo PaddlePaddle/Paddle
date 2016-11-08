@@ -282,13 +282,13 @@ void GpuMatrix::copyFrom(const IVector& src) {
   copyFrom(matrix);
 }
 
-void GpuMatrix::copyByRowIndex(Matrix& b, IVector& rowIndex) {
+void GpuMatrix::copyByRowIndex(Matrix& b, const IVector& rowIndex) {
   size_t height = getHeight();
   size_t width = getWidth();
   CHECK_EQ(b.getWidth(), width);
   real* dst = getData();
   real* src = b.getData();
-  int* index = rowIndex.getData();
+  const int* index = rowIndex.getData();
   hl_sequence2batch_copy(dst, src, index, width, height, true);
 }
 
@@ -335,10 +335,43 @@ void GpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   hl_matrix_transpose(data, dataTrans, height_, width_, lda, ldc);
 }
 
+
+MatrixPtr GpuMatrix::getInverse() {
+  MatrixPtr matInv;
+  inverse(matInv, true);
+  return matInv;
+}
+
+void GpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+  CHECK_EQ(height_, width_);
+
+  if (memAlloc) {
+    matInv = std::make_shared<GpuMatrix>(height_, width_);
+  } else {
+    CHECK(matInv != NULL);
+  }
+
+  real* data = getData();
+  real* dataInv = matInv->getData();
+  int lda = getStride();
+  int ldc = matInv->getStride();
+
+  hl_matrix_inverse(data, dataInv, height_, lda, ldc);
+}
+
 void GpuMatrix::addBias(Matrix& b, real scale) {
   CHECK(b.getHeight() == 1) << "the Bias should be a vector";
   BaseMatrix::addBias(b, scale);
 }
+
+void GpuMatrix::addSharedBias(Matrix& b, real scale) {
+  CHECK(b.getHeight() == 1) << "the Bias should be a vector";
+  CHECK_LE(b.getWidth(), getWidth());
+  CHECK_EQ(getWidth() % b.getWidth(), 0UL);
+  hl_matrix_add_shared_bias(getData(), b.getData(), b.getWidth(),
+                            getHeight(), getWidth(), scale);
+}
+
 
 void GpuMatrix::collectBias(Matrix& a, real scale) {
   CHECK_EQ(getHeight(), (size_t)1);
@@ -353,6 +386,14 @@ void GpuMatrix::collectBias(Matrix& a, real scale) {
                                 width_, scale);
   }
 }
+
+void GpuMatrix::collectSharedBias(Matrix& a, real scale) {
+  CHECK_EQ(getHeight(), (size_t)1);
+  CHECK_EQ(a.getWidth() % getWidth(), 0UL);
+  hl_matrix_collect_shared_bias(getData(), a.getData(), getWidth(),
+                                a.getHeight(), a.getWidth(), scale);
+}
+
 
 void GpuMatrix::sequenceAvgForward(Matrix& a,
                                    const IVector& startsPos,
@@ -581,6 +622,42 @@ void GpuMatrix::colMax(Matrix& max) {
   CHECK_EQ(max.getHeight(), (size_t)1);
 
   max.maxCols(*this);
+}
+
+void GpuMatrix::colMax(IVector& maxIds, Matrix& maxVal) {
+  LOG(FATAL) << "Is not supported";
+}
+
+void GpuMatrix::maxoutForward(Matrix& a, IVector& id, size_t channels,
+                              size_t groups) {
+  CHECK(dynamic_cast<GpuMatrix*>(&a));
+  CHECK(dynamic_cast<GpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = getWidth();
+  size_t batchSize = getHeight();
+  const real* input  = a.getData();
+  real* output = getData();
+  int* idForGpu = id.getData();
+
+  hl_maxout_forward(input, output, idForGpu, batchSize, size,
+                    size / channels, groups);
+}
+
+void GpuMatrix::maxoutBackward(Matrix& a, IVector& id, size_t channels,
+                               size_t groups) {
+  CHECK(dynamic_cast<GpuMatrix*>(&a));
+  CHECK(dynamic_cast<GpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = a.getWidth();
+  size_t batchSize = getHeight();
+  real* input  = getData();
+  const real* output = a.getData();
+  const int* idForGpu = id.getData();
+
+  hl_maxout_backward(input, output, idForGpu, batchSize, size,
+                     size / channels, groups);
 }
 
 /*calulate the error of classification */
@@ -1278,11 +1355,11 @@ void CpuMatrix::copyFrom(const IVector& src) {
   }
 }
 
-void CpuMatrix::copyByRowIndex(Matrix& b, IVector& rowIndex) {
+void CpuMatrix::copyByRowIndex(Matrix& b, const IVector& rowIndex) {
   size_t height = getHeight();
   size_t width = getWidth();
   CHECK_EQ(b.getWidth(), width);
-  int* index = rowIndex.getData();
+  const int* index = rowIndex.getData();
   for (size_t i = 0; i < height; i++) {
     CHECK_LT(static_cast<size_t>(index[i]), b.getHeight());
     real* src = b.getData() + index[i] * width;
@@ -1382,6 +1459,47 @@ void CpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
       dataTrans[j * ldc + i] = data[i * lda + j];
     }
   }
+}
+
+
+MatrixPtr CpuMatrix::getInverse() {
+  MatrixPtr matInv;
+  inverse(matInv, true);
+  return matInv;
+}
+
+void CpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+  CHECK_EQ(height_, width_);
+
+  if (memAlloc) {
+    matInv = std::make_shared<CpuMatrix>(height_, width_);
+  } else {
+    CHECK(matInv != NULL);
+  }
+
+  CHECK_EQ(height_, matInv->getHeight());
+  CHECK_EQ(width_, matInv->getWidth());
+  matInv->copyFrom(*this);
+
+  real* data = getData();
+  real* dataInv = matInv->getData();
+  int ldc = matInv->getStride();
+
+  if (height_ == 1) {
+    CHECK_NE(*data, 0);
+    *dataInv = 1.0 / (*data);
+    return;
+  }
+
+  /* Compute the LU decomposition of the matrix */
+  std::vector<int> ipiv(height_);
+  CBLAS_ORDER order = (matInv->isTransposed() ? CblasColMajor : CblasRowMajor);
+  int info = getrf<real>(order, height_, height_, dataInv, ldc, ipiv.data());
+  CHECK_EQ(info, 0);
+
+  /* Compute the inverse of the matrix given its LU decompsotion */
+  info = getri<real>(order, height_, dataInv, ldc, ipiv.data());
+  CHECK_EQ(info, 0);
 }
 
 void CpuMatrix::convExpand(Matrix& feature, int feaImgHeight, int feaImgWidth,
@@ -1947,6 +2065,24 @@ void CpuMatrix::addBias(Matrix& b, real scale) {
   }
 }
 
+void CpuMatrix::addSharedBias(Matrix& b, real scale) {
+  CHECK_EQ(b.getHeight(), (size_t)1);
+  real* aData = getData();
+  real* bData = b.getData();
+  size_t numSamples = getHeight();
+  size_t channel = b.getWidth();
+  CHECK_EQ(getWidth() % channel, 0UL);
+  size_t dim = getWidth() / channel;
+
+  for (size_t i = 0; i < numSamples; i++) {
+    for (size_t c = 0; c < channel; c++) {
+      for (size_t j = 0; j < dim; j++) {
+        aData[i * getStride() + c * dim + j] += scale * bData[c];
+      }
+    }
+  }
+}
+
 void CpuMatrix::collectBias(Matrix& a, real scale) {
   CHECK_EQ(getHeight(), (size_t)1);
   CHECK_EQ(width_, a.getWidth());
@@ -1960,6 +2096,23 @@ void CpuMatrix::collectBias(Matrix& a, real scale) {
     real* B = getData();
     for (size_t i = 0; i < nnz; i++) {
       B[cols[i]] += scale * A[i];
+    }
+  }
+}
+
+void CpuMatrix::collectSharedBias(Matrix& a, real scale) {
+  CHECK_EQ(getHeight(), (size_t)1);
+  real* B = getData();
+  real* A = a.getData();
+  size_t numSamples = a.getHeight();
+  size_t channel = getWidth();
+  CHECK_EQ(a.getWidth() % channel, 0UL);
+  size_t dim = a.getWidth() / channel;
+  for (size_t i = 0; i < numSamples; i++) {
+    for (size_t c = 0; c < channel; c++) {
+      for (size_t j = 0; j < dim; j++) {
+        B[c] += scale * A[i * channel * dim + c * dim + j];
+      }
     }
   }
 }
@@ -2746,6 +2899,95 @@ void CpuMatrix::colMax(Matrix& max) {
   CHECK_EQ(max.getWidth(), getWidth());
   CHECK_EQ(max.getHeight(), (size_t)1);
   max.maxCols(*this);
+}
+
+void CpuMatrix::colMax(IVector& maxIds, Matrix& maxVal) {
+  CHECK(isContiguous());
+  CHECK(!maxIds.useGpu() && !maxVal.useGpu()) << "Matrix type are not equal";
+  size_t numSamples = getWidth();
+  size_t beam = maxVal.getHeight();
+  CHECK_EQ(maxIds.getSize(), numSamples * beam);
+  CHECK_EQ(maxVal.getWidth(), numSamples);
+
+  real* a = getData();
+  int* s = maxIds.getData();
+  real* t = maxVal.getData();
+  size_t dim = getHeight();
+  for (size_t i = 0; i < numSamples; i++) {
+    std::vector<std::pair<real, size_t>> vec;
+    for (size_t j = 0; j < dim; j++) {
+      vec.push_back(std::pair<real, size_t>(a[i + j * numSamples], j));
+    }
+
+    std::partial_sort(
+        vec.begin(), vec.begin() + beam, vec.end(),
+        [](const std::pair<real, size_t>& l, const std::pair<real, size_t>& r) {
+          return l.first > r.first;
+        });
+    for (size_t j = 0; j < beam; j++) {
+      t[i + j * numSamples] = vec[j].first;
+      s[i + j * numSamples] = vec[j].second;
+    }
+  }
+}
+
+void CpuMatrix::maxoutForward(Matrix& a, IVector& id, size_t channels,
+                              size_t groups) {
+  CHECK(dynamic_cast<CpuMatrix*>(&a));
+  CHECK(dynamic_cast<CpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = getWidth();
+  size_t batchSize = getHeight();
+  size_t featLen = size / channels;
+  const real* input  = a.getData();
+  int* idForCpu = id.getData();
+
+  MatrixPtr maxInMat, maxOutMat;
+  Matrix::resizeOrCreate(maxInMat, groups, size, false, false);
+  Matrix::resizeOrCreate(maxOutMat, 1, size, false, false);
+
+  for (size_t batch_idx = 0; batch_idx < batchSize; ++batch_idx) {
+    size_t newIndex = batch_idx * size;
+    IVectorPtr tmpId = IVector::create(idForCpu + newIndex, size, false);
+
+    for (size_t i = 0; i < channels; ++i) {
+      size_t newFeatLen = i * featLen;
+      for (size_t j = 0; j < groups; ++j) {
+        maxInMat->subMatrix(j, j + 1, newFeatLen, newFeatLen + featLen)
+            ->copyFrom(input + (newIndex + newFeatLen) * groups + j * featLen,
+                       featLen);
+      }
+    }
+    maxInMat->colMax(*tmpId, *maxOutMat);
+    this->subRowMatrix(batch_idx, batch_idx + 1)->copyFrom(*maxOutMat);
+  }
+}
+
+void CpuMatrix::maxoutBackward(Matrix& a, IVector& id, size_t channels,
+                               size_t groups) {
+  CHECK(dynamic_cast<CpuMatrix*>(&a));
+  CHECK(dynamic_cast<CpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = a.getWidth();
+  size_t batchSize = getHeight();
+  size_t featLen = size / channels;
+  size_t newFeatLen = groups * featLen;
+  real* inputG  = getData();
+  const real* outG  = a.getData();
+  int* idForCpu = id.getData();
+
+  for (size_t batch_idx = 0; batch_idx < batchSize; ++batch_idx) {
+    size_t newIndex = batch_idx * size;
+    int* idData = idForCpu + newIndex;
+
+    for (size_t i = 0; i < size; ++i) {
+      int gradIdx =
+          idData[i] * featLen + (i / featLen) * newFeatLen + i % featLen;
+      (inputG + newIndex * groups)[gradIdx] += (outG + newIndex)[i];
+    }
+  }
 }
 
 void CpuMatrix::rowNormalizeL1(Matrix& out) {

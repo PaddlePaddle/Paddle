@@ -16,6 +16,7 @@ limitations under the License. */
 #pragma once
 
 #include "Layer.h"
+#include "paddle/math/MathUtils.h"
 namespace paddle {
 
 /**
@@ -43,19 +44,18 @@ protected:
   IntV filterSizeY_;
   /// The spatial dimensions of the convolution input.
   IntV channels_;
-  /// The spatial dimensions of input feature map.
-  IntV imgSize_;
-  /// The total pixel size of input feature map.
-  /// imgPixels_ = imgSizeX_ * imgSizeY_.
-  IntV imgPixels_;
+  /// The spatial dimensions of input feature map height.
+  IntV imgSizeH_;
+  /// The spatial dimensions of input feature map width.
+  IntV imgSizeW_;
   /// filterPixels_ = filterSizeX_ * filterSizeY_.
   IntV filterPixels_;
   /// filterChannels_ = channels_/groups_.
   IntV filterChannels_;
-  /// The spatial dimensions of output feature map.
-  IntV outputX_;
-  /// The spatial dimensions of output feature map.
-  IntV outputs_;
+  /// The spatial dimensions of output feature map height.
+  IntV outputH_;
+  /// The spatial dimensions of output feature map width.
+  IntV outputW_;
   /// Group size, refer to grouped convolution in
   /// Alex Krizhevsky's paper: when group=2, the first half of the
   /// filters are only connected to the first half of the input channels,
@@ -80,32 +80,14 @@ public:
 
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
-  Weight& getWeight(int idx) { return *weights_[idx]; }
-
   /**
-   * Calculate output size based on caffeMode_.
-   * - input(+padding): 0123456789
-   * - imageSize(+padding) = 10;
-   * - filterSize = 3;
-   * - stride = 2;
-   * - caffeMode_ is true:
-       - output: (012), (234), (456), (678)
-       - outputSize = 4;
-   * - caffeMode_ is false:
-   *   - output: (012), (234), (456), (678), (9)
-   *   - outputSize = 5;
+   * imgSizeH_ and imgSizeW_ will be set according to the previous input layers
+   * in this function. Then it will calculate outputH_ and outputW_ and set them
+   * into output argument.
    */
-  int outputSize(int imageSize, int filterSize, int padding, int stride) {
-    int outputSize;
-    if (!caffeMode_) {
-     outputSize =
-          (imageSize - filterSize + 2 * padding + stride - 1) / stride + 1;
-    } else {
-      outputSize = (imageSize - filterSize + 2 * padding) / stride + 1;
-    }
-    CHECK_GE(outputSize, 1);
-    return outputSize;
-  }
+  virtual size_t calOutputSize();
+
+  Weight& getWeight(int idx) { return *weights_[idx]; }
 };
 
 }  // namespace paddle

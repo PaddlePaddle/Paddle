@@ -23,9 +23,9 @@ PaddlePaddle提供的Docker镜像版本
 +-----------------+------------------+------------------------+-----------------------+
 |       GPU       | gpu-latest       | gpu-devel-latest       | gpu-demo-latest       |
 +-----------------+------------------+------------------------+-----------------------+
-| CPU WITHOUT AVX | cpu-noavx-latest | cpu-devel-noavx-latest | cpu-demo-noavx-latest |
+| CPU WITHOUT AVX | cpu-noavx-latest | cpu-noavx-devel-latest | cpu-noavx-demo-latest |
 +-----------------+------------------+------------------------+-----------------------+
-| GPU WITHOUT AVX | gpu-noavx-latest | gpu-devel-noavx-latest | gpu-demo-noavx-latest |
+| GPU WITHOUT AVX | gpu-noavx-latest | gpu-noavx-devel-latest | gpu-noavx-demo-latest |
 +-----------------+------------------+------------------------+-----------------------+
 
 其中，横向包括三个版本，normal，devel和demo。

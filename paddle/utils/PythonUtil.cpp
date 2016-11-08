@@ -77,11 +77,18 @@ static std::recursive_mutex g_pyMutex;
 PyGuard::PyGuard() : guard_(g_pyMutex) {}
 
 
-static void printPyErrorStack(std::ostream& os, bool withEndl = false) {
+static void printPyErrorStack(std::ostream& os, bool withEndl = false,
+                              bool withPyPath = true) {
   PyObject * ptype, *pvalue, *ptraceback;
   PyErr_Fetch(&ptype, &pvalue, &ptraceback);
   PyErr_NormalizeException(&ptype, &pvalue, &ptraceback);
   PyErr_Clear();
+  if (withPyPath) {
+    os << "Current PYTHONPATH: " << py::repr(PySys_GetObject(strdup("path")));
+    if (withEndl) {
+      os << std::endl;
+    }
+  }
   PyTracebackObject* obj = (PyTracebackObject*)ptraceback;
 
   os << "Python Error: " << PyString_AsString(PyObject_Str(ptype))
@@ -114,10 +121,7 @@ PyObjectPtr callPythonFuncRetPyObj(const std::string& moduleName,
                                    const std::string& funcName,
                                    const std::vector<std::string>& args) {
   PyGuard guard;
-  PyObjectPtr pyModuleName(PyString_FromString(moduleName.c_str()));
-  CHECK_PY(pyModuleName) << "Import PyModule failed" << moduleName;
-  PyObjectPtr pyModule(PyImport_Import(pyModuleName.get()));
-  CHECK_PY(pyModule) << "Import Python Module"<< moduleName << " failed.";
+  PyObjectPtr pyModule = py::import(moduleName);
   PyObjectPtr pyFunc(PyObject_GetAttrString(pyModule.get(), funcName.c_str()));
   CHECK_PY(pyFunc) << "GetAttrString failed.";
   PyObjectPtr pyArgs(PyTuple_New(args.size()));
@@ -143,7 +147,7 @@ PyObjectPtr createPythonClass(
     const std::vector<std::string>& args,
     const std::map<std::string, std::string>& kwargs) {
   PyGuard guard;
-  PyObjectPtr pyModule(PyImport_ImportModule(moduleName.c_str()));
+  PyObjectPtr pyModule = py::import(moduleName);
   LOG(INFO) << "createPythonClass moduleName.c_str:" << moduleName.c_str();
   CHECK_PY(pyModule) << "Import module " << moduleName << " failed.";
   PyObjectPtr pyDict(PyModule_GetDict(pyModule.get()));
@@ -181,18 +185,29 @@ std::string getPyCallStack() {
   printPyErrorStack(os, true);
   return os.str();
 }
+
+PyObjectPtr import(const std::string &moduleName) {
+  auto module = PyImport_ImportModule(moduleName.c_str());
+  CHECK_PY(module) << "Import " << moduleName << "Error";
+  return PyObjectPtr(module);
+}
+
 }  // namespace py
 
 #endif
-
+extern "C" {
+extern const char enable_virtualenv_py[];
+}
 void initPython(int argc, char** argv) {
 #ifndef PADDLE_NO_PYTHON
   Py_SetProgramName(argv[0]);
   Py_Initialize();
   PySys_SetArgv(argc, argv);
-
   // python blocks SIGINT. Need to enable it.
   signal(SIGINT, SIG_DFL);
+
+  // Manually activate virtualenv when user is using virtualenv
+  PyRun_SimpleString(enable_virtualenv_py);
 #endif
 }
 

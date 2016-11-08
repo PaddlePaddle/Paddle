@@ -3,6 +3,7 @@ PaddlePaddle Documentation
 
 User Guide
 ----------
+* [Introduction](introduction/index.md)
 * [Quick Start](demo/quick_start/index_en.md)
 * [Build and Installation](build/index.rst)
 * [Contribute Code](build/contribute_to_paddle.md)
