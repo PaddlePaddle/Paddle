@@ -32,6 +32,8 @@ PoolProjection* PoolProjection::create(const ProjectionConfig& config,
 }
 
 void MaxPoolProjection::forward() {
+  size_t width = getSize();
+  CHECK_EQ(width, out_->value->getWidth());
   MatrixPtr inputV = in_->value;
   MatrixPtr outV = out_->value;
   outV->maxPoolForward(*inputV, imgSizeY_, imgSize_, channels_, sizeX_, sizeY_,
@@ -55,6 +57,8 @@ void MaxPoolProjection::backward(const UpdateCallback& callback) {
 }
 
 void AvgPoolProjection::forward() {
+  size_t width = getSize();
+  CHECK_EQ(width, out_->value->getWidth());
   MatrixPtr inputV = in_->value;
   MatrixPtr outV = out_->value;
   outV->avgPoolForward(*inputV, imgSizeY_, imgSize_, channels_, sizeX_, sizeY_,

@@ -70,10 +70,6 @@ size_t SpatialPyramidPoolLayer::getSize() {
   size_t outputW = (std::pow(4, pyramidHeight_) - 1) / (4 - 1);
 
   layerSize = outputH * outputW * channels_;
-
-  getOutput().setFrameHeight(outputH);
-  getOutput().setFrameWidth(outputW);
-
   return layerSize;
 }
 

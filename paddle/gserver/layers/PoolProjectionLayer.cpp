@@ -38,8 +38,6 @@ size_t PoolProjectionLayer::getSize() {
 
   layerSize = outputH_ * outputW_ * channels_;
 
-  getOutput().setFrameHeight(outputH_);
-  getOutput().setFrameWidth(outputW_);
   return layerSize;
 }
 

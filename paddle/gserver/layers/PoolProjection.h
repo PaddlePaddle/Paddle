@@ -51,6 +51,26 @@ public:
   static PoolProjection* create(const ProjectionConfig& config,
                                 ParameterPtr parameter, bool useGpu);
   const std::string& getPoolType() const { return poolType_; }
+  size_t getSize() {
+    imgSizeY_ = in_->getFrameHeight();
+    imgSize_ = in_->getFrameWidth();
+    const PoolConfig& conf = config_.pool_conf();
+    if (imgSizeY_ == 0) {
+      imgSizeY_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
+    }
+    if (imgSize_ == 0) {
+      imgSize_ = conf.img_size();
+    }
+    outputY_ = outputSize(imgSizeY_, sizeY_, confPaddingY_, strideY_,
+                          /* caffeMode */ false);
+    outputX_ = outputSize(imgSize_, sizeX_, confPadding_, stride_,
+                          /* caffeMode */ false);
+
+    const_cast<Argument*>(out_)->setFrameHeight(outputY_);
+    const_cast<Argument*>(out_)->setFrameWidth(outputX_);
+
+    return outputY_ * outputX_ * channels_;
+  }
 };
 
 class MaxPoolProjection : public PoolProjection {
