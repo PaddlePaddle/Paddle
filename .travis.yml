@@ -42,13 +42,11 @@ addons:
 before_install:
   - |
     if [ ${JOB} == "BUILD_AND_TEST" ]; then
-      if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
-        TRAVIS_COMMIT_RANGE="FETCH_HEAD...$TRAVIS_BRANCH"
-      fi
-      git diff --name-only $TRAVIS_COMMIT_RANGE | grep -qvE '(\.md$)' || {
+      if ! git diff --name-only $TRAVIS_COMMIT_RANGE | grep -qvE '(\.md$)'
+      then
         echo "Only markdown docs were updated, stopping build process."
         exit
-      }
+      fi
     fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo paddle/scripts/travis/before_install.linux.sh; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
