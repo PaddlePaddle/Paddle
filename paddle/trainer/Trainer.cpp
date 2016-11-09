@@ -46,6 +46,18 @@ P_DEFINE_int32(test_period, 0,
                " If not 0, test log_period batches."
                " If 0, test on all test data");
 
+P_DEFINE_int32(test_batches_while_training, 0,
+               "Run test every so many train batches."
+               " 0 for testing after each pass."
+               " If not 0, test log_period batches."
+               " If 0, test on all test data");
+
+P_DEFINE_int32(test_batches_while_end, 0,
+               "Run test every so many train batches."
+               " 0 for testing after each pass."
+               " If not 0, test log_period batches."
+               " If 0, test on all test data");
+
 P_DEFINE_bool(local, true, "Train in local mode or not");
 
 P_DEFINE_bool(
