@@ -2410,6 +2410,18 @@ class CosSimLayer(LayerBase):
             'inputs of CosSimLayer must have same dim')
         self.config.cos_scale = cos_scale
 
+@config_layer('table_operator')
+class TableOperatorLayer(LayerBase):
+    def __init__(
+            self,
+            name,
+            inputs,
+            size,
+            device=None):
+        super(TableOperatorLayer,self).__init__(
+           name, 'table_operator',size,inputs=inputs,device=device)
+        config_assert(len(self.inputs) == 2,
+                'TableOperatorLayer must have 2 input')
 
 @config_layer('tensor')
 class TensorLayer(LayerBase):
