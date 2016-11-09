@@ -623,7 +623,7 @@ __global__ void KeCosSimDerivative(real* grad,
         prevGradY[index] +=
           scale * grad[ty] * prevOutX[index] * reciprocal;
       } else {
-        atomicAdd(prevGradY + index,
+        paddle::paddleAtomicAdd(prevGradY + index,
           scale * grad[ty] * prevOutX[index] * reciprocal);
       }
     }
@@ -640,7 +640,7 @@ __global__ void KeCosSimDerivative(real* grad,
           (prevOutX[index] * reciprocalXY -
            prevOutY[index] * reciprocalSquareSumY);
       } else {
-        atomicAdd(prevGradY + index, output[ty] * grad[ty] *
+        paddle::paddleAtomicAdd(prevGradY + index, output[ty] * grad[ty] *
           (prevOutX[index] * reciprocalXY -
            prevOutY[index] * reciprocalSquareSumY));
       }

@@ -177,11 +177,11 @@ struct Argument {
   }
 
   /**
-   * @brief (value, grad, sequenceStartPositions) of output are subset of
+   * @brief (value, ids, grad, sequenceStartPositions) of output are subset of
    *        input. Note that, output share the same memory of input.
    *
    * @param input[in]       input
-   * @param offset[in]      offset of input.value
+   * @param offset[in]      offset in terms of rows
    * @param height[in]      height of output.value
    * @param width[in]       width of output.value
    * @param useGpu[in]

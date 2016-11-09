@@ -71,16 +71,41 @@ class BaseSGDOptimizer(Optimizer):
 
 
 class MomentumOptimizer(BaseSGDOptimizer):
+    """
+    MomentumOptimizer.
+
+    When sparse=True, the update scheme:
+
+    ..  math::
+
+        \\alpha_t &= \\alpha_{t-1} / k \\\\
+        \\beta_t &= \\beta_{t-1} / (1 + \\lambda \\gamma_t) \\\\
+        u_t &= u_{t-1} - \\alpha_t \\gamma_t g_t \\\\
+        v_t &= v_{t-1} + \\tau_{t-1} \\alpha_t \\gamma_t g_t \\\\
+        \\tau_t &= \\tau_{t-1} + \\beta_t / \\alpha_t
+    
+    where :math:`k` is momentum, :math:`\\lambda` is decay rate, 
+    :math:`\\gamma_t` is learning rate at the t'th step.
+
+    :param sparse: with sparse support or not.
+    :type sparse: bool
+    """
     def extra_settings(self):
         default_momentum(self.momentum)
 
     def to_setting_kwargs(self):
-        return {
-            'learning_method': 'momentum'
-        }
+        if self.sparse:
+            return {
+                'learning_method': 'sparse_momentum'
+            }
+        else:
+            return {
+                'learning_method': 'momentum'
+            }
 
-    def __init__(self, momentum=None):
+    def __init__(self, momentum=None, sparse=False):
         self.momentum = momentum
+        self.sparse = sparse
 
 
 class AdamOptimizer(BaseSGDOptimizer):

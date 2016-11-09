@@ -15,6 +15,19 @@
 try:
     from paddle_api_config import *
     import os.path
+    import platform
+
+    system = platform.system().lower()
+    is_osx = (system == 'darwin')
+    is_win = (system == 'windows')
+    is_lin = (system == 'linux')
+
+    if is_lin:
+        whole_start = "-Wl,--whole-archive"
+        whole_end = "-Wl,--no-whole-archive"
+    elif is_osx:
+        whole_start = ""
+        whole_end = ""
 
     LIB_DIRS = ["math", 'utils', 'parameter', "gserver", "api", "cuda", "pserver", "trainer"]
     PARENT_LIB_DIRS = ['proto']
@@ -56,9 +69,9 @@ try:
 
         def libs_str(self):
             libs = [
-                "-Wl,--whole-archive",
+                whole_start,
                 "-lpaddle_gserver",
-                "-Wl,--no-whole-archive",
+                whole_end,
                 "-lpaddle_pserver",
                 "-lpaddle_trainer_lib",
                 "-lpaddle_network",

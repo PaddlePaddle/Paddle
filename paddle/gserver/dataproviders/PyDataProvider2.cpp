@@ -377,9 +377,15 @@ private:
             std::swap(callingContexts_[cid], callingContexts_[0]);
             cid = 0;
           }
+
+          PyObjectPtr front;
+          {
+            std::unique_lock<std::mutex> l(mtx_);
+            front = pop_get_front(callingContexts_);
+          }
           {
             PyGuard g;
-            callingContexts_.pop_front();
+            front.reset();
           }
           this->pullCV_.notify_all();
           continue;
@@ -411,10 +417,7 @@ private:
         poolActualSize_ += additionalBatchSize;
         dataPool_.emplace_back(data);
       }
-
-      {
-        pullCV_.notify_all();
-      }
+      pullCV_.notify_all();
     }
     DBG << "load thread end";
   }

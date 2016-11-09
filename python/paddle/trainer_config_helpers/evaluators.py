@@ -559,6 +559,7 @@ def maxframe_printer_evaluator(
 def seqtext_printer_evaluator(
         input,
         result_file,
+        id_input=None,
         dict_file=None,
         delimited=None,
         name=None,
@@ -567,11 +568,10 @@ def seqtext_printer_evaluator(
     Sequence text printer will print text according to index matrix and a
     dictionary. There can be multiple input to this layer:
 
-    1. If there is only one input, the input must be a matrix containing
+    1. If there is no id_input, the input must be a matrix containing
     the sequence of indices;
 
-    2. If there are more than one input, the first input should be ids,
-    and are interpreted as sample ids.
+    2. If there is id_input, it should be ids, and interpreted as sample ids.
 
     The output format will be:
 
@@ -602,26 +602,43 @@ def seqtext_printer_evaluator(
 
     .. code-block:: python
 
-       eval = seqtext_printer_evaluator(input,
+       eval = seqtext_printer_evaluator(input=maxid_layer,
+                                        id_input=sample_id,
                                         dict_file=dict_file,
                                         result_file=result_file)
 
     :param input: Input Layer name.
     :type input: LayerOutput|list
-    :param dict_file: The input dictionary which contains a list of tokens.
-    :type dict_file: basestring
-    :param result_file: The file is to save the results.
+    :param result_file: Path of the file to store the generated results.
     :type result_file: basestring
+    :param id_input: Index of the input sequence, and the specified index will
+                     be prited in the gereated results. This an optional
+                     parameter.
+    :type id_input: LayerOutput
+    :param dict_file: Path of dictionary. This is an optional parameter.
+                      Every line is a word in the dictionary with
+                      (line number - 1) as the word index.
+                      If this parameter is set to None, or to an empty string,
+                      only word index are printed in the generated results.
+    :type dict_file: basestring
     :param delimited: Whether to use space to separate output tokens.
                 Default is True. No space is added if set to False.
     :type delimited: bool
     :param name: Evaluator name.
     :type name: None|basestring
+    :return: The seq_text_printer that prints the generated sequence to a file.
+    :rtype: evaluator
     """
     assert isinstance(result_file, basestring)
+    if id_input is None:
+        inputs = [input]
+    else:
+        inputs = [id_input, input]
+        input.parents.append(id_input)
+
     evaluator_base(name=name,
                    type="seq_text_printer",
-                   input=input,
+                   input=inputs,
                    dict_file=dict_file,
                    result_file=result_file,
                    delimited=delimited)
