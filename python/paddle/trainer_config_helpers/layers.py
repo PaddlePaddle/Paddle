@@ -590,7 +590,7 @@ class MixedLayerType(LayerOutput):
     def __exit__(self, *args, **kwargs):
         del args, kwargs  # unused parameter to suppress warning
         assert len(self.inputs) != 0
-        MixedLayer(
+        ml = MixedLayer(
             name=self.name,
             size=self.size,
             active_type=self.activation.name,
@@ -598,6 +598,9 @@ class MixedLayerType(LayerOutput):
             inputs=self.inputs,
             **ExtraLayerAttribute.to_kwargs(self.layer_attr)
         )
+        # update the size which might be computed inside MixedLayer
+        # according to the operator's output size
+        self.size = ml.config.size
 
 
 @wrap_name_default("mixed")
@@ -2045,7 +2048,7 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
 
     if layer_type == LayerType.CONCAT_LAYER:
         assert not bias_attr
-    
+
     Layer(
         name=name, type=layer_type,
         inputs=[x.name for x in input] if is_concat_layer else input,
@@ -2623,7 +2626,7 @@ def out_prod_layer(input1, input2, name=None, layer_attr=None):
     assert isinstance(input1, LayerOutput)
     assert isinstance(input2, LayerOutput)
     Layer(name=name,
-          type="out_prod",
+          type=LayerType.OUT_PROD_LAYER,
           inputs=[input1.name, input2.name],
           **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(name=name,
@@ -2790,7 +2793,7 @@ def beam_search(step, input, bos_id, eos_id, beam_size,
 
 def __cost_input__(input, label, weight=None):
     """
-    inputs and parents for cost layers. 
+    inputs and parents for cost layers.
     """
     ipts = [Input(input.name), Input(label.name)]
     parents = [input, label]
@@ -2799,7 +2802,7 @@ def __cost_input__(input, label, weight=None):
         ipts.append(Input(weight.name))
         parents.append(weight)
     return ipts, parents
-    
+
 
 @wrap_name_default()
 @layer_support()
@@ -2884,7 +2887,7 @@ def classification_cost(input, label, weight=None, name=None,
 
 
 def conv_operator(img, filter, filter_size, num_filters,
-                  num_channel=None, stride=1, padding=0,
+                  num_channels=None, stride=1, padding=0,
                   filter_size_y=None, stride_y=None, padding_y=None):
     """
     Different from img_conv_layer, conv_op is an Operator, which can be used
@@ -2914,8 +2917,8 @@ def conv_operator(img, filter, filter_size, num_filters,
     :type filter_size_y: int
     :param num_filters: channel of output data.
     :type num_filters: int
-    :param num_channel: channel of input data.
-    :type num_channel: int
+    :param num_channels: channel of input data.
+    :type num_channels: int
     :param stride: The x dimension of the stride.
     :type stride: int
     :param stride_y: The y dimension of the stride.
@@ -2934,19 +2937,19 @@ def conv_operator(img, filter, filter_size, num_filters,
     if padding_y is None:
         padding_y = padding
 
-    if num_channel is None:
-        num_channel = img.num_filters
+    if num_channels is None:
+        num_channels = img.num_filters
 
     assert isinstance(filter, LayerOutput)
     if filter.size is not None:
-        filter.size = filter_size * filter_size_y * num_filters * num_channel
+        filter.size = filter_size * filter_size_y * num_filters * num_channels
 
     op = ConvOperator(input_layer_names=[img.name, filter.name],
                       num_filters=num_filters,
                       conv_conf=Conv(filter_size=filter_size,
                                      padding=padding,
                                      stride=stride,
-                                     channels=num_channel,
+                                     channels=num_channels,
                                      filter_size_y=filter_size_y,
                                      padding_y=padding_y,
                                      stride_y=stride_y,
@@ -2986,8 +2989,8 @@ def conv_projection(input, filter_size, num_filters,
     :type filter_size_y: int
     :param num_filters: channel of output data.
     :type num_filters: int
-    :param num_channel: channel of input data.
-    :type num_channel: int
+    :param num_channels: channel of input data.
+    :type num_channels: int
     :param stride: The x dimension of the stride.
     :type stride: int
     :param stride_y: The y dimension of the stride.
@@ -3478,15 +3481,15 @@ def maxout_layer(input,
       - Input: output of a conv layer.
       - Output: feature map size same as input. Channel is (input channel) / groups.
 
-    So groups should be larger than 1, and the num of channels should be able 
+    So groups should be larger than 1, and the num of channels should be able
     to devided by groups.
 
-    Please refer to Paper: 
+    Please refer to Paper:
       - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
       - Multi-digit Number Recognition from Street View \
         Imagery using Deep Convolutional Neural Networks: \
         https://arxiv.org/pdf/1312.6082v4.pdf
-    
+
     The simple usage is:
 
     .. code-block:: python
@@ -3731,9 +3734,9 @@ def nce_layer(input, label, num_classes, weight=None,
     :param weight: weight layer, can be None(default)
     :type weight: LayerOutput
     :param num_classes: number of classes.
-    :type num_classes: int 
+    :type num_classes: int
     :param num_neg_samples: number of negative samples. Default is 10.
-    :type num_neg_samples: int 
+    :type num_neg_samples: int
     :param neg_distribution: The distribution for generating the random negative labels.
                              A uniform distribution will be used if not provided.
                              If not None, its length must be equal to num_classes.
@@ -3754,7 +3757,7 @@ def nce_layer(input, label, num_classes, weight=None,
         assert isinstance(neg_distribution, collections.Sequence)
         assert len(neg_distribution) == num_classes
         assert sum(neg_distribution) == 1
-    
+
     ipts_for_layer = []
     parents = []
     for each_input in input:
