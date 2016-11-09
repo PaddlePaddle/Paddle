@@ -109,9 +109,9 @@
   - Load parameter from this pass to test.
   - type: int32 (default: -1).
 
-* `--test_period`
-  - Run testing every test_period train batches. If not set, run testing each pass.
-  - type: int32 (default: 1000).
+* `--test_period_while_training`
+  - Run test every so many train batches. If not 0, test log_period batches. If 0, test nothing.
+  - type: int32 (default: 0).
 
 * `--test_wait`
   - Whether to wait for parameter per pass if not exist. If set test_data_path in submitting environment of cluster, it will launch one process to perfom testing, so we need to set test_wait=1. Note that in the cluster submitting environment, this argument has been set True by default.
@@ -121,8 +121,12 @@
   - File that saves the model list when testing. It was set automatically when using cluster submitting environment after setting model_path.
   - type: string (default: "", null).
 
-* `--test_all_data_in_one_period`
-  - This argument is usually used in testing period during traning. If true, all data will be tested in one test period. Otherwise (batch_size * log_peroid) data will be tested.
+* `--test_batches_while_training`
+  - Test test_batches_while_training batches if test_batches_while_training != 0. If 0, test on all test data.
+  - type: bool (default: 1000).
+
+* `--test_batches_while_end`
+  - Test test_batches_while_end batches if test_batches_while_end != 0. If 0, test on all test data.
   - type: bool (default: 0).
 
 * `--predict_output_dir`

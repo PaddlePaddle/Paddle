@@ -49,7 +49,8 @@ P_DEFINE_int32(test_period_while_training, 0,
                " If not 0, test log_period batches."
                " If 0, test nothing.");
 P_DEFINE_int32(test_batches_while_training, 1000,
-               "test test_batches_while_training batches if test_period != 0."
+               "test test_batches_while_training batches if "
+               "test_batches_while_training != 0."
                " If 0, test on all test data");
 P_DEFINE_int32(test_batches_while_end, 0,
                "test test_batches_while_end batches at pass end."

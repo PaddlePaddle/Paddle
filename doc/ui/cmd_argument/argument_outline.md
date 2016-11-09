@@ -68,7 +68,7 @@ It looks like there are a lot of arguments. However, most of them are for develo
 </tr>
 
 <tr>
-<td class="left">test_period</td>
+<td class="left">test_period_while_training</td>
 <td class="left">√</td><td class="left">√</td><td class="left"></td><td class="left"></td>
 </tr>
 
@@ -143,8 +143,13 @@ It looks like there are a lot of arguments. However, most of them are for develo
 </tr>
 
 <tr>
-<td class="left" rowspan = "2">testing during training</td><td class="left">test_all_data_in_one_period</td>
-<td class="left">√</td><td class="left">√</td><td class="left"></td><td class="left"></td>
+<td class="left" rowspan = "2">testing during training</td><td class="left">test_batches_while_training</td>
+<td class="left">√</td><td class="left">√</td><td class="left">√<</td><td class="left"></td>
+</tr>
+
+<tr>
+<td class="left" rowspan = "2">testing during training</td><td class="left">test_batches_while_end</td>
+<td class="left">√</td><td class="left">√</td><td class="left">√<</td><td class="left"></td>
 </tr>
 
 <tr>
