@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Preprocess Movielens dataset, to get movie/user object.
 
@@ -38,6 +37,7 @@ except ImportError:
 
 
 class UniqueIDGenerator(object):
+
     def __init__(self):
         self.pool = collections.defaultdict(self.__next_id__)
         self.next_id = 0
@@ -58,6 +58,7 @@ class UniqueIDGenerator(object):
 
 
 class SortedIDGenerator(object):
+
     def __init__(self):
         self.__key_set__ = set()
         self.dict = None
@@ -66,8 +67,8 @@ class SortedIDGenerator(object):
         self.__key_set__.add(key)
 
     def finish_scan(self, compare=None, key=None, reverse=False):
-        self.__key_set__ = sorted(list(self.__key_set__), cmp=compare,
-                                  key=key, reverse=reverse)
+        self.__key_set__ = sorted(
+            list(self.__key_set__), cmp=compare, key=key, reverse=reverse)
         self.dict = dict()
         for idx, each_key in enumerate(self.__key_set__):
             self.dict[each_key] = idx
@@ -80,6 +81,7 @@ class SortedIDGenerator(object):
 
 
 class SplitFileReader(object):
+
     def __init__(self, work_dir, config):
         assert isinstance(config, dict)
         self.filename = config['name']
@@ -143,6 +145,7 @@ class IDFieldParser(object):
 
 
 class SplitEmbeddingDict(object):
+
     def __init__(self, delimiter):
         self.__id__ = UniqueIDGenerator()
         self.delimiter = delimiter
@@ -165,6 +168,7 @@ class EmbeddingFieldParser(object):
     SEQUENCE = "sequence"
 
     class CharBasedEmbeddingDict(object):
+
         def __init__(self, is_seq=True):
             self.__id__ = UniqueIDGenerator()
             self.is_seq = is_seq
@@ -180,6 +184,7 @@ class EmbeddingFieldParser(object):
             return self.__id__.to_list()
 
     class WholeContentDict(object):
+
         def __init__(self, need_sort=True):
             assert need_sort
             self.__id__ = SortedIDGenerator()
@@ -207,11 +212,10 @@ class EmbeddingFieldParser(object):
             self.dict = EmbeddingFieldParser.CharBasedEmbeddingDict(
                 self.seq_type == EmbeddingFieldParser.SEQUENCE)
         elif config['dict']['type'] == 'split':
-            self.dict = SplitEmbeddingDict(
-                config['dict'].get('delimiter', ','))
+            self.dict = SplitEmbeddingDict(config['dict'].get('delimiter', ','))
         elif config['dict']['type'] == 'whole_content':
-            self.dict = EmbeddingFieldParser.WholeContentDict(
-                config['dict']['sort'])
+            self.dict = EmbeddingFieldParser.WholeContentDict(config['dict'][
+                'sort'])
         else:
             print config
             assert False
@@ -280,6 +284,7 @@ class FieldParserFactory(object):
 
 
 class CompositeFieldParser(object):
+
     def __init__(self, parser, extractor):
         self.extractor = extractor
         self.parser = parser
@@ -295,6 +300,7 @@ class CompositeFieldParser(object):
 
 
 class PositionContentExtractor(object):
+
     def __init__(self, pos):
         self.pos = pos
 
@@ -304,6 +310,7 @@ class PositionContentExtractor(object):
 
 
 class RegexPositionContentExtractor(PositionContentExtractor):
+
     def __init__(self, pos, pattern, group_id, strip=True):
         PositionContentExtractor.__init__(self, pos)
         pattern = pattern.strip()
@@ -323,6 +330,7 @@ class RegexPositionContentExtractor(PositionContentExtractor):
 
 
 class ContentExtractorFactory(object):
+
     def extract(self, line):
         pass
 
@@ -333,11 +341,12 @@ class ContentExtractorFactory(object):
                 return PositionContentExtractor(config['pos'])
             else:
                 extra_args = config['regex']
-                return RegexPositionContentExtractor(pos=config['pos'],
-                                                     **extra_args)
+                return RegexPositionContentExtractor(
+                    pos=config['pos'], **extra_args)
 
 
 class MetaFile(object):
+
     def __init__(self, work_dir):
         self.work_dir = work_dir
         self.obj = dict()
@@ -364,9 +373,10 @@ class MetaFile(object):
 
             metas = map(lambda x: x.meta_field(), field_parsers)
             # print metas
-            key_index = filter(lambda x: x is not None, map(
-                lambda (idx, meta): idx if 'is_key' in meta and meta['is_key']
-                else None, enumerate(metas)))[0]
+            key_index = filter(
+                lambda x: x is not None,
+                map(lambda (idx, meta): idx if 'is_key' in meta and meta['is_key'] else None,
+                    enumerate(metas)))[0]
 
             key_map = []
             for i in range(min(key_index, len(metas))):
@@ -374,12 +384,7 @@ class MetaFile(object):
             for i in range(key_index + 1, len(metas)):
                 key_map.append(i)
 
-            obj = {
-                '__meta__': {
-                    'raw_meta': metas,
-                    'feature_map': key_map
-                }
-            }
+            obj = {'__meta__': {'raw_meta': metas, 'feature_map': key_map}}
 
             for each_block in reader.read():
                 idx = field_parsers[key_index].parse(each_block)

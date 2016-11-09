@@ -7,9 +7,7 @@ b = data_layer(name='b', size=10)
 
 result = addto_layer(input=[a, b])
 concat1 = concat_layer(input=[a, b])
-concat2 = concat_layer(input=[
-    identity_projection(input=a),
-    identity_projection(input=b)
-])
+concat2 = concat_layer(
+    input=[identity_projection(input=a), identity_projection(input=b)])
 
 outputs(result, concat1, concat2)

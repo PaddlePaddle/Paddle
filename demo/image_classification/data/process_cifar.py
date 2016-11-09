@@ -16,7 +16,6 @@ import numpy as np
 import sys
 import os
 import PIL.Image as Image
-
 """
   Usage: python process_cifar input_dir output_dir
 """
@@ -30,6 +29,7 @@ def mkdir_not_exist(path):
     if not os.path.exists(path):
         os.mkdir(path)
 
+
 def create_dir_structure(output_dir):
     """
     Create the directory structure for the directory.
@@ -39,8 +39,8 @@ def create_dir_structure(output_dir):
     mkdir_not_exist(os.path.join(output_dir, "train"))
     mkdir_not_exist(os.path.join(output_dir, "test"))
 
-def convert_batch(batch_path, label_set, label_map,
-                  output_dir, data_split):
+
+def convert_batch(batch_path, label_set, label_map, output_dir, data_split):
     """
     Convert CIFAR batch to the structure of Paddle format.
     batch_path: the batch to be converted.
@@ -67,11 +67,23 @@ if __name__ == '__main__':
     output_dir = sys.argv[2]
     num_batch = 5
     create_dir_structure(output_dir)
-    label_map = {0: "airplane", 1: "automobile", 2: "bird", 3: "cat", 4: "deer",
-                 5: "dog", 6: "frog", 7: "horse", 8: "ship", 9: "truck"}
+    label_map = {
+        0: "airplane",
+        1: "automobile",
+        2: "bird",
+        3: "cat",
+        4: "deer",
+        5: "dog",
+        6: "frog",
+        7: "horse",
+        8: "ship",
+        9: "truck"
+    }
     labels = {}
     for i in range(1, num_batch + 1):
-        convert_batch(os.path.join(input_dir, "data_batch_%d" % i), labels,
-                      label_map, output_dir, "train")
-    convert_batch(os.path.join(input_dir, "test_batch"), {},
-                  label_map, output_dir, "test")
+        convert_batch(
+            os.path.join(input_dir, "data_batch_%d" % i), labels, label_map,
+            output_dir, "train")
+    convert_batch(
+        os.path.join(input_dir, "test_batch"), {}, label_map, output_dir,
+        "test")

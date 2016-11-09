@@ -17,9 +17,9 @@ from paddle.trainer.config_parser import logger
 from py_paddle import swig_paddle
 import util
 
+
 def main():
-    trainer_config = parse_config(
-        "./testTrainConfig.py", "")
+    trainer_config = parse_config("./testTrainConfig.py", "")
     model = swig_paddle.GradientMachine.createFromConfigProto(
         trainer_config.model_config)
     trainer = swig_paddle.Trainer.create(trainer_config, model)
@@ -28,7 +28,7 @@ def main():
         trainer.startTrainPass()
         num = 0
         cost = 0
-        while True:  # Train one batch
+        while True:    # Train one batch
             batch_size = 1000
             data, atEnd = util.loadMNISTTrainData(batch_size)
             if atEnd:
@@ -43,7 +43,7 @@ def main():
         trainer.startTestPeriod()
         num = 0
         cost = 0
-        while True:  # Test one batch
+        while True:    # Test one batch
             batch_size = 1000
             data, atEnd = util.loadMNISTTrainData(batch_size)
             if atEnd:
@@ -56,7 +56,7 @@ def main():
         logger.info('test cost=%f' % (cost / num))
 
     trainer.finishTrain()
- 
+
 
 if __name__ == '__main__':
     swig_paddle.initPaddle("--use_gpu=0", "--trainer_count=1")
