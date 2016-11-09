@@ -14,6 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This configuration is a demonstration to implement the deep bi-directional LSTM
+(DB-LSTM) architecture to stack LSTM layers from:
+
+Jie Zhou and Wei Xu. 2015. End-to-end Learning of Semantic Role Labeling Using
+Recurrent Neural Networks. In ACL-IJCNLP. http://www.aclweb.org/anthology/P15-1109
+
+Different from the network architecture described in the paper to specifically
+solve the semantic role labelling task, we did not include the final CRF layer
+in this implementation. Instead we feed the output of the stacked LSTM layers to
+a pooling layer and a fully connected layer to output a vector of size 2.
+"""
+
 from paddle.trainer_config_helpers import *
 
 dict_file = "./data/dict.txt"
