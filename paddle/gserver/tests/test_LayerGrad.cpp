@@ -179,25 +179,23 @@ TEST(Layer, BilinearInterpLayer) {
   TestConfig config;
   config.layerConfig.set_type("bilinear_interp");
   config.biasSize = 0;
-
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 4096, 0});
 
-  for (auto useGpu : {false, true}) {
-    for (auto out_size : {32, 64}) {
-      LOG(INFO) << " out_size_x=" << out_size
-                << " out_size_y=" << out_size;
-      LayerInputConfig* input
-        = config.layerConfig.add_inputs();
-      BilinearInterpConfig* bilinear
-        = input->mutable_bilinear_interp_conf();
-      bilinear->set_img_size_x(32);
-      bilinear->set_img_size_y(32);
-      bilinear->set_num_channels(4);
-      bilinear->set_out_size_x(out_size);
-      bilinear->set_out_size_y(out_size);
-      testLayerGrad(config, "bilinear_interp", 10, false, useGpu);
-    }
-  }
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  BilinearInterpConfig* bilinear = input->mutable_bilinear_interp_conf();
+  bilinear->set_img_size_x(32);
+  bilinear->set_img_size_y(32);
+  bilinear->set_num_channels(4);
+
+  bilinear->set_out_size_x(32);
+  bilinear->set_out_size_y(32);
+  testLayerGrad(config, "bilinear_interp", 10, false, false);
+  testLayerGrad(config, "bilinear_interp", 10, false, true);
+
+  bilinear->set_out_size_x(64);
+  bilinear->set_out_size_y(64);
+  testLayerGrad(config, "bilinear_interp", 10, false, false);
+  testLayerGrad(config, "bilinear_interp", 10, false, true);
 }
 
 TEST(Layer, concat) {
