@@ -43,22 +43,14 @@ TEST(Layer, BilinearInterpLayer) {
 
   bilinear->set_img_size_x(32);
   bilinear->set_img_size_y(32);
-  bilinear->set_out_size_x(64);
-  bilinear->set_out_size_y(64);
   bilinear->set_num_channels(4);
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "bilinear_interp", 10, false, useGpu);
-  }
-
-  bilinear->set_img_size_x(32);
-  bilinear->set_img_size_y(32);
-  bilinear->set_out_size_x(32);
-  bilinear->set_out_size_y(32);
-  bilinear->set_num_channels(4);
-
-  for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "bilinear_interp", 10, false, useGpu);
+    for (auto out_size : {32, 64, 128}) {
+      bilinear->set_out_size_x(out_size);
+      bilinear->set_out_size_y(out_size);
+      testLayerGrad(config, "bilinear_interp", 10, false, useGpu);
+    }
   }
 }
 

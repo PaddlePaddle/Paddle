@@ -3902,6 +3902,8 @@ void CpuMatrix::bilinearForward(const Matrix& in,
   size_t batchSize = getHeight();
   size_t inputW = in.getWidth();
   size_t inputH = in.getHeight();
+  size_t inPosOffset = inImgH * inImgW;
+  size_t outPosOffset = outImgH * outImgW;
   (void)(inputH);
 
   real* outData = getData();
@@ -3931,8 +3933,8 @@ void CpuMatrix::bilinearForward(const Matrix& in,
               h2lambda * (w2lambda * inPos[0] + w1lambda * inPos[wid]) +
               h1lambda * (w2lambda * inPos[hid * inImgW] +
               w1lambda * inPos[hid * inImgW + wid]);
-            inPos += inImgH * inImgW;
-            outPos += outImgH * outImgW;
+            inPos += inPosOffset;
+            outPos += outPosOffset;
           }
         }
       }
@@ -3954,6 +3956,8 @@ void CpuMatrix::bilinearBackward(const Matrix& out,
   size_t inputH = getHeight();
   size_t outputW = out.getWidth();
   size_t batchSize = out.getHeight();
+  size_t inPosOffset = inImgH * inImgW;
+  size_t outPosOffset = outImgH * outImgW;
   (void)(inputH);
 
   real* inGrad = getData();
@@ -3981,8 +3985,8 @@ void CpuMatrix::bilinearBackward(const Matrix& out,
             inPos[wid] += h2lambda * w1lambda * outPos[0];
             inPos[hid * inImgW] += h1lambda * w2lambda * outPos[0];
             inPos[hid * inImgW + wid] += h1lambda * w1lambda * outPos[0];
-            inPos += inImgH * inImgW;
-            outPos += outImgH * outImgW;
+            inPos += inPosOffset;
+            outPos += outPosOffset;
           }
         }
       }
