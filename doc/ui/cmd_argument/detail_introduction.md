@@ -110,7 +110,7 @@
   - type: int32 (default: -1).
 
 * `--test_period_while_training`
-  - Run test every test_period_while_training batches while doing training. If not 0, test log_period batches. If 0, test nothing.
+  - Run test every test_period_while_training batches while doing training. If not 0, test log_period batches, if 0 test nothing.
   - type: int32 (default: 0).
 
 * `--test_wait`
@@ -122,11 +122,11 @@
   - type: string (default: "", null).
 
 * `--test_batches_while_training`
-  - Test test_batches_while_training batches if test_batches_while_training != 0. If 0, test on all test data.
+  - Test test_batches_while_training batches if test_batches_while_training != 0 while doing training. If 0, test on all test data.
   - type: bool (default: 1000).
 
 * `--test_batches_while_end`
-  - Test test_batches_while_end batches if test_batches_while_end != 0. If 0, test on all test data.
+  - Test test_batches_while_end batches if test_batches_while_end != 0 at pass end. If 0, test on all test data.
   - type: bool (default: 0).
 
 * `--predict_output_dir`
