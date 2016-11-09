@@ -48,7 +48,7 @@ static inline std::string join(const std::string& part1, const std::string& part
 
 static inline void GetDsoHandleFromDefaultPath(
         std::string& dso_path, void** dso_handle, int dynload_flags) {
-    VLOG(INFO) << "Try to find cuda library: " << dso_path
+    VLOG(3) << "Try to find cuda library: " << dso_path
               << " from default system path.";
     // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH 
     *dso_handle = dlopen(dso_path.c_str(), dynload_flags);
