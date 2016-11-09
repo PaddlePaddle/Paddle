@@ -24,6 +24,8 @@ namespace paddle {
  * @brief A layer for spatial pyramid pooling on the input image by taking
  * the max, average, etc. within regions, so that the result vector of
  * different sized images are of the same size.
+ * 
+ * The config file api is spp_layer.
  */
 
 class SpatialPyramidPoolLayer : public Layer {
