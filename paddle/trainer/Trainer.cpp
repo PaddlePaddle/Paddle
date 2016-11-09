@@ -45,8 +45,8 @@ P_DEFINE_int32(test_period, 0,
                "This option was deprecated, use test_period_while_training "
                " instead. ");
 P_DEFINE_int32(test_period_while_training, 0,
-               "Run test every so many train batches."
-               " If not 0, test log_period batches."
+               "Run test every test_period_while_training batches."
+               " If not 0, test test_batches_while_training batches."
                " If 0, test nothing.");
 P_DEFINE_int32(test_batches_while_training, 1000,
                "test test_batches_while_training batches if "
