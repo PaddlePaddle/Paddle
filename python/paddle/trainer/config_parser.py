@@ -649,7 +649,8 @@ class ConvProjection(Projection):
 
         parse_conv(conv_conf,
                    input_layer_name,
-                   self.proj_conf.conv_conf)
+                   self.proj_conf.conv_conf,
+                   num_filters)
         # TODO: support rectangle input
         self.proj_conf.output_size = (self.proj_conf.conv_conf.output_x  ** 2) * num_filters
 
@@ -730,7 +731,8 @@ class ConvOperator(Operator):
 
         parse_conv(conv_conf,
                    MakeLayerNameInSubmodel(input_layer_names[0]),
-                   self.operator_conf.conv_conf)
+                   self.operator_conf.conv_conf,
+                   num_filters)
         self.operator_conf.output_size = (self.operator_conf.conv_conf.output_x  ** 2) * num_filters
 
         config_assert(len(input_layer_names) == 2, "Conv is binary operator")
@@ -1097,7 +1099,7 @@ def parse_norm(norm, input_layer_name, norm_conf):
 caffe_mode: compute the output size using floor instead of ceil,
             which is consistent of caffe and CuDNN's convention.
 '''
-def parse_conv(conv, input_layer_name, conv_conf, trans=False):
+def parse_conv(conv, input_layer_name, conv_conf, num_filters, trans=False):
     conv_conf.filter_size = conv.filter_size
     conv_conf.filter_size_y = conv.filter_size_y
     conv_conf.channels = conv.channels
@@ -1106,10 +1108,11 @@ def parse_conv(conv, input_layer_name, conv_conf, trans=False):
     conv_conf.stride = conv.stride
     conv_conf.stride_y = conv.stride_y
     conv_conf.groups = conv.groups
-    conv_conf.filter_channels = conv.channels / conv.groups
     conv_conf.caffe_mode = conv.caffe_mode
     
     if not trans:
+        conv_conf.filter_channels = conv.channels / conv.groups
+
         img_pixels = g_layer_map[input_layer_name].size / conv.channels
         print('channels=%d size=%d'%(conv.channels,
           g_layer_map[input_layer_name].size))
@@ -1123,6 +1126,8 @@ def parse_conv(conv, input_layer_name, conv_conf, trans=False):
             conv_conf.img_size, conv_conf.filter_size, 
             conv_conf.padding, conv_conf.stride, conv_conf.caffe_mode)
     else:
+        conv_conf.filter_channels = num_filters / conv.groups
+        
         outputSize = g_layer_map[input_layer_name].size / conv.channels
         print('channels=%d size=%d'%(conv.channels,
           g_layer_map[input_layer_name].size))
@@ -1616,7 +1621,8 @@ class ConvLayerBase(LayerBase):
             parse_conv(
                 self.inputs[input_index].conv,
                 input_layer.name,
-                self.config.inputs[input_index].conv_conf)
+                self.config.inputs[input_index].conv_conf,
+                num_filters)
             conv_conf = self.config.inputs[input_index].conv_conf
             psize = self.calc_parameter_size(conv_conf)
             print("output size for %s is %d " % (name, conv_conf.output_x))
@@ -1676,6 +1682,7 @@ class ConvTransLayerBase(LayerBase):
                 self.inputs[input_index].conv,
                 input_layer.name,
                 self.config.inputs[input_index].conv_conf,
+                num_filters,
                 trans=True)
             conv_conf = self.config.inputs[input_index].conv_conf
             psize = self.calc_parameter_size(conv_conf)
