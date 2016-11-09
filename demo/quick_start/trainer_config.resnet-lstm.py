@@ -14,6 +14,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+This configuration is a demonstration to implement the stacked LSTM with residual
+connections from the previous previous layer. This architecture is from:
+
+Yonghui Wu, Mike Schuster, Zhifeng Chen, Quoc V. Le, Mohammad Norouzi,
+Wolfgang Macherey, Maxim Krikun, Yuan Cao, Qin Gao, Klaus Macherey,
+Jeff Klingner, Apurva Shah, Melvin Johnson, Xiaobing Liu, Lukasz Kaiser,
+Stephan Gouws, Yoshikiyo Kato, Taku Kudo, Hideto Kazawa, Keith Stevens,
+George Kurian, Nishant Patil, Wei Wang, Cliff Young, Jason Smith, Jason Riesa,
+Alex Rudnick, Oriol Vinyals, Greg Corrado, Macduff Hughes, Jeffrey Dean. 2016.
+Google's Neural Machine Translation System: Bridging the Gap between Human and
+Machine Translation. In arXiv https://arxiv.org/pdf/1609.08144v2.pdf
+
+Different from the architecture described in the paper, we use a stack single
+direction LSTM layers as the first layer instead of bi-directional LSTM. Also,
+since this is a demo code, to reduce computation time, we stacked 4 layers
+instead of 8 layers.
+"""
+
 from collections import deque
 
 from paddle.trainer_config_helpers import *
@@ -53,7 +72,7 @@ lstm = simple_lstm(input=emb, size=128, lstm_cell_attr=ExtraAttr(drop_rate=0.1))
 # The second element is the output from previous layer.
 memory = deque([emb, lstm])
 
-for i in range(8):
+for i in range(3):
     # For the current layer, we feed the previous layer, i.e. memory[-1]
     # and add the residuals to it using the addto_layer().
     memory.append(simple_lstm(
