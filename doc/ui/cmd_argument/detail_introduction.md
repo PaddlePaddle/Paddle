@@ -110,7 +110,7 @@
   - type: int32 (default: -1).
 
 * `--test_period_while_training`
-  - Run test every test_period_while_training batches while doing training. If not 0, test log_period batches, if 0 test nothing.
+  - Run test every test_period_while_training batches while doing training. If not 0, test log_period batches, if 0, test nothing.
   - type: int32 (default: 0).
 
 * `--test_wait`
