@@ -67,7 +67,7 @@ public:
    * It is convenience to test small set of data when test data set is large and
    * is training at same time.
    */
-  void testOnePeriod();
+  void testOnePeriod(bool finishPass = true);
   void startTestPeriod();
   void finishTestPeriod();
   void testOneDataBatch(const DataBatch& dataBatch,
