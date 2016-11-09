@@ -26,15 +26,18 @@ LOG=`get_best_pass $log`
 LOG=(${LOG})
 best_model_path="output/pass-${LOG[1]}"
 
-
 config_file=db_lstm.py
-dict_file=./data/src.dict
-label_file=./data/tgt.dict 
+dict_file=./data/wordDict.txt
+label_file=./data/targetDict.txt 
+predicate_dict_file=./data/verbDict.txt
 input_file=./data/feature
+output_file=predict.res
  
 python predict.py \
      -c $config_file \
      -w $best_model_path \
      -l $label_file \
+     -p $predicate_dict_file  \
      -d $dict_file \
-     -i $input_file
+     -i $input_file \
+     -o $output_file
