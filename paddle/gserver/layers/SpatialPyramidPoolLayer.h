@@ -12,15 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Layer.h"
 #include "PoolProjection.h"
-#include "paddle/utils/Logging.h"
 #include "paddle/math/MathUtils.h"
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
+/**
+ * @brief A layer for spatial pyramid pooling on the input image by taking
+ * the max, average, etc. within regions, so that the result vector of
+ * different sized images are of the same size.
+ */
 
 class SpatialPyramidPoolLayer : public Layer {
 protected:
@@ -36,12 +40,15 @@ protected:
 
 public:
   explicit SpatialPyramidPoolLayer(const LayerConfig& config) : Layer(config) {}
+
   ~SpatialPyramidPoolLayer() {}
 
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+
   ProjectionConfig getConfig(size_t sizeX_, size_t sizeY_, size_t channels,
                              size_t pyamidLevel_, std::string& poolType_);
   size_t getSize();
+
   virtual void forward(PassType passType);
   virtual void backward(const UpdateCallback& callback = nullptr);
 };

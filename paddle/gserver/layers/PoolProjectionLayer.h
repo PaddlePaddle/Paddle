@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
+#include <vector>
 #include "PoolLayer.h"
 #include "PoolProjection.h"
 #include "paddle/math/Matrix.h"
-#include <vector>
 
 namespace paddle {
 /**
@@ -32,15 +31,16 @@ protected:
   ProjectionConfig projectionConfig_;
 
 public:
-  size_t getSize();
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback = nullptr);
-  explicit PoolProjectionLayer(const LayerConfig& config)
-      : PoolLayer(config) {
+  explicit PoolProjectionLayer(const LayerConfig& config) : PoolLayer(config) {
     PoolConfig* conf = projectionConfig_.mutable_pool_conf();
     *conf = config_.inputs(0).pool_conf();
-    poolProjection_.reset(PoolProjection::create(projectionConfig_, nullptr,
-                                                 useGpu_));
+    poolProjection_.reset(
+        PoolProjection::create(projectionConfig_, nullptr, useGpu_));
   }
+
+  size_t getSize();
+
+  virtual void forward(PassType passType);
+  virtual void backward(const UpdateCallback& callback = nullptr);
 };
 }  // namespace paddle

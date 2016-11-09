@@ -1,7 +1,7 @@
 from paddle.trainer_config_helpers import *
 
 settings(
-	  batch_size=100,
+    batch_size=100,
     learning_rate=1e-5
 )
 

@@ -31,46 +31,14 @@ protected:
 
 public:
   PoolProjection(const ProjectionConfig& config, ParameterPtr parameter,
-                 bool useGpu)
-      : Projection(config, parameter, useGpu) {
-    const PoolConfig& conf = config_.pool_conf();
-    poolType_ = conf.pool_type();
-    channels_ = conf.channels();
-    sizeX_ = conf.size_x();
-    stride_ = conf.stride();
-    outputX_ = conf.output_x();
-    imgSize_ = conf.img_size();
-    confPadding_ = conf.padding();
+                 bool useGpu);
 
-    sizeY_ = conf.has_size_y() ? conf.size_y() : conf.size_x();
-    imgSizeY_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
-    strideY_ = conf.has_stride_y() ? conf.stride_y() : conf.stride();
-    confPaddingY_ = conf.has_padding_y() ? conf.padding_y() : conf.padding();
-    outputY_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
-  }
   static PoolProjection* create(const ProjectionConfig& config,
                                 ParameterPtr parameter, bool useGpu);
+
   const std::string& getPoolType() const { return poolType_; }
-  size_t getSize() {
-    imgSizeY_ = in_->getFrameHeight();
-    imgSize_ = in_->getFrameWidth();
-    const PoolConfig& conf = config_.pool_conf();
-    if (imgSizeY_ == 0) {
-      imgSizeY_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
-    }
-    if (imgSize_ == 0) {
-      imgSize_ = conf.img_size();
-    }
-    outputY_ = outputSize(imgSizeY_, sizeY_, confPaddingY_, strideY_,
-                          /* caffeMode */ false);
-    outputX_ = outputSize(imgSize_, sizeX_, confPadding_, stride_,
-                          /* caffeMode */ false);
 
-    const_cast<Argument*>(out_)->setFrameHeight(outputY_);
-    const_cast<Argument*>(out_)->setFrameWidth(outputX_);
-
-    return outputY_ * outputX_ * channels_;
-  }
+  size_t getSize();
 };
 
 class MaxPoolProjection : public PoolProjection {
@@ -78,6 +46,7 @@ public:
   MaxPoolProjection(const ProjectionConfig& config, ParameterPtr parameter,
                     bool useGpu)
       : PoolProjection(config, parameter, useGpu) {}
+
   virtual void forward();
   virtual void backward(const UpdateCallback& callback = nullptr);
 };
@@ -87,6 +56,7 @@ public:
   AvgPoolProjection(const ProjectionConfig& config, ParameterPtr parameter,
                     bool useGpu)
       : PoolProjection(config, parameter, useGpu) {}
+
   virtual void forward();
   virtual void backward(const UpdateCallback& callback = nullptr);
 };

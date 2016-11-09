@@ -1,0 +1,34 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 3200
+  active_type: ""
+}
+layers {
+  name: "__spp_0__"
+  type: "spp"
+  size: 80
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+    spp_conf {
+      pool_type: "max-projection"
+      pyramid_height: 2
+      channels: 16
+      img_size: 10
+      img_size_y: 20
+    }
+  }
+}
+input_layer_names: "data"
+output_layer_names: "__spp_0__"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "__spp_0__"
+  input_layer_names: "data"
+  output_layer_names: "__spp_0__"
+  is_recurrent_layer_group: false
+}
+
