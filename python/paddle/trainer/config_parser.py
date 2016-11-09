@@ -1017,6 +1017,17 @@ def cnn_output_size(img_size, filter_size, padding, stride, caffe_mode):
     else:
         return 1 + int(math.ceil(output))
 
+'''
+calcualte image_size based on output_size for convolution. 
+It is the reverse function of cnn_output_size
+'''
+def cnn_image_size(output_size, filter_size, padding, stride, caffe_mode):
+    if caffe_mode:
+        img_size = (output_size - 1) * stride + filter_size - 2 * padding
+    else:
+        img_size = (output_size - 2) * stride + filter_size - 2 * padding + 1 
+    return img_size
+
 def parse_pool(pool, input_layer_name, pool_conf):
     pool_conf.pool_type = pool.pool_type
     config_assert(pool.pool_type in ['max-projection', 'avg-projection',
@@ -1120,14 +1131,9 @@ def parse_conv(conv, input_layer_name, conv_conf, trans=False):
                       ("Input layer %s: Incorrect input image size %d for input "
                        + "image pixels %d")
                       % (input_layer_name, conv_conf.output_x, outputSize))
-        if conv.caffe_mode:
-            conv_conf.img_size = \
-                (conv_conf.output_x - 1) * conv.stride \
-                + conv.filter_size - 2 * conv.padding
-        else:
-            conv_conf.img_size = \
-                (conv_conf.output_x - 2) * conv.stride \
-                + conv.filter_size - 2 * conv.padding + 1 
+        conv_conf.img_size = cnn_image_size(
+            conv_conf.output_x, conv_conf.filter_size, 
+            conv_conf.padding, conv_conf.stride, conv_conf.caffe_mode)
 
 def parse_block_expand(block_expand, input_layer_name, block_expand_conf):
     block_expand_conf.channels = block_expand.channels
@@ -1655,12 +1661,6 @@ class ConvTransLayerBase(LayerBase):
 
         use_gpu = int(g_command_config_args.get("use_gpu", 0))
         parallel_nn = int(g_command_config_args.get("parallel_nn", 0))
-
-        # Automatically select cudnn_type for GPU and exconv for CPU
-        # if set type=conv, but still reserve the way user specify
-        # exconv or cudnn_conv manually.
-        if self.layer_type == "cudnn_convt":
-            config_assert(use_gpu, "cudnn_convt only support GPU")
 
         # cudnn_convt has not been implemented so use exconvt only
         self.layer_type = "exconvt"

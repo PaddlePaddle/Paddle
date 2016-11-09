@@ -38,8 +38,6 @@ void ExpandConvTransLayer::forward(PassType passType) {
   Layer::forward(passType);
 
   /* malloc memory for the output_ if necessary */
-  /* note: one sample correspond to one colum, and the
-   *   transOutValue correspond sample to one row */
   int batchSize = inputLayers_[0]->getOutputValue()->getHeight();
   resetOutput(batchSize, getOutputSize());
 

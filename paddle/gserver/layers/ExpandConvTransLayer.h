@@ -26,7 +26,7 @@ namespace paddle {
  * This layer expands input and use matrix multiplication to
  * calculate convolution transpose (deconv) operation.
  *
- * The config file api is img_convTrans_layer.
+ * The config file api is img_conv_layer with flag trans=True.
  */
 class ExpandConvTransLayer : public ExpandConvBaseLayer {
 public:

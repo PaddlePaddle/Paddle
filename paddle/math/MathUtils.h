@@ -60,6 +60,10 @@ void sparseRand(int* major, int* minor, int nnz, int majorLen, int minorMax,
 int outputSize(int imageSize, int filterSize, int padding, int stride,
                bool caffeMode);
 
+/**
+ * Calculate image size based on output size and caffeMode_.
+ * It is the reverse function of outputSize()
+ */
 int imageSize(int outputSize, int filterSize, int padding, int stride,
               bool caffeMode);
 
