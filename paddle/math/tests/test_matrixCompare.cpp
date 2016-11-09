@@ -647,20 +647,23 @@ void testMatrixInverse(int height) {
   MatrixPtr cpuI = std::make_shared<CpuMatrix>(height, height);
   MatrixPtr gpuI = std::make_shared<GpuMatrix>(height, height);
 
+  /* Make matrix well conditioned: cpu * cpuT + Identity */
   cpu->randomizeUniform();
+  MatrixPtr cpuT = cpu->getTranspose();
+  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, height);
+  outputCheck->mul(cpu, cpuT);
+  cpu->setDiag(1.0);
+  cpu->add(*outputCheck);
+
   gpu->copyFrom(*cpu);
   cpu->inverse(cpuI, false);
   gpu->inverse(gpuI, false);
 
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, height);
   outputCheck->copyFrom(*gpuI);
   MatrixCheckErr(*cpuI, *outputCheck);
 
   outputCheck->mul(cpu, cpuI);
-  cpu->zeroMem();
-  for (int i = 0; i < height; i++) {
-    cpu->getRowBuf(i)[i] = 1.0;
-  }
+  cpu->setDiag(1.0);
   MatrixCheckErr(*cpu, *outputCheck);
 }
 
