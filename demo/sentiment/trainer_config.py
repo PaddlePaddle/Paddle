@@ -20,20 +20,19 @@ is_test = get_config_arg('is_test', bool, False)
 # whether this config is used for prediction
 is_predict = get_config_arg('is_predict', bool, False)
 
-data_dir  = "./data/pre-imdb"
+data_dir = "./data/pre-imdb"
 dict_dim, class_dim = sentiment_data(data_dir, is_test, is_predict)
 
 ################## Algorithm Config #####################
 
 settings(
-  batch_size=128,
-  learning_rate=2e-3,
-  learning_method=AdamOptimizer(),
-  regularization=L2Regularization(8e-4),
-  gradient_clipping_threshold=25
-)
+    batch_size=128,
+    learning_rate=2e-3,
+    learning_method=AdamOptimizer(),
+    regularization=L2Regularization(8e-4),
+    gradient_clipping_threshold=25)
 
 #################### Network Config ######################
-stacked_lstm_net(dict_dim, class_dim=class_dim,
-                 stacked_num=3, is_predict=is_predict)
+stacked_lstm_net(
+    dict_dim, class_dim=class_dim, stacked_num=3, is_predict=is_predict)
 # bidirectional_lstm_net(dict_dim, class_dim=class_dim, is_predict=is_predict)

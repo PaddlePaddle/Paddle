@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Data Sources are helpers to define paddle training data or testing data.
 """
@@ -26,8 +25,12 @@ except ImportError:
 __all__ = ['define_py_data_sources2']
 
 
-def define_py_data_source(file_list, cls, module,
-                          obj, args=None, async=False,
+def define_py_data_source(file_list,
+                          cls,
+                          module,
+                          obj,
+                          args=None,
+                          async=False,
                           data_cls=PyData):
     """
     Define a python data source.
@@ -76,8 +79,9 @@ def define_py_data_source(file_list, cls, module,
         args = pickle.dumps(args, 0)
 
     if data_cls is None:
+
         def py_data2(files, load_data_module, load_data_object, load_data_args,
-                    **kwargs):
+                     **kwargs):
             data = DataBase()
             data.type = 'py2'
             data.files = files
@@ -86,17 +90,25 @@ def define_py_data_source(file_list, cls, module,
             data.load_data_args = load_data_args
             data.async_load_data = True
             return data
+
         data_cls = py_data2
 
-    cls(data_cls(files=file_list,
-                 load_data_module=module,
-                 load_data_object=obj,
-                 load_data_args=args,
-                 async_load_data=async))
+    cls(
+        data_cls(
+            files=file_list,
+            load_data_module=module,
+            load_data_object=obj,
+            load_data_args=args,
+            async_load_data=async))
 
 
-def define_py_data_sources(train_list, test_list, module, obj, args=None,
-                           train_async=False, data_cls=PyData):
+def define_py_data_sources(train_list,
+                           test_list,
+                           module,
+                           obj,
+                           args=None,
+                           train_async=False,
+                           data_cls=PyData):
     """
     The annotation is almost the same as define_py_data_sources2, except that
     it can specific train_async and data_cls.
@@ -125,8 +137,9 @@ def define_py_data_sources(train_list, test_list, module, obj, args=None,
     """
 
     def __is_splitable__(o):
-        return (isinstance(o, list) or isinstance(o, tuple)
-                ) and hasattr(o, '__len__') and len(o) == 2
+        return (
+            isinstance(o, list)
+            or isinstance(o, tuple)) and hasattr(o, '__len__') and len(o) == 2
 
     assert train_list is not None or test_list is not None
     assert module is not None and obj is not None
@@ -196,9 +209,10 @@ def define_py_data_sources2(train_list, test_list, module, obj, args=None):
     :return: None
     :rtype: None
     """
-    define_py_data_sources(train_list=train_list,
-                           test_list=test_list,
-                           module=module,
-                           obj=obj,
-                           args=args,
-                           data_cls=None)
+    define_py_data_sources(
+        train_list=train_list,
+        test_list=test_list,
+        module=module,
+        obj=obj,
+        args=args,
+        data_cls=None)

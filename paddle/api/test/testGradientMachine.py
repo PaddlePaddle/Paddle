@@ -20,6 +20,7 @@ import numpy
 
 
 class TestGradientMachine(unittest.TestCase):
+
     def test_create_gradient_machine(self):
         conf_file_path = "./testTrainConfig.py"
         trainer_config = swig_paddle.TrainerConfig.createFromTrainerConfigFile(
@@ -30,8 +31,8 @@ class TestGradientMachine(unittest.TestCase):
         self.assertIsNotNone(model_config)
         machine = swig_paddle.GradientMachine.createByModelConfig(
             model_config, swig_paddle.CREATE_MODE_NORMAL,
-            swig_paddle.ParameterOptimizer.create(
-                opt_config).getParameterTypes())
+            swig_paddle.ParameterOptimizer.create(opt_config).getParameterTypes(
+            ))
         self.assertIsNotNone(machine)
         ipt, _ = util.loadMNISTTrainData()
         output = swig_paddle.Arguments.createArguments(0)
@@ -74,7 +75,7 @@ class TestGradientMachine(unittest.TestCase):
             vec = vec.copyToNumpyArray()
             for val_ in vec:
                 self.assertTrue(
-                    util.doubleEqual(val_, 0.1))  # Assert All Value is 0.1
+                    util.doubleEqual(val_, 0.1))    # Assert All Value is 0.1
 
             vecs = list(param_.getBufs())
             opt_ = optimizers[param_.getID()]

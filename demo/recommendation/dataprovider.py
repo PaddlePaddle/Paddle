@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from paddle.trainer.PyDataProvider2 import *
-import common_utils  # parse
+import common_utils    # parse
+
 
 def hook(settings, meta, **kwargs):
     """
@@ -26,7 +27,7 @@ def hook(settings, meta, **kwargs):
                  file record movie/user features.
     :param kwargs: unused other arguments.
     """
-    del kwargs  # unused kwargs
+    del kwargs    # unused kwargs
 
     # Header define slots that used for paddle.
     #    first part is movie features.
@@ -35,11 +36,12 @@ def hook(settings, meta, **kwargs):
     # header is a list of [USE_SEQ_OR_NOT?, SlotType]
     headers = list(common_utils.meta_to_header(meta, 'movie'))
     headers.extend(list(common_utils.meta_to_header(meta, 'user')))
-    headers.append(dense_vector(1))  # Score
+    headers.append(dense_vector(1))    # Score
 
     # slot types.
     settings.input_types = headers
     settings.meta = meta
+
 
 @provider(init_hook=hook, cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, filename):

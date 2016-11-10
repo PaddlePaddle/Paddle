@@ -17,14 +17,16 @@ from paddle.trainer.config_parser import Settings, default_decay_rate, \
 
 from .default_decorators import wrap_param_default
 
-__all__ = ['Optimizer', 'BaseSGDOptimizer', 'MomentumOptimizer',
-           'AdamaxOptimizer', 'AdamOptimizer', 'AdaGradOptimizer',
-           'RMSPropOptimizer', 'DecayedAdaGradOptimizer',
-           'AdaDeltaOptimizer', 'BaseRegularization', 'L2Regularization',
-           'settings', 'ModelAverage']
+__all__ = [
+    'Optimizer', 'BaseSGDOptimizer', 'MomentumOptimizer', 'AdamaxOptimizer',
+    'AdamOptimizer', 'AdaGradOptimizer', 'RMSPropOptimizer',
+    'DecayedAdaGradOptimizer', 'AdaDeltaOptimizer', 'BaseRegularization',
+    'L2Regularization', 'settings', 'ModelAverage'
+]
 
 
 class Optimizer(object):
+
     def to_setting_kwargs(self):
         raise NotImplementedError()
 
@@ -90,18 +92,15 @@ class MomentumOptimizer(BaseSGDOptimizer):
     :param sparse: with sparse support or not.
     :type sparse: bool
     """
+
     def extra_settings(self):
         default_momentum(self.momentum)
 
     def to_setting_kwargs(self):
         if self.sparse:
-            return {
-                'learning_method': 'sparse_momentum'
-            }
+            return {'learning_method': 'sparse_momentum'}
         else:
-            return {
-                'learning_method': 'momentum'
-            }
+            return {'learning_method': 'momentum'}
 
     def __init__(self, momentum=None, sparse=False):
         self.momentum = momentum
@@ -197,9 +196,7 @@ class AdaGradOptimizer(BaseSGDOptimizer):
     """
 
     def to_setting_kwargs(self):
-        return {
-            'learning_method': 'adagrad'
-        }
+        return {'learning_method': 'adagrad'}
 
     def __init__(self):
         pass
@@ -296,6 +293,7 @@ class AdaDeltaOptimizer(BaseSGDOptimizer):
 
 
 class BaseRegularization(Optimizer):
+
     def __init__(self):
         self.algorithm = ""
         self.learning_method = ""
@@ -305,15 +303,14 @@ class BaseRegularization(Optimizer):
 
 
 class L2Regularization(BaseRegularization):
+
     def __init__(self, rate):
         super(L2Regularization, self).__init__()
         self.decay_rate = rate
 
     def to_setting_kwargs(self):
         if self.algorithm == 'owlqn':
-            return {
-                'l2weight': self.decay_rate
-            }
+            return {'l2weight': self.decay_rate}
         else:
             return dict()
 
@@ -323,6 +320,7 @@ class L2Regularization(BaseRegularization):
 
 
 class ModelAverage(Optimizer):
+
     def to_setting_kwargs(self):
         return {
             'average_window': self.average_window,
@@ -330,7 +328,8 @@ class ModelAverage(Optimizer):
             'do_average_in_cpu': self.do_average_in_cpu
         }
 
-    def __init__(self, average_window,
+    def __init__(self,
+                 average_window,
                  max_average_window=None,
                  do_average_in_cpu=False):
         self.average_window = average_window
@@ -339,6 +338,7 @@ class ModelAverage(Optimizer):
 
 
 class GradientClippingThreshold(Optimizer):
+
     def extra_settings(self):
         default_gradient_clipping_threshold(self.threshold)
 
@@ -356,10 +356,10 @@ def __extends__(dict1, dict2):
     return dict1
 
 
-@wrap_param_default(['learning_method'],
-                    default_factory=lambda _: MomentumOptimizer())
-@wrap_param_default(['regularization'],
-                    default_factory=lambda _: BaseRegularization())
+@wrap_param_default(
+    ['learning_method'], default_factory=lambda _: MomentumOptimizer())
+@wrap_param_default(
+    ['regularization'], default_factory=lambda _: BaseRegularization())
 def settings(batch_size,
              learning_rate=1e-3,
              learning_rate_decay_a=0.,
@@ -373,8 +373,7 @@ def settings(batch_size,
              regularization=None,
              is_async=False,
              model_average=None,
-             gradient_clipping_threshold=None
-             ):
+             gradient_clipping_threshold=None):
     """
     Set the optimization method, learning rate, batch size, and other training
     settings. The currently supported algorithms are SGD and Async-SGD.
@@ -415,10 +414,11 @@ def settings(batch_size,
     else:
         algorithm = 'owlqn'
 
-    args=['batch_size', 'learning_rate', 'learning_rate_decay_a',
-          'learning_rate_decay_b', 'learning_rate_schedule',
-          'learning_rate_args', 'average_window', 'do_average_in_cpu',
-          'max_average_window']
+    args = [
+        'batch_size', 'learning_rate', 'learning_rate_decay_a',
+        'learning_rate_decay_b', 'learning_rate_schedule', 'learning_rate_args',
+        'average_window', 'do_average_in_cpu', 'max_average_window'
+    ]
     kwargs = dict()
     kwargs['algorithm'] = algorithm
     for arg in args:

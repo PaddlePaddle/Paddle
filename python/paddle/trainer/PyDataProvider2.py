@@ -18,9 +18,8 @@ import collections
 import functools
 import itertools
 
-logging.basicConfig(
-    format="[%(levelname)s %(asctime)s %(filename)s:%(lineno)s]"
-           " %(message)s")
+logging.basicConfig(format="[%(levelname)s %(asctime)s %(filename)s:%(lineno)s]"
+                    " %(message)s")
 
 
 class SequenceType(object):
@@ -38,7 +37,7 @@ class DataType(object):
 
 
 class CacheType(object):
-    NO_CACHE = 0  # No cache at all
+    NO_CACHE = 0    # No cache at all
 
     # First pass, read data from python.  And store them in memory. Read from
     # memory during rest passes.
@@ -113,6 +112,7 @@ def integer_sequence(dim):
 
 
 class SingleSlotWrapper(object):
+
     def __init__(self, generator):
         self.generator = generator
 
@@ -125,6 +125,7 @@ class SingleSlotWrapper(object):
 
 
 class InputOrderWrapper(object):
+
     def __init__(self, generator, input_order):
         self.generator = generator
         self.input_order = input_order
@@ -132,13 +133,16 @@ class InputOrderWrapper(object):
     def __call__(self, obj, filename):
         for item in self.generator(obj, filename):
             if isinstance(item, dict):
-                yield [item.get(input_name, None) for input_name in
-                       self.input_order]
+                yield [
+                    item.get(input_name, None)
+                    for input_name in self.input_order
+                ]
             else:
                 yield item
 
 
 class CheckWrapper(object):
+
     def __init__(self, generator, input_types, check_fail_continue, logger):
         self.generator = generator
         self.input_types = input_types
@@ -162,8 +166,8 @@ class CheckWrapper(object):
                 yield items
             except AssertionError as e:
                 self.logger.warning(
-                    "Item (%s) is not fit the input type with error %s"
-                    % (repr(item), repr(e)))
+                    "Item (%s) is not fit the input type with error %s" %
+                    (repr(item), repr(e)))
 
                 if self.check_fail_continue:
                     continue
@@ -202,13 +206,17 @@ class CheckWrapper(object):
             callback(each)
 
 
-def provider(input_types=None, should_shuffle=None, pool_size=-1,
+def provider(input_types=None,
+             should_shuffle=None,
+             pool_size=-1,
              min_pool_size=-1,
              can_over_batch_size=True,
              calc_batch_size=None,
              cache=CacheType.NO_CACHE,
-             check=False, check_fail_continue=False,
-             init_hook=None, **kwargs):
+             check=False,
+             check_fail_continue=False,
+             init_hook=None,
+             **kwargs):
     """
     Provider decorator. Use it to make a function into PyDataProvider2 object.
     In this function, user only need to get each sample for some train/test
@@ -289,7 +297,9 @@ def provider(input_types=None, should_shuffle=None, pool_size=-1,
     """
 
     def __wrapper__(generator):
+
         class DataProvider(object):
+
             def __init__(self, file_list, **kwargs):
                 self.logger = logging.getLogger("")
                 self.logger.setLevel(logging.INFO)
@@ -318,9 +328,9 @@ def provider(input_types=None, should_shuffle=None, pool_size=-1,
                             "Could not recognize should_shuffle (%s), "
                             "just use default value of should_shuffle."
                             " Please set should_shuffle to bool value or "
-                            "something in %s" % (
-                                repr(self.should_shuffle),
-                                repr(true_table + false_table)))
+                            "something in %s" %
+                            (repr(self.should_shuffle),
+                             repr(true_table + false_table)))
                         self.should_shuffle = None
 
                 self.pool_size = pool_size
@@ -340,7 +350,7 @@ def provider(input_types=None, should_shuffle=None, pool_size=-1,
                 assert self.generator is not None
 
                 use_dynamic_order = False
-                if isinstance(self.slots, dict):  # reorder input_types
+                if isinstance(self.slots, dict):    # reorder input_types
                     self.slots = [self.slots[ipt] for ipt in self.input_order]
                     use_dynamic_order = True
 
@@ -351,8 +361,7 @@ def provider(input_types=None, should_shuffle=None, pool_size=-1,
                     self.generator = InputOrderWrapper(self.generator,
                                                        self.input_order)
                 if self.check:
-                    self.generator = CheckWrapper(self.generator,
-                                                  self.slots,
+                    self.generator = CheckWrapper(self.generator, self.slots,
                                                   check_fail_continue,
                                                   self.logger)
 
@@ -368,4 +377,3 @@ def deserialize_args(args):
     :return:
     """
     return cPickle.loads(args)
-

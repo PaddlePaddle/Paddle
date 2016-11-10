@@ -1,10 +1,7 @@
 from paddle.trainer_config_helpers import *
 from paddle.trainer_config_helpers import math
 
-settings(
-    batch_size=1000,
-    learning_rate=1e-5
-)
+settings(batch_size=1000, learning_rate=1e-5)
 
 x = data_layer(name='data', size=100)
 x = math.exp(x)
@@ -21,4 +18,3 @@ y = y - 2
 y = 2 - y
 
 outputs(y)
-

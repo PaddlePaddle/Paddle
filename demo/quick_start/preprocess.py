@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 1. (remove HTML before or not)tokensizing
 2. pos sample : rating score 5; neg sample: rating score 1-2.
@@ -35,7 +34,8 @@ import multiprocessing
 
 batch_size = 5000
 word_count = {}
-num_tokenize = max(1, multiprocessing.cpu_count() - 2)  # parse + tokenize + save
+num_tokenize = max(1,
+                   multiprocessing.cpu_count() - 2)    # parse + tokenize + save
 max_queue_size = 8
 parse_queue = Queue(maxsize=max_queue_size + num_tokenize)
 tokenize_queue = Queue(maxsize=max_queue_size + num_tokenize)
@@ -102,7 +102,7 @@ def tokenize_batch(id):
     """
     while True:
         num_batch, instance, pre_fix = parse_queue.get()
-        if num_batch == -1:  ### parse_queue finished
+        if num_batch == -1:    ### parse_queue finished
             tokenize_queue.put((-1, None, None))
             sys.stderr.write("tokenize theread %s finish\n" % (id))
             break
@@ -121,12 +121,12 @@ def save_batch(data_dir, num_tokenize, data_dir_dict):
         num_batch, instance, pre_fix = tokenize_queue.get()
         if num_batch == -1:
             token_count += 1
-            if token_count == num_tokenize:  #### tokenize finished.
+            if token_count == num_tokenize:    #### tokenize finished.
                 break
             else:
                 continue
         save_data(instance, data_dir, pre_fix, num_batch)
-        create_dict(instance)  ## update dict
+        create_dict(instance)    ## update dict
 
     sys.stderr.write("save file finish\n")
     f = open(data_dir_dict, 'w')
@@ -149,7 +149,7 @@ def parse_batch(data, num_tokenize):
     sys.stderr.write("extract raw data\n")
     for l in raw_txt:
         rating = l["overall"]
-        text = l["reviewText"].lower()  # # convert words to lower case
+        text = l["reviewText"].lower()    # # convert words to lower case
         if rating == 5.0 and text:
             pos.append(text)
         if rating < 3.0 and text:
@@ -176,7 +176,7 @@ def parse_batch(data, num_tokenize):
         parse_queue.put((count, neg, 'neg'))
         count += 1
     for i in range(num_tokenize):
-        parse_queue.put((-1, None, None))  #### for tokenize's input finished
+        parse_queue.put((-1, None, None))    #### for tokenize's input finished
     sys.stderr.write("parsing finish\n")
 
 
@@ -206,7 +206,7 @@ def main():
     pool = Pool(processes=num_tokenize + 2)
     pool.apply_async(parse_batch, args=(data, num_tokenize))
     for i in range(num_tokenize):
-        pool.apply_async(tokenize_batch, args=(str(i), ))
+        pool.apply_async(tokenize_batch, args=(str(i),))
     pool.apply_async(save_batch, args=(data_dir, num_tokenize, data_dir_dict))
     pool.close()
     pool.join()

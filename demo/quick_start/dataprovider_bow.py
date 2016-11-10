@@ -17,6 +17,7 @@ from paddle.trainer.PyDataProvider2 import *
 # id of the word not in dictionary
 UNK_IDX = 0
 
+
 # initializer is called by the framework during initialization.
 # It allows the user to describe the data types and setup the
 # necessary data structure for later use.
@@ -31,14 +32,16 @@ def initializer(settings, dictionary, **kwargs):
     # setting.input_types specifies what the data types the data provider
     # generates.
     settings.input_types = [
-        # The first input is a sparse_binary_vector,
-        # which means each dimension of the vector is either 0 or 1. It is the
-        # bag-of-words (BOW) representation of the texts.
+    # The first input is a sparse_binary_vector,
+    # which means each dimension of the vector is either 0 or 1. It is the
+    # bag-of-words (BOW) representation of the texts.
         sparse_binary_vector(len(dictionary)),
-        # The second input is an integer. It represents the category id of the
-        # sample. 2 means there are two labels in the dataset.
-        # (1 for positive and 0 for negative)
-        integer_value(2)]
+    # The second input is an integer. It represents the category id of the
+    # sample. 2 means there are two labels in the dataset.
+    # (1 for positive and 0 for negative)
+        integer_value(2)
+    ]
+
 
 # Delaring a data provider. It has an initializer 'data_initialzer'.
 # It will cache the generated data of the first pass in memory, so that
@@ -69,9 +72,8 @@ def process(settings, file_name):
 
 def predict_initializer(settings, dictionary, **kwargs):
     settings.word_dict = dictionary
-    settings.input_types = [
-        sparse_binary_vector(len(dictionary))
-    ]
+    settings.input_types = [sparse_binary_vector(len(dictionary))]
+
 
 # Declaring a data provider for prediction. The difference with process
 # is that label is not generated.

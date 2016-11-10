@@ -23,14 +23,17 @@ Usage:
 import numpy as np
 import os
 
+
 def load(file_name):
     with open(file_name, 'rb') as f:
-        f.read(16) # skip header for float type.
+        f.read(16)    # skip header for float type.
         return np.fromfile(f, dtype=np.float32)
+
 
 def main():
     print 'w=%.6f, b=%.6f from pass 29' % (load('output/pass-00029/w'),
-            load('output/pass-00029/b'))
+                                           load('output/pass-00029/b'))
+
 
 if __name__ == '__main__':
     main()
