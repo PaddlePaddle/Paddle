@@ -1657,7 +1657,7 @@ def img_pool_layer(input, pool_size, name=None,
     :type pool_size_y: int|None
     :param num_channels: number of input channel.
     :type num_channels: int
-    :param pool_type: pooling type. MaxPooling or AveragePooling. Default is
+    :param pool_type: pooling type. MaxPooling or AvgPooling. Default is
                       MaxPooling.
     :type pool_type: BasePoolingType
     :param stride: stride width of pooling.

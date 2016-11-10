@@ -218,7 +218,7 @@ def Inputs(*args):
 
 @config_func
 def HasInputsSet():
-    return len(g_config.model_config.input_layer_names) != 0
+    return len(g_current_submodel.input_layer_names) != 0
 
 
 # Define the name of the output layers of the NeuralNetwork.
@@ -1120,14 +1120,14 @@ def parse_block_expand(block_expand, input_layer_name, block_expand_conf):
         block_expand_conf.output_x = 0
     else:
         block_expand_conf.output_x = cnn_output_size(
-            block_expand.img_size_x, block_expand.block_x, 
+            block_expand.img_size_x, block_expand.block_x,
             block_expand.padding_x, block_expand.stride_x, False)
 
     if block_expand_conf.img_size_y == 0:
         block_expand_conf.output_y = 0
     else:
         block_expand_conf.output_y = cnn_output_size(
-            block_expand.img_size_y, block_expand.block_y, 
+            block_expand.img_size_y, block_expand.block_y,
             block_expand.padding_y, block_expand.stride_y, False)
 
 def parse_maxout(maxout, input_layer_name, maxout_conf):
@@ -1135,7 +1135,7 @@ def parse_maxout(maxout, input_layer_name, maxout_conf):
     maxout_conf.groups = maxout.groups
     maxout_conf.img_size_x = maxout.img_size_x
     maxout_conf.img_size_y = maxout.img_size_y
-    
+
 # Define an evaluator
 @config_func
 def Evaluator(
@@ -1773,7 +1773,7 @@ class MaxOutLayer(LayerBase):
                      self.config.inputs[0].maxout_conf)
         maxout_conf = self.config.inputs[0].maxout_conf
         self.set_layer_size(g_layer_map[input_layer.name].size / maxout_conf.groups)
-            
+
 # key: cost type
 # value: cost class
 g_cost_map = {}
