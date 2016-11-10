@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 This module provide a wrapper(decorator) to wrap a data process method into a
 PyDataProvider. Some examples are shown `here <data_provider/python_case.html>`_.
@@ -33,7 +32,7 @@ __all__ = [
     'provider', 'init_hook_wrapper'
 ]
 
-try:  # Just for profile mode, will try to import cProfile first.
+try:    # Just for profile mode, will try to import cProfile first.
     # Most python will contains cProfile, cProfile/profile are basically same.
     # ref: https://docs.python.org/2/library/profile.html#introduction-to-the-profilers
     import cProfile as profile
@@ -47,7 +46,8 @@ except ImportError:
 
 import io
 
-class SlotType(object):  # Just a hint for user.
+
+class SlotType(object):    # Just a hint for user.
     pass
 
 
@@ -83,6 +83,7 @@ class SparseNonValueSlot(SlotType):
     - **SubSeq**: [[[int, int, ...], [int, ....], ...] ,  \
                    [[int, int, ...], [int, ....], ...] , ...]
     """
+
     def __init__(self, dim):
         """
         :param dim: slot dimension
@@ -234,11 +235,12 @@ class StringHandler(object):
 
 
 class GeneralPyDataProvider:
+
     def __init__(self, *file_list, **kwargs):
         """
         :param file_list: input file_list
         """
-        del kwargs  # unused
+        del kwargs    # unused
         gc.disable()
         assert isinstance(self.logger, logging.Logger)
         self.use_seq_flag = hasattr(self, "use_seq_flag") and self.use_seq_flag
@@ -294,8 +296,9 @@ class GeneralPyDataProvider:
                 fn = "%s_%d" % (self.profile_filename, self.profile_count)
                 sortby = "cumulative"
                 with open(fn, "w") as f:
-                    pstats.Stats(self.profiler, stream=f).sort_stats(
-                        sortby).print_stats()
+                    pstats.Stats(
+                        self.profiler,
+                        stream=f).sort_stats(sortby).print_stats()
                 self.logger.info("saving profile to file %s" % fn)
                 self.profile_count += 1
             self.logger.info("resetting profile")
@@ -384,7 +387,7 @@ class GeneralPyDataProvider:
             slot_sample_num = len(ret_list)
             if self.use_seq_flag:
                 slot_sample_num = 0
-                if self.has_subseq[idx]:  # has sub-sequence
+                if self.has_subseq[idx]:    # has sub-sequence
                     slot_subseq_num = 0
                     for dat in ret_list:
                         dat = dat[idx]
@@ -403,7 +406,7 @@ class GeneralPyDataProvider:
                 dat = dat[idx]
                 if self.use_seq_flag:
                     seq_stream.write(self.int_packer.pack(indices))
-                    if self.has_subseq[idx]:  # has sub-sequence
+                    if self.has_subseq[idx]:    # has sub-sequence
                         for sub_dat in dat:
                             writeDataStream(sub_dat, data_callback)
                             subseq_stream.write(self.int_packer.pack(indices))
@@ -416,13 +419,13 @@ class GeneralPyDataProvider:
 
         def writeDataStream(dat, data_callback):
             if self.use_seq_flag > 0:
-                if data_callback is None:  # Special for index slot
+                if data_callback is None:    # Special for index slot
                     data_stream.write(array.array("i", dat).tostring())
                 else:
                     for ele in dat:
                         data_callback(ele)
             else:
-                if data_callback is None:  # Special for index slot
+                if data_callback is None:    # Special for index slot
                     data_stream.write(self.int_packer.pack(dat))
                 else:
                     data_callback(dat)
@@ -453,9 +456,10 @@ class GeneralPyDataProvider:
             seq_stream.flush()
             subseq_stream.flush()
 
-            return "".join([self.int_packer.pack(current_batch_size),
-                            data_bytes.getvalue(),
-                            seq_bytes.getvalue(), subseq_bytes.getvalue()])
+            return "".join([
+                self.int_packer.pack(current_batch_size), data_bytes.getvalue(),
+                seq_bytes.getvalue(), subseq_bytes.getvalue()
+            ])
 
         finally:
             data_stream.close()
@@ -475,12 +479,12 @@ class GeneralPyDataProvider:
             dat = ret_list[0][i][0]
             if isinstance(slot, IndexSlot) or isinstance(slot, StringSlot):
                 if isinstance(dat, list) or isinstance(dat, numpy.ndarray):
-                    self.has_subseq.append(1)  # has_subseq = True
+                    self.has_subseq.append(1)    # has_subseq = True
                     continue
             elif isinstance(dat[0], list) or isinstance(dat[0], numpy.ndarray):
-                self.has_subseq.append(1)  # has_subseq = True
+                self.has_subseq.append(1)    # has_subseq = True
                 continue
-            self.has_subseq.append(0)  # has_subseq = False
+            self.has_subseq.append(0)    # has_subseq = False
 
     def checkOrder(self):
         first_noSubseq_slot = self.slots_num
@@ -511,12 +515,12 @@ class GeneralPyDataProvider:
                     if current_batch_size >= batch_size:
                         could_exit = True
                         break
-                if current_batch_size > batch_size and not self.can_over_batch_size:  # if cannot over batch size
+                if current_batch_size > batch_size and not self.can_over_batch_size:    # if cannot over batch size
                     current_batch_size -= self.calculateDataBatchSize(
                         self.data_pool[idx])
                     idx -= 1
 
-                ret_list += self.data_pool[self.data_pool_idx: idx + 1]
+                ret_list += self.data_pool[self.data_pool_idx:idx + 1]
 
                 # for speed reason, just shift left index, not delete data actually.
                 self.data_pool_idx = idx + 1
@@ -525,7 +529,7 @@ class GeneralPyDataProvider:
                     self.data_pool = []
             else:
                 break
-        if self.use_seq_flag and not self.has_checked:  # compute self.has_subseq and checkOrder only at first time
+        if self.use_seq_flag and not self.has_checked:    # compute self.has_subseq and checkOrder only at first time
             self.hasSubseq(ret_list)
             self.checkOrder()
         return current_batch_size
@@ -537,8 +541,8 @@ class GeneralPyDataProvider:
         if self.max_pool_size == 0:
             for i in xrange(min(self.file_count, len(self.generators))):
                 self.data_pool += list(self.generators[i])
-            self.generators = self.generators[
-                              min(self.file_count, len(self.generators)):]
+            self.generators = self.generators[min(self.file_count,
+                                                  len(self.generators)):]
             self.max_pool_size = len(self.data_pool)
         else:
             while len(self.data_pool) < self.max_pool_size and len(
@@ -562,9 +566,15 @@ def default_init_hook(cls, *args, **kwargs):
     del cls, args, kwargs
 
 
-def provider(slots=None, use_seq=False, should_shuffle=True, pool_size=1,
-             can_over_batch_size=True, calc_batch_size=lambda data: 1,
-             debug=False, init_hook=default_init_hook, profile_filename=None):
+def provider(slots=None,
+             use_seq=False,
+             should_shuffle=True,
+             pool_size=1,
+             can_over_batch_size=True,
+             calc_batch_size=lambda data: 1,
+             debug=False,
+             init_hook=default_init_hook,
+             profile_filename=None):
     """
     The decorator for PyDataProvider. User should use this to create Provider class.
     User should only concern how to read sample from file.
@@ -657,13 +667,14 @@ def provider(slots=None, use_seq=False, should_shuffle=True, pool_size=1,
     """
 
     def _wrapper(handler):
+
         class Cls(GeneralPyDataProvider):
             """ Real PyDataProvider Class. """
 
             def __init__(self, *file_list, **kwargs):
                 logging.basicConfig(
                     format="[%(levelname)s %(asctime)s %(filename)s:%(lineno)s]"
-                           " %(message)s")
+                    " %(message)s")
 
                 self.logger = logging.getLogger("")
                 if debug:

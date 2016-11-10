@@ -41,9 +41,8 @@ def image_data(data_dir,
                the size of the mean image, the number of classes.
     async_load_data: whether to load image data asynchronuously.
     """
-    data_creator = ImageClassificationDatasetCreater(data_dir,
-                                                     processed_image_size,
-                                                     color)
+    data_creator = ImageClassificationDatasetCreater(
+        data_dir, processed_image_size, color)
     batch_data_dir = data_dir
     train_list = os.path.join(batch_data_dir, train_list)
     test_list = os.path.join(batch_data_dir, test_list)
@@ -64,13 +63,17 @@ def image_data(data_dir,
         'color': color_string
     }
 
-    define_py_data_sources2(train_list, test_list,
-                           module='image_provider',
-                           obj='processData',
-                           args=args)
-    return {"image_size": image_size,
-            "num_classes": num_classes,
-            "is_color": is_color}
+    define_py_data_sources2(
+        train_list,
+        test_list,
+        module='image_provider',
+        obj='processData',
+        args=args)
+    return {
+        "image_size": image_size,
+        "num_classes": num_classes,
+        "is_color": is_color
+    }
 
 
 def get_extra_layer_attr(drop_rate):
@@ -80,8 +83,8 @@ def get_extra_layer_attr(drop_rate):
         return ExtraLayerAttribute(drop_rate=drop_rate)
 
 
-def image_data_layers(image_size, num_classes,
-                      is_color=False, is_predict=False):
+def image_data_layers(image_size, num_classes, is_color=False,
+                      is_predict=False):
     """
     Data layers for image classification.
     image_size: image size.
@@ -109,56 +112,58 @@ def simple_conv_net(data_conf, is_color=False):
         num_classes: num of classes.
         is_color: whether the input images are color.
     """
-    for k, v in data_conf.iteritems(): globals()[k] = v
+    for k, v in data_conf.iteritems():
+        globals()[k] = v
     data_input, label_input, num_image_channels = \
         image_data_layers(image_size, num_classes, is_color, is_predict)
     filter_sizes = [5, 5]
     num_channels = [32, 64]
     strides = [1, 1]
     fc_dims = [500]
-    conv_bn_pool1 = img_conv_bn_pool(name="g1",
-                                     input=data_input,
-                                     filter_size=filter_sizes[0],
-                                     num_channel=num_image_channels,
-                                     num_filters=num_channels[0],
-                                     conv_stride=1,
-                                     conv_padding=0,
-                                     pool_size=3,
-                                     pool_stride=2,
-                                     act=ReluActivation())
-    conv_bn_pool2 = img_conv_bn_pool(name="g2",
-                                     input=conv_bn_pool1,
-                                     filter_size=filter_sizes[1],
-                                     num_channel=num_channels[0],
-                                     num_filters=num_channels[1],
-                                     conv_stride=1,
-                                     conv_padding=0,
-                                     pool_size=3,
-                                     pool_stride=2,
-                                     act=ReluActivation())
-    fc3 = fc_layer(name="fc3",
-                   input=conv_bn_pool2,
-                   dim=fc_dims[0],
-                   act=ReluActivation())
-    fc3_dropped = dropout_layer(name="fc3_dropped",
-                                input=fc3,
-                                dropout_rate=0.5)
-    output = fc_layer(name="output",
-                      input=fc3_dropped,
-                      dim=fc_dims[0],
-                      act=SoftmaxActivation())
+    conv_bn_pool1 = img_conv_bn_pool(
+        name="g1",
+        input=data_input,
+        filter_size=filter_sizes[0],
+        num_channel=num_image_channels,
+        num_filters=num_channels[0],
+        conv_stride=1,
+        conv_padding=0,
+        pool_size=3,
+        pool_stride=2,
+        act=ReluActivation())
+    conv_bn_pool2 = img_conv_bn_pool(
+        name="g2",
+        input=conv_bn_pool1,
+        filter_size=filter_sizes[1],
+        num_channel=num_channels[0],
+        num_filters=num_channels[1],
+        conv_stride=1,
+        conv_padding=0,
+        pool_size=3,
+        pool_stride=2,
+        act=ReluActivation())
+    fc3 = fc_layer(
+        name="fc3", input=conv_bn_pool2, dim=fc_dims[0], act=ReluActivation())
+    fc3_dropped = dropout_layer(name="fc3_dropped", input=fc3, dropout_rate=0.5)
+    output = fc_layer(
+        name="output",
+        input=fc3_dropped,
+        dim=fc_dims[0],
+        act=SoftmaxActivation())
     if is_predict:
         end_of_network(output)
     else:
-        cost = classify(name="cost",
-                        input=output,
-                        label=label_input)
+        cost = classify(name="cost", input=output, label=label_input)
         end_of_network(cost)
 
 
-def conv_layer_group(prefix_num, num_layers, input,
-                     input_channels, output_channels,
-                     drop_rates=[], strides=[],
+def conv_layer_group(prefix_num,
+                     num_layers,
+                     input,
+                     input_channels,
+                     output_channels,
+                     drop_rates=[],
+                     strides=[],
                      with_bn=[]):
     """
     A set of convolution layers, and batch normalization layers,
@@ -190,36 +195,45 @@ def conv_layer_group(prefix_num, num_layers, input,
             i_conv_in = group_output
         i_channels_conv = input_channels if i == 1 else output_channels
         conv_act = LinearActivation() if with_bn[i - 1] else ReluActivation()
-        conv_output = img_conv_layer(name="conv%d_%d" % (prefix_num, i),
-                                     input=i_conv_in,
-                                     filter_size=3,
-                                     num_channels=i_channels_conv,
-                                     num_filters=output_channels,
-                                     stride=strides[i - 1],
-                                     padding=1,
-                                     act=conv_act)
+        conv_output = img_conv_layer(
+            name="conv%d_%d" % (prefix_num, i),
+            input=i_conv_in,
+            filter_size=3,
+            num_channels=i_channels_conv,
+            num_filters=output_channels,
+            stride=strides[i - 1],
+            padding=1,
+            act=conv_act)
         if with_bn[i - 1]:
-            bn = batch_norm_layer(name="conv%d_%d_bn" % (prefix_num, i),
-                                  input=conv_output,
-                                  num_channels=output_channels,
-                                  act=ReluActivation(),
-                                  layer_attr=get_extra_layer_attr(
-                                      drop_rate=drop_rates[i - 1]))
+            bn = batch_norm_layer(
+                name="conv%d_%d_bn" % (prefix_num, i),
+                input=conv_output,
+                num_channels=output_channels,
+                act=ReluActivation(),
+                layer_attr=get_extra_layer_attr(drop_rate=drop_rates[i - 1]))
             group_output = bn
         else:
             group_output = conv_output
-    pool = img_pool_layer(name="pool%d" % prefix_num,
-                          input=group_output,
-                          pool_size=2,
-                          num_channels=output_channels,
-                          stride=2)
+    pool = img_pool_layer(
+        name="pool%d" % prefix_num,
+        input=group_output,
+        pool_size=2,
+        num_channels=output_channels,
+        stride=2)
     return pool
 
 
-def vgg_conv_net(image_size, num_classes, num_layers,
-                 channels, strides, with_bn, fc_dims,
-                 drop_rates, drop_rates_fc=[],
-                 is_color=True, is_predict=False):
+def vgg_conv_net(image_size,
+                 num_classes,
+                 num_layers,
+                 channels,
+                 strides,
+                 with_bn,
+                 fc_dims,
+                 drop_rates,
+                 drop_rates_fc=[],
+                 is_color=True,
+                 is_predict=False):
     """
     A Wrapper for a VGG network for image classification.
     It is a set of convolutional groups followed by several fully
@@ -248,51 +262,49 @@ def vgg_conv_net(image_size, num_classes, num_layers,
     for i in range(len(num_layers)):
         input_layer = data_input if i == 0 else group_output
         input_channels = 3 if i == 0 else channels[i - 1]
-        group_output = conv_layer_group(prefix_num=i + 1,
-                                        num_layers=num_layers[i],
-                                        input=input_layer,
-                                        input_channels=input_channels,
-                                        output_channels=channels[i],
-                                        drop_rates=drop_rates[i],
-                                        strides=strides[i],
-                                        with_bn=with_bn[i])
+        group_output = conv_layer_group(
+            prefix_num=i + 1,
+            num_layers=num_layers[i],
+            input=input_layer,
+            input_channels=input_channels,
+            output_channels=channels[i],
+            drop_rates=drop_rates[i],
+            strides=strides[i],
+            with_bn=with_bn[i])
     conv_output_name = group_output
     if drop_rates_fc[0] != 0.0:
         dropped_pool_name = "pool_dropped"
-        conv_output_name = dropout_layer(name=dropped_pool_name,
-                                         input=conv_output_name,
-                                         dropout_rate=drop_rates_fc[0])
+        conv_output_name = dropout_layer(
+            name=dropped_pool_name,
+            input=conv_output_name,
+            dropout_rate=drop_rates_fc[0])
     for i in range(len(fc_dims)):
         input_layer_name = conv_output_name if i == 0 else fc_output
         active_type = LinearActivation() if i == len(
             fc_dims) - 1 else ReluActivation()
         drop_rate = 0.0 if i == len(fc_dims) - 1 else drop_rates_fc[i + 1]
-        fc_output = fc_layer(name="fc%d" % (i + 1),
-                             input=input_layer_name,
-                             size=fc_dims[i],
-                             act=active_type,
-                             layer_attr=get_extra_layer_attr(drop_rate))
-    bn = batch_norm_layer(name="fc_bn",
-                          input=fc_output,
-                          num_channels=fc_dims[len(fc_dims) - 1],
-                          act=ReluActivation(),
-                          layer_attr=get_extra_layer_attr(
-                              drop_rate=drop_rates_fc[-1]))
-    output = fc_layer(name="output",
-                      input=bn,
-                      size=num_classes,
-                      act=SoftmaxActivation())
+        fc_output = fc_layer(
+            name="fc%d" % (i + 1),
+            input=input_layer_name,
+            size=fc_dims[i],
+            act=active_type,
+            layer_attr=get_extra_layer_attr(drop_rate))
+    bn = batch_norm_layer(
+        name="fc_bn",
+        input=fc_output,
+        num_channels=fc_dims[len(fc_dims) - 1],
+        act=ReluActivation(),
+        layer_attr=get_extra_layer_attr(drop_rate=drop_rates_fc[-1]))
+    output = fc_layer(
+        name="output", input=bn, size=num_classes, act=SoftmaxActivation())
     if is_predict:
         outputs(output)
     else:
-        cost = classification_cost(name="cost",
-                                   input=output,
-                                   label=label_input)
+        cost = classification_cost(name="cost", input=output, label=label_input)
         outputs(cost)
 
 
-def vgg16_conv_net(image_size, num_classes,
-                   is_color=True, is_predict=False):
+def vgg16_conv_net(image_size, num_classes, is_color=True, is_predict=False):
     """
     A Wrapper for a 16 layers VGG network for image classification.
     The detailed architecture of the paper can be found here:
@@ -314,8 +326,7 @@ def vgg16_conv_net(image_size, num_classes,
                  is_predict=is_predict)
 
 
-def small_vgg(data_conf,
-              is_predict=False):
+def small_vgg(data_conf, is_predict=False):
     """
     A Wrapper for a small VGG network for CIFAR-10 image classification.
     The detailed architecture of the paper can be found here:
@@ -329,7 +340,8 @@ def small_vgg(data_conf,
         num_classes: num of classes.
         is_color: whether the input images are color.
     """
-    for k, v in data_conf.iteritems(): globals()[k] = v
+    for k, v in data_conf.iteritems():
+        globals()[k] = v
     vgg_conv_net(image_size, num_classes,
                  num_layers=[2, 2, 3, 3],
                  channels=[64, 128, 256, 512],
@@ -343,8 +355,11 @@ def small_vgg(data_conf,
                  is_predict=is_predict)
 
 
-def training_settings(learning_rate=0.1, batch_size=128, algorithm="sgd",
-                      momentum=0.9, decay_rate=0.001):
+def training_settings(learning_rate=0.1,
+                      batch_size=128,
+                      algorithm="sgd",
+                      momentum=0.9,
+                      decay_rate=0.001):
     """
     Training settings.
     learning_rate: learning rate of the training.
@@ -357,8 +372,9 @@ def training_settings(learning_rate=0.1, batch_size=128, algorithm="sgd",
     momentum: momentum of the training algorithm.
     decay_rate: weight decay rate.
     """
-    Settings(algorithm=algorithm,
-             batch_size=batch_size,
-             learning_rate=learning_rate / float(batch_size))
+    Settings(
+        algorithm=algorithm,
+        batch_size=batch_size,
+        learning_rate=learning_rate / float(batch_size))
     default_momentum(momentum)
     default_decay_rate(decay_rate * batch_size)
