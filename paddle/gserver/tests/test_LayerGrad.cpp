@@ -175,6 +175,27 @@ TEST(Projection, conv) {
 }
 #endif
 
+TEST(Layer, BilinearInterpLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("bilinear_interp");
+  config.biasSize = 0;
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 4096, 0});
+
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  BilinearInterpConfig* bilinear = input->mutable_bilinear_interp_conf();
+  bilinear->set_img_size_x(32);
+  bilinear->set_img_size_y(32);
+  bilinear->set_num_channels(4);
+
+  for (auto useGpu : {false, true}) {
+    for (auto outSize : {32, 64}) {
+      bilinear->set_out_size_x(outSize);
+      bilinear->set_out_size_y(outSize);
+      testLayerGrad(config, "bilinear_interp", 10, false, useGpu);
+    }
+  }
+}
+
 TEST(Layer, concat) {
   TestConfig config;
   config.biasSize = 0;
@@ -302,6 +323,8 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
                               config.layerConfig.num_filters());
 
   testLayerGrad(config, "conv", 100, trans, useGpu);
+  // Use small batch_size and useWeight=true to test biasGrad
+  testLayerGrad(config, "conv", 2, trans, useGpu, true, 0.02);
 }
 
 TEST(Layer, convLayer) {
@@ -310,6 +333,46 @@ TEST(Layer, convLayer) {
   testConvLayer("exconv", /* trans= */ false, /* useGpu= */ true);
   testConvLayer("cudnn_conv", /* trans= */ false, /* useGpu= */ true);
 #endif
+}
+
+
+void testConvTransLayer(const string& type, bool trans, bool useGpu) {
+  TestConfig config;
+  config.biasSize = 3;
+  config.layerConfig.set_type(type);
+  config.layerConfig.set_num_filters(3);
+  config.layerConfig.set_partial_sum(1);
+  config.layerConfig.set_shared_biases(true);
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1024, 288});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ConvConfig* conv = input->mutable_conv_conf();
+  conv->set_filter_size(2);
+  conv->set_filter_size_y(3);
+  conv->set_channels(16);
+  conv->set_padding(0);
+  conv->set_padding_y(1);
+  conv->set_stride(2);
+  conv->set_stride_y(2);
+  conv->set_groups(1);
+  conv->set_filter_channels(3 / conv->groups());
+  conv->set_img_size(16);
+  conv->set_output_x(outputSize(conv->img_size(), conv->filter_size(),
+                                conv->padding(), conv->stride(),
+                                /* caffeMode */ true));
+
+  config.layerConfig.set_size(conv->img_size() * conv->img_size() *
+                              config.layerConfig.num_filters());
+
+  testLayerGrad(config, "convTrans", 100, trans, useGpu);
+  // Use small batch_size and useWeight=true to test biasGrad
+  testLayerGrad(config, "convTrans", 2, trans, useGpu, true, 0.02);
+}
+
+TEST(Layer, convTransLayer) {
+  for (auto useGpu : {false, true}) {
+    testConvTransLayer("exconvt", /* trans= */ false, /* useGpu= */ useGpu);
+  }
 }
 
 TEST(Layer, blockExpandLayer) {

@@ -12,34 +12,35 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
+#include "Layer.h"
 #include "paddle/math/Matrix.h"
-#include <vector>
-#include "ExpandConvBaseLayer.h"
 
 namespace paddle {
 
 /**
- * @brief A subclass of convolution layer.
- * This layer expands input and use matrix multiplication to
- * calculate convolution operation.
+ * @brief A layer for bilinear interpolation which is
+ *        used on conv layer output.
  *
- * The config file api is img_conv_layer.
+ * @note  The config file api is bilinear_interp_layer.
  */
+class BilinearInterpLayer : public Layer {
+protected:
+  size_t outImgH_, outImgW_;
+  size_t inImgH_, inImgW_;
+  real ratioH_, ratioW_;
+  size_t numChannels_;
 
-class ExpandConvLayer : public ExpandConvBaseLayer {
 public:
-  explicit ExpandConvLayer(const LayerConfig& config) :
-    ExpandConvBaseLayer(config) {}
+  explicit BilinearInterpLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~ExpandConvLayer() {}
+  virtual ~BilinearInterpLayer() {}
 
+  size_t getSize();
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
   void forward(PassType passType);
-  void backward(const UpdateCallback& callback);
+  void backward(const UpdateCallback& callback = nullptr);
 };
 
 }  // namespace paddle

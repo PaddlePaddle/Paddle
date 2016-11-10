@@ -40,8 +40,8 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'img_cmrnorm_layer', 'addto_layer',
            'concat_layer', 'lstm_step_layer', 'recurrent_group',
            'memory', 'StaticInput', 'expand_layer', 'scaling_layer',
-           'power_layer', 'interpolation_layer', 'trans_layer',
-           'sum_to_one_norm_layer',
+           'power_layer', 'interpolation_layer', 'bilinear_interp_layer',
+           'trans_layer', 'sum_to_one_norm_layer',
            'get_output_layer', 'LayerType', 'context_projection',
            'beam_search', 'maxid_layer', 'GeneratedInput', 'SubsequenceInput',
            'gru_step_layer', 'recurrent_layer',
@@ -79,6 +79,7 @@ class LayerType(object):
     COSINE_SIM = 'cos'
     HSIGMOID = 'hsigmoid'
     CONV_LAYER = "conv"
+    CONVTRANS_LAYER = "convt"
     POOL_LAYER = "pool"
     BATCH_NORM_LAYER = 'batch_norm'
     NORM_LAYER = 'norm'
@@ -94,6 +95,7 @@ class LayerType(object):
 
     EXPAND_LAYER = 'expand'
     INTERPOLATION_LAYER = 'interpolation'
+    BILINEAR_INTERP_LAYER = 'bilinear_interp'
     POWER_LAYER = 'power'
     SCALING_LAYER = 'scaling'
     TRANS_LAYER = 'trans'
@@ -1263,6 +1265,52 @@ def interpolation_layer(input, weight, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
+def bilinear_interp_layer(input,
+                          out_size_x=None,
+                          out_size_y=None,
+                          name=None,
+                          layer_attr=None):
+    """
+    This layer is to implement bilinear interpolation on conv layer output.
+
+    Please refer to Wikipedia: https://en.wikipedia.org/wiki/Bilinear_interpolation
+
+    The simple usage is:
+
+    .. code-block:: python
+
+       bilinear = bilinear_interp_layer(input=layer1, out_size_x=64, out_size_y=64)
+    
+    :param   input:        A input layer.
+    :type    input:        LayerOutput.
+    :param   out_size_x:   bilinear interpolation output width.
+    :type    out_size_x:   int|None 
+    :param   out_size_y:   bilinear interpolation output height.
+    :type    out_size_y:   int|None
+    :param   name:         The layer's name, which cna not be specified.
+    :type    name:         None|basestring
+    :param   layer_attr:   Extra Layer attribute.
+    :type    layer_attr:   ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype:  LayerOutput
+    """
+    assert input.layer_type == LayerType.CONV_LAYER
+    assert isinstance(input.activation, LinearActivation)
+    assert out_size_x > 0 and out_size_y > 0
+    assert input.num_filters is not None
+    num_channels = input.num_filters
+    Layer(name=name,
+          inputs=Input(input.name,
+                       bilinear_interp=BilinearInterp(out_size_x=out_size_x,
+                                                      out_size_y=out_size_y,
+                                                      num_channels=num_channels)),
+          type=LayerType.BILINEAR_INTERP_LAYER,
+          **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(name, LayerType.BILINEAR_INTERP_LAYER, parents=[input],
+           num_filters=num_channels)
+
+@wrap_name_default()
+@layer_support()
 def power_layer(input, weight, name=None, layer_attr=None):
     """
     This layer applies a power function to a vector element-wise,
@@ -1520,7 +1568,8 @@ def img_conv_layer(input, filter_size, num_filters,
                    name=None, num_channels=None,
                    act=None, groups=1, stride=1, padding=0, bias_attr=None,
                    param_attr=None, shared_biases=True, layer_attr=None,
-                   filter_size_y=None, stride_y=None, padding_y=None):
+                   filter_size_y=None, stride_y=None, padding_y=None,
+                   trans=False):
     """
     Convolution layer for image. Paddle only support square input currently and
     thus input image's width equals height.
@@ -1528,7 +1577,14 @@ def img_conv_layer(input, filter_size, num_filters,
     The details of convolution layer, please refer UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/
     FeatureExtractionUsingConvolution/>`_ .
+    
+    Convolution Transpose (deconv) layer for image. Paddle only support square 
+    input currently and thus input image's width equals height.
 
+    The details of convolution transpose layer, 
+    please refer to the following explanation and references therein
+    <http://datascience.stackexchange.com/questions/6107/
+    what-are-deconvolutional-layers/>`_ .
     The num_channel means input image's channel number. It may be 1 or 3 when
     input is raw pixels of image(mono or RGB), or it may be the previous layer's
     num_filters * num_group.
@@ -1578,6 +1634,8 @@ def img_conv_layer(input, filter_size, num_filters,
     :type shared_biases: bool
     :param layer_attr: Layer Extra Attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param trans: true if it is a convTransLayer, false if it is a convLayer
+    :type trans: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -1613,6 +1671,9 @@ def img_conv_layer(input, filter_size, num_filters,
         param_attr.attr["initial_std"] = init_w
         param_attr.attr["initial_strategy"] = 0
         param_attr.attr["initial_smart"] = False
+    
+    lt = LayerType.CONVTRANS_LAYER if trans else LayerType.CONV_LAYER
+    
     Layer(
         name=name,
         inputs=Input(input.name, conv=Conv(
@@ -1625,10 +1686,10 @@ def img_conv_layer(input, filter_size, num_filters,
         num_filters=num_filters,
         bias=ParamAttr.to_bias(bias_attr),
         shared_biases=shared_biases,
-        type=LayerType.CONV_LAYER,
+        type=lt,
         **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
-    return LayerOutput(name, LayerType.CONV_LAYER, parents=[input],
+    return LayerOutput(name, lt, parents=[input],
                        activation=act, num_filters=num_filters)
 
 

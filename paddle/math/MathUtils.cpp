@@ -80,4 +80,17 @@ int outputSize(int imageSize, int filterSize, int padding, int stride,
   return outputSize;
 }
 
+int imageSize(int outputSize, int filterSize, int padding, int stride,
+              bool caffeMode) {
+  int imageSize;
+  if (!caffeMode) {
+   imageSize =
+       (outputSize - 1) * stride + filterSize - 2 * padding - stride + 1;
+  } else {
+   imageSize = (outputSize - 1) * stride + filterSize - 2 * padding;
+  }
+  CHECK_GE(imageSize, 1);
+  return imageSize;
+}
+
 }  // namespace paddle

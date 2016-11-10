@@ -15,36 +15,40 @@ limitations under the License. */
 
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
-#include "ExpandConvLayer.h"
+#include "ExpandConvTransLayer.h"
+
+/* The implementation of the convTransLayer is basically a swap of forward and
+ * backward of the original convLayer.
+ * The variable naming follows the convention of the convLayer.
+ * */
 
 namespace paddle {
 
-REGISTER_LAYER(exconv, ExpandConvLayer);
+REGISTER_LAYER(exconvt, ExpandConvTransLayer);
 
-bool ExpandConvLayer::init(const LayerMap &layerMap,
+bool ExpandConvTransLayer::init(const LayerMap &layerMap,
                            const ParameterMap &parameterMap) {
   /* Initialize the basic convolutional parent class */
   ExpandConvBaseLayer::init(layerMap, parameterMap);
+
   return true;
 }
 
-void ExpandConvLayer::forward(PassType passType) {
+void ExpandConvTransLayer::forward(PassType passType) {
   Layer::forward(passType);
 
   /* malloc memory for the output_ if necessary */
   int batchSize = inputLayers_[0]->getOutputValue()->getHeight();
   resetOutput(batchSize, getOutputSize());
 
-  MatrixPtr image = nullptr;
-  MatrixPtr outV = getOutputValue();
+  MatrixPtr output = nullptr;
   for (size_t i = 0; i < inputLayers_.size(); ++i) {
     LayerPtr prevLayer = getPrev(i);
-    image = prevLayer->getOutputValue();
-    for (size_t off = 0; off < image->getHeight(); off++) {
-      REGISTER_TIMER_INFO("expandFwdOnce", getName().c_str());
-      expandFwdOnce(image, outV, i, off);
-    }
+    output = prevLayer->getOutputValue();
+    REGISTER_TIMER_INFO("shrinkFwd", getName().c_str());
+    bpropActs(output, getOutputValue(), i);
   }
+
   /* add the bias-vector */
   if (biases_.get()) {
     if (sharedBiases_) {
@@ -58,29 +62,31 @@ void ExpandConvLayer::forward(PassType passType) {
   forwardActivation();
 }
 
-
-void ExpandConvLayer::backward(const UpdateCallback &callback) {
+void ExpandConvTransLayer::backward(const UpdateCallback &callback) {
   backwardActivation();
 
-  MatrixPtr outGrad = getOutputGrad();
+  MatrixPtr imageGrad = getOutputGrad();
   if (biases_ && biases_->getWGrad()) {
-    bpropBiases(outGrad);
+    bpropBiases(imageGrad);
     /* Increasing the number of gradient */
     biases_->getParameterPtr()->incUpdate(callback);
   }
 
   for (size_t i = 0; i < inputLayers_.size(); ++i) {
     /* First, calculate the input layers error */
-    if (getPrev(i)->getOutputGrad()) {
-      bpropActs(outGrad, getPrev(i)->getOutputGrad(), i);
+    for (size_t off = 0; off < imageGrad->getHeight(); off++) {
+      if (getPrev(i)->getOutputGrad()) {
+        expandFwdOnce(imageGrad, getPrev(i)->getOutputGrad(), i, off);
+      }
     }
     if (weights_[i]->getWGrad()) {
       /* Then, calculate the W-gradient for the current layer */
-      bpropWeights(getPrev(i)->getOutputValue(), outGrad, i);
+      bpropWeights(imageGrad, getPrev(i)->getOutputValue(), i);
       /* Increasing the number of gradient */
       weights_[i]->getParameterPtr()->incUpdate(callback);
     }
   }
 }
+
 
 }  // namespace paddle

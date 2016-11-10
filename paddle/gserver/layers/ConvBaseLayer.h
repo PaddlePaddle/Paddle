@@ -28,6 +28,9 @@ class ConvBaseLayer : public Layer {
 protected:
   typedef std::vector<int> IntV;
 
+  /// True if it's deconv layer, false if it's convolution layer
+  bool isDeconv_;
+
   /// The number of filters.
   int numFilters_;
   /// The x dimension of the padding.

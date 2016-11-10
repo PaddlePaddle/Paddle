@@ -91,6 +91,34 @@ inline void hl_CMRNorm_backward(
     size_t channels, size_t height, size_t width, size_t sizeX,
     real alpha, real beta) {}
 
+inline void hl_bilinear_forward(const real* inData,
+                                const size_t inImgH,
+                                const size_t inImgW,
+                                const size_t inputH,
+                                const size_t inputW,
+                                real* outData,
+                                const size_t outImgH,
+                                const size_t outImgW,
+                                const size_t outputH,
+                                const size_t outputW,
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {}
+
+inline void hl_bilinear_backward(real* inGrad,
+                                const size_t inImgH,
+                                const size_t inImgW,
+                                const size_t inputH,
+                                const size_t inputW,
+                                const real* outGrad,
+                                const size_t outImgH,
+                                const size_t outImgW,
+                                const size_t outputH,
+                                const size_t outputW,
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {}
+
 inline void hl_maxout_forward(
     const real* inData, real* outData, int* idData,
     size_t batchSize, size_t size, size_t featLen, size_t group) {}
