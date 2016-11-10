@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Some Useful method for py_paddle.
 """
@@ -41,7 +40,7 @@ def initializePaddle(*args):
     if old_pypath is not None:
         pypath = os.pathsep.join([pypath, old_pypath])
         os.putenv("PYTHONPATH", pypath)
-    args = [""] + list(args)  # argv[0] is command name, it is not important.
+    args = [""] + list(args)    # argv[0] is command name, it is not important.
     swig_paddle.__initPaddle__(args)
     sys.argv = old_argv
 
@@ -79,6 +78,7 @@ class __ParameterCallbackWrapper__(swig_paddle.UpdateCallback):
         else:
             return __ParameterCallbackWrapper__(callback).__disown__()
 
+
 def __arguments_to_numpy__(i, arg):
     assert isinstance(arg, swig_paddle.Arguments)
     value = arg.getSlotValue(i)
@@ -89,10 +89,8 @@ def __arguments_to_numpy__(i, arg):
     if ids is not None:
         assert isinstance(ids, swig_paddle.IVector)
         ids = ids.copyToNumpyArray()
-    return {
-        "value": value,
-        "id": ids
-    }
+    return {"value": value, "id": ids}
+
 
 def __monkeypatch_gradient_machine__():
     """
@@ -101,7 +99,6 @@ def __monkeypatch_gradient_machine__():
     """
     swig_paddle.GradientMachine.loadFromConfigFile = \
         staticmethod(loadGradientMachine)
-
 
     def __matrix_to_numpy__(m):
         if isinstance(m, swig_paddle.Matrix):
@@ -113,9 +110,11 @@ def __monkeypatch_gradient_machine__():
 
     def createFromConfigProto(protoObj,
                               createMode=swig_paddle.CREATE_MODE_NORMAL,
-                              paramTypes=[swig_paddle.PARAMETER_VALUE,
-                                          swig_paddle.PARAMETER_GRADIENT,
-                                          swig_paddle.PARAMETER_MOMENTUM]):
+                              paramTypes=[
+                                  swig_paddle.PARAMETER_VALUE,
+                                  swig_paddle.PARAMETER_GRADIENT,
+                                  swig_paddle.PARAMETER_MOMENTUM
+                              ]):
         """
         Create Gradient Machine From Proto object.
         :param protoObj: Model config
@@ -145,8 +144,10 @@ def __monkeypatch_gradient_machine__():
         """
         outArgs = swig_paddle.Arguments.createArguments(0)
         self.forward(inArgs, outArgs, swig_paddle.PASS_TEST)
-        return [__arguments_to_numpy__(i, outArgs) for i in xrange(
-            outArgs.getSlotNum())]
+        return [
+            __arguments_to_numpy__(i, outArgs)
+            for i in xrange(outArgs.getSlotNum())
+        ]
 
     swig_paddle.GradientMachine.forwardTest = forwardTest
 
@@ -167,7 +168,10 @@ def __monkeypatch_gradient_machine__():
     swig_paddle.GradientMachine.__forwardBackward__ = \
         swig_paddle.GradientMachine.forwardBackward
 
-    def forwardBackward(self, inArgs, outArgs, passType,
+    def forwardBackward(self,
+                        inArgs,
+                        outArgs,
+                        passType,
                         callback=swig_paddle.UpdateCallback()):
         """
         GradientMachine forward backward.
@@ -243,7 +247,7 @@ def loadParameterFile(fn):
     if isinstance(fn, str):
         with open(fn, 'rb') as f:
             return loadParameterFile(f)
-    elif hasattr(fn, 'read'):  # File like object
+    elif hasattr(fn, 'read'):    # File like object
         version, = struct.unpack('i', fn.read(4))
         if version != 0:
             raise swig_paddle.UnsupportError()
@@ -315,9 +319,8 @@ class DataProviderWrapperConverter(object):
             self.cols += other
 
         def __call__(self, slot_idx, arg):
-            mat = swig_paddle.Matrix.createSparse(len(self.indices) - 1,
-                                                  self.dim,
-                                                  len(self.cols), True)
+            mat = swig_paddle.Matrix.createSparse(
+                len(self.indices) - 1, self.dim, len(self.cols), True)
             assert isinstance(mat, swig_paddle.Matrix)
             mat.sparseCopyFrom(self.indices, self.cols)
             self.putIntoArg(slot_idx, arg, mat)
@@ -341,9 +344,8 @@ class DataProviderWrapperConverter(object):
             self.values += map(lambda x: x[1], other)
 
         def __call__(self, slot_idx, arg):
-            mat = swig_paddle.Matrix.createSparse(len(self.indices) - 1,
-                                                  self.dim,
-                                                  len(self.cols), False)
+            mat = swig_paddle.Matrix.createSparse(
+                len(self.indices) - 1, self.dim, len(self.cols), False)
             assert isinstance(mat, swig_paddle.Matrix)
             mat.sparseCopyFrom(self.indices, self.cols, self.values)
             self.putIntoArg(slot_idx, arg, mat)
@@ -352,8 +354,9 @@ class DataProviderWrapperConverter(object):
         paddle.trainer.PyDataProviderWrapper.DenseSlot: DenseValueConverter,
         paddle.trainer.PyDataProviderWrapper.IndexSlot: IdValueConverter,
         paddle.trainer.PyDataProviderWrapper.SparseNonValueSlot:
-            SparseNonValueConverter,
-        paddle.trainer.PyDataProviderWrapper.SparseValueSlot: SparseValueConverter
+        SparseNonValueConverter,
+        paddle.trainer.PyDataProviderWrapper.SparseValueSlot:
+        SparseValueConverter
     }
 
     def __init__(self, use_seq, header):
@@ -381,10 +384,9 @@ class DataProviderWrapperConverter(object):
         assert isinstance(argument, swig_paddle.Arguments)
         argument.resize(len(self.__header__))
 
-        values = map(lambda x:
-                     DataProviderWrapperConverter.__SLOT_VALUE_CONVERTER_MAP__[
-                         x.__class__](x),
-                     self.__header__)
+        values = map(
+            lambda x: DataProviderWrapperConverter.__SLOT_VALUE_CONVERTER_MAP__[x.__class__](x),
+            self.__header__)
 
         if self.__use_seq__:
             seq_dim = [[] for _ in xrange(self.__header__.__len__())]
@@ -394,14 +396,13 @@ class DataProviderWrapperConverter(object):
                 for slot_idx, sequence in enumerate(each_sample):
                     for raw_data in sequence:
                         values[slot_idx].append(raw_data)
-                    seq_start_pos[slot_idx].append(
-                        seq_start_pos[slot_idx][-1] + len(sequence))
+                    seq_start_pos[slot_idx].append(seq_start_pos[slot_idx][-1] +
+                                                   len(sequence))
                     seq_dim[slot_idx].append(len(sequence))
 
             for slot_idx in xrange(len(self.__header__)):
-                argument.setSlotSequenceDim(slot_idx,
-                                            swig_paddle.IVector.create(
-                                                seq_dim[slot_idx]))
+                argument.setSlotSequenceDim(
+                    slot_idx, swig_paddle.IVector.create(seq_dim[slot_idx]))
                 argument.setSlotSequenceStartPositions(
                     slot_idx,
                     swig_paddle.IVector.create(seq_start_pos[slot_idx]))
@@ -422,8 +423,8 @@ class DataProviderWrapperConverter(object):
         return self.convert(wrapper_data, argument)
 
 
-
 def __monkey_patch_protobuf_objects__():
+
     def ParameterConfig_toProto(self):
         """
         Convert paddle.ParameterConfig to
@@ -459,8 +460,7 @@ def __monkey_patch_protobuf_objects__():
         :return: paddle.OptimizationConfig
         """
 
-        assert isinstance(protoObj,
-                          paddle.proto.OptimizationConfig)
+        assert isinstance(protoObj, paddle.proto.OptimizationConfig)
         return swig_paddle.OptimizationConfig.createFromProtoString(
             protoObj.SerializeToString())
 
@@ -475,8 +475,7 @@ def __monkey_patch_protobuf_objects__():
         :param protoObj: proto.TrainerConfig
         :return: paddle.TrainerConfig
         """
-        assert isinstance(protoObj,
-                          paddle.proto.TrainerConfig)
+        assert isinstance(protoObj, paddle.proto.TrainerConfig)
         return swig_paddle.TrainerConfig.createFromProtoString(
             protoObj.SerializeToString())
 
@@ -485,6 +484,7 @@ def __monkey_patch_protobuf_objects__():
 
 
 def __monkey_patch_parameter__():
+
     def getBufs(self):
         """
         get all parameter vectors.
@@ -537,6 +537,7 @@ def __monkey_patch_trainer__():
             assert isinstance(model, swig_paddle.GradientMachine)
         return swig_paddle.Trainer.__create__(
             swig_paddle.TrainerConfig.createFromProto(config), model)
+
     swig_paddle.Trainer.create = staticmethod(Trainer_create)
 
     swig_paddle.Trainer.__getForwardOutput__ = \
@@ -551,14 +552,19 @@ def __monkey_patch_trainer__():
                  numpy.ndarray.
         """
         outArgs = self.__getForwardOutput__()
-        return [__arguments_to_numpy__(i, outArgs) for i in xrange(
-            outArgs.getSlotNum())]
+        return [
+            __arguments_to_numpy__(i, outArgs)
+            for i in xrange(outArgs.getSlotNum())
+        ]
 
     swig_paddle.Trainer.getForwardOutput = getForwardOutput
 
+
 def monkeypatches():
-    patches = [__monkeypatch_init_paddle__, __monkeypatch_gradient_machine__,
-               __monkey_patch_protobuf_objects__,
-               __monkey_patch_parameter__, __monkey_patch_trainer__]
+    patches = [
+        __monkeypatch_init_paddle__, __monkeypatch_gradient_machine__,
+        __monkey_patch_protobuf_objects__, __monkey_patch_parameter__,
+        __monkey_patch_trainer__
+    ]
     for patch in patches:
         patch()

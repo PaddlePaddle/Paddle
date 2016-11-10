@@ -20,6 +20,7 @@ __all__ = ['DataProviderConverter']
 
 
 class IScanner(object):
+
     def __init__(self, input_type, pos):
         self.input_type = input_type
         assert isinstance(self.input_type, dp2.InputType)
@@ -33,6 +34,7 @@ class IScanner(object):
 
 
 class DenseScanner(IScanner):
+
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__mat__ = []
@@ -45,14 +47,13 @@ class DenseScanner(IScanner):
     def finish_scan(self, argument):
         assert isinstance(argument, swig_paddle.Arguments)
         assert isinstance(self.input_type, dp2.InputType)
-        m = swig_paddle.Matrix.createDense(self.__mat__,
-                                           self.__height__,
-                                           self.input_type.dim,
-                                           False)
+        m = swig_paddle.Matrix.createDense(self.__mat__, self.__height__,
+                                           self.input_type.dim, False)
         argument.setSlotValue(self.pos, m)
 
 
 class SparseBinaryScanner(IScanner):
+
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__rows__ = [0]
@@ -82,6 +83,7 @@ class SparseBinaryScanner(IScanner):
 
 
 class SparseFloatScanner(SparseBinaryScanner):
+
     def __init__(self, input_type, pos):
         SparseBinaryScanner.__init__(self, input_type, pos)
 
@@ -91,6 +93,7 @@ class SparseFloatScanner(SparseBinaryScanner):
 
 
 class IndexScanner(IScanner):
+
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__ids__ = []
@@ -105,6 +108,7 @@ class IndexScanner(IScanner):
 
 
 class SequenceScanner(IScanner):
+
     def __init__(self, input_type, pos, inner_scanner, setter):
         IScanner.__init__(self, input_type, pos)
         self.__seq__ = [0]
@@ -129,6 +133,7 @@ class SequenceScanner(IScanner):
 
 
 class DataProviderConverter(object):
+
     def __init__(self, input_types):
         self.input_types = input_types
         assert isinstance(self.input_types, collections.Sequence)
@@ -141,8 +146,10 @@ class DataProviderConverter(object):
         assert isinstance(argument, swig_paddle.Arguments)
         argument.resize(len(self.input_types))
 
-        scanners = [DataProviderConverter.create_scanner(i, each_type)
-                    for i, each_type in enumerate(self.input_types)]
+        scanners = [
+            DataProviderConverter.create_scanner(i, each_type)
+            for i, each_type in enumerate(self.input_types)
+        ]
 
         for each_sample in dat:
             for each_step, scanner in zip(each_sample, scanners):
@@ -171,11 +178,14 @@ class DataProviderConverter(object):
         assert retv is not None
 
         if each.seq_type == dp2.SequenceType.SUB_SEQUENCE:
-            retv = SequenceScanner(each, i, retv, lambda a, p, seq:
-            a.setSlotSubSequenceStartPositions(p, seq))
+            retv = SequenceScanner(
+                each, i, retv,
+                lambda a, p, seq: a.setSlotSubSequenceStartPositions(p, seq))
 
-        if each.seq_type in [dp2.SequenceType.SUB_SEQUENCE,
-                             dp2.SequenceType.SEQUENCE]:
-            retv = SequenceScanner(each, i, retv, lambda a, p, seq:
-            a.setSlotSequenceStartPositions(p, seq))
+        if each.seq_type in [
+                dp2.SequenceType.SUB_SEQUENCE, dp2.SequenceType.SEQUENCE
+        ]:
+            retv = SequenceScanner(
+                each, i, retv,
+                lambda a, p, seq: a.setSlotSequenceStartPositions(p, seq))
         return retv

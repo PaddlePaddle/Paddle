@@ -30,14 +30,14 @@ def hook(settings, src_dict, trg_dict, file_list, **kwargs):
     if settings.job_mode:
         settings.trg_dict = trg_dict
         settings.slots = [
-            integer_value_sequence(len(settings.src_dict)), 
-            integer_value_sequence(len(settings.trg_dict)), 
+            integer_value_sequence(len(settings.src_dict)),
+            integer_value_sequence(len(settings.trg_dict)),
             integer_value_sequence(len(settings.trg_dict))
         ]
         settings.logger.info("trg dict len : %d" % (len(settings.trg_dict)))
     else:
         settings.slots = [
-            integer_value_sequence(len(settings.src_dict)), 
+            integer_value_sequence(len(settings.src_dict)),
             integer_value_sequence(len(open(file_list[0], "r").readlines()))
         ]
 
@@ -56,14 +56,13 @@ def process(settings, file_name):
             line_split = line.strip().split('\t')
             if settings.job_mode and len(line_split) != 2:
                 continue
-            src_seq = line_split[0]  # one source sequence
+            src_seq = line_split[0]    # one source sequence
             src_ids = _get_ids(src_seq, settings.src_dict)
 
             if settings.job_mode:
-                trg_seq = line_split[1]  # one target sequence
+                trg_seq = line_split[1]    # one target sequence
                 trg_words = trg_seq.split()
-                trg_ids = [settings.trg_dict.get(w, UNK_IDX)
-                           for w in trg_words]
+                trg_ids = [settings.trg_dict.get(w, UNK_IDX) for w in trg_words]
 
                 # remove sequence whose length > 80 in training mode
                 if len(src_ids) > 80 or len(trg_ids) > 80:

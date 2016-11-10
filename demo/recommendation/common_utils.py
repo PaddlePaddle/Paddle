@@ -21,8 +21,9 @@ def meta_to_header(meta, name):
             yield integer_value(each_meta['max'])
         elif each_meta['type'] == 'embedding':
             is_seq = each_meta['seq'] == 'sequence'
-            yield integer_value(len(each_meta['dict']),
-                                seq_type=SequenceType.SEQUENCE if is_seq
-                                else SequenceType.NO_SEQUENCE)
+            yield integer_value(
+                len(each_meta['dict']),
+                seq_type=SequenceType.SEQUENCE
+                if is_seq else SequenceType.NO_SEQUENCE)
         elif each_meta['type'] == 'one_hot_dense':
             yield dense_vector(len(each_meta['dict']))
