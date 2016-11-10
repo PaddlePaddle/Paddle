@@ -78,6 +78,7 @@ class LayerType(object):
     COSINE_SIM = 'cos'
     HSIGMOID = 'hsigmoid'
     CONV_LAYER = "conv"
+    CONVTRANS_LAYER = "convt"
     POOL_LAYER = "pool"
     BATCH_NORM_LAYER = 'batch_norm'
     NORM_LAYER = 'norm'
@@ -1517,7 +1518,8 @@ def img_conv_layer(input, filter_size, num_filters,
                    name=None, num_channels=None,
                    act=None, groups=1, stride=1, padding=0, bias_attr=None,
                    param_attr=None, shared_biases=True, layer_attr=None,
-                   filter_size_y=None, stride_y=None, padding_y=None):
+                   filter_size_y=None, stride_y=None, padding_y=None,
+                   trans=False):
     """
     Convolution layer for image. Paddle only support square input currently and
     thus input image's width equals height.
@@ -1525,7 +1527,14 @@ def img_conv_layer(input, filter_size, num_filters,
     The details of convolution layer, please refer UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/
     FeatureExtractionUsingConvolution/>`_ .
+    
+    Convolution Transpose (deconv) layer for image. Paddle only support square 
+    input currently and thus input image's width equals height.
 
+    The details of convolution transpose layer, 
+    please refer to the following explanation and references therein
+    <http://datascience.stackexchange.com/questions/6107/
+    what-are-deconvolutional-layers/>`_ .
     The num_channel means input image's channel number. It may be 1 or 3 when
     input is raw pixels of image(mono or RGB), or it may be the previous layer's
     num_filters * num_group.
@@ -1575,6 +1584,8 @@ def img_conv_layer(input, filter_size, num_filters,
     :type shared_biases: bool
     :param layer_attr: Layer Extra Attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param trans: true if it is a convTransLayer, false if it is a convLayer
+    :type trans: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -1610,6 +1621,9 @@ def img_conv_layer(input, filter_size, num_filters,
         param_attr.attr["initial_std"] = init_w
         param_attr.attr["initial_strategy"] = 0
         param_attr.attr["initial_smart"] = False
+    
+    lt = LayerType.CONVTRANS_LAYER if trans else LayerType.CONV_LAYER
+    
     Layer(
         name=name,
         inputs=Input(input.name, conv=Conv(
@@ -1622,10 +1636,10 @@ def img_conv_layer(input, filter_size, num_filters,
         num_filters=num_filters,
         bias=ParamAttr.to_bias(bias_attr),
         shared_biases=shared_biases,
-        type=LayerType.CONV_LAYER,
+        type=lt,
         **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
-    return LayerOutput(name, LayerType.CONV_LAYER, parents=[input],
+    return LayerOutput(name, lt, parents=[input],
                        activation=act, num_filters=num_filters)
 
 

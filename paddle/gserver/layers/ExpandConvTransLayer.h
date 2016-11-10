@@ -24,17 +24,16 @@ namespace paddle {
 /**
  * @brief A subclass of convolution layer.
  * This layer expands input and use matrix multiplication to
- * calculate convolution operation.
+ * calculate convolution transpose (deconv) operation.
  *
- * The config file api is img_conv_layer.
+ * The config file api is img_conv_layer with flag trans=True.
  */
-
-class ExpandConvLayer : public ExpandConvBaseLayer {
+class ExpandConvTransLayer : public ExpandConvBaseLayer {
 public:
-  explicit ExpandConvLayer(const LayerConfig& config) :
+  explicit ExpandConvTransLayer(const LayerConfig& config) :
     ExpandConvBaseLayer(config) {}
 
-  ~ExpandConvLayer() {}
+  ~ExpandConvTransLayer() {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 

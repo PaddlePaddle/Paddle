@@ -649,7 +649,8 @@ class ConvProjection(Projection):
 
         parse_conv(conv_conf,
                    input_layer_name,
-                   self.proj_conf.conv_conf)
+                   self.proj_conf.conv_conf,
+                   num_filters)
         # TODO: support rectangle input
         self.proj_conf.output_size = (self.proj_conf.conv_conf.output_x  ** 2) * num_filters
 
@@ -730,7 +731,8 @@ class ConvOperator(Operator):
 
         parse_conv(conv_conf,
                    MakeLayerNameInSubmodel(input_layer_names[0]),
-                   self.operator_conf.conv_conf)
+                   self.operator_conf.conv_conf,
+                   num_filters)
         self.operator_conf.output_size = (self.operator_conf.conv_conf.output_x  ** 2) * num_filters
 
         config_assert(len(input_layer_names) == 2, "Conv is binary operator")
@@ -1017,6 +1019,17 @@ def cnn_output_size(img_size, filter_size, padding, stride, caffe_mode):
     else:
         return 1 + int(math.ceil(output))
 
+'''
+calcualte image_size based on output_size for convolution. 
+It is the reverse function of cnn_output_size
+'''
+def cnn_image_size(output_size, filter_size, padding, stride, caffe_mode):
+    if caffe_mode:
+        img_size = (output_size - 1) * stride + filter_size - 2 * padding
+    else:
+        img_size = (output_size - 2) * stride + filter_size - 2 * padding + 1 
+    return img_size
+
 def parse_pool(pool, input_layer_name, pool_conf):
     pool_conf.pool_type = pool.pool_type
     config_assert(pool.pool_type in ['max-projection', 'avg-projection',
@@ -1082,7 +1095,11 @@ def parse_norm(norm, input_layer_name, norm_conf):
     else:
         norm_conf.scale /= norm.size ** 2
 
-def parse_conv(conv, input_layer_name, conv_conf):
+'''
+caffe_mode: compute the output size using floor instead of ceil,
+            which is consistent of caffe and CuDNN's convention.
+'''
+def parse_conv(conv, input_layer_name, conv_conf, num_filters, trans=False):
     conv_conf.filter_size = conv.filter_size
     conv_conf.filter_size_y = conv.filter_size_y
     conv_conf.channels = conv.channels
@@ -1091,20 +1108,37 @@ def parse_conv(conv, input_layer_name, conv_conf):
     conv_conf.stride = conv.stride
     conv_conf.stride_y = conv.stride_y
     conv_conf.groups = conv.groups
-    conv_conf.filter_channels = conv.channels / conv.groups
     conv_conf.caffe_mode = conv.caffe_mode
+    
+    if not trans:
+        conv_conf.filter_channels = conv.channels / conv.groups
 
-    img_pixels = g_layer_map[input_layer_name].size / conv.channels
-    print('channels=%d size=%d'%(conv.channels,
-      g_layer_map[input_layer_name].size))
-    conv_conf.img_size = int(img_pixels ** 0.5)
-    config_assert((conv_conf.img_size ** 2) == img_pixels,
-                  ("Input layer %s: Incorrect input image size %d for input "
-                   + "image pixels %d")
-                  % (input_layer_name, conv_conf.img_size, img_pixels))
-    conv_conf.output_x = cnn_output_size(conv_conf.img_size, conv_conf.filter_size,
-                                         conv_conf.padding, conv_conf.stride,
-                                         conv_conf.caffe_mode)
+        img_pixels = g_layer_map[input_layer_name].size / conv.channels
+        print('channels=%d size=%d'%(conv.channels,
+          g_layer_map[input_layer_name].size))
+        conv_conf.img_size = int(img_pixels ** 0.5)
+        config_assert((conv_conf.img_size ** 2) == img_pixels,
+                      ("Input layer %s: Incorrect input image size %d for input "
+                       + "image pixels %d")
+                      % (input_layer_name, conv_conf.img_size, img_pixels))
+                
+        conv_conf.output_x = cnn_output_size(
+            conv_conf.img_size, conv_conf.filter_size, 
+            conv_conf.padding, conv_conf.stride, conv_conf.caffe_mode)
+    else:
+        conv_conf.filter_channels = num_filters / conv.groups
+        
+        outputSize = g_layer_map[input_layer_name].size / conv.channels
+        print('channels=%d size=%d'%(conv.channels,
+          g_layer_map[input_layer_name].size))
+        conv_conf.output_x = int(outputSize ** 0.5)
+        config_assert((conv_conf.output_x ** 2) == outputSize,
+                      ("Input layer %s: Incorrect input image size %d for input "
+                       + "image pixels %d")
+                      % (input_layer_name, conv_conf.output_x, outputSize))
+        conv_conf.img_size = cnn_image_size(
+            conv_conf.output_x, conv_conf.filter_size, 
+            conv_conf.padding, conv_conf.stride, conv_conf.caffe_mode)
 
 def parse_block_expand(block_expand, input_layer_name, block_expand_conf):
     block_expand_conf.channels = block_expand.channels
@@ -1587,7 +1621,8 @@ class ConvLayerBase(LayerBase):
             parse_conv(
                 self.inputs[input_index].conv,
                 input_layer.name,
-                self.config.inputs[input_index].conv_conf)
+                self.config.inputs[input_index].conv_conf,
+                num_filters)
             conv_conf = self.config.inputs[input_index].conv_conf
             psize = self.calc_parameter_size(conv_conf)
             print("output size for %s is %d " % (name, conv_conf.output_x))
@@ -1611,6 +1646,63 @@ class ConvLayer(ConvLayerBase):
 @config_layer('cudnn_conv')
 class ConvLayer(ConvLayerBase):
     layer_type = 'cudnn_conv'
+
+
+@config_layer('convt')
+class ConvTransLayerBase(LayerBase):
+    layer_type = 'convt'
+    def __init__(
+            self,
+            name,
+            inputs=[],
+            bias=True,
+            num_filters=None,
+            shared_biases=False,
+            **xargs):
+        super(ConvTransLayerBase, self).__init__(
+            name, self.layer_type, 0, inputs=inputs, **xargs)
+
+        if num_filters is not None:
+            self.config.num_filters = num_filters
+
+        use_gpu = int(g_command_config_args.get("use_gpu", 0))
+        parallel_nn = int(g_command_config_args.get("parallel_nn", 0))
+
+        # cudnn_convt has not been implemented so use exconvt only
+        self.layer_type = "exconvt"
+        # need to specify layer in config
+        self.config.type = self.layer_type
+
+        if shared_biases is not None:
+            self.config.shared_biases = shared_biases
+
+        for input_index in xrange(len(self.inputs)):
+            input_layer = self.get_input_layer(input_index)
+            parse_conv(
+                self.inputs[input_index].conv,
+                input_layer.name,
+                self.config.inputs[input_index].conv_conf,
+                num_filters,
+                trans=True)
+            conv_conf = self.config.inputs[input_index].conv_conf
+            psize = self.calc_parameter_size(conv_conf)
+            print("output size for %s is %d " % (name, conv_conf.output_x))
+            self.create_input_parameter(input_index, psize)
+            self.set_layer_size(
+                (conv_conf.img_size ** 2) * self.config.num_filters)
+
+        psize = self.config.size
+        if shared_biases:
+            psize = self.config.num_filters
+        self.create_bias_parameter(bias, psize, [psize, 1])
+
+    def calc_parameter_size(self, conv_conf):
+        return conv_conf.channels * conv_conf.filter_channels \
+                    * (conv_conf.filter_size * conv_conf.filter_size_y)
+
+@config_layer('exconvt')
+class ConvTransLayer(ConvTransLayerBase):
+    layer_type = 'exconvt'
 
 @config_layer('norm')
 class NormLayer(LayerBase):
