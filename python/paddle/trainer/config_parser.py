@@ -465,6 +465,7 @@ class Input(Cfg):
             sparse_update=None,
             gradient_clipping_threshold=None,
             conv=None,
+            bilinear_interp=None,
             norm=None,
             pool=None,
             image=None,
@@ -770,6 +771,16 @@ class Conv(Cfg):
 
 # please refer to the comments in proto/ModelConfig.proto
 @config_class
+class BilinearInterp(Cfg):
+    def __init__(
+            self,
+            out_size_x = None,
+            out_size_y = None,
+            num_channels = None):
+        self.add_keys(locals())
+
+# please refer to the comments in proto/ModelConfig.proto
+@config_class
 class Pool(Cfg):
     def __init__(
             self,
@@ -1007,6 +1018,11 @@ def TestData(data_config, async_load_data=None):
         logger.warning("Deprecated: async_load_data should be used inside"
                        " Data definition")
         g_config.test_data_config.async_load_data = async_load_data
+
+def parse_bilinear(bilinear, input_layer_name, bilinear_conf):
+    bilinear_conf.out_size_x = bilinear.out_size_x;
+    bilinear_conf.out_size_y = bilinear.out_size_y;
+    bilinear_conf.num_channels = bilinear.num_channels;
 
 '''
 caffe_mode: compute the output size using floor instead of ceil,
@@ -2469,6 +2485,22 @@ class InterpolationLayer(LayerBase):
         config_assert(input_layer0.size == 1, 'weight should be of size 1')
         config_assert(input_layer1.size == input_layer2.size,
                       'the two vector inputs should be of the same size')
+
+@config_layer('bilinear_interp')
+class BilinearInterpLayer(LayerBase):
+    def __init__(
+            self,
+            name,
+            inputs,
+            **xargs):
+        super(BilinearInterpLayer, self).__init__(
+            name, 'bilinear_interp', 0, inputs=inputs, **xargs)
+        input_layer = self.get_input_layer(0)
+        parse_bilinear(self.inputs[0].bilinear_interp,
+                       input_layer.name,
+                       self.config.inputs[0].bilinear_interp_conf);
+        conf = self.inputs[0].bilinear_interp
+        self.set_layer_size(conf.out_size_x * conf.out_size_y *  conf.num_channels)
 
 @config_layer('sum_to_one_norm')
 class SumToOneNormLayer(LayerBase):

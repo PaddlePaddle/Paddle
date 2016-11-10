@@ -275,6 +275,12 @@ interpolation_layer
     :members: interpolation_layer
     :noindex:
 
+bilinear_interp_layer
+----------------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: bilinear_interp_layer
+    :noindex:
+
 power_layer
 -----------
 ..  automodule:: paddle.trainer_config_helpers.layers

@@ -90,6 +90,73 @@ void MatrixCheckErr(const Matrix& matrix1, const Matrix& matrix2) {
   EXPECT_EQ(count, 0) << "There are " << count << " different element.";
 }
 
+void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
+                        int channels) {
+  int inWidth = imgSizeH * imgSizeW * channels;
+  int outWidth = 2 * imgSizeH * 2 * imgSizeW * channels;
+  real ratioH = 0.5;
+  real ratioW = 0.5;
+  // forward
+  MatrixPtr input = CpuMatrix::create(numSamples, inWidth, false, false);
+  MatrixPtr inputGpu = GpuMatrix::create(numSamples, inWidth, false, true);
+
+  MatrixPtr target = CpuMatrix::create(numSamples, outWidth, false, false);
+  MatrixPtr targetGpu = GpuMatrix::create(numSamples, outWidth, false, true);
+  MatrixPtr targetCheck = CpuMatrix::create(numSamples, outWidth, false, false);
+
+  input->randomizeUniform();
+  inputGpu->copyFrom(*input);
+
+  target->bilinearForward(*input, imgSizeH, imgSizeW,
+      2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
+  targetGpu->bilinearForward(*inputGpu, imgSizeH, imgSizeW,
+      2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
+
+  // check
+  targetCheck->copyFrom(*targetGpu);
+  MatrixCheckErr(*target, *targetCheck);
+
+  // backward
+  MatrixPtr inputGrad = CpuMatrix::create(numSamples, inWidth, false, false);
+  MatrixPtr inputGpuGrad = GpuMatrix::create(numSamples, inWidth, false, true);
+
+  MatrixPtr targetGrad = CpuMatrix::create(numSamples, outWidth, false, false);
+  MatrixPtr targetGpuGrad = GpuMatrix::create(numSamples, outWidth, false,
+                                              true);
+  MatrixPtr targetCheckGrad =
+      CpuMatrix::create(numSamples, inWidth, false, false);
+
+  inputGrad->randomizeUniform();
+  targetGrad->randomizeUniform();
+  inputGpuGrad->copyFrom(*inputGrad);
+  targetGpuGrad->copyFrom(*targetGrad);
+
+  inputGrad->bilinearBackward(*targetGrad, 2 * imgSizeH, 2 * imgSizeW,
+      imgSizeH, imgSizeW, channels, ratioH, ratioW);
+  inputGpuGrad->bilinearBackward(*targetGpuGrad, 2 * imgSizeH, 2 * imgSizeW,
+      imgSizeH, imgSizeW, channels, ratioH, ratioW);
+
+  // check
+  targetCheckGrad->copyFrom(*inputGpuGrad);
+  MatrixCheckErr(*inputGrad, *targetCheckGrad);
+}
+
+TEST(Matrix, BilinearFwdBwd) {
+  for (auto numSamples : {5, 10}) {
+    for (auto channels : {8, 16}) {
+      for (auto imgSizeH : {14, 28}) {
+        for (auto imgSizeW : {16, 30}) {
+          VLOG(3) << " numSamples=" << numSamples
+                  << " channels=" << channels
+                  << " imgSizeH=" << imgSizeH
+                  << " imgSizeW=" << imgSizeW;
+          testBilinearFwdBwd(numSamples, imgSizeH, imgSizeW, channels);
+        }
+      }
+    }
+  }
+}
+
 void testMatrixProjectionForward(int contextStart, int contextLength,
                                  bool padding, int batchSize, int inputDim) {
   MatrixPtr cpuInput = std::make_shared<CpuMatrix>(batchSize, inputDim);
