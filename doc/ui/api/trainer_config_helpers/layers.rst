@@ -254,6 +254,12 @@ expand_layer
     :members: expand_layer
     :noindex:
 
+repeat_layer
+------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: repeat_layer
+    :noindex:
+
 Math Layers
 ===========
 

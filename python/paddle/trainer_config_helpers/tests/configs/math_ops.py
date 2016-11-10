@@ -19,6 +19,12 @@ y = x + y
 y = y - x
 y = y - 2
 y = 2 - y
-
+y = 2 * y
+y = y * 3
+z= data_layer(name='data_2', size=1)
+y = y * z
+y = z * y
+y = y + z
+y = z + y
 outputs(y)
 
