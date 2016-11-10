@@ -15,8 +15,8 @@
 # limitations under the License.
 
 """
-This configuration is a demonstration a demonstration of how to implement the
-stacked LSTM with residual connections from the previous previous layer.
+This configuration is a demonstration of how to implement the stacked LSTM
+with residual connections from the previous previous layer.
 This architecture is from:
 
 Yonghui Wu, Mike Schuster, Zhifeng Chen, Quoc V. Le, Mohammad Norouzi,
