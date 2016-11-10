@@ -32,7 +32,7 @@ flt = data_layer(name='filter', size=3 * 3 * 1 * 64)
 
 with mixed_layer() as m7:
     m7 += conv_operator(
-        img=img, filter=flt, num_filters=64, num_channel=1, filter_size=3)
+        img=img, filter=flt, num_filters=64, num_channels=1, filter_size=3)
 
 end = mixed_layer(
     input=[

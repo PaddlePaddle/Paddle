@@ -32,9 +32,11 @@ z1 = mixed_layer(
             filter=y1,
             filter_size=1,
             num_filters=5,
-            num_channel=5,
+            num_channels=5,
             stride=1)
     ])
+
+assert z1.size > 0
 
 y2 = fc_layer(input=y, size=15)
 

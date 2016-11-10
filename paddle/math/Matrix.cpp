@@ -187,6 +187,15 @@ MatrixPtr Matrix::subMatrix(size_t startRow, size_t endRow, size_t startCol,
                         trans_, useGpu_);
 }
 
+void Matrix::setDiag(real value) {
+  CHECK(data_ != NULL);
+  CHECK_EQ(height_, width_);
+
+  zeroMem();
+  BaseMatrix diag(height_, 1, stride_ + 1, data_, false, useGpu_);
+  diag.assign(value);
+}
+
 GpuMatrix::GpuMatrix(size_t height, size_t width, bool trans)
     : Matrix(std::make_shared<GpuMemoryHandle>(height * width * sizeof(real)),
              height, width, trans, true) {}
@@ -202,6 +211,7 @@ void GpuMatrix::resetOne() {
   CHECK(data_ != NULL);
   one();
 }
+
 void GpuMatrix::resize(size_t newHeight, size_t newWidth) {
   size_t newSize = newHeight * newWidth;
   if (NULL == memoryHandle_.get() ||
