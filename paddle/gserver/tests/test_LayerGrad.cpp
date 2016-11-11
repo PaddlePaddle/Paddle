@@ -998,6 +998,19 @@ TEST(Layer, rankCostLayer) {
   }
 }
 
+TEST(Layer, sumCostLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("sum_cost");
+  config.biasSize = 0;
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1, 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "sum_cost", 100, false, useGpu);
+  }
+}
+
 TEST(Layer, weightedRankCostLayer) {
   TestConfig config;
   config.layerConfig.set_type("rank-cost");

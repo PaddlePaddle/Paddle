@@ -1903,6 +1903,7 @@ define_cost('SumOfSquaresCostLayer', 'square_error')
 define_cost('MultiBinaryLabelCrossEntropy', 'multi_binary_label_cross_entropy')
 define_cost('SoftBinaryClassCrossEntropy', 'soft_binary_class_cross_entropy')
 define_cost('HuberTwoClass', 'huber')
+define_cost('SumCost', 'sum_cost')
 
 @config_layer('hsigmoid')
 class HierarchicalSigmoidLayer(LayerBase):

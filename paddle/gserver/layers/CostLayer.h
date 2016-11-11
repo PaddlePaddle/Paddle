@@ -129,7 +129,7 @@ protected:
  * This cost layer compute Euclidean (L2) loss for real-valued regression
  * tasks.
  * \f[
- * L = \frac{1}{2N} \sum_{i=1}^N {|| \hat{y}_i - y_i||_2^2}
+ * L = \sum_{i=1}^N {|| \hat{y}_i - y_i||_2^2}
  * \f]
  */
 class SumOfSquaresCostLayer : public CostLayer {
