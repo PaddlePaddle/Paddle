@@ -209,6 +209,15 @@ typedef struct {
 #define HL_FLOAT_MIN        2.2250738585072014e-308
 #endif
 
+
+/**
+ * The maximum input value for exp, used to avoid overflow problem.
+ *
+ * Currently only used for tanh function.
+ */
+#define EXP_MAX_INPUT       40.0
+
+
 /**
  * @brief DIVUP(x, y) is similar to ceil(x / y).
  * @note  For CUDA, DIVUP will be used to specify

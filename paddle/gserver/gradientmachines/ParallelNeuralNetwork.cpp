@@ -28,6 +28,12 @@ void ParallelNeuralNetwork::init(
     const std::vector<ParameterType>& parameterTypes, bool useGpu) {
   NeuralNetwork::init(config, callback, parameterTypes, useGpu);
 
+  if (config.type() == "recurrent_nn") {
+    LOG(FATAL)
+      << "You can not add `--parallel_nn=true` on the command line, "
+      << "parallel_nn training mode does not support the recurrent_nn model.";
+  }
+
   useGpu_ = useGpu;
   numDevices_ = 0;
   if (useGpu_) {

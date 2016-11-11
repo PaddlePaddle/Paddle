@@ -369,7 +369,7 @@ TEST(Layer, LstmLayer) {
   LayerConfig layerConfig;
   layerConfig.set_type("lstmemory");
   layerConfig.set_active_type("relu");
-  layerConfig.set_active_state_type("sigmoid");
+  layerConfig.set_active_state_type("tanh");
   layerConfig.set_active_gate_type("sigmoid");
 
   layerConfig.add_inputs();

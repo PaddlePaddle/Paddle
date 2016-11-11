@@ -38,7 +38,9 @@ namespace hppl {
   }
 
   __m256 tanh(const __m256 a) {
+    __m256 max = _mm256_set1_ps(EXP_MAX_INPUT);
     __m256 tmp = _mm256_mul_ps(_mm256_set1_ps(-2.0f), a);
+    tmp = _mm256_min_ps(tmp, max);
     tmp = exp(tmp);
     return _mm256_sub_ps(
         _mm256_div_ps(_mm256_set1_ps(2.0f),

@@ -908,24 +908,6 @@ int findIndex(int* indice, int num, int index) {
   return (end - 1);
 }
 
-/**
- * @brief  sum reduction
- *
- * @param[in,out]  smem       input data, better to use __shared__ memory.
- * @param[in]      tid        local thread index.
- * @param[in]      blockDimX  the size of blockDim.x.
- *
- * note: return smem[0]: the sum of each elements of smem.
- */
-__device__ __forceinline__
-void reduce(real* smem, int tid, int blockDimX) {
-  for (unsigned int s = blockDimX / 2; s > 0; s >>= 1) {
-    if (tid < s) {
-      smem[tid] += smem[tid + s];
-    }
-    __syncthreads();
-  }
-}
 
 /**
  * @brief sum columns of csr sparse matrix (csr_val), then add to a_val.

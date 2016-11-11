@@ -134,9 +134,8 @@ define_py_data_sources2(train_list='data/train.list',
 * obj="process": 指定生成数据的函数
 * args={"dictionary": word_dict}: 额外的参数，这里指定词典
 
-更详细用例请参考文档<a href = "../../../doc/ui/data_provider/python_case.html">Python Use Case</a>，
-数据格式和详细文档请参考<a href = "../../../doc/ui/data_provider/pydataprovider2.html">
-PyDataProviderWrapper</a>。
+更详细数据格式和用例请参考<a href = "../../ui/data_provider/pydataprovider2.html">
+PyDataProvider2</a>。
 
 ## 网络结构(Network Architecture)
 本节我们将专注于网络结构的介绍。

@@ -40,6 +40,46 @@ void gemm<double>(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
 }
 
 template<>
+int getrf<float>(const CBLAS_ORDER order, const int M, const int N,
+                  float *A, const int lda, int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
+  return clapack_sgetrf(order, M, N, A, lda, ipiv);
+#else
+  return LAPACKE_sgetrf(order, M, N, A, lda, ipiv);
+#endif
+}
+
+template<>
+int getrf<double>(const CBLAS_ORDER order, const int M, const int N,
+                   double *A, const int lda, int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
+  return clapack_dgetrf(order, M, N, A, lda, ipiv);
+#else
+  return LAPACKE_dgetrf(order, M, N, A, lda, ipiv);
+#endif
+}
+
+template<>
+int getri<float>(const CBLAS_ORDER order, const int N, float *A,
+                  const int lda, const int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
+  return clapack_sgetri(order, N, A, lda, ipiv);
+#else
+  return LAPACKE_sgetri(order, N, A, lda, ipiv);
+#endif
+}
+
+template<>
+int getri<double>(const CBLAS_ORDER order, const int N, double *A,
+                  const int lda, const int *ipiv) {
+#ifdef PADDLE_USE_ATLAS
+  return clapack_dgetri(order, N, A, lda, ipiv);
+#else
+  return LAPACKE_dgetri(order, N, A, lda, ipiv);
+#endif
+}
+
+template<>
 void axpy<float>(const int n, const float alpha, const float* x, float* y) {
   cblas_saxpy(n, alpha, x, 1, y, 1);
 }
@@ -160,7 +200,10 @@ void vLog1p(const int n, const T* a, T* r) {
     binary::vLog1p<T>(), const_cast<T*>(a), r, 1, n, n, n);
 }
 
-DEFINE_MATRIX_BINARY_OP(vTanh, b = 2.0 / (1.0 + std::exp(-2 * a)) - 1.0);
+DEFINE_MATRIX_BINARY_OP(vTanh,
+    T tmp = -2.0 * a;
+    tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
+    b = 2.0 / (1.0 + std::exp(tmp)) - 1.0);
 template<class T>
 void vTanh(const int n, const T* a, T* r) {
   hl_cpu_apply_binary_op<T, binary::vTanh<T>, 0, 0>(

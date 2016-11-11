@@ -5,4 +5,6 @@ build/
 .vscode
 .idea
 .project
+.cproject
 .pydevproject
+Makefile
