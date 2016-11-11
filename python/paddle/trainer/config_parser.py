@@ -218,7 +218,7 @@ def Inputs(*args):
 
 @config_func
 def HasInputsSet():
-    return len(g_config.model_config.input_layer_names) != 0
+    return len(g_current_submodel.input_layer_names) != 0
 
 
 # Define the name of the output layers of the NeuralNetwork.
@@ -471,6 +471,7 @@ class Input(Cfg):
             image=None,
             block_expand=None,
             maxout=None,
+            spp=None,
             format=None,
             nnz=None,
             is_static=None,
@@ -671,7 +672,6 @@ class ConvProjection(Projection):
     def calc_parameter_dims(self, input_size, output_size):
         return None
 
-
 # Define a operator for mixed layer
 @config_class
 class Operator(Cfg):
@@ -794,6 +794,17 @@ class Pool(Cfg):
             stride_y = None,
             padding = None,
             padding_y = None):
+        self.add_keys(locals())
+        
+# please refer to the comments in proto/ModelConfig.proto
+@config_class
+class SpatialPyramidPool(Cfg):
+    def __init__(
+            self,
+            pool_type,
+            pyramid_height,
+            channels,
+            img_width = None):
         self.add_keys(locals())
 
 # please refer to the comments in proto/ModelConfig.proto
@@ -1081,6 +1092,22 @@ def parse_pool(pool, input_layer_name, pool_conf):
         pool_conf.output_y = cnn_output_size(pool_conf.img_size_y, pool_conf.size_y,
                                              pool_conf.padding_y, pool_conf.stride_y, False)
 
+def parse_spp(spp, input_layer_name, spp_conf):
+    spp_conf.pool_type = spp.pool_type
+    config_assert(spp.pool_type in ['max-projection', 'avg-projection'],
+                  "pool-type %s is not in " "['max-projection', 'avg-projection']"
+                  % spp.pool_type)
+    spp_conf.pyramid_height = spp.pyramid_height
+    spp_conf.channels = spp.channels
+
+    img_pixels = g_layer_map[input_layer_name].size / spp_conf.channels
+
+    spp_conf.img_size = default(spp.img_width, int(img_pixels ** 0.5))
+    spp_conf.img_size_y = img_pixels / spp_conf.img_size
+    config_assert(spp_conf.img_size * spp_conf.img_size_y == img_pixels,
+                  "Incorrect input image size %d for input image pixels %d"
+                  % (spp_conf.img_size, img_pixels))
+
 def parse_image(image, input_layer_name, image_conf):
     image_conf.channels = image.channels
     image_pixels = g_layer_map[input_layer_name].size / image_conf.channels
@@ -1170,14 +1197,14 @@ def parse_block_expand(block_expand, input_layer_name, block_expand_conf):
         block_expand_conf.output_x = 0
     else:
         block_expand_conf.output_x = cnn_output_size(
-            block_expand.img_size_x, block_expand.block_x, 
+            block_expand.img_size_x, block_expand.block_x,
             block_expand.padding_x, block_expand.stride_x, False)
 
     if block_expand_conf.img_size_y == 0:
         block_expand_conf.output_y = 0
     else:
         block_expand_conf.output_y = cnn_output_size(
-            block_expand.img_size_y, block_expand.block_y, 
+            block_expand.img_size_y, block_expand.block_y,
             block_expand.padding_y, block_expand.stride_y, False)
 
 def parse_maxout(maxout, input_layer_name, maxout_conf):
@@ -1185,7 +1212,7 @@ def parse_maxout(maxout, input_layer_name, maxout_conf):
     maxout_conf.groups = maxout.groups
     maxout_conf.img_size_x = maxout.img_size_x
     maxout_conf.img_size_y = maxout.img_size_y
-    
+
 # Define an evaluator
 @config_func
 def Evaluator(
@@ -1756,6 +1783,25 @@ class PoolLayer(LayerBase):
                 name, pool_conf.output_y, pool_conf.output_x))
             self.set_layer_size((pool_conf.output_x * pool_conf.output_y) * pool_conf.channels)
 
+@config_layer('spp')
+class SpatialPyramidPoolLayer(LayerBase):
+    def __init__(
+            self,
+            name,
+            inputs,
+            device=None):
+        super(SpatialPyramidPoolLayer, self).__init__(name, 'spp', 0, inputs=inputs, device=device)
+        for input_index in xrange(len(self.inputs)):
+            input_layer = self.get_input_layer(input_index)
+            parse_spp(
+                self.inputs[input_index].spp,
+                input_layer.name,
+                self.config.inputs[input_index].spp_conf)
+            spp_conf = self.config.inputs[input_index].spp_conf
+            output_size = (pow(4, spp_conf.pyramid_height) - 1) / (4 - 1)
+            print("output size for %s is %d " % (name, output_size))
+            self.set_layer_size(output_size * spp_conf.channels)
+
 @config_layer('batch_norm')
 class BatchNormLayer(LayerBase):
     layer_type = 'batch_norm'
@@ -1881,7 +1927,7 @@ class MaxOutLayer(LayerBase):
                      self.config.inputs[0].maxout_conf)
         maxout_conf = self.config.inputs[0].maxout_conf
         self.set_layer_size(g_layer_map[input_layer.name].size / maxout_conf.groups)
-            
+
 # key: cost type
 # value: cost class
 g_cost_map = {}
@@ -1903,6 +1949,7 @@ define_cost('SumOfSquaresCostLayer', 'square_error')
 define_cost('MultiBinaryLabelCrossEntropy', 'multi_binary_label_cross_entropy')
 define_cost('SoftBinaryClassCrossEntropy', 'soft_binary_class_cross_entropy')
 define_cost('HuberTwoClass', 'huber')
+define_cost('SumCost', 'sum_cost')
 
 @config_layer('hsigmoid')
 class HierarchicalSigmoidLayer(LayerBase):
@@ -3015,7 +3062,7 @@ def Layer(
     layer_func = layers.get(type)
     config_assert(layer_func,
                   "layer type '%s' not supported." % type)
-    layer_func(name, **xargs)
+    return layer_func(name, **xargs)
 
 @config_func
 def ParameterHook(

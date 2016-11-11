@@ -11,8 +11,9 @@ labels = data_layer(name='labels', size=5000)
 probs = data_layer(name='probs', size=10)
 xe_label = data_layer(name='xe-label', size=10)
 
+hidden = fc_layer(input=seq_in, size=4)
 outputs(ctc_layer(input=seq_in, label=labels),
-        crf_layer(input=fc_layer(input=seq_in, size=4),
+        crf_layer(input=hidden,
                   label=data_layer(name='crf_label', size=4)),
         rank_cost(left=data_layer(name='left', size=1),
                   right=data_layer(name='right', size=1),
@@ -23,4 +24,5 @@ outputs(ctc_layer(input=seq_in, label=labels),
         cross_entropy_with_selfnorm(input=probs, label=xe_label),
         huber_cost(input=data_layer(name='huber_probs', size=1),
                    label=data_layer(name='huber_label', size=1)),
-        multi_binary_label_cross_entropy(input=probs, label=xe_label))
+        multi_binary_label_cross_entropy(input=probs, label=xe_label),
+        sum_cost(input=hidden))

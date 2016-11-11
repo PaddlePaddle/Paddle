@@ -13,15 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <string>
-#include "paddle/gserver/layers/DataLayer.h"
+#include <vector>
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/trainer/Trainer.h"
 #include "paddle/math/MathUtils.h"
 
-#include "TestUtil.h"
 #include "LayerGradUtil.h"
+#include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -981,6 +981,32 @@ TEST(Layer, PoolLayer) {
 #endif
 }
 
+void testSppLayer(const string& poolType, const int pyramidHeight, bool trans,
+                  bool useGpu) {
+  TestConfig config;
+  config.layerConfig.set_type("spp");
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 3200, 0});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  SppConfig* sppConfig = input->mutable_spp_conf();
+  sppConfig->set_pool_type(poolType);
+  sppConfig->set_pyramid_height(pyramidHeight);
+  sppConfig->set_channels(16);
+  sppConfig->set_img_size(10);
+  sppConfig->set_img_size_y(20);
+  int outputSize = (std::pow(4, sppConfig->pyramid_height()) - 1) / (4 - 1);
+  config.layerConfig.set_size(outputSize * sppConfig->channels());
+  testLayerGrad(config, "spp", 100, trans, useGpu);
+}
+
+TEST(Layer, SpatialPyramidPoolLayer) {
+  for (auto useGpu : {false, true}) {
+    for (auto pyramidHeight : {1, 2, 3}) {
+      testSppLayer("avg-projection", pyramidHeight, false, useGpu);
+      testSppLayer("max-projection", pyramidHeight, false, useGpu);
+    }
+  }
+}
+
 TEST(Layer, rankCostLayer) {
   TestConfig config;
   config.layerConfig.set_type("rank-cost");
@@ -995,6 +1021,19 @@ TEST(Layer, rankCostLayer) {
 
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "rank-cost", 100, false, useGpu);
+  }
+}
+
+TEST(Layer, sumCostLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("sum_cost");
+  config.biasSize = 0;
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1, 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "sum_cost", 100, false, useGpu);
   }
 }
 

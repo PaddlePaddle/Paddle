@@ -562,4 +562,39 @@ void HuberTwoClass::backwardImpIn(
   }
 }
 
+/**
+ * This cost layer compute the sum of its input as loss.
+ * \f[
+ * o(i) = \sum_{j=1}^D y_{ij}
+ * \f]
+ */
+class SumCostLayer : public Layer {
+public:
+  explicit SumCostLayer(const LayerConfig& config) : Layer(config) {}
+
+  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
+    bool ret = Layer::init(layerMap, parameterMap);
+    if (!ret) return ret;
+    CHECK_EQ(inputLayers_.size(), 1UL);
+    return true;
+  }
+
+  virtual void forward(PassType passType) {
+    Layer::forward(passType);
+    const MatrixPtr& input = getInputValue(0);
+
+    /* malloc memory for the output_ if necessary */
+    int batchSize = input->getHeight();
+    int size = 1;
+    resizeOutput(batchSize, size);
+    output_.value->sumRows(*input);
+  }
+
+  virtual void backward(const UpdateCallback& callback = nullptr) {
+    getInputGrad(0)->add((real)1);
+  }
+};
+
+REGISTER_LAYER(sum_cost, SumCostLayer);
+
 }  // namespace paddle
