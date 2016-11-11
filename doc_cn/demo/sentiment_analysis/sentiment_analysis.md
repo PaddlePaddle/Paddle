@@ -131,7 +131,7 @@ dataset
 
 **Config**
 
-进入`demo/sentiment` 目录 , `trainer_config.py` 是一个配置文件的例子, 其中包含算法和网络配置. The first line imports predefined networks from `sentiment_net.py`.
+进入`demo/sentiment` 目录 , `trainer_config.py` 是一个配置文件的例子, 其中包含算法和网络配置。第一行从`sentiment_net.py`中导出预定义的网络.
 
 trainer_config.py:
 
@@ -161,25 +161,25 @@ stacked_lstm_net(dict_dim, class_dim=class_dim,
 #bidirectional_lstm_net(dict_dim, class_dim=class_dim, is_predict=is_predict)
 ```
 
-* **Data Definition**:
-   * get\_config\_arg(): get arguments setted by `--config_args=xx` in commandline argument.
-   * Define TrainData and TestData provider, here using Python interface (PyDataProviderWrapper) of PaddlePaddle to load data. For details, you can refer to the document of PyDataProvider.
+* **数椐定义**:
+   * get\_config\_arg(): 获取通过 `--config_args=xx` i设置的命令行参数。
+   * 定义训练数椐和测试数椐提供者, 这里使用了PaddlePaddle的Python接口(PyDataProviderWrapper)来加载数椐。想了解更多细节可以参考PyDataProvider部分的文档
 
-* **Algorithm Configuration**:
-   * use sgd algorithm.
-   * use adam optimization.
-   * set batch size of 128.
-   * set average sgd window.
-   * set global learning rate.
-* **Network Configuration**:
-   * dict_dim: get dictionary dimension.
-   * class_dim: set category number, IMDB has two label, namely positive and negative label.
-   * `stacked_lstm_net`: predefined network as shown in Figure 3, use this network by default.
-   * `bidirectional_lstm_net`: predefined network as shown in Figure 2.
+* **算法配置**:
+   * 使用随机梯度下降（sgd）算法.
+   * 使用 adam 优化.
+   * 设置批量大小为128.
+   * 设置平均sgd窗口。
+   * 设置全局学习率。
+* **网络配置**:
+   * dict_dim: 获取字典维度。
+   * class_dim: 设置类别号，IMDB有两个标签，即正面评价标签和负面评价标签。
+   * `stacked_lstm_net`: 预定义网络如图3所示，默认情况下使用此网络
+   * `bidirectional_lstm_net`: 预定义网络，如图2所示。
 
-**Training**
+**训练**
 
-Install PaddlePaddle first if necessary. Then you can use script `train.sh` as follows to launch local training.
+首先安装PaddlePaddle. 然后使用下面的脚本 `train.sh` 来开启本地的训练。
 
 ```
 cd demo/sentiment/
@@ -204,17 +204,17 @@ paddle train --config=$config \
              2>&1 | tee 'train.log'
 ```
 
-* \--config=$config: set network config.
-* \--save\_dir=$output: set output path to save models.
-* \--job=train: set job mode to train.
-* \--use\_gpu=false: use CPU to train, set true, if you install GPU version of PaddlePaddle and want to use GPU to train.
-* \--trainer\_count=4: set thread number (or GPU count).
-* \--num\_passes=15: set pass number, one pass in PaddlePaddle means training all samples in dataset one time.
-* \--log\_period=20: print log every 20 batches.
-* \--show\_parameter\_stats\_period=100: show parameter statistic every 100 batches.
-* \--test\_all_data\_in\_one\_period=1: test all data every testing.
+* \--config=$config: 设置网络配置。
+* \--save\_dir=$output: 设置输出路径以保存训练完成的模型。
+* \--job=train: 设置工作模式为训练。
+* \--use\_gpu=false: 使用CPU训练，设置为true，如果你安装GPU版本的PaddlePaddle，并想使用GPU来训练。
+* \--trainer\_count=4:设置线程数（或GPU计数）。
+* \--num\_passes=15: 设置通过数，PaddlePaddle中的一个通过数意味着对数据集中的所有样本进行一次训练。
+* \--log\_period=20: 每20批打印一次日志。
+* \--show\_parameter\_stats\_period=100: 每100批显示一次参数统计。
+* \--test\_all_data\_in\_one\_period=1: 每次测试都测试所有数据。
 
-If the run succeeds, the output log is saved in path of `demo/sentiment/train.log` and model is saved in path of `demo/sentiment/model_output/`. The output log is explained as follows.
+如果运行成功，输出日志保存在路径 `demo/sentiment/train.log`中，模型保存在目录`demo/sentiment/model_output/`中。  输出日志说明如下：
 
 ```
 Batch=20 samples=2560 AvgCost=0.681644 CurrentCost=0.681644 Eval: classification_error_evaluator=0.36875  CurrentEval: classification_error_evaluator=0.36875
@@ -222,19 +222,19 @@ Batch=20 samples=2560 AvgCost=0.681644 CurrentCost=0.681644 Eval: classification
 Pass=0 Batch=196 samples=25000 AvgCost=0.418964 Eval: classification_error_evaluator=0.1922
 Test samples=24999 cost=0.39297 Eval: classification_error_evaluator=0.149406
 ```
-- Batch=xx: means passing xx batches.
-- samples=xx: means passing xx samples.
-- AvgCost=xx: averaged cost from 0-th batch to current batch.
-- CurrentCost=xx: current cost of latest log_period batches.
-- Eval: classification\_error\_evaluator=xx: means classfication error from 0-th batch ro current batch.
-- CurrentEval: classification\_error\_evaluator: current classfication error of the lates log_period batches.
-- Pass=0: Going through all training set one time is called one pass. 0 means going through training set first time.
+- Batch=xx: 表示传递xx批次.
+- samples=xx: 表示传递xx个样本。
+- AvgCost=xx: 从第0批到当前批的平均花费时间。
+- CurrentCost=xx: 最新的log_period批处理的当前时间花费。
+- Eval: classification\_error\_evaluator=xx: 表示第0批次到当前批次的分类错误。
+- CurrentEval: classification\_error\_evaluator: 最新日志周期批次的分类错误。
+- Pass=0: 通过所有训练集一次称为一遍。 0表示第一次经过训练集。
 
-By default, we use the `stacked_lstm_net` network, which converges at a faster rate than `bidirectional_lstm_net` when passing same sample number. If you want to use bidirectional LSTM, just remove comment in the last line and comment `stacked_lstm_net`.
+默认情况下，我们使用`stacked_lstm_net`网络，当传递相同的样本数时，它的收敛速度比`bidirectional_lstm_net`快。If you want to use bidirectional LSTM, 如果要使用双向LSTM，只需删除最后一行中的注释并把“stacked_lstm_net”注释掉。
 
-## Testing
+## 测试模型
 
-Testing means evaluating the labeled validation set using trained model.
+测试模型是指使用训练出的模型评估已标记的验证集。
 
 ```
 cd demo/sentiment
@@ -269,15 +269,15 @@ paddle train --config=$net_conf \
              2>&1 | tee 'test.log'
 ```
 
-The function `get_best_pass` gets the best model by classification error rate for testing. In this example, We use test dataset of IMDB as validation by default. Unlike training, it needs to specify `--job=test` and model path, namely `--model_list=$model_list` here. If running successfully, the log is saved in path of `demo/sentiment/test.log`. For example, in our test, the best model is `model_output/pass-00002`, the classification error is 0.115645 as follows.
+函数`get_best_pass`通过计算分类错误率获得最佳模型进行测试。 在本示例中，我们默认使用IMDB的测试数据集作为验证。 与训练不同，它需要在这里指定`--job = test`和模型路径，即`--model_list = $model_list`。如果运行成功，日志将保存在“demo / sentiment / test.log”的路径中。例如，在我们的测试中，最好的模型是`model_output / pass-00002`，分类误差是0.115645，如下：
 
 ```
 Pass=0 samples=24999 AvgCost=0.280471 Eval: classification_error_evaluator=0.115645
 ```
 
-## Prediction
+## 预测
 
-`predict.py` provides a predicting interface. You should install python api of PaddlePaddle before using it. One example to predict unlabeled review of IMDB is as follows. Simply running:
+`predict.py`脚本提供了一个预测接口。在使用它之前请安装PaddlePaddle的python api。 预测IMDB的未标记评论的一个实例如下：
 
 ```
 cd demo/sentiment
@@ -299,25 +299,24 @@ python predict.py \
      -i data/aclImdb/test/pos/10007_10.txt
 ```
 
-* `predict.py`: predicting interface.
-*  -n $config : set network configure.
-*  -w $model: set model path.
-*  -b $label: set dictionary about corresponding relation between integer label and string label.
-*  -d data/pre-imdb/dict.txt: set dictionary.
-*  -i data/aclImdb/test/pos/10014_7.txt: set one example file to predict.
+* `predict.py`: 预测接口脚本。
+*  -n $config : 设置网络配置。
+*  -w $model: 设置模型路径。
+*  -b $label: 设置标签类别字典，这个字典是整数标签和字符串标签的一个对应。
+*  -d data/pre-imdb/dict.txt: 设置字段文件。
+*  -i data/aclImdb/test/pos/10014_7.txt: 设置一个要预测的示例文件。
 
-Note you should make sure the default model path `model_output/pass-00002`
-exists or change the model path.
+注意你应该确保默认模型路径`model_output / pass-00002`存在或更改为其它模型路径。
 
-Predicting result of this example:
+本示例的预测结果：
 
 ```
 Loading parameters from model_output/pass-00002/
 ./data/aclImdb/test/pos/10014_7.txt: predicting label is pos
 ```
-We sincerely appreciate your interest and welcome your contributions.
+我们真诚地感谢您的关注，并欢迎您来贡献。
 
-## Reference
+## 参考文档
 [1] Brendan O'Connor, Ramnath Balasubramanyan, Bryan R. Routledge, and Noah A. Smith. 2010. [From Tweets to Polls: Linking Text Sentiment to Public Opinion Time Series](http://homes.cs.washington.edu/~nasmith/papers/oconnor+balasubramanyan+routledge+smith.icwsm10.pdf). In ICWSM-2010. <br>
 [2] Johan Bollen, Huina Mao, Xiaojun Zeng. 2011. [Twitter mood predicts the stock market](http://arxiv.org/abs/1010.3003), Journal of Computational Science.<br>
 [3] Alex Graves, Marcus Liwicki, Santiago Fernan- dez, Roman Bertolami, Horst Bunke, and Ju ̈rgen Schmidhuber. 2009. [A novel connectionist system for unconstrained handwriting recognition. IEEE Transactions on Pattern Analysis and Machine In- telligence](http://www.cs.toronto.edu/~graves/tpami_2009.pdf), 31(5):855–868.<br>
