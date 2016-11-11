@@ -19,6 +19,7 @@ import util
 
 
 def init_params(params):
+
     def init_param(p):
         assert isinstance(p, swig_paddle.Parameter)
         val = p.getBuf(swig_paddle.PARAMETER_VALUE)
@@ -67,7 +68,7 @@ def main():
     for optimizer in optimizers:
         optimizer.startPass()
     batch_id = 0
-    while True:  # Train one batch
+    while True:    # Train one batch
         batch_size = 1000
         inArgs, atEnd = util.loadMNISTTrainData(batch_size)
         if atEnd:
@@ -98,7 +99,8 @@ def main():
         cost_vec = outArgs.getSlotValue(0)
         assert isinstance(cost_vec, swig_paddle.Matrix)
         cost_vec = cost_vec.copyToNumpyMat()
-        print 'Finish Batch', batch_id, 'with cost ', cost_vec.sum() / batch_size
+        print 'Finish Batch', batch_id, 'with cost ', cost_vec.sum(
+        ) / batch_size
         batch_id += 1
 
     for optimizer in optimizers:

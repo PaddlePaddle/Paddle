@@ -29,10 +29,14 @@ try:
         whole_start = ""
         whole_end = ""
 
-    LIB_DIRS = ["math", 'utils', 'parameter', "gserver", "api", "cuda", "pserver", "trainer"]
+    LIB_DIRS = [
+        "math", 'utils', 'parameter', "gserver", "api", "cuda", "pserver",
+        "trainer"
+    ]
     PARENT_LIB_DIRS = ['proto']
 
     class PaddleLDFlag(object):
+
         def __init__(self):
             self.paddle_build_dir = PADDLE_BUILD_DIR
             self.paddle_build_dir = os.path.abspath(self.paddle_build_dir)
@@ -55,19 +59,20 @@ try:
             self.curt = CUDA_LIBRARIES
 
         def ldflag_str(self):
-            return " ".join([self.libs_dir_str(),
-                             self.parent_dir_str(),
-                             self.libs_str()])
+            return " ".join(
+                [self.libs_dir_str(), self.parent_dir_str(), self.libs_str()])
 
         def libs_dir_str(self):
             libdirs = LIB_DIRS
-            return " ".join(map(lambda x: "-L" + os.path.join(self.paddle_build_dir, x),
-                                libdirs))
+            return " ".join(
+                map(lambda x: "-L" + os.path.join(self.paddle_build_dir, x),
+                    libdirs))
 
         def parent_dir_str(self):
             libdirs = PARENT_LIB_DIRS
-            return " ".join(map(lambda x: "-L" + os.path.join(self.paddle_build_dir, '..', x),
-                libdirs))
+            return " ".join(
+                map(lambda x: "-L" + os.path.join(self.paddle_build_dir, '..', x),
+                    libdirs))
 
         def libs_str(self):
             libs = [
@@ -109,14 +114,14 @@ try:
             """
             if ";" in cmake_flag:
                 return " ".join(map(self.normalize_flag, cmake_flag.split(";")))
-            if cmake_flag.startswith("/"):  # is a path
+            if cmake_flag.startswith("/"):    # is a path
                 return cmake_flag
-            elif cmake_flag.startswith("-l"):  # normal link command
+            elif cmake_flag.startswith("-l"):    # normal link command
                 return cmake_flag
-            elif cmake_flag in ["gflags-shared",
-                                "gflags-static",
-                                "gflags_nothreads-shared",
-                                "gflags_nothreads-static"]:  # special for gflags
+            elif cmake_flag in [
+                    "gflags-shared", "gflags-static", "gflags_nothreads-shared",
+                    "gflags_nothreads-static"
+            ]:    # special for gflags
                 assert PaddleLDFlag.cmake_bool(self.gflags_location)
                 return self.gflags_location
             elif len(cmake_flag) != 0:
@@ -132,18 +137,23 @@ try:
             :type cmake_str: str
             :rtype: bool
             """
-            if cmake_str in ["FALSE", "OFF", "NO"] or cmake_str.endswith("-NOTFOUND"):
+            if cmake_str in ["FALSE", "OFF", "NO"] or cmake_str.endswith(
+                    "-NOTFOUND"):
                 return False
             else:
                 return True
+
         def c_flag(self):
             if self.with_coverage:
                 return ["-fprofile-arcs", "-ftest-coverage", "-O0", "-g"]
             else:
                 return None
 except ImportError:
+
     class PaddleLDFlag(object):
+
         def ldflag_str(self):
             pass
+
         def c_flag(self):
             pass

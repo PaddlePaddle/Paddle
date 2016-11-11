@@ -17,8 +17,8 @@ from paddle.trainer.PyDataProvider2 import *
 def hook(settings, dictionary, **kwargs):
     settings.word_dict = dictionary
     settings.input_types = [
-        integer_value_sequence(len(settings.word_dict)),
-        integer_value(2)]
+        integer_value_sequence(len(settings.word_dict)), integer_value(2)
+    ]
     settings.logger.info('dict len : %d' % (len(settings.word_dict)))
 
 
@@ -29,6 +29,7 @@ def process(settings, file_name):
             label, comment = line.strip().split('\t\t')
             label = int(label)
             words = comment.split()
-            word_slot = [settings.word_dict[w] for w in words if w in
-                         settings.word_dict]
+            word_slot = [
+                settings.word_dict[w] for w in words if w in settings.word_dict
+            ]
             yield word_slot, label

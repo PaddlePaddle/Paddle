@@ -22,13 +22,13 @@ from os.path import join as join_path
 from optparse import OptionParser
 
 from paddle.utils.preprocess_util import *
-
 """
 Usage: run following command to show help message.
   python preprocess.py -h 
 """
 
-def save_dict(dict, filename, is_reverse = True):
+
+def save_dict(dict, filename, is_reverse=True):
     """
     Save dictionary into file.
     dict:   input dictionary.
@@ -39,8 +39,9 @@ def save_dict(dict, filename, is_reverse = True):
     f = open(filename, 'w')
     for k, v in sorted(dict.items(), key=operator.itemgetter(1),\
                        reverse=is_reverse):
-        f.write('%s\t%s\n'%(k, v))
+        f.write('%s\t%s\n' % (k, v))
     f.close()
+
 
 def tokenize(sentences):
     """
@@ -58,6 +59,7 @@ def tokenize(sentences):
     toks = tok_text.split('\n')[:-1]
     return toks
 
+
 def read_lines(path):
     """
     path: String, file path.
@@ -71,12 +73,17 @@ def read_lines(path):
                 seqs.append(line)
     return seqs
 
+
 class SentimentDataSetCreate():
     """
     A class to process data for sentiment analysis task.
     """
-    def __init__(self, data_path, output_path,
-                 use_okenizer = True, multi_lines = False):
+
+    def __init__(self,
+                 data_path,
+                 output_path,
+                 use_okenizer=True,
+                 multi_lines=False):
         """
         data_path: string, traing and testing dataset path
         output_path: string, output path, store processed dataset
@@ -164,23 +171,17 @@ class SentimentDataSetCreate():
         # Preprocess train data.
         train_data, train_lab_set = self.data_list(self.train_dir)
         print "processing train set..."
-        file_lists = self.save_data(train_data,
-                                     "train",
-                                     self.batch_size,
-                                     True,
-                                     True)
+        file_lists = self.save_data(train_data, "train", self.batch_size, True,
+                                    True)
         save_list(file_lists, self.train_list)
 
         # If have test data path, preprocess test data.
         if os.path.exists(self.test_dir):
             test_data, test_lab_set = self.data_list(self.test_dir)
-            assert(train_lab_set == test_lab_set)
+            assert (train_lab_set == test_lab_set)
             print "processing test set..."
-            file_lists = self.save_data(test_data,
-                                        "test",
-                                        self.batch_size,
-                                        False,
-                                        self.dict_with_test)
+            file_lists = self.save_data(test_data, "test", self.batch_size,
+                                        False, self.dict_with_test)
             save_list(file_lists, self.test_list)
 
         # save labels set.
@@ -191,7 +192,9 @@ class SentimentDataSetCreate():
         save_dict(self.word_count, self.dict_file, True)
         self.dict_size = len(self.word_count)
 
-    def save_data(self, data, prefix = "",
+    def save_data(self,
+                  data,
+                  prefix="",
                   batch_size=50000,
                   is_shuffle=False,
                   build_dict=False):
@@ -205,7 +208,8 @@ class SentimentDataSetCreate():
         return: list of batch names
         """
         if is_shuffle and self.multi_lines:
-           return self.save_data_multi_lines(data, prefix, batch_size, build_dict)
+            return self.save_data_multi_lines(data, prefix, batch_size,
+                                              build_dict)
 
         if is_shuffle:
             random.shuffle(data)
@@ -213,7 +217,7 @@ class SentimentDataSetCreate():
         batch_names = []
         for i in range(num_batches):
             batch_name = join_path(self.output_path,
-                                   "%s_part_%03d" %(prefix, i))
+                                   "%s_part_%03d" % (prefix, i))
             begin = i * batch_size
             end = min((i + 1) * batch_size, len(data))
             # read a batch of data
@@ -246,7 +250,9 @@ class SentimentDataSetCreate():
             data_list = tokenize(data_list)
         return label_list, data_list
 
-    def save_data_multi_lines(self, data, prefix = "",
+    def save_data_multi_lines(self,
+                              data,
+                              prefix="",
                               batch_size=50000,
                               build_dict=False):
         """
@@ -274,14 +280,14 @@ class SentimentDataSetCreate():
             self.create_dict(data_list)
 
         length = len(label_list)
-        perm_list = np.array([ i for i in xrange(length) ])
+        perm_list = np.array([i for i in xrange(length)])
         random.shuffle(perm_list)
 
         num_batches = int(math.ceil(length / float(batch_size)))
         batch_names = []
         for i in range(num_batches):
             batch_name = join_path(self.output_path,
-                                   "%s_part_%03d" %(prefix, i))
+                                   "%s_part_%03d" % (prefix, i))
             begin = i * batch_size
             end = min((i + 1) * batch_size, length)
             sub_label = [label_list[perm_list[i]] for i in range(begin, end)]
@@ -304,35 +310,50 @@ class SentimentDataSetCreate():
             f.write('%s\t\t%s\n' % (lab, seq))
         f.close()
 
+
 def option_parser():
     parser = OptionParser(usage="usage: python preprcoess.py "\
                                 "-i data_dir [options]")
-    parser.add_option("-i", "--data", action="store",
-                      dest="input", help="Input data directory.")
-    parser.add_option("-o", "--output", action="store",
-                      dest="output", default=None,
-                      help="Output directory.")
-    parser.add_option("-t", "--tokenizer", action="store",
-                      dest="use_tokenizer", default=True,
-                      help="Whether to use tokenizer.")
+    parser.add_option(
+        "-i",
+        "--data",
+        action="store",
+        dest="input",
+        help="Input data directory.")
+    parser.add_option(
+        "-o",
+        "--output",
+        action="store",
+        dest="output",
+        default=None,
+        help="Output directory.")
+    parser.add_option(
+        "-t",
+        "--tokenizer",
+        action="store",
+        dest="use_tokenizer",
+        default=True,
+        help="Whether to use tokenizer.")
     parser.add_option("-m", "--multi_lines", action="store",
                       dest="multi_lines", default=False,
                       help="If input text files have multi lines and they "\
                            "need to be shuffled, you should set -m True,")
     return parser.parse_args()
 
+
 def main():
     options, args = option_parser()
-    data_dir=options.input
-    output_dir=options.output
-    use_tokenizer=options.use_tokenizer
-    multi_lines=options.multi_lines
+    data_dir = options.input
+    output_dir = options.output
+    use_tokenizer = options.use_tokenizer
+    multi_lines = options.multi_lines
     if output_dir is None:
         outname = os.path.basename(options.input)
         output_dir = join_path(os.path.dirname(data_dir), 'pre-' + outname)
-    data_creator = SentimentDataSetCreate(data_dir, output_dir,
-                                          use_tokenizer, multi_lines)
+    data_creator = SentimentDataSetCreate(data_dir, output_dir, use_tokenizer,
+                                          multi_lines)
     data_creator.create_dataset()
+
 
 if __name__ == '__main__':
     main()

@@ -1,9 +1,6 @@
 from paddle.trainer_config_helpers import *
 
-settings(
-    batch_size=100,
-    learning_method=AdamOptimizer()
-)
+settings(batch_size=100, learning_method=AdamOptimizer())
 
 din = data_layer(name='input', size=784)
 

@@ -20,11 +20,12 @@ UNK_IDX = 0
 def initializer(settings, dictionary, **kwargs):
     settings.word_dict = dictionary
     settings.input_types = [
-        # Define the type of the first input as sequence of integer.
-        # The value of the integers range from 0 to len(dictrionary)-1
+    # Define the type of the first input as sequence of integer.
+    # The value of the integers range from 0 to len(dictrionary)-1
         integer_value_sequence(len(dictionary)),
-        # Define the second input for label id
-        integer_value(2)]
+    # Define the second input for label id
+        integer_value(2)
+    ]
 
 
 @provider(init_hook=initializer, cache=CacheType.CACHE_PASS_IN_MEM)
@@ -40,7 +41,8 @@ def process(settings, file_name):
 def predict_initializer(settings, dictionary, **kwargs):
     settings.word_dict = dictionary
     settings.input_types = [
-        integer_value(len(dictionary), seq_type=SequenceType.SEQUENCE)
+        integer_value(
+            len(dictionary), seq_type=SequenceType.SEQUENCE)
     ]
 
 
