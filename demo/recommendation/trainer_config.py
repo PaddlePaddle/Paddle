@@ -27,8 +27,8 @@ with open(META_FILE, 'rb') as f:
     # load meta file
     meta = pickle.load(f)
 
-settings(batch_size=1600, learning_rate=1e-3,
-         learning_method=RMSPropOptimizer())
+settings(
+    batch_size=1600, learning_rate=1e-3, learning_method=RMSPropOptimizer())
 
 
 def construct_feature(name):
@@ -59,11 +59,10 @@ def construct_feature(name):
         slot_name = each_meta.get('name', '%s_id' % name)
         if type_name == 'id':
             slot_dim = each_meta['max']
-            embedding = embedding_layer(input=data_layer(slot_name,
-                                                          size=slot_dim),
-                                        size=256)
-            fusion.append(fc_layer(input=embedding,
-                                   size=256))
+            embedding = embedding_layer(
+                input=data_layer(
+                    slot_name, size=slot_dim), size=256)
+            fusion.append(fc_layer(input=embedding, size=256))
         elif type_name == 'embedding':
             is_seq = each_meta['seq'] == 'sequence'
             slot_dim = len(each_meta['dict'])
@@ -71,17 +70,14 @@ def construct_feature(name):
             embedding = embedding_layer(input=din, size=256)
             if is_seq:
                 fusion.append(
-                    text_conv_pool(input=embedding, context_len=5,
-                                   hidden_size=256))
+                    text_conv_pool(
+                        input=embedding, context_len=5, hidden_size=256))
             else:
-                fusion.append(fc_layer(input=embedding,
-                                       size=256))
+                fusion.append(fc_layer(input=embedding, size=256))
         elif type_name == 'one_hot_dense':
             slot_dim = len(each_meta['dict'])
-            hidden = fc_layer(input=data_layer(slot_name, slot_dim),
-                              size=256)
-            fusion.append(fc_layer(input=hidden,
-                                   size=256))
+            hidden = fc_layer(input=data_layer(slot_name, slot_dim), size=256)
+            fusion.append(fc_layer(input=hidden, size=256))
 
     return fc_layer(name="%s_fusion" % name, input=fusion, size=256)
 
@@ -90,10 +86,16 @@ movie_feature = construct_feature("movie")
 user_feature = construct_feature("user")
 similarity = cos_sim(a=movie_feature, b=user_feature)
 if not is_predict:
-    outputs(regression_cost(input=similarity,
-                            label=data_layer('rating', size=1)))
+    outputs(
+        regression_cost(
+            input=similarity, label=data_layer(
+                'rating', size=1)))
 
-    define_py_data_sources2('data/train.list', 'data/test.list', module='dataprovider',
-                           obj='process', args={'meta': meta})
+    define_py_data_sources2(
+        'data/train.list',
+        'data/test.list',
+        module='dataprovider',
+        obj='process',
+        args={'meta': meta})
 else:
     outputs(similarity)

@@ -47,10 +47,12 @@ def sentiment_data(data_dir=None,
         for i, line in enumerate(open(dict_file, 'r')):
             word_dict[line.split('\t')[0]] = i
 
-    define_py_data_sources2(train_list, test_list,
-                           module="dataprovider",
-                           obj="process",
-                           args={'dictionary': word_dict})
+    define_py_data_sources2(
+        train_list,
+        test_list,
+        module="dataprovider",
+        obj="process",
+        args={'dictionary': word_dict})
 
     return dict_dim, class_dim
 
@@ -64,8 +66,7 @@ def bidirectional_lstm_net(input_dim,
     emb = embedding_layer(input=data, size=emb_dim)
     bi_lstm = bidirectional_lstm(input=emb, size=lstm_dim)
     dropout = dropout_layer(input=bi_lstm, dropout_rate=0.5)
-    output = fc_layer(input=dropout, size=class_dim,
-                      act=SoftmaxActivation())
+    output = fc_layer(input=dropout, size=class_dim, act=SoftmaxActivation())
 
     if not is_predict:
         lbl = data_layer("label", 1)
@@ -109,27 +110,36 @@ def stacked_lstm_net(input_dim,
     data = data_layer("word", input_dim)
     emb = embedding_layer(input=data, size=emb_dim)
 
-    fc1 = fc_layer(input=emb, size=hid_dim, act=linear,
-                   bias_attr=bias_attr)
-    lstm1 = lstmemory(input=fc1, act=relu, bias_attr=bias_attr,
-                      layer_attr=layer_attr)
+    fc1 = fc_layer(input=emb, size=hid_dim, act=linear, bias_attr=bias_attr)
+    lstm1 = lstmemory(
+        input=fc1, act=relu, bias_attr=bias_attr, layer_attr=layer_attr)
 
     inputs = [fc1, lstm1]
     for i in range(2, stacked_num + 1):
-        fc = fc_layer(input=inputs, size=hid_dim, act=linear,
-                      param_attr=para_attr, bias_attr=bias_attr)
-        lstm = lstmemory(input=fc, reverse=(i % 2) == 0, act=relu,
-                         bias_attr=bias_attr, layer_attr=layer_attr)
+        fc = fc_layer(
+            input=inputs,
+            size=hid_dim,
+            act=linear,
+            param_attr=para_attr,
+            bias_attr=bias_attr)
+        lstm = lstmemory(
+            input=fc,
+            reverse=(i % 2) == 0,
+            act=relu,
+            bias_attr=bias_attr,
+            layer_attr=layer_attr)
         inputs = [fc, lstm]
 
     fc_last = pooling_layer(input=inputs[0], pooling_type=MaxPooling())
     lstm_last = pooling_layer(input=inputs[1], pooling_type=MaxPooling())
-    output = fc_layer(input=[fc_last, lstm_last], size=class_dim,
-                      act=SoftmaxActivation(),
-                      bias_attr=bias_attr, param_attr=para_attr)
+    output = fc_layer(
+        input=[fc_last, lstm_last],
+        size=class_dim,
+        act=SoftmaxActivation(),
+        bias_attr=bias_attr,
+        param_attr=para_attr)
 
     if is_predict:
         outputs(output)
     else:
-        outputs(
-            classification_cost(input=output, label=data_layer('label', 1)))
+        outputs(classification_cost(input=output, label=data_layer('label', 1)))

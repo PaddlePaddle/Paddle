@@ -41,22 +41,16 @@ class Prediction():
         len_dict = len(self.dict)
         len_label = len(self.labels)
 
-        conf = parse_config(
-            train_conf,
-            'dict_len=' + str(len_dict) +
-            ',label_len=' + str(len_label) +
-            ',is_predict=True')
+        conf = parse_config(train_conf, 'dict_len=' + str(len_dict) +
+                            ',label_len=' + str(len_label) + ',is_predict=True')
         self.network = swig_paddle.GradientMachine.createFromConfigProto(
             conf.model_config)
         self.network.loadParameters(model_dir)
 
         slots = [
-            integer_value_sequence(len_dict),
-            integer_value_sequence(len_dict),
-            integer_value_sequence(len_dict),
-            integer_value_sequence(len_dict),
-            integer_value_sequence(len_dict),
-            integer_value_sequence(2)
+            integer_value_sequence(len_dict), integer_value_sequence(len_dict),
+            integer_value_sequence(len_dict), integer_value_sequence(len_dict),
+            integer_value_sequence(len_dict), integer_value_sequence(2)
         ]
         self.converter = DataProviderConverter(slots)
 
@@ -110,8 +104,8 @@ class Prediction():
                 len_sen = len(sen.split())
                 line_labels = lab[index:index + len_sen]
                 index += len_sen
-                fout.write(sen + '\t' + ' '.join([self.labels_reverse[
-                    i] for i in line_labels]) + '\n')
+                fout.write(sen + '\t' + ' '.join(
+                    [self.labels_reverse[i] for i in line_labels]) + '\n')
 
 
 def option_parser():

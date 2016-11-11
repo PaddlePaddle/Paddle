@@ -21,8 +21,7 @@ import logging
 import pprint
 
 logging.basicConfig(
-    format='[%(levelname)s %(asctime)s %(filename)s:%(lineno)s] %(message)s',
-)
+    format='[%(levelname)s %(asctime)s %(filename)s:%(lineno)s] %(message)s', )
 logger = logging.getLogger('paddle')
 logger.setLevel(logging.INFO)
 
@@ -36,33 +35,32 @@ num_original_columns = 3
 # [[-1,0], [0,0]]  means previous token at column 0 and current token at
 # column 0 are combined as one feature.
 patterns = [
-    [[-2,0]],
-    [[-1,0]],
-    [[0,0]],
-    [[1,0]],
-    [[2,0]],
-
-    [[-1,0], [0,0]],
-    [[0,0], [1,0]],
-
-    [[-2,1]],
-    [[-1,1]],
-    [[0,1]],
-    [[1,1]],
-    [[2,1]],
-    [[-2,1], [-1,1]],
-    [[-1,1], [0,1]],
-    [[0,1], [1,1]],
-    [[1,1], [2,1]],
-
-    [[-2,1], [-1,1], [0,1]],
-    [[-1,1], [0,1], [1,1]],
-    [[0,1], [1,1], [2,1]],
+    [[-2, 0]],
+    [[-1, 0]],
+    [[0, 0]],
+    [[1, 0]],
+    [[2, 0]],
+    [[-1, 0], [0, 0]],
+    [[0, 0], [1, 0]],
+    [[-2, 1]],
+    [[-1, 1]],
+    [[0, 1]],
+    [[1, 1]],
+    [[2, 1]],
+    [[-2, 1], [-1, 1]],
+    [[-1, 1], [0, 1]],
+    [[0, 1], [1, 1]],
+    [[1, 1], [2, 1]],
+    [[-2, 1], [-1, 1], [0, 1]],
+    [[-1, 1], [0, 1], [1, 1]],
+    [[0, 1], [1, 1], [2, 1]],
 ]
+
 
 def make_features(sequence):
     length = len(sequence)
     num_features = len(sequence[0])
+
     def get_features(pos):
         if pos < 0:
             return ['#B%s' % -pos] * num_features
@@ -72,8 +70,9 @@ def make_features(sequence):
 
     for i in xrange(length):
         for pattern in patterns:
-            fname = '/'.join([get_features(i+pos)[f] for pos, f in pattern])
+            fname = '/'.join([get_features(i + pos)[f] for pos, f in pattern])
             sequence[i].append(fname)
+
 
 '''
 Source file format:
@@ -87,6 +86,8 @@ i-th column.
 
 return a list of dict for each column
 '''
+
+
 def create_dictionaries(filename, cutoff, oov_policy):
     def add_to_dict(sequence, dicts):
         num_features = len(dicts)
@@ -117,7 +118,6 @@ def create_dictionaries(filename, cutoff, oov_policy):
             continue
         features = line.split(' ')
         sequence.append(features)
-
 
     for i in xrange(num_features):
         dct = dicts[i]
@@ -161,12 +161,9 @@ existed in dicts[i] will be assigned to id 0.
 if oov_policy[i] == OOV_POLICY_ERROR, all features in i-th column MUST exist
 in dicts[i].
 '''
-def gen_proto_file(
-        input_file,
-        dicts,
-        oov_policy,
-        output_file):
 
+
+def gen_proto_file(input_file, dicts, oov_policy, output_file):
     def write_sequence(out, sequence):
         num_features = len(dicts)
         is_beginning = True
@@ -213,8 +210,8 @@ def gen_proto_file(
     if patterns:
         slot_def = header.slot_defs.add()
         slot_def.type = DataFormat.SlotDef.VECTOR_SPARSE_NON_VALUE
-        slot_def.dim = sum([len(dicts[i])
-                            for i in xrange(num_original_columns, len(dicts))])
+        slot_def.dim = sum(
+            [len(dicts[i]) for i in xrange(num_original_columns, len(dicts))])
         logger.info("feature_dim=%s" % slot_def.dim)
 
     for i in xrange(num_original_columns):
@@ -242,30 +239,31 @@ def gen_proto_file(
 
     logger.info("num_sequences=%s" % num_sequences)
 
+
 dict2 = {
- 'B-ADJP': 0,
- 'I-ADJP': 1,
- 'B-ADVP': 2,
- 'I-ADVP': 3,
- 'B-CONJP': 4,
- 'I-CONJP': 5,
- 'B-INTJ': 6,
- 'I-INTJ': 7,
- 'B-LST': 8,
- 'I-LST': 9,
- 'B-NP': 10,
- 'I-NP': 11,
- 'B-PP': 12,
- 'I-PP': 13,
- 'B-PRT': 14,
- 'I-PRT': 15,
- 'B-SBAR': 16,
- 'I-SBAR': 17,
- 'B-UCP': 18,
- 'I-UCP': 19,
- 'B-VP': 20,
- 'I-VP': 21,
- 'O': 22
+    'B-ADJP': 0,
+    'I-ADJP': 1,
+    'B-ADVP': 2,
+    'I-ADVP': 3,
+    'B-CONJP': 4,
+    'I-CONJP': 5,
+    'B-INTJ': 6,
+    'I-INTJ': 7,
+    'B-LST': 8,
+    'I-LST': 9,
+    'B-NP': 10,
+    'I-NP': 11,
+    'B-PP': 12,
+    'I-PP': 13,
+    'B-PRT': 14,
+    'I-PRT': 15,
+    'B-SBAR': 16,
+    'I-SBAR': 17,
+    'B-UCP': 18,
+    'I-UCP': 19,
+    'B-VP': 20,
+    'I-VP': 21,
+    'O': 22
 }
 
 if __name__ == '__main__':
@@ -273,16 +271,9 @@ if __name__ == '__main__':
     cutoff += [3] * len(patterns)
     oov_policy = [OOV_POLICY_IGNORE, OOV_POLICY_ERROR, OOV_POLICY_ERROR]
     oov_policy += [OOV_POLICY_IGNORE] * len(patterns)
-    dicts = create_dictionaries(
-        'trainer/tests/train.txt', cutoff, oov_policy)
+    dicts = create_dictionaries('trainer/tests/train.txt', cutoff, oov_policy)
     dicts[2] = dict2
-    gen_proto_file(
-        'trainer/tests/train.txt',
-        dicts,
-        oov_policy,
-        'trainer/tests/train_proto.bin')
-    gen_proto_file(
-        'trainer/tests/test.txt',
-        dicts,
-        oov_policy,
-        'trainer/tests/test_proto.bin')
+    gen_proto_file('trainer/tests/train.txt', dicts, oov_policy,
+                   'trainer/tests/train_proto.bin')
+    gen_proto_file('trainer/tests/test.txt', dicts, oov_policy,
+                   'trainer/tests/test_proto.bin')
