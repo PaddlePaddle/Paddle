@@ -1,9 +1,9 @@
-情感分析指导教程
+Sentiment Analasis Tutorial
 ===========================
 
 .. toctree::
-    :maxdepth: 3
-    :glob:
+:maxdepth: 3
+        :glob:
 
-    Training Locally <sentiment_analysis.md>
-    internal/cluster_train.md
+        Training Locally <sentiment_analysis.md>
+        internal/cluster_train.md
