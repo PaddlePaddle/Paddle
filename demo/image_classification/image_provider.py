@@ -46,14 +46,14 @@ def hook(settings, img_size, mean_img_size, num_classes, color, meta, use_jpeg,
 
     settings.img_mean = image_util.load_meta(settings.meta_path,
                                              settings.mean_img_size,
-                                             settings.img_size,
-                                             settings.color)
+                                             settings.img_size, settings.color)
 
     settings.logger.info('Image size: %s', settings.img_size)
     settings.logger.info('Meta path: %s', settings.meta_path)
     settings.input_types = [
         dense_vector(settings.img_raw_size),  # image feature
-        integer_value(settings.num_classes)]  # labels
+        integer_value(settings.num_classes)
+    ]  # labels
 
     settings.logger.info('DataProvider Initialization finished')
 
@@ -79,8 +79,8 @@ def processData(settings, file_list):
                         img = image_util.decode_jpeg(data['images'][i])
                     else:
                         img = data['images'][i]
-                    img_feat = image_util.preprocess_img(img, settings.img_mean,
-                                                         settings.img_size, settings.is_train,
-                                                         settings.color)
+                    img_feat = image_util.preprocess_img(
+                        img, settings.img_mean, settings.img_size,
+                        settings.is_train, settings.color)
                     label = data['labels'][i]
                     yield img_feat.astype('float32'), int(label)

@@ -15,6 +15,7 @@
 from paddle.trainer.PyDataProvider2 import *
 import common_utils  # parse
 
+
 def hook(settings, meta, **kwargs):
     """
     Init hook is invoked before process data. It will set obj.slots and store
@@ -40,6 +41,7 @@ def hook(settings, meta, **kwargs):
     # slot types.
     settings.input_types = headers
     settings.meta = meta
+
 
 @provider(init_hook=hook, cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, filename):

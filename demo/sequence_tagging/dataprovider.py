@@ -17,8 +17,7 @@ import gzip
 import logging
 
 logging.basicConfig(
-    format='[%(levelname)s %(asctime)s %(filename)s:%(lineno)s] %(message)s',
-)
+    format='[%(levelname)s %(asctime)s %(filename)s:%(lineno)s] %(message)s', )
 logger = logging.getLogger('paddle')
 logger.setLevel(logging.INFO)
 
@@ -32,59 +31,58 @@ num_original_columns = 3
 # [[-1,0], [0,0]]  means previous token at column 0 and current token at 
 # column 0 are combined as one feature.
 patterns = [
-    [[-2,0]],
-    [[-1,0]],
-    [[0,0]],
-    [[1,0]],
-    [[2,0]],
-
-    [[-1,0], [0,0]],
-    [[0,0], [1,0]],
-
-    [[-2,1]],
-    [[-1,1]],
-    [[0,1]],
-    [[1,1]],
-    [[2,1]],
-    [[-2,1], [-1,1]],
-    [[-1,1], [0,1]],
-    [[0,1], [1,1]],
-    [[1,1], [2,1]],
-
-    [[-2,1], [-1,1], [0,1]],
-    [[-1,1], [0,1], [1,1]],
-    [[0,1], [1,1], [2,1]],
+    [[-2, 0]],
+    [[-1, 0]],
+    [[0, 0]],
+    [[1, 0]],
+    [[2, 0]],
+    [[-1, 0], [0, 0]],
+    [[0, 0], [1, 0]],
+    [[-2, 1]],
+    [[-1, 1]],
+    [[0, 1]],
+    [[1, 1]],
+    [[2, 1]],
+    [[-2, 1], [-1, 1]],
+    [[-1, 1], [0, 1]],
+    [[0, 1], [1, 1]],
+    [[1, 1], [2, 1]],
+    [[-2, 1], [-1, 1], [0, 1]],
+    [[-1, 1], [0, 1], [1, 1]],
+    [[0, 1], [1, 1], [2, 1]],
 ]
 
 dict_label = {
- 'B-ADJP': 0,
- 'I-ADJP': 1,
- 'B-ADVP': 2,
- 'I-ADVP': 3,
- 'B-CONJP': 4,
- 'I-CONJP': 5,
- 'B-INTJ': 6,
- 'I-INTJ': 7,
- 'B-LST': 8,
- 'I-LST': 9,
- 'B-NP': 10,
- 'I-NP': 11,
- 'B-PP': 12,
- 'I-PP': 13,
- 'B-PRT': 14,
- 'I-PRT': 15,
- 'B-SBAR': 16,
- 'I-SBAR': 17,
- 'B-UCP': 18,
- 'I-UCP': 19,
- 'B-VP': 20,
- 'I-VP': 21,
- 'O': 22
+    'B-ADJP': 0,
+    'I-ADJP': 1,
+    'B-ADVP': 2,
+    'I-ADVP': 3,
+    'B-CONJP': 4,
+    'I-CONJP': 5,
+    'B-INTJ': 6,
+    'I-INTJ': 7,
+    'B-LST': 8,
+    'I-LST': 9,
+    'B-NP': 10,
+    'I-NP': 11,
+    'B-PP': 12,
+    'I-PP': 13,
+    'B-PRT': 14,
+    'I-PRT': 15,
+    'B-SBAR': 16,
+    'I-SBAR': 17,
+    'B-UCP': 18,
+    'I-UCP': 19,
+    'B-VP': 20,
+    'I-VP': 21,
+    'O': 22
 }
+
 
 def make_features(sequence):
     length = len(sequence)
     num_features = len(sequence[0])
+
     def get_features(pos):
         if pos < 0:
             return ['#B%s' % -pos] * num_features
@@ -94,8 +92,9 @@ def make_features(sequence):
 
     for i in xrange(length):
         for pattern in patterns:
-            fname = '/'.join([get_features(i+pos)[f] for pos, f in pattern])
+            fname = '/'.join([get_features(i + pos)[f] for pos, f in pattern])
             sequence[i].append(fname)
+
 
 '''
 Source file format:
@@ -109,6 +108,8 @@ i-th column.
 
 return a list of dict for each column
 '''
+
+
 def create_dictionaries(filename, cutoff, oov_policy):
     def add_to_dict(sequence, dicts):
         num_features = len(dicts)
@@ -140,7 +141,6 @@ def create_dictionaries(filename, cutoff, oov_policy):
         features = line.split(' ')
         sequence.append(features)
 
-
     for i in xrange(num_features):
         dct = dicts[i]
         n = 1 if oov_policy[i] == OOV_POLICY_USE else 0
@@ -151,7 +151,7 @@ def create_dictionaries(filename, cutoff, oov_policy):
             else:
                 dct[k] = n
                 n += 1
-            
+
         if oov_policy[i] == OOV_POLICY_USE:
             # placeholder so that len(dct) will be the number of features
             # including OOV
@@ -187,12 +187,15 @@ def initializer(settings, **xargs):
         logger.info("feature size=%s" % dim)
     settings.input_types = input_types
 
+
 '''
 if oov_policy[i] == OOV_POLICY_USE, features in i-th column which are not
 existed in dicts[i] will be assigned to id 0.
 if oov_policy[i] == OOV_POLICY_ERROR, all features in i-th column MUST exist
 in dicts[i].
 '''
+
+
 @provider(init_hook=initializer, cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, filename):
     input_file = filename
@@ -231,7 +234,7 @@ def process(settings, filename):
                         logger.fatal("Unknown token: %s" % features[i])
                     else:
                         vec.ids.append(dim + 0)
-                    
+
                     dim += len(dicts[i])
                 sample[-1].append(vec)
         return sample
@@ -255,4 +258,3 @@ def process(settings, filename):
     f.close()
 
     logger.info("num_sequences=%s" % num_sequences)
-
