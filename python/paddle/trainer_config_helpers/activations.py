@@ -104,7 +104,7 @@ class IdentityActivation(BaseActivation):
     Just do nothing for output both forward/backward.
     """
 
-    def __init__(self): BaseActivation.__init__(self, 'linear', False)
+    def __init__(self): BaseActivation.__init__(self, '', False)
 
 
 LinearActivation = IdentityActivation
