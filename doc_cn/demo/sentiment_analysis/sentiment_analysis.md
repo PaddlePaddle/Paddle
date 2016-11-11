@@ -1,8 +1,8 @@
 # 情感分析指导教程
 
-情感分析有许多应用场景。 一个基本的应用场景是区分给定文本的褒贬两极性，给定的文本可以是一个文档、句子、或者是一个小的文本片段。 一个简单的例子如：把用户在购物网站、旅游网站，团购网站（亚马逊、天猫、淘宝等）上发表的评论分成好坏两类.
+情感分析有许多应用场景。 一个基本的应用场景是区分给定文本的褒贬两极性，给定的文本可以是一个文档、句子、或者是一个小的文本片段。 一个简单的例子如：把用户在购物网站、旅游网站，团购网站（亚马逊、天猫、淘宝等）上发表的评论分成正面评论和负面评论两类.
 
-情感分析也常用于基于大量评论和个人博客来监控社会媒体. 例如，研究人员分析了几个关于消费者信心和政治观点的调查，结果发现它们与同时期的Twitter消息中的情绪词频率相关 [1]. 另一个例子是通过分析每日Twitter博客的文本内容来预测股票变动 [2].
+情感分析也常用于基于大量评论和个人博客来监控社会媒体。 例如，研究人员分析了几个关于消费者信心和政治观点的调查，结果发现它们与同时期的Twitter消息中的情绪词频率相关 [1]。 另一个例子是通过分析每日Twitter博客的文本内容来预测股票变动 [2]。
 
 另一方面，抓取产品的用户评论并分析他们的情感，有助于理解用户对不同公司，不同产品，甚至不同竞争对手产品的偏好。
 
@@ -24,20 +24,20 @@ cd demo/sentiment/data
 aclImdb  get_imdb.sh  imdb  mosesdecoder-master
 ```
 
-* aclImdb: 从外部网站上下载的原始数椐集.
-* imdb: 仅包含训练和测试数椐集.
-* mosesdecoder-master: Moses 工具.
+* aclImdb: 从外部网站上下载的原始数椐集。
+* imdb: 仅包含训练和测试数椐集。
+* mosesdecoder-master: Moses 工具。
 
-IMDB数据集包含25,000个已标注过的高极性电影评论用于训练，25,000个用于测试。负面的评论的得分小于等于4,正面的评论的得大于等于7，总评分10分。 运行完脚本 `./get_imdb.sh`后, 我们可以看到在目录 `aclImdb`中的数椐集的结构如下：.
+IMDB数据集包含25,000个已标注过的高极性电影评论用于训练，25,000个用于测试。负面的评论的得分小于等于4,正面的评论的得大于等于7，总评分10分。 运行完脚本 `./get_imdb.sh`后, 我们可以看到在目录 `aclImdb`中的数椐集的结构如下：
 
 ```
 imdbEr.txt  imdb.vocab  README  test  train
 ```
-* train: 训练数椐集.
-* test : 测试数椐集.
-* imdb.vocab: 字典文件.
-* imdbEr.txt: 字典imdb.vocab中每个切分单词的预期评级.
-* README: 数椐说明文档.
+* train: 训练数椐集。
+* test : 测试数椐集。
+* imdb.vocab: 字典文件。
+* imdbEr.txt: 字典imdb.vocab中每个切分单词的预期评级。
+* README: 数椐说明文档。
 
 测试集和训练集目录包含下面的文件:
 
@@ -47,13 +47,13 @@ labeledBow.feat  neg  pos  unsup  unsupBow.feat  urls_neg.txt  urls_pos.txt  url
 
 * pos: 正面评价样本，包含12,500个txt文件，每个文件是一个电影评论。
 * neg: 负面评价样本，包含12,500个txt文件，每个文件是一个电影评论。
-* unsup: 未标记的评价样本，包含50,000个txt文件
-* urls_xx.txt: 每个评论的网址.
+* unsup: 未标记的评价样本，包含50,000个txt文件。
+* urls_xx.txt: 每个评论的网址。
 * xxBow.feat: 用于统计词频的Bow模型特征。
 
 ### IMDB 数椐准备
 
-在这个例子中，我们只使用已经标注过的训练集和测试集，且默认在测试集上构建字典，而不使用IMDB数椐集中的imdb.vocab做为字典。训练集已经做了随机打乱排序而测试集没有. Moses 工具中的脚本`tokenizer.perl` 用于切分单单词和标点符号. 执行下面的命令就可以预处理数椐.
+在这个例子中，我们只使用已经标注过的训练集和测试集，且默认在测试集上构建字典，而不使用IMDB数椐集中的imdb.vocab做为字典。训练集已经做了随机打乱排序而测试集没有。 Moses 工具中的脚本`tokenizer.perl` 用于切分单单词和标点符号。执行下面的命令就可以预处理数椐。
 
 ```
 cd demo/sentiment/
@@ -66,22 +66,22 @@ data_dir="./data/imdb"
 python preprocess.py -i data_dir
 ```
 
-* data_dir: 输入数椐所在目录.
-* preprocess.py: 预处理脚本.
+* data_dir: 输入数椐所在目录。
+* preprocess.py: 预处理脚本。
 
 运行成功后目录`demo/sentiment/data/pre-imdb` 结构如下:
 
 ```
 dict.txt  labels.list  test.list  test_part_000  train.list  train_part_000
 ```
-* test\_part\_000 and train\_part\_000: 所有标记的训练集和测试集. 训练集已经随机打乱.
-* train.list and test.list: 训练集和测试集文件列表.
-* dict.txt: 利用训练集生成的字典.
+* test\_part\_000 and train\_part\_000: 所有标记的训练集和测试集. 训练集已经随机打乱。
+* train.list and test.list: 训练集和测试集文件列表。
+* dict.txt: 利用训练集生成的字典。
 * labels.txt: neg  0, pos 1, 含义：标签0表示负面的评论，标签1表示正面的评论。
 
 ### 用户自定义数椐预处理
 
-如果你执行其它的用情感分析来分类文本的任务，可以按如下的结构来准备数椐. 我们提供了脚本来构建字典和预处理数椐. 所以你只用按下面的结构来组织数椐就行了.
+如果你执行其它的用情感分析来分类文本的任务，可以按如下的结构来准备数椐. 我们提供了脚本来构建字典和预处理数椐。所以你只用按下面的结构来组织数椐就行了。
 
 ```
 dataset
@@ -98,16 +98,16 @@ dataset
 |    |    |----text_files
 |    |    ...
 ```
-* dataset: 一级目录.
-* train, test: 二级目录.
-* class1,class2,...: 三级目录.
-* text_files: 文本格式的实例文件.
+* dataset: 一级目录。
+* train, test: 二级目录。
+* class1,class2,...: 三级目录。
+* text_files: 文本格式的实例文件。
 
-所有同目录下的文本实例文件都是同级别的. 每个文本文件包含一个或者多个实例，每一行表示一个实例. 为了充分的随机打乱训练集, 在预处理含有多行数椐的文本文件时参数设置稍有不同, 执行`preprocess.sh`脚本时需要加上`-m True`参数. tokenizer.perl 默认用来切分单记和标点符号，如果你不需要这个操作，在运行`preprocess.sh`时加上`-t False`参数即可.
+所有同目录下的文本实例文件都是同级别的。 每个文本文件包含一个或者多个实例，每一行表示一个实例。 为了充分的随机打乱训练集, 在预处理含有多行数椐的文本文件时参数设置稍有不同, 执行`preprocess.sh`脚本时需要加上`-m True`参数。 tokenizer.perl 默认用来切分单记和标点符号，如果你不需要这个操作，在运行`preprocess.sh`时加上`-t False`参数即可。
 
 ## 训练模型
 
-在这步任务中,我们使用了循环神经网络（RNN）的 LSTM 架构来训练情感分析模型。 引入LSTM模型主要是为了克服消失梯度的问题。 LSTM网络类似于具有隐藏层的标循环现神经网络, 但是隐藏层中的每个普通节点被一个记忆单元替换. 每个记忆单元包含四个主要的元素: 输入门, 具有自循环连接的神经元，忘记门和输出门。 更多的细节可以在文献中找到[4]。 LSTM架构的最大优点是它可以在长时间间隔内记忆信息，而没有短时记忆的损失。在有新的单词来临的每一个时间步骤内，存储在记忆单元区块的历史信息被更新用来迭代的学习单词以合理的序列程现。
+在这步任务中,我们使用了循环神经网络（RNN）的 LSTM 架构来训练情感分析模型。 引入LSTM模型主要是为了克服消失梯度的问题。 LSTM网络类似于具有隐藏层的标循环现神经网络, 但是隐藏层中的每个普通节点被一个记忆单元替换。 每个记忆单元包含四个主要的元素: 输入门, 具有自循环连接的神经元，忘记门和输出门。 更多的细节可以在文献中找到[4]。 LSTM架构的最大优点是它可以在长时间间隔内记忆信息，而没有短时记忆的损失。在有新的单词来临的每一个时间步骤内，存储在记忆单元区块的历史信息被更新用来迭代的学习单词以合理的序列程现。
 
 <center>![LSTM](./lstm.png)</center>
 <center>图表 1. LSTM [3]</center>
@@ -124,14 +124,14 @@ dataset
 <center>图 2. Bidirectional-LSTM </center>
 
 #### Stacked-LSTM
-图3是三层LSTM结构。图的底部是字嵌入(word embedding 对文档处理后形成的单词向量). 接下来，连接三个LSTM隐藏层，并且第二LSTM是被反转的。然后提取隐藏和LSTM层的所有时间步长的最大隐藏向量作为整个序列的表示。 最后，使用具有softmax激活的全连接前馈层来执行分类任务。 更多内容可查看参考文献 [5].
+图3是三层LSTM结构。图的底部是字嵌入(word embedding 对文档处理后形成的单词向量)。 接下来，连接三个LSTM隐藏层，并且第二LSTM是被反转的。然后提取隐藏和LSTM层的所有时间步长的最大隐藏向量作为整个序列的表示。 最后，使用具有softmax激活的全连接前馈层来执行分类任务。 更多内容可查看参考文献 [5]。
 
 <center>![StackedLSTM](./stacked_lstm.jpg)</center>
 <center>图 3. Stacked-LSTM for sentiment analysis </center>
 
 **Config**
 
-进入`demo/sentiment` 目录 , `trainer_config.py` 是一个配置文件的例子, 其中包含算法和网络配置。第一行从`sentiment_net.py`中导出预定义的网络.
+进入`demo/sentiment` 目录 , `trainer_config.py` 是一个配置文件的例子, 其中包含算法和网络配置。第一行从`sentiment_net.py`中导出预定义的网络。
 
 trainer_config.py:
 
@@ -166,9 +166,9 @@ stacked_lstm_net(dict_dim, class_dim=class_dim,
    * 定义训练数椐和测试数椐提供者, 这里使用了PaddlePaddle的Python接口(PyDataProviderWrapper)来加载数椐。想了解更多细节可以参考PyDataProvider部分的文档
 
 * **算法配置**:
-   * 使用随机梯度下降（sgd）算法.
-   * 使用 adam 优化.
-   * 设置批量大小为128.
+   * 使用随机梯度下降（sgd）算法。
+   * 使用 adam 优化。
+   * 设置批量大小为128。
    * 设置平均sgd窗口。
    * 设置全局学习率。
 * **网络配置**:
@@ -179,7 +179,7 @@ stacked_lstm_net(dict_dim, class_dim=class_dim,
 
 **训练**
 
-首先安装PaddlePaddle. 然后使用下面的脚本 `train.sh` 来开启本地的训练。
+首先安装PaddlePaddle。 然后使用下面的脚本 `train.sh` 来开启本地的训练。
 
 ```
 cd demo/sentiment/
@@ -222,7 +222,7 @@ Batch=20 samples=2560 AvgCost=0.681644 CurrentCost=0.681644 Eval: classification
 Pass=0 Batch=196 samples=25000 AvgCost=0.418964 Eval: classification_error_evaluator=0.1922
 Test samples=24999 cost=0.39297 Eval: classification_error_evaluator=0.149406
 ```
-- Batch=xx: 表示传递xx批次.
+- Batch=xx: 表示传递xx批次。
 - samples=xx: 表示传递xx个样本。
 - AvgCost=xx: 从第0批到当前批的平均花费时间。
 - CurrentCost=xx: 最新的log_period批处理的当前时间花费。
