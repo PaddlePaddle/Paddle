@@ -1827,7 +1827,6 @@ def img_pool_layer(input, pool_size, name=None,
 @layer_support()
 def spp_layer(input, name=None, num_channels=None, pool_type=None,
               pyramid_height=None, img_width=None, layer_attr=None):
-    pass
     """
     Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition.
     The details please refer to
@@ -1864,7 +1863,7 @@ def spp_layer(input, name=None, num_channels=None, pool_type=None,
     if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)):
         type_name += '-projection'
 
-    Layer(
+    l = Layer(
         name=name,
         type=LayerType.SPP_LAYER,
         inputs=Input(input.name,
@@ -1875,8 +1874,8 @@ def spp_layer(input, name=None, num_channels=None, pool_type=None,
         ),
         **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
-    return LayerOutput(name, LayerType.SPP_LAYER, parents=[input], 
-                       num_filters=num_channels)
+    return LayerOutput(name, layer_type=LayerType.SPP_LAYER, parents=[input],
+                       num_filters=num_channels, size=l.config.size)
 
 
 def __img_norm_layer__(name, input, size, norm_type, scale, power,
