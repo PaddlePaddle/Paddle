@@ -139,7 +139,8 @@ public:
 
   static Matrix* createDenseFromNumpy(float* data, int dim1, int dim2,
                                       bool copy = true,
-                                      bool useGpu = isUsingGpu());
+                                      bool useGpu = isUsingGpu())
+                                      throw (UnsupportError);
 
   /**
    *  Create Cpu Dense Matrix from numpy matrix, dtype=float32
@@ -248,7 +249,8 @@ public:
                         bool useGpu = isUsingGpu());
 
   static Vector* createVectorFromNumpy(float* data, int dim, bool copy = true,
-                                       bool useGpu = isUsingGpu());
+                                       bool useGpu = isUsingGpu())
+                                       throw (UnsupportError);
   /**
    * Create Cpu Vector from numpy array, which dtype=float32
    *
@@ -311,7 +313,8 @@ public:
                          bool useGpu = isUsingGpu());
 
   static IVector* createVectorFromNumpy(int* data, int dim, bool copy = true,
-                                        bool useGpu = isUsingGpu());
+                                        bool useGpu = isUsingGpu())
+                                        throw (UnsupportError);
 
   /**
    * Create Cpu IVector from numpy array, which dtype=int32

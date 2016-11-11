@@ -6,17 +6,10 @@
 %}
 
 %include "exception.i"
-%exception{
-    try{
-        $action
-    }
-    catch(UnsupportError &ex ){
-        SWIG_exception(SWIG_RuntimeError, ex.what());
-    }
-    catch( ... ){
-        SWIG_fail;
-    }
-}
+%typemap(throws) UnsupportError %{
+  SWIG_exception(SWIG_RuntimeError, $1.what());
+  SWIG_fail;
+%}
 
 %include "std_vector.i"
 %include "std_pair.i"
