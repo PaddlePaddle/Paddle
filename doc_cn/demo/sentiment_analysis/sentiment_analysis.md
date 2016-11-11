@@ -120,13 +120,13 @@ dataset
 
 图2是双向LSTM网络，由全连接层和softmax层组成。
 
-<center>![BiLSTM](../../../doc/demo/sentiment_analysis/bi_lstm.jpg)</center>
+<center>![BiLSTM](./bi_lstm.jpg)</center>
 <center>图 2. Bidirectional-LSTM </center>
 
 #### Stacked-LSTM
 图3是三层LSTM结构。图的底部是字嵌入(word embedding 对文档处理后形成的单词向量)。 接下来，连接三个LSTM隐藏层，并且第二LSTM是被反转的。然后提取隐藏和LSTM层的所有时间步长的最大隐藏向量作为整个序列的表示。 最后，使用具有softmax激活的全连接前馈层来执行分类任务。 更多内容可查看参考文献 [5]。
 
-<center>![StackedLSTM](../../../doc/demo/sentiment_analysis/stacked_lstm.jpg)</center>
+<center>![StackedLSTM](./stacked_lstm.jpg)</center>
 <center>图 3. Stacked-LSTM for sentiment analysis </center>
 
 **配置**
