@@ -43,6 +43,8 @@ IntWithFloatArray::IntWithFloatArray(const float* v, const int* i, size_t l,
 
 bool isUsingGpu() {return FLAGS_use_gpu;}
 
+void setUseGpu(bool useGpu) {FLAGS_use_gpu = useGpu;}
+
 bool isGpuVersion() {
 #ifdef PADDLE_ONLY_CPU
   return false;

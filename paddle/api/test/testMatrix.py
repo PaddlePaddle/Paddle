@@ -111,5 +111,9 @@ class TestMatrix(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    swig_paddle.initPaddle("--use_gpu=1" if swig_paddle.isGpuVersion() else "--use_gpu=0")
-    unittest.main()
+    swig_paddle.initPaddle("--use_gpu=0")
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestMatrix)
+    unittest.TextTestRunner().run(suite)
+    if swig_paddle.isGpuVersion():
+        swig_paddle.setUseGpu(True)
+        unittest.main()

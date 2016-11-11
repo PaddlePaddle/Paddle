@@ -4,6 +4,20 @@
 #define SWIG_FILE_WITH_INIT
 #include "api/PaddleAPI.h"   
 %}
+
+%include "exception.i"
+%exception{
+    try{
+        $action
+    }
+    catch(UnsupportError &ex ){
+        SWIG_exception(SWIG_RuntimeError, ex.what());
+    }
+    catch( ... ){
+        SWIG_fail;
+    }
+}
+
 %include "std_vector.i"
 %include "std_pair.i"
 #ifdef SWIGPYTHON

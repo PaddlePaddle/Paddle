@@ -40,13 +40,11 @@ IVector* IVector::create(const std::vector<int>& data, bool useGpu) {
 }
 
 IVector* IVector::createVectorFromNumpy(int* data, int dim, bool copy,
-                                        bool useGpu)
-                                        throw (UnsupportError) {
+                                        bool useGpu) {
   if (useGpu) {
     /// if use gpu only copy=true is supported
     if (!copy) {
-      UnsupportError e;
-      throw e;
+      throw UnsupportError("Gpu mode only supports copy=True");
     }
     return IVector::createGpuVectorFromNumpy(data, dim);
   } else {
@@ -204,13 +202,11 @@ Vector* Vector::createByPaddleVectorPtr(void* ptr) {
 }
 
 Vector* Vector::createVectorFromNumpy(float* data, int dim, bool copy,
-                                      bool useGpu)
-                                      throw (UnsupportError) {
+                                      bool useGpu) {
   if (useGpu) {
     /// if use gpu only copy=True is supported
     if (!copy) {
-      UnsupportError e;
-      throw e;
+      throw UnsupportError("Gpu mode only supports copy=True");
     }
     return Vector::createGpuVectorFromNumpy(data, dim);
   } else {

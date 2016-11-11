@@ -18,6 +18,7 @@ limitations under the License. */
 #include <stddef.h>
 #include <stdint.h>
 #include <string>
+#include <stdexcept>
 #include <vector>
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/TypeDefs.h"
@@ -45,6 +46,9 @@ void initPaddle(int argc, char** argv);
 /// Return FLAGS_use_gpu
 bool isUsingGpu();
 
+/// Set the Flags_use_gpu to the given parameter
+void setUseGpu(bool useGpu);
+
 /// Return true if this py_paddle is compiled in GPU Version
 bool isGpuVersion();
 
@@ -55,7 +59,11 @@ class IOError {};
 class RangeError {};
 
 /// Not support Error, such as access GPU memory directly, etc.
-class UnsupportError {};
+class UnsupportError : public std::runtime_error {
+public:
+  UnsupportError() : std::runtime_error(" ") {};
+  UnsupportError(const std::string& message) : std::runtime_error(message) {};
+};
 
 /// This type will map to python's list of float.
 struct FloatArray {
@@ -131,8 +139,7 @@ public:
 
   static Matrix* createDenseFromNumpy(float* data, int dim1, int dim2,
                                       bool copy = true,
-                                      bool useGpu = isUsingGpu())
-                                      throw (UnsupportError) ;
+                                      bool useGpu = isUsingGpu());
 
   /**
    *  Create Cpu Dense Matrix from numpy matrix, dtype=float32
@@ -241,8 +248,7 @@ public:
                         bool useGpu = isUsingGpu());
 
   static Vector* createVectorFromNumpy(float* data, int dim, bool copy = true,
-                                       bool useGpu = isUsingGpu())
-                                       throw (UnsupportError) ;
+                                       bool useGpu = isUsingGpu());
   /**
    * Create Cpu Vector from numpy array, which dtype=float32
    *
@@ -305,8 +311,7 @@ public:
                          bool useGpu = isUsingGpu());
 
   static IVector* createVectorFromNumpy(int* data, int dim, bool copy = true,
-                                        bool useGpu = isUsingGpu())
-                                        throw (UnsupportError) ;
+                                        bool useGpu = isUsingGpu());
 
   /**
    * Create Cpu IVector from numpy array, which dtype=int32
