@@ -23,9 +23,9 @@ __all__ = ["TanhActivation", "SigmoidActivation",
 
 class BaseActivation(object):
     """
-    A mark for activation class. 
+    A mark for activation class.
     Each activation inherit BaseActivation, which has two parameters.
-     
+
     :param name: activation name in paddle config.
     :type name: basestring
     :param support_hppl: True if supported by hppl. HPPL is a library used by paddle
@@ -194,7 +194,7 @@ class SquareActivation(BaseActivation):
 class ExpActivation(BaseActivation):
     """
     Exponential Activation.
-    
+
     .. math::
        f(z) = e^z.
     """
