@@ -63,7 +63,8 @@ class SparseBinaryScanner(IScanner):
 
     def scan(self, dat):
         self.extend_cols(dat)
-        self.__rows__.append(len(dat))
+        self.__rows__.append(len(self.__cols__))
+        self.__height__ += 1
 
     def extend_cols(self, dat):
         self.__cols__.extend(dat)

@@ -195,6 +195,8 @@ public:
 
   virtual void resetOne() { LOG(FATAL) << "Not implemented"; }
 
+  void setDiag(real value);
+
   virtual void copyFrom(const Matrix& src) { LOG(FATAL) << "Not implemented"; }
 
   virtual void trimFrom(const CpuSparseMatrix& src) {
@@ -328,6 +330,21 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual MatrixPtr getInverse() {
+    LOG(FATAL) << "Not implemented";
+    return nullptr;
+  }
+
+  /**
+   * @brief  inverse.
+   *
+   * if allocate matInv's memory outside, then set memAlloc as false;
+   * else set as true.
+   */
+  virtual void inverse(MatrixPtr matInv, bool memAlloc) {
+    LOG(FATAL) << "Not implemented";
+  }
+
 public:
   /// Only set all variables to 0 or NULL but not free them.
   virtual void clear() {
@@ -343,9 +360,33 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void addSharedBias(Matrix& b, real scale) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void addBias(Matrix& b, real scale, bool sharedBias) {
+    if (!sharedBias) {
+      addBias(b, scale);
+    } else {
+      addSharedBias(b, scale);
+    }
+  }
+
   /// add each sample from a to this.
   virtual void collectBias(Matrix& a, real scale) {
     LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void collectSharedBias(Matrix& a, real scale) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void collectBias(Matrix& a, real scale, bool sharedBias) {
+    if (!sharedBias) {
+      collectBias(a, scale);
+    } else {
+      collectSharedBias(a, scale);
+    }
   }
 
   virtual void sequenceAvgForward(Matrix& a, const IVector& startsPos,
@@ -493,7 +534,31 @@ public:
     LOG(FATAL) << "Not implemeted";
   }
 
+  /**
+   * set the max of each column of this to mat
+   */
   virtual void colMax(Matrix& max) { LOG(FATAL) << "not implemented"; }
+
+  /**
+   * @brief Get the top k elements of each column of this matrix.
+   *
+   * The row ids and values of these elements are stored in
+   * maxIds and max respectively. where k is the size of maxIds.
+   * And note that the top k elements are not sorted.
+   */
+  virtual void colMax(IVector& maxIds, Matrix& maxVal) {
+    LOG(FATAL) << "not implemented";
+  }
+
+  virtual void maxoutForward(Matrix& a, IVector& id, size_t channels,
+                             size_t groups) {
+    LOG(FATAL) << "not implemented";
+  }
+
+  virtual void maxoutBackward(Matrix& a, IVector& id, size_t channels,
+                              size_t groups) {
+    LOG(FATAL) << "not implemented";
+  }
 
   virtual void rowMaxId(IVector& maxIds) { LOG(FATAL) << "Not implemented"; }
 
@@ -501,8 +566,8 @@ public:
    * @brief Get the top k elements of each row of this matrix.
    *
    * The column ids and values of these elements are stored in
-   * maxIds and max respectively. Note that the top k
-   * elements are not sorted.
+   * maxIds and max respectively. where k is the size of maxIds.
+   * And note that the top k elements are not sorted.
    */
   virtual void rowMax(IVector& maxIds, Matrix& max) {
     LOG(FATAL) << "Not implemented";
@@ -930,6 +995,26 @@ public:
   virtual void paramReluBackwardDiff(Matrix& oGrad, Matrix& data, Matrix& W) {
     LOG(FATAL) << "Not implemented";
   }
+  virtual void bilinearForward(const Matrix& in,
+                               const size_t inImgH,
+                               const size_t inImgW,
+                               const size_t outImgH,
+                               const size_t outImgW,
+                               const size_t numChannels,
+                               const real ratioH,
+                               const real ratioW) {
+    LOG(FATAL) << "Not implemented";
+  }
+  virtual void bilinearBackward(const Matrix& out,
+                                const size_t outImgH,
+                                const size_t outImgW,
+                                const size_t inImgH,
+                                const size_t inImgW,
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {
+    LOG(FATAL) << "Not implemented";
+  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Matrix& mat) {
@@ -954,6 +1039,7 @@ public:
 
   void zeroMem();
   void resetOne();
+  void setDiag(real value);
 
   void resize(size_t newHeight, size_t newWidth);
   void resize(size_t newHeight, size_t newWidth,
@@ -995,8 +1081,12 @@ public:
   MatrixPtr getTranspose();
   void transpose(MatrixPtr matTrans, bool memAlloc);
 
+  MatrixPtr getInverse();
+  void inverse(MatrixPtr matInv, bool memAlloc);
+
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
+  void addSharedBias(Matrix& b, real scale);
 
   /**
    * @code
@@ -1004,6 +1094,7 @@ public:
    * @endcode
    */
   void collectBias(Matrix& a, real scale);
+  void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
 
@@ -1085,6 +1176,9 @@ public:
   void rowMax(Matrix& max);
   void rowMax(IVector& maxIds, Matrix& max);
   void colMax(Matrix& max);
+  void colMax(IVector& maxIds, Matrix& max);
+  void maxoutForward(Matrix& a, IVector& id, size_t channels, size_t groups);
+  void maxoutBackward(Matrix& a, IVector& id, size_t channels, size_t groups);
 
   void oneHotCrossEntropy(Matrix& output, IVector& label);
   void oneHotCrossEntropyBp(Matrix& outputV, IVector& label);
@@ -1191,6 +1285,24 @@ public:
                                        int contextLength,
                                        int contextStart, int totalPad,
                                        size_t beginPad);
+
+  void bilinearForward(const Matrix& in,
+                       const size_t inImgH,
+                       const size_t inImgW,
+                       const size_t outImgH,
+                       const size_t outImgW,
+                       const size_t numChannels,
+                       const real ratioH,
+                       const real ratioW);
+
+  void bilinearBackward(const Matrix& out,
+                        const size_t outImgH,
+                        const size_t outImgW,
+                        const size_t inImgH,
+                        const size_t inImgW,
+                        const size_t numChannels,
+                        const real ratioH,
+                        const real ratioW);
 };
 
 class CpuMatrix : public Matrix {
@@ -1210,6 +1322,8 @@ public:
 
   void zeroMem();
   void resetOne();
+  void setDiag(real value);
+
   void resize(size_t newHeight, size_t newWidth);
   void resize(size_t newHeight, size_t newWidth,
               size_t newNnz, /* used to allocate space */
@@ -1228,6 +1342,9 @@ public:
 
   MatrixPtr getTranspose();
   void transpose(MatrixPtr matTrans, bool memAlloc);
+
+  MatrixPtr getInverse();
+  void inverse(MatrixPtr matInv, bool memAlloc);
 
   void copyFrom(const Matrix& src);
 
@@ -1314,9 +1431,11 @@ public:
 public:
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
+  void addSharedBias(Matrix& b, real scale);
 
   /// add each sample of a to this.
   void collectBias(Matrix& a, real scale);
+  void collectSharedBias(Matrix& a, real scale);
 
   void sequenceAvgForward(Matrix& a, const IVector& startsPos, int mode);
 
@@ -1395,6 +1514,9 @@ public:
   void rowMax(Matrix& max);
   void rowMax(IVector& maxIds, Matrix& maxVal);
   void colMax(Matrix& max);
+  void colMax(IVector& maxIds, Matrix& maxVal);
+  void maxoutForward(Matrix& a, IVector& id, size_t channels, size_t groups);
+  void maxoutBackward(Matrix& a, IVector& id, size_t channels, size_t groups);
   void rowNormalizeL1(Matrix& out);
 
   void oneHotCrossEntropy(Matrix& output, IVector& label);
@@ -1469,6 +1591,24 @@ public:
   void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
   void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label);
   void classificationErrorMulti(Matrix& output, Matrix& label, real threshold);
+
+  void bilinearForward(const Matrix& in,
+                       const size_t inImgH,
+                       const size_t inImgW,
+                       const size_t outImgH,
+                       const size_t outImgW,
+                       const size_t numChannels,
+                       const real ratioH,
+                       const real ratioW);
+
+  void bilinearBackward(const Matrix& out,
+                        const size_t outImgH,
+                        const size_t outImgW,
+                        const size_t inImgH,
+                        const size_t inImgW,
+                        const size_t numChannels,
+                        const real ratioH,
+                        const real ratioW);
 };
 
 class SharedCpuMatrix : public CpuMatrix {

@@ -25,7 +25,7 @@ paddle train \
   --config=$cfg \
   --save_dir=./output \
   --trainer_count=4 \
-  --log_period=20 \
+  --log_period=100 \
   --num_passes=15 \
   --use_gpu=false \
   --show_parameter_stats_period=100 \

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "MathUtils.h"
 #include <algorithm>
 #include "paddle/utils/Logging.h"
@@ -24,11 +23,7 @@ namespace paddle {
  * major is rows and minor is cols, according to
  * major value to initialize minor value"
  */
-void sparseRand(int* major,
-                int* minor,
-                int nnz,
-                int majorLen,
-                int minorMax,
+void sparseRand(int* major, int* minor, int nnz, int majorLen, int minorMax,
                 bool useGpu) {
   CHECK(size_t(nnz) > size_t(1));
   int* cpuMajor;
@@ -72,5 +67,30 @@ void sparseRand(int* major,
   }
 }
 
+int outputSize(int imageSize, int filterSize, int padding, int stride,
+               bool caffeMode) {
+  int outputSize;
+  if (!caffeMode) {
+    outputSize =
+        (imageSize - filterSize + 2 * padding + stride - 1) / stride + 1;
+  } else {
+    outputSize = (imageSize - filterSize + 2 * padding) / stride + 1;
+  }
+  CHECK_GE(outputSize, 1);
+  return outputSize;
+}
+
+int imageSize(int outputSize, int filterSize, int padding, int stride,
+              bool caffeMode) {
+  int imageSize;
+  if (!caffeMode) {
+   imageSize =
+       (outputSize - 1) * stride + filterSize - 2 * padding - stride + 1;
+  } else {
+   imageSize = (outputSize - 1) * stride + filterSize - 2 * padding;
+  }
+  CHECK_GE(imageSize, 1);
+  return imageSize;
+}
 
 }  // namespace paddle

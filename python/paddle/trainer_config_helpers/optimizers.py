@@ -362,6 +362,13 @@ def __extends__(dict1, dict2):
                     default_factory=lambda _: BaseRegularization())
 def settings(batch_size,
              learning_rate=1e-3,
+             learning_rate_decay_a=0.,
+             learning_rate_decay_b=0.,
+             learning_rate_schedule='poly',
+             learning_rate_args='',
+             average_window=0,
+             do_average_in_cpu=False,
+             max_average_window=None,
              learning_method=None,
              regularization=None,
              is_async=False,
@@ -408,10 +415,14 @@ def settings(batch_size,
     else:
         algorithm = 'owlqn'
 
+    args=['batch_size', 'learning_rate', 'learning_rate_decay_a',
+          'learning_rate_decay_b', 'learning_rate_schedule',
+          'learning_rate_args', 'average_window', 'do_average_in_cpu',
+          'max_average_window']
     kwargs = dict()
-    kwargs['batch_size'] = batch_size
-    kwargs['learning_rate'] = learning_rate
     kwargs['algorithm'] = algorithm
+    for arg in args:
+        kwargs[arg] = locals()[arg]
 
     kwargs = __extends__(kwargs, learning_method.to_setting_kwargs())
     learning_method.extra_settings()

@@ -131,9 +131,10 @@ void DoubleBuffer::asyncLoadBatch() {
     taskReadySem_.wait();
     if (stopping_) break;
 
-    while (batchSize_ == 0) {
+    while (batchSize_ == 0 && !stopping_) {
       usleep(5);
     }
+    if (stopping_) break;
 
     do {
       DataBatch newBatch;

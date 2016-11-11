@@ -67,6 +67,10 @@ endmacro()
 #
 # It will handle WITH_PYTHON/WITH_GLOG etc.
 function(link_paddle_exe TARGET_NAME)
+    if(WITH_RDMA)
+        generate_rdma_links()
+    endif()
+
     if(WITH_METRIC)
         if(WITH_GPU)
             set(METRIC_LIBS paddle_metric_learning paddle_dserver_lib metric metric_cpu)
@@ -109,6 +113,12 @@ function(link_paddle_exe TARGET_NAME)
         ${ZLIB_LIBRARIES}
         ${INTERAL_LIBS}
         ${CMAKE_DL_LIBS})
+
+    if(WITH_RDMA)
+        target_link_libraries(${TARGET_NAME}
+            ${RDMA_LD_FLAGS}
+            ${RDMA_LIBS})
+    endif()
     
     if(WITH_PYTHON)
         target_link_libraries(${TARGET_NAME}
@@ -177,14 +187,6 @@ endmacro()
 macro(add_simple_unittest TARGET_NAME)
     add_unittest(${TARGET_NAME} ${TARGET_NAME}.cpp)
 endmacro()
-
-macro(add_paddle_culib TARGET_NAME)
-    set(NVCC_FLAG ${CUDA_NVCC_FLAGS})
-    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--use_fast_math)
-    cuda_add_library(${TARGET_NAME} STATIC ${ARGN})
-    set(CUDA_NVCC_FLAGS ${NVCC_FLAG})
-endmacro()
-
 
 # Creates C resources file from files in given resource file
 function(create_resources res_file output)
