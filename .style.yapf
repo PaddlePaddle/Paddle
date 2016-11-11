@@ -1,5 +1,3 @@
 [style]
-based_on_style = google
-indent_width = 4
-spaces_before_comment = 4
-split_before_logical_operator = true
+based_on_style = pep8
+column_limit = 80
