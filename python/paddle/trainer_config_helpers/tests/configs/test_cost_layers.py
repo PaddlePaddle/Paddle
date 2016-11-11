@@ -25,4 +25,4 @@ outputs(ctc_layer(input=seq_in, label=labels),
         huber_cost(input=data_layer(name='huber_probs', size=1),
                    label=data_layer(name='huber_label', size=1)),
         multi_binary_label_cross_entropy(input=probs, label=xe_label),
-        sum_cost(hidden))
+        sum_cost(input=hidden))
