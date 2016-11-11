@@ -48,5 +48,24 @@ inline __device__ double paddleAtomicAdd(double* address, double val) {
 }
 }  // namespace paddle
 
+/**
+ * @brief  sum reduction
+ *
+ * @param[in,out]  smem       input data, better to use __shared__ memory.
+ * @param[in]      tid        thread index.
+ * @param[in]      threads    the total thread number used to reduce,
+ *                            such as, blockDim.x.
+ *
+ * @return smem[0]: the sum of each elements in smem.
+ */
+__device__ __forceinline__
+void simpleReduce(real* smem, int tid, int threads) {
+  for (unsigned int s = threads / 2; s > 0; s >>= 1) {
+    if (tid < s) {
+      smem[tid] += smem[tid + s];
+    }
+    __syncthreads();
+  }
+}
 
 #endif /* HL_DEVICE_FUNCTIONS_CUH_ */

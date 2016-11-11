@@ -12,15 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "ConvBaseLayer.h"
+#include "paddle/math/MathUtils.h"
 namespace paddle {
 
 bool ConvBaseLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
+  isDeconv_ = (config_.type() == "exconv" || config_.type() == "cudnn_conv")
+              ? false : true;
 
   /* Initialize the convolutional layer parameter */
   numFilters_ = config_.num_filters();
@@ -35,20 +37,19 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
     filterSizeY_.push_back(conf.filter_size_y());
     filterPixels_.push_back(filterSize_.back() * filterSizeY_.back());
     channels_.push_back(conf.channels());
-    imgSize_.push_back(conf.img_size());
-    imgPixels_.push_back(imgSize_.back() * imgSize_.back());
+    imgSizeH_.push_back(conf.img_size());
+    imgSizeW_.push_back(conf.img_size());
     groups_.push_back(conf.groups());
     filterChannels_.push_back(conf.filter_channels());
-    outputX_.push_back(conf.output_x());
-    outputs_.push_back(outputX_.back() * outputX_.back());
+    outputH_.push_back(conf.output_x());
+    outputW_.push_back(conf.output_x());
   }
 
-  /* initialize the weightList */
   CHECK(inputLayers_.size() == parameters_.size());
   for (size_t i = 0; i < inputLayers_.size(); i++) {
     size_t height, width;
     height = filterPixels_[i] * filterChannels_[i];
-    width = numFilters_;
+    width = (!isDeconv_) ? numFilters_ : channels_[i];
 
     // create a new weight
     CHECK_EQ(parameters_[i]->getSize(), width * height);
@@ -57,7 +58,7 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
   }
 
   /* initialize the biases_ */
-  if (biasParameter_.get() != NULL) {
+  if (biasParameter_.get()) {
     if (sharedBiases_) {
       CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
       biases_ =
@@ -72,6 +73,61 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
   caffeMode_ = true;
 
   return true;
+}
+
+size_t ConvBaseLayer::calOutputSize() {
+  auto clearAndReserve = [this](IntV* vec) {
+    vec->clear();
+    vec->reserve(this->inputLayers_.size());
+  };
+  clearAndReserve(&imgSizeH_);
+  clearAndReserve(&imgSizeW_);
+  clearAndReserve(&outputH_);
+  clearAndReserve(&outputW_);
+  size_t layerSize = 0;
+
+  auto setLayerSize = [&](IntV& inH, IntV& inW, IntV& outH, IntV& outW) {
+    for (size_t i = 0; i < inputLayers_.size(); i++) {
+       inH.push_back(inputLayers_[i]->getOutput().getFrameHeight());
+       inW.push_back(inputLayers_[i]->getOutput().getFrameWidth());
+       if (isDeconv_) {
+         if (inH[i] == 0)
+           inH[i] = config_.inputs(i).conv_conf().output_x();
+         if (inW[i] == 0)
+           inW[i] = config_.inputs(i).conv_conf().output_x();
+         outH.push_back(
+             imageSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i],
+                       caffeMode_));
+         outW.push_back(
+             imageSize(inW[i], filterSize_[i], padding_[i], stride_[i],
+                       caffeMode_));
+       } else {
+         if (inH[i] == 0)
+           inH[i] = config_.inputs(i).conv_conf().img_size();
+         if (inW[i] == 0)
+           inW[i] = config_.inputs(i).conv_conf().img_size();
+         outH.push_back(
+             outputSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i],
+                        caffeMode_));
+         outW.push_back(
+             outputSize(inW[i], filterSize_[i], padding_[i], stride_[i],
+                        caffeMode_));
+       }
+       CHECK_EQ(outH[i], outH[0]);
+       CHECK_EQ(outW[i], outW[0]);
+    }
+    getOutput().setFrameHeight(outH[0]);
+    getOutput().setFrameWidth(outW[0]);
+    layerSize = outH[0] * outW[0] * size_t(numFilters_);
+  };
+
+  if (isDeconv_) {
+    setLayerSize(outputH_, outputW_, imgSizeH_, imgSizeW_);
+  } else {
+    setLayerSize(imgSizeH_, imgSizeW_, outputH_, outputW_);
+  }
+
+  return layerSize;
 }
 
 }  // namespace paddle
