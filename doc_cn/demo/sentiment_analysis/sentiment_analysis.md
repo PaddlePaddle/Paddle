@@ -109,7 +109,7 @@ dataset
 
 在这步任务中,我们使用了循环神经网络（RNN）的 LSTM 架构来训练情感分析模型。 引入LSTM模型主要是为了克服消失梯度的问题。 LSTM网络类似于具有隐藏层的标循环现神经网络, 但是隐藏层中的每个普通节点被一个记忆单元替换。 每个记忆单元包含四个主要的元素: 输入门, 具有自循环连接的神经元，忘记门和输出门。 更多的细节可以在文献中找到[4]。 LSTM架构的最大优点是它可以在长时间间隔内记忆信息，而没有短时记忆的损失。在有新的单词来临的每一个时间步骤内，存储在记忆单元区块的历史信息被更新用来迭代的学习单词以合理的序列程现。
 
-<center>![LSTM](./lstm.png)</center>
+<center>![LSTM](../../../doc/demo/sentiment_analysis/lstm.png)</center>
 <center>图表 1. LSTM [3]</center>
 
 情感分析是自然语言理解中最典型的问题之一。 它的目的是预测在一个序列中表达的情感态度。 通常, ，仅仅是一些关键词，如形容词和副词，在预测序列或段落的情感中起主要作用。然而有些评论上下文非常长，例如 IMDB的数椐集。 我们只所以使用LSTM来执行这个任务是因为其改进的设计并且具有门机制。 首先，它能够从字级到具有可变上下文长度的上下文级别（其通过门值来适配）来总结表示。 第二，它可以在句子级别利用可扩展的上下文, 而大多数方法只是利用n-gram级别的知识。第三，它直接学习段落表示，而不是组合上下文级别信息。
@@ -129,7 +129,7 @@ dataset
 <center>![StackedLSTM](./stacked_lstm.jpg)</center>
 <center>图 3. Stacked-LSTM for sentiment analysis </center>
 
-**Config**
+**配置**
 
 进入`demo/sentiment` 目录 , `trainer_config.py` 是一个配置文件的例子, 其中包含算法和网络配置。第一行从`sentiment_net.py`中导出预定义的网络。
 
@@ -314,7 +314,7 @@ python predict.py \
 Loading parameters from model_output/pass-00002/
 ./data/aclImdb/test/pos/10014_7.txt: predicting label is pos
 ```
-我们真诚地感谢您的关注，并欢迎您来参于贡献。
+我们真诚地感谢您的关注，并欢迎您来参与贡献。
 
 ## 参考文档
 [1] Brendan O'Connor, Ramnath Balasubramanyan, Bryan R. Routledge, and Noah A. Smith. 2010. [From Tweets to Polls: Linking Text Sentiment to Public Opinion Time Series](http://homes.cs.washington.edu/~nasmith/papers/oconnor+balasubramanyan+routledge+smith.icwsm10.pdf). In ICWSM-2010. <br>
