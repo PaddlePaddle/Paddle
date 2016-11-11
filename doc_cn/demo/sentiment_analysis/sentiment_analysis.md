@@ -314,7 +314,7 @@ python predict.py \
 Loading parameters from model_output/pass-00002/
 ./data/aclImdb/test/pos/10014_7.txt: predicting label is pos
 ```
-我们真诚地感谢您的关注，并欢迎您来贡献。
+我们真诚地感谢您的关注，并欢迎您来参于贡献。
 
 ## 参考文档
 [1] Brendan O'Connor, Ramnath Balasubramanyan, Bryan R. Routledge, and Noah A. Smith. 2010. [From Tweets to Polls: Linking Text Sentiment to Public Opinion Time Series](http://homes.cs.washington.edu/~nasmith/papers/oconnor+balasubramanyan+routledge+smith.icwsm10.pdf). In ICWSM-2010. <br>
