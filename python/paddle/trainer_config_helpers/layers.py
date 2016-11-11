@@ -4048,7 +4048,8 @@ def cross_entropy(input, label, name=None, coeff=1.0, layer_attr=None):
 
     .. code-block:: python
 
-       cost = cross_entropy(input, label)
+       cost = cross_entropy(input=input_layer, 
+                            label=label_layer)
 
     :param input: The first input layer.
     :type input: LayerOutput.
@@ -4084,7 +4085,8 @@ def cross_entropy_with_selfnorm(input, label, name=None, coeff=1.0,
 
     .. code-block:: python
 
-       cost = cross_entropy_with_selfnorm(input, label)
+       cost = cross_entropy_with_selfnorm(input=input_layer, 
+                                          label=label_layer)
 
     :param input: The first input layer.
     :type input: LayerOutput.
@@ -4122,7 +4124,7 @@ def sum_cost(input, name=None, layer_attr=None):
 
     .. code-block:: python
 
-       cost = sum_cost(input)
+       cost = sum_cost(input=input_layer)
 
     :param input: The first input layer.
     :type input: LayerOutput.
@@ -4133,6 +4135,7 @@ def sum_cost(input, name=None, layer_attr=None):
     :return: LayerOutput object.
     :rtype: LayerOutput.
     """
+    assert isinstance(input, LayerOutput)
     Layer(name=name,
           type=LayerType.SUM_COST,
           inputs=[input.name],
@@ -4141,7 +4144,8 @@ def sum_cost(input, name=None, layer_attr=None):
 
     return LayerOutput(name,
                        LayerType.SUM_COST,
-                       parents=[input])
+                       parents=[input],
+                       size=1)
 
 
 @wrap_name_default()
@@ -4152,7 +4156,8 @@ def huber_cost(input, label, name=None, coeff=1.0, layer_attr=None):
 
     .. code-block:: python
 
-       cost = huber_cost(input, label)
+       cost = huber_cost(input=input_layer, 
+                         label=label_layer)
 
     :param input: The first input layer.
     :type input: LayerOutput.
@@ -4188,7 +4193,8 @@ def multi_binary_label_cross_entropy(input, label, name=None, coeff=1.0,
 
     .. code-block:: python
 
-       cost = multi_binary_label_cross_entropy(input, label)
+       cost = multi_binary_label_cross_entropy(input=input_layer, 
+                                               label=label_layer)
 
     :param input: The first input layer.
     :type input: LayerOutput
