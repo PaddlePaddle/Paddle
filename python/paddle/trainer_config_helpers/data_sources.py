@@ -139,7 +139,7 @@ def define_py_data_sources(train_list, test_list, module, obj, args=None,
     test_obj = obj
     train_obj = obj
     if __is_splitable__(obj):
-        train_module, test_module = module
+        train_obj, test_obj = obj
 
     if args is None:
         args = ""

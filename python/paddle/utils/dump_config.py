@@ -19,13 +19,21 @@ import sys
 __all__ = []
 
 if __name__ == '__main__':
+    whole_conf = False
     if len(sys.argv) == 2:
         conf = parse_config(sys.argv[1], '')
     elif len(sys.argv) == 3:
         conf = parse_config(sys.argv[1], sys.argv[2])
+    elif len(sys.argv) == 4:
+        conf = parse_config(sys.argv[1], sys.argv[2])
+        if sys.argv[3] == '--whole':
+            whole_conf = True
     else:
         raise RuntimeError()
 
     assert isinstance(conf, TrainerConfig_pb2.TrainerConfig)
 
-    print conf.model_config
+    if whole_conf:
+        print conf
+    else:
+        print conf.model_config
