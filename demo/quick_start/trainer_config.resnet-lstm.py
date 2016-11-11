@@ -16,8 +16,9 @@
 
 """
 This configuration is a demonstration of how to implement the stacked LSTM
-with residual connections from the previous previous layer.
-This architecture is from:
+with residual connections, i.e. an LSTM layer takes the sum of the hidden states
+of the previous two LSTM layers as input instead of only the hidden states of
+the previous layer. This architecture is from:
 
 Yonghui Wu, Mike Schuster, Zhifeng Chen, Quoc V. Le, Mohammad Norouzi,
 Wolfgang Macherey, Maxim Krikun, Yuan Cao, Qin Gao, Klaus Macherey,
