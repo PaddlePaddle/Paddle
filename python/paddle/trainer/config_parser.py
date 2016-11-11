@@ -3015,7 +3015,7 @@ def Layer(
     layer_func = layers.get(type)
     config_assert(layer_func,
                   "layer type '%s' not supported." % type)
-    layer_func(name, **xargs)
+    return layer_func(name, **xargs)
 
 @config_func
 def ParameterHook(
