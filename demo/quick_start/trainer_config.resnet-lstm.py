@@ -17,8 +17,8 @@
 """
 This configuration is a demonstration of how to implement the stacked LSTM
 with residual connections, i.e. an LSTM layer takes the sum of the hidden states
-of the previous two LSTM layers as input instead of only the hidden states of
-the previous layer. This architecture is from:
+and inputs of the previous LSTM layer instead of only the hidden states.
+This architecture is from:
 
 Yonghui Wu, Mike Schuster, Zhifeng Chen, Quoc V. Le, Mohammad Norouzi,
 Wolfgang Macherey, Maxim Krikun, Yuan Cao, Qin Gao, Klaus Macherey,
@@ -34,8 +34,6 @@ direction LSTM layers as the first layer instead of bi-directional LSTM. Also,
 since this is a demo code, to reduce computation time, we stacked 4 layers
 instead of 8 layers.
 """
-
-from collections import deque
 
 from paddle.trainer_config_helpers import *
 
@@ -70,19 +68,18 @@ bias_attr = ParamAttr(initial_std=0.,l2_rate=0.)
 data = data_layer(name="word", size=len(word_dict))
 emb = embedding_layer(input=data, size=128)
 lstm = simple_lstm(input=emb, size=128, lstm_cell_attr=ExtraAttr(drop_rate=0.1))
-# The first element in the queue is the residuals.
-# The second element is the output from previous layer.
-memory = deque([emb, lstm])
+
+previous_input, previous_hidden_state = emb, lstm
 
 for i in range(3):
-    # For the current layer, we feed the previous layer, i.e. memory[-1]
-    # and add the residuals to it using the addto_layer().
-    memory.append(simple_lstm(
-                    input=addto_layer(input=[memory[-1], memory.popleft()]),
-                    size=128, lstm_cell_attr=ExtraAttr(drop_rate=0.1)))
+    # The input to the current layer is the sum of the hidden state
+    # and input of the previous layer.
+    current_input = addto_layer(input=[previous_input, previous_hidden_state])
+    hidden_state = simple_lstm(input=current_input, size=128,
+                               lstm_cell_attr=ExtraAttr(drop_rate=0.1))
+    previous_input, previous_hidden_state = current_input, hidden_state
 
-lstm = memory.pop()
-memory.clear()
+lstm = previous_hidden_state
 
 lstm_last = pooling_layer(input=lstm, pooling_type=MaxPooling())
 output = fc_layer(input=lstm_last, size=2,
