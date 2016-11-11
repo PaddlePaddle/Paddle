@@ -1,18 +1,18 @@
-# 情感分析指导教程
+# 情感分析教程
 
-情感分析有许多应用场景。 一个基本的应用场景是区分给定文本的褒贬两极性，给定的文本可以是一个文档、句子、或者是一个小的文本片段。 一个简单的例子如：把用户在购物网站、旅游网站，团购网站（亚马逊、天猫、淘宝等）上发表的评论分成正面评论和负面评论两类.
+情感分析有许多应用场景。 一个基本的应用场景是区分给定文本的褒贬两极性，给定的文本可以是一个文档、句子、或者是一个小的文本片段。 一个简单的例子如：把用户在购物网站、旅游网站、团购网站（亚马逊、天猫、淘宝等）上发表的评论分成正面评论和负面评论两类。
 
 情感分析也常用于基于大量评论和个人博客来监控社会媒体。 例如，研究人员分析了几个关于消费者信心和政治观点的调查，结果发现它们与同时期的Twitter消息中的情绪词频率相关 [1]。 另一个例子是通过分析每日Twitter博客的文本内容来预测股票变动 [2]。
 
 另一方面，抓取产品的用户评论并分析他们的情感，有助于理解用户对不同公司，不同产品，甚至不同竞争对手产品的偏好。
 
-本教程将指导您完成长期短期记忆（LSTM）网络的训练过程，以分类来自[大型电影评论数据集](http://ai.stanford.edu/~amaas/data/sentiment/)（有时称为[互联网电影数据库 (IMDB)](http://ai.stanford.edu/~amaas/papers/wvSent_acl2011.pdf)）的句子的情感 。 此数据集包含电影评论及其相关联的二进制情绪极性标签，即正面和负面。
+本教程将指导您完成长期短期记忆（LSTM）网络的训练过程，以分类来自[大型电影评论数据集](http://ai.stanford.edu/~amaas/data/sentiment/)（有时称为[互联网电影数据库 (IMDB)](http://ai.stanford.edu/~amaas/papers/wvSent_acl2011.pdf)）的句子的情感 。 此数据集包含电影评论及其相关联的类别标签，即正面和负面。
 
 ## 数椐准备
 
 ### IMDB 数椐介绍
 
-训练模型之前, 我们需要预处理数椐并构建一个字典. 首先, 你可以使用下面的脚本下载 IMDB 数椐集和[Moses](http://www.statmt.org/moses/)工具, 这是一个基于统计的机器翻译系统. 我们提供了一个数据预处理脚本，它不仅能够处理IMDB数据，还能处理其他用户自定义的数据。 为了使用提前编写的脚本，需要将标记的训练和测试样本移动到另一个路径，这已经在`get_imdb.sh`中完成。
+训练模型之前, 我们需要预处理数椐并构建一个字典。 首先, 你可以使用下面的脚本下载 IMDB 数椐集和[Moses](http://www.statmt.org/moses/)工具, 这是一个基于统计的机器翻译系统. 我们提供了一个数据预处理脚本，它不仅能够处理IMDB数据，还能处理其他用户自定义的数据。 为了使用提前编写的脚本，需要将标记的训练和测试样本移动到另一个路径，这已经在`get_imdb.sh`中完成。
 
 ```
 cd demo/sentiment/data
@@ -53,7 +53,7 @@ labeledBow.feat  neg  pos  unsup  unsupBow.feat  urls_neg.txt  urls_pos.txt  url
 
 ### IMDB 数椐准备
 
-在这个例子中，我们只使用已经标注过的训练集和测试集，且默认在测试集上构建字典，而不使用IMDB数椐集中的imdb.vocab做为字典。训练集已经做了随机打乱排序而测试集没有。 Moses 工具中的脚本`tokenizer.perl` 用于切分单单词和标点符号。执行下面的命令就可以预处理数椐。
+在这个例子中，我们只使用已经标注过的训练集和测试集，且默认在训练集上构建字典，而不使用IMDB数椐集中的imdb.vocab做为字典。训练集已经做了随机打乱排序而测试集没有。 Moses 工具中的脚本`tokenizer.perl` 用于切分单单词和标点符号。执行下面的命令就可以预处理数椐。
 
 ```
 cd demo/sentiment/
@@ -74,7 +74,7 @@ python preprocess.py -i data_dir
 ```
 dict.txt  labels.list  test.list  test_part_000  train.list  train_part_000
 ```
-* test\_part\_000 and train\_part\_000: 所有标记的训练集和测试集. 训练集已经随机打乱。
+* test\_part\_000 and train\_part\_000: 所有标记的测试集和训练集， 训练集已经随机打乱。
 * train.list and test.list: 训练集和测试集文件列表。
 * dict.txt: 利用训练集生成的字典。
 * labels.txt: neg  0, pos 1, 含义：标签0表示负面的评论，标签1表示正面的评论。
@@ -107,24 +107,24 @@ dataset
 
 ## 训练模型
 
-在这步任务中,我们使用了循环神经网络（RNN）的 LSTM 架构来训练情感分析模型。 引入LSTM模型主要是为了克服消失梯度的问题。 LSTM网络类似于具有隐藏层的标循环现神经网络, 但是隐藏层中的每个普通节点被一个记忆单元替换。 每个记忆单元包含四个主要的元素: 输入门, 具有自循环连接的神经元，忘记门和输出门。 更多的细节可以在文献中找到[4]。 LSTM架构的最大优点是它可以在长时间间隔内记忆信息，而没有短时记忆的损失。在有新的单词来临的每一个时间步骤内，存储在记忆单元区块的历史信息被更新用来迭代的学习单词以合理的序列程现。
+在这步任务中,我们使用了循环神经网络（RNN）的 LSTM 架构来训练情感分析模型。 引入LSTM模型主要是为了克服消失梯度的问题。 LSTM网络类似于具有隐藏层的标准循环神经网络, 但是隐藏层中的每个普通节点被一个记忆单元替换。 每个记忆单元包含四个主要的元素: 输入门, 具有自循环连接的神经元，忘记门和输出门。 更多的细节可以在文献中找到[4]。 LSTM架构的最大优点是它可以在长时间间隔内记忆信息，而没有短时记忆的损失。在有新的单词来临的每一个时间步骤内，存储在记忆单元区块的历史信息被更新用来迭代的学习单词以合理的序列程现。
 
 <center>![LSTM](../../../doc/demo/sentiment_analysis/lstm.png)</center>
 <center>图表 1. LSTM [3]</center>
 
-情感分析是自然语言理解中最典型的问题之一。 它的目的是预测在一个序列中表达的情感态度。 通常, ，仅仅是一些关键词，如形容词和副词，在预测序列或段落的情感中起主要作用。然而有些评论上下文非常长，例如 IMDB的数椐集。 我们只所以使用LSTM来执行这个任务是因为其改进的设计并且具有门机制。 首先，它能够从字级到具有可变上下文长度的上下文级别（其通过门值来适配）来总结表示。 第二，它可以在句子级别利用可扩展的上下文, 而大多数方法只是利用n-gram级别的知识。第三，它直接学习段落表示，而不是组合上下文级别信息。
+情感分析是自然语言理解中最典型的问题之一。 它的目的是预测在一个序列中表达的情感态度。 通常, ，仅仅是一些关键词，如形容词和副词，在预测序列或段落的情感中起主要作用。然而有些评论上下文非常长，例如 IMDB的数椐集。 我们只所以使用LSTM来执行这个任务是因为其改进的设计并且具有门机制。 首先，它能够从词级到具有可变上下文长度的上下文级别来总结表示。 第二，它可以在句子级别利用可扩展的上下文, 而大多数方法只是利用n-gram级别的知识。第三，它直接学习段落表示，而不是组合上下文级别信息。
 
 在本演示中，我们提供两个网络，即双向LSTM和三层堆叠LSTM。
 
 #### 双向LSTM
 
-图2是双向LSTM网络，由全连接层和softmax层组成。
+图2是双向LSTM网络，后面连全连接层和softmax层。
 
 <center>![BiLSTM](../../../doc/demo/sentiment_analysis/bi_lstm.jpg)</center>
 <center>图 2. Bidirectional-LSTM </center>
 
 #### Stacked-LSTM
-图3是三层LSTM结构。图的底部是字嵌入(word embedding 对文档处理后形成的单词向量)。 接下来，连接三个LSTM隐藏层，并且第二LSTM是被反转的。然后提取隐藏和LSTM层的所有时间步长的最大隐藏向量作为整个序列的表示。 最后，使用具有softmax激活的全连接前馈层来执行分类任务。 更多内容可查看参考文献 [5]。
+图3是三层LSTM结构。图的底部是word embedding(对文档处理后形成的单词向量)。 接下来，连接三个LSTM隐藏层，并且第二个是反向LSTM。然后提取隐藏LSTM层的所有时间步长的最大词向量作为整个序列的表示。 最后，使用具有softmax激活的全连接前馈层来执行分类任务。 更多内容可查看参考文献 [5]。
 
 <center>![StackedLSTM](../../../doc/demo/sentiment_analysis/stacked_lstm.jpg)</center>
 <center>图 3. Stacked-LSTM for sentiment analysis </center>
@@ -162,18 +162,18 @@ stacked_lstm_net(dict_dim, class_dim=class_dim,
 ```
 
 * **数椐定义**:
-   * get\_config\_arg(): 获取通过 `--config_args=xx` i设置的命令行参数。
-   * 定义训练数椐和测试数椐提供者, 这里使用了PaddlePaddle的Python接口(PyDataProviderWrapper)来加载数椐。想了解更多细节可以参考PyDataProvider部分的文档
+   * get\_config\_arg(): 获取通过 `--config_args=xx` 设置的命令行参数。
+   * 定义训练数椐和测试数椐提供者, 这里使用了PaddlePaddle的Python接口来加载数椐。想了解更多细节可以参考PyDataProvider部分的文档
 
 * **算法配置**:
    * 使用随机梯度下降（sgd）算法。
    * 使用 adam 优化。
-   * 设置批量大小为128。
+   * 设置batch size大小为128。
    * 设置平均sgd窗口。
    * 设置全局学习率。
 * **网络配置**:
    * dict_dim: 获取字典维度。
-   * class_dim: 设置类别号，IMDB有两个标签，即正面评价标签和负面评价标签。
+   * class_dim: 设置类别数，IMDB有两个标签，即正面评价标签和负面评价标签。
    * `stacked_lstm_net`: 预定义网络如图3所示，默认情况下使用此网络
    * `bidirectional_lstm_net`: 预定义网络，如图2所示。
 
@@ -207,11 +207,11 @@ paddle train --config=$config \
 * \--config=$config: 设置网络配置。
 * \--save\_dir=$output: 设置输出路径以保存训练完成的模型。
 * \--job=train: 设置工作模式为训练。
-* \--use\_gpu=false: 使用CPU训练，设置为true，如果你安装GPU版本的PaddlePaddle，并想使用GPU来训练。
-* \--trainer\_count=4:设置线程数（或GPU计数）。
-* \--num\_passes=15: 设置通过数，PaddlePaddle中的一个通过数意味着对数据集中的所有样本进行一次训练。
-* \--log\_period=20: 每20批打印一次日志。
-* \--show\_parameter\_stats\_period=100: 每100批显示一次参数统计。
+* \--use\_gpu=false: 使用CPU训练，如果你安装GPU版本的PaddlePaddle，并想使用GPU来训练设置为true。
+* \--trainer\_count=4:设置线程数（或GPU个数）。
+* \--num\_passes=15: 设置pass，PaddlePaddle中的一个pass意味着对数据集中的所有样本进行一次训练。
+* \--log\_period=20: 每20个batch打印一次日志。
+* \--show\_parameter\_stats\_period=100: 每100个batch打印一次统计信息。
 * \--test\_all_data\_in\_one\_period=1: 每次测试都测试所有数据。
 
 如果运行成功，输出日志保存在路径 `demo/sentiment/train.log`中，模型保存在目录`demo/sentiment/model_output/`中。  输出日志说明如下：
@@ -222,15 +222,15 @@ Batch=20 samples=2560 AvgCost=0.681644 CurrentCost=0.681644 Eval: classification
 Pass=0 Batch=196 samples=25000 AvgCost=0.418964 Eval: classification_error_evaluator=0.1922
 Test samples=24999 cost=0.39297 Eval: classification_error_evaluator=0.149406
 ```
-- Batch=xx: 表示传递xx批次。
-- samples=xx: 表示传递xx个样本。
-- AvgCost=xx: 从第0批到当前批的平均花费时间。
-- CurrentCost=xx: 最新的log_period批处理的当前时间花费。
-- Eval: classification\_error\_evaluator=xx: 表示第0批次到当前批次的分类错误。
-- CurrentEval: classification\_error\_evaluator: 最新日志周期批次的分类错误。
+- Batch=xx: 表示训练了xx个Batch。
+- samples=xx: 表示训练了xx个样本。。
+- AvgCost=xx: 从第0个batch到当前batch的平均损失。
+- CurrentCost=xx: 最新log_period个batch处理的当前损失。
+- Eval: classification\_error\_evaluator=xx: 表示第0个batch到当前batch的分类错误。
+- CurrentEval: classification\_error\_evaluator: 最新log_period个batch的分类错误。
 - Pass=0: 通过所有训练集一次称为一遍。 0表示第一次经过训练集。
 
-默认情况下，我们使用`stacked_lstm_net`网络，当传递相同的样本数时，它的收敛速度比`bidirectional_lstm_net`快。If you want to use bidirectional LSTM, 如果要使用双向LSTM，只需删除最后一行中的注释并把“stacked_lstm_net”注释掉。
+默认情况下，我们使用`stacked_lstm_net`网络，当传递相同的样本数时，它的收敛速度比`bidirectional_lstm_net`快。如果要使用双向LSTM，只需删除最后一行中的注释并把“stacked_lstm_net”注释掉。
 
 ## 测试模型
 
@@ -269,7 +269,7 @@ paddle train --config=$net_conf \
              2>&1 | tee 'test.log'
 ```
 
-函数`get_best_pass`通过计算分类错误率获得最佳模型进行测试。 在本示例中，我们默认使用IMDB的测试数据集作为验证。 与训练不同，它需要在这里指定`--job = test`和模型路径，即`--model_list = $model_list`。如果运行成功，日志将保存在“demo / sentiment / test.log”的路径中。例如，在我们的测试中，最好的模型是`model_output / pass-00002`，分类误差是0.115645，如下：
+函数`get_best_pass`依据分类错误率获得最佳模型进行测试。 在本示例中，我们默认使用IMDB的测试数据集作为验证。 与训练不同，它需要在这里指定`--job = test`和模型路径，即`--model_list = $model_list`。如果运行成功，日志将保存在“demo / sentiment / test.log”的路径中。例如，在我们的测试中，最好的模型是`model_output / pass-00002`，分类误差是0.115645，如下：
 
 ```
 Pass=0 samples=24999 AvgCost=0.280471 Eval: classification_error_evaluator=0.115645
@@ -303,10 +303,10 @@ python predict.py \
 *  -n $config : 设置网络配置。
 *  -w $model: 设置模型路径。
 *  -b $label: 设置标签类别字典，这个字典是整数标签和字符串标签的一个对应。
-*  -d data/pre-imdb/dict.txt: 设置字段文件。
+*  -d data/pre-imdb/dict.txt: 设置字典文件。
 *  -i data/aclImdb/test/pos/10014_7.txt: 设置一个要预测的示例文件。
 
-注意你应该确保默认模型路径`model_output / pass-00002`存在或更改为其它模型路径。
+注意应该确保默认模型路径`model_output / pass-00002`存在或更改为其它模型路径。
 
 本示例的预测结果：
 
