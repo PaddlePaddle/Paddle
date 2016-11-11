@@ -378,7 +378,7 @@ hl_activation_mode_t hlActiveType(const std::string& type) {
     return HL_ACTIVATION_RELU;
   } else if (type == "tanh") {
     return HL_ACTIVATION_TANH;
-  } else if (type == "linear") {
+  } else if (type == "linear" || type == "") {
     return HL_ACTIVATION_LINEAR;
   } else {
     LOG(FATAL) << "Do not support activation type " << type;
