@@ -112,5 +112,6 @@ class TestVector(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    swig_paddle.initPaddle("--use_gpu=1" if swig_paddle.isGpuVersion() else "--use_gpu=0")
+    swig_paddle.initPaddle("--use_gpu=1"
+                           if swig_paddle.isGpuVersion() else "--use_gpu=0")
     unittest.main()
