@@ -317,6 +317,11 @@ public:
   template <class Agg, class Op, class Saver>
   int applyRow(Agg agg, Op op, Saver sv, BaseMatrixT& b, BaseMatrixT& c);
 
+  // Same as the above with the special handing of sv=add2(scaleDest, scaleAgg)
+  template <class Agg, class Op>
+  int applyRow(Agg agg, Op op, real scaleDest, real scaleAgg,
+               BaseMatrixT& b, BaseMatrixT& c);
+
   /**
    * a aggregate expression that apply each row of matrix b.
    *
@@ -328,6 +333,10 @@ public:
    */
   template <class Agg, class Saver>
   int applyRow(Agg agg, Saver sv, BaseMatrixT& b);
+
+  // Same as the above with the special handing of sv=add2(scaleDest, scaleAgg)
+  template <class Agg>
+  int applyRow(Agg agg, real scaleDest, real scaleAgg, BaseMatrixT& b);
 
   /**
    * a aggregate expression that apply each column of matrix b.
@@ -351,6 +360,10 @@ public:
    */
   template <class Agg, class Saver>
   int applyCol(Agg agg, Saver sv, BaseMatrixT& b);
+
+  // Same as the above with the special handing of sv=add2(scaleDest, scaleAgg)
+  template <class Agg>
+  int applyCol(Agg agg, real scaleDest, real scaleAgg, BaseMatrixT& b);
 
   bool useGpu() const { return useGpu_; }
 

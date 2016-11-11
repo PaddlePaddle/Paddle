@@ -29,7 +29,6 @@ except ImportError:
     import pickle
 import copy
 
-<<<<<<< 0ba0f02c685e52b14632f6b9bfca4321494505c7
 __all__ = [
     "full_matrix_projection",
     "AggregateLevel",
@@ -1456,11 +1455,11 @@ def bilinear_interp_layer(input,
     .. code-block:: python
 
        bilinear = bilinear_interp_layer(input=layer1, out_size_x=64, out_size_y=64)
-    
+
     :param   input:        A input layer.
     :type    input:        LayerOutput.
     :param   out_size_x:   bilinear interpolation output width.
-    :type    out_size_x:   int|None 
+    :type    out_size_x:   int|None
     :param   out_size_y:   bilinear interpolation output height.
     :type    out_size_y:   int|None
     :param   name:         The layer's name, which cna not be specified.
@@ -1772,11 +1771,11 @@ def img_conv_layer(input,
     The details of convolution layer, please refer UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/
     FeatureExtractionUsingConvolution/>`_ .
-    
-    Convolution Transpose (deconv) layer for image. Paddle only support square 
+
+    Convolution Transpose (deconv) layer for image. Paddle only support square
     input currently and thus input image's width equals height.
 
-    The details of convolution transpose layer, 
+    The details of convolution transpose layer,
     please refer to the following explanation and references therein
     <http://datascience.stackexchange.com/questions/6107/
     what-are-deconvolutional-layers/>`_ .
@@ -4422,7 +4421,7 @@ def cross_entropy(input, label, name=None, coeff=1.0, layer_attr=None):
 
     .. code-block:: python
 
-       cost = cross_entropy(input=input_layer, 
+       cost = cross_entropy(input=input_layer,
                             label=label_layer)
 
     :param input: The first input layer.
@@ -4462,7 +4461,7 @@ def cross_entropy_with_selfnorm(input,
 
     .. code-block:: python
 
-       cost = cross_entropy_with_selfnorm(input=input_layer, 
+       cost = cross_entropy_with_selfnorm(input=input_layer,
                                           label=label_layer)
 
     :param input: The first input layer.
@@ -4532,7 +4531,7 @@ def huber_cost(input, label, name=None, coeff=1.0, layer_attr=None):
 
     .. code-block:: python
 
-       cost = huber_cost(input=input_layer, 
+       cost = huber_cost(input=input_layer,
                          label=label_layer)
 
     :param input: The first input layer.
@@ -4572,7 +4571,7 @@ def multi_binary_label_cross_entropy(input,
 
     .. code-block:: python
 
-       cost = multi_binary_label_cross_entropy(input=input_layer, 
+       cost = multi_binary_label_cross_entropy(input=input_layer,
                                                label=label_layer)
 
     :param input: The first input layer.

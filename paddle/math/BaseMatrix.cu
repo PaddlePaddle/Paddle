@@ -1474,6 +1474,21 @@ int BaseMatrixT<real>::applyRow(Agg agg, Saver sv, BaseMatrixT& b) {
 }
 
 template<>
+template <class Agg>
+int BaseMatrixT<real>::applyRow(
+     Agg agg, real scaleDest, real scaleAgg, BaseMatrixT& b) {
+  if (scaleDest != 0) {
+    applyRow(agg, base::binary::add2(scaleDest, scaleAgg), b);
+  } else {
+    applyRow(agg, base::binary::second(), b);
+    if (scaleAgg != 1) {
+      mulScalar(scaleAgg);
+    }
+  }
+  return 0;
+}
+
+template<>
 template <class Agg, class Op, class Saver>
 int BaseMatrixT<real>::applyRow(Agg agg, Op op, Saver sv,
                                 BaseMatrixT& b, BaseMatrixT& c) {
@@ -1487,6 +1502,21 @@ int BaseMatrixT<real>::applyRow(Agg agg, Op op, Saver sv,
   aggregate(agg, op, sv,
             b, c, numRows, numCols, offset,
             false_type(), true_type() /*aAsColVector*/);
+  return 0;
+}
+
+template<>
+template <class Agg, class Op>
+int BaseMatrixT<real>::applyRow(Agg agg, Op op, real scaleDest, real scaleAgg,
+                                BaseMatrixT& b, BaseMatrixT& c) {
+  if (scaleDest != 0) {
+    applyRow(agg, op, base::binary::add2(scaleDest, scaleAgg), b, c);
+  } else {
+    applyRow(agg, op, base::binary::second(), b, c);
+    if (scaleAgg != 1) {
+      mulScalar(scaleAgg);
+    }
+  }
   return 0;
 }
 
@@ -1519,8 +1549,23 @@ int BaseMatrixT<real>::applyCol(Agg agg, Saver sv, BaseMatrixT& b) {
 }
 
 template<>
+template <class Agg>
+int BaseMatrixT<real>::applyCol(
+     Agg agg, real scaleDest, real scaleAgg, BaseMatrixT& b) {
+  if (scaleDest != 0) {
+    applyCol(agg, base::binary::add2(scaleDest, scaleAgg), b);
+  } else {
+    applyCol(agg, base::binary::second(), b);
+    if (scaleAgg != 1) {
+      mulScalar(scaleAgg);
+    }
+  }
+  return 0;
+}
+
+template<>
 void BaseMatrixT<real>::sumRows(BaseMatrixT& b, real scaleSum, real scaleDest) {
-  applyRow(aggregate::sum(), base::binary::add2(scaleDest, scaleSum), b);
+  applyRow(aggregate::sum(), scaleDest, scaleSum, b);
 }
 
 template<>
@@ -1550,21 +1595,21 @@ void BaseMatrixT<real>::minCols(BaseMatrixT& b) {
 
 template<>
 void BaseMatrixT<real>::sumCols(BaseMatrixT& b, real scaleSum, real scaleDest) {
-  applyCol(aggregate::sum(), base::binary::add2(scaleDest, scaleSum), b);
+  applyCol(aggregate::sum(), scaleDest, scaleSum, b);
 }
 
 template<>
 void BaseMatrixT<real>::sumOfSquaredDiffs(
     BaseMatrixT& b, BaseMatrixT& c, real scaleSum, real scaleDest) {
   applyRow(aggregate::sum(), base::binary::squaredDiff(),
-           base::binary::add2(scaleDest, scaleSum), b, c);
+           scaleDest, scaleSum, b, c);
 }
 
 template<>
 void BaseMatrixT<real>::sumOfProducts(
     BaseMatrixT& b, BaseMatrixT& c, real scaleSum, real scaleDest) {
   applyRow(aggregate::sum(), base::binary::mul(),
-           base::binary::add2(scaleDest, scaleSum), b, c);
+           scaleDest, scaleSum, b, c);
 }
 
 template class BaseMatrixT<real>;

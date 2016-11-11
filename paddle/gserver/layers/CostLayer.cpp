@@ -605,7 +605,7 @@ public:
     int batchSize = input->getHeight();
     int size = 1;
     resizeOutput(batchSize, size);
-    output_.value->sumRows(*input);
+    output_.value->sumRows(*input, /* scaleSum= */1, /* scaleDest= */0);
   }
 
   virtual void backward(const UpdateCallback& callback = nullptr) {
