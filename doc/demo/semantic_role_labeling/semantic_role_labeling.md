@@ -30,8 +30,6 @@ Several new files appear in the `data `directory as follows.
 conll05st-release：the test data set of CoNll-2005 shared task 
 test.wsj.words：the Wall Street Journal data sentences
 test.wsj.props:  the propositional arguments
-src.dict：the dictionary of words in sentences
-tgt.dict：the labels dictionary
 feature: the extracted features from data set
 ```
 
@@ -68,6 +66,8 @@ def hook(settings, word_dict, label_dict, **kwargs):
     #all inputs are integral and sequential type
     settings.slots = [
         integer_value_sequence(len(word_dict)),
+        integer_value_sequence(len(predicate_dict)),
+        integer_value_sequence(len(word_dict)),
         integer_value_sequence(len(word_dict)),
         integer_value_sequence(len(word_dict)),
         integer_value_sequence(len(word_dict)),
@@ -77,34 +77,39 @@ def hook(settings, word_dict, label_dict, **kwargs):
 ```
 The corresponding data iterator is as following:
 ```
-@provider(use_seq=True, init_hook=hook)
-def process(obj, file_name):
+@provider(init_hook=hook, should_shuffle=True, calc_batch_size=get_batch_size,
+          can_over_batch_size=False, cache=CacheType.CACHE_PASS_IN_MEM)
+def process(settings, file_name):
     with open(file_name, 'r') as fdata:
         for line in fdata:
-            sentence, predicate, ctx_n1, ctx_0, ctx_p1, mark, label = line.strip().split('\t')
+            sentence, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2,  mark, label = \
+                line.strip().split('\t')
+
             words = sentence.split()
             sen_len = len(words)
-            word_slot = [obj.word_dict.get(w, UNK_IDX) for w in words]
+            word_slot = [settings.word_dict.get(w, UNK_IDX) for w in words]
 
-            predicate_slot = [obj.word_dict.get(predicate, UNK_IDX)] * sen_len
-            ctx_n1_slot = [obj.word_dict.get(ctx_n1, UNK_IDX) ] * sen_len
-            ctx_0_slot = [obj.word_dict.get(ctx_0, UNK_IDX) ] * sen_len
-            ctx_p1_slot = [obj.word_dict.get(ctx_p1, UNK_IDX) ] * sen_len
+            predicate_slot = [settings.predicate_dict.get(predicate)] * sen_len
+            ctx_n2_slot = [settings.word_dict.get(ctx_n2, UNK_IDX)] * sen_len
+            ctx_n1_slot = [settings.word_dict.get(ctx_n1, UNK_IDX)] * sen_len
+            ctx_0_slot = [settings.word_dict.get(ctx_0, UNK_IDX)] * sen_len
+            ctx_p1_slot = [settings.word_dict.get(ctx_p1, UNK_IDX)] * sen_len
+            ctx_p2_slot = [settings.word_dict.get(ctx_p2, UNK_IDX)] * sen_len
 
             marks = mark.split()
             mark_slot = [int(w) for w in marks]
 
             label_list = label.split()
-            label_slot = [obj.label_dict.get(w) for w in label_list]
-
-            yield word_slot, predicate_slot, ctx_n1_slot, ctx_0_slot, ctx_p1_slot, mark_slot, label_slot
+            label_slot = [settings.label_dict.get(w) for w in label_list]
+            yield word_slot, predicate_slot, ctx_n2_slot, ctx_n1_slot, \
+                  ctx_0_slot, ctx_p1_slot, ctx_p2_slot, mark_slot, label_slot
 ```
-The `process`function yield 7 lists which are six features and labels.
+The `process`function yield 9 lists which are 8 features and label.
  
 ### Neural Network Config
 `db_lstm.py` is the neural network config file to load the dictionaries and define the  data provider module and network architecture during the training procedure. 
 
-Seven `data_layer` load instances from data provider. Six features are transformed into embedddings respectively, and mixed by `mixed_layer` .  Deep bidirectional LSTM layers extract features for the softmax layer. The objective function is cross entropy of labels.
+Nine `data_layer` load instances from data provider. Eight features are transformed into embedddings respectively, and mixed by `mixed_layer` .  Deep bidirectional LSTM layers extract features for the softmax layer. The objective function is cross entropy of labels.
 
 ### Run Training 
 The script for training is `train.sh`, user just need to execute:
@@ -115,24 +120,36 @@ The content in `train.sh`:
 ```
 paddle train \
   --config=./db_lstm.py \
+  --use_gpu=0 \
+  --log_period=5000 \
+  --trainer_count=1 \
+  --show_parameter_stats_period=5000 \
+  --saving_period=1 \
   --save_dir=./output \
-  --trainer_count=4 \
-  --log_period=10 \
-  --num_passes=500 \
-  --use_gpu=false \
-  --show_parameter_stats_period=10 \
-  --test_all_data_in_one_period=1 \
+  --local=1 \
+  --num_passes=10000 \
+  --test_period=0 \
+  --average_test_period=10000000 \
+  --init_model_path=./data \
+  --load_missing_parameter_strategy=rand \
+  --dot_period=100  \
 2>&1 | tee 'train.log'
 ```
 
 -  \--config=./db_lstm.py : network config file.
--  \--save_di=./output: output path to save models.
--  \--trainer_count=4 : set thread number (or GPU count).
--  \--log_period=10 : print log every 20 batches.
--  \--num_passes=500: set pass number, one pass in PaddlePaddle means training all samples in dataset one time.
--  \--use_gpu=false: use CPU to train, set true, if you install GPU version of PaddlePaddle and want to use GPU to train.
--  \--show_parameter_stats_period=10: show parameter statistic every 100 batches.
--  \--test_all_data_in_one_period=1: test all data in every testing.
+-  \--use_gpu=false: use CPU to train, set true, if you install GPU version of PaddlePaddle and want to use GPU to train, until now crf_layer do not support GPU
+-  \--log_period=500: print log every 20 batches.
+-  \--trainer_count=1: set thread number (or GPU count).
+-  \--show_parameter_stats_period=5000: show parameter statistic every 100 batches.
+-  \--saving_period=1: save model per pass
+-  \--save_dir=./output: output path to save models.
+-  \--local=1: traing in local mode
+-  \--num_passes=10000: set pass number, one pass in PaddlePaddle means training all samples in dataset one time.
+-  \--test_period=0: run testing each pass 
+-  \--average_test_period=10000000:  do test on average parameter every average_test_period batches
+-  \--init_model_path=./data: parameter initialization path 
+-  \--load_missing_parameter_strategy=rand: random initialization unexisted parameters
+-  \--dot_period=100: print a dot per 100 batches  
 
 
 After training, the models  will be saved in directory `output`.
@@ -166,11 +183,13 @@ The script for prediction is `predict.sh`, user just need to execute:
 In `predict.sh`, user should offer the network config file, model path, label file, word dictionary file, feature file
 ```
 python predict.py 
-     -c $config_file 
-     -w $model_path 
-     -l $label_file 
-     -d $dict_file 
-     -i $input_file
+     -c $config_file \
+     -w $best_model_path \
+     -l $label_file \
+     -p $predicate_dict_file  \
+     -d $dict_file \
+     -i $input_file \
+     -o $output_file
 ```
 
 `predict.py` is the main executable python script, which includes functions: load model, load data, data prediction. The network model will output the probability distribution of labels. In the demo, we take the label with maximum probability as result. User can also implement the beam search or viterbi decoding upon the probability distribution matrix.
