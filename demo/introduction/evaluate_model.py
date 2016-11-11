@@ -26,7 +26,7 @@ import os
 
 def load(file_name):
     with open(file_name, 'rb') as f:
-        f.read(16)    # skip header for float type.
+        f.read(16)  # skip header for float type.
         return np.fromfile(f, dtype=np.float32)
 
 

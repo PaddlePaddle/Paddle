@@ -30,7 +30,7 @@ settings(
     average_window=0.5,
     learning_rate=2e-3,
     learning_rate_decay_a=5e-7,
-    learning_rate_decay_b=0.5,)
+    learning_rate_decay_b=0.5, )
 
 word_dim = 128
 hidden_dim = 128
@@ -67,7 +67,7 @@ if with_rnn:
         act=ReluActivation(),
         bias_attr=True,
         input=hidden1,
-        param_attr=ParamAttr(initial_std=0),)
+        param_attr=ParamAttr(initial_std=0), )
 
 hidden2 = mixed_layer(
     size=hidden_dim,
@@ -75,7 +75,7 @@ hidden2 = mixed_layer(
     bias_attr=True,
     input=[full_matrix_projection(hidden1)] +
     ([full_matrix_projection(
-        rnn1, param_attr=ParamAttr(initial_std=0))] if with_rnn else []),)
+        rnn1, param_attr=ParamAttr(initial_std=0))] if with_rnn else []), )
 
 if with_rnn:
     rnn2 = recurrent_layer(
@@ -83,38 +83,38 @@ if with_rnn:
         act=ReluActivation(),
         bias_attr=True,
         input=hidden2,
-        param_attr=ParamAttr(initial_std=0),)
+        param_attr=ParamAttr(initial_std=0), )
 
 crf_input = mixed_layer(
     size=num_label_types,
     bias_attr=False,
-    input=[full_matrix_projection(hidden2),] +
+    input=[full_matrix_projection(hidden2), ] +
     ([full_matrix_projection(
-        rnn2, param_attr=ParamAttr(initial_std=0))] if with_rnn else []),)
+        rnn2, param_attr=ParamAttr(initial_std=0))] if with_rnn else []), )
 
 crf = crf_layer(
     input=crf_input,
     label=chunk,
     param_attr=ParamAttr(
         name="crfw", initial_std=0),
-    layer_attr=cpu_layer_attr,)
+    layer_attr=cpu_layer_attr, )
 
 crf_decoding = crf_decoding_layer(
     size=num_label_types,
     input=crf_input,
     label=chunk,
     param_attr=ParamAttr(name="crfw"),
-    layer_attr=cpu_layer_attr,)
+    layer_attr=cpu_layer_attr, )
 
 sum_evaluator(
     name="error",
-    input=crf_decoding,)
+    input=crf_decoding, )
 
 chunk_evaluator(
     name="chunk_f1",
     input=[crf_decoding, chunk],
     chunk_scheme="IOB",
-    num_chunk_types=11,)
+    num_chunk_types=11, )
 
 inputs(word, pos, chunk, features)
 outputs(crf)

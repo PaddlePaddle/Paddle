@@ -1,5 +1,5 @@
-...    # the settings and define data provider is omitted.
-DICT_DIM = 3000    # dictionary dimension.
+...  # the settings and define data provider is omitted.
+DICT_DIM = 3000  # dictionary dimension.
 word_ids = data_layer('word_ids', size=DICT_DIM)
 
 emb = embedding_layer(

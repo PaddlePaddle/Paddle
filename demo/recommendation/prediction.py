@@ -40,7 +40,7 @@ if __name__ == '__main__':
         while True:
             movie_id = int(raw_input("Input movie_id: "))
             user_id = int(raw_input("Input user_id: "))
-            movie_meta = meta['movie'][movie_id]    # Query Data From Meta.
+            movie_meta = meta['movie'][movie_id]  # Query Data From Meta.
             user_meta = meta['user'][user_id]
             data = [movie_id - 1]
             data.extend(movie_meta)

@@ -56,11 +56,11 @@ def process(settings, file_name):
             line_split = line.strip().split('\t')
             if settings.job_mode and len(line_split) != 2:
                 continue
-            src_seq = line_split[0]    # one source sequence
+            src_seq = line_split[0]  # one source sequence
             src_ids = _get_ids(src_seq, settings.src_dict)
 
             if settings.job_mode:
-                trg_seq = line_split[1]    # one target sequence
+                trg_seq = line_split[1]  # one target sequence
                 trg_words = trg_seq.split()
                 trg_ids = [settings.trg_dict.get(w, UNK_IDX) for w in trg_words]
 

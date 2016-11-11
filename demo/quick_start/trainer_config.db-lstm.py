@@ -57,7 +57,7 @@ for i in range(1, 8):
     lstm = lstmemory(
         input=fc,
         layer_attr=ExtraAttr(drop_rate=0.1),
-        reverse=(i % 2) == 1,)
+        reverse=(i % 2) == 1, )
     input_layers = [fc, lstm]
 
 lstm_last = pooling_layer(input=lstm, pooling_type=MaxPooling())

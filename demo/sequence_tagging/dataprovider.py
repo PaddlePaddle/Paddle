@@ -17,7 +17,7 @@ import gzip
 import logging
 
 logging.basicConfig(
-    format='[%(levelname)s %(asctime)s %(filename)s:%(lineno)s] %(message)s',)
+    format='[%(levelname)s %(asctime)s %(filename)s:%(lineno)s] %(message)s', )
 logger = logging.getLogger('paddle')
 logger.setLevel(logging.INFO)
 
@@ -111,7 +111,6 @@ return a list of dict for each column
 
 
 def create_dictionaries(filename, cutoff, oov_policy):
-
     def add_to_dict(sequence, dicts):
         num_features = len(dicts)
         for features in sequence:

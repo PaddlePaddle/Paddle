@@ -25,7 +25,6 @@ Usage: run following command to show help message.
 
 
 class SentimentPrediction():
-
     def __init__(self, train_conf, dict_file, model_dir=None, label_file=None):
         """
         train_conf: trainer configure.

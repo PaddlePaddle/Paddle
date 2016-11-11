@@ -32,13 +32,13 @@ def initializer(settings, dictionary, **kwargs):
     # setting.input_types specifies what the data types the data provider
     # generates.
     settings.input_types = [
-    # The first input is a sparse_binary_vector,
-    # which means each dimension of the vector is either 0 or 1. It is the
-    # bag-of-words (BOW) representation of the texts.
+        # The first input is a sparse_binary_vector,
+        # which means each dimension of the vector is either 0 or 1. It is the
+        # bag-of-words (BOW) representation of the texts.
         sparse_binary_vector(len(dictionary)),
-    # The second input is an integer. It represents the category id of the
-    # sample. 2 means there are two labels in the dataset.
-    # (1 for positive and 0 for negative)
+        # The second input is an integer. It represents the category id of the
+        # sample. 2 means there are two labels in the dataset.
+        # (1 for positive and 0 for negative)
         integer_value(2)
     ]
 

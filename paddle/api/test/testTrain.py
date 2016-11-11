@@ -19,7 +19,6 @@ import util
 
 
 def init_params(params):
-
     def init_param(p):
         assert isinstance(p, swig_paddle.Parameter)
         val = p.getBuf(swig_paddle.PARAMETER_VALUE)
@@ -68,7 +67,7 @@ def main():
     for optimizer in optimizers:
         optimizer.startPass()
     batch_id = 0
-    while True:    # Train one batch
+    while True:  # Train one batch
         batch_size = 1000
         inArgs, atEnd = util.loadMNISTTrainData(batch_size)
         if atEnd:

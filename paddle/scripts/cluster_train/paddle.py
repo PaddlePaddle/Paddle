@@ -35,7 +35,7 @@ def refine_unknown_args(cmd_args):
     new_args = []
     for arg in cmd_args:
         if arg.startswith("--") and arg.find("=") != -1:
-            equal_pos = arg.find("=")    #find first = pos
+            equal_pos = arg.find("=")  #find first = pos
             arglist = list(arg)
             arglist[equal_pos] = " "
             arg = "".join(arglist)
@@ -183,7 +183,7 @@ def job_all(job_package, jobdir=None, train_args_dict=None):
         jobdir = conf.ROOT_DIR + "/JOB" + timestamp
     job_prepare(jobdir, job_package)
     job_pserver(jobdir)
-    time.sleep(5)    #wait until pservers completely start
+    time.sleep(5)  #wait until pservers completely start
     job_trainer(jobdir, train_args_dict)
     job_clean()
 

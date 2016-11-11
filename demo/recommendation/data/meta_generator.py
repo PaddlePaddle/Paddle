@@ -37,7 +37,6 @@ except ImportError:
 
 
 class UniqueIDGenerator(object):
-
     def __init__(self):
         self.pool = collections.defaultdict(self.__next_id__)
         self.next_id = 0
@@ -58,7 +57,6 @@ class UniqueIDGenerator(object):
 
 
 class SortedIDGenerator(object):
-
     def __init__(self):
         self.__key_set__ = set()
         self.dict = None
@@ -81,7 +79,6 @@ class SortedIDGenerator(object):
 
 
 class SplitFileReader(object):
-
     def __init__(self, work_dir, config):
         assert isinstance(config, dict)
         self.filename = config['name']
@@ -145,7 +142,6 @@ class IDFieldParser(object):
 
 
 class SplitEmbeddingDict(object):
-
     def __init__(self, delimiter):
         self.__id__ = UniqueIDGenerator()
         self.delimiter = delimiter
@@ -168,7 +164,6 @@ class EmbeddingFieldParser(object):
     SEQUENCE = "sequence"
 
     class CharBasedEmbeddingDict(object):
-
         def __init__(self, is_seq=True):
             self.__id__ = UniqueIDGenerator()
             self.is_seq = is_seq
@@ -184,7 +179,6 @@ class EmbeddingFieldParser(object):
             return self.__id__.to_list()
 
     class WholeContentDict(object):
-
         def __init__(self, need_sort=True):
             assert need_sort
             self.__id__ = SortedIDGenerator()
@@ -284,7 +278,6 @@ class FieldParserFactory(object):
 
 
 class CompositeFieldParser(object):
-
     def __init__(self, parser, extractor):
         self.extractor = extractor
         self.parser = parser
@@ -300,7 +293,6 @@ class CompositeFieldParser(object):
 
 
 class PositionContentExtractor(object):
-
     def __init__(self, pos):
         self.pos = pos
 
@@ -310,7 +302,6 @@ class PositionContentExtractor(object):
 
 
 class RegexPositionContentExtractor(PositionContentExtractor):
-
     def __init__(self, pos, pattern, group_id, strip=True):
         PositionContentExtractor.__init__(self, pos)
         pattern = pattern.strip()
@@ -330,7 +321,6 @@ class RegexPositionContentExtractor(PositionContentExtractor):
 
 
 class ContentExtractorFactory(object):
-
     def extract(self, line):
         pass
 
@@ -346,7 +336,6 @@ class ContentExtractorFactory(object):
 
 
 class MetaFile(object):
-
     def __init__(self, work_dir):
         self.work_dir = work_dir
         self.obj = dict()

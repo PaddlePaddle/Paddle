@@ -32,7 +32,6 @@ logging.getLogger().setLevel(logging.INFO)
 
 
 class ImageClassifier():
-
     def __init__(self,
                  train_conf,
                  model_dir=None,
@@ -77,7 +76,7 @@ class ImageClassifier():
         if self.mean_file is not None:
             mean = np.load(self.mean_file)['data_mean']
             mean = mean.reshape(3, self.crop_dims[0], self.crop_dims[1])
-            self.transformer.set_mean(mean)    # mean pixel
+            self.transformer.set_mean(mean)  # mean pixel
         else:
             # if you use three mean value, set like:
             # this three mean value is calculated from ImageNet.

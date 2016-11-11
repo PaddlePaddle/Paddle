@@ -105,7 +105,7 @@ def gru_encoder_decoder(data_conf,
     backward_first = first_seq(input=src_backward)
     with mixed_layer(
             size=decoder_size,
-            act=TanhActivation(),) as decoder_boot:
+            act=TanhActivation(), ) as decoder_boot:
         decoder_boot += full_matrix_projection(input=backward_first)
 
     def gru_decoder_with_attention(enc_vec, enc_proj, current_word):
@@ -115,7 +115,7 @@ def gru_encoder_decoder(data_conf,
         context = simple_attention(
             encoded_sequence=enc_vec,
             encoded_proj=enc_proj,
-            decoder_state=decoder_mem,)
+            decoder_state=decoder_mem, )
 
         with mixed_layer(size=decoder_size * 3) as decoder_inputs:
             decoder_inputs += full_matrix_projection(input=context)

@@ -57,7 +57,7 @@ Settings(
     learning_method='momentum',
     learning_rate_decay_a=0.5,
     learning_rate_decay_b=1200000 * 10,
-    learning_rate_schedule="discexp",)
+    learning_rate_schedule="discexp", )
 
 
 def conv_bn_layer(name,

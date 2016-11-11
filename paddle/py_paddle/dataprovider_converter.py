@@ -20,7 +20,6 @@ __all__ = ['DataProviderConverter']
 
 
 class IScanner(object):
-
     def __init__(self, input_type, pos):
         self.input_type = input_type
         assert isinstance(self.input_type, dp2.InputType)
@@ -34,7 +33,6 @@ class IScanner(object):
 
 
 class DenseScanner(IScanner):
-
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__mat__ = []
@@ -53,7 +51,6 @@ class DenseScanner(IScanner):
 
 
 class SparseBinaryScanner(IScanner):
-
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__rows__ = [0]
@@ -83,7 +80,6 @@ class SparseBinaryScanner(IScanner):
 
 
 class SparseFloatScanner(SparseBinaryScanner):
-
     def __init__(self, input_type, pos):
         SparseBinaryScanner.__init__(self, input_type, pos)
 
@@ -93,7 +89,6 @@ class SparseFloatScanner(SparseBinaryScanner):
 
 
 class IndexScanner(IScanner):
-
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__ids__ = []
@@ -108,7 +103,6 @@ class IndexScanner(IScanner):
 
 
 class SequenceScanner(IScanner):
-
     def __init__(self, input_type, pos, inner_scanner, setter):
         IScanner.__init__(self, input_type, pos)
         self.__seq__ = [0]
@@ -133,7 +127,6 @@ class SequenceScanner(IScanner):
 
 
 class DataProviderConverter(object):
-
     def __init__(self, input_types):
         self.input_types = input_types
         assert isinstance(self.input_types, collections.Sequence)

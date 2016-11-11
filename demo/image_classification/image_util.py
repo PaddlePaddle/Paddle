@@ -176,12 +176,11 @@ def oversample(img, crop_dims):
         for crop in crops_ix:
             crops[ix] = im[crop[0]:crop[2], crop[1]:crop[3], :]
             ix += 1
-        crops[ix - 5:ix] = crops[ix - 5:ix, :, ::-1, :]    # flip for mirrors
+        crops[ix - 5:ix] = crops[ix - 5:ix, :, ::-1, :]  # flip for mirrors
     return crops
 
 
 class ImageTransformer:
-
     def __init__(self,
                  transpose=None,
                  channel_swap=None,

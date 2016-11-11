@@ -19,7 +19,6 @@ import unittest
 
 
 class TestIVector(unittest.TestCase):
-
     def test_createZero(self):
         m = swig_paddle.IVector.createZero(10)
         self.assertIsNotNone(m)
@@ -54,7 +53,7 @@ class TestIVector(unittest.TestCase):
             self.assertTrue(vec.isGpu())
             self.assertEqual(vec.getData(), range(0, 10))
             num_arr = vec.copyToNumpyArray()
-            assert isinstance(num_arr, np.ndarray)    # for code hint.
+            assert isinstance(num_arr, np.ndarray)  # for code hint.
             num_arr[4] = 7
             self.assertEquals(vec.getData(), range(0, 10))
 
@@ -65,7 +64,6 @@ class TestIVector(unittest.TestCase):
 
 
 class TestVector(unittest.TestCase):
-
     def testCreateZero(self):
         v = swig_paddle.Vector.createZero(10)
         self.assertIsNotNone(v)

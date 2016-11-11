@@ -40,7 +40,7 @@ def initializePaddle(*args):
     if old_pypath is not None:
         pypath = os.pathsep.join([pypath, old_pypath])
         os.putenv("PYTHONPATH", pypath)
-    args = [""] + list(args)    # argv[0] is command name, it is not important.
+    args = [""] + list(args)  # argv[0] is command name, it is not important.
     swig_paddle.__initPaddle__(args)
     sys.argv = old_argv
 
@@ -247,7 +247,7 @@ def loadParameterFile(fn):
     if isinstance(fn, str):
         with open(fn, 'rb') as f:
             return loadParameterFile(f)
-    elif hasattr(fn, 'read'):    # File like object
+    elif hasattr(fn, 'read'):  # File like object
         version, = struct.unpack('i', fn.read(4))
         if version != 0:
             raise swig_paddle.UnsupportError()
@@ -424,7 +424,6 @@ class DataProviderWrapperConverter(object):
 
 
 def __monkey_patch_protobuf_objects__():
-
     def ParameterConfig_toProto(self):
         """
         Convert paddle.ParameterConfig to
@@ -484,7 +483,6 @@ def __monkey_patch_protobuf_objects__():
 
 
 def __monkey_patch_parameter__():
-
     def getBufs(self):
         """
         get all parameter vectors.

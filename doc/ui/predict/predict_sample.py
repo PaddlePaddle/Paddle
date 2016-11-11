@@ -123,7 +123,7 @@ def main():
     print conf.data_config.load_data_args
     network = swig_paddle.GradientMachine.createFromConfigProto(
         conf.model_config)
-    assert isinstance(network, swig_paddle.GradientMachine)    # For code hint.
+    assert isinstance(network, swig_paddle.GradientMachine)  # For code hint.
     network.loadParameters("./mnist_model/")
     converter = DataProviderConverter([dense_vector(784)])
     inArg = converter(TEST_DATA)

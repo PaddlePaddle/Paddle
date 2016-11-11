@@ -28,7 +28,7 @@ def main():
         trainer.startTrainPass()
         num = 0
         cost = 0
-        while True:    # Train one batch
+        while True:  # Train one batch
             batch_size = 1000
             data, atEnd = util.loadMNISTTrainData(batch_size)
             if atEnd:
@@ -43,7 +43,7 @@ def main():
         trainer.startTestPeriod()
         num = 0
         cost = 0
-        while True:    # Test one batch
+        while True:  # Test one batch
             batch_size = 1000
             data, atEnd = util.loadMNISTTrainData(batch_size)
             if atEnd:

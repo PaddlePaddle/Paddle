@@ -30,7 +30,6 @@ logging.getLogger().setLevel(logging.INFO)
 
 
 class ImageClassifier():
-
     def __init__(self,
                  train_conf,
                  use_gpu=True,
@@ -67,7 +66,7 @@ class ImageClassifier():
         self.mean_file = mean_file
         mean = np.load(self.mean_file)['data_mean']
         mean = mean.reshape(3, self.crop_dims[0], self.crop_dims[1])
-        self.transformer.set_mean(mean)    # mean pixel
+        self.transformer.set_mean(mean)  # mean pixel
         gpu = 1 if use_gpu else 0
         conf_args = "is_test=1,use_gpu=%d,is_predict=1" % (gpu)
         conf = parse_config(train_conf, conf_args)

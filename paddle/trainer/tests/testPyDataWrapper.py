@@ -54,8 +54,7 @@ seq_count_randomer = lambda: random.randrange(1, SEQUENCE_LIMIT)
 str_count_randomer = lambda: random.randrange(1, STRING_LIMIT)
 
 
-class IDRandomer():    # A random generator, return unique id
-
+class IDRandomer():  # A random generator, return unique id
     def __init__(self):
         self.id_set = set()
 

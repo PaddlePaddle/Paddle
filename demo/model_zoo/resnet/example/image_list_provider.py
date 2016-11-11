@@ -34,7 +34,7 @@ def hook(settings, image_size, crop_size, color, file_list, is_train, **kwargs):
     settings.img_size = image_size
     settings.crop_size = crop_size
     settings.mean_img_size = settings.crop_size
-    settings.color = color    # default is color
+    settings.color = color  # default is color
     settings.is_train = is_train
 
     settings.is_swap_channel = kwargs.get('swap_channel', None)
@@ -67,9 +67,9 @@ def hook(settings, image_size, crop_size, color, file_list, is_train, **kwargs):
                                       settings.crop_size, settings.color)
 
     settings.input_types = [
-        dense_vector(settings.img_input_size),    # image feature
+        dense_vector(settings.img_input_size),  # image feature
         integer_value(1)
-    ]    # labels
+    ]  # labels
 
     settings.logger.info('Image short side: %s', settings.img_size)
     settings.logger.info('Crop size: %s', settings.crop_size)

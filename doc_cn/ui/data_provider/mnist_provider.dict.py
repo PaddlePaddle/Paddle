@@ -5,10 +5,10 @@ from paddle.trainer.PyDataProvider2 import *
 @provider(
     input_types={'pixel': dense_vector(28 * 28),
                  'label': integer_value(10)})
-def process(settings, filename):    # settings is not used currently.
-    f = open(filename, 'r')    # open one of training file
+def process(settings, filename):  # settings is not used currently.
+    f = open(filename, 'r')  # open one of training file
 
-    for line in f:    # read each line
+    for line in f:  # read each line
         label, pixel = line.split(';')
 
         # get features and label
@@ -21,4 +21,4 @@ def process(settings, filename):    # settings is not used currently.
         # give data to paddle.
         yield {"pixel": pixels_float, 'label': int(label)}
 
-    f.close()    # close file
+    f.close()  # close file

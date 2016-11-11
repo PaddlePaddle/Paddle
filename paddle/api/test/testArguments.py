@@ -17,7 +17,6 @@ import unittest
 
 
 class TestArguments(unittest.TestCase):
-
     def test_load_arguments(self):
         m = swig_paddle.Matrix.createDense([4, 2, 4, 3, 9, 5], 2, 3)
         args = swig_paddle.Arguments.createArguments(1)
@@ -33,7 +32,7 @@ class TestArguments(unittest.TestCase):
         iv = args.getSlotIds(0)
         assert isinstance(iv, swig_paddle.IVector)
         np_arr = iv.toNumpyArrayInplace()
-        self.assertEqual(np_arr.shape, (6,))
+        self.assertEqual(np_arr.shape, (6, ))
 
 
 if __name__ == '__main__':

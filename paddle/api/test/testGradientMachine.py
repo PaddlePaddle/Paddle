@@ -20,7 +20,6 @@ import numpy
 
 
 class TestGradientMachine(unittest.TestCase):
-
     def test_create_gradient_machine(self):
         conf_file_path = "./testTrainConfig.py"
         trainer_config = swig_paddle.TrainerConfig.createFromTrainerConfigFile(
@@ -44,7 +43,7 @@ class TestGradientMachine(unittest.TestCase):
             assert isinstance(param, swig_paddle.Parameter)
             val = param.getBuf(swig_paddle.PARAMETER_VALUE)
             assert isinstance(val, swig_paddle.Vector)
-            arr = numpy.full((len(val),), 0.1, dtype="float32")
+            arr = numpy.full((len(val), ), 0.1, dtype="float32")
             val.copyFromNumpyArray(arr)
             param_config = param.getConfig().toProto()
             assert isinstance(param_config,
@@ -75,7 +74,7 @@ class TestGradientMachine(unittest.TestCase):
             vec = vec.copyToNumpyArray()
             for val_ in vec:
                 self.assertTrue(
-                    util.doubleEqual(val_, 0.1))    # Assert All Value is 0.1
+                    util.doubleEqual(val_, 0.1))  # Assert All Value is 0.1
 
             vecs = list(param_.getBufs())
             opt_ = optimizers[param_.getID()]

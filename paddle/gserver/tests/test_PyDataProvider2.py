@@ -65,7 +65,6 @@ def test_index_seq(setting, filename):
 
 @provider(input_types=[index_slot(200, seq_type=SequenceType.SUB_SEQUENCE)])
 def test_index_sub_seq(setting, filename):
-
     def gen_sub_seq(l):
         l += 1
         for j in xrange(l):
@@ -102,7 +101,7 @@ def test_input_order(setting, filename):
     input_types=[index_slot(10)],
     check=True,
     check_fail_continue=True,
-    should_shuffle="123")    # also test should shuffle
+    should_shuffle="123")  # also test should shuffle
 def test_check(settings, filename):
     yield_good_value = False
 

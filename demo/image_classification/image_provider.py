@@ -51,9 +51,9 @@ def hook(settings, img_size, mean_img_size, num_classes, color, meta, use_jpeg,
     settings.logger.info('Image size: %s', settings.img_size)
     settings.logger.info('Meta path: %s', settings.meta_path)
     settings.input_types = [
-        dense_vector(settings.img_raw_size),    # image feature
+        dense_vector(settings.img_raw_size),  # image feature
         integer_value(settings.num_classes)
-    ]    # labels
+    ]  # labels
 
     settings.logger.info('DataProvider Initialization finished')
 

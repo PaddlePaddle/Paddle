@@ -9,13 +9,13 @@ def on_init(settings, dictionary, **kwargs):
     # set input types in runtime. It will do the same thing as
     # @provider(input_types) will do, but it is set dynamically during runtime.
     settings.input_types = [
-    # The text is a sequence of integer values, and each value is a word id.
-    # The whole sequence is the sentences that we want to predict its
-    # sentimental.
+        # The text is a sequence of integer values, and each value is a word id.
+        # The whole sequence is the sentences that we want to predict its
+        # sentimental.
         integer_value(
-            len(dictionary), seq_type=SequenceType),    # text input
+            len(dictionary), seq_type=SequenceType),  # text input
 
-    # label positive/negative
+        # label positive/negative
         integer_value(2)
     ]
 
@@ -28,9 +28,9 @@ def on_init(settings, dictionary, **kwargs):
 def process(settings, filename):
     f = open(filename, 'r')
 
-    for line in f:    # read each line of file
-        label, sentence = line.split('\t')    # get label and sentence
-        words = sentence.split(' ')    # get words
+    for line in f:  # read each line of file
+        label, sentence = line.split('\t')  # get label and sentence
+        words = sentence.split(' ')  # get words
 
         # convert word string to word id
         # the word not in dictionary will be ignored.

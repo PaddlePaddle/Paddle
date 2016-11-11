@@ -30,7 +30,7 @@ settings(
     average_window=0.5,
     learning_rate=1e-1,
     learning_rate_decay_a=1e-5,
-    learning_rate_decay_b=0.25,)
+    learning_rate_decay_b=0.25, )
 
 num_label_types = 23
 
@@ -60,23 +60,23 @@ crf = crf_layer(
     input=crf_input,
     label=chunk,
     param_attr=ParamAttr(
-        name="crfw", initial_std=0),)
+        name="crfw", initial_std=0), )
 
 crf_decoding = crf_decoding_layer(
     size=num_label_types,
     input=crf_input,
     label=chunk,
-    param_attr=ParamAttr(name="crfw"),)
+    param_attr=ParamAttr(name="crfw"), )
 
 sum_evaluator(
     name="error",
-    input=crf_decoding,)
+    input=crf_decoding, )
 
 chunk_evaluator(
     name="chunk_f1",
     input=[crf_decoding, chunk],
     chunk_scheme="IOB",
-    num_chunk_types=11,)
+    num_chunk_types=11, )
 
 inputs(word, pos, chunk, features)
 outputs(crf)

@@ -36,7 +36,6 @@ try:
     PARENT_LIB_DIRS = ['proto']
 
     class PaddleLDFlag(object):
-
         def __init__(self):
             self.paddle_build_dir = PADDLE_BUILD_DIR
             self.paddle_build_dir = os.path.abspath(self.paddle_build_dir)
@@ -114,14 +113,14 @@ try:
             """
             if ";" in cmake_flag:
                 return " ".join(map(self.normalize_flag, cmake_flag.split(";")))
-            if cmake_flag.startswith("/"):    # is a path
+            if cmake_flag.startswith("/"):  # is a path
                 return cmake_flag
-            elif cmake_flag.startswith("-l"):    # normal link command
+            elif cmake_flag.startswith("-l"):  # normal link command
                 return cmake_flag
             elif cmake_flag in [
                     "gflags-shared", "gflags-static", "gflags_nothreads-shared",
                     "gflags_nothreads-static"
-            ]:    # special for gflags
+            ]:  # special for gflags
                 assert PaddleLDFlag.cmake_bool(self.gflags_location)
                 return self.gflags_location
             elif len(cmake_flag) != 0:
@@ -151,7 +150,6 @@ try:
 except ImportError:
 
     class PaddleLDFlag(object):
-
         def ldflag_str(self):
             pass
 

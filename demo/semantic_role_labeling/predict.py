@@ -26,7 +26,6 @@ UNK_IDX = 0
 
 
 class Prediction():
-
     def __init__(self, train_conf, dict_file, model_dir, label_file):
         """
         train_conf: trainer configure.
