@@ -21,15 +21,17 @@ from paddle.trainer.config_parser import logger
 
 __all__ = []
 
+
 def register_unary_math_op(op_name, act):
     def op(input, name=None):
-        return mixed_layer(input=[identity_projection(input=input)],
-                           name=name,
-                           act=act)
+        return mixed_layer(
+            input=[identity_projection(input=input)], name=name, act=act)
+
     op = wrap_name_default(op_name)(op)
     op.__doc__ = type(act).__doc__
     globals()[op_name] = op
     __all__.append(op_name)
+
 
 register_unary_math_op('exp', act.ExpActivation())
 register_unary_math_op('log', act.LogActivation())
@@ -38,6 +40,7 @@ register_unary_math_op('sigmoid', act.SigmoidActivation())
 register_unary_math_op('tanh', act.TanhActivation())
 register_unary_math_op('square', act.SquareActivation())
 
+
 def add(layeroutput, other):
     if is_compatible_with(other, float):
         return slope_intercept_layer(input=layeroutput, intercept=other)
@@ -45,8 +48,10 @@ def add(layeroutput, other):
         logger.fatal("LayerOutput can only be added with"
                      " another LayerOutput or a number")
     if layeroutput.size == other.size:
-        return mixed_layer(input=[identity_projection(input=layeroutput),
-                                  identity_projection(input=other)])
+        return mixed_layer(input=[
+            identity_projection(input=layeroutput),
+            identity_projection(input=other)
+        ])
     if other.size != 1 and layeroutput.size != 1:
         logger.fatal("Two LayerOutput can be added only if they have equal size"
                      " or one of their sizes is 1. sizes are %s and %s" %
@@ -56,11 +61,14 @@ def add(layeroutput, other):
         layeroutput = other
         other = tmp
     other = repeat_layer(other, layeroutput.size)
-    return mixed_layer(input=[identity_projection(input=layeroutput),
-                              identity_projection(input=other)])
+    return mixed_layer(input=[
+        identity_projection(input=layeroutput), identity_projection(input=other)
+    ])
+
 
 LayerOutput.__radd__ = add
 LayerOutput.__add__ = add
+
 
 def sub(layeroutput, other):
     if is_compatible_with(other, float):
@@ -71,13 +79,17 @@ def sub(layeroutput, other):
     neg = slope_intercept_layer(input=other, slope=-1.0)
     return add(layeroutput, neg)
 
+
 LayerOutput.__sub__ = sub
+
 
 def rsub(layeroutput, other):
     neg = slope_intercept_layer(input=layeroutput, slope=-1.0)
     return add(neg, other)
 
+
 LayerOutput.__rsub__ = rsub
+
 
 def mul(layeroutput, other):
     if is_compatible_with(other, float):
@@ -92,6 +104,7 @@ def mul(layeroutput, other):
     else:
         logger.fatal("At least one of the operand of '*' must be a number"
                      " or a LayerOutput with size=1")
+
 
 LayerOutput.__mul__ = mul
 LayerOutput.__rmul__ = mul

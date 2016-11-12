@@ -1,9 +1,6 @@
 from paddle.trainer_config_helpers import *
 
-settings(
-    learning_rate=1e-4,
-    batch_size=1000
-)
+settings(learning_rate=1e-4, batch_size=1000)
 
 seq = data_layer(name='seq_input', size=100)
 sub_seq = data_layer(name='sub_seq_input', size=100)
@@ -25,11 +22,15 @@ with mixed_layer() as lstm_param:  # test lstm unit, rnn group
 with mixed_layer() as gru_param:
     gru_param += full_matrix_projection(input=seq, size=100 * 3)
 
-outputs(last_seq(input=recurrent_group(step=generate_rnn_simple('rnn_forward'),
-                                       input=seq)),
-        first_seq(input=recurrent_group(step=generate_rnn_simple('rnn_back'),
-                                        input=seq, reverse=True)),
-        last_seq(input=recurrent_group(step=generate_rnn_simple(
-            'rnn_subseq_forward'), input=SubsequenceInput(input=sub_seq))),
-        last_seq(input=lstmemory_group(input=lstm_param, size=100)),
-        last_seq(input=gru_group(input=gru_param, size=100)))
+outputs(
+    last_seq(input=recurrent_group(
+        step=generate_rnn_simple('rnn_forward'), input=seq)),
+    first_seq(input=recurrent_group(
+        step=generate_rnn_simple('rnn_back'), input=seq, reverse=True)),
+    last_seq(input=recurrent_group(
+        step=generate_rnn_simple('rnn_subseq_forward'),
+        input=SubsequenceInput(input=sub_seq))),
+    last_seq(input=lstmemory_group(
+        input=lstm_param, size=100)),
+    last_seq(input=gru_group(
+        input=gru_param, size=100)))
