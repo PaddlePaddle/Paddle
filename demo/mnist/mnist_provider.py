@@ -2,10 +2,9 @@ from paddle.trainer.PyDataProvider2 import *
 
 
 # Define a py data provider
-@provider(input_types={
-    'pixel': dense_vector(28 * 28),
-    'label': integer_value(10)
-})
+@provider(
+    input_types={'pixel': dense_vector(28 * 28),
+                 'label': integer_value(10)})
 def process(settings, filename):  # settings is not used currently.
     imgf = filename + "-images-idx3-ubyte"
     labelf = filename + "-labels-idx1-ubyte"

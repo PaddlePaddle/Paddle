@@ -12,7 +12,8 @@ def on_init(settings, dictionary, **kwargs):
         # The text is a sequence of integer values, and each value is a word id.
         # The whole sequence is the sentences that we want to predict its
         # sentimental.
-        integer_value(len(dictionary), seq_type=SequenceType),  # text input
+        integer_value(
+            len(dictionary), seq_type=SequenceType),  # text input
 
         # label positive/negative
         integer_value(2)
