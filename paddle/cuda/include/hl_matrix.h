@@ -127,6 +127,36 @@ extern void hl_matrix_cross_entropy_bp(real* grad_d,
                                        int dimN);
 
 /**
+ * @brief  Matrix multi-binary label cross entropy
+ *
+ * @param[in]   output    input matrix (M x N).
+ * @param[out]  entropy   output matrix (M x 1).
+ * @param[in]   mat       input sparse matrix.
+ * @param[in]   dimM      matrix height.
+ * @param[in]   dimN      matrix width.
+ */
+extern void hl_matrix_multi_binary_cross_entropy(real* output,
+                                                 real* entropy,
+                                                 hl_sparse_matrix_s mat,
+                                                 int dimM,
+                                                 int dimN);
+
+/**
+ * @brief  Matrix multi-binary label cross entropy backprop
+ *
+ * @param[in]   output    input matrix (M x N).
+ * @param[out]  grad      output matrix (M x N).
+ * @param[in]   mat       input sparse matrix.
+ * @param[in]   dimM      matrix height.
+ * @param[in]   dimN      matrix width.
+ */
+extern void hl_matrix_multi_binary_cross_entropy_bp(real* output,
+                                                    real* grad,
+                                                    hl_sparse_matrix_s mat,
+                                                    int dimM,
+                                                    int dimN);
+
+/**
  * @brief  Matrix zero memory.
  *
  * @param[in,out]  data   input data.

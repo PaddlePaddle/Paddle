@@ -57,6 +57,18 @@ inline void hl_matrix_cross_entropy_bp(real* grad_d,
                                        int dimM,
                                        int dimN) {}
 
+inline void hl_matrix_multi_binary_cross_entropy(real* output,
+                                                 real* entropy,
+                                                 hl_sparse_matrix_s mat,
+                                                 int dimM,
+                                                 int dimN) {}
+
+inline void hl_matrix_multi_binary_cross_entropy_bp(real* output,
+                                                    real* grad,
+                                                    hl_sparse_matrix_s mat,
+                                                    int dimM,
+                                                    int dimN) {}
+
 inline void hl_matrix_zero_mem(real* data, int num) {}
 
 inline void hl_param_relu_forward(real* output,
