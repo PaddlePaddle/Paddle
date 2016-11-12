@@ -48,4 +48,3 @@ public:
 };
 
 }  // namespace paddle
-

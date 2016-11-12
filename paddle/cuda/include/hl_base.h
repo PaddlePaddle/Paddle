@@ -254,4 +254,3 @@ extern __thread cudaStream_t default_stream;
 #endif  /* __NVCC__ */
 
 #endif  /* HL_BASE_H_ */
-

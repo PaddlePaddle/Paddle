@@ -37,4 +37,3 @@ paddle train \
   --use_gpu=false \
   --config_args=is_test=1 \
 2>&1 | tee 'test.log'
-

@@ -24,4 +24,3 @@ paddle train \
   --show_parameter_stats_period=10 \
   --test_all_data_in_one_period=1 \
 2>&1 | tee 'train.log'
-

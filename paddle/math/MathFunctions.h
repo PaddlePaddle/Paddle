@@ -80,4 +80,3 @@ void vTanh(const int n, const T* a, T* r);
 }  // namespace paddle
 
 #endif  // MATHFUNCTIONS_H_
-
