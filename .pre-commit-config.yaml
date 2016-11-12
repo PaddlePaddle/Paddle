@@ -1,0 +1,9 @@
+-   repo: https://github.com/Lucas-C/pre-commit-hooks.git
+    sha: c25201a00e6b0514370501050cf2a8538ac12270
+    hooks:
+    -   id: remove-crlf
+-   repo: https://github.com/reyoung/mirrors-yapf.git
+    sha: v0.13.2
+    hooks:
+    -   id: yapf
+
