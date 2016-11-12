@@ -528,13 +528,29 @@ TEST(Layer, multi_cross) {
   }
 }
 
-TEST(Layer, multi_binary_label) {
+TEST(Layer, multi_binary_label_sparse_mat) {
   TestConfig config;
   config.layerConfig.set_type("multi_binary_label_cross_entropy");
   config.biasSize = 0;
 
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 50, 0});
   config.inputDefs.push_back({INPUT_SPARSE_NON_VALUE_DATA, "layer_1", 50, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+      testLayerGrad(config, "multi_binary_label_cross_entropy", 100,
+                    /* trans */ false, useGpu);
+  }
+}
+
+TEST(layer, multi_binary_label_id) {
+  TestConfig config;
+  config.layerConfig.set_type("multi_binary_label_cross_entropy");
+  config.biasSize = 0;
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 50, 0});
+  config.inputDefs.push_back({INPUT_LABEL, "layer_1", 10, 0});
   config.layerConfig.add_inputs();
   config.layerConfig.add_inputs();
 

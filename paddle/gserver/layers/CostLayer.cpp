@@ -465,10 +465,7 @@ void MultiBinaryLabelCrossEntropy::forwardImp(Matrix& output, Argument& label,
   MatrixPtr value = nullptr;
   if (label.ids) {
     CHECK(!label.value);
-    value = Matrix::createSparseMatrix(
-        label.ids->getSize(), output.getWidth(), label.ids->getSize(),
-        NO_VALUE, SPARSE_CSR, false, useGpu_);
-    label.idsToSparseMatrix(value);
+    value = label.ids->toOneHotSparseMatrix(output.getWidth(), useGpu_);
   } else {
     CHECK(label.value);
     value = label.value;
@@ -491,10 +488,7 @@ void MultiBinaryLabelCrossEntropy::backwardImp(
   MatrixPtr value = nullptr;
   if (label.ids) {
     CHECK(!value);
-    value = Matrix::createSparseMatrix(
-        label.ids->getSize(), output.getWidth(), label.ids->getSize(),
-        NO_VALUE, SPARSE_CSR, false, useGpu_);
-    label.idsToSparseMatrix(value);
+    value = label.ids->toOneHotSparseMatrix(output.getWidth(), useGpu_);
   } else {
     CHECK(label.value);
     value = label.value;

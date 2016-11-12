@@ -286,12 +286,6 @@ struct Argument {
    sequence has sub-sequence degrades to a sequence.
    */
   void degradeSequence(const Argument& input, bool useGpu);
-
-  /*
-    @brief    convert the ids vector to value as a sparse matrix
-    @param[out]   the output sparse_mat (already allocated)
-  */
-  void idsToSparseMatrix(MatrixPtr sparse_mat);
 };
 
 }  // namespace paddle

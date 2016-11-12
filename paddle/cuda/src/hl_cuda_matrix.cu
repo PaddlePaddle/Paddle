@@ -346,6 +346,7 @@ void hl_matrix_multi_binary_cross_entropy(real* output,
   CHECK_NOTNULL(output);
   CHECK_NOTNULL(entropy);
   CHECK_NOTNULL(csr_mat);
+  CHECK_EQ(csr_mat->format, HL_SPARSE_CSR);
   int n_threads = 1024;
   int blocks = (dimM + n_threads - 1) / n_threads;
   dim3 threads(n_threads);
@@ -385,6 +386,7 @@ void hl_matrix_multi_binary_cross_entropy_bp(real* output,
   CHECK_NOTNULL(output);
   CHECK_NOTNULL(grad);
   CHECK_NOTNULL(csr_mat);
+  CHECK_EQ(csr_mat->format, HL_SPARSE_CSR);
   int n_threads = 1024;
   int blocks = (dimM + n_threads - 1) / n_threads;
   dim3 threads(n_threads);
@@ -763,7 +765,7 @@ __global__ void KeMatrixAddSharedBias(real* A,
   int dim = N / channel;
   if (index < M * N) {
     int i = index % N;
-    i = i / dim; 
+    i = i / dim;
     A[index] += scale * B[i];
   }
 }
@@ -791,7 +793,7 @@ __global__ void KeMatrixCollectSharedBias(real *B,
                                           const int dim,
                                           const int limit,
                                           real scale) {
-  if (dim < limit) { 
+  if (dim < limit) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < channel) {
       real sum = 0.0;

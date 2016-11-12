@@ -2232,26 +2232,15 @@ void testMultiBinaryLabelCrossEntropy(int numSamples, int dim) {
   MatrixPtr cpuGrad = std::make_shared<CpuMatrix>(numSamples, dim);
   MatrixPtr gpuGrad = std::make_shared<GpuMatrix>(numSamples, dim);
 
-  auto cpuRows = IVector::create(numSamples + 1, false);
-  auto cpuCols = IVector::create(numSamples, false);
-  auto gpuRows = IVector::create(numSamples + 1, true);
-  auto gpuCols = IVector::create(numSamples, true);
-  cpuRows->setElement(0, 0);
-  gpuRows->setElement(0, 0);
-  for (int i = 0; i < numSamples; i ++) {
-    int id = rand() % dim; // NOLINT
-    cpuRows->setElement(i + 1, i + 1);
-    gpuRows->setElement(i + 1, i + 1);
-    cpuCols->setElement(i, id);
-    gpuCols->setElement(i, id);
-  }
-
   MatrixPtr cpuLabel = std::make_shared<CpuSparseMatrix>
-          (nullptr, cpuRows->getData(), cpuCols->getData(),
-           numSamples, dim, numSamples, NO_VALUE, SPARSE_CSR, false);
+          (numSamples, dim, numSamples, NO_VALUE, SPARSE_CSR, false);
   MatrixPtr gpuLabel = std::make_shared<GpuSparseMatrix>
-          (nullptr, gpuRows->getData(), gpuCols->getData(),
-           numSamples, dim, numSamples, NO_VALUE, SPARSE_CSR, false);
+          (numSamples, dim, numSamples, NO_VALUE, SPARSE_CSR, false);
+  for (int i = 0; i < numSamples; i ++) {
+    const unsigned int id = rand() % dim; // NOLINT
+    cpuLabel->setRow(i, 1, &id, nullptr);
+    gpuLabel->setRow(i, 1, &id, nullptr);
+  }
 
   output->randomizeUniform();
   cpuOutput->zeroMem();
@@ -2278,8 +2267,8 @@ void testMultiBinaryLabelCrossEntropy(int numSamples, int dim) {
 }
 
 TEST(Matrix, multiBinaryCrossEntropy) {
-  for (auto numSamples : {1, 100, 500}) {
-    for (auto dim : {1000, 10000, 100000}) {
+  for (auto numSamples : {100, 1000, 10000}) {
+    for (auto dim : {100, 1000, 10000}) {
       VLOG(3) << " numSamples=" << numSamples << " dim=" << dim;
       testMultiBinaryLabelCrossEntropy(numSamples, dim);
     }
