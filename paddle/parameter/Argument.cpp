@@ -572,25 +572,41 @@ void Argument::subArgFrom(const Argument& input, size_t offset, size_t height,
   }
 }
 
-void Argument::idsToSparseMatrix(int width, bool useGpu) {
-  if (ids) {
-    CHECK(!value);
-    int height = ids->getSize();
-    int nnz = height;
-    auto rows = IVector::create(height + 1, useGpu);
-    auto cols = IVector::create(nnz, useGpu);
-    rows->setElement(0, 0);
-    for (int i = 0; i < height; i ++) {
-      int id = ids->getElement(i);
-      CHECK_LT(id, width);
-      rows->setElement(i + 1, i + 1);
-      cols->setElement(i, id);
-    }
-    value = Matrix::createSparseMatrix(
-        nullptr, rows->getData(), cols->getData(),
-        height, width, nnz, NO_VALUE, SPARSE_CSR, false, useGpu);
+void Argument::idsToSparseMatrix(MatrixPtr sparse_mat) {
+  int height = ids->getSize();
+  int width = sparse_mat->getWidth();
+
+  CpuIVector cpu_ids(height);
+  cpu_ids.copyFrom(*ids);
+  int *id_data = cpu_ids.getData();
+
+  int *rows = nullptr;
+  int *cols = nullptr;
+  if (sparse_mat->useGpu()) {
+      auto gpu_sparse_mat =
+              dynamic_cast<GpuSparseMatrix*>(sparse_mat.get());
+      rows = gpu_sparse_mat->rows_;
+      cols = gpu_sparse_mat->cols_;
   } else {
-    CHECK(value);
+      rows = sparse_mat->getRows();
+      cols = sparse_mat->getCols();
+  }
+
+  rows[0] = 0;
+  for (int i = 0; i < height; i ++) {
+    int id = id_data[i];
+    CHECK_LT(id, width);
+    rows[i + 1] = i + 1;
+    cols[i] = id;
+  }
+
+  if (sparse_mat->useGpu()) {
+    auto gpu_sparse_mat =
+            dynamic_cast<GpuSparseMatrix*>(sparse_mat.get());
+    hl_memcpy_csr_matrix(gpu_sparse_mat->sMatrix_.get(),
+                         nullptr, rows, cols,
+                         HPPL_STREAM_DEFAULT);
+    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   }
 }
 

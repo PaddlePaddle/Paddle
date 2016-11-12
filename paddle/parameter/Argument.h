@@ -289,11 +289,9 @@ struct Argument {
 
   /*
     @brief    convert the ids vector to value as a sparse matrix
-              the ids vector keeps valid
-    @param    the matrix width (id range)
-    @useGpu
+    @param[out]   the output sparse_mat (already allocated)
   */
-  void idsToSparseMatrix(int width, bool useGpu);
+  void idsToSparseMatrix(MatrixPtr sparse_mat);
 };
 
 }  // namespace paddle
