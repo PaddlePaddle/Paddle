@@ -23,8 +23,8 @@ def deprecated(instead):
         @functools.wraps(func)
         def __wrapper__(*args, **kwargs):
             logger.warning("The interface %s is deprecated, "
-                           "will be removed soon. Please use %s instead."
-                           % (func.__name__, instead))
+                           "will be removed soon. Please use %s instead." %
+                           (func.__name__, instead))
 
             return func(*args, **kwargs)
 
