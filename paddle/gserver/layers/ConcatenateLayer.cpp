@@ -160,7 +160,9 @@ void ConcatenateLayer2::forward(PassType passType) {
     size_t startCol = projCol_[i].first;
     size_t endCol = projCol_[i].second;
     projOutput_[i].value = output_.value->subColMatrix(startCol, endCol);
-    projOutput_[i].grad = output_.grad->subColMatrix(startCol, endCol);
+    if (output_.grad) {
+      projOutput_[i].grad = output_.grad->subColMatrix(startCol, endCol);
+    }
   }
 
   {
