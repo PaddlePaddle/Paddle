@@ -112,7 +112,9 @@ void SpatialPyramidPoolLayer::forward(PassType passType) {
     size_t startCol = projCol_[i].first;
     size_t endCol = projCol_[i].second;
     projOutput_[i].value = output_.value->subColMatrix(startCol, endCol);
-    projOutput_[i].grad = output_.grad->subColMatrix(startCol, endCol);
+    if (output_.grad) {
+      projOutput_[i].grad = output_.grad->subColMatrix(startCol, endCol);
+    }
   }
   for (size_t i = 0; i < pyramidHeight_; i++) {
     poolProjections_[i]->forward(&getInput(0), &projOutput_[i], passType);
