@@ -6,4 +6,3 @@
     :glob:
 
     Training Locally <sentiment_analysis.md>
-    internal/cluster_train.md
