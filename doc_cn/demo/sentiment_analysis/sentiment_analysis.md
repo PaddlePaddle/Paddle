@@ -6,7 +6,7 @@
 
 另一方面，抓取产品的用户评论并分析他们的情感，有助于理解用户对不同公司，不同产品，甚至不同竞争对手产品的偏好。
 
-本教程将指导您完成长期短期记忆（LSTM）网络的训练过程，以分类来自[大型电影评论数据集](http://ai.stanford.edu/~amaas/data/sentiment/)（有时称为[互联网电影数据库 (IMDB)](http://ai.stanford.edu/~amaas/papers/wvSent_acl2011.pdf)）的句子的情感 。 此数据集包含电影评论及其相关联的二进制情绪极性标签，即正面和负面。
+本教程将指导您完成长期短期记忆（LSTM）网络的训练过程，以分类来自[大型电影评论数据集](http://ai.stanford.edu/~amaas/data/sentiment/)（有时称为[互联网电影数据库 (IMDB)](http://ai.stanford.edu/~amaas/papers/wvSent_acl2011.pdf)）的句子的情感 。 此数据集包含电影评论及其相关联的类别标签，即正面和负面。
 
 ## 数椐准备
 
@@ -162,7 +162,7 @@ stacked_lstm_net(dict_dim, class_dim=class_dim,
 ```
 
 * **数椐定义**:
-   * get\_config\_arg(): 获取通过 `--config_args=xx` i设置的命令行参数。
+   * get\_config\_arg(): 获取通过 `--config_args=xx` 设置的命令行参数。
    * 定义训练数椐和测试数椐提供者, 这里使用了PaddlePaddle的Python接口来加载数椐。想了解更多细节可以参考PyDataProvider部分的文档
 
 * **算法配置**:
@@ -303,7 +303,7 @@ python predict.py \
 *  -n $config : 设置网络配置。
 *  -w $model: 设置模型路径。
 *  -b $label: 设置标签类别字典，这个字典是整数标签和字符串标签的一个对应。
-*  -d data/pre-imdb/dict.txt: 设置字段文件。
+*  -d data/pre-imdb/dict.txt: 设置字典文件。
 *  -i data/aclImdb/test/pos/10014_7.txt: 设置一个要预测的示例文件。
 
 注意应该确保默认模型路径`model_output / pass-00002`存在或更改为其它模型路径。
