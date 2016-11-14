@@ -4,7 +4,7 @@ PaddlePaddle 基本使用概念
 
 PaddlePaddle是一个神经网络学习框架。其单机进程为 :code:`paddle train`。 单机的所有设备使用，均在单机进程内调度完成。 而多机辅助进程 :code:`paddle pserver` 负责联合多个单机进程进行通信，进而充分利用集群的计算资源。 PaddlePaddle同时以 :code:`swig api` 的形式，提供训练结果模型预测的方法和自定义训练流程。
 
-下面我们会分别介绍主要进程 :code:`paddle train` 中的一些概念。这些概念会对如何使用PaddlePaddle有一定的帮助。 了解这些概念的前提是，读者已经了解 `基本的神经网络/机器学习原理和概念 <nn.html>`_ 。同时，如果想要了解PaddlePaddle实现中的一些概念，请参考 `PaddlePaddle 编程中的基本概念 <program_concepts.html>`_ 。
+下面我们会分别介绍主要进程 :code:`paddle train` 中的一些概念。这些概念会对如何使用PaddlePaddle有一定的帮助。 了解这些概念的前提是，读者已经了解 `基本的神经网络/机器学习原理和概念 <nn.rst>`_ 。同时，如果想要了解PaddlePaddle实现中的一些概念，请参考 `PaddlePaddle 编程中的基本概念 <program_concepts.rst>`_ 。
 
 ..	contents::
 
@@ -184,8 +184,8 @@ PaddlePaddle多机使用的经典方法是通过 :code:`Parameter Server` 来对
 详细的说明可以参考，使用 `集群训练Paddle`_ 。
 
 
-..  _PyDataProvider: ../ui/data_provider/pydataprovider2.html
-..	_settings: ../../doc/ui/api/trainer_config_helpers/optimizers.html#settings
-..	_mixed_layer: ../../doc/ui/api/trainer_config_helpers/layers.html#mixed-layer
+..  _PyDataProvider: ../ui/data_provider/pydataprovider2.rst
+..	_settings: ../../doc/ui/api/trainer_config_helpers/optimizers.rst
+..	_mixed_layer: ../../doc/ui/api/trainer_config_helpers/layers.rst
 ..	_masking-gpu: http://www.acceleware.com/blog/cudavisibledevices-masking-gpus
-..  _集群训练Paddle: ../cluster/index.html
+..  _集群训练Paddle: ../cluster/index.rst
