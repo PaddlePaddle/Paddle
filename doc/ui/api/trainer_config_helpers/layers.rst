@@ -1,3 +1,7 @@
+======
+Layers
+======
+
 Base
 ======
 
@@ -47,7 +51,7 @@ conv_operator
     :noindex:
 
 conv_projection
--------------
+---------------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: conv_projection
     :noindex:

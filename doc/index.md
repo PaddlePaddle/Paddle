@@ -8,7 +8,7 @@ User Guide
 * [Build and Installation](build/index.rst)
 * [Contribute Code](build/contribute_to_paddle.md)
 * [User Interface](ui/index.md)
-* [Model Config Interface](ui/api/trainer_config_helpers/index.md)
+* [Model Config Interface](ui/api/trainer_config_helpers/index.rst)
 * [Example and Demo](demo/index.md)
 * [Cluster Train](cluster/index.md)
 
