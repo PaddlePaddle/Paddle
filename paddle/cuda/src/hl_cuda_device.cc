@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <cuda_profiler_api.h>
 #include <mutex>
 #include "hl_cuda.h"
 #include "hl_cuda.ph"
@@ -133,8 +134,9 @@ void* cudart_dso_handle = nullptr;
   __macro(cudaGetLastError)               \
   __macro(cudaFuncSetCacheConfig)         \
   __macro(cudaRuntimeGetVersion)          \
-  __macro(cudaGetErrorString)
-
+  __macro(cudaGetErrorString)             \
+  __macro(cudaProfilerStart)              \
+  __macro(cudaProfilerStop)
 CUDA_ROUTINE_EACH(DYNAMIC_LOAD_CUDART_WRAP)
 
 #undef CUDA_ROUNTINE_EACH
@@ -755,4 +757,11 @@ bool hl_cuda_event_is_ready(hl_event_t event) {
     return false;
   }
   return true;
+}
+
+void hl_profiler_start() {
+    CHECK_CUDA(dynload::cudaProfilerStart());
+}
+void hl_profiler_end() {
+    CHECK_CUDA(dynload::cudaProfilerStop());
 }

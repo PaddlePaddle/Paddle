@@ -335,4 +335,14 @@ extern bool hl_cuda_event_is_ready(hl_event_t event);
  */
 extern void hl_device_synchronize();
 
+/**
+ * @brief   gpu profiler start
+ */
+extern void hl_profiler_start();
+
+/**
+ * @brief   gpu profiler stop
+ */
+extern void hl_profiler_end();
+
 #endif  // HL_CUDA_H_

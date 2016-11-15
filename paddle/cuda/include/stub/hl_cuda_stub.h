@@ -93,4 +93,8 @@ inline bool hl_cuda_event_is_ready(hl_event_t event) { return true; }
 
 inline void hl_device_synchronize() {}
 
+inline void hl_profiler_start() {}
+
+inline void hl_profiler_end() {}
+
 #endif  // HL_CUDA_STUB_H_
