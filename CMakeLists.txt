@@ -115,7 +115,6 @@ else()
     endif(WITH_AVX)
 
     if(WITH_DSO)
-        set(CUDA_LIBRARIES "")
         add_definitions(-DPADDLE_USE_DSO)
     endif(WITH_DSO)
 
