@@ -33,5 +33,3 @@ cmake .. -DWITH_GPU=ON -DWITH_SWIG_PY=ON -DWITH_AVX=OFF -DCUDNN_ROOT=/usr/
 make -j `nproc`
 cpack -D CPACK_GENERATOR='DEB' ..
 mv *.deb ~/dist/gpu-noavx
-
-
