@@ -17,6 +17,7 @@ Development Guide
 * [Layer Documents](layer.md)
 * [Writing New Layers](dev/new_layer/index.rst)
 * [Source Code Documents](source/index.md)
+* [GPU Profiling Documents](optimization/index.rst)
 
 Algorithm Tutorial
 ------------------
