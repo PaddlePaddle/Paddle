@@ -65,6 +65,7 @@ __all__ = [
     'StaticInput',
     'expand_layer',
     'scaling_layer',
+    'scaling_projection',
     'power_layer',
     'interpolation_layer',
     'bilinear_interp_layer',
@@ -458,7 +459,7 @@ def identity_projection(input, offset=None):
     :type input: LayerOutput
     :param offset: Offset, None if use default.
     :type offset: int
-    :return: A IdentityProjection or IdentityOffsetProjection Object
+    :return: A IdentityProjection or IdentityOffsetProjection object
     :rtype: IdentityProjection or IdentityOffsetProjection
     """
     if offset is None:
@@ -468,6 +469,34 @@ def identity_projection(input, offset=None):
         proj = IdentityOffsetProjection(
             input_layer_name=input.name, offset=offset)
         proj.origin = input
+    return proj
+
+
+@wrap_param_attr_default()
+def scaling_projection(input, param_attr=None):
+    """
+    scaling_projection multiplies the input with a scalar parameter and add to
+    the output.
+
+    .. math::
+       out += w * in
+
+    The example usage is:
+
+    .. code-block:: python
+
+       proj = scaling_projection(input=layer)
+
+    :param input: Input Layer.
+    :type input: LayerOutput
+    :param param_attr: Parameter config, None if use default.
+    :type param_attr: ParameterAttribute
+    :return: A ScalingProjection object
+    :rtype: ScalingProjection
+    """
+    proj = ScalingProjection(input_layer_name=input.name,
+                             **param_attr.attr)
+    proj.origin = input
     return proj
 
 
@@ -1426,11 +1455,11 @@ def bilinear_interp_layer(input,
     .. code-block:: python
 
        bilinear = bilinear_interp_layer(input=layer1, out_size_x=64, out_size_y=64)
-    
+
     :param   input:        A input layer.
     :type    input:        LayerOutput.
     :param   out_size_x:   bilinear interpolation output width.
-    :type    out_size_x:   int|None 
+    :type    out_size_x:   int|None
     :param   out_size_y:   bilinear interpolation output height.
     :type    out_size_y:   int|None
     :param   name:         The layer's name, which cna not be specified.
@@ -1742,11 +1771,11 @@ def img_conv_layer(input,
     The details of convolution layer, please refer UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/
     FeatureExtractionUsingConvolution/>`_ .
-    
-    Convolution Transpose (deconv) layer for image. Paddle only support square 
+
+    Convolution Transpose (deconv) layer for image. Paddle only support square
     input currently and thus input image's width equals height.
 
-    The details of convolution transpose layer, 
+    The details of convolution transpose layer,
     please refer to the following explanation and references therein
     <http://datascience.stackexchange.com/questions/6107/
     what-are-deconvolutional-layers/>`_ .
@@ -4411,7 +4440,7 @@ def cross_entropy(input, label, name=None, coeff=1.0, layer_attr=None):
 
     .. code-block:: python
 
-       cost = cross_entropy(input=input_layer, 
+       cost = cross_entropy(input=input_layer,
                             label=label_layer)
 
     :param input: The first input layer.
@@ -4451,7 +4480,7 @@ def cross_entropy_with_selfnorm(input,
 
     .. code-block:: python
 
-       cost = cross_entropy_with_selfnorm(input=input_layer, 
+       cost = cross_entropy_with_selfnorm(input=input_layer,
                                           label=label_layer)
 
     :param input: The first input layer.
@@ -4521,7 +4550,7 @@ def huber_cost(input, label, name=None, coeff=1.0, layer_attr=None):
 
     .. code-block:: python
 
-       cost = huber_cost(input=input_layer, 
+       cost = huber_cost(input=input_layer,
                          label=label_layer)
 
     :param input: The first input layer.
@@ -4561,7 +4590,7 @@ def multi_binary_label_cross_entropy(input,
 
     .. code-block:: python
 
-       cost = multi_binary_label_cross_entropy(input=input_layer, 
+       cost = multi_binary_label_cross_entropy(input=input_layer,
                                                label=label_layer)
 
     :param input: The first input layer.

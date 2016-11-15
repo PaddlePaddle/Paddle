@@ -410,8 +410,8 @@ def RecurrentLayerGroupEnd(name):
                   "RecurrentLayerGroup not begin")
     for pair in g_current_submodel.memories:  #check exist
         layer = g_layer_map[pair.layer_name]
-        config_assert(layer is not None, "memory declare wrong name:%s" %
-                      pair.layer_name)
+        config_assert(layer is not None,
+                      "memory declare wrong name:%s" % pair.layer_name)
         memory_link = g_layer_map[pair.link_name]
         config_assert(layer.size == memory_link.size,
                       "memory declare wrong size:%d" % memory_link.size)
@@ -592,6 +592,20 @@ class DotMulProjection(Projection):
     def calc_parameter_dims(self, input_size, output_size):
         return [1, output_size]
 
+# ScalingProjection
+@config_class
+class ScalingProjection(Projection):
+    type = 'scaling'
+
+    def calc_output_size(self, input_layer_config):
+        return input_layer_config.size
+
+    def calc_parameter_size(self, input_size, output_size):
+        return 1
+
+    def calc_parameter_dims(self, input_size, output_size):
+        return [1, 1]
+
 
 @config_class
 class TableProjection(Projection):
@@ -672,8 +686,8 @@ class ConvProjection(Projection):
         parse_conv(conv_conf, input_layer_name, self.proj_conf.conv_conf,
                    num_filters)
         # TODO: support rectangle input
-        self.proj_conf.output_size = (self.proj_conf.conv_conf.output_x**
-                                      2) * num_filters
+        self.proj_conf.output_size = (self.proj_conf.conv_conf.output_x
+                                      **2) * num_filters
 
     def calc_output_size(self, input_layer_config):
         return self.proj_conf.output_size
@@ -2779,8 +2793,8 @@ class ConcatenateLayer2(LayerBase):
 @config_layer('recurrent')
 class RecurrentLayer(LayerBase):
     def __init__(self, name, inputs, reversed=False, bias=True, **xargs):
-        super(RecurrentLayer, self).__init__(name, 'recurrent', 0, inputs, **
-                                             xargs)
+        super(RecurrentLayer, self).__init__(name, 'recurrent', 0, inputs,
+                                             **xargs)
         config_assert(len(self.inputs) == 1, 'RecurrentLayer must have 1 input')
         input_layer = self.get_input_layer(0)
         size = input_layer.size
@@ -2862,22 +2876,22 @@ class MDLstmLayer(LayerBase):
                  active_state_type="sigmoid",
                  bias=True,
                  **xargs):
-        super(MDLstmLayer, self).__init__(name, 'mdlstmemory', 0, inputs, **
-                                          xargs)
+        super(MDLstmLayer, self).__init__(name, 'mdlstmemory', 0, inputs,
+                                          **xargs)
         config_assert(len(self.inputs) == 1, 'MDLstmLayer must have 1 input')
         input_layer = self.get_input_layer(0)
         dim_num = len(directions)
         #check input_layer.size is divided by (3+dim_num)
-        config_assert(input_layer.size %
-                      (3 + dim_num) == 0, "size % (dim_num) should be 0!")
+        config_assert(input_layer.size % (3 + dim_num) == 0,
+                      "size % (dim_num) should be 0!")
         size = input_layer.size / (3 + dim_num)
         self.set_layer_size(size)
         self.config.active_gate_type = active_gate_type
         self.config.active_state_type = active_state_type
         for i in xrange(len(directions)):
             self.config.directions.append(int(directions[i]))
-        self.create_input_parameter(0, size * size *
-                                    (3 + dim_num), [size, size, 3 + dim_num])
+        self.create_input_parameter(0, size * size * (3 + dim_num),
+                                    [size, size, 3 + dim_num])
         #bias includes 3 kinds of peephole, 3+dim_num+2+dim_num
         self.create_bias_parameter(bias, size * (5 + 2 * dim_num))
 
@@ -2915,8 +2929,8 @@ class GruStepLayer(LayerBase):
                  active_gate_type="sigmoid",
                  bias=True,
                  **xargs):
-        super(GruStepLayer, self).__init__(name, 'gru_step', size, inputs, **
-                                           xargs)
+        super(GruStepLayer, self).__init__(name, 'gru_step', size, inputs,
+                                           **xargs)
         config_assert(len(self.inputs) == 2, 'GruStepLayer must have 2 input')
         input_layer0 = self.get_input_layer(0)
         input_layer1 = self.get_input_layer(1)

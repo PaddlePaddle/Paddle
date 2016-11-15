@@ -242,7 +242,7 @@ real GpuMatrix::getSum() {
 void GpuMatrix::accumulateColSum(Matrix& src) {
   CHECK_EQ(getWidth(), src.getWidth());
   CHECK_EQ(getHeight(), (size_t)1);
-  sumCols(src, 1.0);
+  sumCols(src, 1.0, 1.0);
 }
 
 real GpuMatrix::getAbsSum() {
@@ -389,7 +389,7 @@ void GpuMatrix::collectBias(Matrix& a, real scale) {
   CHECK_EQ(width_, a.getWidth());
   GpuSparseMatrix* sMatPtr = dynamic_cast<GpuSparseMatrix*>(&a);
   if (!sMatPtr) {
-    sumCols(a, scale);
+    sumCols(a, /* scaleSum= */scale, /* scaleDest= */1);
   } else {
     real* data = getData();
     hl_sparse_matrix_s A_d = sMatPtr->sMatrix_.get();
@@ -589,7 +589,7 @@ void GpuMatrix::addToRows(Matrix& table, IVector& ids) {
 void GpuMatrix::colMerge(Matrix& src) {
   CHECK(src.height_ == height_);
   if (!trans_ && !src.trans_) {
-    sumRows(src);
+    sumRows(src, /* scaleSum= */1, /* scaleDest= */0);
   } else {
     LOG(FATAL) << "Is not supported";
   }
@@ -599,7 +599,7 @@ void GpuMatrix::rowSum(Matrix& sum) {
   CHECK_EQ(sum.getHeight(), getHeight());
   CHECK_EQ(sum.getWidth(), (size_t)1);
 
-  sum.sumRows(*this);
+  sum.sumRows(*this, /* scaleSum= */1, /* scaleDest= */0);
 }
 
 void GpuMatrix::rowMax(Matrix& max) {
@@ -790,7 +790,8 @@ void GpuMatrix::sumOfSquares(Matrix& output, Matrix& label) {
     LOG(FATAL) << "not supported: GpuSparseMatrix as label";
   }
 
-  BaseMatrix::sumOfSquares(output, label);
+  BaseMatrix::sumOfSquaredDiffs(output, label,
+                                /* scaleSum= */1, /* scaleDest= */1);
 }
 
 void GpuMatrix::sumOfSquaresBp(Matrix& outputV, Matrix& label) {
@@ -1501,7 +1502,7 @@ void CpuMatrix::accumulateColSum(Matrix& src) {
   CHECK_EQ(getWidth(), src.getWidth());
   CHECK_EQ(getHeight(), (size_t)1);
 
-  sumCols(src, 1.0);
+  sumCols(src, /* scaleSum= */1, /* scaleDest= */1);
 }
 
 real CpuMatrix::getAbsSum() {
@@ -2188,7 +2189,7 @@ void CpuMatrix::collectBias(Matrix& a, real scale) {
   CHECK_EQ(width_, a.getWidth());
   CpuSparseMatrix* aptr = dynamic_cast<CpuSparseMatrix*>(&a);
   if (!aptr) {
-    sumCols(a, scale);
+    sumCols(a, /* scaleSum= */scale, /* scaleDest= */1);
   } else {
     size_t nnz = aptr->getElementCnt();
     int* cols = aptr->getCols();
@@ -2227,7 +2228,7 @@ void CpuMatrix::sequenceAvgForward(Matrix& a,
   real* dst = getData();
   real* src = a.getData();
   const int* starts = startsPos.getData();
-  MatrixPtr outMtx = Matrix::create(1, 1, false, false);
+  MatrixPtr outMtx = Matrix::create(nullptr, 1, width, false, false);
   MatrixPtr dataMtx = Matrix::create(nullptr, 1, width, false, false);
   for (size_t i = 0; i < height; i++) {
     int sequenceLength = starts[i + 1] - starts[i];
@@ -2239,13 +2240,15 @@ void CpuMatrix::sequenceAvgForward(Matrix& a,
     dataMtx->setData(src + starts[i] * width, sequenceLength, width);
     if (mode == 0) {
       // plain average
-      outMtx->sumCols(*dataMtx, (real)1 / (real)sequenceLength);
+      outMtx->sumCols(*dataMtx, (real)1 / (real)sequenceLength,
+                      /* scaleDest= */1);
     } else if (mode == 1) {
       // sum instead of average
-      outMtx->sumCols(*dataMtx, (real)1);
+      outMtx->sumCols(*dataMtx,  /* scaleSum= */1, /* scaleDest= */1);
     } else if (mode == 2) {
       // divide by square root of sequenceLength
-      outMtx->sumCols(*dataMtx, (real)1 / std::sqrt(sequenceLength));
+      outMtx->sumCols(*dataMtx, (real)1 / std::sqrt(sequenceLength),
+                      /* scaleDest= */1);
     } else {
       LOG(FATAL) << "should not reach here";
     }
@@ -2932,7 +2935,7 @@ void CpuMatrix::rowSum(Matrix& sum) {
   CHECK_EQ(sum.getHeight(), getHeight());
   CHECK_EQ(sum.getWidth(), (size_t)1);
 
-  sum.sumRows(*this);
+  sum.sumRows(*this, /* scaleSum= */1, /* scaleDest= */0);
 }
 
 void CpuMatrix::rowMaxId(IVector& maxIds) {
@@ -3485,7 +3488,8 @@ void CpuMatrix::sumOfSquares(Matrix& output, Matrix& label) {
     }
   }
 
-  BaseMatrix::sumOfSquares(output, label);
+  BaseMatrix::sumOfSquaredDiffs(output, label,
+                                /* scaleSum= */1, /* scaleDest= */1);
 }
 
 /* calculate the error of outputV according to label */

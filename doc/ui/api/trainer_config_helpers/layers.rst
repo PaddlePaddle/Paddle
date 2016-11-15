@@ -1,3 +1,7 @@
+======
+Layers
+======
+
 Base
 ======
 
@@ -47,7 +51,7 @@ conv_operator
     :noindex:
 
 conv_projection
--------------
+---------------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: conv_projection
     :noindex:
@@ -185,6 +189,12 @@ embedding_layer
 ---------------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: embedding_layer
+    :noindex:
+
+scaling_projection
+-----------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: scaling_projection
     :noindex:
 
 dotmul_projection

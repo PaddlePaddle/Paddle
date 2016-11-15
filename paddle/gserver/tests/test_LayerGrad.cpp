@@ -135,6 +135,17 @@ TEST(Projection, identity) {
   }
 }
 
+TEST(Projection, scaling) {
+  ProjectionConfig conf;
+  conf.set_type("scaling");
+  conf.set_input_size(10);
+  conf.set_output_size(10);
+  for (auto useGpu : {false}) {
+    testProjectionGrad(conf, INPUT_DATA, /* parameterSize */ 1,
+                       /* batchSize */ 100, useGpu);
+  }
+}
+
 #ifndef PADDLE_ONLY_CPU
 TEST(Projection, conv) {
   const int NUM_FILTERS = 16;

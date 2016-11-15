@@ -1,0 +1,24 @@
+-   repo: https://github.com/Lucas-C/pre-commit-hooks.git
+    sha: c25201a00e6b0514370501050cf2a8538ac12270
+    hooks:
+    -   id: remove-crlf
+-   repo: https://github.com/reyoung/mirrors-yapf.git
+    sha: v0.13.2
+    hooks:
+    -   id: yapf
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    sha: 4ef03c4223ad322c7adaa6c6c0efb26b57df3b71
+    hooks:
+    -   id: check-added-large-files
+    -   id: check-merge-conflict
+    -   id: check-symlinks
+    -   id: detect-private-key
+    -   id: end-of-file-fixer
+# TODO(yuyang): trailing whitespace has some bugs on markdown 
+# files now, please not add it to pre-commit hook now
+#    -   id: trailing-whitespace
+#
+# TODO(yuyang): debug-statements not fit for Paddle, because
+# not all of our python code is runnable. Some are used for 
+# documenation
+#    -   id: debug-statements
