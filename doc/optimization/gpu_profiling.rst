@@ -8,6 +8,7 @@ This tutorial will guide you step-by-step through how to conduct profiling and p
 - How to do profiling?
 - Profile tools
 - Hands-on Tutorial
+- Profiling tips
 
 What's profiling?
 =================
@@ -68,10 +69,59 @@ respectively to avoid program crashes when CPU version of PaddlePaddle invokes t
 Hands-on Approach
 =================
 
+To use this command line profiler :code:`nvprof`, you can simply issue the command:
+
+.. code-block:: bash
+
+    nvprof  ./paddle/math/tests/test_GpuProfiler
+
+Then, you can get the following profiling result:
+
 ..  image:: nvprof.png
     :align: center
     :scale: 30%
 
+For visual profiler :code:`nvvp`, you can either import the output of :code:`nvprof –o ...` or
+run application through GUI.
+
 ..  image:: nvvp1.png
     :align: center
     :scale: 30%
+
+From the perspective of kernel functions, :code:`nvvp` can even illustrate why does an operation take a long time?
+As shown in the following figure, kernel's block usage, register usage and shared memory usage from :code:`nvvp`
+allow us to fully utilize all warps on the GPU. 
+
+..  image:: nvvp2.png
+    :align: center
+    :scale: 30%
+
+From the perspective of application, :code:`nvvp` can give you some suggestions to address performance bottleneck.
+For instance, some advice in data movement and compute utilization from the below figure can guide you to tune performance.
+
+..  image:: nvvp3.png
+    :align: center
+    :scale: 30%
+
+..  image:: nvvp4.png
+    :align: center
+    :scale: 30%
+
+Profiling tips
+==============
+
+- The :code:`nvprof` and :code:`nvvp` output is a very good place to start
+- The timeline is a good place to go next
+- Only dig deep into a kernel if it’s taking a significant amount of your time.
+- Where possible, try to match profiler output with theory.
+    1) For example, if I know I’m moving 1GB, and my kernel takes 10ms, I expect the profiler to report 100GB/s.
+    2) Discrepancies are likely to mean your application isn’t doing what you thought it was.
+- Know your hardware: If your GPU can do 6 TFLOPs, and you’re already doing 5.5 TFLOPs, you won’t go much faster!
+
+
+Profiling is a key step in optimisation. Sometimes quite simple changes can lead to big improvements in performance.
+Your mileage may vary!
+
+Reference
+=========
+Jeremy Appleyard, `GPU Profiling for Deep Learning <http://www.robots.ox.ac.uk/~seminars/seminars/Extra/2015_10_08_JeremyAppleyard.pdf>`_, 2015
