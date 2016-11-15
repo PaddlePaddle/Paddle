@@ -122,7 +122,7 @@ std_default = ParameterAttribute(initial_std=default_std)
 
 word_embedding = embedding_layer(size=word_dim, input=word, param_attr=emb_para)
 predicate_embedding = embedding_layer(size=word_dim, input=predicate, param_attr=ParameterAttribute(name='vemb',initial_std=default_std))
-ctx_n2_embedding = embedding_layer(size=word_dim, input=ctx_n2, param_attr=emb_para)
+
 ctx_n2_embedding = embedding_layer(size=word_dim, input=ctx_n2, param_attr=emb_para)
 ctx_n1_embedding = embedding_layer(size=word_dim, input=ctx_n1, param_attr=emb_para)
 ctx_0_embedding = embedding_layer(size=word_dim, input=ctx_0, param_attr=emb_para)
