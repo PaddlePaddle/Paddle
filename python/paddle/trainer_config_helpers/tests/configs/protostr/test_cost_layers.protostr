@@ -24,6 +24,17 @@ layers {
   active_type: ""
 }
 layers {
+  name: "__fc_layer_0__"
+  type: "fc"
+  size: 4
+  active_type: "tanh"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "___fc_layer_0__.w0"
+  }
+  bias_parameter_name: "___fc_layer_0__.wbias"
+}
+layers {
   name: "__ctc_layer_0__"
   type: "ctc"
   size: 5001
@@ -35,17 +46,6 @@ layers {
     input_layer_name: "labels"
   }
   norm_by_times: false
-}
-layers {
-  name: "__fc_layer_0__"
-  type: "fc"
-  size: 4
-  active_type: "tanh"
-  inputs {
-    input_layer_name: "input"
-    input_parameter_name: "___fc_layer_0__.w0"
-  }
-  bias_parameter_name: "___fc_layer_0__.wbias"
 }
 layers {
   name: "crf_label"
@@ -191,6 +191,16 @@ layers {
   }
   coeff: 1.0
 }
+layers {
+  name: "__sum_cost_0__"
+  type: "sum_cost"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "__fc_layer_0__"
+  }
+  coeff: 1.0
+}
 parameters {
   name: "___fc_layer_0__.w0"
   size: 800
@@ -241,14 +251,15 @@ output_layer_names: "__cross_entropy_0__"
 output_layer_names: "__cross_entropy_with_selfnorm_0__"
 output_layer_names: "__huber_cost_0__"
 output_layer_names: "__multi_binary_label_cross_entropy_0__"
+output_layer_names: "__sum_cost_0__"
 sub_models {
   name: "root"
   layer_names: "input"
   layer_names: "labels"
   layer_names: "probs"
   layer_names: "xe-label"
-  layer_names: "__ctc_layer_0__"
   layer_names: "__fc_layer_0__"
+  layer_names: "__ctc_layer_0__"
   layer_names: "crf_label"
   layer_names: "__crf_layer_0__"
   layer_names: "left"
@@ -264,6 +275,7 @@ sub_models {
   layer_names: "huber_label"
   layer_names: "__huber_cost_0__"
   layer_names: "__multi_binary_label_cross_entropy_0__"
+  layer_names: "__sum_cost_0__"
   input_layer_names: "input"
   input_layer_names: "labels"
   input_layer_names: "crf_label"
@@ -284,6 +296,7 @@ sub_models {
   output_layer_names: "__cross_entropy_with_selfnorm_0__"
   output_layer_names: "__huber_cost_0__"
   output_layer_names: "__multi_binary_label_cross_entropy_0__"
+  output_layer_names: "__sum_cost_0__"
   is_recurrent_layer_group: false
 }
 

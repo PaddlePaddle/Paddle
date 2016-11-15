@@ -195,6 +195,8 @@ public:
 
   virtual void resetOne() { LOG(FATAL) << "Not implemented"; }
 
+  void setDiag(real value);
+
   virtual void copyFrom(const Matrix& src) { LOG(FATAL) << "Not implemented"; }
 
   virtual void trimFrom(const CpuSparseMatrix& src) {
@@ -330,6 +332,7 @@ public:
 
   virtual MatrixPtr getInverse() {
     LOG(FATAL) << "Not implemented";
+    return nullptr;
   }
 
   /**
@@ -1036,6 +1039,7 @@ public:
 
   void zeroMem();
   void resetOne();
+  void setDiag(real value);
 
   void resize(size_t newHeight, size_t newWidth);
   void resize(size_t newHeight, size_t newWidth,
@@ -1299,6 +1303,10 @@ public:
                         const size_t numChannels,
                         const real ratioH,
                         const real ratioW);
+
+  void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
+
+  void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label);
 };
 
 class CpuMatrix : public Matrix {
@@ -1318,6 +1326,8 @@ public:
 
   void zeroMem();
   void resetOne();
+  void setDiag(real value);
+
   void resize(size_t newHeight, size_t newWidth);
   void resize(size_t newHeight, size_t newWidth,
               size_t newNnz, /* used to allocate space */

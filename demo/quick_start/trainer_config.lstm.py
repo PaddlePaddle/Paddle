@@ -27,11 +27,12 @@ is_predict = get_config_arg('is_predict', bool, False)
 trn = 'data/train.list' if not is_predict else None
 tst = 'data/test.list' if not is_predict else 'data/pred.list'
 process = 'process' if not is_predict else 'process_predict'
-define_py_data_sources2(train_list=trn,
-                        test_list=tst,
-                        module="dataprovider_emb",
-                        obj=process,
-                        args={"dictionary": word_dict})
+define_py_data_sources2(
+    train_list=trn,
+    test_list=tst,
+    module="dataprovider_emb",
+    obj=process,
+    args={"dictionary": word_dict})
 
 batch_size = 128 if not is_predict else 1
 settings(
@@ -39,17 +40,14 @@ settings(
     learning_rate=2e-3,
     learning_method=AdamOptimizer(),
     regularization=L2Regularization(8e-4),
-    gradient_clipping_threshold=25
-)
-
+    gradient_clipping_threshold=25)
 
 data = data_layer(name="word", size=len(word_dict))
 emb = embedding_layer(input=data, size=128)
-lstm = simple_lstm(input=emb, size=128,
-                   lstm_cell_attr=ExtraAttr(drop_rate=0.25))
+lstm = simple_lstm(
+    input=emb, size=128, lstm_cell_attr=ExtraAttr(drop_rate=0.25))
 lstm_max = pooling_layer(input=lstm, pooling_type=MaxPooling())
-output = fc_layer(input=lstm_max, size=2,
-                  act=SoftmaxActivation())
+output = fc_layer(input=lstm_max, size=2, act=SoftmaxActivation())
 if is_predict:
     maxid = maxid_layer(output)
     outputs([maxid, output])

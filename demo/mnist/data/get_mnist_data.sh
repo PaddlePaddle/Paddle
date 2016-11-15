@@ -19,4 +19,3 @@ done
 cd $DIR
 rm -f *.list
 python generate_list.py
-

@@ -28,7 +28,8 @@ if __name__ == '__main__':
     model_path = sys.argv[1]
     swig_paddle.initPaddle('--use_gpu=0')
     conf = parse_config("trainer_config.py", "is_predict=1")
-    network = swig_paddle.GradientMachine.createFromConfigProto(conf.model_config)
+    network = swig_paddle.GradientMachine.createFromConfigProto(
+        conf.model_config)
     assert isinstance(network, swig_paddle.GradientMachine)
     network.loadParameters(model_path)
     with open('./data/meta.bin', 'rb') as f:
@@ -39,11 +40,12 @@ if __name__ == '__main__':
         while True:
             movie_id = int(raw_input("Input movie_id: "))
             user_id = int(raw_input("Input user_id: "))
-            movie_meta = meta['movie'][movie_id]    # Query Data From Meta.
+            movie_meta = meta['movie'][movie_id]  # Query Data From Meta.
             user_meta = meta['user'][user_id]
             data = [movie_id - 1]
             data.extend(movie_meta)
             data.append(user_id - 1)
             data.extend(user_meta)
-            print "Prediction Score is %.2f" % ((network.forwardTest(
-                cvt.convert([data]))[0]['value'][0][0] + 5) / 2)
+            print "Prediction Score is %.2f" % (
+                (network.forwardTest(cvt.convert([data]))[0]['value'][0][0] + 5)
+                / 2)

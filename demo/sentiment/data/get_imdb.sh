@@ -38,11 +38,11 @@ unzip master.zip
 mkdir -p imdb/train
 mkdir -p imdb/test
 
-cp -r aclImdb/train/pos/ imdb/train/
-cp -r aclImdb/train/neg/ imdb/train/
+cp -r aclImdb/train/pos/ imdb/train/pos
+cp -r aclImdb/train/neg/ imdb/train/neg
 
-cp -r aclImdb/test/pos/ imdb/test/
-cp -r aclImdb/test/neg/ imdb/test/
+cp -r aclImdb/test/pos/ imdb/test/pos
+cp -r aclImdb/test/neg/ imdb/test/neg
 
 #remove compressed package
 rm aclImdb_v1.tar.gz

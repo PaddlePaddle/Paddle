@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Example:
     python preprocess.py -i INPUT [-d DICTSIZE] [-m]
@@ -24,11 +23,12 @@ Options:
     -m --mergeDict merge source and target dictionary
 """
 import os
-import sys 
+import sys
 
 import string
 from optparse import OptionParser
 from paddle.utils.preprocess_util import save_list, DatasetCreater
+
 
 class SeqToSeqDatasetCreater(DatasetCreater):
     """
@@ -75,7 +75,7 @@ class SeqToSeqDatasetCreater(DatasetCreater):
         if not os.path.exists(output):
             os.system(cmd + '> ' + output)
 
-    def build_dict(self, file_path, dict_path, dict_size = -1):
+    def build_dict(self, file_path, dict_path, dict_size=-1):
         """ 
         Create the dictionary for the file, Note that
         1. Valid characters include all printable characters
@@ -99,20 +99,23 @@ class SeqToSeqDatasetCreater(DatasetCreater):
                         for word in words:
                             if word not in dictory:
                                 dictory[word] = 1
-                            else: 
+                            else:
                                 dictory[word] += 1
             output = open(dict_path, "w+")
             output.write('<s>\n<e>\n<unk>\n')
             count = 3
-            for key, value in sorted(dictory.items(), key = lambda d:d[1], reverse = True):
+            for key, value in sorted(
+                    dictory.items(), key=lambda d: d[1], reverse=True):
                 output.write(key + "\n")
                 count += 1
                 if count == dict_size:
                     break
             self.dict_size = count
-      
-    def create_dataset(self, dict_size = -1, mergeDict = False,
-                       suffixes = ['.src', '.trg']):
+
+    def create_dataset(self,
+                       dict_size=-1,
+                       mergeDict=False,
+                       suffixes=['.src', '.trg']):
         """
         Create seqToseq dataset 
         """
@@ -135,13 +138,14 @@ class SeqToSeqDatasetCreater(DatasetCreater):
         # checkout dataset should be parallel corpora
         suffix_len = len(suffixes[0])
         for dataset in dataset_list:
-          file_list = os.listdir(dataset)
-          if len(file_list) % 2 == 1:
-              raise RuntimeError("dataset should be parallel corpora")
-          file_list.sort()
-          for i in range(0, len(file_list), 2):
-              if file_list[i][:-suffix_len] != file_list[i + 1][:-suffix_len]:
-                  raise RuntimeError("source and target file name should be equal")
+            file_list = os.listdir(dataset)
+            if len(file_list) % 2 == 1:
+                raise RuntimeError("dataset should be parallel corpora")
+            file_list.sort()
+            for i in range(0, len(file_list), 2):
+                if file_list[i][:-suffix_len] != file_list[i + 1][:-suffix_len]:
+                    raise RuntimeError(
+                        "source and target file name should be equal")
 
         # cat all the files with the same suffix in dataset
         for suffix in suffixes:
@@ -155,16 +159,18 @@ class SeqToSeqDatasetCreater(DatasetCreater):
         list = ['train.list', 'test.list', 'gen.list']
         for dataset in dataset_list:
             outname = os.path.basename(dataset)
-            self.concat_file(dataset, outname + suffixes[0], 
+            self.concat_file(dataset, outname + suffixes[0],
                              outname + suffixes[1], dir_list[id], outname)
-            save_list([os.path.join(dir_list[id], outname)], 
+            save_list([os.path.join(dir_list[id], outname)],
                       os.path.join(self.output_path, list[id]))
             id += 1
 
         # build dictionary for train data
         dict = ['src.dict', 'trg.dict']
-        dict_path = [os.path.join(self.output_path, dict[0]), 
-                     os.path.join(self.output_path, dict[1])]
+        dict_path = [
+            os.path.join(self.output_path, dict[0]),
+            os.path.join(self.output_path, dict[1])
+        ]
         if mergeDict:
             outname = os.path.join(train_dir, train_dataset.split('/')[-1])
             print 'build src dictionary for train data'
@@ -173,22 +179,30 @@ class SeqToSeqDatasetCreater(DatasetCreater):
             os.system('cp ' + dict_path[0] + ' ' + dict_path[1])
         else:
             outname = os.path.join(train_dataset, self.train_dir_name)
-            for id in range(0,2):
+            for id in range(0, 2):
                 suffix = suffixes[id]
                 print 'build ' + suffix[1:] + ' dictionary for train data'
                 self.build_dict(outname + suffix, dict_path[id], dict_size)
         print 'dictionary size is', self.dict_size
 
+
 def main():
     usage = "usage: \n" \
             "python %prog -i INPUT [-d DICTSIZE] [-m]"
     parser = OptionParser(usage)
-    parser.add_option("-i", action="store", dest="input",
-                      help="input original dataset path")
-    parser.add_option("-d", action="store", dest="dictsize",
-                      help="specified word count of dictionary")
-    parser.add_option("-m", "--mergeDict", action="store_true", dest="mergeDict",
-                      help="merge source and target dictionary")
+    parser.add_option(
+        "-i", action="store", dest="input", help="input original dataset path")
+    parser.add_option(
+        "-d",
+        action="store",
+        dest="dictsize",
+        help="specified word count of dictionary")
+    parser.add_option(
+        "-m",
+        "--mergeDict",
+        action="store_true",
+        dest="mergeDict",
+        help="merge source and target dictionary")
     (options, args) = parser.parse_args()
     if options.input[-1] == os.path.sep:
         options.input = options.input[:-1]
@@ -200,5 +214,6 @@ def main():
         data_creator = SeqToSeqDatasetCreater(options.input, output_path)
         data_creator.create_dataset(dictsize, options.mergeDict)
 
+
 if __name__ == "__main__":
-    main(); 
+    main()

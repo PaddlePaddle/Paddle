@@ -409,9 +409,6 @@ void CpuSparseMatrix::setRow(size_t row, size_t colNum,
   if (format_ == SPARSE_CSR) {
     CHECK_LT(row, height_);
     CHECK(NULL != cols);
-    for (size_t i = row; i < height_; i++) {
-      CHECK_EQ(rows_[i + 1], rows_[i]);
-    }
     if (0 == row) {
       rows_[row] = 0;
     }

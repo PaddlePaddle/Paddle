@@ -209,8 +209,129 @@ layers {
   slope: 1.0
   intercept: 2
 }
+layers {
+  name: "__slope_intercept_layer_6__"
+  type: "slope_intercept"
+  size: 100
+  active_type: ""
+  inputs {
+    input_layer_name: "__slope_intercept_layer_5__"
+  }
+  slope: 2
+  intercept: 0.0
+}
+layers {
+  name: "__slope_intercept_layer_7__"
+  type: "slope_intercept"
+  size: 100
+  active_type: ""
+  inputs {
+    input_layer_name: "__slope_intercept_layer_6__"
+  }
+  slope: 3
+  intercept: 0.0
+}
+layers {
+  name: "data_2"
+  type: "data"
+  size: 1
+  active_type: ""
+}
+layers {
+  name: "__scaling_layer_0__"
+  type: "scaling"
+  size: 100
+  active_type: ""
+  inputs {
+    input_layer_name: "data_2"
+  }
+  inputs {
+    input_layer_name: "__slope_intercept_layer_7__"
+  }
+}
+layers {
+  name: "__scaling_layer_1__"
+  type: "scaling"
+  size: 100
+  active_type: ""
+  inputs {
+    input_layer_name: "data_2"
+  }
+  inputs {
+    input_layer_name: "__scaling_layer_0__"
+  }
+}
+layers {
+  name: "__repeat_layer_0__"
+  type: "featmap_expand"
+  size: 100
+  active_type: ""
+  inputs {
+    input_layer_name: "data_2"
+  }
+  num_filters: 100
+}
+layers {
+  name: "__mixed_2__"
+  type: "mixed"
+  size: 100
+  active_type: ""
+  inputs {
+    input_layer_name: "__scaling_layer_1__"
+    proj_conf {
+      type: "identity"
+      name: "___mixed_2__.w0"
+      input_size: 100
+      output_size: 100
+    }
+  }
+  inputs {
+    input_layer_name: "__repeat_layer_0__"
+    proj_conf {
+      type: "identity"
+      name: "___mixed_2__.w1"
+      input_size: 100
+      output_size: 100
+    }
+  }
+}
+layers {
+  name: "__repeat_layer_1__"
+  type: "featmap_expand"
+  size: 100
+  active_type: ""
+  inputs {
+    input_layer_name: "data_2"
+  }
+  num_filters: 100
+}
+layers {
+  name: "__mixed_3__"
+  type: "mixed"
+  size: 100
+  active_type: ""
+  inputs {
+    input_layer_name: "__mixed_2__"
+    proj_conf {
+      type: "identity"
+      name: "___mixed_3__.w0"
+      input_size: 100
+      output_size: 100
+    }
+  }
+  inputs {
+    input_layer_name: "__repeat_layer_1__"
+    proj_conf {
+      type: "identity"
+      name: "___mixed_3__.w1"
+      input_size: 100
+      output_size: 100
+    }
+  }
+}
+input_layer_names: "data_2"
 input_layer_names: "data"
-output_layer_names: "__slope_intercept_layer_5__"
+output_layer_names: "__mixed_3__"
 sub_models {
   name: "root"
   layer_names: "data"
@@ -228,8 +349,18 @@ sub_models {
   layer_names: "__slope_intercept_layer_3__"
   layer_names: "__slope_intercept_layer_4__"
   layer_names: "__slope_intercept_layer_5__"
+  layer_names: "__slope_intercept_layer_6__"
+  layer_names: "__slope_intercept_layer_7__"
+  layer_names: "data_2"
+  layer_names: "__scaling_layer_0__"
+  layer_names: "__scaling_layer_1__"
+  layer_names: "__repeat_layer_0__"
+  layer_names: "__mixed_2__"
+  layer_names: "__repeat_layer_1__"
+  layer_names: "__mixed_3__"
+  input_layer_names: "data_2"
   input_layer_names: "data"
-  output_layer_names: "__slope_intercept_layer_5__"
+  output_layer_names: "__mixed_3__"
   is_recurrent_layer_group: false
 }
 

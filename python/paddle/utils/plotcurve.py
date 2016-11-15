@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Plot training and testing curve from paddle log.
 
 It takes input from a file or stdin, and output to a file or stdout.
@@ -59,8 +58,8 @@ import re
 import os
 
 
-def plot_paddle_curve(keys, inputfile, outputfile,
-                      format='png', show_fig = False):
+def plot_paddle_curve(keys, inputfile, outputfile, format='png',
+                      show_fig=False):
     """Plot curves from paddle log and save to outputfile.
 
     :param keys: a list of strings to be plotted, e.g. AvgCost
@@ -93,12 +92,17 @@ def plot_paddle_curve(keys, inputfile, outputfile,
         return
     m = len(keys) + 1
     for i in xrange(1, m):
-        pyplot.plot(x[:, 0], x[:, i], color=cm.jet(1.0 * (i - 1) / (2 * m)),
-                    label=keys[i - 1])
+        pyplot.plot(
+            x[:, 0],
+            x[:, i],
+            color=cm.jet(1.0 * (i - 1) / (2 * m)),
+            label=keys[i - 1])
         if (x_test.shape[0] > 0):
-            pyplot.plot(x[:, 0], x_test[:, i],
-                        color=cm.jet(1.0 - 1.0 * (i - 1) / (2 * m)),
-                        label="Test " + keys[i - 1])
+            pyplot.plot(
+                x[:, 0],
+                x_test[:, i],
+                color=cm.jet(1.0 - 1.0 * (i - 1) / (2 * m)),
+                label="Test " + keys[i - 1])
     pyplot.xlabel('number of epoch')
     pyplot.legend(loc='best')
     if show_fig:
@@ -111,12 +115,20 @@ def main(argv):
     """
     main method of plotting curves.
     """
-    cmdparser = argparse.ArgumentParser("Plot training and testing curves from paddle log file.")
-    cmdparser.add_argument('key', nargs='*', help='keys of scores to plot, the default is AvgCost')
-    cmdparser.add_argument('-i', '--input', help='input filename of paddle log, '
-                                                 'default will be standard input')
-    cmdparser.add_argument('-o', '--output', help='output filename of figure, '
-                                                 'default will be standard output')
+    cmdparser = argparse.ArgumentParser(
+        "Plot training and testing curves from paddle log file.")
+    cmdparser.add_argument(
+        'key', nargs='*', help='keys of scores to plot, the default is AvgCost')
+    cmdparser.add_argument(
+        '-i',
+        '--input',
+        help='input filename of paddle log, '
+        'default will be standard input')
+    cmdparser.add_argument(
+        '-o',
+        '--output',
+        help='output filename of figure, '
+        'default will be standard output')
     cmdparser.add_argument('--format', help='figure format(png|pdf|ps|eps|svg)')
     args = cmdparser.parse_args(argv)
     keys = args.key

@@ -718,4 +718,3 @@ void sincos256_ps(v8sf x, v8sf *s, v8sf *c) {
   *s = _mm256_xor_ps(xmm1, sign_bit_sin);
   *c = _mm256_xor_ps(xmm2, sign_bit_cos);
 }
-
