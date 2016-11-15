@@ -124,15 +124,11 @@ paddle train \
   --log_period=5000 \
   --trainer_count=1 \
   --show_parameter_stats_period=5000 \
-  --saving_period=1 \
   --save_dir=./output \
-  --local=1 \
   --num_passes=10000 \
-  --test_period=0 \
   --average_test_period=10000000 \
   --init_model_path=./data \
   --load_missing_parameter_strategy=rand \
-  --dot_period=100  \
 2>&1 | tee 'train.log'
 ```
 
@@ -141,15 +137,11 @@ paddle train \
 -  \--log_period=500: print log every 20 batches.
 -  \--trainer_count=1: set thread number (or GPU count).
 -  \--show_parameter_stats_period=5000: show parameter statistic every 100 batches.
--  \--saving_period=1: save model per pass
 -  \--save_dir=./output: output path to save models.
--  \--local=1: traing in local mode
 -  \--num_passes=10000: set pass number, one pass in PaddlePaddle means training all samples in dataset one time.
--  \--test_period=0: run testing each pass 
 -  \--average_test_period=10000000:  do test on average parameter every average_test_period batches
 -  \--init_model_path=./data: parameter initialization path 
 -  \--load_missing_parameter_strategy=rand: random initialization unexisted parameters
--  \--dot_period=100: print a dot per 100 batches  
 
 
 After training, the models  will be saved in directory `output`.
