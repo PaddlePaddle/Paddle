@@ -192,7 +192,7 @@ embedding_layer
     :noindex:
 
 scaling_projection
------------------
+------------------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: scaling_projection
     :noindex:
