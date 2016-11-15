@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from paddle.trainer_config_helpers import *
-from paddle.trainer_config_helpers.activations import LinearActivation
-from numpy.distutils.system_info import tmp
 
 mode = get_config_arg("mode", str, "generator")
+dataSource = get_config_arg("data", str, "mnist")
 assert mode in set(["generator",
                     "discriminator",
                     "generator_training",
@@ -30,8 +29,12 @@ print('mode=%s' % mode)
 noise_dim = 100
 gf_dim = 64
 df_dim = 64
-sample_dim = 28 # image dim
-c_dim = 1 # image color
+if dataSource == "mnist":
+    sample_dim = 28 # image dim
+    c_dim = 1 # image color
+else:
+    sample_dim = 32
+    c_dim = 3
 s2, s4 = int(sample_dim/2), int(sample_dim/4), 
 s8, s16 = int(sample_dim/8), int(sample_dim/16)
 

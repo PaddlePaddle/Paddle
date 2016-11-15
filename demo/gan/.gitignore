@@ -2,5 +2,7 @@ output/
 *.png
 .pydevproject
 .project
-train.log
+*.log
+*.pyc
 data/raw_data/
+data/cifar-10-batches-py/
