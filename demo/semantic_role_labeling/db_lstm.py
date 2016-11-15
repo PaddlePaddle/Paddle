@@ -130,21 +130,14 @@ ctx_p1_embedding = embedding_layer(size=word_dim, input=ctx_p1, param_attr=emb_p
 ctx_p2_embedding = embedding_layer(size=word_dim, input=ctx_p2, param_attr=emb_para)
 mark_embedding = embedding_layer(name='word_ctx-in_embedding', size=mark_dim, input=mark, param_attr=std_0)
 
+all_emb=[word_embedding, predicate_embedding, ctx_n2_embedding, ctx_n1_embedding, ctx_0_embedding,
+        ctx_p1_embedding, ctx_p2_embedding, mark_embedding]
 
 hidden_0 = mixed_layer(
     name='hidden0',
     size=hidden_dim,
     bias_attr=std_default,
-    input=[
-        full_matrix_projection(input=word_embedding, param_attr=std_default),
-        full_matrix_projection(input=predicate_embedding, param_attr=std_default),
-        full_matrix_projection(input=ctx_n2_embedding, param_attr=std_default),
-        full_matrix_projection(input=ctx_n1_embedding, param_attr=std_default),
-        full_matrix_projection(input=ctx_0_embedding, param_attr=std_default),
-        full_matrix_projection(input=ctx_p1_embedding, param_attr=std_default),
-        full_matrix_projection(input=ctx_p2_embedding, param_attr=std_default),
-        full_matrix_projection(input=mark_embedding, param_attr=std_default)
-    ])
+    input=[ full_matrix_projection(input=emb, param_attr=std_default ) for emb in all_emb ])
 
 
 mix_hidden_lr = 1e-3
