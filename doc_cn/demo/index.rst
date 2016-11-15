@@ -9,7 +9,7 @@
 自然语言处理
 ''''''''''''
 
-* `情感分析 <../../doc/demo/sentiment_analysis/index.html>`_
+* `情感分析 <../../doc_cn/demo/sentiment_analysis/index.html>`_
 * `文本生成 <../../doc/demo/text_generation/index.html>`_
 * `词性标注 <../../doc/demo/semantic_role_labeling/index.html>`_
 

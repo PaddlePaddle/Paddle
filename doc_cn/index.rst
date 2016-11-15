@@ -5,7 +5,6 @@ PaddlePaddle文档
 --------
 * `介绍 <introduction/index.html>`_
 * `快速入门 <demo/quick_start/index.html>`_
-* `情感分析 <demo/sentiment_analysis/sentiment_analysis.html>`_
 * `基本使用概念 <concepts/use_concepts.html>`_
 * `编译与安装 <build_and_install/index.html>`_
 * `用户接口 <ui/index.html>`_
