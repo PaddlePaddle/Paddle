@@ -82,10 +82,10 @@ class __ParameterCallbackWrapper__(swig_paddle.UpdateCallback):
 def __arguments_to_numpy__(i, arg):
     assert isinstance(arg, swig_paddle.Arguments)
     value = arg.getSlotValue(i)
+    ids = arg.getSlotIds(i)
     if value is not None:
         assert isinstance(value, swig_paddle.Matrix)
         value = value.copyToNumpyMat()
-        ids = arg.getSlotIds(i)
     if ids is not None:
         assert isinstance(ids, swig_paddle.IVector)
         ids = ids.copyToNumpyArray()
