@@ -1,5 +1,5 @@
-Recurrent Neural Network Configuration
-======================================
+RNN Configuration
+=================
 
 This tutorial will guide you how to configure recurrent neural network in PaddlePaddle. PaddlePaddle supports highly flexible and efficient recurrent neural network configuration. In this tutorial, you will learn how to:
 

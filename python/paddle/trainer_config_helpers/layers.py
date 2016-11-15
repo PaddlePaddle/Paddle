@@ -3807,6 +3807,7 @@ def linear_comb_layer(weights, vectors, size=None, name=None, layer_attr=None):
     .. math::
 
        z(i) = \sum_{j=0}^{M-1} x(j) y(i+Nj)
+
     where :math:`0 \le i \le N-1`
 
     Or in the matrix notation:
