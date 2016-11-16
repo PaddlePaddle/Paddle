@@ -146,7 +146,7 @@ paddle train \
 
 After training, the models  will be saved in directory `output`. Our training curve is as following:
 <center>
-![pic](./curve.jpg)
+![pic](./curve.jpg =100)
 </center>
 
 ### Run testing
