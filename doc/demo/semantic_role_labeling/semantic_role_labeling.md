@@ -144,7 +144,10 @@ paddle train \
 -  \--load_missing_parameter_strategy=rand: random initialization unexisted parameters
 
 
-After training, the models  will be saved in directory `output`.
+After training, the models  will be saved in directory `output`. Our training curve is as following:
+<center>
+![pic](./curve.jpg)
+</center>
 
 ### Run testing
 The script for testing is `test.sh`, user just need to execute:
