@@ -763,7 +763,7 @@ def mixed_layer(size=0,
 
 
 @layer_support()
-def data_layer(name, size, layer_attr=None):
+def data_layer(name, size, height=None, width=None, layer_attr=None):
     """
     Define DataLayer For NeuralNetwork.
 
@@ -778,6 +778,10 @@ def data_layer(name, size, layer_attr=None):
     :type name: basestring
     :param size: Size of this data layer.
     :type size: int
+    :param height: Height of this data layer, used for image
+    :type size: int|None
+    :param width: Width of this data layer, used for image
+    :type size: int|None
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
@@ -787,6 +791,8 @@ def data_layer(name, size, layer_attr=None):
         type=LayerType.DATA,
         name=name,
         size=size,
+        height=height,
+        width=width,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
     return LayerOutput(name, LayerType.DATA, size=size)
@@ -1480,7 +1486,7 @@ def bilinear_interp_layer(input,
             bilinear_interp=BilinearInterp(
                 out_size_x=out_size_x,
                 out_size_y=out_size_y,
-                num_channels=num_channels)),
+                channels=num_channels)),
         type=LayerType.BILINEAR_INTERP_LAYER,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
@@ -1908,8 +1914,7 @@ def img_pool_layer(input,
                    layer_attr=None,
                    pool_size_y=None,
                    stride_y=None,
-                   padding_y=None,
-                   img_width=None):
+                   padding_y=None):
     """
     Image pooling Layer.
 
@@ -1940,9 +1945,6 @@ def img_pool_layer(input,
     :type stride_y: int|None
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
-    :param img_width: the width of input feature map. If it is None, the input feature
-                      map should be square.
-    :type img_width: int|None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -1978,8 +1980,7 @@ def img_pool_layer(input,
                     padding=padding,
                     size_y=pool_size_y,
                     stride_y=stride_y,
-                    padding_y=padding_y,
-                    img_width=img_width))
+                    padding_y=padding_y))
         ],
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
@@ -1997,7 +1998,6 @@ def spp_layer(input,
               num_channels=None,
               pool_type=None,
               pyramid_height=None,
-              img_width=None,
               layer_attr=None):
     """
     Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition.
@@ -2014,9 +2014,6 @@ def spp_layer(input,
     :type scale: BasePoolingType
     :param pyramid_height: pyramid height.
     :type pyramid_height: int
-    :param img_width: the width of input feature map. If it is None, the input feature
-                      map should be square.
-    :type img_width: int|None
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
@@ -2043,8 +2040,7 @@ def spp_layer(input,
             spp=SpatialPyramidPool(
                 pool_type=type_name,
                 channels=num_channels,
-                pyramid_height=pyramid_height,
-                img_width=img_width)),
+                pyramid_height=pyramid_height)),
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,

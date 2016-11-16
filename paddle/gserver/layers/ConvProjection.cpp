@@ -47,7 +47,7 @@ void ConvProjection::getConvParams() {
   filterH_ = conf.filter_size_y();
   filterW_ = conf.filter_size();
 
-  configImgH_ = conf.img_size();
+  configImgH_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
   configImgW_ = conf.img_size();
 
   channels_ = conf.channels();

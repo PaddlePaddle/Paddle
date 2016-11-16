@@ -48,8 +48,8 @@ void DataLayer::copyDataToOutput(Argument& output) {
       output.ids->copyFrom(*data_.ids);
     }
   }
-  output.setFrameHeight(data_.getFrameHeight());
-  output.setFrameWidth(data_.getFrameWidth());
+  output.setFrameHeight(config_.height());
+  output.setFrameWidth(config_.width());
   output.cpuSequenceDims = data_.cpuSequenceDims;
   output.sequenceStartPositions = data_.sequenceStartPositions;
   output.subSequenceStartPositions = data_.subSequenceStartPositions;

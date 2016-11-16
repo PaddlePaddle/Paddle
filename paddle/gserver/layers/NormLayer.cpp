@@ -49,6 +49,9 @@ bool ResponseNormLayer::init(const LayerMap& layerMap,
   outputX_ = conf.output_x();
   imgSize_ = conf.img_size();
   denoms_ = NULL;
+
+  outputY_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
+  imgSizeY_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
   return true;
 }
 

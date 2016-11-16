@@ -25,10 +25,10 @@ size_t MaxOutLayer::getSize() {
   imgSizeH_ = inputLayers_[0]->getOutput().getFrameHeight();
   imgSizeW_ = inputLayers_[0]->getOutput().getFrameWidth();
   if (imgSizeH_ == 0) {
-    imgSizeH_ = maxoutConf.img_size_y();
+    imgSizeH_ = maxoutConf.image_conf().img_size_y();
   }
   if (imgSizeW_ == 0) {
-    imgSizeW_ = maxoutConf.img_size_x();
+    imgSizeW_ = maxoutConf.image_conf().img_size();
   }
 
   featLen_ = imgSizeH_ * imgSizeW_;
@@ -50,7 +50,7 @@ bool MaxOutLayer::init(const LayerMap& layerMap,
 
   const MaxOutConfig& conf = config_.inputs(0).maxout_conf();
   groups_ = conf.groups();
-  channels_ = conf.channels();
+  channels_ = conf.image_conf().channels();
   CHECK_EQ(channels_ % groups_, 0UL);
   outputChannels_ = channels_ / groups_;
 

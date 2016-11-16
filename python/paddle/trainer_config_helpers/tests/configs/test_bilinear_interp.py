@@ -17,7 +17,7 @@ bilinear = bilinear_interp_layer(input=conv, out_size_x=64, out_size_y=64)
 
 pool = img_pool_layer(
     input=bilinear,
-    num_channels=4,
+    num_channels=16,
     pool_size=2,
     stride=2,
     pool_type=MaxPooling())

@@ -61,15 +61,10 @@ bool BatchNormBaseLayer::init(const LayerMap& layerMap,
 
 void BatchNormBaseLayer::calFeatureMapSize() {
   const ImageConfig& conf = config_.inputs(0).image_conf();
-  if (inputLayers_[0]->getOutput().getFrameHeight() == 0 &&
-      inputLayers_[0]->getOutput().getFrameWidth() == 0) {
-    imgSize_ = conf.img_size();
-    imageH_ = imgSize_;
-    imageW_ = imgSize_;
-  } else {
-    imageH_ = inputLayers_[0]->getOutput().getFrameHeight();
-    imageW_ = inputLayers_[0]->getOutput().getFrameWidth();
-  }
+  imageH_ = inputLayers_[0]->getOutput().getFrameHeight();
+  imageW_ = inputLayers_[0]->getOutput().getFrameWidth();
+  if (imageH_ == 0) imageH_ = conf.img_size_y();
+  if (imageW_ == 0) imageW_ = conf.img_size();
   imgPixels_ = imageH_ * imageW_;
   getOutput().setFrameHeight(imageH_);
   getOutput().setFrameWidth(imageW_);

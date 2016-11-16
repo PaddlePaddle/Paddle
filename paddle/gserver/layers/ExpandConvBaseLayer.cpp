@@ -30,17 +30,19 @@ bool ExpandConvBaseLayer::init(const LayerMap &layerMap,
    * meaning as in conv, we need to swap channels_ and numFilters here for
    * convTrans, and in other functions too.
    * */
-  int channel;
-  int numFilters;
+
   /* Initialize the projection */
   for (auto &inputConfig : config_.inputs()) {
     const ConvConfig &conf = inputConfig.conv_conf();
-    numFilters = isDeconv_ ? conf.channels() : numFilters_;
+    int numFilters = isDeconv_ ? conf.channels() : numFilters_;
     subM_.push_back(numFilters / conf.groups());
-    subN_.push_back(conf.output_x() * conf.output_x());
-    channel = isDeconv_ ? numFilters_ : conf.channels();
-    subK_.push_back(channel * conf.filter_size() * conf.filter_size() /
-                    conf.groups());
+    subN_.push_back(conf.output_x() *
+                    (conf.has_output_y() ? conf.output_y() : conf.output_x()));
+    int channel = isDeconv_ ? numFilters_ : conf.channels();
+    subK_.push_back(
+        channel * conf.filter_size() *
+        (conf.has_filter_size_y() ? conf.filter_size_y() : conf.filter_size()) /
+        conf.groups());
     /* Consistent caffe mode for multiple input */
     caffeMode_ = conf.caffe_mode();
   }
@@ -107,9 +109,9 @@ void ExpandConvBaseLayer::expandOneFrame(MatrixPtr image, size_t startIdx,
       imgData, 1, imgSizeH_[inIdx] * imgSizeW_[inIdx] * channel, false,
       useGpu_);
   expandInput_->convExpand(*imageTmp, imgSizeH_[inIdx], imgSizeW_[inIdx],
-                           channel, filterSize_[inIdx],
-                           filterSize_[inIdx], stride_[inIdx], stride_[inIdx],
-                           padding_[inIdx], padding_[inIdx],
+                           channel, filterSizeY_[inIdx],
+                           filterSize_[inIdx], strideY_[inIdx], stride_[inIdx],
+                           paddingY_[inIdx], padding_[inIdx],
                            outputH_[inIdx], outputW_[inIdx]);
   imageTmp->clear();
 }
@@ -188,10 +190,10 @@ void ExpandConvBaseLayer::bpropActs(MatrixPtr out, MatrixPtr image,
         imgSizeH_[inpIdx] * imgSizeW_[inpIdx] * channel, false,
         useGpu_);
     vTmp->convShrink(*oneGradTmp, imgSizeH_[inpIdx], imgSizeW_[inpIdx],
-                     channel, filterSize_[inpIdx],
-                     filterSize_[inpIdx], stride_[inpIdx], stride_[inpIdx],
-                     padding_[inpIdx], padding_[inpIdx],
-                     outputH_[inpIdx], outputW_[inpIdx], 1.0f, 1.0f);
+                     channel, filterSizeY_[inpIdx],
+                     filterSize_[inpIdx], strideY_[inpIdx], stride_[inpIdx],
+                     paddingY_[inpIdx], padding_[inpIdx], outputH_[inpIdx],
+                     outputW_[inpIdx], 1.0f, 1.0f);
     vTmp->clear();
     oneGradTmp->clear();
 
