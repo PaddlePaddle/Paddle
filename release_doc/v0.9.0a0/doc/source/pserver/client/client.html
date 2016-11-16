@@ -1,0 +1,860 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Client &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Client Documents" href="index.html" />
+    <link rel="next" title="Network Documents" href="../network/index.html" />
+    <link rel="prev" title="Client Documents" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../network/index.html" title="Network Documents"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Client Documents"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Client Documents</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="client">
+<h1>Client<a class="headerlink" href="#client" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="_CPPv2N6paddle10BaseClientE">
+<span id="paddle::BaseClient"></span><span class="target" id="paddleclasspaddle_1_1BaseClient"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">BaseClient</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClientE" title="Permalink to this definition">¶</a></dt>
+<dd><p>it manages all connections to pservers. it exists two modes to manage connections to all pservers. Firstly, one connection owns two threads that separately manage to send and receive data. Secondly, each thread uses one connection for all activation in it. the first solution arms with sendThreads_/recvThreads_ and sendJobQueue_/ recvJobQueue_. the second solution use some shared thread pool to manage connections. In addition to pserver, metric learning also uses network to exchange features within multi-machines, so this class just abstracts some basic threads and queue buffer creation for them </p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ParameterClient2"><span class="std std-ref">paddle::ParameterClient2</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle10BaseClient10SendJobPtrE">
+<span id="paddle::BaseClient::SendJobPtr"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1abd965e39dfef5afbb2098f9b5f3cb0aa"></span><em class="property">typedef </em>std::shared_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle10BaseClient7SendJobE" title="paddle::BaseClient::SendJob">SendJob</a>&gt; <code class="descname">SendJobPtr</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient10SendJobPtrE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle10BaseClient9SendQueueE">
+<span id="paddle::BaseClient::SendQueue"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a1dae8198ea500262fde1d9be609d3d0a"></span><em class="property">typedef </em><a class="reference internal" href="../../utils/queue.html#_CPPv2N6paddle5QueueE" title="paddle::Queue">Queue</a>&lt;<a class="reference internal" href="#_CPPv2N6paddle10BaseClient10SendJobPtrE" title="paddle::BaseClient::SendJobPtr">SendJobPtr</a>&gt; <code class="descname">SendQueue</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient9SendQueueE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle10BaseClient10BaseClientEbi">
+<span id="paddle::BaseClient::BaseClient__b.i"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a8410924a4f21de0c5d0fff37374e7888"></span><code class="descname">BaseClient</code><span class="sig-paren">(</span>bool <em>separate</em> = false, int <em>numPorts</em> = FLAGS_ports_num<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient10BaseClientEbi" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle10BaseClientD0Ev">
+<span id="paddle::BaseClient::~BaseClient"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1acf1d1d25aae1ae307041231976d12389"></span><code class="descname">~BaseClient</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClientD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> DataType&gt;</dt>
+<dt id="_CPPv2N6paddle10BaseClient7putDataEi12SendDataTypeP8DataType6size_t14DataUpdateMode">
+<span id="paddle::BaseClient::putData__i.SendDataType.DataTypeP.s.DataUpdateMode"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1ac55421ff85cf0235eef6f657e1940151"></span>void <code class="descname">putData</code><span class="sig-paren">(</span>int <em>clientId</em>, SendDataType <em>type</em>, DataType *<em>datas</em>, size_t <em>size</em>, DataUpdateMode <em>mode</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient7putDataEi12SendDataTypeP8DataType6size_t14DataUpdateMode" title="Permalink to this definition">¶</a></dt>
+<dd><p>send data to server, support only synchronize </p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> DataType&gt;</dt>
+<dt id="_CPPv2N6paddle10BaseClient10putOwnDataEi12SendDataTypeP8DataType6size_t">
+<span id="paddle::BaseClient::putOwnData__i.SendDataType.DataTypeP.s"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1aa5b62a3037a4a1550038cc32612c083e"></span>void <code class="descname">putOwnData</code><span class="sig-paren">(</span>int <em>clientId</em>, SendDataType <em>type</em>, DataType *<em>datas</em>, size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient10putOwnDataEi12SendDataTypeP8DataType6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> DataType&gt;</dt>
+<dt id="_CPPv2N6paddle10BaseClient10getAllDataEi12SendDataTypeP8DataType6size_t">
+<span id="paddle::BaseClient::getAllData__i.SendDataType.DataTypeP.s"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a97c9747af8b7b01265392e03e2562c79"></span>void <code class="descname">getAllData</code><span class="sig-paren">(</span>int <em>clientId</em>, SendDataType <em>type</em>, DataType *<em>datas</em>, size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient10getAllDataEi12SendDataTypeP8DataType6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> DataType&gt;</dt>
+<dt id="_CPPv2N6paddle10BaseClient6reduceEP8DataTypeP8DataType6size_tii">
+<span id="paddle::BaseClient::reduce__DataTypeP.DataTypeP.s.i.i"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1ac9e1f2fcc69ac798b74d8cb841124062"></span>void <code class="descname">reduce</code><span class="sig-paren">(</span>DataType *<em>sendBuf</em>, DataType *<em>recvBuf</em>, size_t <em>size</em>, int <em>clientId</em>, int <em>rootId</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient6reduceEP8DataTypeP8DataType6size_tii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reduces values on all clients. This reduce just support SUM. The results are saved in recvBuf of rootId client </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle10BaseClient13getTransDtypeERKNSt9type_infoE">
+<span id="paddle::BaseClient::getTransDtype__std::type_infoCR"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a88e3d7de52a2ea0e2590fef6d6ba1d02"></span><em class="property">virtual</em> TransDataType <code class="descname">getTransDtype</code><span class="sig-paren">(</span><em class="property">const</em> std::type_info &amp;<em>info</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient13getTransDtypeERKNSt9type_infoE" title="Permalink to this definition">¶</a></dt>
+<dd><p>return trans data type according to the input type </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle10BaseClient9ThreadPtrE">
+<span id="paddle::BaseClient::ThreadPtr"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1ac96557a751a10f9a19c11b3d7161f33a"></span><em class="property">typedef </em>std::unique_ptr&lt;std::thread&gt; <code class="descname">ThreadPtr</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient9ThreadPtrE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle10BaseClient9InputIovsE">
+<span id="paddle::BaseClient::InputIovs"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a67139b470bbb69b6fc0e319c88c95060"></span><em class="property">typedef </em>std::vector&lt;std::vector&lt;iovec&gt;&gt; <code class="descname">InputIovs</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient9InputIovsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle10BaseClient11SendRequestE">
+<span id="paddle::BaseClient::SendRequest"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1ad7aa92004c28d036398373dfded64ed0"></span><em class="property">typedef </em>std::vector&lt;SendParameterRequest&gt; <code class="descname">SendRequest</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient11SendRequestE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle10BaseClient18SendDataRequestVecE">
+<span id="paddle::BaseClient::SendDataRequestVec"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a2b74294b2760bda25175f74d6188c41e"></span><em class="property">typedef </em>std::vector&lt;SendDataRequest&gt; <code class="descname">SendDataRequestVec</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient18SendDataRequestVecE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle10BaseClient12calcClientIdEii">
+<span id="paddle::BaseClient::calcClientId__i.i"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a4687d99b1d441769303012916b6dc41a"></span>int <code class="descname">calcClientId</code><span class="sig-paren">(</span>int <em>i</em>, int <em>serviceNum</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient12calcClientIdEii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle10BaseClient12startThreadsEv">
+<span id="paddle::BaseClient::startThreads"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a9de1d23f009358a26c9e7d94ed6bb6fc"></span>void <code class="descname">startThreads</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient12startThreadsEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start threads in sendThreads_ and recvThreads_ </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle10BaseClient13finishThreadsEv">
+<span id="paddle::BaseClient::finishThreads"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a9931a2d07737a43335a0fd6b749cc6f3"></span>void <code class="descname">finishThreads</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient13finishThreadsEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>finish threads in sendThreads_ and recvThreads_ </p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> DataType&gt;</dt>
+<dt id="_CPPv2N6paddle10BaseClient11prepareDataEi12SendDataType14DataUpdateModeP8DataType6size_tP7SendJob">
+<span id="paddle::BaseClient::prepareData__i.SendDataType.DataUpdateMode.DataTypeP.s.SendJobP"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a675d0a1e9f3743d9d292656c2ae342b5"></span>void <code class="descname">prepareData</code><span class="sig-paren">(</span>int <em>clientId</em>, SendDataType <em>type</em>, DataUpdateMode <em>updateMode</em>, DataType *<em>datas</em>, size_t <em>size</em>, <a class="reference internal" href="#_CPPv2N6paddle10BaseClient7SendJobE" title="paddle::BaseClient::SendJob">SendJob</a> *<em>sendJob</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient11prepareDataEi12SendDataType14DataUpdateModeP8DataType6size_tP7SendJob" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> DataType&gt;</dt>
+<dt id="_CPPv2N6paddle10BaseClient8sendDataEi12SendDataType14DataUpdateModeP8DataType6size_t">
+<span id="paddle::BaseClient::sendData__i.SendDataType.DataUpdateMode.DataTypeP.s"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a89c0214ec0724b9c5f810a324db7efbf"></span>void <code class="descname">sendData</code><span class="sig-paren">(</span>int <em>clientId</em>, SendDataType <em>type</em>, DataUpdateMode <em>updateMode</em>, DataType *<em>datas</em>, size_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient8sendDataEi12SendDataType14DataUpdateModeP8DataType6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>send data to all data servers </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>each trainer sends all its data to all data servers it&#8217;s for broadcast data synchronization, such as features synchronization in metric learning. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle10BaseClient8recvDataEv">
+<span id="paddle::BaseClient::recvData"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a952d1be070747881a5a3aa4f70843887"></span>void <code class="descname">recvData</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient8recvDataEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>recv data from all data servers </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>synchronize all recv threads </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">typename</em> ProtoIn, <em class="property">typename</em> ProtoOut&gt;</dt>
+<dt id="_CPPv2N6paddle10BaseClient9multiCallEPKcRK7ProtoInPNSt6vectorI8ProtoOutEE">
+<span id="paddle::BaseClient::multiCall__cCP.ProtoInCR.std::vector:ProtoOut:P"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a5f742c626bf5335d9551f329df9bc383"></span>void <code class="descname">multiCall</code><span class="sig-paren">(</span><em class="property">const</em> char *<em>funcName</em>, <em class="property">const</em> ProtoIn &amp;<em>request</em>, std::vector&lt;ProtoOut&gt; *<em>responses</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient9multiCallEPKcRK7ProtoInPNSt6vectorI8ProtoOutEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>send request, and recv responses </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle10BaseClient11synchronizeE10SyncObject">
+<span id="paddle::BaseClient::synchronize__SyncObject"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a0bd8008cde86a6b77f1c532f8f395caa"></span>void <code class="descname">synchronize</code><span class="sig-paren">(</span>SyncObject <em>syncObjectId</em> = SYNC_DEFAULT<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient11synchronizeE10SyncObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>synchronize all trainers and pservers </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>used to ensure that data of all trainers have been received </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle10BaseClient4sendEi">
+<span id="paddle::BaseClient::send__i"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1abbeef20f1b3c476a7a448ffde75f11ce"></span><em class="property">virtual</em> void <code class="descname">send</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle10BaseClient4sendEi" title="Permalink to this definition">¶</a></dt>
+<dd><p>use multithread to separately send data </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>each thread should read its own JobQueue to handle requests each thread should calcClientId() to retrieve connections managed by himself. send and recv are implemented in child class. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle10BaseClient4recvEi">
+<span id="paddle::BaseClient::recv__i"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a6809adbdf1b8468d0fa80235ae53fd5b"></span><em class="property">virtual</em> void <code class="descname">recv</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle10BaseClient4recvEi" title="Permalink to this definition">¶</a></dt>
+<dd><p>use multithread to separately receive data </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>almost same as <a class="reference internal" href="#paddleclasspaddle_1_1BaseClient_1abbeef20f1b3c476a7a448ffde75f11ce"><span class="std std-ref">send()</span></a> </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient9stopping_E">
+<span id="paddle::BaseClient::stopping___b"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a1083b08bc4c5568d2d6522d7dc2da936"></span>bool <code class="descname">stopping_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient9stopping_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient11serviceNum_E">
+<span id="paddle::BaseClient::serviceNum___i"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a63206acd8774a7d2c6b30666dd39307a"></span>int <code class="descname">serviceNum_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient11serviceNum_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>nodes * ports that means the number of real pservers </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient10threadNum_E">
+<span id="paddle::BaseClient::threadNum___i"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a8c2400f4fcdeea1546015894e4a7f393"></span>int <code class="descname">threadNum_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient10threadNum_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>threads num for managing all services. Normally the number of pservers are relatively less than several hundreds so that using thread-based parallelization can benifit traffic performance and pserver&#8217;s sgd optimization performance. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient8clients_E">
+<span id="paddle::BaseClient::clients___std::vector:ProtoClient:"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a7ab433aa8623964ae92748f09c6ec5af"></span>std::vector&lt;ProtoClient&gt; <code class="descname">clients_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient8clients_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>the connection manager at client end </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient12sendThreads_E">
+<span id="paddle::BaseClient::sendThreads___std::vector:ThreadPtr:"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a6617c59e63fdb57280f6fb222e9f0b8c"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle10BaseClient9ThreadPtrE" title="paddle::BaseClient::ThreadPtr">ThreadPtr</a>&gt; <code class="descname">sendThreads_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient12sendThreads_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>send threads for parallelization </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient12recvThreads_E">
+<span id="paddle::BaseClient::recvThreads___std::vector:ThreadPtr:"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a58d5a87cedf8f48bcddc7e4480396fe9"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle10BaseClient9ThreadPtrE" title="paddle::BaseClient::ThreadPtr">ThreadPtr</a>&gt; <code class="descname">recvThreads_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient12recvThreads_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>recv threads for parallelization </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient16recvSyncBarrier_E">
+<span id="paddle::BaseClient::recvSyncBarrier___std::unique_ptr:ThreadBarrier:"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1aaf62d521d7bee95da12e12d633393fe7"></span>std::unique_ptr&lt;<a class="reference internal" href="../../utils/thread.html#_CPPv2N6paddle13ThreadBarrierE" title="paddle::ThreadBarrier">ThreadBarrier</a>&gt; <code class="descname">recvSyncBarrier_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient16recvSyncBarrier_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient13sendJobQueue_E">
+<span id="paddle::BaseClient::sendJobQueue___std::vector:std::unique_ptr:SendQueue::"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1ac45197448b71bb5ff3da0ed5c39438a7"></span>std::vector&lt;std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle10BaseClient9SendQueueE" title="paddle::BaseClient::SendQueue">SendQueue</a>&gt;&gt; <code class="descname">sendJobQueue_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient13sendJobQueue_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>send/recv queue cooperates with each other to accomplish overlapping communication with forwardBackward action. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient13recvJobQueue_E">
+<span id="paddle::BaseClient::recvJobQueue___std::vector:std::unique_ptr:SendQueue::"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a3e9c289a725ede22c66b5ed691369d27"></span>std::vector&lt;std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle10BaseClient9SendQueueE" title="paddle::BaseClient::SendQueue">SendQueue</a>&gt;&gt; <code class="descname">recvJobQueue_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient13recvJobQueue_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>queue for buffering recv request </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient8sendJob_E">
+<span id="paddle::BaseClient::sendJob___SendJob"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1adc9dafc55f701a950ca307348683dded"></span><a class="reference internal" href="#_CPPv2N6paddle10BaseClient7SendJobE" title="paddle::BaseClient::SendJob">SendJob</a> <code class="descname">sendJob_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient8sendJob_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>specific for dserver </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient9numPorts_E">
+<span id="paddle::BaseClient::numPorts___i"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a2c88ea22f3004360f990b3ab490211a2"></span>int <code class="descname">numPorts_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient9numPorts_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>port num for each node </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient20separateSendAndRecv_E">
+<span id="paddle::BaseClient::separateSendAndRecv___b"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1aa5ac618ca988d65881261624feeda345"></span>bool <code class="descname">separateSendAndRecv_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient20separateSendAndRecv_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>if set, overlapped optimization is disabled </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient13recvDataMems_E">
+<span id="paddle::BaseClient::recvDataMems___std::vector:CpuMemHandlePtr:"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1ade2bcbb2f588848e96eda1579f5ea776"></span>std::vector&lt;<a class="reference internal" href="../../math/utils/utils.html#_CPPv2N6paddle15CpuMemHandlePtrE" title="paddle::CpuMemHandlePtr">CpuMemHandlePtr</a>&gt; <code class="descname">recvDataMems_</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient13recvDataMems_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle10BaseClient5divupEii">
+<span id="paddle::BaseClient::divup__i.i"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a8352a9d61e4439a4bedcd76c2934f1aa"></span><em class="property">static</em> int <code class="descname">divup</code><span class="sig-paren">(</span>int <em>a</em>, int <em>b</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient5divupEii" title="Permalink to this definition">¶</a></dt>
+<dd><p>for a &gt; 0, b &gt; 0: return the smallest x s.t. b*x &gt;= a </p>
+</dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle10BaseClient7SendJobE">
+<span id="paddle::BaseClient::SendJob"></span><span class="target" id="paddlestructpaddle_1_1BaseClient_1_1SendJob"></span><em class="property">struct </em><code class="descname">SendJob</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient7SendJobE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient7SendJob17parallelInputIovsE">
+<span id="paddle::BaseClient::SendJob::parallelInputIovs__InputIovs"></span><span class="target" id="paddlestructpaddle_1_1BaseClient_1_1SendJob_1ab031c2aae3a39841a9d172a92932a967"></span><a class="reference internal" href="#_CPPv2N6paddle10BaseClient9InputIovsE" title="paddle::BaseClient::InputIovs">InputIovs</a> <code class="descname">parallelInputIovs</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient7SendJob17parallelInputIovsE" title="Permalink to this definition">¶</a></dt>
+<dd><p>store parameters related blocks data </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient7SendJob16parallelRequestsE">
+<span id="paddle::BaseClient::SendJob::parallelRequests__SendRequest"></span><span class="target" id="paddlestructpaddle_1_1BaseClient_1_1SendJob_1a1ee43c61fe6f0ffff48a9389998e27fd"></span><a class="reference internal" href="#_CPPv2N6paddle10BaseClient11SendRequestE" title="paddle::BaseClient::SendRequest">SendRequest</a> <code class="descname">parallelRequests</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient7SendJob16parallelRequestsE" title="Permalink to this definition">¶</a></dt>
+<dd><p>store protobuf request </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle10BaseClient7SendJob20parallelDataRequestsE">
+<span id="paddle::BaseClient::SendJob::parallelDataRequests__SendDataRequestVec"></span><span class="target" id="paddlestructpaddle_1_1BaseClient_1_1SendJob_1a435d11f87123113c759e729f22502bc6"></span><a class="reference internal" href="#_CPPv2N6paddle10BaseClient18SendDataRequestVecE" title="paddle::BaseClient::SendDataRequestVec">SendDataRequestVec</a> <code class="descname">parallelDataRequests</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient7SendJob20parallelDataRequestsE" title="Permalink to this definition">¶</a></dt>
+<dd><p>store data, such as features for metric learning </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle16ParameterClient2E">
+<span id="paddle::ParameterClient2"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ParameterClient2</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient2E" title="Permalink to this definition">¶</a></dt>
+<dd><p>The client interface for parameter server. <a class="reference internal" href="#paddleclasspaddle_1_1ParameterClient2"><span class="std std-ref">ParameterClient2</span></a> supports 2 modes for managing connections to parameter servers, in the 1st mode one connection is shared by 2 threads that are separately responsible for sending and recieving activities, in the 2nd mode one connection is owned by only one thread, and all the sending and recieving activities run in that single thread. TODO(yanfei): Additional core idea to further optimizate pserver performance is to do sync-sgd based parameter level instead of pserver level. full-parallelization based parameter level for sync-sgd also can sense forwardbackward computation layer-by-layer for more deeper layer model. Firstly, pserver can do full-parallelization on all computation based parameter level instead of waiting for all gradients are finished and start to send back parameters value immediately if parameter is ready instead of waiting for all parameters value are ready Secondly, parameter client can write back parameters to GPU instead of waiting until all parameters are received to CPU host end. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1BaseClient"><span class="std std-ref">paddle::BaseClient</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient216ParameterClient2Ebii">
+<span id="paddle::ParameterClient2::ParameterClient2__b.i.i"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ac5eaab7b0dc05b3f46937509127c0bef"></span><code class="descname">ParameterClient2</code><span class="sig-paren">(</span>bool <em>separate</em> = false, int <em>port</em> = FLAGS_port, int <em>numPorts</em> = FLAGS_ports_num<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient216ParameterClient2Ebii" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor. <dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">separate</span></code>: True if sending and recieving activities are separated into 2 threads, otherwise false. </li>
+<li><code class="docutils literal"><span class="pre">port</span></code>: Port number that parameter client runs on. </li>
+<li><code class="docutils literal"><span class="pre">numPorts</span></code>: Number of ports parameter clients occupies, numPorts * pserver number is the total number of connections the parameter client maintains. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient2D0Ev">
+<span id="paddle::ParameterClient2::~ParameterClient2"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a141197009eb4de9042c50320840b63f8"></span><code class="descname">~ParameterClient2</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient2D0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient24initERKNSt6vectorI12ParameterPtrEE">
+<span id="paddle::ParameterClient2::init__std::vector:ParameterPtr:CR"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1aea8c721470d1c9d3cefd20d7dbdd035b"></span>bool <code class="descname">init</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a>&gt; &amp;<em>parameters</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient24initERKNSt6vectorI12ParameterPtrEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient223sendAndReceiveParameterE19ParameterUpdateMode13ParameterTypeRKNSt6vectorI17ParameterSegmentsEE7int64_t4realb13ParameterType13ParameterType">
+<span id="paddle::ParameterClient2::sendAndReceiveParameter__ParameterUpdateMode.ParameterType.std::vector:ParameterSegments:CR.int64_t.real.b.ParameterType.ParameterType"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a6632b1e8387d44772289e433773477e5"></span>void <code class="descname">sendAndReceiveParameter</code><span class="sig-paren">(</span>ParameterUpdateMode <em>updateMode</em>, ParameterType <em>parameterType</em>, <em class="property">const</em> std::vector&lt;ParameterSegments&gt; &amp;<em>segments</em>, int64_t <em>numSamples</em>, real <em>cost</em>, bool <em>sendBackParameter</em>, ParameterType <em>sendBackParameterType</em>, ParameterType <em>recvParameterType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient223sendAndReceiveParameterE19ParameterUpdateMode13ParameterTypeRKNSt6vectorI17ParameterSegmentsEE7int64_t4realb13ParameterType13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd><p>service functions </p>
+<p>Sends the segments in parameter to parameter servers, then receives the response from the servers. <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>Only parameterType will be sent. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">updateMode</span></code>: Indicates how parameters should be updated on the server side. </li>
+<li><code class="docutils literal"><span class="pre">parameterType</span></code>: Type of parameter that will be sent. </li>
+<li><code class="docutils literal"><span class="pre">segments</span></code>: Segments in the parameter that will be sent. </li>
+<li><code class="docutils literal"><span class="pre">numSamples</span></code>: Number of samples this update is based on. </li>
+<li><code class="docutils literal"><span class="pre">cost</span></code>: Cost of the batch, will be used to calculate global object value. </li>
+<li><code class="docutils literal"><span class="pre">sendBackParameter</span></code>: True if the updated parameters should be sent back, otherwise false. </li>
+<li><code class="docutils literal"><span class="pre">sendBackParameterType</span></code>: Send back parameter type on pserver, PARAMETER_VALUE by default </li>
+<li><code class="docutils literal"><span class="pre">recvParameterType</span></code>: pserver[sendBackParameterType] will be copy to client[recvParameterType] </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient223sendAndReceiveParameterE19ParameterUpdateMode13ParameterType7int64_t4realb13ParameterType13ParameterType">
+<span id="paddle::ParameterClient2::sendAndReceiveParameter__ParameterUpdateMode.ParameterType.int64_t.real.b.ParameterType.ParameterType"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ad46ce4a9b3363411c9fc0275bd93e73d"></span>void <code class="descname">sendAndReceiveParameter</code><span class="sig-paren">(</span>ParameterUpdateMode <em>updateMode</em>, ParameterType <em>parameterType</em>, int64_t <em>numSamples</em>, real <em>cost</em>, bool <em>sendBackParameter</em>, ParameterType <em>sendBackParameterType</em> = PARAMETER_VALUE, ParameterType <em>recvParameterType</em> = PARAMETER_VALUE<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient223sendAndReceiveParameterE19ParameterUpdateMode13ParameterType7int64_t4realb13ParameterType13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sends all parameters to parameter servers, and receives the response from the servers. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient213sendParameterE19ParameterUpdateMode13ParameterTypeRKNSt6vectorI17ParameterSegmentsEE7int64_t4realb11BatchStatus">
+<span id="paddle::ParameterClient2::sendParameter__ParameterUpdateMode.ParameterType.std::vector:ParameterSegments:CR.int64_t.real.b.BatchStatus"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a76e4f44f1e657ff66f2fa5b32b8e1fdb"></span>void <code class="descname">sendParameter</code><span class="sig-paren">(</span>ParameterUpdateMode <em>updateMode</em>, ParameterType <em>parameterType</em>, <em class="property">const</em> std::vector&lt;ParameterSegments&gt; &amp;<em>segments</em>, int64_t <em>numSamples</em>, real <em>cost</em>, bool <em>sendBackParameter</em>, BatchStatus <em>batchStatus</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient213sendParameterE19ParameterUpdateMode13ParameterTypeRKNSt6vectorI17ParameterSegmentsEE7int64_t4realb11BatchStatus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sends the segments in parameter to parameter servers. Each <a class="reference internal" href="#paddleclasspaddle_1_1ParameterClient2_1a76e4f44f1e657ff66f2fa5b32b8e1fdb"><span class="std std-ref">sendParameter()</span></a> must be paired with a recvParameter() in the future. Only parameterType will be sent. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This function is non-blocking. This means that parameter should not change between this call and recvParameter() </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">updateMode</span></code>: Indicates how parameters should be updated on the server side. </li>
+<li><code class="docutils literal"><span class="pre">parameterType</span></code>: Type of parameter that will be sent. </li>
+<li><code class="docutils literal"><span class="pre">segments</span></code>: Segments in the parameter that will be sent. </li>
+<li><code class="docutils literal"><span class="pre">numSamples</span></code>: Number of samples this update is based on. </li>
+<li><code class="docutils literal"><span class="pre">cost</span></code>: Cost of the batch, will be used to calculate global object value. </li>
+<li><code class="docutils literal"><span class="pre">sendBackParameter</span></code>: True if the updated parameters should be sent back, otherwise false. </li>
+<li><code class="docutils literal"><span class="pre">batchStatus</span></code>: Status of the batch. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient213recvParameterEv">
+<span id="paddle::ParameterClient2::recvParameter"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a2e1691ebba95df1d7a45f120b7db2e91"></span>void <code class="descname">recvParameter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient213recvParameterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient213sendParameterE19ParameterUpdateMode13ParameterType7int64_t4realb11BatchStatus">
+<span id="paddle::ParameterClient2::sendParameter__ParameterUpdateMode.ParameterType.int64_t.real.b.BatchStatus"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a0a0e3e575846215383a5bf99b5a60273"></span>void <code class="descname">sendParameter</code><span class="sig-paren">(</span>ParameterUpdateMode <em>updateMode</em>, ParameterType <em>parameterType</em>, int64_t <em>numSamples</em>, real <em>cost</em>, bool <em>sendBackParameter</em>, BatchStatus <em>batchStatus</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient213sendParameterE19ParameterUpdateMode13ParameterType7int64_t4realb11BatchStatus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sends all parameters to parameter servers, recvParameter() have to be invoked afterwards.</p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This function is non-blocking. This means that if parameter should not changes between this call and recvParameter() </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient212getParameterE13ParameterType13ParameterType">
+<span id="paddle::ParameterClient2::getParameter__ParameterType.ParameterType"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a50bc4078b70a2eda1d595e8c2fb08a2b"></span>void <code class="descname">getParameter</code><span class="sig-paren">(</span>ParameterType <em>recvParameterType</em> = PARAMETER_VALUE, ParameterType <em>sendBackParameterType</em> = PARAMETER_VALUE<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient212getParameterE13ParameterType13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get all parameters from parameter servers. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient218getParameterSparseE13ParameterType13ParameterType">
+<span id="paddle::ParameterClient2::getParameterSparse__ParameterType.ParameterType"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a49079c1d28057c3a93b2bd77b1c66d43"></span>void <code class="descname">getParameterSparse</code><span class="sig-paren">(</span>ParameterType <em>recvParameterType</em> = PARAMETER_VALUE, ParameterType <em>sendBackParameterType</em> = PARAMETER_VALUE<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient218getParameterSparseE13ParameterType13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get parameters by sparse row ids from parameter servers. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient212setParameterEv">
+<span id="paddle::ParameterClient2::setParameter"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a9c52bf5d6ccd937233d920ee2a749a91"></span>void <code class="descname">setParameter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient212setParameterEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set all parameters on parameter servers using the local parameters. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient216setParameterZeroEv">
+<span id="paddle::ParameterClient2::setParameterZero"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a9fda2a8cb9b58897f1510c25f015875e"></span>void <code class="descname">setParameterZero</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient216setParameterZeroEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set all parameters on parameter servers, values will be zero means do not sending local parameters </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient213waitPassStartEv">
+<span id="paddle::ParameterClient2::waitPassStart"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ac72f81551ce5987aeebeb1fe60fba78e"></span>void <code class="descname">waitPassStart</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient213waitPassStartEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait until all gradient servers start one pass. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This is now only used by the gradient servers for &#8220;sgd&#8221; algorithm. Calling this function means that the calling gradient server is ready to start a new pass. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient214waitPassFinishEv">
+<span id="paddle::ParameterClient2::waitPassFinish"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a1e0f8e88900051b574a209ae5bc6e7b3"></span>void <code class="descname">waitPassFinish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient214waitPassFinishEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait until all gradient servers finish one pass. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This is now only used by the gradient servers for &#8220;sgd&#8221; algorithm. Calling this function means that the calling gradient server finishes one pass. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient211synchronizeE10SyncObject">
+<span id="paddle::ParameterClient2::synchronize__SyncObject"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a5b5c028fb4b66223e31b0466a9b66440"></span>void <code class="descname">synchronize</code><span class="sig-paren">(</span>SyncObject <em>syncObjectId</em> = SYNC_DEFAULT<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient211synchronizeE10SyncObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait until all gradient servers call this function. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient215asyncFinishPassE10SyncObject">
+<span id="paddle::ParameterClient2::asyncFinishPass__SyncObject"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a3e792a540ea40bdef66838c5a820384c"></span>void <code class="descname">asyncFinishPass</code><span class="sig-paren">(</span>SyncObject <em>syncObjectId</em> = SYNC_DEFAULT<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient215asyncFinishPassE10SyncObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when async-sgd finish pass. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient214asyncStartPassE10SyncObject">
+<span id="paddle::ParameterClient2::asyncStartPass__SyncObject"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a1c1e747a2f7bec9021fefb64f11dfa3c"></span>void <code class="descname">asyncStartPass</code><span class="sig-paren">(</span>SyncObject <em>syncObjectId</em> = SYNC_DEFAULT<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient214asyncStartPassE10SyncObject" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient211doOperationER18PreparedOperationsbbb">
+<span id="paddle::ParameterClient2::doOperation__PreparedOperationsR.b.b.b"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a06bf775140434ccd06f833a3cbbb4d45"></span>void <code class="descname">doOperation</code><span class="sig-paren">(</span>PreparedOperations &amp;<em>ops</em>, bool <em>waitForGradient</em>, bool <em>sendBackParameter</em>, bool <em>releasePass</em> = true<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient211doOperationER18PreparedOperationsbbb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute the prepared operations on pservers, fetch the results and aggregate results from different pservers. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">ops</span></code>: Prepared operations that will be executed on pservers. </li>
+<li><code class="docutils literal"><span class="pre">waitForGradient</span></code>: If true, wait for gradient to be ready before starting the operations. </li>
+<li><code class="docutils literal"><span class="pre">sendBackParameter</span></code>: If true, send back the parameter to clients after the operations are finished. </li>
+<li><code class="docutils literal"><span class="pre">If</span></code>: true, and if all clients call waitPassFinish, signal all clients finish the pass. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient29setConfigERK18OptimizationConfigRKNSt6stringEb">
+<span id="paddle::ParameterClient2::setConfig__OptimizationConfigCR.ssCR.b"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ab59c4a96bea42ece0e8ed91690c195c9"></span>void <code class="descname">setConfig</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>optConfig</em>, <em class="property">const</em> std::string &amp;<em>saveDir</em> = &quot;&quot;, bool <em>isSparseServer</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient29setConfigERK18OptimizationConfigRKNSt6stringEb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the configuration of pserver, including parameter config and optimization config </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient28inStatusE13PServerStatus">
+<span id="paddle::ParameterClient2::inStatus__PServerStatus"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ac2ae62ecb79271dcb2651c59641e6886"></span>bool <code class="descname">inStatus</code><span class="sig-paren">(</span>PServerStatus <em>status</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient28inStatusE13PServerStatus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return true if all pservers are in the given status. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient212isPassFinishEv">
+<span id="paddle::ParameterClient2::isPassFinish"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a114d2020554b474281094f970a9c6a30"></span>bool <code class="descname">isPassFinish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient212isPassFinishEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient29setStatusE13PServerStatus">
+<span id="paddle::ParameterClient2::setStatus__PServerStatus"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a4c785cc22102fe30c13c991e555d14eb"></span>void <code class="descname">setStatus</code><span class="sig-paren">(</span>PServerStatus <em>status</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient29setStatusE13PServerStatus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set pserver status. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient213waitForStatusE13PServerStatus">
+<span id="paddle::ParameterClient2::waitForStatus__PServerStatus"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a70e3750c27eee8a7a54251700c2a35b7"></span>void <code class="descname">waitForStatus</code><span class="sig-paren">(</span>PServerStatus <em>status</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient213waitForStatusE13PServerStatus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait until all pservers are at status. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This function is not suitable for frequent use, because it sleeps 1 second each time when condition is satisfied. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient212createVectorEv">
+<span id="paddle::ParameterClient2::createVector"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a2eab41b42627568ed64efee9e86b2739"></span>PServerVector <code class="descname">createVector</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient212createVectorEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a column vector. The size is the dimension of parameter. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient213releaseVectorE13PServerVector">
+<span id="paddle::ParameterClient2::releaseVector__PServerVector"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a84ddf9da47ba8651f8cddaebb2d0eb46"></span>void <code class="descname">releaseVector</code><span class="sig-paren">(</span>PServerVector <em>handle</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient213releaseVectorE13PServerVector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Release the PServerVector given handle. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient212createMatrixE7int32_t">
+<span id="paddle::ParameterClient2::createMatrix__int32_t"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a860a4aa44c0e96f7ce0093db6ed78b54"></span>PServerMatrix <code class="descname">createMatrix</code><span class="sig-paren">(</span>int32_t <em>numCols</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient212createMatrixE7int32_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a column major matrix. The number of rows is the dimension of parameter. The number of columns is specifed by numCols. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient213releaseMatrixE13PServerMatrix">
+<span id="paddle::ParameterClient2::releaseMatrix__PServerMatrix"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1acf16db7c4273cd6ae748d58fb2f3d48b"></span>void <code class="descname">releaseMatrix</code><span class="sig-paren">(</span>PServerMatrix <em>handle</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient213releaseMatrixE13PServerMatrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Release the PServerMatrix given handle. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient216vectorDotProductE13PServerVector13PServerVector">
+<span id="paddle::ParameterClient2::vectorDotProduct__PServerVector.PServerVector"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a980539b708496902abe977e67d091938"></span>real <code class="descname">vectorDotProduct</code><span class="sig-paren">(</span>PServerVector <em>u</em>, PServerVector <em>v</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient216vectorDotProductE13PServerVector13PServerVector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the dot product of u and v. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient211vectorScaleE13PServerVector4real">
+<span id="paddle::ParameterClient2::vectorScale__PServerVector.real"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a43d0aa0df347b48c321226b337a0c9b6"></span>void <code class="descname">vectorScale</code><span class="sig-paren">(</span>PServerVector <em>u</em>, real <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient211vectorScaleE13PServerVector4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scale u by a. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient210vectorCopyE13PServerVector13PServerVector">
+<span id="paddle::ParameterClient2::vectorCopy__PServerVector.PServerVector"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a3189580939ad912ce009924e8424d845"></span>void <code class="descname">vectorCopy</code><span class="sig-paren">(</span>PServerVector <em>src</em>, PServerVector <em>dst</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient210vectorCopyE13PServerVector13PServerVector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy from src to dest. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient213vectorAddMultE13PServerVector13PServerVector4real">
+<span id="paddle::ParameterClient2::vectorAddMult__PServerVector.PServerVector.real"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a6570abc7b48f8579f520b5a8302f020e"></span>void <code class="descname">vectorAddMult</code><span class="sig-paren">(</span>PServerVector <em>u</em>, PServerVector <em>v</em>, real <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient213vectorAddMultE13PServerVector13PServerVector4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>u += v * a </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient217vectorAddMultIntoE13PServerVector13PServerVector13PServerVector4real">
+<span id="paddle::ParameterClient2::vectorAddMultInto__PServerVector.PServerVector.PServerVector.real"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1adc5210fcea3f7d69f70793c06086308e"></span>void <code class="descname">vectorAddMultInto</code><span class="sig-paren">(</span>PServerVector <em>u</em>, PServerVector <em>v</em>, PServerVector <em>w</em>, real <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient217vectorAddMultIntoE13PServerVector13PServerVector13PServerVector4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>u = v + w * a </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient215vectorScaleIntoE13PServerVector13PServerVector4real">
+<span id="paddle::ParameterClient2::vectorScaleInto__PServerVector.PServerVector.real"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1afb68b6c4773af2df1574c5313645bab1"></span>void <code class="descname">vectorScaleInto</code><span class="sig-paren">(</span>PServerVector <em>u</em>, PServerVector <em>v</em>, real <em>a</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient215vectorScaleIntoE13PServerVector13PServerVector4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>u = v * a </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient224getPServerParameterValueEv">
+<span id="paddle::ParameterClient2::getPServerParameterValue"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a043f3b927a045769541385e0ac00f13c"></span>PServerVector <code class="descname">getPServerParameterValue</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient224getPServerParameterValueEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return pserver parameter value. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient227getPServerParameterGradientEv">
+<span id="paddle::ParameterClient2::getPServerParameterGradient"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a026496f2c71ef610a1a44315402f9428"></span>PServerVector <code class="descname">getPServerParameterGradient</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient227getPServerParameterGradientEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return pserver parameter gradient. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient215loadValueVectorERKNSt6stringE">
+<span id="paddle::ParameterClient2::loadValueVector__ssCR"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a95e5c12a859924d84865ff8b43bb48e3"></span>void <code class="descname">loadValueVector</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>dirName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient215loadValueVectorERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tell pservers to load value vector from file.</p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dirName</span></code>: The directory that contains the value vector file. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient215saveValueVectorERKNSt6stringE">
+<span id="paddle::ParameterClient2::saveValueVector__ssCR"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1aab31dc64e9011502e37daae857a191b6"></span>void <code class="descname">saveValueVector</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>dirName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient215saveValueVectorERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tell pservers to save value vector to file. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient212setTrainerIdEi">
+<span id="paddle::ParameterClient2::setTrainerId__i"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ae1ccde0aa97c9d8e70575467f766b039"></span>void <code class="descname">setTrainerId</code><span class="sig-paren">(</span>int <em>trainerId</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient212setTrainerIdEi" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient222setForwardbackwardTimeE8uint64_t">
+<span id="paddle::ParameterClient2::setForwardbackwardTime__uint64_t"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ad74a5bebe857743174b2cd6a0ab4a5f3"></span>void <code class="descname">setForwardbackwardTime</code><span class="sig-paren">(</span>uint64_t <em>delta</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient222setForwardbackwardTimeE8uint64_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient222calcParameterBlockSizeERKNSt6vectorI12ParameterPtrEE6size_t">
+<span id="paddle::ParameterClient2::calcParameterBlockSize__std::vector:ParameterPtr:CR.s"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1aa92e4a82ef4db86ac5136f273435d29c"></span>int <code class="descname">calcParameterBlockSize</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a>&gt; &amp;<em>parameters</em>, size_t <em>serviceNum</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient222calcParameterBlockSizeERKNSt6vectorI12ParameterPtrEE6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">typename</em> ProtoIn, <em class="property">typename</em> ProtoOut&gt;</dt>
+<dt id="_CPPv2N6paddle16ParameterClient29multiCallEPKcRK7ProtoInPNSt6vectorI8ProtoOutEE">
+<span id="paddle::ParameterClient2::multiCall__cCP.ProtoInCR.std::vector:ProtoOut:P"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1abd814e4b23f11804b1e5d84e61a164f8"></span>void <code class="descname">multiCall</code><span class="sig-paren">(</span><em class="property">const</em> char *<em>funcName</em>, <em class="property">const</em> ProtoIn &amp;<em>request</em>, std::vector&lt;ProtoOut&gt; *<em>responses</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient29multiCallEPKcRK7ProtoInPNSt6vectorI8ProtoOutEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle16ParameterClient25port_E">
+<span id="paddle::ParameterClient2::port___i"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a3a8c2b1d3983af45eb4c507a9ece5bf6"></span>int <code class="descname">port_</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient25port_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>start port number of pserver it deduce all ports for dense and sparse with some rules </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16ParameterClient210trainerId_E">
+<span id="paddle::ParameterClient2::trainerId___i"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ac06c81c9cdee40a20092f5892832ae3f"></span>int <code class="descname">trainerId_</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient210trainerId_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>identify the trainer id using this client </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16ParameterClient220forwardbackwordTime_E">
+<span id="paddle::ParameterClient2::forwardbackwordTime___uint64_t"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ab77107b1b7a6d4de25c2325723859562"></span>uint64_t <code class="descname">forwardbackwordTime_</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient220forwardbackwordTime_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16ParameterClient213parameterMap_E">
+<span id="paddle::ParameterClient2::parameterMap___std::unordered_map:s.ParameterPtr:"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1aefe385b7cdc65e52a6cbd0f75c89facf"></span>std::unordered_map&lt;size_t, <a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a>&gt; <code class="descname">parameterMap_</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient213parameterMap_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>map id to parameter used for decoding protobuf data </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16ParameterClient212allSegments_E">
+<span id="paddle::ParameterClient2::allSegments___std::vector:ParameterSegments:"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a330320bf4f1e416ae636e3143065d771"></span>std::vector&lt;ParameterSegments&gt; <code class="descname">allSegments_</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient212allSegments_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>segments for all parameters that needed to sync </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16ParameterClient219sparseDistribution_E">
+<span id="paddle::ParameterClient2::sparseDistribution___std::unique_ptr:SparseParameterDistribution:"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ac9050172e4ae8a82925d7a288e33e811"></span>std::unique_ptr&lt;SparseParameterDistribution&gt; <code class="descname">sparseDistribution_</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient219sparseDistribution_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>module for sensing sparse parameters distribution on all pservers </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16ParameterClient215syncThreadPool_E">
+<span id="paddle::ParameterClient2::syncThreadPool___std::unique_ptr:SyncThreadPool:"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1af98ff0f384a169aa70c9aeedbcd0a49f"></span>std::unique_ptr&lt;<a class="reference internal" href="../../utils/lock.html#_CPPv2N6paddle14SyncThreadPoolE" title="paddle::SyncThreadPool">SyncThreadPool</a>&gt; <code class="descname">syncThreadPool_</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient215syncThreadPool_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>thread pool for parallelizing all connections to pservers </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16ParameterClient211passFinish_E">
+<span id="paddle::ParameterClient2::passFinish___b"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a54dc534ea4ad59f18a9a242b0068a9d4"></span>bool <code class="descname">passFinish_</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient211passFinish_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient27destroyEv">
+<span id="paddle::ParameterClient2::destroy"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a0bcf3bbcac24f1fc66ca0d3c02505e04"></span>void <code class="descname">destroy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient27destroyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient212sendParallelEi6size_t13ParameterType">
+<span id="paddle::ParameterClient2::sendParallel__i.s.ParameterType"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1adefb93b021d9f88fdd13a2c675016619"></span>void <code class="descname">sendParallel</code><span class="sig-paren">(</span>int <em>tid</em>, size_t <em>numThreads</em>, ParameterType <em>recvParameterType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient212sendParallelEi6size_t13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd><p>management function for parallelizing send/recv all connections to all pservers. it is called under one <a class="reference internal" href="../../utils/lock.html#paddleclasspaddle_1_1SyncThreadPool"><span class="std std-ref">SyncThreadPool</span></a>. it supports to use N thread to control M connections. the receiving actions can be started until all sending action to all connections owned by current thread are finished. Different connections controlled by different threads can transfer data asynchronously. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient24sendEi">
+<span id="paddle::ParameterClient2::send__i"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a64a680ad57446fda41c9a70361890361"></span>void <code class="descname">send</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient24sendEi" title="Permalink to this definition">¶</a></dt>
+<dd><p>sending thread routine for asynchronously send data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient24recvEi">
+<span id="paddle::ParameterClient2::recv__i"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a39acb396e99a330bfc2a5e546ffeee9e"></span>void <code class="descname">recv</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient24recvEi" title="Permalink to this definition">¶</a></dt>
+<dd><p>receiving thread routing for asynchronously receive data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient215prepareSendDataE19ParameterUpdateMode13ParameterTypeRKNSt6vectorI17ParameterSegmentsEE7int64_t4realb13ParameterType11BatchStatusP7SendJob">
+<span id="paddle::ParameterClient2::prepareSendData__ParameterUpdateMode.ParameterType.std::vector:ParameterSegments:CR.int64_t.real.b.ParameterType.BatchStatus.SendJobP"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a7021176c5eeb26da213b3b55f169b4cc"></span>void <code class="descname">prepareSendData</code><span class="sig-paren">(</span>ParameterUpdateMode <em>updateMode</em>, ParameterType <em>parameterType</em>, <em class="property">const</em> std::vector&lt;ParameterSegments&gt; &amp;<em>parameterSegments</em>, int64_t <em>numSamples</em>, real <em>cost</em>, bool <em>sendBackParameter</em>, ParameterType <em>sendBackParameterType</em>, BatchStatus <em>batchStatus</em>, SendJob *<em>sendJob</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient215prepareSendDataE19ParameterUpdateMode13ParameterTypeRKNSt6vectorI17ParameterSegmentsEE7int64_t4realb13ParameterType11BatchStatusP7SendJob" title="Permalink to this definition">¶</a></dt>
+<dd><p>main routine to build data for pserver </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>it can prepare different kinds of parameter type data. it can be regarded as layer for bridging real parameters data and protobuf data for communication. TODO(yanfei): can abstract additional layer to encode and decode data to/from protobuf data. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterClient211initThreadsEv">
+<span id="paddle::ParameterClient2::initThreads"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ac67633e105309846c538a9703f3cc43d"></span>void <code class="descname">initThreads</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient211initThreadsEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start necessary threads for threadPool </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Client Documents</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../network/index.html"
+                        title="next chapter">Network Documents</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/pserver/client/client.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../network/index.html" title="Network Documents"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Client Documents"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Client Documents</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

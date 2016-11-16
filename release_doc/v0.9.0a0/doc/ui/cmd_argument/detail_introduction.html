@@ -1,0 +1,612 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Detail Description &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="User Interface" href="../index.html" />
+    <link rel="next" title="Python Prediction API" href="../predict/swig_py_paddle_en.html" />
+    <link rel="prev" title="Argument Outline" href="argument_outline.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../predict/swig_py_paddle_en.html" title="Python Prediction API"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="argument_outline.html" title="Argument Outline"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">User Interface</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="detail-description">
+<span id="detail-description"></span><h1>Detail Description<a class="headerlink" href="#detail-description" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="common">
+<span id="common"></span><h2>Common<a class="headerlink" href="#common" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--job</span></code><ul>
+<li>Job mode, including: <strong>train, test, checkgrad</strong>, where checkgrad is mainly for developers and users do not need to care about.</li>
+<li>type: string (default: train)</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--config</span></code><ul>
+<li>Use to specfiy network configure file.</li>
+<li>type: string (default: null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--use_gpu</span></code><ul>
+<li>Whether to use GPU for training, false is cpu mode and true is gpu mode.</li>
+<li>type: bool (default: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--local</span></code><ul>
+<li>Whether the training is in local mode or not. True when training locally or using one node in cluster. False when using multiple machines in cluster.</li>
+<li>type: bool (default: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--trainer_count</span></code><ul>
+<li>Define the number of threads used in one machine. For example, trainer_count = 4, means use 4 GPU in GPU mode and 4 threads in CPU mode. Each thread (or GPU) is assigned to 1/4 samples in current batch. That is to say, if setting batch_size of 512 in trainer config, each thread train 128 samples.</li>
+<li>type: int32 (default: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--num_passes</span></code><ul>
+<li>When <code class="docutils literal"><span class="pre">--job=train</span></code>, means training for num_passes passes. One pass means training all samples in dataset one time. When <code class="docutils literal"><span class="pre">--job=test</span></code>, means testing data from model of test_pass to  model of (num_passes - 1).</li>
+<li>type: int32 (default: 100).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--config_args</span></code><ul>
+<li>arguments passed to config file. Format: key1=value1,key2=value2.</li>
+<li>type: string (default: null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--version</span></code><ul>
+<li>Whether to print version infomatrion.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--show_layer_stat</span></code><ul>
+<li>Whether to show the statistics of each layer <strong>per batch</strong>.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="train">
+<span id="train"></span><h2>Train<a class="headerlink" href="#train" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--log_period</span></code><ul>
+<li>Log progress every log_period batches.</li>
+<li>type: int32 (default: 100).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--dot_period</span></code><ul>
+<li>Print &#8216;.&#8217; every dot_period batches.</li>
+<li>type: int32 (default: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--saving_period</span></code><ul>
+<li>Save parameters every saving_period passes</li>
+<li>type: int32 (default: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--save_dir</span></code><ul>
+<li>Directory for saving model parameters. It needs to be specified, but no need to be created in advance.</li>
+<li>type: string (default: null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--start_pass</span></code><ul>
+<li>Start training from this pass. It will load parameters from the previous pass.</li>
+<li>type: int32 (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--show_parameter_stats_period</span></code><ul>
+<li>Show parameter statistic during training every show_parameter_stats_period batches. It will not show by default.</li>
+<li>type: int32 (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--save_only_one</span></code><ul>
+<li>Save the parameters only in last pass, while the previous parameters will be removed.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--load_missing_parameter_strategy</span></code><ul>
+<li>Specify the loading operation when model file is missing. Now support fail/rand/zere three operations.<ul>
+<li><code class="docutils literal"><span class="pre">fail</span></code>: program will exit.</li>
+<li><code class="docutils literal"><span class="pre">rand</span></code>: uniform or normal distribution according to <strong>initial_strategy</strong> in network config. Uniform range is: <strong>[mean - std, mean + std]</strong>, where mean and std are configures in trainer config.</li>
+<li><code class="docutils literal"><span class="pre">zero</span></code>: all parameters are zero.</li>
+</ul>
+</li>
+<li>type: string (default: fail).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--init_model_path</span></code><ul>
+<li>Path of the initialization model. If it was set, start_pass will be ignored. It can be used to specify model path in testing mode as well.</li>
+<li>type: string (default: null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--saving_period_by_batches</span></code><ul>
+<li>Save parameters every saving_period_by_batches batches in one pass.</li>
+<li>type: int32 (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--log_error_clipping</span></code><ul>
+<li>Whether to print error clipping log when setting <strong>error_clipping_threshold</strong> in layer config. If it is true, log will be printed in backward propagation <strong>per batch</strong>. This clipping effects on <strong>gradient of output</strong>.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--log_clipping</span></code><ul>
+<li>Enable print log clipping or not when setting <strong>gradient_clipping_threshold</strong> in trainer config. This clipping effects on <strong>gradient w.r.t. (with respect to) weight</strong>.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--use_old_updater</span></code><ul>
+<li>Whether to use the old RemoteParameterUpdater. Default use ConcurrentRemoteParameterUpdater. It is mainly for deverlopers and users usually do not need to care about.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--enable_grad_share</span></code><ul>
+<li>threshold for enable gradient parameter, which is shared for batch multi-cpu training.</li>
+<li>type: int32 (default: 100 * 1024 * 1024).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--grad_share_block_num</span></code><ul>
+<li>block number of gradient parameter, which is shared for batch multi-cpu training.</li>
+<li>type: int32 (default: 64).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="test">
+<span id="test"></span><h2>Test<a class="headerlink" href="#test" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--test_pass</span></code><ul>
+<li>Load parameter from this pass to test.</li>
+<li>type: int32 (default: -1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--test_period</span></code><ul>
+<li>Run testing every test_period train batches. If not set, run testing each pass.</li>
+<li>type: int32 (default: 1000).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--test_wait</span></code><ul>
+<li>Whether to wait for parameter per pass if not exist. If set test_data_path in submitting environment of cluster, it will launch one process to perfom testing, so we need to set test_wait=1. Note that in the cluster submitting environment, this argument has been set True by default.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--model_list</span></code><ul>
+<li>File that saves the model list when testing. It was set automatically when using cluster submitting environment after setting model_path.</li>
+<li>type: string (default: &#8220;&#8221;, null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--test_all_data_in_one_period</span></code><ul>
+<li>This argument is usually used in testing period during traning. If true, all data will be tested in one test period. Otherwise (batch_size * log_peroid) data will be tested.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--predict_output_dir</span></code><ul>
+<li>Directory that saves the layer output. It is configured in Outputs() in network config. Default, this argument is null, meaning save nothing. Specify this directory if you want to save feature map of some layers in testing mode. Note that, layer outputs are values after activation function.</li>
+<li>type: string (default: &#8220;&#8221;, null).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--average_test_period</span></code><ul>
+<li>Do test on average parameter every <code class="docutils literal"><span class="pre">average_test_period</span></code> batches. It MUST be devided by FLAGS_log_period. Default 0 means do not test on average parameter.</li>
+<li>type: int32 (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--distribute_test</span></code><ul>
+<li>Testing in distribute environment will merge results from multiple machines.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--predict_file</span></code><ul>
+<li>File name for saving predicted result. Default, this argument is null, meaning save nothing. Now, this argument is only used in AucValidationLayer and PnpairValidationLayer, and saves predicted result every pass.</li>
+<li>type: string (default: &#8220;&#8221;, null).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="gpu">
+<span id="gpu"></span><h2>GPU<a class="headerlink" href="#gpu" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--gpu_id</span></code><ul>
+<li>Which gpu core to use.</li>
+<li>type: int32 (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--allow_only_one_model_on_one_gpu</span></code><ul>
+<li>If true, do not allow multiple models on one GPU device.</li>
+<li>type: bool (default: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--parallel_nn</span></code><ul>
+<li>Whether to use multi-thread to calculate one neural network or not. If false, use gpu_id specify which gpu core to use (the device property in trainer config will be ingored). If true, the gpu core is specified in trainer config (gpu_id will be ignored).</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--cudnn_dir</span></code><ul>
+<li>Choose path to dynamic load NVIDIA CuDNN library, for instance, /usr/local/cuda/lib64. [Default]: LD_LIBRARY_PATH</li>
+<li>type: string (default: &#8220;&#8221;, null)</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--cuda_dir</span></code><ul>
+<li>Choose path to dynamic load NVIDIA CUDA library, for instance, /usr/local/cuda/lib64. [Default]: LD_LIBRARY_PATH</li>
+<li>type: string (default: &#8220;&#8221;, null)</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--cudnn_conv_workspace_limit_in_mb</span></code><ul>
+<li>Specify cuDNN max workspace limit, in units MB, 4096MB=4GB by default.</li>
+<li>type: int32 (default: 4096MB=4GB)</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="nlp-rnn-lstm-gru">
+<span id="nlp-rnn-lstm-gru"></span><h2>NLP: RNN/LSTM/GRU<a class="headerlink" href="#nlp-rnn-lstm-gru" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--rnn_use_batch</span></code><ul>
+<li>Whether to use batch method for calculation in simple RecurrentLayer.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--prev_batch_state</span></code><ul>
+<li>batch is continue with next batch.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--beam_size</span></code><ul>
+<li>Beam search uses breadth-first search to build its search tree. At each level of the tree, it generates all successors of the states at the current level, sorting them in increasing order of heuristic cost. However, it only stores a predetermined number of best states at each level (called the beam size).</li>
+<li>type: int32 (default: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--diy_beam_search_prob_so</span></code><ul>
+<li>Specify shared dynamic library. It can be defined out of paddle by user.</li>
+<li>type: string (default: &#8220;&#8221;, null).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="metric-learning">
+<span id="metric-learning"></span><h2>Metric Learning<a class="headerlink" href="#metric-learning" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--external</span></code><ul>
+<li>Whether to use external machine for metric learning.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--data_server_port</span></code><ul>
+<li>Listening port for dserver (data server), dserver is mainly used in metric learning.</li>
+<li>type: int32 (default: 21134).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="dataprovider">
+<span id="dataprovider"></span><h2>DataProvider<a class="headerlink" href="#dataprovider" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--memory_threshold_on_load_data</span></code><ul>
+<li>Stop loading data when memory is not sufficient.</li>
+<li>type: double (default: 1.0).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="unit-test">
+<span id="unit-test"></span><h2>Unit Test<a class="headerlink" href="#unit-test" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--checkgrad_eps</span></code><ul>
+<li>parameter change size for checkgrad.</li>
+<li>type: double (default: 1e-05).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="parameter-server-and-distributed-communication">
+<span id="parameter-server-and-distributed-communication"></span><h2>Parameter Server and Distributed Communication<a class="headerlink" href="#parameter-server-and-distributed-communication" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--start_pserver</span></code><ul>
+<li>Whether to start pserver (parameter server).</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--pservers</span></code><ul>
+<li>Comma separated IP addresses of pservers. It is set automatically in cluster submitting environment.</li>
+<li>type: string (default: &#8220;127.0.0.1&#8221;).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--port</span></code><ul>
+<li>Listening port for pserver.</li>
+<li>type: int32 (default: 20134).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--ports_num</span></code><ul>
+<li>The ports number for parameter send, increment based on default port number.</li>
+<li>type: int32 (default: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--trainer_id</span></code><ul>
+<li>In distributed training, each trainer must be given an unique id ranging from 0 to num_trainers-1. Trainer 0 is the master trainer. User do not need to care this flag.</li>
+<li>type: int32 (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--num_gradient_servers</span></code><ul>
+<li>Numbers of gradient servers. This arguments is set automatically in cluster submitting environment.</li>
+<li>type: int32 (default: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--small_messages</span></code><ul>
+<li>If message size is small, recommend set it True to enable quick ACK and no delay</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--sock_send_buf_size</span></code><ul>
+<li>Restrict socket send buffer size. It can reduce network congestion if set carefully.</li>
+<li>type: int32 (default: 1024 * 1024 * 40).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--sock_recv_buf_size</span></code><ul>
+<li>Restrict socket recieve buffer size.</li>
+<li>type: int32 (default: 1024 * 1024 * 40).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--parameter_block_size</span></code><ul>
+<li>Parameter block size for pserver, will automatically calculate a suitable value if it&#8217;s not set.</li>
+<li>type: int32 (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--parameter_block_size_for_sparse</span></code><ul>
+<li>Parameter block size for sparse update pserver, will automatically calculate a suitable value if it&#8217;s not set.</li>
+<li>type: int32 (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--log_period_server</span></code><ul>
+<li>Log progress every log_period_server batches at pserver end.</li>
+<li>type: int32 (default: 500).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--loadsave_parameters_in_pserver</span></code><ul>
+<li>Load and save parameters in pserver. Only work when parameter set sparse_remote_update.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--pserver_num_threads</span></code><ul>
+<li>number of threads for sync op exec.</li>
+<li>type: bool (default: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--ports_num_for_sparse</span></code><ul>
+<li>The ports number for parameter send, increment based on default (port + ports_num). It is used by sparse Tranning.</li>
+<li>type: int32 (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--nics</span></code><ul>
+<li>Network device name for pservers, already set in cluster submitting environment.</li>
+<li>type: string (default: &#8220;xgbe0,xgbe1&#8221;).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--rdma_tcp</span></code><ul>
+<li>Use rdma or tcp transport protocol, already set in cluster submitting environment.</li>
+<li>type: string (default: &#8220;tcp&#8221;).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="async-sgd">
+<span id="async-sgd"></span><h2>Async SGD<a class="headerlink" href="#async-sgd" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--async_count</span></code><ul>
+<li>Defined the asynchronous training length, if 0, then use synchronized training.</li>
+<li>type: int32 (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--async_lagged_ratio_min</span></code><ul>
+<li>Control the minimize value of <code class="docutils literal"><span class="pre">config_.async_lagged_grad_discard_ratio()</span></code>.</li>
+<li>type: double (default: 1.0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--async_lagged_ratio_default</span></code><ul>
+<li>If async_lagged_grad_discard_ratio is not set in network config, use it as defalut value.</li>
+<li>type: double (default: 1.5).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="performance-tuning">
+<span id="performance-tuning"></span><h2>Performance Tuning<a class="headerlink" href="#performance-tuning" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--log_barrier_abstract</span></code><ul>
+<li>If true, show abstract barrier performance information.</li>
+<li>type: bool (default: 1).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--log_barrier_show_log</span></code><ul>
+<li>If true, always show barrier abstract even with little gap.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--log_barrier_lowest_nodes</span></code><ul>
+<li>How many lowest node will be logged.</li>
+<li>type: int32 (default: 5).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--check_sparse_distribution_in_pserver</span></code><ul>
+<li>Whether to check that the distribution of sparse parameter on all pservers is balanced.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--show_check_sparse_distribution_log</span></code><ul>
+<li>show log details for sparse parameter distribution in pserver.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--allow_inefficient_sparse_update</span></code><ul>
+<li>Whether to allow inefficient sparse update.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--check_sparse_distribution_batches</span></code><ul>
+<li>Running sparse parameter distribution check every so many batches.</li>
+<li>type: int32 (default: 100).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--check_sparse_distribution_ratio</span></code><ul>
+<li>If parameters dispatched to different pservers have an unbalanced distribution for check_sparse_distribution_ratio *  check_sparse_distribution_batches times, crash program.</li>
+<li>type: double (default: 0.6).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--check_sparse_distribution_unbalance_degree</span></code><ul>
+<li>The ratio of maximum data size / minimun data size for different pserver.</li>
+<li>type: double (default: 2).</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="matrix-vector-randomnumber">
+<span id="matrix-vector-randomnumber"></span><h2>Matrix/Vector/RandomNumber<a class="headerlink" href="#matrix-vector-randomnumber" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--enable_parallel_vector</span></code><ul>
+<li>threshold for enable parallel vector.</li>
+<li>type: int32 (default: 0).</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--seed</span></code><ul>
+<li>random number seed. 0 for srand(time)</li>
+<li>type: int32 (default: 1)</li>
+</ul>
+</li>
+<li><code class="docutils literal"><span class="pre">--thread_local_rand_use_global_seed</span></code><ul>
+<li>Whether to use global seed in rand of thread local.</li>
+<li>type: bool (default: 0).</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Detail Description</a><ul>
+<li><a class="reference internal" href="#common">Common</a></li>
+<li><a class="reference internal" href="#train">Train</a></li>
+<li><a class="reference internal" href="#test">Test</a></li>
+<li><a class="reference internal" href="#gpu">GPU</a></li>
+<li><a class="reference internal" href="#nlp-rnn-lstm-gru">NLP: RNN/LSTM/GRU</a></li>
+<li><a class="reference internal" href="#metric-learning">Metric Learning</a></li>
+<li><a class="reference internal" href="#dataprovider">DataProvider</a></li>
+<li><a class="reference internal" href="#unit-test">Unit Test</a></li>
+<li><a class="reference internal" href="#parameter-server-and-distributed-communication">Parameter Server and Distributed Communication</a></li>
+<li><a class="reference internal" href="#async-sgd">Async SGD</a></li>
+<li><a class="reference internal" href="#performance-tuning">Performance Tuning</a></li>
+<li><a class="reference internal" href="#matrix-vector-randomnumber">Matrix/Vector/RandomNumber</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="argument_outline.html"
+                        title="previous chapter">Argument Outline</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../predict/swig_py_paddle_en.html"
+                        title="next chapter">Python Prediction API</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/ui/cmd_argument/detail_introduction.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../predict/swig_py_paddle_en.html" title="Python Prediction API"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="argument_outline.html" title="Argument Outline"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >User Interface</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

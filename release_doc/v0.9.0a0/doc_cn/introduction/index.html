@@ -1,0 +1,211 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>简介 &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="">
+<span id="id1"></span><h1>简介<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle 是起源于百度的开源深度学习平台。它是简单易用的：你可以通过简单的十数行配置搭建经典的神经网络模型；它也是高效强大的：PaddlePaddle可以支撑复杂集群环境下超大模型的训练，令你受益于深度学习的前沿成果。在百度内部，已经有大量产品线使用了基于PaddlePaddle的深度学习技术。</p>
+<p>这份简短的介绍将像你展示如何利用PaddlePaddle解决一个经典的学习问题。</p>
+<div class="section" id="">
+<span id="id2"></span><h2>1. 一个经典的任务<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>让我们从一个基础问题开始：<a href="https://www.baidu.com/s?wd=单变量线性回归">单变量的线性回归</a>。问题假定观测到了一批二维空间上的点<code class="docutils literal"><span class="pre">(x,</span> <span class="pre">y)</span></code>，并且已知 <code class="docutils literal"><span class="pre">x</span></code> 和 <code class="docutils literal"><span class="pre">y</span></code> 之间存在着某种线性关系，我们的目标是通过观测数据还原这个线性关系。作为一个简单基础的模型，线性回归却有着广泛的应用场景。比如可以想象一个资产定价的简化场景，其中 <code class="docutils literal"><span class="pre">x</span></code> 对应于房屋的大小，<code class="docutils literal"><span class="pre">y</span></code> 对应于房屋价格。我们可以通过观察市场上房屋的情况获得二者之间的关系，从而为新房屋的定价提供参考。</p>
+</div>
+<div class="section" id="">
+<span id="id3"></span><h2>2. 准备数据<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>假设变量 <code class="docutils literal"><span class="pre">X</span></code> 和 <code class="docutils literal"><span class="pre">Y</span></code> 的真实关系为： <code class="docutils literal"><span class="pre">Y</span> <span class="pre">=</span> <span class="pre">2X</span> <span class="pre">+</span> <span class="pre">0.3</span></code>，这里展示如何使用观测数据还原这一线性关系。如下Python代码将随机产生2000个观测点，它们将被用作PaddlePaddle的输入。产生PaddlePaddle的输入数据和写一段普通的Python脚本几乎一样，你唯一需要增加的就是定义输入数据的类型。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># -*- coding:utf-8 -*-</span>
+<span class="c1"># dataprovider.py</span>
+<span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">random</span>
+
+<span class="c1"># 定义输入数据的类型: 2个浮点数</span>
+<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span><span class="n">dense_vector</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">dense_vector</span><span class="p">(</span><span class="mi">1</span><span class="p">)],</span><span class="n">use_seq</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">input_file</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">2000</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
+        <span class="k">yield</span> <span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="o">*</span><span class="n">x</span><span class="o">+</span><span class="mf">0.3</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="">
+<span id="id4"></span><h2>3. 训练模型<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>为了还原 <code class="docutils literal"><span class="pre">Y</span> <span class="pre">=</span> <span class="pre">2X</span> <span class="pre">+</span> <span class="pre">0.3</span></code>，我们先从一条随机的直线 <code class="docutils literal"><span class="pre">Y'</span> <span class="pre">=</span> <span class="pre">wX</span> <span class="pre">+</span> <span class="pre">b</span></code> 开始，然后利用观测数据调整 <code class="docutils literal"><span class="pre">w</span></code> 和 <code class="docutils literal"><span class="pre">b</span></code> 使得 <code class="docutils literal"><span class="pre">Y'</span></code> 和 <code class="docutils literal"><span class="pre">Y</span></code> 的差距不断减小，最终趋于相同。这个过程就是模型的训练过程，而 <code class="docutils literal"><span class="pre">w</span></code> 和 <code class="docutils literal"><span class="pre">b</span></code> 就是模型的参数，即我们的训练目标。</p>
+<p>在PaddlePaddle里，该模型的网络配置如下。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># -*- coding:utf-8 -*-</span>
+<span class="c1"># trainer_config.py</span>
+<span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># 1. 定义数据来源，调用上面的process函数获得观测数据</span>
+<span class="n">data_file</span> <span class="o">=</span> <span class="s1">&#39;empty.list&#39;</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">writelines</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+<span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="o">=</span><span class="n">data_file</span><span class="p">,</span> <span class="n">test_list</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> 
+        <span class="n">module</span><span class="o">=</span><span class="s1">&#39;dataprovider&#39;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">,</span><span class="n">args</span><span class="o">=</span><span class="p">{})</span>
+
+<span class="c1"># 2. 学习算法。控制如何改变模型参数 w 和 b</span>
+<span class="n">settings</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">learning_method</span><span class="o">=</span><span class="n">MomentumOptimizer</span><span class="p">())</span>
+
+<span class="c1"># 3. 神经网络配置</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="c1"># 线性计算单元: y_predict = wx + b</span>
+<span class="n">y_predict</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">LinearActivation</span><span class="p">(),</span> <span class="n">bias_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">))</span>
+<span class="c1"># 损失计算，度量 y_predict 和真实 y 之间的差距</span>
+<span class="n">cost</span> <span class="o">=</span> <span class="n">regression_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">y_predict</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
+<span class="n">outputs</span><span class="p">(</span><span class="n">cost</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>这段简短的配置展示了PaddlePaddle的基本用法：</p>
+<ul class="simple">
+<li>首先，第一部分定义了数据输入。一般情况下，PaddlePaddle先从一个文件列表里获得数据文件地址，然后交给用户自定义的函数（例如上面的<code class="docutils literal"><span class="pre">process</span></code>函数）进行读入和预处理从而得到真实输入。本文中由于输入数据是随机生成的不需要读输入文件，所以放一个空列表（<code class="docutils literal"><span class="pre">empty.list</span></code>）即可。</li>
+<li>第二部分主要是选择学习算法，它定义了模型参数如何改变。PaddlePaddle提供了很多优秀的学习算法，但这里使用一个简单的基于momentum的算法就足够了，它每次读取12个数据进行计算和模型更新。</li>
+<li>最后一部分是神经网络的配置。由于PaddlePaddle已经实现了丰富的网络单元（Layer），所以很多时候你需要做的只是声明正确的网络单元并把它们拼接起来。这里使用了三种网络单元：<ul>
+<li><strong>数据层</strong>：数据层 <code class="docutils literal"><span class="pre">data_layer</span></code> 是神经网络的入口，它读入数据并将它们传输到下游的其它单元。这里数据层有两个，分别对应于变量 <code class="docutils literal"><span class="pre">X</span></code> 和 <code class="docutils literal"><span class="pre">Y</span></code>。</li>
+<li><strong>全连接层</strong>：全连接层 <code class="docutils literal"><span class="pre">fc_layer</span></code> 是基础的计算单元，这里利用它建模变量之间的线性关系。计算单元是神经网络的核心，PaddlePaddle支持大量的计算单元和任意深度的网络连接，从而可以挖掘复杂的数据关系。</li>
+<li><strong>回归损失层</strong>：回归损失层 <code class="docutils literal"><span class="pre">regression_cost</span></code>是众多损失函数层的一种，它们在训练过程作为网络的出口，用来计算模型的表现，并指导模型参数的改变。</li>
+</ul>
+</li>
+</ul>
+<p>这样定义了网络结构并保存为<code class="docutils literal"><span class="pre">trainer_config.py</span></code>之后，运行训练命令即可：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">trainer_config</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">save_dir</span><span class="o">=./</span><span class="n">output</span> <span class="o">--</span><span class="n">num_passes</span><span class="o">=</span><span class="mi">30</span>
+</pre></div>
+</div>
+<p>PaddlePaddle将在观测数据集上迭代训练30轮，并将每轮的模型结果存放在 <code class="docutils literal"><span class="pre">./output</span></code> 路径下。从输出日志可以看到，随着轮数增加损失函数的输出在不断的减小，这意味着模型在不断的改进，直到逼近真实解：<code class="docutils literal"><span class="pre">Y</span> <span class="pre">=</span> <span class="pre">2X</span> <span class="pre">+</span> <span class="pre">0.3</span></code></p>
+</div>
+<div class="section" id="">
+<span id="id5"></span><h2>4. 模型检验<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<p>训练完成后，我们希望能够检验模型的好坏。一种常用的做法是用模型对另外一组数据进行预测，然后评价预测的效果。但在这个例子中，由于已经知道了真实答案，我们可以直接观察模型的参数是否符合预期来进行检验。</p>
+<p>PaddlePaddle将每个模型参数作为一个numpy数组单独存为一个文件，所以可以利用如下方法读取模型的参数。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">file_name</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span> <span class="c1"># skip header for float type.</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        
+<span class="k">print</span> <span class="s1">&#39;w=</span><span class="si">%.6f</span><span class="s1">, b=</span><span class="si">%.6f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;output/pass-00029/w&#39;</span><span class="p">),</span> <span class="n">load</span><span class="p">(</span><span class="s1">&#39;output/pass-00029/b&#39;</span><span class="p">))</span>
+<span class="c1"># w=1.999743, b=0.300137</span>
+</pre></div>
+</div>
+<p><center> <img alt="" src="../_images/parameters.png" /> </center></p>
+<p>从图中可以看到，虽然 <code class="docutils literal"><span class="pre">w</span></code> 和 <code class="docutils literal"><span class="pre">b</span></code> 都使用随机值初始化，但在起初的几轮训练中它们都在快速逼近真实值，并且后续仍在不断改进，使得最终得到的模型几乎与真实模型重合。</p>
+<p>这样，我们就完成了对单变量线性回归问题的解决：将数据输入PaddlePaddle，训练模型，最后验证结果。</p>
+</div>
+<div class="section" id="">
+<span id="id6"></span><h2>5. 推荐后续阅读<a class="headerlink" href="#" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a href="../build_and_install/index.html">安装/编译</a>：PaddlePaddle的安装与编译文档。</li>
+<li><a href="../demo/quick_start/index.html">快速入门 </a>：使用商品评论分类任务，系统性的介绍如何一步步改进，最终得到产品级的深度模型。</li>
+<li><a href="../demo/index.html">示例</a>：各种实用案例，涵盖图像、文本、推荐等多个领域。</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">简介</a><ul>
+<li><a class="reference internal" href="#">1. 一个经典的任务</a></li>
+<li><a class="reference internal" href="#">2. 准备数据</a></li>
+<li><a class="reference internal" href="#">3. 训练模型</a></li>
+<li><a class="reference internal" href="#">4. 模型检验</a></li>
+<li><a class="reference internal" href="#">5. 推荐后续阅读</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/introduction/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,476 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Lock &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="Source Code Documents" href="../index.html" />
+    <link rel="next" title="Recurrent Neural Network Configuration" href="../../algorithm/rnn/rnn.html" />
+    <link rel="prev" title="Queue" href="queue.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../algorithm/rnn/rnn.html" title="Recurrent Neural Network Configuration"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="queue.html" title="Queue"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="lock">
+<h1>Lock<a class="headerlink" href="#lock" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="class-rwlock">
+<h2>class RWLock<a class="headerlink" href="#class-rwlock" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle6RWLockE">
+<span id="paddle::RWLock"></span><span class="target" id="paddleclasspaddle_1_1RWLock"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">RWLock</code><a class="headerlink" href="#_CPPv2N6paddle6RWLockE" title="Permalink to this definition">¶</a></dt>
+<dd><p>A simple read-write lock. The RWlock allows a number of readers or at most one writer at any point in time. The RWlock disable copy.</p>
+<p>Lock:</p>
+<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1RWLock_1a6aa591dd56341097550d2424830e151d"><span class="std std-ref">lock()</span></a> to lock on write mode, no other thread can get it until unlock.</p>
+<p>Use <a class="reference internal" href="#paddleclasspaddle_1_1RWLock_1acd26f9a9bb834456b0a92c63c7193d07"><span class="std std-ref">lock_shared()</span></a> to lock on read mode, other thread can get it by using the same method <a class="reference internal" href="#paddleclasspaddle_1_1RWLock_1acd26f9a9bb834456b0a92c63c7193d07"><span class="std std-ref">lock_shared()</span></a>.</p>
+<p>Unlock:</p>
+<p>Use unlock() to unlock the lock. </p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle6RWLock6RWLockEv">
+<span id="paddle::RWLock::RWLock"></span><span class="target" id="paddleclasspaddle_1_1RWLock_1af4c6311e9a80a889e933207b5678a9c5"></span><code class="descname">RWLock</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6RWLock6RWLockEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6RWLockD0Ev">
+<span id="paddle::RWLock::~RWLock"></span><span class="target" id="paddleclasspaddle_1_1RWLock_1aeaa05b8ff1aab02065c7af2a44961090"></span><code class="descname">~RWLock</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6RWLockD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6RWLock6RWLockERK6RWLock">
+<span id="paddle::RWLock::RWLock__RWLockCR"></span><span class="target" id="paddleclasspaddle_1_1RWLock_1a24cb539ee8c117e6d4cdd10cff2e0536"></span><code class="descname">RWLock</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle6RWLock6RWLockEv" title="paddle::RWLock::RWLock">RWLock</a>&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6RWLock6RWLockERK6RWLock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6RWLockaSERK6RWLock">
+<span id="paddle::RWLock::assign-operator__RWLockCR"></span><span class="target" id="paddleclasspaddle_1_1RWLock_1a3ef2a97e32b75e49d2b0ce4b9fb7ffd3"></span><a class="reference internal" href="#_CPPv2N6paddle6RWLockE" title="paddle::RWLock">RWLock</a> &amp;<code class="descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle6RWLockE" title="paddle::RWLock">RWLock</a>&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6RWLockaSERK6RWLock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6RWLock4lockEv">
+<span id="paddle::RWLock::lock"></span><span class="target" id="paddleclasspaddle_1_1RWLock_1a6aa591dd56341097550d2424830e151d"></span>void <code class="descname">lock</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6RWLock4lockEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>lock on write mode. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>the method will block the thread, if failed to get the lock. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6RWLock11lock_sharedEv">
+<span id="paddle::RWLock::lock_shared"></span><span class="target" id="paddleclasspaddle_1_1RWLock_1acd26f9a9bb834456b0a92c63c7193d07"></span>void <code class="descname">lock_shared</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6RWLock11lock_sharedEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>lock on read mode. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>if another thread is writing, it can&#8217;t get the lock, and will block the thread. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6RWLock6unlockEv">
+<span id="paddle::RWLock::unlock"></span><span class="target" id="paddleclasspaddle_1_1RWLock_1adf535853b7fa46c2ff31e9c65cdd2b19"></span>void <code class="descname">unlock</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6RWLock6unlockEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle6RWLock7rwlock_E">
+<span id="paddle::RWLock::rwlock___pthread_rwlock_t"></span><span class="target" id="paddleclasspaddle_1_1RWLock_1a6b9888cd201717a04c6f04e404bd5ff7"></span>pthread_rwlock_t <code class="descname">rwlock_</code><a class="headerlink" href="#_CPPv2N6paddle6RWLock7rwlock_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="class-readlockguard">
+<h2>class ReadLockGuard<a class="headerlink" href="#class-readlockguard" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle13ReadLockGuardE">
+<span id="paddle::ReadLockGuard"></span><span class="target" id="paddleclasspaddle_1_1ReadLockGuard"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ReadLockGuard</code><a class="headerlink" href="#_CPPv2N6paddle13ReadLockGuardE" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#paddleclasspaddle_1_1ReadLockGuard"><span class="std std-ref">ReadLockGuard</span></a> is a read mode <a class="reference internal" href="#paddleclasspaddle_1_1RWLock"><span class="std std-ref">RWLock</span></a> using RAII management mechanism. </p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle13ReadLockGuard13ReadLockGuardER6RWLock">
+<span id="paddle::ReadLockGuard::ReadLockGuard__RWLockR"></span><span class="target" id="paddleclasspaddle_1_1ReadLockGuard_1a32d5529beaef9b887b62b98c6e8b39d8"></span><code class="descname">ReadLockGuard</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle6RWLockE" title="paddle::RWLock">RWLock</a> &amp;<em>rwlock</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13ReadLockGuard13ReadLockGuardER6RWLock" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct Function. Lock on rwlock in read mode. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13ReadLockGuardD0Ev">
+<span id="paddle::ReadLockGuard::~ReadLockGuard"></span><span class="target" id="paddleclasspaddle_1_1ReadLockGuard_1a9e7dce579b27cf0af3406dfc0735af3a"></span><code class="descname">~ReadLockGuard</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13ReadLockGuardD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd><p>Destruct Function. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>This method just unlock the read mode rwlock, won&#8217;t destroy the lock. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle13ReadLockGuard7rwlock_E">
+<span id="paddle::ReadLockGuard::rwlock___RWLockP"></span><span class="target" id="paddleclasspaddle_1_1ReadLockGuard_1aee09e7988bb849e33647945d255a4b9a"></span><a class="reference internal" href="#_CPPv2N6paddle6RWLockE" title="paddle::RWLock">RWLock</a> *<code class="descname">rwlock_</code><a class="headerlink" href="#_CPPv2N6paddle13ReadLockGuard7rwlock_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="class-spinlock">
+<h2>class SpinLock<a class="headerlink" href="#class-spinlock" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle8SpinLockE">
+<span id="paddle::SpinLock"></span><span class="target" id="paddleclasspaddle_1_1SpinLock"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SpinLock</code><a class="headerlink" href="#_CPPv2N6paddle8SpinLockE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle8SpinLock12DISABLE_COPYE8SpinLock">
+<span id="paddle::SpinLock::DISABLE_COPY__SpinLock"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1abb87cdb52fc8a8cc9576e2e220809085"></span><code class="descname">DISABLE_COPY</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle8SpinLockE" title="paddle::SpinLock">SpinLock</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8SpinLock12DISABLE_COPYE8SpinLock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8SpinLock8SpinLockEv">
+<span id="paddle::SpinLock::SpinLock"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1ae4b8664661115cae5d7a9f5c1e4cd4ed"></span><code class="descname">SpinLock</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8SpinLock8SpinLockEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8SpinLockD0Ev">
+<span id="paddle::SpinLock::~SpinLock"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1a12800af3f93511270eceba996f2e1233"></span><code class="descname">~SpinLock</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8SpinLockD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8SpinLock4lockEv">
+<span id="paddle::SpinLock::lock"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1ae5b78520a7808c9eee28674fa2dc1196"></span>void <code class="descname">lock</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8SpinLock4lockEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8SpinLock6unlockEv">
+<span id="paddle::SpinLock::unlock"></span><span class="target" id="paddleclasspaddle_1_1SpinLock_1a14f55be9684bed14427537571e7b6f7a"></span>void <code class="descname">unlock</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8SpinLock6unlockEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="class-semaphore">
+<h2>class Semaphore<a class="headerlink" href="#class-semaphore" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle9SemaphoreE">
+<span id="paddle::Semaphore"></span><span class="target" id="paddleclasspaddle_1_1Semaphore"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Semaphore</code><a class="headerlink" href="#_CPPv2N6paddle9SemaphoreE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle9Semaphore9SemaphoreERK9Semaphore">
+<span id="paddle::Semaphore::Semaphore__SemaphoreCR"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1a6d471a25979a5d8c85f3649576a01284"></span><code class="descname">Semaphore</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle9Semaphore9SemaphoreERK9Semaphore" title="paddle::Semaphore::Semaphore">Semaphore</a> &amp;<em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Semaphore9SemaphoreERK9Semaphore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disable copy &amp; assign. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9SemaphoreaSERRK9Semaphore">
+<span id="paddle::Semaphore::assign-operator__SemaphoreCRR"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1a9072e5b688450318d9c55437b5593f46"></span><a class="reference internal" href="#_CPPv2N6paddle9SemaphoreE" title="paddle::Semaphore">Semaphore</a> &amp;<code class="descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle9SemaphoreE" title="paddle::Semaphore">Semaphore</a> &amp;&amp;<em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9SemaphoreaSERRK9Semaphore" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Semaphore9SemaphoreERR9Semaphore">
+<span id="paddle::Semaphore::Semaphore__SemaphoreRR"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1a0a3cacfa683029887de7a865a6956b72"></span><code class="descname">Semaphore</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle9Semaphore9SemaphoreERK9Semaphore" title="paddle::Semaphore::Semaphore">Semaphore</a> &amp;&amp;<em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Semaphore9SemaphoreERR9Semaphore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enable move. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Semaphore9SemaphoreEi">
+<span id="paddle::Semaphore::Semaphore__i"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1a4884c28f1f853a0467b70e7f33547670"></span><code class="descname">Semaphore</code><span class="sig-paren">(</span>int <em>initValue</em> = 0<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Semaphore9SemaphoreEi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct Function. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">initValue</span></code>: the initial value of the semaphore, default 0. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9SemaphoreD0Ev">
+<span id="paddle::Semaphore::~Semaphore"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1a3cc7ae229c74573a3f1b8f1c4749bf1e"></span><code class="descname">~Semaphore</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9SemaphoreD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Semaphore8timeWaitEP8timespec">
+<span id="paddle::Semaphore::timeWait__timespecP"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1ac2ac4a112be6a02c51e1429d98e626e5"></span>bool <code class="descname">timeWait</code><span class="sig-paren">(</span><em class="property">struct</em> timespec *<em>ts</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Semaphore8timeWaitEP8timespec" title="Permalink to this definition">¶</a></dt>
+<dd><p>The same as <a class="reference internal" href="#paddleclasspaddle_1_1Semaphore_1a3d7d3699ad8f49ad8bbad260a174c28d"><span class="std std-ref">wait()</span></a>, except if the decrement can not be performed until ts return false install of blocking. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>ture if the decrement proceeds before ts, else return false. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">ts</span></code>: an absolute timeout in seconds and nanoseconds since the Epoch 1970-01-01 00:00:00 +0000(UTC). </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Semaphore4waitEv">
+<span id="paddle::Semaphore::wait"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1a3d7d3699ad8f49ad8bbad260a174c28d"></span>void <code class="descname">wait</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Semaphore4waitEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>decrement the semaphore. If the semaphore&#8217;s value is 0, then call blocks. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Semaphore4postEv">
+<span id="paddle::Semaphore::post"></span><span class="target" id="paddleclasspaddle_1_1Semaphore_1a17c46402c18a2f58529f22aac0769cc1"></span>void <code class="descname">post</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Semaphore4postEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>increment the semaphore. If the semaphore&#8217;s value greater than 0, wake up a thread blocked in <a class="reference internal" href="#paddleclasspaddle_1_1Semaphore_1a3d7d3699ad8f49ad8bbad260a174c28d"><span class="std std-ref">wait()</span></a>. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="class-threadbarrier">
+<h2>class ThreadBarrier<a class="headerlink" href="#class-threadbarrier" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle13ThreadBarrierE">
+<span id="paddle::ThreadBarrier"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ThreadBarrier</code><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrierE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle13ThreadBarrier12DISABLE_COPYE13ThreadBarrier">
+<span id="paddle::ThreadBarrier::DISABLE_COPY__ThreadBarrier"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier_1ace6a9d5cf27b395ce3c478b3cbfd1f17"></span><code class="descname">DISABLE_COPY</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle13ThreadBarrierE" title="paddle::ThreadBarrier">ThreadBarrier</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrier12DISABLE_COPYE13ThreadBarrier" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13ThreadBarrier13ThreadBarrierEi">
+<span id="paddle::ThreadBarrier::ThreadBarrier__i"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier_1a2b4ee1af9857ce417455d6a343a1a117"></span><code class="descname">ThreadBarrier</code><span class="sig-paren">(</span>int <em>count</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrier13ThreadBarrierEi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct Function. Initialize the barrier should wait for count threads in <a class="reference internal" href="#paddleclasspaddle_1_1ThreadBarrier_1af63f9491d2644a258350e12120fedf89"><span class="std std-ref">wait()</span></a>. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13ThreadBarrierD0Ev">
+<span id="paddle::ThreadBarrier::~ThreadBarrier"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier_1a0922960555e03da24426cf8fdd0b15dd"></span><code class="descname">~ThreadBarrier</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrierD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13ThreadBarrier4waitEv">
+<span id="paddle::ThreadBarrier::wait"></span><span class="target" id="paddleclasspaddle_1_1ThreadBarrier_1af63f9491d2644a258350e12120fedf89"></span>void <code class="descname">wait</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13ThreadBarrier4waitEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>If there were count - 1 threads waiting before, then wake up all the count - 1 threads and continue run together. Else block the thread until waked by other thread . </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="class-lockedcondition">
+<h2>class LockedCondition<a class="headerlink" href="#class-lockedcondition" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle15LockedConditionE">
+<span id="paddle::LockedCondition"></span><span class="target" id="paddleclasspaddle_1_1LockedCondition"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">LockedCondition</code><a class="headerlink" href="#_CPPv2N6paddle15LockedConditionE" title="Permalink to this definition">¶</a></dt>
+<dd><p>A wrapper for condition variable with mutex. </p>
+<p>Inherits from condition_variable</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> Op&gt;</dt>
+<dt id="_CPPv2N6paddle15LockedCondition10notify_oneE2Op">
+<span id="paddle::LockedCondition::notify_one__Op"></span><span class="target" id="paddleclasspaddle_1_1LockedCondition_1a54d725c12dbd1dcf9a37d6b41bf8d226"></span>void <code class="descname">notify_one</code><span class="sig-paren">(</span>Op <em>op</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15LockedCondition10notify_oneE2Op" title="Permalink to this definition">¶</a></dt>
+<dd><p>execute op and notify one thread which was blocked. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">op</span></code>: a thread can do something in op before notify. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> Op&gt;</dt>
+<dt id="_CPPv2N6paddle15LockedCondition10notify_allE2Op">
+<span id="paddle::LockedCondition::notify_all__Op"></span><span class="target" id="paddleclasspaddle_1_1LockedCondition_1ad08bfa60f14da940a3a530c27a43e15c"></span>void <code class="descname">notify_all</code><span class="sig-paren">(</span>Op <em>op</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15LockedCondition10notify_allE2Op" title="Permalink to this definition">¶</a></dt>
+<dd><p>execute op and notify all the threads which were blocked. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">op</span></code>: a thread can do something in op before notify. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> Predicate&gt;</dt>
+<dt id="_CPPv2N6paddle15LockedCondition4waitE9Predicate">
+<span id="paddle::LockedCondition::wait__Predicate"></span><span class="target" id="paddleclasspaddle_1_1LockedCondition_1aa866a488e0bddc26108f39af77dc9012"></span>void <code class="descname">wait</code><span class="sig-paren">(</span>Predicate <em>pred</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15LockedCondition4waitE9Predicate" title="Permalink to this definition">¶</a></dt>
+<dd><p>wait until pred return ture. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>pred shall not apply any non-constant function through the dereferenced iterator. </dd>
+<dt><strong>Template Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">Predicate</span></code>: c++ concepts, describes a function object that takes a single iterator argument that is dereferenced and used to return a value testable as a bool. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15LockedCondition5mutexEv">
+<span id="paddle::LockedCondition::mutex"></span><span class="target" id="paddleclasspaddle_1_1LockedCondition_1a444e6686d4e02b9a539d33093063216f"></span>std::mutex *<code class="descname">mutex</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15LockedCondition5mutexEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>get mutex. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle15LockedCondition6mutex_E">
+<span id="paddle::LockedCondition::mutex___std::mutex"></span><span class="target" id="paddleclasspaddle_1_1LockedCondition_1a7ec0d582f0c06e942c9f214e9c074f23"></span>std::mutex <code class="descname">mutex_</code><a class="headerlink" href="#_CPPv2N6paddle15LockedCondition6mutex_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Lock</a><ul>
+<li><a class="reference internal" href="#class-rwlock">class RWLock</a></li>
+<li><a class="reference internal" href="#class-readlockguard">class ReadLockGuard</a></li>
+<li><a class="reference internal" href="#class-spinlock">class SpinLock</a></li>
+<li><a class="reference internal" href="#class-semaphore">class Semaphore</a></li>
+<li><a class="reference internal" href="#class-threadbarrier">class ThreadBarrier</a></li>
+<li><a class="reference internal" href="#class-lockedcondition">class LockedCondition</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="queue.html"
+                        title="previous chapter">Queue</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../../algorithm/rnn/rnn.html"
+                        title="next chapter">Recurrent Neural Network Configuration</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/source/utils/thread.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../algorithm/rnn/rnn.html" title="Recurrent Neural Network Configuration"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="queue.html" title="Queue"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

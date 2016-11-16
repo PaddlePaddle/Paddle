@@ -1,0 +1,1469 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Data Providers &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Data Providers Documents" href="index.html" />
+    <link rel="next" title="Evaluators" href="../evaluators/index.html" />
+    <link rel="prev" title="Data Providers Documents" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../evaluators/index.html" title="Evaluators"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Data Providers Documents"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Data Providers Documents</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="data-providers">
+<h1>Data Providers<a class="headerlink" href="#data-providers" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="base-dataprovider">
+<h2>Base DataProvider<a class="headerlink" href="#base-dataprovider" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle12DataProviderE">
+<span id="paddle::DataProvider"></span><span class="target" id="paddleclasspaddle_1_1DataProvider"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">DataProvider</code><a class="headerlink" href="#_CPPv2N6paddle12DataProviderE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider"><span class="std std-ref">DataProvider</span></a>, which supplies data for training. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>It can supplies multiple streams of data. For typical supervised training, there are two streams: one is for input, one is for label. </dd>
+</dl>
+</p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1DataProviderGroup"><span class="std std-ref">paddle::DataProviderGroup&lt; T &gt;</span></a>, paddle::DummyDataProvider, <a class="reference internal" href="#paddleclasspaddle_1_1MultiDataProvider"><span class="std std-ref">paddle::MultiDataProvider</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ProtoDataProvider"><span class="std std-ref">paddle::ProtoDataProvider</span></a>, paddle::PyDataProvider, <a class="reference internal" href="#paddleclasspaddle_1_1PyDataProvider2"><span class="std std-ref">paddle::PyDataProvider2</span></a>, paddle::SimpleDataProviderBase</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider12DataProviderERK10DataConfigb">
+<span id="paddle::DataProvider::DataProvider__DataConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a1d4d25a193d3b5d0cf53290397433bae"></span><code class="descname">DataProvider</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider12DataProviderERK10DataConfigb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProviderD0Ev">
+<span id="paddle::DataProvider::~DataProvider"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ad2a097382fe910162dbc4a463c048ed3"></span><em class="property">virtual</em> <code class="descname">~DataProvider</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProviderD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle12DataProvider9getConfigEv">
+<span id="paddle::DataProvider::getConfigC"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ad10ab1112a6af0e1f84c335c56df8252"></span><em class="property">const</em> DataConfig &amp;<code class="descname">getConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle12DataProvider9getConfigEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider14setSkipShuffleEv">
+<span id="paddle::DataProvider::setSkipShuffle"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a3fb79f4e6f497de18710bfbd2cd7eea4"></span>void <code class="descname">setSkipShuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider14setSkipShuffleEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider12getNextBatchE7int64_tP9DataBatch">
+<span id="paddle::DataProvider::getNextBatch__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a98d9d269b628ac7c8354a8a7de049a7b"></span>int64_t <code class="descname">getNextBatch</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider12getNextBatchE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get next batch of training samples. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>actual size of obtained training samples </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider7shuffleEv">
+<span id="paddle::DataProvider::shuffle"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a7b05642e64f7ed4c15e7b82aa93ac38a"></span><em class="property">virtual</em> void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12DataProvider7shuffleEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shuffle the data set. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider5resetEv">
+<span id="paddle::DataProvider::reset"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"></span><em class="property">virtual</em> void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider5resetEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset all the value of index </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"><span class="std std-ref">reset()</span></a> must be called before any calls to <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a98d9d269b628ac7c8354a8a7de049a7b"><span class="std std-ref">getNextBatch()</span></a> IMPORTANT: subclass <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"><span class="std std-ref">reset()</span></a> should always call the base class <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"><span class="std std-ref">reset()</span></a> at the end of the function </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider7getSizeEv">
+<span id="paddle::DataProvider::getSize"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a383104e591e2f95f959bbf45c4d06b2e"></span><em class="property">virtual</em> int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12DataProvider7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the size of training samples. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the number of training samples in the data set. </dd>
+<dt><strong>Note</strong></dt>
+<dd>return -1 to indicate unlimited number of samples. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider20getNextBatchInternalE7int64_tP9DataBatch">
+<span id="paddle::DataProvider::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a1d3a1c543b75c35e2e290512ccd2700f"></span><em class="property">virtual</em> int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12DataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get next batch training samples internally. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>actual size of obtained training samples </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider6createERK10DataConfigRK11ModelConfigb">
+<span id="paddle::DataProvider::create__DataConfigCR.ModelConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a761ef962e6ef45b14562632db6be39c9"></span><a class="reference internal" href="#_CPPv2N6paddle12DataProviderE" title="paddle::DataProvider">DataProvider</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> &amp;<em>modelConfig</em>, bool <em>useGpu</em> = FLAGS_use_gpu<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider6createERK10DataConfigRK11ModelConfigb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider6createERK10DataConfigb">
+<span id="paddle::DataProvider::create__DataConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a3eb1d0e7dcb32e4e9b1271c7d745706a"></span><em class="property">static</em> <a class="reference internal" href="#_CPPv2N6paddle12DataProviderE" title="paddle::DataProvider">DataProvider</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, bool <em>useGpu</em> = FLAGS_use_gpu<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider6createERK10DataConfigb" title="Permalink to this definition">¶</a></dt>
+<dd><p>create only used for unittest. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle12DataProvider10registrar_E">
+<span id="paddle::DataProvider::registrar___ClassRegistrar:DataProvider.DataConfig.ModelConfig.b:"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ae40e5169aa51da3fb0e903ff75b8ab01"></span>ClassRegistrar&lt;<a class="reference internal" href="#_CPPv2N6paddle12DataProviderE" title="paddle::DataProvider">DataProvider</a>, DataConfig, <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a>, bool&gt; <code class="descname">registrar_</code><a class="headerlink" href="#_CPPv2N6paddle12DataProvider10registrar_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider22getNextBatchFromBufferE7int64_tP9DataBatch">
+<span id="paddle::DataProvider::getNextBatchFromBuffer__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a6b4a1d3ef66863f840e1ab5bafd8e2df"></span>int64_t <code class="descname">getNextBatchFromBuffer</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider22getNextBatchFromBufferE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>&#64;brief Get next batch training samples from buffer <dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>actual size of obtained training samples </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DataProvider15initAsyncLoaderEv">
+<span id="paddle::DataProvider::initAsyncLoader"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1abf5599ca341b48aa2e773637952b2c78"></span>void <code class="descname">initAsyncLoader</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider15initAsyncLoaderEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle12DataProvider7config_E">
+<span id="paddle::DataProvider::config___DataConfig"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ade224ccf5a10c5e523bdab8332a677f4"></span>DataConfig <code class="descname">config_</code><a class="headerlink" href="#_CPPv2N6paddle12DataProvider7config_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12DataProvider12skipShuffle_E">
+<span id="paddle::DataProvider::skipShuffle___b"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a94c94d06d7c86c992a409aa05587b9dc"></span>bool <code class="descname">skipShuffle_</code><a class="headerlink" href="#_CPPv2N6paddle12DataProvider12skipShuffle_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12DataProvider11usageRatio_E">
+<span id="paddle::DataProvider::usageRatio___float"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ae7c9e19a48fbc9e6fa80ce18813f9ac5"></span>float <code class="descname">usageRatio_</code><a class="headerlink" href="#_CPPv2N6paddle12DataProvider11usageRatio_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12DataProvider7useGpu_E">
+<span id="paddle::DataProvider::useGpu___b"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1adbf7a324580b811c2cbf0caa1ee08909"></span>bool <code class="descname">useGpu_</code><a class="headerlink" href="#_CPPv2N6paddle12DataProvider7useGpu_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12DataProvider13doubleBuffer_E">
+<span id="paddle::DataProvider::doubleBuffer___std::unique_ptr:DoubleBuffer:"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a9e5acdbe6a91bc1c3e9e191762172194"></span>std::unique_ptr&lt;DoubleBuffer&gt; <code class="descname">doubleBuffer_</code><a class="headerlink" href="#_CPPv2N6paddle12DataProvider13doubleBuffer_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle12DataProvider14constantSlots_E">
+<span id="paddle::DataProvider::constantSlots___ThreadLocal:std::vector:MatrixPtr::"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1aafd0f8405d4a257910d5825234708a90"></span>ThreadLocal&lt;std::vector&lt;<a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a>&gt;&gt; <code class="descname">constantSlots_</code><a class="headerlink" href="#_CPPv2N6paddle12DataProvider14constantSlots_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="dataprovidergroup">
+<h2>DataProviderGroup<a class="headerlink" href="#dataprovidergroup" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<span class="target" id="paddleclasspaddle_1_1DataProviderGroup"></span><em class="property">template </em>&lt;<em class="property">class</em> T&gt;</dt>
+<dt id="_CPPv2N6paddle17DataProviderGroupE">
+<span id="paddle::DataProviderGroup"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">DataProviderGroup</code><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroupE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider"><span class="std std-ref">paddle::DataProvider</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle17DataProviderGroup17DataProviderGroupERK10DataConfigb">
+<span id="paddle::DataProviderGroup::DataProviderGroup__DataConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1aa0e72492025f4cb272fd2f53c14ec7b1"></span><code class="descname">DataProviderGroup</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup17DataProviderGroupERK10DataConfigb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17DataProviderGroupD0Ev">
+<span id="paddle::DataProviderGroup::~DataProviderGroup"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1abfb0b691ac6a4d07a92949b6ea4d5ae9"></span><code class="descname">~DataProviderGroup</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroupD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17DataProviderGroup5resetEv">
+<span id="paddle::DataProviderGroup::reset"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1aabc5a09dd7b80a8616108fb2f2989c21"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup5resetEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset all the value of index </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1DataProviderGroup_1aabc5a09dd7b80a8616108fb2f2989c21"><span class="std std-ref">reset()</span></a> must be called before any calls to <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a98d9d269b628ac7c8354a8a7de049a7b"><span class="std std-ref">getNextBatch()</span></a> IMPORTANT: subclass <a class="reference internal" href="#paddleclasspaddle_1_1DataProviderGroup_1aabc5a09dd7b80a8616108fb2f2989c21"><span class="std std-ref">reset()</span></a> should always call the base class <a class="reference internal" href="#paddleclasspaddle_1_1DataProviderGroup_1aabc5a09dd7b80a8616108fb2f2989c21"><span class="std std-ref">reset()</span></a> at the end of the function </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17DataProviderGroup7shuffleEv">
+<span id="paddle::DataProviderGroup::shuffle"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1af5d1ad23716d3d4734917d28e7a93140"></span><em class="property">virtual</em> void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup7shuffleEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shuffle the data set. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17DataProviderGroup7getSizeEv">
+<span id="paddle::DataProviderGroup::getSize"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1a0e3e36653942aaf01670f37127b06a4f"></span><em class="property">virtual</em> int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the size of training samples. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the number of training samples in the data set. </dd>
+<dt><strong>Note</strong></dt>
+<dd>return -1 to indicate unlimited number of samples. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17DataProviderGroup20getNextBatchInternalE7int64_tP9DataBatch">
+<span id="paddle::DataProviderGroup::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1a1de57dd0c862ee3b9727afa905f56de8"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get next batch training samples internally. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>actual size of obtained training samples </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle17DataProviderGroup12ProviderTypeE">
+<span id="paddle::DataProviderGroup::ProviderType"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1af521f88c5a303510f05bd9c7fd8fc130"></span><em class="property">typedef </em>T <code class="descname">ProviderType</code><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup12ProviderTypeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle17DataProviderGroup15ProviderPtrTypeE">
+<span id="paddle::DataProviderGroup::ProviderPtrType"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1a9eeae52d64d56199a679da2d683a9fcb"></span><em class="property">typedef </em>std::shared_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle17DataProviderGroup12ProviderTypeE" title="paddle::DataProviderGroup::ProviderType">ProviderType</a>&gt; <code class="descname">ProviderPtrType</code><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup15ProviderPtrTypeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle17DataProviderGroup9provider_E">
+<span id="paddle::DataProviderGroup::provider___ProviderPtrType"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1ad8eca96f9a38a42296e26ca338eb1ad8"></span><a class="reference internal" href="#_CPPv2N6paddle17DataProviderGroup15ProviderPtrTypeE" title="paddle::DataProviderGroup::ProviderPtrType">ProviderPtrType</a> <code class="descname">provider_</code><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup9provider_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17DataProviderGroup9fileList_E">
+<span id="paddle::DataProviderGroup::fileList___std::vector:ss:"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1a90d4a9e3d5aa8f3209b9e77c867ebdf2"></span>std::vector&lt;std::string&gt; <code class="descname">fileList_</code><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup9fileList_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17DataProviderGroup5lock_E">
+<span id="paddle::DataProviderGroup::lock___std::mutex"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1ad26ce9c43110f9b9981903d0d344e346"></span>std::mutex <code class="descname">lock_</code><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup5lock_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17DataProviderGroup7loader_E">
+<span id="paddle::DataProviderGroup::loader___std::unique_ptr:MultiThreadWorker:ProviderType::"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1aaa3059ba5b19c13b32ae58836b9162b7"></span>std::unique_ptr&lt;<a class="reference internal" href="../../utils/lock.html#_CPPv2N6paddle17MultiThreadWorkerE" title="paddle::MultiThreadWorker">MultiThreadWorker</a>&lt;<a class="reference internal" href="#_CPPv2N6paddle17DataProviderGroup12ProviderTypeE" title="paddle::DataProviderGroup::ProviderType">ProviderType</a>&gt;&gt; <code class="descname">loader_</code><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup7loader_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="multidataprovider">
+<h2>MultiDataProvider<a class="headerlink" href="#multidataprovider" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle17MultiDataProviderE">
+<span id="paddle::MultiDataProvider"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MultiDataProvider</code><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProviderE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider"><span class="std std-ref">paddle::DataProvider</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle17MultiDataProvider17MultiDataProviderERK10DataConfigRK11ModelConfigb">
+<span id="paddle::MultiDataProvider::MultiDataProvider__DataConfigCR.ModelConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1acd993858e31a0f829e7ca3034bcdb655"></span><code class="descname">MultiDataProvider</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> &amp;<em>modelConfig</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider17MultiDataProviderERK10DataConfigRK11ModelConfigb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17MultiDataProviderD0Ev">
+<span id="paddle::MultiDataProvider::~MultiDataProvider"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a4059bdb3be2b2cf7d99dd740cea31161"></span><code class="descname">~MultiDataProvider</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProviderD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17MultiDataProvider5resetEv">
+<span id="paddle::MultiDataProvider::reset"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1aa10250fd3fbeb5dadcb42c7c968b7fdf"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider5resetEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset all the value of index </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1MultiDataProvider_1aa10250fd3fbeb5dadcb42c7c968b7fdf"><span class="std std-ref">reset()</span></a> must be called before any calls to <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a98d9d269b628ac7c8354a8a7de049a7b"><span class="std std-ref">getNextBatch()</span></a> IMPORTANT: subclass <a class="reference internal" href="#paddleclasspaddle_1_1MultiDataProvider_1aa10250fd3fbeb5dadcb42c7c968b7fdf"><span class="std std-ref">reset()</span></a> should always call the base class <a class="reference internal" href="#paddleclasspaddle_1_1MultiDataProvider_1aa10250fd3fbeb5dadcb42c7c968b7fdf"><span class="std std-ref">reset()</span></a> at the end of the function </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17MultiDataProvider7shuffleEv">
+<span id="paddle::MultiDataProvider::shuffle"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1ac323b8ff3a8e8c1234b42a20d1e05311"></span>void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider7shuffleEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shuffle the data set. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17MultiDataProvider7getSizeEv">
+<span id="paddle::MultiDataProvider::getSize"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a81a7c862be871db62ae94ab81012fc69"></span><em class="property">virtual</em> int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the size of training samples. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the number of training samples in the data set. </dd>
+<dt><strong>Note</strong></dt>
+<dd>return -1 to indicate unlimited number of samples. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17MultiDataProvider20getNextBatchInternalE7int64_tP9DataBatch">
+<span id="paddle::MultiDataProvider::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a2d07eb0ce8a35f61e7784bbfc5033f83"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get next batch training samples internally. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>actual size of obtained training samples </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle17MultiDataProvider10isTestModeEv">
+<span id="paddle::MultiDataProvider::isTestModeC"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a9df5d1af13a8bb15ad3c7e469c3a2a31"></span>bool <code class="descname">isTestMode</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle17MultiDataProvider10isTestModeEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle17MultiDataProvider17subDataProviders_E">
+<span id="paddle::MultiDataProvider::subDataProviders___std::vector:std::unique_ptr:DataProvider::"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a679fbbbf8b7268546f5486f92a230008"></span>std::vector&lt;std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle12DataProviderE" title="paddle::DataProvider">DataProvider</a>&gt;&gt; <code class="descname">subDataProviders_</code><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider17subDataProviders_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="pydataprovider">
+<h1>PyDataProvider<a class="headerlink" href="#pydataprovider" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="ifieldscanner">
+<h2>IFieldScanner<a class="headerlink" href="#ifieldscanner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle13IFieldScannerE">
+<span id="paddle::IFieldScanner"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">IFieldScanner</code><a class="headerlink" href="#_CPPv2N6paddle13IFieldScannerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>FieldScanner Interface.</p>
+<p>It will read python object, and fill to argument&#8217;s each slot. There are two steps, prepare and fill. Scanner will alloc memory during prepare step, fill data into argument during fill step. </p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1DenseScanner"><span class="std std-ref">paddle::DenseScanner</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1IndexScanner"><span class="std std-ref">paddle::IndexScanner</span></a>, paddle::SequenceScanner, <a class="reference internal" href="#paddleclasspaddle_1_1SparseNonValueScanner"><span class="std std-ref">paddle::SparseNonValueScanner</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle13IFieldScanner12DISABLE_COPYE13IFieldScanner">
+<span id="paddle::IFieldScanner::DISABLE_COPY__IFieldScanner"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1adfc54719dfd3ceb3a187d2fa8d5997b9"></span><code class="descname">DISABLE_COPY</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle13IFieldScannerE" title="paddle::IFieldScanner">IFieldScanner</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner12DISABLE_COPYE13IFieldScanner" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13IFieldScanner13IFieldScannerEP10SlotHeader">
+<span id="paddle::IFieldScanner::IFieldScanner__SlotHeaderP"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a852d54211b136d42eea1ec98235e6b38"></span><code class="descname">IFieldScanner</code><span class="sig-paren">(</span>SlotHeader *<em>headerPtr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner13IFieldScannerEP10SlotHeader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ctor. <dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">headerPtr</span></code>: slot header that scanner belong to. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13IFieldScannerD0Ev">
+<span id="paddle::IFieldScanner::~IFieldScanner"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a2694874652e8c7e8702794cc85ea0d2c"></span><em class="property">virtual</em> <code class="descname">~IFieldScanner</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScannerD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13IFieldScanner12startPrepareER8Argument">
+<span id="paddle::IFieldScanner::startPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a59f2d475c6b12f6824cdaa3453e1ac49"></span><em class="property">virtual</em> void <code class="descname">startPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner12startPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start prepare step. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13IFieldScanner7prepareER8ArgumentP8PyObject">
+<span id="paddle::IFieldScanner::prepare__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1aec5e4919e2b2946094dc3f75a7d17f08"></span><em class="property">virtual</em> void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare step.</p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>the obj could be a timestep of sample or whole sample. It depends what scanner it is. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13IFieldScanner13finishPrepareER8Argument">
+<span id="paddle::IFieldScanner::finishPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1ac648c8047ffd873ffbf5d889cf3565e5"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finish Prepare step. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13IFieldScanner9startFillER8Argument">
+<span id="paddle::IFieldScanner::startFill__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1ae0c654543ef8e863473afcbcf34a5a1f"></span><em class="property">virtual</em> void <code class="descname">startFill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner9startFillER8Argument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start fill step. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13IFieldScanner4fillER8ArgumentP8PyObject">
+<span id="paddle::IFieldScanner::fill__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a46f052af1bcb4ade0f8caa752efb4202"></span><em class="property">virtual</em> void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fill step.</p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>the obj could be a timestep of sample or whole sample. It depends what scanner it is. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13IFieldScanner10finishFillER8Argument">
+<span id="paddle::IFieldScanner::finishFill__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a511c98382488cb8fc0b6fb10632f6d5c"></span><em class="property">virtual</em> void <code class="descname">finishFill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner10finishFillER8Argument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finish fill step. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle13IFieldScanner6createEP10SlotHeader">
+<span id="paddle::IFieldScanner::create__SlotHeaderP"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1aa8355363cd6d835eee64389c96a3835f"></span><a class="reference internal" href="#_CPPv2N6paddle13IFieldScannerE" title="paddle::IFieldScanner">IFieldScanner</a> *<code class="descname">create</code><span class="sig-paren">(</span>SlotHeader *<em>header</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner6createEP10SlotHeader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Factory method. Create a scanner by header. The final scanner may be combine many scanners.</p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>Fatal if header is not support. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle13IFieldScanner10headerPtr_E">
+<span id="paddle::IFieldScanner::headerPtr___SlotHeaderP"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a83273be720a6cd9c8c0e264f6b06b05a"></span>SlotHeader *<code class="descname">headerPtr_</code><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner10headerPtr_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="densescanner">
+<h2>DenseScanner<a class="headerlink" href="#densescanner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle12DenseScannerE">
+<span id="paddle::DenseScanner"></span><span class="target" id="paddleclasspaddle_1_1DenseScanner"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">DenseScanner</code><a class="headerlink" href="#_CPPv2N6paddle12DenseScannerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scanner for dense slot. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1IFieldScanner"><span class="std std-ref">paddle::IFieldScanner</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12DenseScanner12DenseScannerEP10SlotHeader">
+<span id="paddle::DenseScanner::DenseScanner__SlotHeaderP"></span><span class="target" id="paddleclasspaddle_1_1DenseScanner_1aa04defb9f71f17c03d2fac593473817e"></span><code class="descname">DenseScanner</code><span class="sig-paren">(</span>SlotHeader *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DenseScanner12DenseScannerEP10SlotHeader" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DenseScanner7prepareER8ArgumentP8PyObject">
+<span id="paddle::DenseScanner::prepare__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1DenseScanner_1a06f5357ef4905bac34c23049767930c9"></span><em class="property">virtual</em> void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DenseScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare. <dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">argument</span></code>: target argument </li>
+<li><code class="docutils literal"><span class="pre">obj</span></code>: each timestep of a sample. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DenseScanner13finishPrepareER8Argument">
+<span id="paddle::DenseScanner::finishPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1DenseScanner_1a1ef079c5bd06c0d6cb1168a677c74a89"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DenseScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finish Prepare step. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12DenseScanner4fillER8ArgumentP8PyObject">
+<span id="paddle::DenseScanner::fill__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1DenseScanner_1ac0475d4c0541363c0d9429ea6d0da79b"></span><em class="property">virtual</em> void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DenseScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fill argument from obj. <dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">argument</span></code>: </li>
+<li><code class="docutils literal"><span class="pre">obj</span></code>: </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="indexscanner">
+<h2>IndexScanner<a class="headerlink" href="#indexscanner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle12IndexScannerE">
+<span id="paddle::IndexScanner"></span><span class="target" id="paddleclasspaddle_1_1IndexScanner"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">IndexScanner</code><a class="headerlink" href="#_CPPv2N6paddle12IndexScannerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scanner for index slot </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1IFieldScanner"><span class="std std-ref">paddle::IFieldScanner</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12IndexScanner12IndexScannerEP10SlotHeader">
+<span id="paddle::IndexScanner::IndexScanner__SlotHeaderP"></span><span class="target" id="paddleclasspaddle_1_1IndexScanner_1ad0b7cd33f0edabf30b5c99196f18fe01"></span><code class="descname">IndexScanner</code><span class="sig-paren">(</span>SlotHeader *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12IndexScanner12IndexScannerEP10SlotHeader" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12IndexScanner7prepareER8ArgumentP8PyObject">
+<span id="paddle::IndexScanner::prepare__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1IndexScanner_1af16d91e8a204fc660a9cbe45eec5310f"></span><em class="property">virtual</em> void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12IndexScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare memory space.</p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>obj is a single timestep of sample </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12IndexScanner13finishPrepareER8Argument">
+<span id="paddle::IndexScanner::finishPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1IndexScanner_1ae5f5314bd4dc869a8ba4dd33b3b57d43"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12IndexScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finish Prepare step. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12IndexScanner4fillER8ArgumentP8PyObject">
+<span id="paddle::IndexScanner::fill__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1IndexScanner_1afa4763633db79aa535970cb60ed2c4a1"></span><em class="property">virtual</em> void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12IndexScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fill one index to argument. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sparsenonvaluescanner">
+<h2>SparseNonValueScanner<a class="headerlink" href="#sparsenonvaluescanner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle21SparseNonValueScannerE">
+<span id="paddle::SparseNonValueScanner"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SparseNonValueScanner</code><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScannerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1IFieldScanner"><span class="std std-ref">paddle::IFieldScanner</span></a></p>
+<p>Subclassed by paddle::SparseValueScanner</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle21SparseNonValueScanner21SparseNonValueScannerEP10SlotHeader">
+<span id="paddle::SparseNonValueScanner::SparseNonValueScanner__SlotHeaderP"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1a34df14f1ab333000b0ebc439f895c348"></span><code class="descname">SparseNonValueScanner</code><span class="sig-paren">(</span>SlotHeader *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner21SparseNonValueScannerEP10SlotHeader" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle21SparseNonValueScanner7prepareER8ArgumentP8PyObject">
+<span id="paddle::SparseNonValueScanner::prepare__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1a3e7f7690a43bba59b8ef795754664f8b"></span><em class="property">virtual</em> void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare memory space <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>obj is a timestep of one sample. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle21SparseNonValueScanner13finishPrepareER8Argument">
+<span id="paddle::SparseNonValueScanner::finishPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1a6bb2ee71907ea1bd6aa1317a0a516325"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finish Prepare step. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle21SparseNonValueScanner9startFillER8Argument">
+<span id="paddle::SparseNonValueScanner::startFill__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1aaec784422b1358600198ab0a2b387e94"></span><em class="property">virtual</em> void <code class="descname">startFill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner9startFillER8Argument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start fill step. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle21SparseNonValueScanner4fillER8ArgumentP8PyObject">
+<span id="paddle::SparseNonValueScanner::fill__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1acef6e5425aa9c4b1865cca005df2a25e"></span><em class="property">virtual</em> void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fill one sparse vector to argument. <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>obj is a timestep of one sample. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle21SparseNonValueScanner7setDataEPiP4realP8PyObject">
+<span id="paddle::SparseNonValueScanner::setData__iP.realP.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1a849d280e40e9f3ba9947e799c389fafd"></span><em class="property">virtual</em> void <code class="descname">setData</code><span class="sig-paren">(</span>int *<em>col</em>, real *<em>dat</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner7setDataEPiP4realP8PyObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a single sparse index and value. <dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">col</span></code>: sparse index </li>
+<li><code class="docutils literal"><span class="pre">dat</span></code>: sparse value </li>
+<li><code class="docutils literal"><span class="pre">obj</span></code>: Python Object. For sparse_non_value is a PyInt or PyLong. For sparse_value is a Tuple (int, float). </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle21SparseNonValueScanner4nnz_E">
+<span id="paddle::SparseNonValueScanner::nnz___s"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1a3133f8513f67786d4967ab3dac3bfa69"></span>size_t <code class="descname">nnz_</code><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner4nnz_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle21SparseNonValueScanner7height_E">
+<span id="paddle::SparseNonValueScanner::height___s"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1adbacd44fd0ce6877370b89a587ff6b12"></span>size_t <code class="descname">height_</code><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner7height_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sparsevaluescanner">
+<h2>SparseValueScanner<a class="headerlink" href="#sparsevaluescanner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle18SparseValueScannerE">
+<span id="paddle::SparseValueScanner"></span><span class="target" id="paddleclasspaddle_1_1SparseValueScanner"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SparseValueScanner</code><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScannerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1SparseNonValueScanner"><span class="std std-ref">paddle::SparseNonValueScanner</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle18SparseValueScanner18SparseValueScannerEP10SlotHeader">
+<span id="paddle::SparseValueScanner::SparseValueScanner__SlotHeaderP"></span><span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1ac60678603f86a3ee2b1df3bf6b3de343"></span><code class="descname">SparseValueScanner</code><span class="sig-paren">(</span>SlotHeader *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner18SparseValueScannerEP10SlotHeader" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18SparseValueScanner13finishPrepareER8Argument">
+<span id="paddle::SparseValueScanner::finishPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1aa24ba4b1484c3db126155e3f6f83134f"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finish Prepare step. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle18SparseValueScanner7setDataEPiP4realP8PyObject">
+<span id="paddle::SparseValueScanner::setData__iP.realP.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce575283c13b11a44f7236507e68b01"></span><em class="property">virtual</em> void <code class="descname">setData</code><span class="sig-paren">(</span>int *<em>col</em>, real *<em>dat</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner7setDataEPiP4realP8PyObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a single sparse index and value. <dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">col</span></code>: sparse index </li>
+<li><code class="docutils literal"><span class="pre">dat</span></code>: sparse value </li>
+<li><code class="docutils literal"><span class="pre">obj</span></code>: Python Object. For sparse_non_value is a PyInt or PyLong. For sparse_value is a Tuple (int, float). </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sequencescanner">
+<h2>SequenceScanner<a class="headerlink" href="#sequencescanner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle18SparseValueScannerE">
+<span class="target" id="paddleclasspaddle_1_1SparseValueScanner"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SparseValueScanner</code><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScannerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1SparseNonValueScanner"><span class="std std-ref">paddle::SparseNonValueScanner</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle18SparseValueScanner18SparseValueScannerEP10SlotHeader">
+<span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1ac60678603f86a3ee2b1df3bf6b3de343"></span><code class="descname">SparseValueScanner</code><span class="sig-paren">(</span>SlotHeader *<em>ptr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner18SparseValueScannerEP10SlotHeader" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18SparseValueScanner13finishPrepareER8Argument">
+<span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1aa24ba4b1484c3db126155e3f6f83134f"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finish Prepare step. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle18SparseValueScanner7setDataEPiP4realP8PyObject">
+<span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce575283c13b11a44f7236507e68b01"></span><em class="property">virtual</em> void <code class="descname">setData</code><span class="sig-paren">(</span>int *<em>col</em>, real *<em>dat</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner7setDataEPiP4realP8PyObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a single sparse index and value. <dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">col</span></code>: sparse index </li>
+<li><code class="docutils literal"><span class="pre">dat</span></code>: sparse value </li>
+<li><code class="docutils literal"><span class="pre">obj</span></code>: Python Object. For sparse_non_value is a PyInt or PyLong. For sparse_value is a Tuple (int, float). </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="ipydataprovidercache">
+<h2>IPyDataProviderCache<a class="headerlink" href="#ipydataprovidercache" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle20IPyDataProviderCacheE">
+<span id="paddle::IPyDataProviderCache"></span><span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">IPyDataProviderCache</code><a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCacheE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Py Data Provider Cache Interface. </p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1CacheOnePassInMemory"><span class="std std-ref">paddle::CacheOnePassInMemory</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NoCacheStrategy"><span class="std std-ref">paddle::NoCacheStrategy</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle20IPyDataProviderCacheD0Ev">
+<span id="paddle::IPyDataProviderCache::~IPyDataProviderCache"></span><span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1a986e919051b2c173be86b9240c417311"></span><em class="property">virtual</em> <code class="descname">~IPyDataProviderCache</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCacheD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle20IPyDataProviderCache5resetEv">
+<span id="paddle::IPyDataProviderCache::reset"></span><span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1acb82068255c8feecd946722b1e087fd1"></span><em class="property">virtual</em> bool <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCache5resetEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>invoke when <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"><span class="std std-ref">DataProvider::reset()</span></a> <dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>true if read data from python. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle20IPyDataProviderCache4dropEPNSt5dequeI11PyObjectPtrEE">
+<span id="paddle::IPyDataProviderCache::drop__std::deque:PyObjectPtr:P"></span><span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1a7dbdb55a79bd8aa1bff28a4b1e36d81c"></span><em class="property">virtual</em> void <code class="descname">drop</code><span class="sig-paren">(</span>std::deque&lt;PyObjectPtr&gt; *<em>data</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCache4dropEPNSt5dequeI11PyObjectPtrEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>invoke when these data are used by <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider"><span class="std std-ref">DataProvider</span></a>, and need to clear. <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>The implemented class must clear these data array. Or if you want to delete the PyObjectPtr later, you should make sure the paddle process only have one active thread calling python code (use PyGuard otherwise). </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">data</span></code>: used data.</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle20IPyDataProviderCache4loadEv">
+<span id="paddle::IPyDataProviderCache::load"></span><span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1a59ccf101c184477ff77ea0f618eeffc8"></span><em class="property">virtual</em> std::deque&lt;PyObjectPtr&gt; *<code class="descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCache4loadEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return whole data in cache. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle20IPyDataProviderCache6createE9CacheType">
+<span id="paddle::IPyDataProviderCache::create__CacheType"></span><span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1af390cc1038d92e555d4173f31397cc91"></span><a class="reference internal" href="#_CPPv2N6paddle20IPyDataProviderCacheE" title="paddle::IPyDataProviderCache">IPyDataProviderCache</a> *<code class="descname">create</code><span class="sig-paren">(</span>CacheType <em>ct</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCache6createE9CacheType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Factory method. Convert CacheType to IPyDataProviderCache* </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="nocachestrategy">
+<h2>NoCacheStrategy<a class="headerlink" href="#nocachestrategy" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle15NoCacheStrategyE">
+<span id="paddle::NoCacheStrategy"></span><span class="target" id="paddleclasspaddle_1_1NoCacheStrategy"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">NoCacheStrategy</code><a class="headerlink" href="#_CPPv2N6paddle15NoCacheStrategyE" title="Permalink to this definition">¶</a></dt>
+<dd><p>No Cache Strategy. Will destruct old data immediately and load data from python every pass. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1IPyDataProviderCache"><span class="std std-ref">paddle::IPyDataProviderCache</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle15NoCacheStrategy5resetEv">
+<span id="paddle::NoCacheStrategy::reset"></span><span class="target" id="paddleclasspaddle_1_1NoCacheStrategy_1a6df4eaccffeb0e7e69f68afb98300fc0"></span><em class="property">virtual</em> bool <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15NoCacheStrategy5resetEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>invoke when <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"><span class="std std-ref">DataProvider::reset()</span></a> <dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>true if read data from python. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15NoCacheStrategy4dropEPNSt5dequeI11PyObjectPtrEE">
+<span id="paddle::NoCacheStrategy::drop__std::deque:PyObjectPtr:P"></span><span class="target" id="paddleclasspaddle_1_1NoCacheStrategy_1a9333fe134249c2ac567df6044d6367de"></span><em class="property">virtual</em> void <code class="descname">drop</code><span class="sig-paren">(</span>std::deque&lt;PyObjectPtr&gt; *<em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15NoCacheStrategy4dropEPNSt5dequeI11PyObjectPtrEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>invoke when these data are used by <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider"><span class="std std-ref">DataProvider</span></a>, and need to clear. <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>The implemented class must clear these data array. Or if you want to delete the PyObjectPtr later, you should make sure the paddle process only have one active thread calling python code (use PyGuard otherwise). </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">data</span></code>: used data.</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15NoCacheStrategy4loadEv">
+<span id="paddle::NoCacheStrategy::load"></span><span class="target" id="paddleclasspaddle_1_1NoCacheStrategy_1afb54b93574a3f43104d8e55d2d8c259b"></span><em class="property">virtual</em> std::deque&lt;PyObjectPtr&gt; *<code class="descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15NoCacheStrategy4loadEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return whole data in cache. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="cacheonepassinmemory">
+<h2>CacheOnePassInMemory<a class="headerlink" href="#cacheonepassinmemory" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle20CacheOnePassInMemoryE">
+<span id="paddle::CacheOnePassInMemory"></span><span class="target" id="paddleclasspaddle_1_1CacheOnePassInMemory"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CacheOnePassInMemory</code><a class="headerlink" href="#_CPPv2N6paddle20CacheOnePassInMemoryE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cache One Pass In Memory strategy.</p>
+<p>In first pass, will load data from python and store them in memory. The rest passes, will load data from memory. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1IPyDataProviderCache"><span class="std std-ref">paddle::IPyDataProviderCache</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle20CacheOnePassInMemory20CacheOnePassInMemoryEv">
+<span id="paddle::CacheOnePassInMemory::CacheOnePassInMemory"></span><span class="target" id="paddleclasspaddle_1_1CacheOnePassInMemory_1a9ffe6049eac836b6c281b67fea71e524"></span><code class="descname">CacheOnePassInMemory</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20CacheOnePassInMemory20CacheOnePassInMemoryEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle20CacheOnePassInMemory5resetEv">
+<span id="paddle::CacheOnePassInMemory::reset"></span><span class="target" id="paddleclasspaddle_1_1CacheOnePassInMemory_1ac2faf131badc1a5e238f5c591abee499"></span><em class="property">virtual</em> bool <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20CacheOnePassInMemory5resetEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>invoke when <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"><span class="std std-ref">DataProvider::reset()</span></a> <dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>true if read data from python. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle20CacheOnePassInMemory4dropEPNSt5dequeI11PyObjectPtrEE">
+<span id="paddle::CacheOnePassInMemory::drop__std::deque:PyObjectPtr:P"></span><span class="target" id="paddleclasspaddle_1_1CacheOnePassInMemory_1ae535ea1707a787e4888cb4c908f82705"></span><em class="property">virtual</em> void <code class="descname">drop</code><span class="sig-paren">(</span>std::deque&lt;PyObjectPtr&gt; *<em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20CacheOnePassInMemory4dropEPNSt5dequeI11PyObjectPtrEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>invoke when these data are used by <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider"><span class="std std-ref">DataProvider</span></a>, and need to clear. <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>The implemented class must clear these data array. Or if you want to delete the PyObjectPtr later, you should make sure the paddle process only have one active thread calling python code (use PyGuard otherwise). </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">data</span></code>: used data.</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle20CacheOnePassInMemory4loadEv">
+<span id="paddle::CacheOnePassInMemory::load"></span><span class="target" id="paddleclasspaddle_1_1CacheOnePassInMemory_1a95549d6eef3022fe85cac854d3caff74"></span><em class="property">virtual</em> std::deque&lt;PyObjectPtr&gt; *<code class="descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20CacheOnePassInMemory4loadEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return whole data in cache. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="ipydataprovider">
+<h2>IPyDataProvider<a class="headerlink" href="#ipydataprovider" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle15PyDataProvider2E">
+<span id="paddle::PyDataProvider2"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">PyDataProvider2</code><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider2E" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1PyDataProvider2"><span class="std std-ref">PyDataProvider2</span></a>.</p>
+<p>For usage, please refer python module &#8216;paddle.trainer.PyDataProvider2&#8217;</p>
+<p>Here, we start a thread to read data. It is totally asynchronous for reading data. And it support cache strategies. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider"><span class="std std-ref">paddle::DataProvider</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle15PyDataProvider215PyDataProvider2ERK10DataConfigRK11ModelConfigb">
+<span id="paddle::PyDataProvider2::PyDataProvider2__DataConfigCR.ModelConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a2281a7aca7c68247414746864688e7bb"></span><code class="descname">PyDataProvider2</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> &amp;<em>modelConfig</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider215PyDataProvider2ERK10DataConfigRK11ModelConfigb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ctor </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PyDataProvider2D0Ev">
+<span id="paddle::PyDataProvider2::~PyDataProvider2"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a3f265566b0f6bb653a2d37ddbb8beb11"></span><em class="property">virtual</em> <code class="descname">~PyDataProvider2</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider2D0Ev" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dtor <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>will stop loading thread when destructing </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PyDataProvider25resetEv">
+<span id="paddle::PyDataProvider2::reset"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a905324717b124964912952f267dba44b"></span><em class="property">virtual</em> void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider25resetEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resetting the PyDataProvider. May start reading thread here. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PyDataProvider27shuffleEv">
+<span id="paddle::PyDataProvider2::shuffle"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a94938d24c413541633a31f2f95ce9503"></span>void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider27shuffleEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shuffle. Do nothing because PyDataProvider do shuffle implicitly by random select data from datapool. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PyDataProvider27getSizeEv">
+<span id="paddle::PyDataProvider2::getSize"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1af10be764838042265b1b57d6d23683ec"></span>int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider27getSizeEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Not limited size. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PyDataProvider220getNextBatchInternalE7int64_tP9DataBatch">
+<span id="paddle::PyDataProvider2::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a208602779d17708e5134f1120f3f0b6e"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size_</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider220getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loading a batch of data. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="proto-data-provider">
+<h1>Proto Data Provider<a class="headerlink" href="#proto-data-provider" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="protodataprovider">
+<h2>ProtoDataProvider<a class="headerlink" href="#protodataprovider" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle17ProtoDataProviderE">
+<span id="paddle::ProtoDataProvider"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ProtoDataProvider</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProviderE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provider data from protobuf data file with each sample specified by proto message. </p>
+<p>DataSample defined in DataFormat.proto.</p>
+<p>The file format is</p>
+<p>header</p>
+<p>sample1</p>
+<p>sample2</p>
+<p>...</p>
+<p>sampleN</p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>: In the data file, each message is prefixed with its length. The read/write of the protbuf are implemented in ProtoReader.h </dd>
+</dl>
+</p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider"><span class="std std-ref">paddle::DataProvider</span></a></p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ProtoSequenceDataProvider"><span class="std std-ref">paddle::ProtoSequenceDataProvider</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider17ProtoDataProviderERK10DataConfigbb">
+<span id="paddle::ProtoDataProvider::ProtoDataProvider__DataConfigCR.b.b"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a1444b87df672b4dd937d5647fee23936"></span><code class="descname">ProtoDataProvider</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, bool <em>useGpu</em>, bool <em>loadDataAll</em> = true<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider17ProtoDataProviderERK10DataConfigbb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider5resetEv">
+<span id="paddle::ProtoDataProvider::reset"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a4c31d54b6f4ec7e6e11a8824650ec34f"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider5resetEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset all the value of index </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1ProtoDataProvider_1a4c31d54b6f4ec7e6e11a8824650ec34f"><span class="std std-ref">reset()</span></a> must be called before any calls to <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a98d9d269b628ac7c8354a8a7de049a7b"><span class="std std-ref">getNextBatch()</span></a> IMPORTANT: subclass <a class="reference internal" href="#paddleclasspaddle_1_1ProtoDataProvider_1a4c31d54b6f4ec7e6e11a8824650ec34f"><span class="std std-ref">reset()</span></a> should always call the base class <a class="reference internal" href="#paddleclasspaddle_1_1ProtoDataProvider_1a4c31d54b6f4ec7e6e11a8824650ec34f"><span class="std std-ref">reset()</span></a> at the end of the function </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider7getSizeEv">
+<span id="paddle::ProtoDataProvider::getSize"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a2937d941318f1692cd9aed6cafcaf13e"></span><em class="property">virtual</em> int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<dd><p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>this size includes the sequences which are skipped because they are longer than the batch size. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider7shuffleEv">
+<span id="paddle::ProtoDataProvider::shuffle"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a5651ad4073486a86f798c54432c852b5"></span>void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider7shuffleEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shuffle the data set. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider8loadDataERKNSt6vectorINSt6stringEEE">
+<span id="paddle::ProtoDataProvider::loadData__std::vector:ss:CR"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a3ef03215a33b54f58ffa0880ee13c869"></span>void <code class="descname">loadData</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;std::string&gt; &amp;<em>fileList</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider8loadDataERKNSt6vectorINSt6stringEEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider20getNextBatchInternalE7int64_tP9DataBatch">
+<span id="paddle::ProtoDataProvider::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a5562b11758a3c2479101b314097c2e67"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get next batch training samples internally. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>actual size of obtained training samples </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider8loadDataERKNSt6stringE">
+<span id="paddle::ProtoDataProvider::loadData__ssCR"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a8c34e7e24a00bccc3cc5e74354ae2607"></span>void <code class="descname">loadData</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>fileName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider8loadDataERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd><p>load protobuf data from a list of file </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">fileName</span></code>: file name of a file which contains a list of file names </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider12loadDataFileERKNSt6stringE">
+<span id="paddle::ProtoDataProvider::loadDataFile__ssCR"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1afa1f97a7980c9a5d971b78a307ea6f9e"></span>void <code class="descname">loadDataFile</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>fileName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider12loadDataFileERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd><p>load protobuf data from file </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">fileName</span></code>: data file name </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider15checkDataHeaderERK10DataHeader">
+<span id="paddle::ProtoDataProvider::checkDataHeader__DataHeaderCR"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a1bc314edfeb05e1ff7ef6c9f8d152acf"></span>void <code class="descname">checkDataHeader</code><span class="sig-paren">(</span><em class="property">const</em> DataHeader &amp;<em>header</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider15checkDataHeaderERK10DataHeader" title="Permalink to this definition">¶</a></dt>
+<dd><p>check data header of each data sample </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">header</span></code>: data header read from protobuf data </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9fillSlotsERK10DataSample">
+<span id="paddle::ProtoDataProvider::fillSlots__DataSampleCR"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a045666b799ab0679fd8abc9d57ee3235"></span>void <code class="descname">fillSlots</code><span class="sig-paren">(</span><em class="property">const</em> DataSample &amp;<em>sample</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9fillSlotsERK10DataSample" title="Permalink to this definition">¶</a></dt>
+<dd><p>fill protobuf data into slot_, slot_ is a vector of <a class="reference internal" href="#paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot"><span class="std std-ref">ProtoSlot</span></a> in memory. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">sample</span></code>: data sample read from protobuf data </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle17ProtoDataProvider7iidDataEv">
+<span id="paddle::ProtoDataProvider::iidDataC"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a331829ff4263fea18ac791113085e814"></span>bool <code class="descname">iidData</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle17ProtoDataProvider7iidDataEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>return true if each sample is one sequence, i.e., independent of other samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider11checkSampleERK10DataSample">
+<span id="paddle::ProtoDataProvider::checkSample__DataSampleCR"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1ad7049069d10986c616e1d191e5ec0d81"></span>void <code class="descname">checkSample</code><span class="sig-paren">(</span><em class="property">const</em> DataSample &amp;<em>sample</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider11checkSampleERK10DataSample" title="Permalink to this definition">¶</a></dt>
+<dd><p>check that sample is consistent with header_ </p>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> Op&gt;</dt>
+<dt id="_CPPv2N6paddle17ProtoDataProvider12sequenceLoopE2Op7int64_t">
+<span id="paddle::ProtoDataProvider::sequenceLoop__Op.int64_t"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1abc5d838bf06d417a89671affbd5687ef"></span>int64_t <code class="descname">sequenceLoop</code><span class="sig-paren">(</span>Op <em>op</em>, int64_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider12sequenceLoopE2Op7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> Op&gt;</dt>
+<dt id="_CPPv2N6paddle17ProtoDataProvider10sampleLoopE2Op7int64_t">
+<span id="paddle::ProtoDataProvider::sampleLoop__Op.int64_t"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a2120b825191a2027ff721c83782b106c"></span>int64_t <code class="descname">sampleLoop</code><span class="sig-paren">(</span>Op <em>op</em>, int64_t <em>size</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider10sampleLoopE2Op7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt>
+<em class="property">template </em>&lt;<em class="property">class</em> Op&gt;</dt>
+<dt id="_CPPv2N6paddle17ProtoDataProvider13subSampleLoopE2Op7int64_ti">
+<span id="paddle::ProtoDataProvider::subSampleLoop__Op.int64_t.i"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a2b7076c45d5a91e3a15335d49174450c"></span>int64_t <code class="descname">subSampleLoop</code><span class="sig-paren">(</span>Op <em>op</em>, int64_t <em>size</em>, int <em>slot</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider13subSampleLoopE2Op7int64_ti" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ProtoDataProvider13showDataStatsEv">
+<span id="paddle::ProtoDataProvider::showDataStats"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a6080604d45a6c7302b7fea76c4a3bc1c"></span>void <code class="descname">showDataStats</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider13showDataStatsEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider7header_E">
+<span id="paddle::ProtoDataProvider::header___DataHeader"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a7cb5edec235db30d5c5c033ca9ee443f"></span>DataHeader <code class="descname">header_</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider7header_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider12numVecSlots_E">
+<span id="paddle::ProtoDataProvider::numVecSlots___i"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a87a24205bc188931f029b6ea22750dda"></span>int <code class="descname">numVecSlots_</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider12numVecSlots_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider6slots_E">
+<span id="paddle::ProtoDataProvider::slots___std::vector:ProtoSlot:"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a0a31d2c6ea254cef43ef9161f8e65e52"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlotE" title="paddle::ProtoDataProvider::ProtoSlot">ProtoSlot</a>&gt; <code class="descname">slots_</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider6slots_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider11sampleNums_E">
+<span id="paddle::ProtoDataProvider::sampleNums___s"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1afb5e9c365f039b3cdd90fd453a289ab7"></span>size_t <code class="descname">sampleNums_</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider11sampleNums_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider23sequenceStartPositions_E">
+<span id="paddle::ProtoDataProvider::sequenceStartPositions___std::vector:s:"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1af872deeb9526acc95cdb1eeb1ebd08e3"></span>std::vector&lt;size_t&gt; <code class="descname">sequenceStartPositions_</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider23sequenceStartPositions_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>The starting position of each sequence in samples. The last element should be num of samples. If empty, each sample is one sequence. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider21currentSequenceIndex_E">
+<span id="paddle::ProtoDataProvider::currentSequenceIndex___int64_t"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a5f8b70c01ccccc8406cb26cd8adaa7eb"></span>int64_t <code class="descname">currentSequenceIndex_</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider21currentSequenceIndex_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider20shuffledSequenceIds_E">
+<span id="paddle::ProtoDataProvider::shuffledSequenceIds___std::vector:s:"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a50ef3267cae329ec134691da482f49b5"></span>std::vector&lt;size_t&gt; <code class="descname">shuffledSequenceIds_</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider20shuffledSequenceIds_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9cpuBatch_E">
+<span id="paddle::ProtoDataProvider::cpuBatch___ThreadLocalD:DataBatch:"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1aa67b8e5444e4853e0e864910fad9964b"></span>ThreadLocalD&lt;DataBatch&gt; <code class="descname">cpuBatch_</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9cpuBatch_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9gpuBatch_E">
+<span id="paddle::ProtoDataProvider::gpuBatch___ThreadLocalD:DataBatch:"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a8e61322f799747d216955245278dc3bf"></span>ThreadLocalD&lt;DataBatch&gt; <code class="descname">gpuBatch_</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9gpuBatch_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider5lock_E">
+<span id="paddle::ProtoDataProvider::lock___RWLock"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1ad956c5a11a361d09aabcfa28f0e678a7"></span><a class="reference internal" href="../../utils/thread.html#_CPPv2N6paddle6RWLockE" title="paddle::RWLock">RWLock</a> <code class="descname">lock_</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider5lock_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9nnzStats_E">
+<span id="paddle::ProtoDataProvider::nnzStats___std::vector:StatPtr:"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a25e72fe5b6dd687e9672d395d2bf7efd"></span>std::vector&lt;StatPtr&gt; <code class="descname">nnzStats_</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9nnzStats_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlotE">
+<span id="paddle::ProtoDataProvider::ProtoSlot"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot"></span><em class="property">struct </em><code class="descname">ProtoSlot</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlotE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlot4typeE">
+<span id="paddle::ProtoDataProvider::ProtoSlot::type__SlotDef::SlotType"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot_1a756d632bac54b2915069cc0712753895"></span>SlotDef::SlotType <code class="descname">type</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlot4typeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlot3dimE">
+<span id="paddle::ProtoDataProvider::ProtoSlot::dim__i"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot_1a7287f7d382b6cacbfa75e79270c476e4"></span>int <code class="descname">dim</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlot3dimE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlot9indexDataE">
+<span id="paddle::ProtoDataProvider::ProtoSlot::indexData__std::vector:i:"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot_1a244da06737c7902a85d0d8392b65183b"></span>std::vector&lt;int&gt; <code class="descname">indexData</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlot9indexDataE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlot9denseDataE">
+<span id="paddle::ProtoDataProvider::ProtoSlot::denseData__std::vector:real:"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot_1a71ed272648ae1a3fc1df49d4daa2e0f0"></span>std::vector&lt;real&gt; <code class="descname">denseData</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlot9denseDataE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlot18sparseNonValueDataE">
+<span id="paddle::ProtoDataProvider::ProtoSlot::sparseNonValueData__std::vector:sparse_non_value_t:"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot_1afb39915e14f356233d087fd3a55f0b1a"></span>std::vector&lt;<a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle18sparse_non_value_tE" title="paddle::sparse_non_value_t">sparse_non_value_t</a>&gt; <code class="descname">sparseNonValueData</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlot18sparseNonValueDataE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlot20sparseFloatValueDataE">
+<span id="paddle::ProtoDataProvider::ProtoSlot::sparseFloatValueData__std::vector:sparse_float_value_t:"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot_1a9b30d9bc79f5bb85d22cfff006ac0a8b"></span>std::vector&lt;<a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle20sparse_float_value_tE" title="paddle::sparse_float_value_t">sparse_float_value_t</a>&gt; <code class="descname">sparseFloatValueData</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlot20sparseFloatValueDataE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlot7indicesE">
+<span id="paddle::ProtoDataProvider::ProtoSlot::indices__std::vector:int64_t:"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot_1a2899a55ceded91a71bcc000ec23a549a"></span>std::vector&lt;int64_t&gt; <code class="descname">indices</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlot7indicesE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlot10subIndicesE">
+<span id="paddle::ProtoDataProvider::ProtoSlot::subIndices__std::vector:int64_t:"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot_1a7b6f0f140df5b083329343bfd7043a59"></span>std::vector&lt;int64_t&gt; <code class="descname">subIndices</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlot10subIndicesE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlot12varDenseDataE">
+<span id="paddle::ProtoDataProvider::ProtoSlot::varDenseData__std::vector:ProtoVarSlot:"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot_1ae9990f845f1587c3aa5f379cdee6246b"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle17ProtoDataProvider12ProtoVarSlotE" title="paddle::ProtoDataProvider::ProtoVarSlot">ProtoVarSlot</a>&gt; <code class="descname">varDenseData</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlot12varDenseDataE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlot10varIndicesE">
+<span id="paddle::ProtoDataProvider::ProtoSlot::varIndices__std::vector:std::vector:i::"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot_1a50c1ea83c76b671f1956361e5810df60"></span>std::vector&lt;std::vector&lt;int&gt;&gt; <code class="descname">varIndices</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlot10varIndicesE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider9ProtoSlot7strDataE">
+<span id="paddle::ProtoDataProvider::ProtoSlot::strData__std::vector:ss:"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot_1a71c48ff692d1bbedda4f905533a20476"></span>std::vector&lt;std::string&gt; <code class="descname">strData</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider9ProtoSlot7strDataE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle17ProtoDataProvider12ProtoVarSlotE">
+<span id="paddle::ProtoDataProvider::ProtoVarSlot"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoVarSlot"></span><em class="property">struct </em><code class="descname">ProtoVarSlot</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider12ProtoVarSlotE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider12ProtoVarSlot4dataE">
+<span id="paddle::ProtoDataProvider::ProtoVarSlot::data__std::vector:real:"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoVarSlot_1addc65504ff553e270d4c2ef43d853f77"></span>std::vector&lt;real&gt; <code class="descname">data</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider12ProtoVarSlot4dataE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ProtoDataProvider12ProtoVarSlot4dimsE">
+<span id="paddle::ProtoDataProvider::ProtoVarSlot::dims__std::vector:i:"></span><span class="target" id="paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoVarSlot_1aa4596a52f49c60014d51f26c05cc4ab6"></span>std::vector&lt;int&gt; <code class="descname">dims</code><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider12ProtoVarSlot4dimsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="protosequencedataprovider">
+<h2>ProtoSequenceDataProvider<a class="headerlink" href="#protosequencedataprovider" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle25ProtoSequenceDataProviderE">
+<span id="paddle::ProtoSequenceDataProvider"></span><span class="target" id="paddleclasspaddle_1_1ProtoSequenceDataProvider"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ProtoSequenceDataProvider</code><a class="headerlink" href="#_CPPv2N6paddle25ProtoSequenceDataProviderE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Special use for Proto data: instances should contain sparse-non-value slots and label. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1ProtoSequenceDataProvider"><span class="std std-ref">ProtoSequenceDataProvider</span></a> treats each SPARSE SLOT as a SEQUENCE </dd>
+</dl>
+</p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ProtoDataProvider"><span class="std std-ref">paddle::ProtoDataProvider</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle25ProtoSequenceDataProvider25ProtoSequenceDataProviderERK10DataConfigbb">
+<span id="paddle::ProtoSequenceDataProvider::ProtoSequenceDataProvider__DataConfigCR.b.b"></span><span class="target" id="paddleclasspaddle_1_1ProtoSequenceDataProvider_1acd224131500c8167cfc285e5caa2070a"></span><code class="descname">ProtoSequenceDataProvider</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, bool <em>useGpu</em>, bool <em>loadDataAll</em> = true<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ProtoSequenceDataProvider25ProtoSequenceDataProviderERK10DataConfigbb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ProtoSequenceDataProviderD0Ev">
+<span id="paddle::ProtoSequenceDataProvider::~ProtoSequenceDataProvider"></span><span class="target" id="paddleclasspaddle_1_1ProtoSequenceDataProvider_1ad7abd169d2ffd6fd6c630522288c776d"></span><code class="descname">~ProtoSequenceDataProvider</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ProtoSequenceDataProviderD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ProtoSequenceDataProvider20getNextBatchInternalE7int64_tP9DataBatch">
+<span id="paddle::ProtoSequenceDataProvider::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1ProtoSequenceDataProvider_1a153ae716b4d8fec75cde272f76a18b2b"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ProtoSequenceDataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get next batch training samples internally. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>actual size of obtained training samples </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Data Providers</a><ul>
+<li><a class="reference internal" href="#base-dataprovider">Base DataProvider</a></li>
+<li><a class="reference internal" href="#dataprovidergroup">DataProviderGroup</a></li>
+<li><a class="reference internal" href="#multidataprovider">MultiDataProvider</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#pydataprovider">PyDataProvider</a><ul>
+<li><a class="reference internal" href="#ifieldscanner">IFieldScanner</a></li>
+<li><a class="reference internal" href="#densescanner">DenseScanner</a></li>
+<li><a class="reference internal" href="#indexscanner">IndexScanner</a></li>
+<li><a class="reference internal" href="#sparsenonvaluescanner">SparseNonValueScanner</a></li>
+<li><a class="reference internal" href="#sparsevaluescanner">SparseValueScanner</a></li>
+<li><a class="reference internal" href="#sequencescanner">SequenceScanner</a></li>
+<li><a class="reference internal" href="#ipydataprovidercache">IPyDataProviderCache</a></li>
+<li><a class="reference internal" href="#nocachestrategy">NoCacheStrategy</a></li>
+<li><a class="reference internal" href="#cacheonepassinmemory">CacheOnePassInMemory</a></li>
+<li><a class="reference internal" href="#ipydataprovider">IPyDataProvider</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#proto-data-provider">Proto Data Provider</a><ul>
+<li><a class="reference internal" href="#protodataprovider">ProtoDataProvider</a></li>
+<li><a class="reference internal" href="#protosequencedataprovider">ProtoSequenceDataProvider</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Data Providers Documents</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../evaluators/index.html"
+                        title="next chapter">Evaluators</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/gserver/dataprovider/dataproviders.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../evaluators/index.html" title="Evaluators"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Data Providers Documents"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Data Providers Documents</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

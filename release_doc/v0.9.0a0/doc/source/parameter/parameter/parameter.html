@@ -1,0 +1,1626 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Parameter &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Parameter Documents" href="index.html" />
+    <link rel="next" title="Parameter Documents" href="../update/index.html" />
+    <link rel="prev" title="Parameter Documents" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../update/index.html" title="Parameter Documents"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Parameter Documents"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Parameter Documents</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="parameter">
+<h1>Parameter<a class="headerlink" href="#parameter" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="weight">
+<h2>Weight<a class="headerlink" href="#weight" title="Permalink to this headline">¶</a></h2>
+<dl class="type">
+<dt id="_CPPv26paddle">
+<span id="paddle"></span><span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle10WeightListE">
+<span id="paddle::WeightList"></span><span class="target" id="paddlenamespacepaddle_1adb2756c983ff832135c53a8122987bab"></span><em class="property">typedef </em>std::vector&lt;std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle6WeightE" title="paddle::Weight">Weight</a>&gt;&gt; <code class="descname">WeightList</code><a class="headerlink" href="#_CPPv2N6paddle10WeightListE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle6WeightE">
+<span id="paddle::Weight"></span><span class="target" id="paddleclasspaddle_1_1Weight"></span><em class="property">class </em><code class="descname">Weight</code><a class="headerlink" href="#_CPPv2N6paddle6WeightE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle6Weight6WeightE6size_t6size_t12ParameterPtr">
+<span id="paddle::Weight::Weight__s.s.ParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1Weight_1aaa0b6f60c3e34d09c733cfa04ba704b6"></span><code class="descname">Weight</code><span class="sig-paren">(</span>size_t <em>height</em>, size_t <em>width</em>, <a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> <em>parameter</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Weight6WeightE6size_t6size_t12ParameterPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6Weight6WeightE6size_t6size_t12ParameterPtr6size_t">
+<span id="paddle::Weight::Weight__s.s.ParameterPtr.s"></span><span class="target" id="paddleclasspaddle_1_1Weight_1a900c2123380404edffa5f8512f61f2d1"></span><code class="descname">Weight</code><span class="sig-paren">(</span>size_t <em>height</em>, size_t <em>width</em>, <a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> <em>parameter</em>, size_t <em>offset</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Weight6WeightE6size_t6size_t12ParameterPtr6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6Weight4getWEv">
+<span id="paddle::Weight::getW"></span><span class="target" id="paddleclasspaddle_1_1Weight_1aa85b253acb8d25c496b8399a9d7d40c5"></span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> &amp;<code class="descname">getW</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Weight4getWEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6Weight8getWGradEv">
+<span id="paddle::Weight::getWGrad"></span><span class="target" id="paddleclasspaddle_1_1Weight_1acd7b3d911a0a17f33c7cae0ba9abea80"></span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> &amp;<code class="descname">getWGrad</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Weight8getWGradEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6Weight15getParameterPtrEv">
+<span id="paddle::Weight::getParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1Weight_1a18eae341b580791aaff890e68e5ffce3"></span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> &amp;<code class="descname">getParameterPtr</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Weight15getParameterPtrEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6Weight9incUpdateERK14UpdateCallback">
+<span id="paddle::Weight::incUpdate__UpdateCallbackCR"></span><span class="target" id="paddleclasspaddle_1_1Weight_1afba95382003664792d8546a89d88dc53"></span>void <code class="descname">incUpdate</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Weight9incUpdateERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle6Weight15setParameterPtrE12ParameterPtr">
+<span id="paddle::Weight::setParameterPtr__ParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1Weight_1a6dad4190d9ff802e081a4eba3e82cfa2"></span>void <code class="descname">setParameterPtr</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> <em>param</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6Weight15setParameterPtrE12ParameterPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle6Weight7weight_E">
+<span id="paddle::Weight::weight___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1Weight_1a57e573dd3d4c84b8ac5ec23d5a56ab90"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">weight_</code><a class="headerlink" href="#_CPPv2N6paddle6Weight7weight_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle6Weight11weightGrad_E">
+<span id="paddle::Weight::weightGrad___MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1Weight_1ad2af8f753d483f5d2de717513f82e96e"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">weightGrad_</code><a class="headerlink" href="#_CPPv2N6paddle6Weight11weightGrad_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle6Weight10parameter_E">
+<span id="paddle::Weight::parameter___ParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1Weight_1a027c7b286aa5f165441d2e025d98526c"></span><a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> <code class="descname">parameter_</code><a class="headerlink" href="#_CPPv2N6paddle6Weight10parameter_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="regularizer">
+<h2>Regularizer<a class="headerlink" href="#regularizer" title="Permalink to this headline">¶</a></h2>
+<dl class="type">
+<dt id="_CPPv26paddle">
+<span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt id="_CPPv2N6paddle11RegularizerE">
+<span id="paddle::Regularizer"></span><span class="target" id="paddleclasspaddle_1_1Regularizer"></span><em class="property">class </em><code class="descname">Regularizer</code><a class="headerlink" href="#_CPPv2N6paddle11RegularizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1L1L2LrRegularizer"><span class="std std-ref">paddle::L1L2LrRegularizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1L1L2Regularizer"><span class="std std-ref">paddle::L1L2Regularizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1L1LrRegularizer"><span class="std std-ref">paddle::L1LrRegularizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1L1Regularizer"><span class="std std-ref">paddle::L1Regularizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1L2LrRegularizer"><span class="std std-ref">paddle::L2LrRegularizer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1L2Regularizer"><span class="std std-ref">paddle::L2Regularizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2NK6paddle11Regularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii">
+<span id="paddle::Regularizer::update__VectorPtrCA.ParameterConfigCR.real.i.iC"></span><span class="target" id="paddleclasspaddle_1_1Regularizer_1a85ccfcdcf2785c81858a87218661dc80"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>paraConfig</em>, real <em>learningRate</em>, int <em>t0</em>, int <em>t</em><span class="sig-paren">)</span> <em class="property">const</em> = 0<a class="headerlink" href="#_CPPv2NK6paddle11Regularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle11RegularizerD0Ev">
+<span id="paddle::Regularizer::~Regularizer"></span><span class="target" id="paddleclasspaddle_1_1Regularizer_1a5592232c8e398753ddc2b1126d939016"></span><em class="property">virtual</em> <code class="descname">~Regularizer</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle11RegularizerD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle11Regularizer3getERKNSt6vectorI13ParameterTypeEERK15ParameterConfig">
+<span id="paddle::Regularizer::get__std::vector:ParameterType:CR.ParameterConfigCR"></span><span class="target" id="paddleclasspaddle_1_1Regularizer_1a23e97a6b0abecd4f0ebea07e34c2149c"></span><a class="reference internal" href="#_CPPv2N6paddle11RegularizerE" title="paddle::Regularizer">Regularizer</a> *<code class="descname">get</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;ParameterType&gt; &amp;<em>types</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>paraConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle11Regularizer3getERKNSt6vectorI13ParameterTypeEERK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle13L1RegularizerE">
+<span id="paddle::L1Regularizer"></span><span class="target" id="paddleclasspaddle_1_1L1Regularizer"></span><em class="property">class </em><code class="descname">L1Regularizer</code><a class="headerlink" href="#_CPPv2N6paddle13L1RegularizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Regularizer"><span class="std std-ref">paddle::Regularizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2NK6paddle13L1Regularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii">
+<span id="paddle::L1Regularizer::update__VectorPtrCA.ParameterConfigCR.real.i.iC"></span><span class="target" id="paddleclasspaddle_1_1L1Regularizer_1a590446213af31c3b9d5c929099dfde7a"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>paraConfig</em>, real <em>learningRate</em>, int <em>t0</em>, int <em>t</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle13L1Regularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle15L1LrRegularizerE">
+<span id="paddle::L1LrRegularizer"></span><span class="target" id="paddleclasspaddle_1_1L1LrRegularizer"></span><em class="property">class </em><code class="descname">L1LrRegularizer</code><a class="headerlink" href="#_CPPv2N6paddle15L1LrRegularizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Regularizer"><span class="std std-ref">paddle::Regularizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2NK6paddle15L1LrRegularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii">
+<span id="paddle::L1LrRegularizer::update__VectorPtrCA.ParameterConfigCR.real.i.iC"></span><span class="target" id="paddleclasspaddle_1_1L1LrRegularizer_1a3a2674132b9e6c44666f914dadd90d01"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>paraConfig</em>, real <em>learningRate</em>, int <em>t0</em>, int <em>t</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle15L1LrRegularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle13L2RegularizerE">
+<span id="paddle::L2Regularizer"></span><span class="target" id="paddleclasspaddle_1_1L2Regularizer"></span><em class="property">class </em><code class="descname">L2Regularizer</code><a class="headerlink" href="#_CPPv2N6paddle13L2RegularizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Regularizer"><span class="std std-ref">paddle::Regularizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2NK6paddle13L2Regularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii">
+<span id="paddle::L2Regularizer::update__VectorPtrCA.ParameterConfigCR.real.i.iC"></span><span class="target" id="paddleclasspaddle_1_1L2Regularizer_1a66864c9b8eab4a86ffd2b6be06bbeb31"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>paraConfig</em>, real <em>learningRate</em>, int <em>t0</em>, int <em>t</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle13L2Regularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle15L2LrRegularizerE">
+<span id="paddle::L2LrRegularizer"></span><span class="target" id="paddleclasspaddle_1_1L2LrRegularizer"></span><em class="property">class </em><code class="descname">L2LrRegularizer</code><a class="headerlink" href="#_CPPv2N6paddle15L2LrRegularizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Regularizer"><span class="std std-ref">paddle::Regularizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2NK6paddle15L2LrRegularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii">
+<span id="paddle::L2LrRegularizer::update__VectorPtrCA.ParameterConfigCR.real.i.iC"></span><span class="target" id="paddleclasspaddle_1_1L2LrRegularizer_1a90bfe17bde94d3cc5e3ba5a72252063c"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>paraConfig</em>, real <em>learningRate</em>, int <em>t0</em>, int <em>t</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle15L2LrRegularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle15L1L2RegularizerE">
+<span id="paddle::L1L2Regularizer"></span><span class="target" id="paddleclasspaddle_1_1L1L2Regularizer"></span><em class="property">class </em><code class="descname">L1L2Regularizer</code><a class="headerlink" href="#_CPPv2N6paddle15L1L2RegularizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Regularizer"><span class="std std-ref">paddle::Regularizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2NK6paddle15L1L2Regularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii">
+<span id="paddle::L1L2Regularizer::update__VectorPtrCA.ParameterConfigCR.real.i.iC"></span><span class="target" id="paddleclasspaddle_1_1L1L2Regularizer_1a2d60fa53449cb26540bfa592249c1aad"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>paraConfig</em>, real <em>learningRate</em>, int <em>t0</em>, int <em>t</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle15L1L2Regularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle17L1L2LrRegularizerE">
+<span id="paddle::L1L2LrRegularizer"></span><span class="target" id="paddleclasspaddle_1_1L1L2LrRegularizer"></span><em class="property">class </em><code class="descname">L1L2LrRegularizer</code><a class="headerlink" href="#_CPPv2N6paddle17L1L2LrRegularizerE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Regularizer"><span class="std std-ref">paddle::Regularizer</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Functions</p>
+<dl class="function">
+<dt id="_CPPv2NK6paddle17L1L2LrRegularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii">
+<span id="paddle::L1L2LrRegularizer::update__VectorPtrCA.ParameterConfigCR.real.i.iC"></span><span class="target" id="paddleclasspaddle_1_1L1L2LrRegularizer_1a015bffb7f757e86a2f69bce8aee0fa5f"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vecs</em>[], <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>paraConfig</em>, real <em>learningRate</em>, int <em>t0</em>, int <em>t</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle17L1L2LrRegularizer6updateEA_K9VectorPtrRK15ParameterConfig4realii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="id1">
+<h2>Parameter<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<dl class="type">
+<dt>
+<span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle20UserDefinedVectorPtrE">
+<span id="paddle::UserDefinedVectorPtr"></span><span class="target" id="paddlenamespacepaddle_1a35f1e4c516d65e5d8244ed2d8f832590"></span><em class="property">typedef </em>std::shared_ptr&lt;std::vector&lt;void *&gt;&gt; <code class="descname">UserDefinedVectorPtr</code><a class="headerlink" href="#_CPPv2N6paddle20UserDefinedVectorPtrE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle10SVectorPtrE">
+<span id="paddle::SVectorPtr"></span><span class="target" id="paddlenamespacepaddle_1ad541244a50b510402dc8eb9ddc9a3a2d"></span><em class="property">typedef </em>std::shared_ptr&lt;std::vector&lt;std::string&gt;&gt; <code class="descname">SVectorPtr</code><a class="headerlink" href="#_CPPv2N6paddle10SVectorPtrE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle8ArgumentE">
+<span id="paddle::Argument"></span><span class="target" id="paddlestructpaddle_1_1Argument"></span><em class="property">struct </em><code class="descname">Argument</code><a class="headerlink" href="#_CPPv2N6paddle8ArgumentE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument8ArgumentEv">
+<span id="paddle::Argument::Argument"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a1792797f3379fdab55c6385619e0802f"></span><code class="descname">Argument</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument8ArgumentEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument8ArgumentERK8Argument">
+<span id="paddle::Argument::Argument__ArgumentCR"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a432bfb6673d1c2081d7bae6a9d5896ea"></span><code class="descname">Argument</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle8Argument8ArgumentEv" title="paddle::Argument::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument8ArgumentERK8Argument" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8ArgumentD0Ev">
+<span id="paddle::Argument::~Argument"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a0040518cf2b5b8ff458def0af3355281"></span><code class="descname">~Argument</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8ArgumentD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8ArgumentaSERK8Argument">
+<span id="paddle::Argument::assign-operator__ArgumentCR"></span><span class="target" id="paddlestructpaddle_1_1Argument_1acc52f3deaaa4d78c0dd3e20813f6e7e0"></span>void <code class="descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8ArgumentaSERK8Argument" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument14countIncrementEv">
+<span id="paddle::Argument::countIncrement"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a4a3fdc394ea0c949c96fd5b4c650cf4a"></span>void <code class="descname">countIncrement</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument14countIncrementEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument11getAllCountEv">
+<span id="paddle::Argument::getAllCountC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a9b232f6acdb6e9c29d3747cfe29e8edc"></span>int <code class="descname">getAllCount</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument11getAllCountEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument14waitValueReadyEv">
+<span id="paddle::Argument::waitValueReadyC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a480f7f8502e864bc0f96269e28426abe"></span>void <code class="descname">waitValueReady</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument14waitValueReadyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument16notifyValueReadyEv">
+<span id="paddle::Argument::notifyValueReadyC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a46e0e639cd507eb674e4514e8e0b5ffd"></span>void <code class="descname">notifyValueReady</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument16notifyValueReadyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument13waitGradReadyEv">
+<span id="paddle::Argument::waitGradReadyC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1aadda92325e3ff3ed10f52f4f13eb1e39"></span>void <code class="descname">waitGradReady</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument13waitGradReadyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument15notifyGradReadyEv">
+<span id="paddle::Argument::notifyGradReadyC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a7ef761078c003e010bc5b5d869d0ac52"></span>void <code class="descname">notifyGradReady</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument15notifyGradReadyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument12getBatchSizeEv">
+<span id="paddle::Argument::getBatchSizeC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1afe460ef2cdee4556e97344dd20fbd4b6"></span>int64_t <code class="descname">getBatchSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument12getBatchSizeEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument14getFrameHeightEv">
+<span id="paddle::Argument::getFrameHeightC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a9e7c83f633513e81f3d95d4c1bd13095"></span>size_t <code class="descname">getFrameHeight</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument14getFrameHeightEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument13getFrameWidthEv">
+<span id="paddle::Argument::getFrameWidthC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a35779cffaa2b4c4ed0240bae5ee0ce6c"></span>size_t <code class="descname">getFrameWidth</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument13getFrameWidthEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument14setFrameHeightE6size_t">
+<span id="paddle::Argument::setFrameHeight__s"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a81e4b8afa17679e898097186b39642c3"></span>void <code class="descname">setFrameHeight</code><span class="sig-paren">(</span>size_t <em>h</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument14setFrameHeightE6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument13setFrameWidthE6size_t">
+<span id="paddle::Argument::setFrameWidth__s"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a4fff810adec8befe9c2f9d09ee35706e"></span>void <code class="descname">setFrameWidth</code><span class="sig-paren">(</span>size_t <em>w</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument13setFrameWidthE6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument15getNumSequencesEv">
+<span id="paddle::Argument::getNumSequencesC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1acdd0c4e22eec70cef32bce044062a123"></span>int64_t <code class="descname">getNumSequences</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument15getNumSequencesEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument18getNumSubSequencesEv">
+<span id="paddle::Argument::getNumSubSequencesC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a18d64aebe46659b9a49d133ae3c8fefc"></span>int64_t <code class="descname">getNumSubSequences</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument18getNumSubSequencesEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument9hasSubseqEv">
+<span id="paddle::Argument::hasSubseqC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a252a80c4baea99fa7cebb0f001a2b0b6"></span>bool <code class="descname">hasSubseq</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument9hasSubseqEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument20getCpuStartPositionsEv">
+<span id="paddle::Argument::getCpuStartPositionsC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1ab4101657e0eb55939899a5ded54a42f9"></span><em class="property">const</em> int *<code class="descname">getCpuStartPositions</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument20getCpuStartPositionsEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument10subArgFromERK8Argument6size_t6size_t6size_tbbb6size_t6size_t">
+<span id="paddle::Argument::subArgFrom__ArgumentCR.s.s.s.b.b.b.s.s"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a9c4aa318d57eeb85bbc36e3deb95a534"></span>void <code class="descname">subArgFrom</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>input</em>, size_t <em>offset</em>, size_t <em>height</em>, size_t <em>width</em>, bool <em>useGpu</em>, bool <em>trans</em> = false, bool <em>seqFlag</em> = false, size_t <em>seqStart</em> = 0, size_t <em>seqSize</em> = 0<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument10subArgFromERK8Argument6size_t6size_t6size_tbbb6size_t6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>(value, ids, grad, sequenceStartPositions) of output are subset of input. Note that, output share the same memory of input. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input[in]</span></code>: input </li>
+<li><code class="docutils literal"><span class="pre">offset[in]</span></code>: offset in terms of rows </li>
+<li><code class="docutils literal"><span class="pre">height[in]</span></code>: height of output.value </li>
+<li><code class="docutils literal"><span class="pre">width[in]</span></code>: width of output.value </li>
+<li><code class="docutils literal"><span class="pre">useGpu[in]</span></code>: </li>
+<li><code class="docutils literal"><span class="pre">trans[in]</span></code>: whether input.value is transform </li>
+<li><code class="docutils literal"><span class="pre">seqFlag[in]</span></code>: whether input has sequenceStartPositions </li>
+<li><code class="docutils literal"><span class="pre">seqStart[in]</span></code>: offset of input.sequenceStartPositions </li>
+<li><code class="docutils literal"><span class="pre">seqSize[in]</span></code>: lenght of output.sequenceStartPositions </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument17resizeAndCopyFromERK8Argument7int32_t7int32_tb11hl_stream_t">
+<span id="paddle::Argument::resizeAndCopyFrom__ArgumentCR.int32_t.int32_t.b.hl_stream_t"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a1cfdf95e9256c51478ef6b7b561e4754"></span>int32_t <code class="descname">resizeAndCopyFrom</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>src</em>, int32_t <em>startSeq</em>, int32_t <em>copySize</em>, bool <em>useGpu</em>, <a class="reference internal" href="../../cuda/utils/utils.html#_CPPv211hl_stream_t" title="hl_stream_t">hl_stream_t</a> <em>stream</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument17resizeAndCopyFromERK8Argument7int32_t7int32_tb11hl_stream_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument17resizeAndCopyFromERK8Argument7int32_t7int32_tb">
+<span id="paddle::Argument::resizeAndCopyFrom__ArgumentCR.int32_t.int32_t.b"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a360a87d7f88d04c1bd1ded4a4a1c1c48"></span>int32_t <code class="descname">resizeAndCopyFrom</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>src</em>, int32_t <em>startSeq</em>, int32_t <em>copySize</em>, bool <em>useGpu</em> = FLAGS_use_gpu<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument17resizeAndCopyFromERK8Argument7int32_t7int32_tb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument17resizeAndCopyFromERK8Argumentb11hl_stream_t">
+<span id="paddle::Argument::resizeAndCopyFrom__ArgumentCR.b.hl_stream_t"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a3da96c5629f1d4640541846a5a2c6e08"></span>void <code class="descname">resizeAndCopyFrom</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>src</em>, bool <em>useGpu</em>, <a class="reference internal" href="../../cuda/utils/utils.html#_CPPv211hl_stream_t" title="hl_stream_t">hl_stream_t</a> <em>stream</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument17resizeAndCopyFromERK8Argumentb11hl_stream_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument17resizeAndCopyFromERK8Argumentb">
+<span id="paddle::Argument::resizeAndCopyFrom__ArgumentCR.b"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a84e3d3b84c5efb93329b4b4564d89628"></span>void <code class="descname">resizeAndCopyFrom</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>src</em>, bool <em>useGpu</em> = FLAGS_use_gpu<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument17resizeAndCopyFromERK8Argumentb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument6concatERKNSt6vectorI8ArgumentEERKNSt6vectorIiEERKNSt6vectorIiEEb11hl_stream_t8PassType">
+<span id="paddle::Argument::concat__std::vector:Argument:CR.std::vector:i:CR.std::vector:i:CR.b.hl_stream_t.PassType"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a006aff1fd5da01b2c44840cc394b3d0e"></span>void <code class="descname">concat</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>args</em>, <em class="property">const</em> std::vector&lt;int&gt; &amp;<em>selectRows</em>, <em class="property">const</em> std::vector&lt;int&gt; &amp;<em>seqStartPos</em>, bool <em>useGpu</em>, <a class="reference internal" href="../../cuda/utils/utils.html#_CPPv211hl_stream_t" title="hl_stream_t">hl_stream_t</a> <em>stream</em>, PassType <em>passType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument6concatERKNSt6vectorI8ArgumentEERKNSt6vectorIiEERKNSt6vectorIiEEb11hl_stream_t8PassType" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument6concatERKNSt6vectorI8ArgumentEEb11hl_stream_t8PassType">
+<span id="paddle::Argument::concat__std::vector:Argument:CR.b.hl_stream_t.PassType"></span><span class="target" id="paddlestructpaddle_1_1Argument_1aabf5c13a5fd1d48469ebae13f42b21d2"></span>void <code class="descname">concat</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>src</em>, bool <em>useGpu</em> = FLAGS_use_gpu, <a class="reference internal" href="../../cuda/utils/utils.html#_CPPv211hl_stream_t" title="hl_stream_t">hl_stream_t</a> <em>stream</em> = HPPL_STREAM_DEFAULT, PassType <em>passType</em> = PASS_TEST<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument6concatERKNSt6vectorI8ArgumentEEb11hl_stream_t8PassType" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument10getSeqInfoEPNSt6vectorI7SeqInfoEE">
+<span id="paddle::Argument::getSeqInfo__std::vector:SeqInfo:PC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a108286ed59ac34bd297181a378f5fcfa"></span>void <code class="descname">getSeqInfo</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle8Argument7SeqInfoE" title="paddle::Argument::SeqInfo">SeqInfo</a>&gt; *<em>segInfo</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument10getSeqInfoEPNSt6vectorI7SeqInfoEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle8Argument11checkSubsetEv">
+<span id="paddle::Argument::checkSubsetC"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a1b8338361b92f84829da1d65f2c6b0b6"></span>void <code class="descname">checkSubset</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle8Argument11checkSubsetEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument15degradeSequenceERK8Argumentb">
+<span id="paddle::Argument::degradeSequence__ArgumentCR.b"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a2833cc55957677b1ee82fd5d0316ef0d"></span>void <code class="descname">degradeSequence</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>input</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument15degradeSequenceERK8Argumentb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument2inE">
+<span id="paddle::Argument::in__MatrixPtr"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a31f7cb508e9345c470f8b2809b26bdf6"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">in</code><a class="headerlink" href="#_CPPv2N6paddle8Argument2inE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument5valueE">
+<span id="paddle::Argument::value__MatrixPtr"></span><span class="target" id="paddlestructpaddle_1_1Argument_1ad04eec25db46568bef3e495511e2c154"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">value</code><a class="headerlink" href="#_CPPv2N6paddle8Argument5valueE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument3idsE">
+<span id="paddle::Argument::ids__IVectorPtr"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a474fa36315526fffa66739a7bd0c455b"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">ids</code><a class="headerlink" href="#_CPPv2N6paddle8Argument3idsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument4gradE">
+<span id="paddle::Argument::grad__MatrixPtr"></span><span class="target" id="paddlestructpaddle_1_1Argument_1aef0cab983b29c8bb63d135ed4a4ecb8f"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">grad</code><a class="headerlink" href="#_CPPv2N6paddle8Argument4gradE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument4strsE">
+<span id="paddle::Argument::strs__SVectorPtr"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a098fd872a7f7754dd22c48271edc7d92"></span><a class="reference internal" href="#_CPPv2N6paddle10SVectorPtrE" title="paddle::SVectorPtr">SVectorPtr</a> <code class="descname">strs</code><a class="headerlink" href="#_CPPv2N6paddle8Argument4strsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument11frameHeightE">
+<span id="paddle::Argument::frameHeight__s"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a34269c87c9eb891156bdf461e3e900b4"></span>size_t <code class="descname">frameHeight</code><a class="headerlink" href="#_CPPv2N6paddle8Argument11frameHeightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument10frameWidthE">
+<span id="paddle::Argument::frameWidth__s"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a32e4eb4482de14251ac77f6868e85f62"></span>size_t <code class="descname">frameWidth</code><a class="headerlink" href="#_CPPv2N6paddle8Argument10frameWidthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument22sequenceStartPositionsE">
+<span id="paddle::Argument::sequenceStartPositions__ICpuGpuVectorPtr"></span><span class="target" id="paddlestructpaddle_1_1Argument_1abd2f20221ccb0c1e063ea8b3a2335b73"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle16ICpuGpuVectorPtrE" title="paddle::ICpuGpuVectorPtr">ICpuGpuVectorPtr</a> <code class="descname">sequenceStartPositions</code><a class="headerlink" href="#_CPPv2N6paddle8Argument22sequenceStartPositionsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument25subSequenceStartPositionsE">
+<span id="paddle::Argument::subSequenceStartPositions__ICpuGpuVectorPtr"></span><span class="target" id="paddlestructpaddle_1_1Argument_1ac62f1c83054d2059497ea5c288653fc7"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle16ICpuGpuVectorPtrE" title="paddle::ICpuGpuVectorPtr">ICpuGpuVectorPtr</a> <code class="descname">subSequenceStartPositions</code><a class="headerlink" href="#_CPPv2N6paddle8Argument25subSequenceStartPositionsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument15cpuSequenceDimsE">
+<span id="paddle::Argument::cpuSequenceDims__IVectorPtr"></span><span class="target" id="paddlestructpaddle_1_1Argument_1ae10cc0ac61afbc2fea8d6d6a4e6e3cf5"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">cpuSequenceDims</code><a class="headerlink" href="#_CPPv2N6paddle8Argument15cpuSequenceDimsE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument3udpE">
+<span id="paddle::Argument::udp__UserDefinedVectorPtr"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a4a04aeecfcbb9d867b1db19781a58777"></span><a class="reference internal" href="#_CPPv2N6paddle20UserDefinedVectorPtrE" title="paddle::UserDefinedVectorPtr">UserDefinedVectorPtr</a> <code class="descname">udp</code><a class="headerlink" href="#_CPPv2N6paddle8Argument3udpE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument8deviceIdE">
+<span id="paddle::Argument::deviceId__i"></span><span class="target" id="paddlestructpaddle_1_1Argument_1af4f44b02697595915825da139f08f6d0"></span>int <code class="descname">deviceId</code><a class="headerlink" href="#_CPPv2N6paddle8Argument8deviceIdE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument8allCountE">
+<span id="paddle::Argument::allCount__i"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a3f11c42d710015a03e32f23c181f489e"></span>int <code class="descname">allCount</code><a class="headerlink" href="#_CPPv2N6paddle8Argument8allCountE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument10valueCountE">
+<span id="paddle::Argument::valueCount__i"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a609f0980f18c3239a5022d6a6bfddc03"></span>int <code class="descname">valueCount</code><a class="headerlink" href="#_CPPv2N6paddle8Argument10valueCountE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument9gradCountE">
+<span id="paddle::Argument::gradCount__i"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a7fec93c2b8ba99194041ce1a92f87cee"></span>int <code class="descname">gradCount</code><a class="headerlink" href="#_CPPv2N6paddle8Argument9gradCountE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument14valueReadyCondE">
+<span id="paddle::Argument::valueReadyCond__LockedCondition"></span><span class="target" id="paddlestructpaddle_1_1Argument_1aaaa734d2e0148205dd9d1671f5cd9fe4"></span><a class="reference internal" href="../../utils/thread.html#_CPPv2N6paddle15LockedConditionE" title="paddle::LockedCondition">LockedCondition</a> <code class="descname">valueReadyCond</code><a class="headerlink" href="#_CPPv2N6paddle8Argument14valueReadyCondE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument13gradReadyCondE">
+<span id="paddle::Argument::gradReadyCond__LockedCondition"></span><span class="target" id="paddlestructpaddle_1_1Argument_1ab2a0cbbedac148c0513b60cd8ff4691a"></span><a class="reference internal" href="../../utils/thread.html#_CPPv2N6paddle15LockedConditionE" title="paddle::LockedCondition">LockedCondition</a> <code class="descname">gradReadyCond</code><a class="headerlink" href="#_CPPv2N6paddle8Argument13gradReadyCondE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument6dataIdE">
+<span id="paddle::Argument::dataId__i"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a75c97054a8782a745f75390e55e97c63"></span>int <code class="descname">dataId</code><a class="headerlink" href="#_CPPv2N6paddle8Argument6dataIdE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument8sumCostsERKNSt6vectorI8ArgumentEE">
+<span id="paddle::Argument::sumCosts__std::vector:Argument:CR"></span><span class="target" id="paddlestructpaddle_1_1Argument_1a64ffcde8422e7063322a40d7208ca8ad"></span><em class="property">static</em> real <code class="descname">sumCosts</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument8sumCostsERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle8Argument13splitByDataIdERKNSt6vectorI8ArgumentEEPNSt6vectorINSt6vectorI8ArgumentEEEE">
+<span id="paddle::Argument::splitByDataId__std::vector:Argument:CR.std::vector:std::vector:Argument::P"></span><span class="target" id="paddlestructpaddle_1_1Argument_1aec3743b17b8eee825b0aafa7de637b39"></span>void <code class="descname">splitByDataId</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>argus</em>, std::vector&lt;std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt;&gt; *<em>arguGroups</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle8Argument13splitByDataIdERKNSt6vectorI8ArgumentEEPNSt6vectorINSt6vectorI8ArgumentEEEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle8Argument7SeqInfoE">
+<span id="paddle::Argument::SeqInfo"></span><span class="target" id="paddlestructpaddle_1_1Argument_1_1SeqInfo"></span><em class="property">struct </em><code class="descname">SeqInfo</code><a class="headerlink" href="#_CPPv2N6paddle8Argument7SeqInfoE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument7SeqInfo14topLevelLengthE">
+<span id="paddle::Argument::SeqInfo::topLevelLength__i"></span><span class="target" id="paddlestructpaddle_1_1Argument_1_1SeqInfo_1aba9a0fbb8af497b8ef22838771c192cd"></span>int <code class="descname">topLevelLength</code><a class="headerlink" href="#_CPPv2N6paddle8Argument7SeqInfo14topLevelLengthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument7SeqInfo8seqStartE">
+<span id="paddle::Argument::SeqInfo::seqStart__i"></span><span class="target" id="paddlestructpaddle_1_1Argument_1_1SeqInfo_1a88d1d14504ddf707d5adaaf5ba4144ec"></span>int <code class="descname">seqStart</code><a class="headerlink" href="#_CPPv2N6paddle8Argument7SeqInfo8seqStartE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument7SeqInfo5seqIdE">
+<span id="paddle::Argument::SeqInfo::seqId__i"></span><span class="target" id="paddlestructpaddle_1_1Argument_1_1SeqInfo_1a2574186e068363423624466e200ceba3"></span>int <code class="descname">seqId</code><a class="headerlink" href="#_CPPv2N6paddle8Argument7SeqInfo5seqIdE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument7SeqInfo14subLevelLengthE">
+<span id="paddle::Argument::SeqInfo::subLevelLength__i"></span><span class="target" id="paddlestructpaddle_1_1Argument_1_1SeqInfo_1af20e8dd79218a698ca7c7ab762af985d"></span>int <code class="descname">subLevelLength</code><a class="headerlink" href="#_CPPv2N6paddle8Argument7SeqInfo14subLevelLengthE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle8Argument7SeqInfo11subSeqStartE">
+<span id="paddle::Argument::SeqInfo::subSeqStart__i"></span><span class="target" id="paddlestructpaddle_1_1Argument_1_1SeqInfo_1a17c1c8a8acc73da64d29627f65bad374"></span>int <code class="descname">subSeqStart</code><a class="headerlink" href="#_CPPv2N6paddle8Argument7SeqInfo11subSeqStartE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt>
+<span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle14UpdateCallbackE">
+<span id="paddle::UpdateCallback"></span><span class="target" id="paddlenamespacepaddle_1a4c20affb9e652dd1e9c4f3b387d4f5bd"></span><em class="property">typedef </em>std::function&lt;void<span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *param<span class="sig-paren">)</span>&gt; <code class="descname">UpdateCallback</code><a class="headerlink" href="#_CPPv2N6paddle14UpdateCallbackE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle17ParamInitCallbackE">
+<span id="paddle::ParamInitCallback"></span><span class="target" id="paddlenamespacepaddle_1a96b188f67a2aa4cf4808cadaa90aaa54"></span><em class="property">typedef </em>std::function&lt;void<span class="sig-paren">(</span>int paramId, <a class="reference internal" href="#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *param<span class="sig-paren">)</span>&gt; <code class="descname">ParamInitCallback</code><a class="headerlink" href="#_CPPv2N6paddle17ParamInitCallbackE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle12ParameterPtrE">
+<span id="paddle::ParameterPtr"></span><span class="target" id="paddlenamespacepaddle_1aa5f9e640e985fd075f9c1d416bbed5a5"></span><em class="property">typedef </em>std::shared_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a>&gt; <code class="descname">ParameterPtr</code><a class="headerlink" href="#_CPPv2N6paddle12ParameterPtrE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle12ParameterMapE">
+<span id="paddle::ParameterMap"></span><span class="target" id="paddlenamespacepaddle_1aab324b7f09ee297b7a2bbdea32e20365"></span><em class="property">typedef </em>std::map&lt;std::string, <a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a>&gt; <code class="descname">ParameterMap</code><a class="headerlink" href="#_CPPv2N6paddle12ParameterMapE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle7SegmentE">
+<span id="paddle::Segment"></span><span class="target" id="paddlestructpaddle_1_1Segment"></span><em class="property">struct </em><code class="descname">Segment</code><a class="headerlink" href="#_CPPv2N6paddle7SegmentE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle7Segment8beginDimE">
+<span id="paddle::Segment::beginDim__int64_t"></span><span class="target" id="paddlestructpaddle_1_1Segment_1a2db46eb05d9c19eddd44ab285db0e86d"></span>int64_t <code class="descname">beginDim</code><a class="headerlink" href="#_CPPv2N6paddle7Segment8beginDimE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle7Segment6endDimE">
+<span id="paddle::Segment::endDim__int64_t"></span><span class="target" id="paddlestructpaddle_1_1Segment_1ae66d57dab716dc5fe4b28ac82424e38d"></span>int64_t <code class="descname">endDim</code><a class="headerlink" href="#_CPPv2N6paddle7Segment6endDimE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle7Segment8beginPosE">
+<span id="paddle::Segment::beginPos__int64_t"></span><span class="target" id="paddlestructpaddle_1_1Segment_1a9ad5290535b5e96d7cf83564795b1568"></span>int64_t <code class="descname">beginPos</code><a class="headerlink" href="#_CPPv2N6paddle7Segment8beginPosE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle9ParameterE">
+<span id="paddle::Parameter"></span><span class="target" id="paddleclasspaddle_1_1Parameter"></span><em class="property">class </em><code class="descname">Parameter</code><a class="headerlink" href="#_CPPv2N6paddle9ParameterE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle7MatTypeE">
+<span id="paddle::MatType"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a64215485689bada740c2831bf00d4733"></span><em class="property">enum </em><code class="descname">MatType</code><a class="headerlink" href="#_CPPv2N6paddle7MatTypeE" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv2N6paddle10MAT_NORMALE">
+<span id="paddle::MAT_NORMAL"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a64215485689bada740c2831bf00d4733accec07b9b25658250dcdf57899698273"></span><code class="descname">MAT_NORMAL</code><a class="headerlink" href="#_CPPv2N6paddle10MAT_NORMALE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17MAT_NORMAL_SHAREDE">
+<span id="paddle::MAT_NORMAL_SHARED"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a64215485689bada740c2831bf00d4733a4a33bf62373961cf651f1a5f6ff1be2d"></span><code class="descname">MAT_NORMAL_SHARED</code><a class="headerlink" href="#_CPPv2N6paddle17MAT_NORMAL_SHAREDE" title="Permalink to this definition">¶</a></dt>
+<dd><p>both value and grad are shared </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16MAT_VALUE_SHAREDE">
+<span id="paddle::MAT_VALUE_SHARED"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a64215485689bada740c2831bf00d4733ab0dea3fb04116354f14dd56577a937a0"></span><code class="descname">MAT_VALUE_SHARED</code><a class="headerlink" href="#_CPPv2N6paddle16MAT_VALUE_SHAREDE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Now used in BatchNorm in CPU mode. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle18MAT_SPARSE_ROW_IDSE">
+<span id="paddle::MAT_SPARSE_ROW_IDS"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a64215485689bada740c2831bf00d4733a5f7fe11aff1157f45d67de9ede390f6a"></span><code class="descname">MAT_SPARSE_ROW_IDS</code><a class="headerlink" href="#_CPPv2N6paddle18MAT_SPARSE_ROW_IDSE" title="Permalink to this definition">¶</a></dt>
+<dd><p>sparse matrix, which has full size parameter </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24MAT_SPARSE_ROW_AUTO_GROWE">
+<span id="paddle::MAT_SPARSE_ROW_AUTO_GROW"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a64215485689bada740c2831bf00d4733a19a6135243a607e36b97d5b62d58c7a6"></span><code class="descname">MAT_SPARSE_ROW_AUTO_GROW</code><a class="headerlink" href="#_CPPv2N6paddle24MAT_SPARSE_ROW_AUTO_GROWE" title="Permalink to this definition">¶</a></dt>
+<dd><p>sparse matrix, parameter size scale by sparse rates. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle13MAT_CACHE_ROWE">
+<span id="paddle::MAT_CACHE_ROW"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a64215485689bada740c2831bf00d4733a0a6d3d6c044cead60d01d481aabb03f8"></span><code class="descname">MAT_CACHE_ROW</code><a class="headerlink" href="#_CPPv2N6paddle13MAT_CACHE_ROWE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14MAT_SPARSE_ROWE">
+<span id="paddle::MAT_SPARSE_ROW"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a64215485689bada740c2831bf00d4733ae0e4563740fe0fcb4aba7a90ccdecb19"></span><code class="descname">MAT_SPARSE_ROW</code><a class="headerlink" href="#_CPPv2N6paddle14MAT_SPARSE_ROWE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle23MAT_SPARSE_ROW_PREFETCHE">
+<span id="paddle::MAT_SPARSE_ROW_PREFETCH"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a64215485689bada740c2831bf00d4733a453177a2ca31e42bba66e6519a2d04c5"></span><code class="descname">MAT_SPARSE_ROW_PREFETCH</code><a class="headerlink" href="#_CPPv2N6paddle23MAT_SPARSE_ROW_PREFETCHE" title="Permalink to this definition">¶</a></dt>
+<dd><p>sparse matrix for prefetching parameter from pserver </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle33MAT_SPARSE_ROW_PREFETCH_FULL_SIZEE">
+<span id="paddle::MAT_SPARSE_ROW_PREFETCH_FULL_SIZE"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a64215485689bada740c2831bf00d4733a20c057543047bed53744a9f4be47b6e7"></span><code class="descname">MAT_SPARSE_ROW_PREFETCH_FULL_SIZE</code><a class="headerlink" href="#_CPPv2N6paddle33MAT_SPARSE_ROW_PREFETCH_FULL_SIZEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>same as above, but parameter has full size for saving parameter in local </p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle9Parameter8ExecFuncE">
+<span id="paddle::Parameter::ExecFunc"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a55a9c35ae4c0d87651ea7a1930d560cb"></span><em class="property">typedef </em>std::function&lt;void<span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> vecs[]<span class="sig-paren">)</span>&gt; <code class="descname">ExecFunc</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter8ExecFuncE" title="Permalink to this definition">¶</a></dt>
+<dd><p>exec a func in single/multi thread. vecs is bufs_ of <a class="reference internal" href="#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a>, as input of ExecFunc. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N9Parameter9ParameterERK15ParameterConfigbb">
+<span id="Parameter::Parameter__ParameterConfigCR.b.b"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a1ed20ca78fd3232be32cf94d3b1f112a"></span><code class="descname">Parameter</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em>, bool <em>useGpu</em>, bool <em>doInit</em> = true<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter9ParameterERK15ParameterConfigbb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter7getNameEv">
+<span id="paddle::Parameter::getNameC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a28f58028acae54d0c1cea66d55a108ad"></span><em class="property">const</em> std::string &amp;<code class="descname">getName</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter7getNameEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter7getSizeEv">
+<span id="paddle::Parameter::getSizeC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a56e14ba7bee1b5cdefeae29a80bdbe2f"></span>size_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter10isFullSizeEv">
+<span id="paddle::Parameter::isFullSizeC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1ac131ef33957d2a9b609b6e630a9688c0"></span>bool <code class="descname">isFullSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter10isFullSizeEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter6useGpuEv">
+<span id="paddle::Parameter::useGpuC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1ad43952479d74c9bdc4114abc3148e87d"></span>bool <code class="descname">useGpu</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter6useGpuEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter11getDeviceIdEv">
+<span id="paddle::Parameter::getDeviceIdC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1aefc4554e4b76fbebbf6696ddd051ab94"></span>int <code class="descname">getDeviceId</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter11getDeviceIdEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter9setDeviceEi">
+<span id="paddle::Parameter::setDevice__i"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a17ebfcf306ad3413a07dbb6ef4afffbc"></span>void <code class="descname">setDevice</code><span class="sig-paren">(</span>int <em>deviceId</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter9setDeviceEi" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter5getIDEv">
+<span id="paddle::Parameter::getIDC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a0b422e4d13b9fc1f4df82357d4e8cd66"></span>size_t <code class="descname">getID</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter5getIDEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>The id ranges from 0 to the_total_number_of_parameters - 1. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter5setIDE6size_t">
+<span id="paddle::Parameter::setID__s"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a9b36c8f65d8c29bfcdb2ac6975d13dc0"></span>void <code class="descname">setID</code><span class="sig-paren">(</span>size_t <em>id</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter5setIDE6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>ID is a implict value created until neural network is built. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter8isStaticEv">
+<span id="paddle::Parameter::isStaticC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1af07bd19ea61c3d79daa1b8141ded292b"></span>bool <code class="descname">isStatic</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter8isStaticEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter21enableSparseParameterEv">
+<span id="paddle::Parameter::enableSparseParameter"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a58f1960a1f1ac2f8957351e32715cc5e"></span>void <code class="descname">enableSparseParameter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter21enableSparseParameterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter10enableTypeE13ParameterType7MatType">
+<span id="paddle::Parameter::enableType__ParameterType.MatType"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a1de9cfb210eb1d2e273e0da2ebb1a4a2"></span>void <code class="descname">enableType</code><span class="sig-paren">(</span>ParameterType <em>type</em>, <a class="reference internal" href="#_CPPv2N6paddle7MatTypeE" title="paddle::MatType">MatType</a> <em>matType</em> = MAT_NORMAL<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter10enableTypeE13ParameterType7MatType" title="Permalink to this definition">¶</a></dt>
+<dd><p>allocate buffer for the give type </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter13enableBufTypeE13ParameterType">
+<span id="paddle::Parameter::enableBufType__ParameterType"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1abf93f4627fa8490df9737474faff4eea"></span>void <code class="descname">enableBufType</code><span class="sig-paren">(</span>ParameterType <em>type</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter13enableBufTypeE13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter13enableIntTypeE13ParameterType6size_t">
+<span id="paddle::Parameter::enableIntType__ParameterType.s"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1aece0ee015937bafc11233c4384876d3e"></span>void <code class="descname">enableIntType</code><span class="sig-paren">(</span>ParameterType <em>type</em>, size_t <em>intStoreSize</em> = 0<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter13enableIntTypeE13ParameterType6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter16enableSharedTypeE13ParameterType9VectorPtr9MatrixPtr">
+<span id="paddle::Parameter::enableSharedType__ParameterType.VectorPtr.MatrixPtr"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a7de499fb7a09a4c0e9b84d0e74cab38b"></span>void <code class="descname">enableSharedType</code><span class="sig-paren">(</span>ParameterType <em>type</em>, <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vec</em>, <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <em>mat</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter16enableSharedTypeE13ParameterType9VectorPtr9MatrixPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter16enableSharedTypeE13ParameterType9VectorPtr7MatType">
+<span id="paddle::Parameter::enableSharedType__ParameterType.VectorPtr.MatType"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a2355ff616699fa5190a846ae98cbf51c"></span>void <code class="descname">enableSharedType</code><span class="sig-paren">(</span>ParameterType <em>type</em>, <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <em>vec</em>, <a class="reference internal" href="#_CPPv2N6paddle7MatTypeE" title="paddle::MatType">MatType</a> <em>matType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter16enableSharedTypeE13ParameterType9VectorPtr7MatType" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter12isGradSharedEP6size_t">
+<span id="Parameter::isGradShared__sP"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1acdce93e301074d614d87ef0eb8ddf8a5"></span>bool <code class="descname">isGradShared</code><span class="sig-paren">(</span>size_t *<em>blockNum</em> = NULL<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter12isGradSharedEP6size_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>for batchGradientMachine: blockNum is number of partitions of the matrix. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter13isValueSharedEv">
+<span id="Parameter::isValueShared"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1aa4eb11c2ed13a2d4542cc6f3141587dc"></span>bool <code class="descname">isValueShared</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter13isValueSharedEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK9Parameter18isGradSparseUpdateEv">
+<span id="Parameter::isGradSparseUpdateC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a959c707325e910b3538781ce0023b1ec"></span>bool <code class="descname">isGradSparseUpdate</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Parameter18isGradSparseUpdateEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter20isSparseRemoteUpdateEv">
+<span id="paddle::Parameter::isSparseRemoteUpdateC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a6d245315d23cb12b2e9a8689a502b1f0"></span>bool <code class="descname">isSparseRemoteUpdate</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter20isSparseRemoteUpdateEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter9getConfigEv">
+<span id="paddle::Parameter::getConfigC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1aee216f76ac29afbf20d61dab914e59ac"></span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<code class="descname">getConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter9getConfigEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter9getConfigEv">
+<span id="paddle::Parameter::getConfig"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1af3890efb90c48cb0651f016d35280e50"></span><a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<code class="descname">getConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter9getConfigEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter7hasTypeE13ParameterType">
+<span id="paddle::Parameter::hasType__ParameterTypeC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a4d58d5315c3a174e697765ffbd0153fd"></span>bool <code class="descname">hasType</code><span class="sig-paren">(</span>ParameterType <em>pType</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter7hasTypeE13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter6getBufE13ParameterType">
+<span id="paddle::Parameter::getBuf__ParameterTypeC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a3417024f69d61c03c67ec10ef6a0357a"></span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> &amp;<code class="descname">getBuf</code><span class="sig-paren">(</span>ParameterType <em>pType</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter6getBufE13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter7getBufsEv">
+<span id="paddle::Parameter::getBufsC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1ad97ad6d13acea5d366835d0c204716e0"></span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> *<code class="descname">getBufs</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter7getBufsEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter6getMatE13ParameterType">
+<span id="paddle::Parameter::getMat__ParameterTypeC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a4b1c5f6f542d7fadcd8f44176777664c"></span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> &amp;<code class="descname">getMat</code><span class="sig-paren">(</span>ParameterType <em>pType</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter6getMatE13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter9getIntBufE13ParameterType">
+<span id="paddle::Parameter::getIntBuf__ParameterType"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a492ee3b723016d16aad32b08616dff4c"></span><em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> &amp;<code class="descname">getIntBuf</code><span class="sig-paren">(</span>ParameterType <em>pType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter9getIntBufE13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter9setIntBufE13ParameterTypeRK10IVectorPtr">
+<span id="paddle::Parameter::setIntBuf__ParameterType.IVectorPtrCR"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1af2611009935a5c22ddddba447a1b6e4c"></span>void <code class="descname">setIntBuf</code><span class="sig-paren">(</span>ParameterType <em>pType</em>, <em class="property">const</em> <a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> &amp;<em>iVec</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter9setIntBufE13ParameterTypeRK10IVectorPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter17getPrefetchMatrixEv">
+<span id="Parameter::getPrefetchMatrix"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a687cc95494d2f31211fe36d405c5a33d"></span>SparsePrefetchRowCpuMatrix *<code class="descname">getPrefetchMatrix</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter17getPrefetchMatrixEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter12getLearnRateEv">
+<span id="paddle::Parameter::getLearnRateC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a7c7fd0d7394e564cba241673160b160a"></span>float <code class="descname">getLearnRate</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter12getLearnRateEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter11getInitMeanEv">
+<span id="paddle::Parameter::getInitMeanC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1ae02e714c676bf79ae66ecba70837488b"></span>float <code class="descname">getInitMean</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter11getInitMeanEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter24getInitStandardDeviationEv">
+<span id="paddle::Parameter::getInitStandardDeviationC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1adea562b7dfa78a7cf471a48f9e27e357"></span>float <code class="descname">getInitStandardDeviation</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter24getInitStandardDeviationEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter15setValueUpdatedEv">
+<span id="paddle::Parameter::setValueUpdated"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1abe039e9a94a76b8dec8b6958567d3835"></span>void <code class="descname">setValueUpdated</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter15setValueUpdatedEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter17clearValueUpdatedEv">
+<span id="paddle::Parameter::clearValueUpdated"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a44fc2210da1300412bb5447b125520b6"></span>void <code class="descname">clearValueUpdated</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter17clearValueUpdatedEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle9Parameter14isValueUpdatedEv">
+<span id="paddle::Parameter::isValueUpdatedC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a1906ab0889e561d5ec126c38a0c8330c"></span>bool <code class="descname">isValueUpdated</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9Parameter14isValueUpdatedEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter18updateWithGradientE4real">
+<span id="Parameter::updateWithGradient__real"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a6120a9f56fa1fcf02df505aa53bd1d24"></span>void <code class="descname">updateWithGradient</code><span class="sig-paren">(</span>real <em>learningRate</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter18updateWithGradientE4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update bufs_[PARAMETER_VALUE] using bufs_[PARAMETER_GRADIENT] </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter18updateWithGradientE4real9MatrixPtr10IVectorPtrib">
+<span id="Parameter::updateWithGradient__real.MatrixPtr.IVectorPtr.i.b"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a0053a5dab34bb92fcad9d15964a487ef"></span>void <code class="descname">updateWithGradient</code><span class="sig-paren">(</span>real <em>learningRate</em>, MatrixPtr <em>gradMat</em>, IVectorPtr <em>t0</em>, int <em>currentTime</em>, bool <em>fini</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter18updateWithGradientE4real9MatrixPtr10IVectorPtrib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update bufs_[PARAMETER_VALUE] using sparse row grad matrix.</p>
+<p><dl class="docutils">
+<dt><strong>See</strong></dt>
+<dd><a class="reference internal" href="../../math/matrix/matrix.html#paddleclasspaddle_1_1SparseRowCpuMatrix_1af2efb2d5ba47c4f42602833b0e215f80"><span class="std std-ref">SparseRowCpuMatrix::sgdUpdate</span></a> for more information. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter18updateWithGradientE4real9VectorPtrb">
+<span id="Parameter::updateWithGradient__real.VectorPtr.b"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1aaf9c02f8d6b9e5042ba85e96fa931600"></span>void <code class="descname">updateWithGradient</code><span class="sig-paren">(</span>real <em>learningRate</em>, VectorPtr <em>grad</em>, bool <em>normalUpdate</em> = true<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter18updateWithGradientE4real9VectorPtrb" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is used to calculate multiple gpus, but only as a candidate </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK9Parameter4saveERKNSt6stringE">
+<span id="Parameter::save__ssCRC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a411d2a0315cfd3bb4cbb3231edeef4ac"></span>bool <code class="descname">save</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>filename</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Parameter4saveERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save parameter value to a file </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK9Parameter4saveERNSt7ostreamE">
+<span id="Parameter::save__osRC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a9a8320f38ac33d870e25251ea83099e6"></span>bool <code class="descname">save</code><span class="sig-paren">(</span>std::ostream &amp;<em>s</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Parameter4saveERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save parameter to ostream </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter4loadERKNSt6stringE">
+<span id="Parameter::load__ssCR"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a835cc569f4de93cfdcf2f40db9d31f2f"></span>bool <code class="descname">load</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>filename</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter4loadERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load parameter value from a file </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter4loadERNSt7istreamE">
+<span id="Parameter::load__isR"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1aae7d873a5280e5ec4cc98778f7f2d24e"></span>bool <code class="descname">load</code><span class="sig-paren">(</span>std::istream &amp;<em>is</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter4loadERNSt7istreamE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load parameter from istream </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter19getGradientSegmentsEv">
+<span id="paddle::Parameter::getGradientSegments"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a1a8fee85eb409c1df3ca36d8216387c0"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle7SegmentE" title="paddle::Segment">Segment</a>&gt; &amp;<code class="descname">getGradientSegments</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter19getGradientSegmentsEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter9incSharedEv">
+<span id="paddle::Parameter::incShared"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1ae528342f8e03e355f0270a5b2af20a29"></span>void <code class="descname">incShared</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter9incSharedEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter9incUpdateERK14UpdateCallback">
+<span id="Parameter::incUpdate__UpdateCallbackCR"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a078bb4fa92a5b41f2d601f1c1c48eade"></span>void <code class="descname">incUpdate</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv214UpdateCallback" title="UpdateCallback">UpdateCallback</a> &amp;<em>callbacks</em> = NULL<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter9incUpdateERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
+<dd><p>After one of the parameter&#8217;s gradient is merged You should call this function to do some additional processing, </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter13clearGradientEv">
+<span id="paddle::Parameter::clearGradient"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a8255141a84c279f6888f26877a5a0d32"></span>void <code class="descname">clearGradient</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter13clearGradientEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter10initializeEv">
+<span id="Parameter::initialize"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1af5cb2a79af0a3c80e54dbb1e4c18edf8"></span>void <code class="descname">initialize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter10initializeEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter9randomizeEv">
+<span id="Parameter::randomize"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1aef2322f39fb919ac7c19b1a6345b9a70"></span>void <code class="descname">randomize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter9randomizeEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the value according to config_: initial_mean, initial_std and initial_strategy. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter7zeroMemEv">
+<span id="Parameter::zeroMem"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a5c1cd05b804b02ae67af2def39243b22"></span>void <code class="descname">zeroMem</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter7zeroMemEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the value to 0. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter10updateHookEv">
+<span id="paddle::Parameter::updateHook"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a48772e1668e7e9258e95ec3bbed29392"></span>void <code class="descname">updateHook</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter10updateHookEv" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> Update Hook. </p>
+<p>The parameter&#8217;s update hook before ParameterUpdater::updateImpl It could modify gradient/momentum/etc here. Such as drop some gradient, etc. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter8initHookEv">
+<span id="paddle::Parameter::initHook"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a6b76361c3aa634632e9902f173e3933c"></span>void <code class="descname">initHook</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter8initHookEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize all updater hook. </p>
+<p>This method should be invoked in ParameterUpdater::init() only. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter14setSharedCountEi">
+<span id="paddle::Parameter::setSharedCount__i"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a875a2b7ae2ce7f5c14aa7fab0e2f6cf7"></span>void <code class="descname">setSharedCount</code><span class="sig-paren">(</span>int <em>cnt</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter14setSharedCountEi" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter14getSharedCountEv">
+<span id="paddle::Parameter::getSharedCount"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a8eef13c45b37132637d7f06bf9f90f21"></span>int <code class="descname">getSharedCount</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter14getSharedCountEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter12singleUpdateEPv">
+<span id="paddle::Parameter::singleUpdate__voidP"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a1036bddb5866872cba7e2748a19ef687"></span>void <code class="descname">singleUpdate</code><span class="sig-paren">(</span>void *<em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter12singleUpdateEPv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter8isSparseEv">
+<span id="paddle::Parameter::isSparse"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1acedeae9155ecc6194ee01d27a9a7242c"></span>bool <code class="descname">isSparse</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter8isSparseEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter9getFormatEv">
+<span id="paddle::Parameter::getFormat"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a31a6ad9d3d17a7cec6e3dc1348389aa6"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle12SparseFormatE" title="paddle::SparseFormat">SparseFormat</a> <code class="descname">getFormat</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter9getFormatEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter4execE8ExecFunc">
+<span id="Parameter::exec__ExecFunc"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a2264b5c609deb78666f9f468b20014fe"></span>void <code class="descname">exec</code><span class="sig-paren">(</span>ExecFunc <em>func</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter4execE8ExecFunc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N9Parameter9randomizeERK9VectorPtrRK15ParameterConfig">
+<span id="Parameter::randomize__VectorPtrCR.ParameterConfigCR"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a90760982b105ce6f638542f99aac8bb1"></span>void <code class="descname">randomize</code><span class="sig-paren">(</span><em class="property">const</em> VectorPtr &amp;<em>value</em>, <em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter9randomizeERK9VectorPtrRK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N9Parameter14getTlsTempBufsEv">
+<span id="Parameter::getTlsTempBufs"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a3a4535a4372aeb2696c0674aa280c359"></span>VectorPtr *<code class="descname">getTlsTempBufs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter14getTlsTempBufsEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter14kFormatVersionE">
+<span id="paddle::Parameter::kFormatVersion__iC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a27de5deef4bc82956114084a5b799b4b"></span><em class="property">const</em> int <code class="descname">kFormatVersion</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter14kFormatVersionE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N9Parameter18kMissParameterFailE">
+<span id="Parameter::kMissParameterFail__ssC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a1e3d3dd8941d72a4b1c4c978ef787f8a"></span><em class="property">const</em> std::string <code class="descname">kMissParameterFail</code><a class="headerlink" href="#_CPPv2N9Parameter18kMissParameterFailE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N9Parameter18kMissParameterRandE">
+<span id="Parameter::kMissParameterRand__ssC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a1283f90358230f33c6ced8937954f67c"></span><em class="property">const</em> std::string <code class="descname">kMissParameterRand</code><a class="headerlink" href="#_CPPv2N9Parameter18kMissParameterRandE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N9Parameter18kMissParameterZeroE">
+<span id="Parameter::kMissParameterZero__ssC"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1aa2ad6fecea38ade1a87430239e703fdb"></span><em class="property">const</em> std::string <code class="descname">kMissParameterZero</code><a class="headerlink" href="#_CPPv2N9Parameter18kMissParameterZeroE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N9Parameter6setMatE13ParameterTypei">
+<span id="Parameter::setMat__ParameterType.i"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1aad9484d8ff2d9fa25c7b68d993a8405b"></span>void <code class="descname">setMat</code><span class="sig-paren">(</span>ParameterType <em>pType</em>, int <em>matType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9Parameter6setMatE13ParameterTypei" title="Permalink to this definition">¶</a></dt>
+<dd><p>create matrix to matType. </p>
+<p>used by gradient machine which needs specify matrix type, instead of creating in weights.cpp.</p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>pType should be enabled already. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter11isUpdatableEv">
+<span id="paddle::Parameter::isUpdatable"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a99458dea5b1d05667c3d5271cec77ddb"></span>bool <code class="descname">isUpdatable</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter11isUpdatableEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Parameter11clearUpdateEv">
+<span id="paddle::Parameter::clearUpdate"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1aa02fa4a60cc3a1818a0773681e0edd56"></span>void <code class="descname">clearUpdate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Parameter11clearUpdateEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter7config_E">
+<span id="paddle::Parameter::config___ParameterConfig"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a8af62e5794a36a920fbf58d5e964da1c"></span><a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> <code class="descname">config_</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter7config_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter7useGpu_E">
+<span id="paddle::Parameter::useGpu___b"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a3c0d89c4148bad81fcff0ad729d5e56e"></span>bool <code class="descname">useGpu_</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter7useGpu_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter9deviceId_E">
+<span id="paddle::Parameter::deviceId___i"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1af98ed0951973cf1b96071cfc7013821e"></span>int <code class="descname">deviceId_</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter9deviceId_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter5bufs_E">
+<span id="paddle::Parameter::bufs___VectorPtrA"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a0fb2433b92a2d031444ad1129796ca31"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <code class="descname">bufs_</code>[NUM_PARAMETER_TYPES]<a class="headerlink" href="#_CPPv2N6paddle9Parameter5bufs_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>bufs_ stores parameter value and gradient. </p>
+<p><a class="reference internal" href="../../gserver/layers/layer.html#paddleclasspaddle_1_1Layer"><span class="std std-ref">Layer</span></a> should use bufs_[PARAMETER_VALUE] to form weight matrix for calculation and stores gradient to bufs_[PARAMETER_GRADIENT]. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter5mats_E">
+<span id="paddle::Parameter::mats___MatrixPtrA"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a7836fa46f712b7d21f02615d22e07a6c"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">mats_</code>[NUM_PARAMETER_TYPES]<a class="headerlink" href="#_CPPv2N6paddle9Parameter5mats_E" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Weight"><span class="std std-ref">Weight</span></a> matrix for bufs_. </p>
+<p>It&#8217;s helpfull when parameter shared by multi-layers. Caller should check, if mats exist, do not create it again. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter8intBufs_E">
+<span id="paddle::Parameter::intBufs___IVectorPtrA"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a51d7f3fcfb0439d43c628b2161973d7a"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle10IVectorPtrE" title="paddle::IVectorPtr">IVectorPtr</a> <code class="descname">intBufs_</code>[NUM_PARAMETER_TYPES]<a class="headerlink" href="#_CPPv2N6paddle9Parameter8intBufs_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>Int vectors, used in some User defined parameter types. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter12sharedCount_E">
+<span id="paddle::Parameter::sharedCount___i"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1ab837415c8ef1bc2f8e9c8d3ba3f63d63"></span>int <code class="descname">sharedCount_</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter12sharedCount_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter14updateCounter_E">
+<span id="paddle::Parameter::updateCounter___i"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a6a85ce2cabe54c1ae8760549aaaee06b"></span>int <code class="descname">updateCounter_</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter14updateCounter_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter13gradSegments_E">
+<span id="paddle::Parameter::gradSegments___std::vector:Segment:"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a50d9885387b2d4c4b8a18980d3e3b5de"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle7SegmentE" title="paddle::Segment">Segment</a>&gt; <code class="descname">gradSegments_</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter13gradSegments_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter8updated_E">
+<span id="paddle::Parameter::updated___b"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1ad24e21a6ee4a54ce78a0ab186cc0163b"></span>bool <code class="descname">updated_</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter8updated_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter7format_E">
+<span id="paddle::Parameter::format___SparseFormat"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1a64f604f81d95aabad00b2323099907fb"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle12SparseFormatE" title="paddle::SparseFormat">SparseFormat</a> <code class="descname">format_</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter7format_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter13updaterHooks_E">
+<span id="paddle::Parameter::updaterHooks___std::vector:std::shared_ptr:IParameterUpdaterHook::"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1abb0675cf51c91f67cb497733141a70ed"></span>std::vector&lt;std::shared_ptr&lt;<a class="reference internal" href="../update/update.html#_CPPv2N6paddle21IParameterUpdaterHookE" title="paddle::IParameterUpdaterHook">IParameterUpdaterHook</a>&gt;&gt; <code class="descname">updaterHooks_</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter13updaterHooks_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Static Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N9Parameter12tlsTempBufs_E">
+<span id="Parameter::tlsTempBufs___ThreadLocal:std::vector:VectorPtr::"></span><span class="target" id="paddleclasspaddle_1_1Parameter_1aa018adbbd7b9a45771a3d1ced389e647"></span>ThreadLocal&lt;std::vector&lt;VectorPtr&gt;&gt; <code class="descname">tlsTempBufs_</code><a class="headerlink" href="#_CPPv2N9Parameter12tlsTempBufs_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle9Parameter6HeaderE">
+<span id="paddle::Parameter::Header"></span><span class="target" id="paddlestructpaddle_1_1Parameter_1_1Header"></span><em class="property">struct </em><code class="descname">Header</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter6HeaderE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;Parameter.h&gt;</em><p>file header structure </p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter6Header7versionE">
+<span id="paddle::Parameter::Header::version__int32_t"></span><span class="target" id="paddlestructpaddle_1_1Parameter_1_1Header_1a8a5b0c7cbb78c0047fd8165b486d2964"></span>int32_t <code class="descname">version</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter6Header7versionE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter6Header9valueSizeE">
+<span id="paddle::Parameter::Header::valueSize__uint32_t"></span><span class="target" id="paddlestructpaddle_1_1Parameter_1_1Header_1a87b8684301797da7475b5c1f19f50de2"></span>uint32_t <code class="descname">valueSize</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter6Header9valueSizeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Parameter6Header4sizeE">
+<span id="paddle::Parameter::Header::size__uint64_t"></span><span class="target" id="paddlestructpaddle_1_1Parameter_1_1Header_1a2be8426ce1a89fe9293bc8f163cce7fd"></span>uint64_t <code class="descname">size</code><a class="headerlink" href="#_CPPv2N6paddle9Parameter6Header4sizeE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt>
+<span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Typedefs</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle20ParallelParameterPtrE">
+<span id="paddle::ParallelParameterPtr"></span><span class="target" id="paddlenamespacepaddle_1a81160f04d01eb07312a4c9c219438571"></span><em class="property">typedef </em>std::shared_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle17ParallelParameterE" title="paddle::ParallelParameter">ParallelParameter</a>&gt; <code class="descname">ParallelParameterPtr</code><a class="headerlink" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle14UpdateFunctionE">
+<span id="paddle::UpdateFunction"></span><span class="target" id="paddlenamespacepaddle_1a56ae22c257a19bca15afd68f18592287"></span><em class="property">typedef </em>void (<code class="descname">ParallelParameter</code>::*<code class="descname">UpdateFunction</code>)<span class="sig-paren">(</span>real learnRate<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14UpdateFunctionE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="type">
+<dt id="_CPPv2N6paddle20ParallelParameterMapE">
+<span id="paddle::ParallelParameterMap"></span><span class="target" id="paddlenamespacepaddle_1aefc0dabbfee55c513e5bccb03fb0961e"></span><em class="property">typedef </em>std::map&lt;std::string, <a class="reference internal" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="paddle::ParallelParameterPtr">ParallelParameterPtr</a>&gt; <code class="descname">ParallelParameterMap</code><a class="headerlink" href="#_CPPv2N6paddle20ParallelParameterMapE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Enums</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle11TrainerRoleE">
+<span id="paddle::TrainerRole"></span><span class="target" id="paddlenamespacepaddle_1ac14d065c735daf9304913a91ce202b0a"></span><em class="property">enum </em><code class="descname">TrainerRole</code><a class="headerlink" href="#_CPPv2N6paddle11TrainerRoleE" title="Permalink to this definition">¶</a></dt>
+<dd><p>TrainRole denotes the role of current training, different roles have different jobs.</p>
+<p>control, major, minor are three kinds of role to support mutiple GPUs parallel SGD training. SM on GPU card has two groups, each group consist of a major and a minor.</p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">single</span></code>: single GPU card single thread training.</li>
+<li><code class="docutils literal"><span class="pre">control</span></code>: current parameter updates via control role, not participate in real training. control role is responsible for merging all major&#8217;s gradient and update parameter value.</li>
+<li><code class="docutils literal"><span class="pre">major</span></code>: major role paticipates in real training, when local gradient is ready, merge its corresponding minor&#8217;s gradient and notify controller: this group&#8217;s gradient is already ready.</li>
+<li><code class="docutils literal"><span class="pre">minor</span></code>: minor role participates in real training, when local gradient is ready, only notify its corresponding major. In order to maximum apportion jobs, after controller updates the paramemter value, each group&#8217;s minior reponses to dispatch the latest model into local and major. </li>
+</ul>
+</dd>
+</dl>
+</p>
+<p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv2N6paddle19TRAINER_ROLE_SINGLEE">
+<span id="paddle::TRAINER_ROLE_SINGLE"></span><span class="target" id="paddlenamespacepaddle_1ac14d065c735daf9304913a91ce202b0aaa0f5fb5d2ad59a02ad3b5948fae56098"></span><code class="descname">TRAINER_ROLE_SINGLE</code><a class="headerlink" href="#_CPPv2N6paddle19TRAINER_ROLE_SINGLEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle20TRAINER_ROLE_CONTROLE">
+<span id="paddle::TRAINER_ROLE_CONTROL"></span><span class="target" id="paddlenamespacepaddle_1ac14d065c735daf9304913a91ce202b0aab64909bcc6e517ee0c6e91a508cd9829"></span><code class="descname">TRAINER_ROLE_CONTROL</code><a class="headerlink" href="#_CPPv2N6paddle20TRAINER_ROLE_CONTROLE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle18TRAINER_ROLE_MAJORE">
+<span id="paddle::TRAINER_ROLE_MAJOR"></span><span class="target" id="paddlenamespacepaddle_1ac14d065c735daf9304913a91ce202b0aa3d3f0940bae512fd61ed57aa0241ec86"></span><code class="descname">TRAINER_ROLE_MAJOR</code><a class="headerlink" href="#_CPPv2N6paddle18TRAINER_ROLE_MAJORE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle18TRAINER_ROLE_MINORE">
+<span id="paddle::TRAINER_ROLE_MINOR"></span><span class="target" id="paddlenamespacepaddle_1ac14d065c735daf9304913a91ce202b0aaf17df4e4811a95ad4264cc4c490e3afc"></span><code class="descname">TRAINER_ROLE_MINOR</code><a class="headerlink" href="#_CPPv2N6paddle18TRAINER_ROLE_MINORE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle19TRAINER_ROLE_MASTERE">
+<span id="paddle::TRAINER_ROLE_MASTER"></span><span class="target" id="paddlenamespacepaddle_1ac14d065c735daf9304913a91ce202b0aa2e9aac44ed3ad5dd2d71f59593e5f996"></span><code class="descname">TRAINER_ROLE_MASTER</code><a class="headerlink" href="#_CPPv2N6paddle19TRAINER_ROLE_MASTERE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle18TRAINER_ROLE_SLAVEE">
+<span id="paddle::TRAINER_ROLE_SLAVE"></span><span class="target" id="paddlenamespacepaddle_1ac14d065c735daf9304913a91ce202b0aa4da4933510d63300558fd603ae79c4e1"></span><code class="descname">TRAINER_ROLE_SLAVE</code><a class="headerlink" href="#_CPPv2N6paddle18TRAINER_ROLE_SLAVEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Variables</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle15UPDATE_TYPE_NUME">
+<span id="paddle::UPDATE_TYPE_NUM__iC"></span><span class="target" id="paddlenamespacepaddle_1a6a95328e3d3a1b26f017cf15ffcad295"></span><em class="property">const</em> int <code class="descname">UPDATE_TYPE_NUM</code><a class="headerlink" href="#_CPPv2N6paddle15UPDATE_TYPE_NUME" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle17ParallelParameterE">
+<span id="paddle::ParallelParameter"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter"></span><em class="property">class </em><code class="descname">ParallelParameter</code><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AsyncParameter"><span class="std std-ref">paddle::AsyncParameter</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SyncParameter"><span class="std std-ref">paddle::SyncParameter</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter17ParallelParameterE11TrainerRole12ParameterPtr">
+<span id="paddle::ParallelParameter::ParallelParameter__TrainerRole.ParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1a044c7c97ecfa4c954eef1130a6b1c533"></span><code class="descname">ParallelParameter</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle11TrainerRoleE" title="paddle::TrainerRole">TrainerRole</a> <em>role</em>, <a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> <em>localParam</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter17ParallelParameterE11TrainerRole12ParameterPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameterD0Ev">
+<span id="paddle::ParallelParameter::~ParallelParameter"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1a13100e1c360cd8fd802b53644ad285ad"></span><em class="property">virtual</em> <code class="descname">~ParallelParameter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameterD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter17getLocalParameterEv">
+<span id="paddle::ParallelParameter::getLocalParameter"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1a9a0a517cee892ffa4b3fe4e118826d2a"></span><a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> <code class="descname">getLocalParameter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter17getLocalParameterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter17timeWaitGradReadyEi">
+<span id="paddle::ParallelParameter::timeWaitGradReady__i"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1afc577b8a42359a7751cb0e5498037a4e"></span>bool <code class="descname">timeWaitGradReady</code><span class="sig-paren">(</span>int <em>sec</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter17timeWaitGradReadyEi" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter13waitGradReadyEv">
+<span id="paddle::ParallelParameter::waitGradReady"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1a6678c1f116382c4c65f770b1e709f0d7"></span>void <code class="descname">waitGradReady</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter13waitGradReadyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter14postValueReadyEv">
+<span id="paddle::ParallelParameter::postValueReady"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1a2c8fb94b82b48c92f467aaae0c354a08"></span>void <code class="descname">postValueReady</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter14postValueReadyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter10syncUpdateE11TrainerRole4real">
+<span id="paddle::ParallelParameter::syncUpdate__TrainerRole.real"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1a1f6e0d795e84015d5ca57efe7e2965a9"></span>void <code class="descname">syncUpdate</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle11TrainerRoleE" title="paddle::TrainerRole">TrainerRole</a> <em>role</em>, real <em>learnRate</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter10syncUpdateE11TrainerRole4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter19synchronizeParamterEv">
+<span id="paddle::ParallelParameter::synchronizeParamter"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1aa3755ab75dd458a7f907cb9ce6870559"></span><em class="property">virtual</em> void <code class="descname">synchronizeParamter</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter19synchronizeParamterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter12singleUpdateE4real">
+<span id="paddle::ParallelParameter::singleUpdate__real"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1aff78007ef986fdd24da3aa69d2883ce9"></span><em class="property">virtual</em> void <code class="descname">singleUpdate</code><span class="sig-paren">(</span>real <em>learnRate</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter12singleUpdateE4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>for synchronous </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter13controlUpdateERK14UpdateCallback">
+<span id="paddle::ParallelParameter::controlUpdate__UpdateCallbackCR"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1aca64326780467021a678c2d1ce886222"></span><em class="property">virtual</em> void <code class="descname">controlUpdate</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter13controlUpdateERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter11majorUpdateE4real">
+<span id="paddle::ParallelParameter::majorUpdate__real"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1a3c78de6865d3d414bed5ad05ac7ac37c"></span><em class="property">virtual</em> void <code class="descname">majorUpdate</code><span class="sig-paren">(</span>real <em>learnRate</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter11majorUpdateE4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter11minorUpdateE4real">
+<span id="paddle::ParallelParameter::minorUpdate__real"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1a3a19cae3226bad632b9a66425ac8f266"></span><em class="property">virtual</em> void <code class="descname">minorUpdate</code><span class="sig-paren">(</span>real <em>learnRate</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter11minorUpdateE4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter11slaveUpdateE4real">
+<span id="paddle::ParallelParameter::slaveUpdate__real"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1af19f4c6b5038486811dc8c3ee8d953ad"></span><em class="property">virtual</em> void <code class="descname">slaveUpdate</code><span class="sig-paren">(</span>real <em>learnRate</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter11slaveUpdateE4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>for asynchronous </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle17ParallelParameter6createE11TrainerRole12ParameterPtri">
+<span id="paddle::ParallelParameter::create__TrainerRole.ParameterPtr.i"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1ad08bd56dfea29f3fc0b8499f99a76902"></span><a class="reference internal" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="paddle::ParallelParameterPtr">ParallelParameterPtr</a> <code class="descname">create</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle11TrainerRoleE" title="paddle::TrainerRole">TrainerRole</a> <em>role</em>, <a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> <em>localParam</em>, int <em>asyncCount</em> = 1<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter6createE11TrainerRole12ParameterPtri" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle17ParallelParameter5role_E">
+<span id="paddle::ParallelParameter::role___TrainerRole"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1aea63627e1b398109ea81505368bec4b2"></span><a class="reference internal" href="#_CPPv2N6paddle11TrainerRoleE" title="paddle::TrainerRole">TrainerRole</a> <code class="descname">role_</code><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter5role_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ParallelParameter11localParam_E">
+<span id="paddle::ParallelParameter::localParam___ParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1a5421f1d1b31febb2a5bd3b0148b5278b"></span><a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> <code class="descname">localParam_</code><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter11localParam_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ParallelParameter8gradSem_E">
+<span id="paddle::ParallelParameter::gradSem___std::unique_ptr:Semaphore:"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1aeb8301cd1f586b3bc2fa727b3abbcd73"></span>std::unique_ptr&lt;<a class="reference internal" href="../../utils/thread.html#_CPPv2N6paddle9SemaphoreE" title="paddle::Semaphore">Semaphore</a>&gt; <code class="descname">gradSem_</code><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter8gradSem_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle17ParallelParameter9valueSem_E">
+<span id="paddle::ParallelParameter::valueSem___std::unique_ptr:Semaphore:"></span><span class="target" id="paddleclasspaddle_1_1ParallelParameter_1affd750185e39de953b5d9f9ce2298ba5"></span>std::unique_ptr&lt;<a class="reference internal" href="../../utils/thread.html#_CPPv2N6paddle9SemaphoreE" title="paddle::Semaphore">Semaphore</a>&gt; <code class="descname">valueSem_</code><a class="headerlink" href="#_CPPv2N6paddle17ParallelParameter9valueSem_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>wether the local parameter-gradient is ready </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle13SyncParameterE">
+<span id="paddle::SyncParameter"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter"></span><em class="property">class </em><code class="descname">SyncParameter</code><a class="headerlink" href="#_CPPv2N6paddle13SyncParameterE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;ParallelParameter.h&gt;</em><p>this class is designed for multi-threading training.</p>
+<p>&#8220;Synchronous&#8221; means multiple GPUs calculate 1/4 mini-Batch, but will get only one gradient </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParallelParameter"><span class="std std-ref">paddle::ParallelParameter</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter13SyncParameterE11TrainerRole12ParameterPtr">
+<span id="paddle::SyncParameter::SyncParameter__TrainerRole.ParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a1bb757e25bc53175f2b6745b50d434f2"></span><code class="descname">SyncParameter</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle11TrainerRoleE" title="paddle::TrainerRole">TrainerRole</a> <em>role</em>, <a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> <em>localParam</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter13SyncParameterE11TrainerRole12ParameterPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameterD0Ev">
+<span id="paddle::SyncParameter::~SyncParameter"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a573d0a244c77cf695d0b3f8b064735f5"></span><code class="descname">~SyncParameter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameterD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter18attachControlParamE20ParallelParameterPtr">
+<span id="paddle::SyncParameter::attachControlParam__ParallelParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a2eabdb2c334b797b8f324a592c5a6ed0"></span>void <code class="descname">attachControlParam</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="paddle::ParallelParameterPtr">ParallelParameterPtr</a> <em>controler</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter18attachControlParamE20ParallelParameterPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter16attachMajorParamE20ParallelParameterPtr">
+<span id="paddle::SyncParameter::attachMajorParam__ParallelParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a782d19abccb2eb43100c1f313c9e0c16"></span>void <code class="descname">attachMajorParam</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="paddle::ParallelParameterPtr">ParallelParameterPtr</a> <em>partner</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter16attachMajorParamE20ParallelParameterPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter16attachMinorParamE20ParallelParameterPtri">
+<span id="paddle::SyncParameter::attachMinorParam__ParallelParameterPtr.i"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1acb2ed827da50a4477f257f1c18f8b115"></span>void <code class="descname">attachMinorParam</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="paddle::ParallelParameterPtr">ParallelParameterPtr</a> <em>partner</em>, int <em>deviceId</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter16attachMinorParamE20ParallelParameterPtri" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter21waitAllMajorGradReadyEv">
+<span id="paddle::SyncParameter::waitAllMajorGradReady"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a27a07de97ecfb0a31d8431a7d20d0efc"></span>void <code class="descname">waitAllMajorGradReady</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter21waitAllMajorGradReadyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter19synchronizeParamterEv">
+<span id="paddle::SyncParameter::synchronizeParamter"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a49c87574791e7133490339f519f0af50"></span>void <code class="descname">synchronizeParamter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter19synchronizeParamterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter12singleUpdateE4real">
+<span id="paddle::SyncParameter::singleUpdate__real"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1add3add82b64d0cf38b205caf07d9b6f3"></span>void <code class="descname">singleUpdate</code><span class="sig-paren">(</span>real <em>learnRate</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter12singleUpdateE4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>for synchronous </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter13controlUpdateERK14UpdateCallback">
+<span id="paddle::SyncParameter::controlUpdate__UpdateCallbackCR"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1aaa1ab2bc1c0fd9a309927b0e8b9c6cda"></span>void <code class="descname">controlUpdate</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter13controlUpdateERK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter11majorUpdateE4real">
+<span id="paddle::SyncParameter::majorUpdate__real"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a88c442529246122386cb65e06cef9c5b"></span>void <code class="descname">majorUpdate</code><span class="sig-paren">(</span>real <em>learnRate</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter11majorUpdateE4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter11minorUpdateE4real">
+<span id="paddle::SyncParameter::minorUpdate__real"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a660d5ee26891b6ce67037b11bdf96886"></span>void <code class="descname">minorUpdate</code><span class="sig-paren">(</span>real <em>learnRate</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter11minorUpdateE4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter16getMajorPartnersEv">
+<span id="paddle::SyncParameter::getMajorPartners"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1aada267edfa11d7de52c7388086d48af0"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="paddle::ParallelParameterPtr">ParallelParameterPtr</a>&gt; &amp;<code class="descname">getMajorPartners</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter16getMajorPartnersEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle13SyncParameter16getMinorPartnersEv">
+<span id="paddle::SyncParameter::getMinorPartners"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1ac40a86a073aa77024816744009a27822"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="paddle::ParallelParameterPtr">ParallelParameterPtr</a>&gt; &amp;<code class="descname">getMinorPartners</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter16getMinorPartnersEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle13SyncParameter13partnerParam_E">
+<span id="paddle::SyncParameter::partnerParam___ParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a817cd1337074c8801797df36101baf1b"></span><a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> <code class="descname">partnerParam_</code><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter13partnerParam_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle13SyncParameter14majorPartners_E">
+<span id="paddle::SyncParameter::majorPartners___std::vector:ParallelParameterPtr:"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a2aa5d582587bb670742b4ed2c2487c13"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="paddle::ParallelParameterPtr">ParallelParameterPtr</a>&gt; <code class="descname">majorPartners_</code><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter14majorPartners_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle13SyncParameter14minorPartners_E">
+<span id="paddle::SyncParameter::minorPartners___std::vector:ParallelParameterPtr:"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a0575bf27af8570d2189487368218cc2b"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="paddle::ParallelParameterPtr">ParallelParameterPtr</a>&gt; <code class="descname">minorPartners_</code><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter14minorPartners_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle13SyncParameter15minorDeviceIds_E">
+<span id="paddle::SyncParameter::minorDeviceIds___std::vector:i:"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a1afcce7d30d7b41ff6968722ffbbee74"></span>std::vector&lt;int&gt; <code class="descname">minorDeviceIds_</code><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter15minorDeviceIds_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle13SyncParameter13controlParam_E">
+<span id="paddle::SyncParameter::controlParam___ParallelParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1SyncParameter_1a4ab12ffcefbfd4e141bed477a7a1d319"></span><a class="reference internal" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="paddle::ParallelParameterPtr">ParallelParameterPtr</a> <code class="descname">controlParam_</code><a class="headerlink" href="#_CPPv2N6paddle13SyncParameter13controlParam_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle14AsyncParameterE">
+<span id="paddle::AsyncParameter"></span><span class="target" id="paddleclasspaddle_1_1AsyncParameter"></span><em class="property">class </em><code class="descname">AsyncParameter</code><a class="headerlink" href="#_CPPv2N6paddle14AsyncParameterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParallelParameter"><span class="std std-ref">paddle::ParallelParameter</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle14AsyncParameter14AsyncParameterE11TrainerRolei12ParameterPtr">
+<span id="paddle::AsyncParameter::AsyncParameter__TrainerRole.i.ParameterPtr"></span><span class="target" id="paddleclasspaddle_1_1AsyncParameter_1a887660218a851f4e4616a00bdf45b92f"></span><code class="descname">AsyncParameter</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle11TrainerRoleE" title="paddle::TrainerRole">TrainerRole</a> <em>role</em>, int <em>asyncCount</em>, <a class="reference internal" href="#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a> <em>localParam</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14AsyncParameter14AsyncParameterE11TrainerRolei12ParameterPtr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14AsyncParameter12clearCounterEv">
+<span id="paddle::AsyncParameter::clearCounter"></span><span class="target" id="paddleclasspaddle_1_1AsyncParameter_1a9b4c4071e89efcb0451731d502482e9b"></span>void <code class="descname">clearCounter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14AsyncParameter12clearCounterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14AsyncParameter8getAccumEv">
+<span id="paddle::AsyncParameter::getAccum"></span><span class="target" id="paddleclasspaddle_1_1AsyncParameter_1a153ab89ce79b10bd48e8d6c5d4f08acb"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <code class="descname">getAccum</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14AsyncParameter8getAccumEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14AsyncParameter19synchronizeParamterEv">
+<span id="paddle::AsyncParameter::synchronizeParamter"></span><span class="target" id="paddleclasspaddle_1_1AsyncParameter_1a8172a699bc06b1041d6650f7ed38ef99"></span>void <code class="descname">synchronizeParamter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14AsyncParameter19synchronizeParamterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14AsyncParameter11slaveUpdateE4real">
+<span id="paddle::AsyncParameter::slaveUpdate__real"></span><span class="target" id="paddleclasspaddle_1_1AsyncParameter_1abf308792ad0d550f96075e39f62acb5e"></span>void <code class="descname">slaveUpdate</code><span class="sig-paren">(</span>real <em>learnRate</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14AsyncParameter11slaveUpdateE4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>When asynchronous training, update strategy including slave and master.</p>
+<p>slave: If in range asyncCount, adopting self-update method. If beyond asyncCount, waiting for master to update. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14AsyncParameter12masterUpdateE20ParallelParameterPtrRK14UpdateCallback">
+<span id="paddle::AsyncParameter::masterUpdate__ParallelParameterPtr.UpdateCallbackCR"></span><span class="target" id="paddleclasspaddle_1_1AsyncParameter_1af5a344204f3578338d5089d1cec2fe3f"></span>bool <code class="descname">masterUpdate</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv2N6paddle20ParallelParameterPtrE" title="paddle::ParallelParameterPtr">ParallelParameterPtr</a> <em>slaveParam</em>, <em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle14UpdateCallbackE" title="paddle::UpdateCallback">UpdateCallback</a> &amp;<em>callback</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14AsyncParameter12masterUpdateE20ParallelParameterPtrRK14UpdateCallback" title="Permalink to this definition">¶</a></dt>
+<dd><p>When asynchronous training, update strategy including slave and master.</p>
+<p>master: it only polls slaves, do not training data. If slave&#8217;s gradient is ready, fetch it. Update master&#8217;s parameter, then copy it into corresponding slave. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Private Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle14AsyncParameter14gradientAccum_E">
+<span id="paddle::AsyncParameter::gradientAccum___VectorPtr"></span><span class="target" id="paddleclasspaddle_1_1AsyncParameter_1adbee0fcfd69764d22beb6e1272d9eded"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9VectorPtrE" title="paddle::VectorPtr">VectorPtr</a> <code class="descname">gradientAccum_</code><a class="headerlink" href="#_CPPv2N6paddle14AsyncParameter14gradientAccum_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>When asynchronous training, every aysnc trainer needs to accumulate a number of batch gradient.</p>
+<p>gradientAccum_ is used to save the sum of gradients. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14AsyncParameter11asyncCount_E">
+<span id="paddle::AsyncParameter::asyncCount___i"></span><span class="target" id="paddleclasspaddle_1_1AsyncParameter_1aa86ccf7e8a72ca684e335b50840b8fda"></span>int <code class="descname">asyncCount_</code><a class="headerlink" href="#_CPPv2N6paddle14AsyncParameter11asyncCount_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>Asynchronous count. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle14AsyncParameter13accumCounter_E">
+<span id="paddle::AsyncParameter::accumCounter___i"></span><span class="target" id="paddleclasspaddle_1_1AsyncParameter_1ac5451cb696fa1b7ce99aecccbcc984e6"></span>int <code class="descname">accumCounter_</code><a class="headerlink" href="#_CPPv2N6paddle14AsyncParameter13accumCounter_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>Accumulate counter of current gradients. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Parameter</a><ul>
+<li><a class="reference internal" href="#weight">Weight</a></li>
+<li><a class="reference internal" href="#regularizer">Regularizer</a></li>
+<li><a class="reference internal" href="#id1">Parameter</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Parameter Documents</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../update/index.html"
+                        title="next chapter">Parameter Documents</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/parameter/parameter/parameter.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../update/index.html" title="Parameter Documents"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Parameter Documents"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Parameter Documents</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

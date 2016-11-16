@@ -1,0 +1,804 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Trainer &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="Source Code Documents" href="../index.html" />
+    <link rel="next" title="API" href="../api/api.html" />
+    <link rel="prev" title="Server" href="../pserver/server/server.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../api/api.html" title="API"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../pserver/server/server.html" title="Server"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Source Code Documents</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="trainer">
+<h1>Trainer<a class="headerlink" href="#trainer" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="trainerstats">
+<h2>TrainerStats<a class="headerlink" href="#trainerstats" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle12TrainerStatsE">
+<span id="paddle::TrainerStats"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">TrainerStats</code><a class="headerlink" href="#_CPPv2N6paddle12TrainerStatsE" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1TrainerStats"><span class="std std-ref">TrainerStats</span></a> object will statistics sample processed and total cost. </p>
+<p>There are two stats in it, the &#8216;AvgCost&#8217; and &#8216;CurrentAvgCost&#8217;. &#8216;AvgCost&#8217; means cost through one pass(all mini-batches). &#8216;CurrentAvgCost&#8217; means cost through one mini-batch. </p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12TrainerStats5resetEv">
+<span id="paddle::TrainerStats::reset"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1ae7b9bbe94b8453cb2ec2fde7a6f92975"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12TrainerStats5resetEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset all stats. </p>
+<p>often used before pass start. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12TrainerStats16resetCurrentStatEv">
+<span id="paddle::TrainerStats::resetCurrentStat"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1a9374352427fce8e6aaddefbfd40a017a"></span>void <code class="descname">resetCurrentStat</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12TrainerStats16resetCurrentStatEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset current stat. </p>
+<p>&#8216;current&#8217; means the most recent log_period mini-batches </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12TrainerStats7addCostE7int64_t4real">
+<span id="paddle::TrainerStats::addCost__int64_t.real"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1a0ed786185be7ab8b4020e9f2fb7b7a4a"></span>void <code class="descname">addCost</code><span class="sig-paren">(</span>int64_t <em>numProcessed</em>, real <em>cost</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12TrainerStats7addCostE7int64_t4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>add cost to stat. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">numProcessed</span></code>: current mini-batch size </li>
+<li><code class="docutils literal"><span class="pre">cost</span></code>: current mini-batch cost </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle12TrainerStats10getAvgCostEv">
+<span id="paddle::TrainerStats::getAvgCostC"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1a04758f6d1c15bab6603a86c9386687d1"></span>real <code class="descname">getAvgCost</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle12TrainerStats10getAvgCostEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>get average cost through on pass(all processed mini-batches) </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>pass average cost </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle12TrainerStats17getCurrentAvgCostEv">
+<span id="paddle::TrainerStats::getCurrentAvgCostC"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1a449f14baab60aca7d2efb226064920c1"></span>real <code class="descname">getCurrentAvgCost</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle12TrainerStats17getCurrentAvgCostEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>get current mini-batch&#8217;s average cost. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>mini-batch average cost </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle12TrainerStats15getNumProcessedEv">
+<span id="paddle::TrainerStats::getNumProcessedC"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1a59bccc8154b1c755c4c03ad70b5ead5b"></span>int64_t <code class="descname">getNumProcessed</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle12TrainerStats15getNumProcessedEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>get all processed samples&#8217; number </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>all processed samples&#8217; number </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12TrainerStatspLERKNSt4pairI7int64_t4realEE">
+<span id="paddle::TrainerStats::add-assign-operator__std::pair:int64_t.real:CR"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1aa6d92c969c2a48c1d4ae3252ef18dfbd"></span><a class="reference internal" href="#_CPPv2N6paddle12TrainerStatsE" title="paddle::TrainerStats">TrainerStats</a> &amp;<code class="descname">operator+=</code><span class="sig-paren">(</span><em class="property">const</em> std::pair&lt;int64_t, real&gt; &amp;<em>p</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12TrainerStatspLERKNSt4pairI7int64_t4realEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>same function as addCost. But it is simple to invoke. For example: </p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">TrainerStats</span> <span class="n">stat</span><span class="p">;</span>
+<span class="n">cost</span> <span class="o">=</span> <span class="n">neuralNetwork</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">batchSize</span><span class="p">);</span>
+<span class="n">stat</span> <span class="o">+=</span> <span class="p">{</span><span class="n">batchSize</span><span class="p">,</span> <span class="n">cost</span><span class="p">};</span>
+</pre></div>
+</div>
+</p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>*this </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">p</span></code>: a pair of parameter, first is numProcessed, second is cost. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12TrainerStats12TrainerStatsEv">
+<span id="paddle::TrainerStats::TrainerStats"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1aa07472b42c3eccb06e5688feb2449c06"></span><code class="descname">TrainerStats</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12TrainerStats12TrainerStatsEv" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1TrainerStats"><span class="std std-ref">TrainerStats</span></a> Constructor. </p>
+<p>reset stat when constructed. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle12TrainerStats9showStatsERNSt7ostreamEb">
+<span id="paddle::TrainerStats::showStats__osR.bC"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1a20326aecff74b0066f359e27c372ffd6"></span>void <code class="descname">showStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em>, bool <em>withCurrentCost</em> = true<span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle12TrainerStats9showStatsERNSt7ostreamEb" title="Permalink to this definition">¶</a></dt>
+<dd><p>show stats to ostream. </p>
+<p>If there is no need to print current cost, set withCurrentCost to False.</p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">os</span></code>: output stream. </li>
+<li><code class="docutils literal"><span class="pre">withCurrentCost</span></code>: print current cost or not. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle12TrainerStats8getStatsEb">
+<span id="paddle::TrainerStats::getStats__bC"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats_1a0805daaf3900182eb14634e63dabff00"></span>std::string <code class="descname">getStats</code><span class="sig-paren">(</span>bool <em>withCurrentCost</em> = true<span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle12TrainerStats8getStatsEb" title="Permalink to this definition">¶</a></dt>
+<dd><p>get stats to std::string </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>stats string </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">withCurrentCost</span></code>: return current cost or not </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="remoteparameterupdater">
+<h2>RemoteParameterUpdater<a class="headerlink" href="#remoteparameterupdater" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdaterE">
+<span id="paddle::RemoteParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">RemoteParameterUpdater</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdaterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normal remote parameter updater for dense parameters.</p>
+<p>It first packs all parameters for all pservers using ParameterClient module, then wait for merged parameters data from all pservers. The synchronization pattern specified by sync-sgd or async-sgd is achieved by all pservers with the help of the controller within this remote parameter updater. This module indeedly bridges the gradient machines and parameter servers. It helps to transfer the parameters from acceleration device to cpu end for network. It contains additional parameters copy buffers for acceleration devices at cpu end, such as gpu, otherwise it will directly use original parameters data to update pservers.</p>
+<p>This remote parameter updater does not use pipeline mechanism to hide copy latency from gpu to cpu buffer. In addition the overlapped between backward and communication is not supported. </p>
+<p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdater"><span class="std std-ref">paddle::ParameterUpdater</span></a></p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater"><span class="std std-ref">paddle::ConcurrentRemoteParameterUpdater</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater22RemoteParameterUpdaterERK18OptimizationConfigiRRNSt10unique_ptrI16ParameterUpdaterEE">
+<span id="paddle::RemoteParameterUpdater::RemoteParameterUpdater__OptimizationConfigCR.i.std::unique_ptr:ParameterUpdater:RR"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a96af0941cd2457a422dd118b4d565b70"></span><code class="descname">RemoteParameterUpdater</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>config</em>, int <em>expectedPpassCount</em>, std::unique_ptr&lt;<a class="reference internal" href="../parameter/update/update.html#_CPPv2N6paddle16ParameterUpdaterE" title="paddle::ParameterUpdater">ParameterUpdater</a>&gt; &amp;&amp;<em>localUpdater</em> = nullptr<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater22RemoteParameterUpdaterERK18OptimizationConfigiRRNSt10unique_ptrI16ParameterUpdaterEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdaterD0Ev">
+<span id="paddle::RemoteParameterUpdater::~RemoteParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a6063cf80b518b3f028e6451f8c844bb7"></span><code class="descname">~RemoteParameterUpdater</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdaterD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater4initERNSt6vectorI12ParameterPtrEE">
+<span id="paddle::RemoteParameterUpdater::init__std::vector:ParameterPtr:R"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a56a0792312f6c68030d494b0852aee4a"></span>void <code class="descname">init</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../parameter/parameter/parameter.html#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a>&gt; &amp;<em>parameters</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater4initERNSt6vectorI12ParameterPtrEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>initialize the internal parameter client and itself. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater10startBatchE7int64_t">
+<span id="paddle::RemoteParameterUpdater::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1ac5f3b0297c3e8363a2fb56b94654bd75"></span><em class="property">virtual</em> PassType <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>batchSize</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>start batch </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>one batch training exhibits stateful feature to help to do performance tuning, sgd optimization if necessary. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater11finishBatchE4real">
+<span id="paddle::RemoteParameterUpdater::finishBatch__real"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1acf2a0fc81b1e2e9f79130dfaa323aa7a"></span>void <code class="descname">finishBatch</code><span class="sig-paren">(</span>real <em>cost</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater11finishBatchE4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>send parameters to pservers and get returned parameters from all pservers if necessary. it will implictly cooperate with controller thread for sync-sgd. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater9startPassEv">
+<span id="paddle::RemoteParameterUpdater::startPass"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1aac6634ea8efa6fb6c146a4ad44dceed3"></span>void <code class="descname">startPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater9startPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater10finishPassE4real">
+<span id="paddle::RemoteParameterUpdater::finishPass__real"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a2b019e675c0b0be6d39b27597de618bc"></span>bool <code class="descname">finishPass</code><span class="sig-paren">(</span>real <em>cost</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater10finishPassE4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater22setForwardbackwardTimeE8uint64_t">
+<span id="paddle::RemoteParameterUpdater::setForwardbackwardTime__uint64_t"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a0a61d9a26c3e0477e1b63c73ffdf990b"></span><em class="property">virtual</em> void <code class="descname">setForwardbackwardTime</code><span class="sig-paren">(</span>uint64_t <em>delta</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater22setForwardbackwardTimeE8uint64_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater5applyEv">
+<span id="paddle::RemoteParameterUpdater::apply"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a2a05979fdbd8616b7287bf123b54ec79"></span>void <code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater5applyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater7restoreEv">
+<span id="paddle::RemoteParameterUpdater::restore"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a3a835992c15cafc5b050fd8e9aeb2ec6"></span>void <code class="descname">restore</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater7restoreEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater10controllerEv">
+<span id="paddle::RemoteParameterUpdater::controller"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a4128694e11c27b137852224fad8fced0"></span>void <code class="descname">controller</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater10controllerEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>control all pservers with all trainers for sync-sgd </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater10updateImplEP9Parameter">
+<span id="paddle::RemoteParameterUpdater::updateImpl__ParameterP"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a952b003fb9d9ba8c356ca47622976787"></span>void <code class="descname">updateImpl</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater10updateImplEP9Parameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>work need to do after finishBatch </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater15startControllerEv">
+<span id="paddle::RemoteParameterUpdater::startController"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a077b21967b544de1f711b9ecc8942384"></span>void <code class="descname">startController</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater15startControllerEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater22copyParametersToDeviceE13ParameterType">
+<span id="paddle::RemoteParameterUpdater::copyParametersToDevice__ParameterType"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1ae7c93fd211117cff27c1672f601d30fc"></span>void <code class="descname">copyParametersToDevice</code><span class="sig-paren">(</span>ParameterType <em>parameterType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater22copyParametersToDeviceE13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd><p>copy parameters from cpu host to device, such as gpu. </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>return if all data are transfered. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater24copyParametersFromDeviceE13ParameterType">
+<span id="paddle::RemoteParameterUpdater::copyParametersFromDevice__ParameterType"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a1850e1af0a981296a4dc1ab57a8dcb87"></span>void <code class="descname">copyParametersFromDevice</code><span class="sig-paren">(</span>ParameterType <em>parameterType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater24copyParametersFromDeviceE13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd><p>copy parameters from device to cpu host </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>return if all data are transfered </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater7config_E">
+<span id="paddle::RemoteParameterUpdater::config___OptimizationConfig"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1ad1adbb7e6579e2b6fc75b960cc8207be"></span><a class="reference internal" href="../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> <code class="descname">config_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater7config_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>Optimization config used to guide initialization and finishBatch. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater16parameterClient_E">
+<span id="paddle::RemoteParameterUpdater::parameterClient___std::unique_ptr:ParameterClient2:"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a77702af791593a74f4f1c3d4d190f5a2"></span>std::unique_ptr&lt;<a class="reference internal" href="../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a>&gt; <code class="descname">parameterClient_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater16parameterClient_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>internal parameter client object for exchanging data with pserver </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater14cpuParameters_E">
+<span id="paddle::RemoteParameterUpdater::cpuParameters___std::vector:ParameterPtr:"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1aeaa10e448d41114b9cf397a8e895d81a"></span>std::vector&lt;<a class="reference internal" href="../parameter/parameter/parameter.html#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a>&gt; <code class="descname">cpuParameters_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater14cpuParameters_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>internal shadow buffer at cpu host end, use original parameters_ if no acceleration devices are used. </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater13localUpdater_E">
+<span id="paddle::RemoteParameterUpdater::localUpdater___std::unique_ptr:ParameterUpdater:"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a68912520e1be0e5b2b924c5e60f8a2ab"></span>std::unique_ptr&lt;<a class="reference internal" href="../parameter/update/update.html#_CPPv2N6paddle16ParameterUpdaterE" title="paddle::ParameterUpdater">ParameterUpdater</a>&gt; <code class="descname">localUpdater_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater13localUpdater_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>local updater for aggregating multi-batches local delta </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater10batchSize_E">
+<span id="paddle::RemoteParameterUpdater::batchSize___int64_t"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a4755acfa3b9e54c4f0e442b8d1c7ef1e"></span>int64_t <code class="descname">batchSize_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater10batchSize_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>the size of mini-batch </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater11numBatches_E">
+<span id="paddle::RemoteParameterUpdater::numBatches___int64_t"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1aa1e27f8bbb757eeeed3ac8ef7378cf87"></span>int64_t <code class="descname">numBatches_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater11numBatches_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>batches passed </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater12batchStatus_E">
+<span id="paddle::RemoteParameterUpdater::batchStatus___BatchStatus"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a98a23cddc4152a33b6a114993362c765"></span>BatchStatus <code class="descname">batchStatus_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater12batchStatus_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>for stateful control </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater17controllerThread_E">
+<span id="paddle::RemoteParameterUpdater::controllerThread___std::unique_ptr:std::thread:"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a651e08290c49fa4af6408ab531a963a3"></span>std::unique_ptr&lt;std::thread&gt; <code class="descname">controllerThread_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater17controllerThread_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>controller thread for sync-sgd </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater10passCount_E">
+<span id="paddle::RemoteParameterUpdater::passCount___int64_t"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a16ab8d9b629c7f1d0c3cdd16c4441a40"></span>int64_t <code class="descname">passCount_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater10passCount_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>passed alread finished </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater18expectedPassCount_E">
+<span id="paddle::RemoteParameterUpdater::expectedPassCount___int64_t"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a016bd7a121033a45e0b313bce8a0be1f"></span>int64_t <code class="descname">expectedPassCount_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater18expectedPassCount_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>expected passes to finished </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater20separateSendAndRecv_E">
+<span id="paddle::RemoteParameterUpdater::separateSendAndRecv___b"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1accc6addd0a7735ed4b27b98ed698f50d"></span>bool <code class="descname">separateSendAndRecv_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater20separateSendAndRecv_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>use normal synchronization communication if True </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater12isFirstPass_E">
+<span id="paddle::RemoteParameterUpdater::isFirstPass___b"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a9e7787eb1a34c6f4a422647e56222269"></span>bool <code class="descname">isFirstPass_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater12isFirstPass_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>true if it&#8217;s first pass </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater18useApplyInPserver_E">
+<span id="paddle::RemoteParameterUpdater::useApplyInPserver___b"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1a8f407296540e0cac25e6d34b6805a363"></span>bool <code class="descname">useApplyInPserver_</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater18useApplyInPserver_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Static Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater8kAverageE">
+<span id="paddle::RemoteParameterUpdater::kAverage__ssC"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1aad1e97869eb33850e9543565146806eb"></span><em class="property">const</em> std::string <code class="descname">kAverage</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater8kAverageE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle22RemoteParameterUpdater15kElasticAverageE">
+<span id="paddle::RemoteParameterUpdater::kElasticAverage__ssC"></span><span class="target" id="paddleclasspaddle_1_1RemoteParameterUpdater_1aa8e9a0d3b2dfa45762a95ceae54b9cc7"></span><em class="property">const</em> std::string <code class="descname">kElasticAverage</code><a class="headerlink" href="#_CPPv2N6paddle22RemoteParameterUpdater15kElasticAverageE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="concurrentremoteparameterupdater">
+<h2>ConcurrentRemoteParameterUpdater<a class="headerlink" href="#concurrentremoteparameterupdater" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdaterE">
+<span id="paddle::ConcurrentRemoteParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ConcurrentRemoteParameterUpdater</code><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdaterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>This updater add additional optimization for overlapping synchronization from pservers with backward computation.</p>
+<p><a class="reference internal" href="../parameter/parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> can be sent to pservers when related backward stage is finished. This concurrent udpater does data copy from acceleration device to host memory aynchronously. In addition internal parameter client reads data in host memory and send them to all pservers in next stage. So this class help to pipeline device-to-host copy and host-to-network to hide network latency in backward stage. It contains separate send and recv thread for pipeline usage. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1RemoteParameterUpdater"><span class="std std-ref">paddle::RemoteParameterUpdater</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater32ConcurrentRemoteParameterUpdaterE18OptimizationConfigiRRNSt10unique_ptrI16ParameterUpdaterEE">
+<span id="paddle::ConcurrentRemoteParameterUpdater::ConcurrentRemoteParameterUpdater__OptimizationConfig.i.std::unique_ptr:ParameterUpdater:RR"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater_1aeaf144fe837dc0e7072a19568a1c123d"></span><code class="descname">ConcurrentRemoteParameterUpdater</code><span class="sig-paren">(</span><a class="reference internal" href="../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> <em>config</em>, int <em>expectedPassCount</em>, std::unique_ptr&lt;<a class="reference internal" href="../parameter/update/update.html#_CPPv2N6paddle16ParameterUpdaterE" title="paddle::ParameterUpdater">ParameterUpdater</a>&gt; &amp;&amp;<em>localUpdater</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdater32ConcurrentRemoteParameterUpdaterE18OptimizationConfigiRRNSt10unique_ptrI16ParameterUpdaterEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdaterD0Ev">
+<span id="paddle::ConcurrentRemoteParameterUpdater::~ConcurrentRemoteParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater_1a6f3918bba62cb37061e70a30f5cf0159"></span><code class="descname">~ConcurrentRemoteParameterUpdater</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdaterD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater11finishBatchE4real">
+<span id="paddle::ConcurrentRemoteParameterUpdater::finishBatch__real"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater_1abed754e1c0d084e1fc223cc170d344eb"></span>void <code class="descname">finishBatch</code><span class="sig-paren">(</span>real <em>cost</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdater11finishBatchE4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>send paraemeters to all pservers </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>it just signal the end signal to internal parameter client to finished the aynchronous send action. In addition it also do synchronization for all asynchronous host-to-device copy. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater10updateImplEP9Parameter">
+<span id="paddle::ConcurrentRemoteParameterUpdater::updateImpl__ParameterP"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater_1a4d435df98af1670f586c52a9ef6a05ec"></span>void <code class="descname">updateImpl</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdater10updateImplEP9Parameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>work need to do after finishBatch </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater4sendEP9Parameter">
+<span id="paddle::ConcurrentRemoteParameterUpdater::send__ParameterP"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater_1a3e46c9f4327908c86dd1ada8d10df633"></span>void <code class="descname">send</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdater4sendEP9Parameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>internal thread called in send thread </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater4recvEP9Parameter">
+<span id="paddle::ConcurrentRemoteParameterUpdater::recv__ParameterP"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater_1a9a6c2663e6af23f72db9f70360d113e6"></span>void <code class="descname">recv</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdater4recvEP9Parameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>internal function called in recv thread </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater4sendEv">
+<span id="paddle::ConcurrentRemoteParameterUpdater::send"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater_1a5fe5365a5471a0a5b7e6d0bd7e31dc56"></span>void <code class="descname">send</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdater4sendEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>send thread for relaying data from gradient to parameter client </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>just pipe data to internal parameter client for pipeline </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater4recvEv">
+<span id="paddle::ConcurrentRemoteParameterUpdater::recv"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater_1af8ac7aee27f6c3cc15eb611aed3b2827"></span>void <code class="descname">recv</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdater4recvEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>recv thread for relaying data from internal parameter client to host memory </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>it contains the asynchronous data copy form host to device </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater22copySingleParaToDeviceEP9Parameter13ParameterType">
+<span id="paddle::ConcurrentRemoteParameterUpdater::copySingleParaToDevice__ParameterP.ParameterType"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater_1a3eb919b8aba6e44b6b425796da6d099a"></span>void <code class="descname">copySingleParaToDevice</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em>, ParameterType <em>parameterType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdater22copySingleParaToDeviceEP9Parameter13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd><p>copy specified parameter from host to device </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater24copySingleParaFromDeviceEP9Parameter13ParameterType">
+<span id="paddle::ConcurrentRemoteParameterUpdater::copySingleParaFromDevice__ParameterP.ParameterType"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater_1acdc2b6f729419c6cd781e11ba965668d"></span>void <code class="descname">copySingleParaFromDevice</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em>, ParameterType <em>parameterType</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdater24copySingleParaFromDeviceEP9Parameter13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd><p>copy specified parameter from device to host </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater20needToUpdateRemotelyEv">
+<span id="paddle::ConcurrentRemoteParameterUpdater::needToUpdateRemotely"></span><span class="target" id="paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater_1af9cd35bde1962771670efa24df9a0702"></span>bool <code class="descname">needToUpdateRemotely</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle32ConcurrentRemoteParameterUpdater20needToUpdateRemotelyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sparseremoteparameterupdater">
+<h2>SparseRemoteParameterUpdater<a class="headerlink" href="#sparseremoteparameterupdater" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdaterE">
+<span id="paddle::SparseRemoteParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SparseRemoteParameterUpdater</code><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdaterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class is specified for updating sparse parameters.</p>
+<p>It allows part of parameter to be exchanged with all pservers. If sparse input assigned, part gradients of first hidden layer could remained zero which can not need to be exchanged within all pservers. This is the key optimization point for this updater</p>
+<p>For updating sparse parameters, all latest parameters are stored in pservers instead of keeping full copy at train end, so need to prefetch parameters weight value which can be changed in next-batch before doing next forwardbackward. Also, with above fact that the parameters can be stored in pserver instead of trainer, we can fetch specified parmeters if necessary, and can support huge parameters which is larger enough than the RAM size in single node.</p>
+<p>Internally, this updater will direct internal parameter client to encapsulate sparse specified message for all pservers. </p>
+<p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdater"><span class="std std-ref">paddle::ParameterUpdater</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater28SparseRemoteParameterUpdaterERK18OptimizationConfigib">
+<span id="paddle::SparseRemoteParameterUpdater::SparseRemoteParameterUpdater__OptimizationConfigCR.i.b"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a503563b38c2674e3ddbe087e39b3449e"></span><code class="descname">SparseRemoteParameterUpdater</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>config</em>, int <em>expectedPassCount</em>, bool <em>testing</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater28SparseRemoteParameterUpdaterERK18OptimizationConfigib" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdaterD0Ev">
+<span id="paddle::SparseRemoteParameterUpdater::~SparseRemoteParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1adddb91d1b370b09c7562ec9a98644014"></span><code class="descname">~SparseRemoteParameterUpdater</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdaterD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater4initERNSt6vectorI12ParameterPtrEE">
+<span id="paddle::SparseRemoteParameterUpdater::init__std::vector:ParameterPtr:R"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a19f721815a6aabe3b0f982006baba9a9"></span>void <code class="descname">init</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../parameter/parameter/parameter.html#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a>&gt; &amp;<em>parameters</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater4initERNSt6vectorI12ParameterPtrEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>initialization </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater10startBatchE7int64_t">
+<span id="paddle::SparseRemoteParameterUpdater::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a5036d883f4052cfbb28ca42b9072c1c7"></span>PassType <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>batchSize</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd><p>stateful batch control </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater11finishBatchE4real">
+<span id="paddle::SparseRemoteParameterUpdater::finishBatch__real"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a9f004c43d696a76393856a77d21afc27"></span>void <code class="descname">finishBatch</code><span class="sig-paren">(</span>real <em>cost</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater11finishBatchE4real" title="Permalink to this definition">¶</a></dt>
+<dd><p>send all sparse related parameters to all pservers </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater9startPassEv">
+<span id="paddle::SparseRemoteParameterUpdater::startPass"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1af400f9331f27da5277cc9ac10cd5da9f"></span>void <code class="descname">startPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater9startPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater10finishPassE4real">
+<span id="paddle::SparseRemoteParameterUpdater::finishPass__real"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a2b922ace008a270bafccee89d2e4c8dc"></span>bool <code class="descname">finishPass</code><span class="sig-paren">(</span>real <em>cost</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater10finishPassE4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater5applyEv">
+<span id="paddle::SparseRemoteParameterUpdater::apply"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1ae3044a381bc105f98c9afd2c4f726371"></span>void <code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater5applyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater7restoreEv">
+<span id="paddle::SparseRemoteParameterUpdater::restore"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1ac001c9d701f438b1ec17630c71f88c07"></span>void <code class="descname">restore</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater7restoreEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater20loadParametersRemoteERKNSt6stringE">
+<span id="paddle::SparseRemoteParameterUpdater::loadParametersRemote__ssCR"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1acfd3e28783261401afd4cd5d9061b4e8"></span>void <code class="descname">loadParametersRemote</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>dirName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater20loadParametersRemoteERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd><p>load parameters from pservers </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater20saveParametersRemoteERKNSt6stringE">
+<span id="paddle::SparseRemoteParameterUpdater::saveParametersRemote__ssCR"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a9473466e6a7596f5c03ed52fef80557e"></span>void <code class="descname">saveParametersRemote</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>dirName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater20saveParametersRemoteERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd><p>save parameters to pservers </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater19getParametersRemoteEbb">
+<span id="paddle::SparseRemoteParameterUpdater::getParametersRemote__b.b"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a01851a3641075e3229e6a2760f7a21b9"></span>void <code class="descname">getParametersRemote</code><span class="sig-paren">(</span>bool <em>fullSize</em>, bool <em>apply</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater19getParametersRemoteEbb" title="Permalink to this definition">¶</a></dt>
+<dd><p>get latest sparse parameters value from all pservers </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>call it before next mini-batch </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater20randParametersRemoteEv">
+<span id="paddle::SparseRemoteParameterUpdater::randParametersRemote"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a41cd36e839743365028a0cdf6119d35a"></span>void <code class="descname">randParametersRemote</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater20randParametersRemoteEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater22setForwardbackwardTimeE8uint64_t">
+<span id="paddle::SparseRemoteParameterUpdater::setForwardbackwardTime__uint64_t"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1ac05ea9091d165660c7801a8b195fa9ef"></span><em class="property">virtual</em> void <code class="descname">setForwardbackwardTime</code><span class="sig-paren">(</span>uint64_t <em>delta</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater22setForwardbackwardTimeE8uint64_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater10updateImplEP9Parameter">
+<span id="paddle::SparseRemoteParameterUpdater::updateImpl__ParameterP"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a8bdb53de64542af954ac8d40b5e4f0e2"></span><em class="property">virtual</em> void <code class="descname">updateImpl</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater10updateImplEP9Parameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>update implimentation, not implemented </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater10controllerEv">
+<span id="paddle::SparseRemoteParameterUpdater::controller"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a4aadbcc65fc98920aec138fd7a0e1431"></span>void <code class="descname">controller</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater10controllerEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>internal controller routine for controller thread </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater15startControllerEv">
+<span id="paddle::SparseRemoteParameterUpdater::startController"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a3956e2650096810bc36246e4987e2268"></span>void <code class="descname">startController</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater15startControllerEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start controller thread </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater7config_E">
+<span id="paddle::SparseRemoteParameterUpdater::config___OptimizationConfig"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a68378fb8c19b1008a2eb46226233a1a3"></span><a class="reference internal" href="../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> <code class="descname">config_</code><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater7config_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>optimization config </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater16parameterClient_E">
+<span id="paddle::SparseRemoteParameterUpdater::parameterClient___std::unique_ptr:ParameterClient2:"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a109cb8248bd05e883eed0fba27f2aeef"></span>std::unique_ptr&lt;<a class="reference internal" href="../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a>&gt; <code class="descname">parameterClient_</code><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater16parameterClient_E" title="Permalink to this definition">¶</a></dt>
+<dd><p>internal parameter client </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater10batchSize_E">
+<span id="paddle::SparseRemoteParameterUpdater::batchSize___int64_t"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1adf700f95d58ae6ac0dcaa0c3dc7ab034"></span>int64_t <code class="descname">batchSize_</code><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater10batchSize_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater17controllerThread_E">
+<span id="paddle::SparseRemoteParameterUpdater::controllerThread___std::unique_ptr:std::thread:"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a0d3c7f40ca38e95fa006fdeebfce6d4b"></span>std::unique_ptr&lt;std::thread&gt; <code class="descname">controllerThread_</code><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater17controllerThread_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater10passCount_E">
+<span id="paddle::SparseRemoteParameterUpdater::passCount___int64_t"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1aae196b4006a62a16993ebf8a9c3eac1f"></span>int64_t <code class="descname">passCount_</code><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater10passCount_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater18expectedPassCount_E">
+<span id="paddle::SparseRemoteParameterUpdater::expectedPassCount___int64_t"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1ae35223f29981e4ac313b8a7567b8872e"></span>int64_t <code class="descname">expectedPassCount_</code><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater18expectedPassCount_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater8testing_E">
+<span id="paddle::SparseRemoteParameterUpdater::testing___b"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1aed41ab1687d0ad8ef05591dfc9f96e4b"></span>bool <code class="descname">testing_</code><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater8testing_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater18useApplyInPserver_E">
+<span id="paddle::SparseRemoteParameterUpdater::useApplyInPserver___b"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdater_1a02416ecbdd8f048e567588a616c623a6"></span>bool <code class="descname">useApplyInPserver_</code><a class="headerlink" href="#_CPPv2N6paddle28SparseRemoteParameterUpdater18useApplyInPserver_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sparseremoteparameterupdatercomposite">
+<h2>SparseRemoteParameterUpdaterComposite<a class="headerlink" href="#sparseremoteparameterupdatercomposite" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterCompositeE">
+<span id="paddle::SparseRemoteParameterUpdaterComposite"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SparseRemoteParameterUpdaterComposite</code><a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterCompositeE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for supporting normal updater and sparse updater</p>
+<p>Not all parts of one model are sparse, so it exists dense updater for normal layers while sparse updater is for sparse layers.</p>
+<p>it directly call internal dense and sparse udpater individually. </p>
+<p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdaterComposite"><span class="std std-ref">paddle::ParameterUpdaterComposite</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Types</p>
+<dl class="type">
+<dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite12__anonymous4E">
+<span id="paddle::SparseRemoteParameterUpdaterComposite::__anonymous4"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1a81a8f540b5b48843fc45051006f9c99c"></span><em class="property">enum </em><code class="descname"><strong>[anonymous]</strong></code><a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite12__anonymous4E" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>Values:</em></p>
+<dl class="member">
+<dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite21UPDATER_SPARSE_REMOTEE">
+<span id="paddle::SparseRemoteParameterUpdaterComposite::UPDATER_SPARSE_REMOTE"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1a81a8f540b5b48843fc45051006f9c99caa70f2a6bbf29a8c4e0c82cbcbe29adbe"></span><code class="descname">UPDATER_SPARSE_REMOTE</code> = 0<a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite21UPDATER_SPARSE_REMOTEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite14UPDATER_NORMALE">
+<span id="paddle::SparseRemoteParameterUpdaterComposite::UPDATER_NORMAL"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1a81a8f540b5b48843fc45051006f9c99ca5983acbc68aaf23edae999a59d705424"></span><code class="descname">UPDATER_NORMAL</code> = 1<a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite14UPDATER_NORMALE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite15NUMBER_UPDATERSE">
+<span id="paddle::SparseRemoteParameterUpdaterComposite::NUMBER_UPDATERS"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1a81a8f540b5b48843fc45051006f9c99ca4ac16a19f7fe5e4cce08ee453d83bf30"></span><code class="descname">NUMBER_UPDATERS</code> = 2<a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite15NUMBER_UPDATERSE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite37SparseRemoteParameterUpdaterCompositeERK18OptimizationConfigibRRNSt10unique_ptrI16ParameterUpdaterEE">
+<span id="paddle::SparseRemoteParameterUpdaterComposite::SparseRemoteParameterUpdaterComposite__OptimizationConfigCR.i.b.std::unique_ptr:ParameterUpdater:RR"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1a4bc9246232c01830857c3ed632145e98"></span><code class="descname">SparseRemoteParameterUpdaterComposite</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../api/api.html#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> &amp;<em>config</em>, int <em>expectedPassCount</em>, bool <em>testing</em>, std::unique_ptr&lt;<a class="reference internal" href="../parameter/update/update.html#_CPPv2N6paddle16ParameterUpdaterE" title="paddle::ParameterUpdater">ParameterUpdater</a>&gt; &amp;&amp;<em>normalUpdater</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite37SparseRemoteParameterUpdaterCompositeERK18OptimizationConfigibRRNSt10unique_ptrI16ParameterUpdaterEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>create one dense updater and one sparse updater </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>use syncThreadPool to synchronize these two updaters </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite4initERNSt6vectorI12ParameterPtrEE">
+<span id="paddle::SparseRemoteParameterUpdaterComposite::init__std::vector:ParameterPtr:R"></span><span class="target" id="paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite_1a19568b4bc2ce928dc1a85398265201cd"></span>void <code class="descname">init</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../parameter/parameter/parameter.html#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a>&gt; &amp;<em>parameters</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite4initERNSt6vectorI12ParameterPtrEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>initialization of dense and sparse updaters </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Trainer</a><ul>
+<li><a class="reference internal" href="#trainerstats">TrainerStats</a></li>
+<li><a class="reference internal" href="#remoteparameterupdater">RemoteParameterUpdater</a></li>
+<li><a class="reference internal" href="#concurrentremoteparameterupdater">ConcurrentRemoteParameterUpdater</a></li>
+<li><a class="reference internal" href="#sparseremoteparameterupdater">SparseRemoteParameterUpdater</a></li>
+<li><a class="reference internal" href="#sparseremoteparameterupdatercomposite">SparseRemoteParameterUpdaterComposite</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../pserver/server/server.html"
+                        title="previous chapter">Server</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../api/api.html"
+                        title="next chapter">API</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/source/trainer/trainer.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../api/api.html" title="API"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../pserver/server/server.html" title="Server"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Source Code Documents</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

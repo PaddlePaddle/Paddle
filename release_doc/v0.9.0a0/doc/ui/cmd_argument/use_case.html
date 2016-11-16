@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Use Case &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="User Interface" href="../index.html" />
+    <link rel="next" title="Argument Outline" href="argument_outline.html" />
+    <link rel="prev" title="How to use PyDataProvider2" href="../data_provider/pydataprovider2.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="argument_outline.html" title="Argument Outline"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../data_provider/pydataprovider2.html" title="How to use PyDataProvider2"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">User Interface</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="use-case">
+<span id="use-case"></span><h1>Use Case<a class="headerlink" href="#use-case" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="local-training">
+<span id="local-training"></span><h2>Local Training<a class="headerlink" href="#local-training" title="Permalink to this headline">¶</a></h2>
+<p>These command line arguments are commonly used by local training experiments, such as image classification, natural language processing, et al.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> \
+  <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \                        <span class="c1">#1:GPU,0:CPU(default:true)</span>
+  <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+  <span class="o">--</span><span class="n">save_dir</span><span class="o">=</span><span class="n">output</span> \
+  <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \                <span class="c1">#(default:1)</span>
+  <span class="o">--</span><span class="n">test_period</span><span class="o">=</span><span class="n">M</span> \                      <span class="c1">#(default:1000）</span>
+  <span class="o">--</span><span class="n">test_all_data_in_one_period</span><span class="o">=</span><span class="n">true</span> \   <span class="c1">#(default:false) </span>
+  <span class="o">--</span><span class="n">num_passes</span><span class="o">=</span><span class="n">N</span> \                       <span class="c1">#(defalut:100）</span>
+  <span class="o">--</span><span class="n">log_period</span><span class="o">=</span><span class="n">K</span> \                       <span class="c1">#(default:100)</span>
+  <span class="o">--</span><span class="n">dot_period</span><span class="o">=</span><span class="mi">1000</span> \                    <span class="c1">#(default:1)</span>
+  <span class="c1">#[--show_parameter_stats_period=100] \ #(default:0)</span>
+  <span class="c1">#[--saving_period_by_batches=200] \    #(default:0)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">show_parameter_stats_period</span></code> and <code class="docutils literal"><span class="pre">saving_period_by_batches</span></code> are optional according to your task.</p>
+<div class="section" id="pass-command-argument-to-network-config">
+<span id="pass-command-argument-to-network-config"></span><h3>1) Pass Command Argument to Network config<a class="headerlink" href="#pass-command-argument-to-network-config" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">config_args</span></code> is a useful parameter to pass arguments to network config.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">config_args</span><span class="o">=</span><span class="n">generating</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">beam_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">layer_num</span><span class="o">=</span><span class="mi">10</span> \
+</pre></div>
+</div>
+<p>And <code class="docutils literal"><span class="pre">get_config_arg</span></code> can be used to parse these arguments in network config as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">generating</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;generating&#39;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="n">beam_size</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;beam_size&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">layer_num</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;layer_num&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">get_config_arg</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">get_config_arg</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">default_value</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>name: the name specified in the <code class="docutils literal"><span class="pre">--config_args</span></code></li>
+<li>type: value type, bool, int, str, float etc.</li>
+<li>default_value: default value if not set.</li>
+</ul>
+</div>
+<div class="section" id="use-model-to-initialize-network">
+<span id="use-model-to-initialize-network"></span><h3>2) Use Model to Initialize Network<a class="headerlink" href="#use-model-to-initialize-network" title="Permalink to this headline">¶</a></h3>
+<p>add argument:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">init_model_path</span><span class="o">=</span><span class="n">model_path</span>
+<span class="o">--</span><span class="n">load_missing_parameter_strategy</span><span class="o">=</span><span class="n">rand</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="local-testing">
+<span id="local-testing"></span><h2>Local Testing<a class="headerlink" href="#local-testing" title="Permalink to this headline">¶</a></h2>
+<p>Method 1:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">test</span> \
+             <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \ 
+             <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+             <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \ 
+             <span class="o">--</span><span class="n">init_model_path</span><span class="o">=</span><span class="n">model_path</span> \
+</pre></div>
+</div>
+<ul class="simple">
+<li>use init_model_path to specify test model.</li>
+<li>only can test one model.</li>
+</ul>
+<p>Method 2:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">test</span> \
+             <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \ 
+             <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+             <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \ 
+             <span class="o">--</span><span class="n">model_list</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">list</span> \
+</pre></div>
+</div>
+<ul class="simple">
+<li>use model_list to specify test models</li>
+<li>can test several models, where model.list likes:</li>
+</ul>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">alexnet_pass1</span>
+<span class="o">./</span><span class="n">alexnet_pass2</span>
+</pre></div>
+</div>
+<p>Method 3:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">job</span><span class="o">=</span><span class="n">test</span> \
+             <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">0</span> \
+             <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">network_config</span> \
+             <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span> \
+             <span class="o">--</span><span class="n">save_dir</span><span class="o">=</span><span class="n">model</span> \
+             <span class="o">--</span><span class="n">test_pass</span><span class="o">=</span><span class="n">M</span> \
+             <span class="o">--</span><span class="n">num_passes</span><span class="o">=</span><span class="n">N</span> \
+</pre></div>
+</div>
+<p>This way must use model path saved by Paddle like this: <code class="docutils literal"><span class="pre">model/pass-%5d</span></code>. Testing model is from M-th pass to (N-1)-th pass. For example: M=12 and N=14 will test <code class="docutils literal"><span class="pre">model/pass-00012</span></code> and <code class="docutils literal"><span class="pre">model/pass-00013</span></code>.</p>
+</div>
+<div class="section" id="sparse-training">
+<span id="sparse-training"></span><h2>Sparse Training<a class="headerlink" href="#sparse-training" title="Permalink to this headline">¶</a></h2>
+<p>Sparse training is usually used to accelerate calculation when input is sparse data with highly dimension. For example, dictionary dimension of input data is 1 million, but one sample just have several words. In paddle, sparse matrix multiplication is used in forward propagation and sparse updating is perfomed on weight updating after backward propagation.</p>
+<div class="section" id="local-training">
+<span id="id1"></span><h3>1) Local training<a class="headerlink" href="#local-training" title="Permalink to this headline">¶</a></h3>
+<p>You need to set <strong>sparse_update=True</strong> in network config.  Check the network config documentation for more details.</p>
+</div>
+<div class="section" id="cluster-training">
+<span id="cluster-training"></span><h3>2) cluster training<a class="headerlink" href="#cluster-training" title="Permalink to this headline">¶</a></h3>
+<p>Add the following argument for cluster training of a sparse model. At the same time you need to set <strong>sparse_remote_update=True</strong> in network config. Check the network config documentation for more details.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">ports_num_for_sparse</span><span class="o">=</span><span class="mi">1</span>    <span class="c1">#(default: 0)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="parallel-nn">
+<span id="parallel-nn"></span><h2>parallel_nn<a class="headerlink" href="#parallel-nn" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal"><span class="pre">parallel_nn</span></code> can be set to mixed use of GPUs and CPUs to compute layers. That is to say, you can deploy network to use a GPU to compute some layers and use a CPU to compute other layers. The other way is to split layers into different GPUs, which can <strong>reduce GPU memory</strong> or <strong>use parallel computation to accelerate some layers</strong>.</p>
+<p>If you want to use these characteristics, you need to specify device ID in network config (denote it as deviceId) and add command line argument:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">parallel_nn</span><span class="o">=</span><span class="n">true</span>
+</pre></div>
+</div>
+<div class="section" id="case-1-mixed-use-of-gpu-and-cpu">
+<span id="case-1-mixed-use-of-gpu-and-cpu"></span><h3>case 1: Mixed Use of GPU and CPU<a class="headerlink" href="#case-1-mixed-use-of-gpu-and-cpu" title="Permalink to this headline">¶</a></h3>
+<p>Consider the following example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1">#command line:</span>
+<span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="n">true</span> <span class="o">--</span><span class="n">parallel_nn</span><span class="o">=</span><span class="n">true</span> <span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span>
+
+<span class="n">default_device</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">fc1</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">fc2</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">fc3</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="o">...</span><span class="p">,</span><span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=-</span><span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>default_device(0): set default device ID to 0. This means that except the layers with device=-1, all layers will use a GPU, and the specific GPU used for each layer depends on trainer_count and gpu_id (0 by default). Here, layer l1 and l2 are computed on the GPU.</li>
+<li>device=-1: use the CPU for layer l3.</li>
+<li>trainer_count:<ul>
+<li>trainer_count=1: if gpu_id is not set, then use the first GPU to compute layers l1 and l2. Otherwise use the GPU with gpu_id.</li>
+<li>trainer_count&gt;1: use trainer_count GPUs to compute one layer using data parallelism. For example, trainer_count=2 means that GPUs 0 and 1 will use data parallelism to compute layer l1 and l2.</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="case-2-specify-layers-in-different-devices">
+<span id="case-2-specify-layers-in-different-devices"></span><h3>Case 2: Specify Layers in Different Devices<a class="headerlink" href="#case-2-specify-layers-in-different-devices" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1">#command line:</span>
+<span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="n">true</span> <span class="o">--</span><span class="n">parallel_nn</span><span class="o">=</span><span class="n">true</span> <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="n">COUNT</span>
+
+<span class="c1">#network:</span>
+<span class="n">fc2</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">l1</span><span class="p">,</span> <span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">fc3</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">l1</span><span class="p">,</span> <span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">fc4</span><span class="o">=</span><span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">fc2</span><span class="p">,</span> <span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">device</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this case, we assume that there are 4 GPUs in one machine.</p>
+<ul class="simple">
+<li>trainer_count=1:<ul>
+<li>Use GPU 0 to compute layer l2.</li>
+<li>Use GPU 1 to compute layer l3.</li>
+<li>Use CPU to compute layer l4.</li>
+</ul>
+</li>
+<li>trainer_count=2:<ul>
+<li>Use GPU 0 and 1 to compute layer l2.</li>
+<li>Use GPU 2 and 3 to compute layer l3.</li>
+<li>Use CPU to compute l4 in two threads.</li>
+</ul>
+</li>
+<li>trainer_count=4:<ul>
+<li>It will fail (note, we have assumed that there are 4 GPUs in machine), because argument <code class="docutils literal"><span class="pre">allow_only_one_model_on_one_gpu</span></code> is true by default.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Allocation of device ID when <code class="docutils literal"><span class="pre">device!=-1</span></code></strong>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">deviceId</span> <span class="o">+</span> <span class="n">gpu_id</span> <span class="o">+</span> <span class="n">threadId</span> <span class="o">*</span> <span class="n">numLogicalDevices_</span><span class="p">)</span> <span class="o">%</span> <span class="n">numDevices_</span>
+
+<span class="n">deviceId</span><span class="p">:</span>             <span class="n">specified</span> <span class="ow">in</span> <span class="n">layer</span><span class="o">.</span>
+<span class="n">gpu_id</span><span class="p">:</span>               <span class="mi">0</span> <span class="n">by</span> <span class="n">default</span><span class="o">.</span>
+<span class="n">threadId</span><span class="p">:</span>             <span class="n">thread</span> <span class="n">ID</span><span class="p">,</span> <span class="nb">range</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="o">...</span><span class="p">,</span> <span class="n">trainer_count</span><span class="o">-</span><span class="mi">1</span>
+<span class="n">numDevices_</span><span class="p">:</span>          <span class="n">device</span> <span class="p">(</span><span class="n">GPU</span><span class="p">)</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">machine</span><span class="o">.</span>
+<span class="n">numLogicalDevices_</span><span class="p">:</span>   <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">deviceId</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">numDevices_</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Use Case</a><ul>
+<li><a class="reference internal" href="#local-training">Local Training</a><ul>
+<li><a class="reference internal" href="#pass-command-argument-to-network-config">1) Pass Command Argument to Network config</a></li>
+<li><a class="reference internal" href="#use-model-to-initialize-network">2) Use Model to Initialize Network</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#local-testing">Local Testing</a></li>
+<li><a class="reference internal" href="#sparse-training">Sparse Training</a><ul>
+<li><a class="reference internal" href="#local-training">1) Local training</a></li>
+<li><a class="reference internal" href="#cluster-training">2) cluster training</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#parallel-nn">parallel_nn</a><ul>
+<li><a class="reference internal" href="#case-1-mixed-use-of-gpu-and-cpu">case 1: Mixed Use of GPU and CPU</a></li>
+<li><a class="reference internal" href="#case-2-specify-layers-in-different-devices">Case 2: Specify Layers in Different Devices</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../data_provider/pydataprovider2.html"
+                        title="previous chapter">How to use PyDataProvider2</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="argument_outline.html"
+                        title="next chapter">Argument Outline</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/ui/cmd_argument/use_case.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="argument_outline.html" title="Argument Outline"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../data_provider/pydataprovider2.html" title="How to use PyDataProvider2"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >User Interface</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

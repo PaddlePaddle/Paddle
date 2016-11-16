@@ -1,0 +1,145 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>构建PaddlePaddle Docker Image &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="paddlepaddle-docker-image">
+<h1>构建PaddlePaddle Docker Image<a class="headerlink" href="#paddlepaddle-docker-image" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle的Docker Image构建源码放置在 :code:<a href="#id1"><span class="problematic" id="id2">`</span></a>${源码根目录}/paddle/scripts/docker/<a href="#id3"><span class="problematic" id="id4">`</span></a>目录下。
+该Image基于ubuntu 14.04。该目录下有两个文件，Dockerfile和build.sh。其中:</p>
+<ul class="simple">
+<li>Dockerfile是docker image的主要描述文件。描述了Docker image的构建步骤、各种参数和维护
+人员等等。</li>
+<li>build.sh是docker image的主要构建步骤。</li>
+</ul>
+<p>该image的构建在docker 1.12版本测试通过, 低于docker 1.12版本的情况下并没有测试。主要由于旧版本
+的docker可能缺乏 <code class="code docutils literal"><span class="pre">--build-arg</span></code> 参数，从而不能在运行编译命令的时候接受参数。</p>
+<p>同时，该构建脚本充分考虑了网络不稳定的情况，对于cuda的Toolkit有断点续传和传输速度过小重启下载的
+简单优化。</p>
+<div class="section" id="id5">
+<h2>使用脚本构建PaddlePaddle Docker Image<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>该脚本的使用方法是，进入该源码目录，执行 <code class="code docutils literal"><span class="pre">docker</span> <span class="pre">build</span> <span class="pre">.</span></code> 命令。可以使用</dt>
+<dd><code class="code docutils literal"><span class="pre">--build-arg</span></code> 传入的配置参数包括:</dd>
+</dl>
+<ul class="simple">
+<li>LOWEST_DL_SPEED: 多线程下载过程中，最低线程的下载速度(默认单位是Bytes，可以传入10K,
+10M，或者10G这样的单位)。如果小于这个下载速度，那么这个下载线程将会关闭。所有的下载线程关闭时，
+下载进程会重启。</li>
+<li>WITH_GPU: ON or OFF。是否开启GPU功能。注意，编译PaddlePaddle的GPU版本并不需要一定在具有GPU
+的机器上进行。但是，运行PaddlePaddle的GPU版本一定要在具有CUDA的机器上运行。</li>
+</ul>
+<p>简单的使用样例为:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> <span class="si">${</span><span class="p">源码根目录</span><span class="si">}</span>/paddle/scripts/docker/
+docker build --build-arg <span class="nv">LOWEST_DL_SPEED</span><span class="o">=</span>50K<span class="se">\</span>
+             --build-arg <span class="nv">WITH_GPU</span><span class="o">=</span>ON <span class="se">\</span>
+             --tag  paddle_gpu:latest .
+</pre></div>
+</div>
+<p>即可在本地编译出PaddlePaddle的镜像。</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">构建PaddlePaddle Docker Image</a><ul>
+<li><a class="reference internal" href="#id5">使用脚本构建PaddlePaddle Docker Image</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/build/docker/build_docker_image.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

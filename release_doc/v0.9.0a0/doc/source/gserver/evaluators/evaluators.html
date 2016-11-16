@@ -1,0 +1,1286 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Base Evaluator &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Evaluators" href="index.html" />
+    <link rel="next" title="Gradient Machines Documents" href="../gradientmachines/index.html" />
+    <link rel="prev" title="Evaluators" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../gradientmachines/index.html" title="Gradient Machines Documents"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Evaluators"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Evaluators</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="base-evaluator">
+<h1>Base Evaluator<a class="headerlink" href="#base-evaluator" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="evaluator">
+<h2>Evaluator<a class="headerlink" href="#evaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle9EvaluatorE">
+<span id="paddle::Evaluator"></span><span class="target" id="paddleclasspaddle_1_1Evaluator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Evaluator</code><a class="headerlink" href="#_CPPv2N6paddle9EvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">Evaluator</span></a> Evaluating the performance of a model is very important. It indicates how successful the scores(predictions) of a datasets has been by a trained model. </p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AucEvaluator"><span class="std std-ref">paddle::AucEvaluator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ChunkEvaluator"><span class="std std-ref">paddle::ChunkEvaluator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ClassificationErrorEvaluator"><span class="std std-ref">paddle::ClassificationErrorEvaluator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ColumnSumEvaluator"><span class="std std-ref">paddle::ColumnSumEvaluator</span></a>, paddle::CombinedEvaluator, <a class="reference internal" href="#paddleclasspaddle_1_1CTCErrorEvaluator"><span class="std std-ref">paddle::CTCErrorEvaluator</span></a>, paddle::DummyEvaluator, <a class="reference internal" href="#paddleclasspaddle_1_1GradientPrinter"><span class="std std-ref">paddle::GradientPrinter</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MaxFramePrinter"><span class="std std-ref">paddle::MaxFramePrinter</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MaxIdPrinter"><span class="std std-ref">paddle::MaxIdPrinter</span></a>, paddle::MultiCombinedEvaluator, <a class="reference internal" href="#paddleclasspaddle_1_1PnpairEvaluator"><span class="std std-ref">paddle::PnpairEvaluator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PrecisionRecallEvaluator"><span class="std std-ref">paddle::PrecisionRecallEvaluator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RankAucEvaluator"><span class="std std-ref">paddle::RankAucEvaluator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceTextPrinter"><span class="std std-ref">paddle::SequenceTextPrinter</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SumEvaluator"><span class="std std-ref">paddle::SumEvaluator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ValuePrinter"><span class="std std-ref">paddle::ValuePrinter</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator9EvaluatorEv">
+<span id="paddle::Evaluator::Evaluator"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a38e96c535931ff0b08bd6ee8a2a5cdf9"></span><code class="descname">Evaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator9EvaluatorEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9EvaluatorD0Ev">
+<span id="paddle::Evaluator::~Evaluator"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a3132e86a6304deb8db389466c789b5ba"></span><em class="property">virtual</em> <code class="descname">~Evaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9EvaluatorD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator4initERK15EvaluatorConfig">
+<span id="paddle::Evaluator::init__EvaluatorConfigCR"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1afdac57770713b8cb2283171f6d5ebb37"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span><em class="property">const</em> EvaluatorConfig &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator4initERK15EvaluatorConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator5startEv">
+<span id="paddle::Evaluator::start"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a2bb0d4d737d4043794168c4a212df9de"></span><em class="property">virtual</em> void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator4evalERK13NeuralNetwork">
+<span id="paddle::Evaluator::eval__NeuralNetworkCR"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1aae419a0aed4a6f01fe5328461f5300fe"></span>void <code class="descname">eval</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../gradientmachines/gradientmachines.html#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> &amp;<em>nn</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator4evalERK13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::Evaluator::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1aa613595015dad5bde526d9bcd846c9f7"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle9Evaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::Evaluator::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a5777491a0cd1c0116f49f618b92a56dc"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::Evaluator::distributeEval__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a25e80ac4650e6ee48b56cb558d9d1d6f"></span><em class="property">virtual</em> void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before distributeEval </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator24mergeResultsOfAllClientsEP16ParameterClient2">
+<span id="paddle::Evaluator::mergeResultsOfAllClients__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a1b7aed5961cf3a3699b319b52b05b670"></span>void <code class="descname">mergeResultsOfAllClients</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator24mergeResultsOfAllClientsEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator6finishEv">
+<span id="paddle::Evaluator::finish"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"></span><em class="property">virtual</em> void <code class="descname">finish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator6finishEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>finish the evaluation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator10printStatsERNSt7ostreamE">
+<span id="paddle::Evaluator::printStats__osR"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"></span><em class="property">virtual</em> void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print the statistics of evaluate result </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before printStats </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle9Evaluator6createERK15EvaluatorConfig">
+<span id="paddle::Evaluator::create__EvaluatorConfigCR"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a04f60af8fb4d38bef17d7f91d65806a4"></span><a class="reference internal" href="#_CPPv2N6paddle9EvaluatorE" title="paddle::Evaluator">Evaluator</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> EvaluatorConfig &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle9Evaluator6createERK15EvaluatorConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle9Evaluator10registrar_E">
+<span id="paddle::Evaluator::registrar___ClassRegistrar:Evaluator:"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a16488b015a18b48063708e34c6b61070"></span>ClassRegistrar&lt;<a class="reference internal" href="#_CPPv2N6paddle9EvaluatorE" title="paddle::Evaluator">Evaluator</a>&gt; <code class="descname">registrar_</code><a class="headerlink" href="#_CPPv2N6paddle9Evaluator10registrar_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle9Evaluator7config_E">
+<span id="paddle::Evaluator::config___EvaluatorConfig"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a4445124389402ae18567be1ea6c6c865"></span>EvaluatorConfig <code class="descname">config_</code><a class="headerlink" href="#_CPPv2N6paddle9Evaluator7config_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Evaluator11numSamples_E">
+<span id="paddle::Evaluator::numSamples___double"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a6d43ed113a9c2fdbf1bbd418a82248b8"></span>double <code class="descname">numSamples_</code><a class="headerlink" href="#_CPPv2N6paddle9Evaluator11numSamples_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle9Evaluator11totalScore_E">
+<span id="paddle::Evaluator::totalScore___double"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a63947ae377e14bacfd59789663c27683"></span>double <code class="descname">totalScore_</code><a class="headerlink" href="#_CPPv2N6paddle9Evaluator11totalScore_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Friends</p>
+<dl class="function">
+<dt id="_CPPv2lsRNSt7ostreamER9Evaluator">
+<span id="lshift-operator__osR.EvaluatorR"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1a7db86ba78a524b074ae7171ebdce1236"></span>std::ostream &amp;<code class="descname">operator&lt;&lt;</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em>, Evaluator &amp;<em>evaluator</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2lsRNSt7ostreamER9Evaluator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2lsRRNSt7ostreamER9Evaluator">
+<span id="lshift-operator__osRR.EvaluatorR"></span><span class="target" id="paddleclasspaddle_1_1Evaluator_1afd28d9a77ddc1ba083b94b03390f6249"></span>std::ostream &amp;&amp;<code class="descname">operator&lt;&lt;</code><span class="sig-paren">(</span>std::ostream &amp;&amp;<em>os</em>, Evaluator &amp;<em>evaluator</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2lsRRNSt7ostreamER9Evaluator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="utils">
+<h1>Utils<a class="headerlink" href="#utils" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="sumevaluator">
+<h2>SumEvaluator<a class="headerlink" href="#sumevaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle12SumEvaluatorE">
+<span id="paddle::SumEvaluator"></span><span class="target" id="paddleclasspaddle_1_1SumEvaluator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SumEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle12SumEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>sum <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">Evaluator</span></a> Calculate the sum of output or label </p>
+<p>The config file api is sum_evaluator. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12SumEvaluator12SumEvaluatorEv">
+<span id="paddle::SumEvaluator::SumEvaluator"></span><span class="target" id="paddleclasspaddle_1_1SumEvaluator_1a9135b04b1768f4291ccb4ac77a382bb9"></span><code class="descname">SumEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SumEvaluator12SumEvaluatorEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SumEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::SumEvaluator::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1SumEvaluator_1a2c9fb210a709abc95fcadb26c587492c"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SumEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SumEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::SumEvaluator::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1SumEvaluator_1aa7fdf482cce8d23de6f36a3add802f45"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SumEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12SumEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::SumEvaluator::distributeEval__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1SumEvaluator_1acab41f46fa32e22ab8c2e56dbc7e3c6e"></span><em class="property">virtual</em> void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SumEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before distributeEval </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="columnsumevaluator">
+<h2>ColumnSumEvaluator<a class="headerlink" href="#columnsumevaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle18ColumnSumEvaluatorE">
+<span id="paddle::ColumnSumEvaluator"></span><span class="target" id="paddleclasspaddle_1_1ColumnSumEvaluator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ColumnSumEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle18ColumnSumEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>column sum <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">Evaluator</span></a> </p>
+<p>
+The config file api is column_sum_evaluator. <dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>column sum for the colIdx-th column *<ul class="simple">
+<li>colIdx = 0: the 0-th column.</li>
+<li>colIdx &gt; 0: the colIdx-th column.</li>
+<li>colIdx &lt; 0: the last colIdx-th column.</li>
+</ul>
+</dd>
+</dl>
+</p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle18ColumnSumEvaluator18ColumnSumEvaluatorE7int32_t">
+<span id="paddle::ColumnSumEvaluator::ColumnSumEvaluator__int32_t"></span><span class="target" id="paddleclasspaddle_1_1ColumnSumEvaluator_1a48114d961b3512a1b17ad83f2f3b3435"></span><code class="descname">ColumnSumEvaluator</code><span class="sig-paren">(</span>int32_t <em>colIdx</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ColumnSumEvaluator18ColumnSumEvaluatorE7int32_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ColumnSumEvaluator5startEv">
+<span id="paddle::ColumnSumEvaluator::start"></span><span class="target" id="paddleclasspaddle_1_1ColumnSumEvaluator_1a79b23e389d532b35ebefaef2bab3bad9"></span><em class="property">virtual</em> void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ColumnSumEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ColumnSumEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::ColumnSumEvaluator::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1ColumnSumEvaluator_1a7c70852a2ef587bb7d964ba50ce206d2"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ColumnSumEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ColumnSumEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::ColumnSumEvaluator::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1ColumnSumEvaluator_1a1961bce078ab15392614455e9441704e"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ColumnSumEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1ColumnSumEvaluator_1a1856b8aa17cff796ec1711113bc8d50f"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ColumnSumEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::ColumnSumEvaluator::printStats__osR"></span><span class="target" id="paddleclasspaddle_1_1ColumnSumEvaluator_1a1856b8aa17cff796ec1711113bc8d50f"></span><em class="property">virtual</em> void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ColumnSumEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print the statistics of evaluate result </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before printStats </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ColumnSumEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::ColumnSumEvaluator::distributeEval__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1ColumnSumEvaluator_1ad35f702096e5858459cefe2afb9ac817"></span>void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ColumnSumEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before distributeEval </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="classification">
+<h1>Classification<a class="headerlink" href="#classification" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="classificationerrorevaluator">
+<h2>ClassificationErrorEvaluator<a class="headerlink" href="#classificationerrorevaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle28ClassificationErrorEvaluatorE">
+<span id="paddle::ClassificationErrorEvaluator"></span><span class="target" id="paddleclasspaddle_1_1ClassificationErrorEvaluator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ClassificationErrorEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle28ClassificationErrorEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>classification error <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">Evaluator</span></a> </p>
+<p>The config file api is classification_error_evaluator. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ClassificationErrorPrinter"><span class="std std-ref">paddle::ClassificationErrorPrinter</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceClassificationErrorEvaluator"><span class="std std-ref">paddle::SequenceClassificationErrorEvaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle28ClassificationErrorEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::ClassificationErrorEvaluator::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1ClassificationErrorEvaluator_1ae60f914254a9de58b17aadd12e7d4155"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28ClassificationErrorEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28ClassificationErrorEvaluator9calcErrorERNSt6vectorI8ArgumentEE">
+<span id="paddle::ClassificationErrorEvaluator::calcError__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1ClassificationErrorEvaluator_1a6148e630ac3d69a9549e95fc0fc0d56b"></span><a class="reference internal" href="../../math/matrix/matrix.html#_CPPv2N6paddle9MatrixPtrE" title="paddle::MatrixPtr">MatrixPtr</a> <code class="descname">calcError</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28ClassificationErrorEvaluator9calcErrorERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28ClassificationErrorEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::ClassificationErrorEvaluator::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1ClassificationErrorEvaluator_1ae2bcb0dc26d598ee75e97d5f8e0919e8"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28ClassificationErrorEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle28ClassificationErrorEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::ClassificationErrorEvaluator::distributeEval__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1ClassificationErrorEvaluator_1a007b798026396dca57fffa784a20cb0e"></span><em class="property">virtual</em> void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle28ClassificationErrorEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before distributeEval </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sequenceclassificationerrorevaluator">
+<h2>SequenceClassificationErrorEvaluator<a class="headerlink" href="#sequenceclassificationerrorevaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle36SequenceClassificationErrorEvaluatorE">
+<span id="paddle::SequenceClassificationErrorEvaluator"></span><span class="target" id="paddleclasspaddle_1_1SequenceClassificationErrorEvaluator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SequenceClassificationErrorEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle36SequenceClassificationErrorEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>sequence classification error <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">Evaluator</span></a> </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>sequence level classification error stats, if any frame in one sequence has error, the sequence is error </dd>
+</dl>
+</p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ClassificationErrorEvaluator"><span class="std std-ref">paddle::ClassificationErrorEvaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle36SequenceClassificationErrorEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::SequenceClassificationErrorEvaluator::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1SequenceClassificationErrorEvaluator_1a9c392fc11ab539bcdd4c555a16c707bb"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle36SequenceClassificationErrorEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle36SequenceClassificationErrorEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::SequenceClassificationErrorEvaluator::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1SequenceClassificationErrorEvaluator_1a732df5518b86dc894a52ad931e784790"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle36SequenceClassificationErrorEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle36SequenceClassificationErrorEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::SequenceClassificationErrorEvaluator::distributeEval__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1SequenceClassificationErrorEvaluator_1acb75d5820fd919026a8f7f9bedc97d06"></span><em class="property">virtual</em> void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle36SequenceClassificationErrorEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before distributeEval </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="aucevaluator">
+<h2>AucEvaluator<a class="headerlink" href="#aucevaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle12AucEvaluatorE">
+<span id="paddle::AucEvaluator"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">AucEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>evaluate AUC using colIdx-th column as prediction. The AUC(Area Under the Curve) is a common evaluation metric for binary classification problems. It computes the area under the receiver operating characteristic(ROC) curve. </p>
+<p><ul class="simple">
+<li>colIdx = 0: the 0-th column.</li>
+<li>colIdx &gt; 0: the colIdx-th column.</li>
+<li>colIdx &lt; 0: the last colIdx-th column.</li>
+</ul>
+<dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd>colIdx-th column</dd>
+</dl>
+</p>
+<p>The config file api is auc_evaluator. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator12AucEvaluatorE7int32_t">
+<span id="paddle::AucEvaluator::AucEvaluator__int32_t"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a1bb229576ded30e4b9115515d039d544"></span><code class="descname">AucEvaluator</code><span class="sig-paren">(</span>int32_t <em>colIdx</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator12AucEvaluatorE7int32_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator5startEv">
+<span id="paddle::AucEvaluator::start"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1af6f433aad217acd2efc46b9b1e372e57"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::AucEvaluator::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a5b37ff6965823e69ad01af2dfa0f0c41"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1AucEvaluator_1a54b9e88b80840df5faaf303f35421d55"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::AucEvaluator::printStats__osR"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a54b9e88b80840df5faaf303f35421d55"></span><em class="property">virtual</em> void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print the statistics of evaluate result </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before printStats </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12AucEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::AucEvaluator::distributeEval__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1AucEvaluator_1a0c20088c250d96d18cb2b5eb15b21764"></span>void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12AucEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before distributeEval </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="precisionrecallevaluator">
+<h2>PrecisionRecallEvaluator<a class="headerlink" href="#precisionrecallevaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluatorE">
+<span id="paddle::PrecisionRecallEvaluator"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">PrecisionRecallEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>precision, recall and f1 score <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">Evaluator</span></a> <div class="math">
+\[\begin{split} precision = \frac{tp}{tp+tn} \\ recall=\frac{tp}{tp+fn} \\ f1=2*\frac{precsion*recall}{precision+recall} \end{split}\]</div>
+ </p>
+<p>The config file api is precision_recall_evaluator. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator24PrecisionRecallEvaluatorEv">
+<span id="paddle::PrecisionRecallEvaluator::PrecisionRecallEvaluator"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a9df3903010183d49fab2642d7ba282ce"></span><code class="descname">PrecisionRecallEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator24PrecisionRecallEvaluatorEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator5startEv">
+<span id="paddle::PrecisionRecallEvaluator::start"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1adf943c1c59217b7735d7eb2f520c9b7f"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::PrecisionRecallEvaluator::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1a8d1e2696c7a9509b434b219b73d5802b"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1PrecisionRecallEvaluator_1aa2ccfcc5be6819469305316de5b8ad1a"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::PrecisionRecallEvaluator::printStats__osR"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1aa2ccfcc5be6819469305316de5b8ad1a"></span>void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print the statistics of evaluate result </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before printStats </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::PrecisionRecallEvaluator::distributeEval__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1PrecisionRecallEvaluator_1ab40d25db69b2f58567cc2dfca4f1adb0"></span>void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before distributeEval </p>
+</dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfoE">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo"></span><em class="property">struct </em><code class="descname">StatsInfo</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfoE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo9StatsInfoEv">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo::StatsInfo"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo_1a46e7b0312a0458c7162bfc946aa1c107"></span><code class="descname">StatsInfo</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo9StatsInfoEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2TPE">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo::TP__double"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo_1a16b8130698c2355713bc82304f6cae3d"></span>double <code class="descname">TP</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2TPE" title="Permalink to this definition">¶</a></dt>
+<dd><p>numbers of true positives </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2TNE">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo::TN__double"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo_1a0fb9e4960932d6766d538ce971fae22c"></span>double <code class="descname">TN</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2TNE" title="Permalink to this definition">¶</a></dt>
+<dd><p>numbers of true negatives </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2FPE">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo::FP__double"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo_1a52c894fe813facaee23192c07d8b5754"></span>double <code class="descname">FP</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2FPE" title="Permalink to this definition">¶</a></dt>
+<dd><p>numbers of false positives </p>
+</dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2FNE">
+<span id="paddle::PrecisionRecallEvaluator::StatsInfo::FN__double"></span><span class="target" id="paddlestructpaddle_1_1PrecisionRecallEvaluator_1_1StatsInfo_1a06127b35daf5837f9c2218f7bcd05120"></span>double <code class="descname">FN</code><a class="headerlink" href="#_CPPv2N6paddle24PrecisionRecallEvaluator9StatsInfo2FNE" title="Permalink to this definition">¶</a></dt>
+<dd><p>numbers of false negatives </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="chunkevaluator">
+<h2>ChunkEvaluator<a class="headerlink" href="#chunkevaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle14ChunkEvaluatorE">
+<span id="paddle::ChunkEvaluator"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ChunkEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Chunk evaluator is used to evaluate segment labelling accuracy for a sequence. It calculates the chunk detection F1 score.</p>
+<p>A chunk is correctly detected if its beginning, end and type are correct. Other chunk type is ignored. For each label in the label sequence, we have</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">tagType</span> <span class="o">=</span> <span class="n">label</span> <span class="o">%</span> <span class="n">numTagType</span>
+<span class="n">chunkType</span> <span class="o">=</span> <span class="n">label</span> <span class="o">/</span> <span class="n">numTagType</span>
+<span class="n">otherChunkType</span> <span class="o">=</span> <span class="n">numChunkTypes</span>
+</pre></div>
+</div>
+</p>
+<p>The total number of different labels is numTagType*numChunkTypes+1 We support 4 labelling scheme The tag type for each of the scheme is shown as follows:</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Scheme</span> <span class="n">Begin</span> <span class="n">Inside</span> <span class="n">End</span>   <span class="n">Single</span>
+ <span class="n">plain</span>  <span class="mi">0</span>     <span class="o">-</span>      <span class="o">-</span>     <span class="o">-</span>
+ <span class="n">IOB</span>    <span class="mi">0</span>     <span class="mi">1</span>      <span class="o">-</span>     <span class="o">-</span>
+ <span class="n">IOE</span>    <span class="o">-</span>     <span class="mi">0</span>      <span class="mi">1</span>     <span class="o">-</span>
+ <span class="n">IOBES</span>  <span class="mi">0</span>     <span class="mi">1</span>      <span class="mi">2</span>     <span class="mi">3</span>
+</pre></div>
+</div>
+</p>
+<p>&#8216;plain&#8217; means the whole chunk must contain exactly the same chunk label. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator4initERK15EvaluatorConfig">
+<span id="paddle::ChunkEvaluator::init__EvaluatorConfigCR"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a1d8eaeb9201d863f4dad7d9f3a7db4fb"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span><em class="property">const</em> EvaluatorConfig &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator4initERK15EvaluatorConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator5startEv">
+<span id="paddle::ChunkEvaluator::start"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1ae48510968c7bc797d2f73beedf516bf8"></span><em class="property">virtual</em> void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::ChunkEvaluator::printStats__osR"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1ad3a8d8f7ea6bd3dd61a67f5fa90aa21b"></span><em class="property">virtual</em> void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print the statistics of evaluate result </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before printStats </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::ChunkEvaluator::distributeEval__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1ab88592ba9b37fd1b6bc961f6d2acd2cc"></span><em class="property">virtual</em> void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before distributeEval </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::ChunkEvaluator::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1af2a844ded3ef3e87ee36e32dcd74272e"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1ChunkEvaluator_1ad3a8d8f7ea6bd3dd61a67f5fa90aa21b"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator5eval1EPiPii">
+<span id="paddle::ChunkEvaluator::eval1__iP.iP.i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a1ee37205d78d012118a6734df1d4861c"></span>void <code class="descname">eval1</code><span class="sig-paren">(</span>int *<em>output</em>, int *<em>label</em>, int <em>length</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator5eval1EPiPii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator11getSegmentsEPiiRNSt6vectorI7SegmentEE">
+<span id="paddle::ChunkEvaluator::getSegments__iP.i.std::vector:Segment:R"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a0832d881f10eeff30d852a0c62a3c07e"></span>void <code class="descname">getSegments</code><span class="sig-paren">(</span>int *<em>label</em>, int <em>length</em>, std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle7SegmentE" title="paddle::Segment">Segment</a>&gt; &amp;<em>segments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator11getSegmentsEPiiRNSt6vectorI7SegmentEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator10isChunkEndEiiii">
+<span id="paddle::ChunkEvaluator::isChunkEnd__i.i.i.i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a73f1b81d3697640fbf27a45069e19b83"></span>bool <code class="descname">isChunkEnd</code><span class="sig-paren">(</span>int <em>prevTag</em>, int <em>prevType</em>, int <em>tag</em>, int <em>type</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator10isChunkEndEiiii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle14ChunkEvaluator12isChunkBeginEiiii">
+<span id="paddle::ChunkEvaluator::isChunkBegin__i.i.i.i"></span><span class="target" id="paddleclasspaddle_1_1ChunkEvaluator_1a425bc6dd488821c85497ddad43fce8c6"></span>bool <code class="descname">isChunkBegin</code><span class="sig-paren">(</span>int <em>prevTag</em>, int <em>prevType</em>, int <em>tag</em>, int <em>type</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle14ChunkEvaluator12isChunkBeginEiiii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="ctcevaluator">
+<h2>CTCEvaluator<a class="headerlink" href="#ctcevaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluatorE">
+<span id="paddle::CTCErrorEvaluator"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CTCErrorEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculate sequence-to-sequence edit distance </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator17CTCErrorEvaluatorEv">
+<span id="paddle::CTCErrorEvaluator::CTCErrorEvaluator"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a933336d77ed52f17e6a03b16ee8f24e4"></span><code class="descname">CTCErrorEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator17CTCErrorEvaluatorEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::CTCErrorEvaluator::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1af3f25a9a048f9ce5568414191b969750"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1CTCErrorEvaluator_1ae7309eba9ec5e8e3cdea1e41520c79f0"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator4evalERK13NeuralNetwork">
+<span id="paddle::CTCErrorEvaluator::eval__NeuralNetworkCR"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a4dbf548aff97caa2fc412322ac6d491b"></span><em class="property">virtual</em> void <code class="descname">eval</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../gradientmachines/gradientmachines.html#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> &amp;<em>nn</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator4evalERK13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::CTCErrorEvaluator::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a0cd5405538ad0218bb7f07c463c1b3aa"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator5startEv">
+<span id="paddle::CTCErrorEvaluator::start"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1aa2dd2ffde1a382794b4d166a8417454e"></span><em class="property">virtual</em> void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::CTCErrorEvaluator::printStats__osR"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1ae7309eba9ec5e8e3cdea1e41520c79f0"></span><em class="property">virtual</em> void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print the statistics of evaluate result </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before printStats </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle17CTCErrorEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::CTCErrorEvaluator::distributeEval__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1CTCErrorEvaluator_1a4f0051c87cd3081725c2f9c3f2be429d"></span><em class="property">virtual</em> void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17CTCErrorEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before distributeEval </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="rank">
+<h1>Rank<a class="headerlink" href="#rank" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="pnpairevaluator">
+<h2>PnpairEvaluator<a class="headerlink" href="#pnpairevaluator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle15PnpairEvaluatorE">
+<span id="paddle::PnpairEvaluator"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">PnpairEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator15PnpairEvaluatorEv">
+<span id="paddle::PnpairEvaluator::PnpairEvaluator"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a87bf19d236814eb1ba60b781b9a3f388"></span><code class="descname">PnpairEvaluator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator15PnpairEvaluatorEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator5startEv">
+<span id="paddle::PnpairEvaluator::start"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a91efe284c2ae0197f4fa1e707fd51c1f"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::PnpairEvaluator::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a45d83a648c0cfc968aee16b7be49aa8e"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1PnpairEvaluator_1aef0306a1ebe38fda20c957739ad7421c"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1PnpairEvaluator_1aa7a33b09976d73374416b383884f2a34"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator19printPredictResultsEv">
+<span id="paddle::PnpairEvaluator::printPredictResults"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a421ca13cd716ac3b48cce42a70dae5ee"></span>void <code class="descname">printPredictResults</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator19printPredictResultsEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator4statE6size_t6size_tP16PredictionResultRdRdRd">
+<span id="paddle::PnpairEvaluator::stat__s.s.PredictionResultP.doubleR.doubleR.doubleR"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a71fb1eee36bb786cd846c57bd79141a2"></span>void <code class="descname">stat</code><span class="sig-paren">(</span>size_t <em>start</em>, size_t <em>end</em>, <a class="reference internal" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResultE" title="paddle::PnpairEvaluator::PredictionResult">PredictionResult</a> *<em>answers</em>, double &amp;<em>pos</em>, double &amp;<em>neg</em>, double &amp;<em>spe</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator4statE6size_t6size_tP16PredictionResultRdRdRd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator4calcERNSt6vectorI16PredictionResultEE">
+<span id="paddle::PnpairEvaluator::calc__std::vector:PredictionResult:R"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1ab38ca9781fedb0790a235d09899f531a"></span>void <code class="descname">calc</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResultE" title="paddle::PnpairEvaluator::PredictionResult">PredictionResult</a>&gt; &amp;<em>predictArray</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator4calcERNSt6vectorI16PredictionResultEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator6finishEv">
+<span id="paddle::PnpairEvaluator::finish"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1aef0306a1ebe38fda20c957739ad7421c"></span><em class="property">virtual</em> void <code class="descname">finish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator6finishEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>finish the evaluation. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator10printStatsERNSt7ostreamE">
+<span id="paddle::PnpairEvaluator::printStats__osR"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1aa7a33b09976d73374416b383884f2a34"></span><em class="property">virtual</em> void <code class="descname">printStats</code><span class="sig-paren">(</span>std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator10printStatsERNSt7ostreamE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print the statistics of evaluate result </p>
+<p><dl class="docutils">
+<dt><strong>Note</strong></dt>
+<dd><a class="reference internal" href="#paddleclasspaddle_1_1PnpairEvaluator_1aef0306a1ebe38fda20c957739ad7421c"><span class="std std-ref">finish()</span></a> should be called before printStats </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::PnpairEvaluator::distributeEval__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a81b1e216e2a60db438c0de0f1ba6662b"></span><em class="property">virtual</em> void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1PnpairEvaluator_1aef0306a1ebe38fda20c957739ad7421c"><span class="std std-ref">finish()</span></a> should be called before distributeEval </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator13predictArray_E">
+<span id="paddle::PnpairEvaluator::predictArray___std::vector:PredictionResult:"></span><span class="target" id="paddleclasspaddle_1_1PnpairEvaluator_1a25335255b22c334fd906013c2d94e432"></span>std::vector&lt;<a class="reference internal" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResultE" title="paddle::PnpairEvaluator::PredictionResult">PredictionResult</a>&gt; <code class="descname">predictArray_</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator13predictArray_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResultE">
+<span id="paddle::PnpairEvaluator::PredictionResult"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult"></span><em class="property">struct </em><code class="descname">PredictionResult</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResultE" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResult16PredictionResultE4realii4real">
+<span id="paddle::PnpairEvaluator::PredictionResult::PredictionResult__real.i.i.real"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult_1a6249c9a4d2358a506ecad83331587205"></span><code class="descname">PredictionResult</code><span class="sig-paren">(</span>real <em>__out</em>, int <em>__label</em>, int <em>__queryid</em>, real <em>__weight</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResult16PredictionResultE4realii4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResult3outE">
+<span id="paddle::PnpairEvaluator::PredictionResult::out__real"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult_1a1612672f26ceaa3571cf31ac9dfb2b00"></span>real <code class="descname">out</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResult3outE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResult5labelE">
+<span id="paddle::PnpairEvaluator::PredictionResult::label__i"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult_1ad008a8283690aea270c82378b6dc00b4"></span>int <code class="descname">label</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResult5labelE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResult7queryidE">
+<span id="paddle::PnpairEvaluator::PredictionResult::queryid__i"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult_1a2b664c0253de15b21f4d2b60727cd9ce"></span>int <code class="descname">queryid</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResult7queryidE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle15PnpairEvaluator16PredictionResult6weightE">
+<span id="paddle::PnpairEvaluator::PredictionResult::weight__real"></span><span class="target" id="paddlestructpaddle_1_1PnpairEvaluator_1_1PredictionResult_1a5adef314d9c2b77378279d671168373f"></span>real <code class="descname">weight</code><a class="headerlink" href="#_CPPv2N6paddle15PnpairEvaluator16PredictionResult6weightE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="id1">
+<h2>AucEvaluator<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle16RankAucEvaluatorE">
+<span id="paddle::RankAucEvaluator"></span><span class="target" id="paddleclasspaddle_1_1RankAucEvaluator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">RankAucEvaluator</code><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluatorE" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1RankAucEvaluator"><span class="std std-ref">RankAucEvaluator</span></a> calculates the AUC of each list (i.e., titles under the same query), and averages them. Each list should be organized as a sequence. The inputs of this evaluator is [output, click, pv]. If pv is not provided, it will be set to 1. The types of click and pv are dense value. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16RankAucEvaluator5startEv">
+<span id="paddle::RankAucEvaluator::start"></span><span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1a924658aaa8f52b175c338316bd0c8bd4"></span>void <code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator5startEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>start to evaluate some data </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16RankAucEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::RankAucEvaluator::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1a42076eda6e5e67ad7761cd968908e842"></span>void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16RankAucEvaluator7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::RankAucEvaluator::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1aea1f1db5dfa1aaab3b9f7313ff6ea0f3"></span>real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16RankAucEvaluator14distributeEvalEP16ParameterClient2">
+<span id="paddle::RankAucEvaluator::distributeEval__ParameterClient2P"></span><span class="target" id="paddleclasspaddle_1_1RankAucEvaluator_1acb6848680b165f8db95c0cac0b9cb1f2"></span><em class="property">virtual</em> void <code class="descname">distributeEval</code><span class="sig-paren">(</span><a class="reference internal" href="../../pserver/client/client.html#_CPPv2N6paddle16ParameterClient2E" title="paddle::ParameterClient2">ParameterClient2</a> *<em>client</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16RankAucEvaluator14distributeEvalEP16ParameterClient2" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> should be called before distributeEval </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="printer">
+<h1>Printer<a class="headerlink" href="#printer" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="valueprinter">
+<h2>ValuePrinter<a class="headerlink" href="#valueprinter" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle12ValuePrinterE">
+<span id="paddle::ValuePrinter"></span><span class="target" id="paddleclasspaddle_1_1ValuePrinter"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ValuePrinter</code><a class="headerlink" href="#_CPPv2N6paddle12ValuePrinterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print value of each layer. </p>
+<p>The config file api is value_printer_evaluator. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12ValuePrinter12ValuePrinterEv">
+<span id="paddle::ValuePrinter::ValuePrinter"></span><span class="target" id="paddleclasspaddle_1_1ValuePrinter_1af8b031fb8f8a98f00bb78fc94b02eaff"></span><code class="descname">ValuePrinter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12ValuePrinter12ValuePrinterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12ValuePrinter4evalERK13NeuralNetwork">
+<span id="paddle::ValuePrinter::eval__NeuralNetworkCR"></span><span class="target" id="paddleclasspaddle_1_1ValuePrinter_1ae1842a00bcdab90c2ac8b50e6ca0b6df"></span><em class="property">virtual</em> void <code class="descname">eval</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../gradientmachines/gradientmachines.html#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> &amp;<em>nn</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12ValuePrinter4evalERK13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12ValuePrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::ValuePrinter::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1ValuePrinter_1a8bf43ed18f92281b08960c9aba224b40"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12ValuePrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12ValuePrinter7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::ValuePrinter::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1ValuePrinter_1a647ac6741db47fa1622a9cbed740bc82"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12ValuePrinter7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="gradientprinter">
+<h2>GradientPrinter<a class="headerlink" href="#gradientprinter" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle15GradientPrinterE">
+<span id="paddle::GradientPrinter"></span><span class="target" id="paddleclasspaddle_1_1GradientPrinter"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">GradientPrinter</code><a class="headerlink" href="#_CPPv2N6paddle15GradientPrinterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print gradient of each layer. </p>
+<p>The config file api is gradient_printer_evaluator. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle15GradientPrinter15GradientPrinterEv">
+<span id="paddle::GradientPrinter::GradientPrinter"></span><span class="target" id="paddleclasspaddle_1_1GradientPrinter_1a5ac88b5371296129abbb5593166e1327"></span><code class="descname">GradientPrinter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15GradientPrinter15GradientPrinterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15GradientPrinter4evalERK13NeuralNetwork">
+<span id="paddle::GradientPrinter::eval__NeuralNetworkCR"></span><span class="target" id="paddleclasspaddle_1_1GradientPrinter_1abb6e44905f55abf28ccc2fb1d7a1be73"></span><em class="property">virtual</em> void <code class="descname">eval</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../gradientmachines/gradientmachines.html#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> &amp;<em>nn</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15GradientPrinter4evalERK13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15GradientPrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::GradientPrinter::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1GradientPrinter_1afb60dd1a7b2ca48d3525db0fdf8c43a0"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15GradientPrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15GradientPrinter7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::GradientPrinter::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1GradientPrinter_1aa81f426080e54a20f80b32ce04a8e7e7"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15GradientPrinter7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="maxidprinter">
+<h2>MaxIdPrinter<a class="headerlink" href="#maxidprinter" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle12MaxIdPrinterE">
+<span id="paddle::MaxIdPrinter"></span><span class="target" id="paddleclasspaddle_1_1MaxIdPrinter"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MaxIdPrinter</code><a class="headerlink" href="#_CPPv2N6paddle12MaxIdPrinterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print row max id vctor of each layer </p>
+<p>The config file api is maxid_printer_evaluator. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle12MaxIdPrinter12MaxIdPrinterEv">
+<span id="paddle::MaxIdPrinter::MaxIdPrinter"></span><span class="target" id="paddleclasspaddle_1_1MaxIdPrinter_1a869bf9ef1903e63c029e8064aaed5e6f"></span><code class="descname">MaxIdPrinter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12MaxIdPrinter12MaxIdPrinterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12MaxIdPrinter4evalERK13NeuralNetwork">
+<span id="paddle::MaxIdPrinter::eval__NeuralNetworkCR"></span><span class="target" id="paddleclasspaddle_1_1MaxIdPrinter_1a5daae67b0a4b56d8f2728e3e09b5956b"></span><em class="property">virtual</em> void <code class="descname">eval</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../gradientmachines/gradientmachines.html#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> &amp;<em>nn</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12MaxIdPrinter4evalERK13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12MaxIdPrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::MaxIdPrinter::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1MaxIdPrinter_1af3fba1d1e534bbc6bbc735ef70c439c4"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12MaxIdPrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle12MaxIdPrinter7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::MaxIdPrinter::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1MaxIdPrinter_1a5043f545e7c3d9f1e039e514499b5a29"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12MaxIdPrinter7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="maxframeprinter">
+<h2>MaxFramePrinter<a class="headerlink" href="#maxframeprinter" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle15MaxFramePrinterE">
+<span id="paddle::MaxFramePrinter"></span><span class="target" id="paddleclasspaddle_1_1MaxFramePrinter"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MaxFramePrinter</code><a class="headerlink" href="#_CPPv2N6paddle15MaxFramePrinterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print sequence max frames of each layer </p>
+<p>The config file api is maxframe_printer_evaluator. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle15MaxFramePrinter15MaxFramePrinterEv">
+<span id="paddle::MaxFramePrinter::MaxFramePrinter"></span><span class="target" id="paddleclasspaddle_1_1MaxFramePrinter_1a91653e9ec9da190b3f690a0e88378aab"></span><code class="descname">MaxFramePrinter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15MaxFramePrinter15MaxFramePrinterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15MaxFramePrinter4evalERK13NeuralNetwork">
+<span id="paddle::MaxFramePrinter::eval__NeuralNetworkCR"></span><span class="target" id="paddleclasspaddle_1_1MaxFramePrinter_1afb977b963814b6680bbb4b15bd424962"></span><em class="property">virtual</em> void <code class="descname">eval</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../gradientmachines/gradientmachines.html#_CPPv2N6paddle13NeuralNetworkE" title="paddle::NeuralNetwork">NeuralNetwork</a> &amp;<em>nn</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15MaxFramePrinter4evalERK13NeuralNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15MaxFramePrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::MaxFramePrinter::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1MaxFramePrinter_1a139ec5b15f66194ce39b7aad2ed6f01d"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15MaxFramePrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle15MaxFramePrinter7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::MaxFramePrinter::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1MaxFramePrinter_1a08998f1054c796708fbf293e5f745a20"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15MaxFramePrinter7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sequencetextprinter">
+<h2>SequenceTextPrinter<a class="headerlink" href="#sequencetextprinter" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle19SequenceTextPrinterE">
+<span id="paddle::SequenceTextPrinter"></span><span class="target" id="paddleclasspaddle_1_1SequenceTextPrinter"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SequenceTextPrinter</code><a class="headerlink" href="#_CPPv2N6paddle19SequenceTextPrinterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print text according to index matrix and a dictionary. </p>
+<p>There can be multiple input to this layer:<ul class="simple">
+<li>If there is only one input, the input must be a matrix containing the sequence of indices;</li>
+<li>If there are more than one input, the first input should be ids, and are interpreted as sample ids.</li>
+</ul>
+</p>
+<p>The output format will be:</p>
+<p><ul class="simple">
+<li>sequence without sub-sequence, and there is probability.</li>
+</ul>
+</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="nb">id</span> \<span class="n">t</span> <span class="n">prob</span> <span class="n">space_seperated_tokens_from_dictionary_according_to_seq</span>
+</pre></div>
+</div>
+</p>
+<p><ul class="simple">
+<li>sequence without sub-sequence, and there is not probability.</li>
+</ul>
+</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="nb">id</span> \<span class="n">t</span> <span class="n">space_seperated_tokens_from_dictionary_according_to_seq</span>
+</pre></div>
+</div>
+</p>
+<p><ul class="simple">
+<li>sequence with sub-sequence, and there is not probability.</li>
+</ul>
+</p>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="nb">id</span> \<span class="n">t</span> <span class="n">space_seperated_tokens_from_dictionary_according_to_sub_seq</span>
+\<span class="n">t</span> \<span class="n">t</span> <span class="n">space_seperated_tokens_from_dictionary_according_to_sub_seq</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+</p>
+<p>Typically <a class="reference internal" href="#paddleclasspaddle_1_1SequenceTextPrinter"><span class="std std-ref">SequenceTextPrinter</span></a> layer takes output of maxid or RecurrentGroup with maxid (when generating) as an input.</p>
+<p>The config file api is seqtext_printer_evaluator. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator"><span class="std std-ref">paddle::Evaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle19SequenceTextPrinter19SequenceTextPrinterEv">
+<span id="paddle::SequenceTextPrinter::SequenceTextPrinter"></span><span class="target" id="paddleclasspaddle_1_1SequenceTextPrinter_1a2606778e3a061cf20c8aabd824d7f421"></span><code class="descname">SequenceTextPrinter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle19SequenceTextPrinter19SequenceTextPrinterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle19SequenceTextPrinter4initERK15EvaluatorConfig">
+<span id="paddle::SequenceTextPrinter::init__EvaluatorConfigCR"></span><span class="target" id="paddleclasspaddle_1_1SequenceTextPrinter_1a8cae259bf48342337bb3342788f79dc9"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span><em class="property">const</em> EvaluatorConfig &amp;<em>config</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle19SequenceTextPrinter4initERK15EvaluatorConfig" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle19SequenceTextPrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::SequenceTextPrinter::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1SequenceTextPrinter_1a4b29d6df82fb5bd0f7397495f405bd10"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle19SequenceTextPrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle19SequenceTextPrinter7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::SequenceTextPrinter::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1SequenceTextPrinter_1af0be0d8e3ee77b89229f37f635a10b88"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle19SequenceTextPrinter7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="classificationerrorprinter">
+<h2>ClassificationErrorPrinter<a class="headerlink" href="#classificationerrorprinter" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv2N6paddle26ClassificationErrorPrinterE">
+<span id="paddle::ClassificationErrorPrinter"></span><span class="target" id="paddleclasspaddle_1_1ClassificationErrorPrinter"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ClassificationErrorPrinter</code><a class="headerlink" href="#_CPPv2N6paddle26ClassificationErrorPrinterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>print classification error. </p>
+<p>The config file api is classification_error_printer_evaluator. </p>
+<p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ClassificationErrorEvaluator"><span class="std std-ref">paddle::ClassificationErrorEvaluator</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle26ClassificationErrorPrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE">
+<span id="paddle::ClassificationErrorPrinter::updateSamplesNum__std::vector:Argument:CR"></span><span class="target" id="paddleclasspaddle_1_1ClassificationErrorPrinter_1aa2bbfe6c2c794caf48ddb0ac7d43926a"></span><em class="property">virtual</em> void <code class="descname">updateSamplesNum</code><span class="sig-paren">(</span><em class="property">const</em> std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle26ClassificationErrorPrinter16updateSamplesNumERKNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the number of processed samples. </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle26ClassificationErrorPrinter7evalImpERNSt6vectorI8ArgumentEE">
+<span id="paddle::ClassificationErrorPrinter::evalImp__std::vector:Argument:R"></span><span class="target" id="paddleclasspaddle_1_1ClassificationErrorPrinter_1abad09d511ea72debff05479cad0c6e95"></span><em class="property">virtual</em> real <code class="descname">evalImp</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a>&gt; &amp;<em>arguments</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle26ClassificationErrorPrinter7evalImpERNSt6vectorI8ArgumentEE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a batch of data. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>the score for the batch if it make sense to sum the score across batches. </dd>
+<dt><strong>Note</strong></dt>
+<dd>Otherwise evaluator should return 0 and override <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1aa406bdcea7851b629eff6c6357e4b1db"><span class="std std-ref">finish()</span></a> and <a class="reference internal" href="#paddleclasspaddle_1_1Evaluator_1afa11b7b849d3968bb45302f3eb634a19"><span class="std std-ref">printStats()</span></a> to do the right calculation. </dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Base Evaluator</a><ul>
+<li><a class="reference internal" href="#evaluator">Evaluator</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#utils">Utils</a><ul>
+<li><a class="reference internal" href="#sumevaluator">SumEvaluator</a></li>
+<li><a class="reference internal" href="#columnsumevaluator">ColumnSumEvaluator</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#classification">Classification</a><ul>
+<li><a class="reference internal" href="#classificationerrorevaluator">ClassificationErrorEvaluator</a></li>
+<li><a class="reference internal" href="#sequenceclassificationerrorevaluator">SequenceClassificationErrorEvaluator</a></li>
+<li><a class="reference internal" href="#aucevaluator">AucEvaluator</a></li>
+<li><a class="reference internal" href="#precisionrecallevaluator">PrecisionRecallEvaluator</a></li>
+<li><a class="reference internal" href="#chunkevaluator">ChunkEvaluator</a></li>
+<li><a class="reference internal" href="#ctcevaluator">CTCEvaluator</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#rank">Rank</a><ul>
+<li><a class="reference internal" href="#pnpairevaluator">PnpairEvaluator</a></li>
+<li><a class="reference internal" href="#id1">AucEvaluator</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#printer">Printer</a><ul>
+<li><a class="reference internal" href="#valueprinter">ValuePrinter</a></li>
+<li><a class="reference internal" href="#gradientprinter">GradientPrinter</a></li>
+<li><a class="reference internal" href="#maxidprinter">MaxIdPrinter</a></li>
+<li><a class="reference internal" href="#maxframeprinter">MaxFramePrinter</a></li>
+<li><a class="reference internal" href="#sequencetextprinter">SequenceTextPrinter</a></li>
+<li><a class="reference internal" href="#classificationerrorprinter">ClassificationErrorPrinter</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Evaluators</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../gradientmachines/index.html"
+                        title="next chapter">Gradient Machines Documents</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/gserver/evaluators/evaluators.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../gradientmachines/index.html" title="Gradient Machines Documents"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Evaluators"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Evaluators</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

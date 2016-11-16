@@ -1,0 +1,440 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Update &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Parameter Documents" href="index.html" />
+    <link rel="next" title="Parameter Documents" href="../optimizer/index.html" />
+    <link rel="prev" title="Parameter Documents" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../optimizer/index.html" title="Parameter Documents"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Parameter Documents"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Parameter Documents</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="update">
+<h1>Update<a class="headerlink" href="#update" title="Permalink to this headline">¶</a></h1>
+<dl class="type">
+<dt id="_CPPv26paddle">
+<span id="paddle"></span><span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="class">
+<dt id="_CPPv2N6paddle16ParameterUpdaterE">
+<span id="paddle::ParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater"></span><em class="property">class </em><code class="descname">ParameterUpdater</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdaterE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ParameterUpdaterComposite"><span class="std std-ref">paddle::ParameterUpdaterComposite</span></a>, <a class="reference internal" href="../../trainer/trainer.html#paddleclasspaddle_1_1RemoteParameterUpdater"><span class="std std-ref">paddle::RemoteParameterUpdater</span></a>, paddle::SgdLocalUpdater, paddle::SgdThreadUpdater, <a class="reference internal" href="../../trainer/trainer.html#paddleclasspaddle_1_1SparseRemoteParameterUpdater"><span class="std std-ref">paddle::SparseRemoteParameterUpdater</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater16ParameterUpdaterEv">
+<span id="paddle::ParameterUpdater::ParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a736e288809d01285c77ee9a7101948ea"></span><code class="descname">ParameterUpdater</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater16ParameterUpdaterEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdaterD0Ev">
+<span id="paddle::ParameterUpdater::~ParameterUpdater"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1ac0ed15dc4cc166614da6cfd1debded38"></span><em class="property">virtual</em> <code class="descname">~ParameterUpdater</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdaterD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater16addParameterTypeE13ParameterType">
+<span id="paddle::ParameterUpdater::addParameterType__ParameterType"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1aa0b1e67ba8444e4f32e44cecb7fa0be9"></span>void <code class="descname">addParameterType</code><span class="sig-paren">(</span>ParameterType <em>type</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater16addParameterTypeE13ParameterType" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater4initERNSt6vectorI12ParameterPtrEE">
+<span id="paddle::ParameterUpdater::init__std::vector:ParameterPtr:R"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a21d4455d257244a4ffa59d3f60551afd"></span>void <code class="descname">init</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a>&gt; &amp;<em>parameters</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater4initERNSt6vectorI12ParameterPtrEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater9startPassEv">
+<span id="paddle::ParameterUpdater::startPass"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1add61354dd9dbf096a27b10babe6396f9"></span><em class="property">virtual</em> void <code class="descname">startPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater9startPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater10finishPassE4real">
+<span id="paddle::ParameterUpdater::finishPass__real"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1aae4040b50fe92d1ddfb1fb2d5d35da29"></span><em class="property">virtual</em> bool <code class="descname">finishPass</code><span class="sig-paren">(</span>real <em>cost</em> = 0<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater10finishPassE4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater10startBatchE7int64_t">
+<span id="paddle::ParameterUpdater::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a9432c0029e19cef65cf9f877b4566d0d"></span><em class="property">virtual</em> PassType <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>batchSize</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater11finishBatchE4real">
+<span id="paddle::ParameterUpdater::finishBatch__real"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a89b68725364cce96e960c1c1aac1cc06"></span><em class="property">virtual</em> void <code class="descname">finishBatch</code><span class="sig-paren">(</span>real <em>cost</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater11finishBatchE4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater6updateEP9Parameter">
+<span id="paddle::ParameterUpdater::update__ParameterP"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1aca47db0b2f38b31ab0606a7d655a5962"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater6updateEP9Parameter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater19getParametersRemoteEbb">
+<span id="paddle::ParameterUpdater::getParametersRemote__b.b"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a1ee84f8af76a2ac03f64add62cdf8db5"></span><em class="property">virtual</em> void <code class="descname">getParametersRemote</code><span class="sig-paren">(</span>bool <em>fullSize</em> = false, bool <em>apply</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater19getParametersRemoteEbb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater20loadParametersRemoteERKNSt6stringE">
+<span id="paddle::ParameterUpdater::loadParametersRemote__ssCR"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a4c018679500feab74163a35c67453aa1"></span><em class="property">virtual</em> void <code class="descname">loadParametersRemote</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>dirName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater20loadParametersRemoteERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater20saveParametersRemoteERKNSt6stringE">
+<span id="paddle::ParameterUpdater::saveParametersRemote__ssCR"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a8a80df47e02b0091e4e81c65a7a8a546"></span><em class="property">virtual</em> void <code class="descname">saveParametersRemote</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>dirName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater20saveParametersRemoteERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater20randParametersRemoteEv">
+<span id="paddle::ParameterUpdater::randParametersRemote"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a19f5e664167bc030d55420364db8de3c"></span><em class="property">virtual</em> void <code class="descname">randParametersRemote</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater20randParametersRemoteEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater11catchUpWithEv">
+<span id="paddle::ParameterUpdater::catchUpWith"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a56410db901446196fcc85d3c254b7ec2"></span><em class="property">virtual</em> void <code class="descname">catchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater11catchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater5applyEv">
+<span id="paddle::ParameterUpdater::apply"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a88a794eb4e58f61818590832b5ba0f36"></span><em class="property">virtual</em> void <code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater5applyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater7restoreEv">
+<span id="paddle::ParameterUpdater::restore"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1afd5a2c1e90fca4e13806ef3bb251d87c"></span><em class="property">virtual</em> void <code class="descname">restore</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater7restoreEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2NK6paddle16ParameterUpdater17getParameterTypesEv">
+<span id="paddle::ParameterUpdater::getParameterTypesC"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a568d1bc5f4160d74ffd041a26e42b1b7"></span><em class="property">const</em> std::vector&lt;ParameterType&gt; &amp;<code class="descname">getParameterTypes</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle16ParameterUpdater17getParameterTypesEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater22setForwardbackwardTimeE8uint64_t">
+<span id="paddle::ParameterUpdater::setForwardbackwardTime__uint64_t"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a7bcaceb09328c3eb3c1a9d33cf2286f6"></span><em class="property">virtual</em> void <code class="descname">setForwardbackwardTime</code><span class="sig-paren">(</span>uint64_t <em>delta</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater22setForwardbackwardTimeE8uint64_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle16ParameterUpdater10updateImplEP9Parameter">
+<span id="paddle::ParameterUpdater::updateImpl__ParameterP"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a159f694eaa1e8690ae2abc954321c79f"></span><em class="property">virtual</em> void <code class="descname">updateImpl</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater10updateImplEP9Parameter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle16ParameterUpdater15parameterTypes_E">
+<span id="paddle::ParameterUpdater::parameterTypes___std::vector:ParameterType:"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1ac0ca872a089834fd17d5ff5f7ce384c0"></span>std::vector&lt;ParameterType&gt; <code class="descname">parameterTypes_</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater15parameterTypes_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16ParameterUpdater11parameters_E">
+<span id="paddle::ParameterUpdater::parameters___std::vector:ParameterPtr:"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1ac2b178e0a6532ddec03487acaafb044b"></span>std::vector&lt;<a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a>&gt; <code class="descname">parameters_</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater11parameters_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle16ParameterUpdater19nonStaticParaIDMap_E">
+<span id="paddle::ParameterUpdater::nonStaticParaIDMap___std::map:s.s:"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdater_1a7dfe01bbfc4f9a48a9596cb023384246"></span>std::map&lt;size_t, size_t&gt; <code class="descname">nonStaticParaIDMap_</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterUpdater19nonStaticParaIDMap_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="_CPPv2N6paddle25ParameterUpdaterCompositeE">
+<span id="paddle::ParameterUpdaterComposite"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite"></span><em class="property">class </em><code class="descname">ParameterUpdaterComposite</code><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterCompositeE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ParameterUpdater"><span class="std std-ref">paddle::ParameterUpdater</span></a></p>
+<p>Subclassed by <a class="reference internal" href="../../trainer/trainer.html#paddleclasspaddle_1_1SparseRemoteParameterUpdaterComposite"><span class="std std-ref">paddle::SparseRemoteParameterUpdaterComposite</span></a></p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite25ParameterUpdaterCompositeEv">
+<span id="paddle::ParameterUpdaterComposite::ParameterUpdaterComposite"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1aa7b4efda79bd7118bd7f8ba1e4f2b029"></span><code class="descname">ParameterUpdaterComposite</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite25ParameterUpdaterCompositeEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterCompositeD0Ev">
+<span id="paddle::ParameterUpdaterComposite::~ParameterUpdaterComposite"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1a1ef5c9cc4f151a16c3585eeba942d9c8"></span><em class="property">virtual</em> <code class="descname">~ParameterUpdaterComposite</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterCompositeD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite4initERNSt6vectorI12ParameterPtrEE">
+<span id="paddle::ParameterUpdaterComposite::init__std::vector:ParameterPtr:R"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1ab4bb4646403bf75e73637746d4d4f7b1"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span>std::vector&lt;<a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle12ParameterPtrE" title="paddle::ParameterPtr">ParameterPtr</a>&gt; &amp;<em>parameters</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite4initERNSt6vectorI12ParameterPtrEE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite9startPassEv">
+<span id="paddle::ParameterUpdaterComposite::startPass"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1a566c48bdb304fad26207323f7a620c13"></span><em class="property">virtual</em> void <code class="descname">startPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite9startPassEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite10finishPassE4real">
+<span id="paddle::ParameterUpdaterComposite::finishPass__real"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1a9abcec2e13b5633e7e3bb5dbfc0039f2"></span><em class="property">virtual</em> bool <code class="descname">finishPass</code><span class="sig-paren">(</span>real <em>cost</em> = 0<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite10finishPassE4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite10startBatchE7int64_t">
+<span id="paddle::ParameterUpdaterComposite::startBatch__int64_t"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1a16455f95b0d7fe72f473eb873df154cc"></span><em class="property">virtual</em> PassType <code class="descname">startBatch</code><span class="sig-paren">(</span>int64_t <em>batchSize</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite10startBatchE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite11finishBatchE4real">
+<span id="paddle::ParameterUpdaterComposite::finishBatch__real"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1ab34ca754cf2327ed6bf5010cd38089a7"></span><em class="property">virtual</em> void <code class="descname">finishBatch</code><span class="sig-paren">(</span>real <em>cost</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite11finishBatchE4real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite19getParametersRemoteEbb">
+<span id="paddle::ParameterUpdaterComposite::getParametersRemote__b.b"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1a0f61d0a3dd4f73d2e739eb68301e0f4e"></span><em class="property">virtual</em> void <code class="descname">getParametersRemote</code><span class="sig-paren">(</span>bool <em>fullSize</em>, bool <em>apply</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite19getParametersRemoteEbb" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite20loadParametersRemoteERKNSt6stringE">
+<span id="paddle::ParameterUpdaterComposite::loadParametersRemote__ssCR"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1ac912f28a9b1070a44ed6e42fa133da58"></span><em class="property">virtual</em> void <code class="descname">loadParametersRemote</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>dirName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite20loadParametersRemoteERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite20saveParametersRemoteERKNSt6stringE">
+<span id="paddle::ParameterUpdaterComposite::saveParametersRemote__ssCR"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1a91ef5512f7d9516a8fa43e50a8dda5d0"></span><em class="property">virtual</em> void <code class="descname">saveParametersRemote</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>dirName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite20saveParametersRemoteERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite20randParametersRemoteEv">
+<span id="paddle::ParameterUpdaterComposite::randParametersRemote"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1adcf9700b6f65e15a9d7ec46ab2f3fac6"></span><em class="property">virtual</em> void <code class="descname">randParametersRemote</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite20randParametersRemoteEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite11catchUpWithEv">
+<span id="paddle::ParameterUpdaterComposite::catchUpWith"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1ada718aaaca9b2bc340dffb6fabac0260"></span><em class="property">virtual</em> void <code class="descname">catchUpWith</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite11catchUpWithEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite22setForwardbackwardTimeE8uint64_t">
+<span id="paddle::ParameterUpdaterComposite::setForwardbackwardTime__uint64_t"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1aba61969ad6267d62b418010e1f7443ea"></span><em class="property">virtual</em> void <code class="descname">setForwardbackwardTime</code><span class="sig-paren">(</span>uint64_t <em>delta</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite22setForwardbackwardTimeE8uint64_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite5applyEv">
+<span id="paddle::ParameterUpdaterComposite::apply"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1a66321678bdb7b500e56acd74524f1f8e"></span><em class="property">virtual</em> void <code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite5applyEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite7restoreEv">
+<span id="paddle::ParameterUpdaterComposite::restore"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1a1fc0824484abf05c334cbb03ad09dd22"></span><em class="property">virtual</em> void <code class="descname">restore</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite7restoreEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite10updateImplEP9Parameter">
+<span id="paddle::ParameterUpdaterComposite::updateImpl__ParameterP"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1aef704c198e4bbba200a5ad77510e5106"></span><em class="property">virtual</em> void <code class="descname">updateImpl</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite10updateImplEP9Parameter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Attributes</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite9updaters_E">
+<span id="paddle::ParameterUpdaterComposite::updaters___std::vector:std::unique_ptr:ParameterUpdater::"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1ad103dda9f7f30010166b55835febd75a"></span>std::vector&lt;std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle16ParameterUpdaterE" title="paddle::ParameterUpdater">ParameterUpdater</a>&gt;&gt; <code class="descname">updaters_</code><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite9updaters_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv2N6paddle25ParameterUpdaterComposite15syncThreadPool_E">
+<span id="paddle::ParameterUpdaterComposite::syncThreadPool___std::unique_ptr:SyncThreadPool:"></span><span class="target" id="paddleclasspaddle_1_1ParameterUpdaterComposite_1ac86b04f11b98fb9f9adbabde82e6da87"></span>std::unique_ptr&lt;<a class="reference internal" href="../../utils/lock.html#_CPPv2N6paddle14SyncThreadPoolE" title="paddle::SyncThreadPool">SyncThreadPool</a>&gt; <code class="descname">syncThreadPool_</code><a class="headerlink" href="#_CPPv2N6paddle25ParameterUpdaterComposite15syncThreadPool_E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="type">
+<dt id="_CPPv26paddle">
+<span class="target" id="paddlenamespacepaddle"></span><em class="property">namespace </em><code class="descname">paddle</code><a class="headerlink" href="#_CPPv26paddle" title="Permalink to this definition">¶</a></dt>
+<dd><div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Variables</p>
+<dl class="member">
+<dt id="_CPPv2N6paddle13__attribute__E">
+<span id="paddle::__attribute____paddle::IParameterUpdaterHook"></span><span class="target" id="paddlenamespacepaddle_1ae83136be5a20c0fcca6a7858f6cf7b56"></span><em class="property">class</em> <a class="reference internal" href="../../cuda/rnn/rnn.html#_CPPv26paddle" title="paddle">paddle</a>::<a class="reference internal" href="#_CPPv2N6paddle21IParameterUpdaterHookE" title="paddle::IParameterUpdaterHook">IParameterUpdaterHook</a> <code class="descname">__attribute__</code><a class="headerlink" href="#_CPPv2N6paddle13__attribute__E" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="class">
+<dt id="_CPPv2N6paddle21IParameterUpdaterHookE">
+<span id="paddle::IParameterUpdaterHook"></span><span class="target" id="paddleclasspaddle_1_1IParameterUpdaterHook"></span><em class="property">class </em><code class="descname">IParameterUpdaterHook</code><a class="headerlink" href="#_CPPv2N6paddle21IParameterUpdaterHookE" title="Permalink to this definition">¶</a></dt>
+<dd><em>#include &lt;ParameterUpdaterHook.h&gt;</em><p>The parameter updater hook interface.</p>
+<p>The <a class="reference internal" href="../parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> Updater hooks is a group of methods invoke before ParameterUpdater::updateImpl. It can modify gradient/momentum/etc before parameter optimization. </p>
+<p>Subclassed by paddle::StaticPruningHook</p>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle21IParameterUpdaterHookD0Ev">
+<span id="paddle::IParameterUpdaterHook::~IParameterUpdaterHook"></span><span class="target" id="paddleclasspaddle_1_1IParameterUpdaterHook_1ae4bc8bf0c1684871688c6e91401b1f36"></span><code class="descname">~IParameterUpdaterHook</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21IParameterUpdaterHookD0Ev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle21IParameterUpdaterHook6updateEP9Parameter">
+<span id="paddle::IParameterUpdaterHook::update__ParameterP"></span><span class="target" id="paddleclasspaddle_1_1IParameterUpdaterHook_1ace3161b496e13570214f4aaa2186b6ce"></span><em class="property">virtual</em> void <code class="descname">update</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle21IParameterUpdaterHook6updateEP9Parameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>The update hook method. Invoke before ParameterUpdater::updateImpl </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle21IParameterUpdaterHook4initEP9Parameter">
+<span id="paddle::IParameterUpdaterHook::init__ParameterP"></span><span class="target" id="paddleclasspaddle_1_1IParameterUpdaterHook_1aa26d8c298059d8b2375386ff29187600"></span><em class="property">virtual</em> void <code class="descname">init</code><span class="sig-paren">(</span><a class="reference internal" href="../parameter/parameter.html#_CPPv2N6paddle9ParameterE" title="paddle::Parameter">Parameter</a> *<em>para</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle21IParameterUpdaterHook4initEP9Parameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>The init hook method. Invoke in ParameterUpdater::init </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Public Static Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle21IParameterUpdaterHook6createERK15ParameterConfigi">
+<span id="paddle::IParameterUpdaterHook::create__ParameterConfigCR.i"></span><span class="target" id="paddleclasspaddle_1_1IParameterUpdaterHook_1ab3ab955eeaaf220d0ee9ab656ee023a1"></span>std::shared_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle21IParameterUpdaterHookE" title="paddle::IParameterUpdaterHook">IParameterUpdaterHook</a>&gt; <code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>paramConfig</em>, int <em>idx</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21IParameterUpdaterHook6createERK15ParameterConfigi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create A ParameterUpdaterHook.</p>
+<p>The same parameter shared the same hooks. So it returns shared_ptr.</p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">param_config</span></code>: The parameter config. </li>
+<li><code class="docutils literal"><span class="pre">idx</span></code>: The element index of param_config.updater_hooks() array. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Protected Functions</p>
+<dl class="function">
+<dt id="_CPPv2N6paddle21IParameterUpdaterHook21IParameterUpdaterHookEv">
+<span id="paddle::IParameterUpdaterHook::IParameterUpdaterHook"></span><span class="target" id="paddleclasspaddle_1_1IParameterUpdaterHook_1abe452ad082041055951ebd7eca728c8f"></span><code class="descname">IParameterUpdaterHook</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21IParameterUpdaterHook21IParameterUpdaterHookEv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ctor. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Parameter Documents</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../optimizer/index.html"
+                        title="next chapter">Parameter Documents</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/source/parameter/update/update.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../optimizer/index.html" title="Parameter Documents"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Parameter Documents"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Source Code Documents</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Parameter Documents</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

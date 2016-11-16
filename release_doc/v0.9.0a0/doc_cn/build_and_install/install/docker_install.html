@@ -1,0 +1,277 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>安装PaddlePaddle的Docker镜像 &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="paddlepaddledocker">
+<h1>安装PaddlePaddle的Docker镜像<a class="headerlink" href="#paddlepaddledocker" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle提供了Docker的使用镜像。PaddlePaddle推荐使用Docker进行PaddlePaddle的部署和
+运行。Docker是一个基于容器的轻量级虚拟环境。具有和宿主机相近的运行效率，并提供
+了非常方便的二进制分发手段。</p>
+<p>下述内容将分为如下几个类别描述。</p>
+<ul class="simple">
+<li>PaddlePaddle提供的Docker镜像版本</li>
+<li>下载和运行Docker镜像</li>
+<li>注意事项</li>
+</ul>
+<div class="section" id="id1">
+<h2>PaddlePaddle提供的Docker镜像版本<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>我们提供了12个 <a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/tags/">Docker image</a> ，他们的image name都是 <code class="code docutils literal"><span class="pre">paddle-dev/paddle</span></code> ，tag分别为</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="21%" />
+<col width="22%" />
+<col width="29%" />
+<col width="28%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">&nbsp;</th>
+<th class="head">normal</th>
+<th class="head">devel</th>
+<th class="head">demo</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>CPU</td>
+<td>cpu-latest</td>
+<td>cpu-devel-latest</td>
+<td>cpu-demo-latest</td>
+</tr>
+<tr class="row-odd"><td>GPU</td>
+<td>gpu-latest</td>
+<td>gpu-devel-latest</td>
+<td>gpu-demo-latest</td>
+</tr>
+<tr class="row-even"><td>CPU WITHOUT AVX</td>
+<td>cpu-noavx-latest</td>
+<td>cpu-noavx-devel-latest</td>
+<td>cpu-noavx-demo-latest</td>
+</tr>
+<tr class="row-odd"><td>GPU WITHOUT AVX</td>
+<td>gpu-noavx-latest</td>
+<td>gpu-noavx-devel-latest</td>
+<td>gpu-noavx-demo-latest</td>
+</tr>
+</tbody>
+</table>
+<p>其中，横向包括三个版本，normal，devel和demo。</p>
+<ul class="simple">
+<li>Normal: 正常的Docker image，只包括paddle的二进制</li>
+<li>Devel: 包括Paddle的二进制、编译环境和源代码</li>
+<li>Demo: 包括Paddle运行demo所需要的依赖</li>
+</ul>
+<p>纵向包括四个版本，他们是。</p>
+<ul class="simple">
+<li>CPU: CPU版本。需要支持AVX指令集的CPU</li>
+<li>GPU: GPU版本。需要支持AVX指令集的CPU</li>
+<li>CPU WITHOUT AVX: CPU版本，不支持AVX指令集的CPU也可以运行</li>
+<li>GPU WITHOUT AVX: GPU版本，不需要AVX指令集的CPU也可以运行。</li>
+</ul>
+<p>用户可以选择对应版本的docker image。使用如下脚本可以确定本机的CPU知否支持 <code class="code docutils literal"><span class="pre">AVX</span></code> 指令集:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="k">if</span> cat /proc/cpuinfo <span class="p">|</span> grep -q avx <span class="p">;</span> <span class="k">then</span> <span class="nb">echo</span> <span class="s2">&quot;Support AVX&quot;</span><span class="p">;</span> <span class="k">else</span> <span class="nb">echo</span> <span class="s2">&quot;Not support AVX&quot;</span><span class="p">;</span> <span class="k">fi</span>
+</pre></div>
+</div>
+<p>如果输出 <code class="code docutils literal"><span class="pre">Support</span> <span class="pre">AVX</span></code>，则可以选择上表中的AVX版本PaddlePaddle。否则需要选择非AVX的PaddlePaddle。选择普通CPU版本的devel版本的image，则可以使用 <code class="code docutils literal"><span class="pre">paddle-dev/paddle:cpu-devel-latest</span></code> 来引用这个image。</p>
+<p>PaddlePaddle提供的镜像并不包含任何命令运行，想要运行PaddlePaddle，您需要进入镜像运行PaddlePaddle
+程序或者自定义一个含有启动脚本的image。具体请参考注意事项中的 <code class="code docutils literal"><span class="pre">使用ssh访问PaddlePaddle镜像</span></code></p>
+</div>
+<div class="section" id="docker">
+<h2>下载和运行Docker镜像<a class="headerlink" href="#docker" title="Permalink to this headline">¶</a></h2>
+<p>为了运行PaddlePaddle的docker镜像，您需要在机器中安装好Docker。安装Docker需要您的机器
+至少具有3.10以上的linux kernel。安装方法请参考
+<a class="reference external" href="https://docs.docker.com/engine/installation/">Docker的官方文档</a> 。如果您使用
+mac osx或者是windows机器，请参考
+<a class="reference external" href="https://docs.docker.com/engine/installation/mac/">mac osx的安装文档</a> 和
+<a class="reference external" href="https://docs.docker.com/engine/installation/windows/">windows 的安装文档</a> 。</p>
+<p>您可以使用 <code class="code docutils literal"><span class="pre">docker</span> <span class="pre">pull</span></code> 命令预先下载镜像，也可以直接执行
+<code class="code docutils literal"><span class="pre">docker</span> <span class="pre">run</span></code> 命令运行镜像。执行方法如下:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ docker run -it paddledev/paddlepaddle:cpu-latest
+</pre></div>
+</div>
+<p>即可启动和进入PaddlePaddle的container。如果运行GPU版本的PaddlePaddle，则需要先将
+cuda相关的Driver和设备映射进container中，脚本类似于</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ <span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+$ <span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
+$ docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddlepaddle:latest-gpu
+</pre></div>
+</div>
+<p>进入Docker container后，运行 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">version</span></code> 即可打印出PaddlePaddle的版本和构建
+信息。安装完成的PaddlePaddle主体包括三个部分， <code class="code docutils literal"><span class="pre">paddle</span></code> 脚本， python的
+<code class="code docutils literal"><span class="pre">paddle</span></code> 包和 <code class="code docutils literal"><span class="pre">py_paddle</span></code> 包。其中:</p>
+<ul class="simple">
+<li><code class="code docutils literal"><span class="pre">paddle</span></code> 脚本和 <code class="code docutils literal"><span class="pre">paddle</span></code> 的python包是PaddlePaddle的训练主要程序。使用
+<code class="code docutils literal"><span class="pre">paddle</span></code> 脚本可以启动PaddlePaddle的训练进程和pserver。而 <code class="code docutils literal"><span class="pre">paddle</span></code> 脚本
+中的二进制使用了 <code class="code docutils literal"><span class="pre">paddle</span></code> 的python包来做配置文件解析等工作。</li>
+<li>python包 <code class="code docutils literal"><span class="pre">py_paddle</span></code> 是一个swig封装的PaddlePaddle包，用来做预测和简单的定制化
+训练。</li>
+</ul>
+</div>
+<div class="section" id="id3">
+<h2>注意事项<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id4">
+<h3>性能问题<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>由于Docker是基于容器的轻量化虚拟方案，所以在CPU的运算性能上并不会有严重的影响。
+而GPU的驱动和设备全部映射到了容器内，所以GPU在运算性能上也不会有严重的影响。</p>
+<p>但是如果使用了高性能的网卡，例如RDMA网卡(RoCE 40GbE 或者 IB 56GbE)，或者高性能的
+以太网卡 (10GbE)。推荐使用将本地网卡，即 &#8220;&#8211;net=host&#8221; 来进行训练。而不使用docker
+的网桥来进行网络通信。</p>
+</div>
+<div class="section" id="id5">
+<h3>远程访问问题和二次开发<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p>由于PaddlePaddle的Docker镜像并不包含任何预定义的运行命令。所以如果想要在后台启用ssh
+远程访问，则需要进行一定的二次开发，将ssh装入系统内并开启远程访问。二次开发可以
+使用Dockerfile构建一个全新的docker image。需要参考
+<a class="reference external" href="https://docs.docker.com/engine/reference/builder/">Dockerfile的文档</a> 和
+<a class="reference external" href="https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/">Dockerfile的最佳实践</a>
+两个文档。</p>
+<p>简单的含有ssh的Dockerfile如下：</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">FROM</span> <span class="n">paddledev</span><span class="o">/</span><span class="n">paddle</span><span class="p">:</span><span class="n">cpu</span><span class="o">-</span><span class="n">latest</span>
+
+<span class="n">MAINTAINER</span> <span class="n">PaddlePaddle</span> <span class="n">dev</span> <span class="n">team</span> <span class="o">&lt;</span><span class="n">paddle</span><span class="o">-</span><span class="n">dev</span><span class="nd">@baidu</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
+
+<span class="n">RUN</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">update</span>
+<span class="n">RUN</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="o">-</span><span class="n">y</span> <span class="n">openssh</span><span class="o">-</span><span class="n">server</span>
+<span class="n">RUN</span> <span class="n">mkdir</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">run</span><span class="o">/</span><span class="n">sshd</span>
+<span class="n">RUN</span> <span class="n">echo</span> <span class="s1">&#39;root:root&#39;</span> <span class="o">|</span> <span class="n">chpasswd</span>
+
+<span class="n">RUN</span> <span class="n">sed</span> <span class="o">-</span><span class="n">ri</span> <span class="s1">&#39;s/^PermitRootLogin\s+.*/PermitRootLogin yes/&#39;</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ssh</span><span class="o">/</span><span class="n">sshd_config</span>
+<span class="n">RUN</span> <span class="n">sed</span> <span class="o">-</span><span class="n">ri</span> <span class="s1">&#39;s/UsePAM yes/#UsePAM yes/g&#39;</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ssh</span><span class="o">/</span><span class="n">sshd_config</span>
+
+<span class="n">EXPOSE</span> <span class="mi">22</span>
+
+<span class="n">CMD</span>    <span class="p">[</span><span class="s2">&quot;/usr/sbin/sshd&quot;</span><span class="p">,</span> <span class="s2">&quot;-D&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>使用该Dockerfile构建出镜像，然后运行这个container即可。相关命令为:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># cd到含有Dockerfile的路径中</span>
+$ docker build . -t paddle_ssh
+<span class="c1"># 运行这个container，将宿主机的8022端口映射到container的22端口上</span>
+$ docker run -d -p 8022:22  --name paddle_ssh_machine paddle_ssh
+</pre></div>
+</div>
+<p>执行如下命令即可以关闭这个container，并且删除container中的数据:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># 关闭container</span>
+$ docker stop paddle_ssh_machine
+<span class="c1"># 删除container</span>
+$ docker rm paddle_ssh_machine
+</pre></div>
+</div>
+<p>如果想要在外部机器访问这个container，即可以使用ssh访问宿主机的8022端口。用户名为
+root，密码也是root。命令为:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ ssh -p <span class="m">8022</span> root@YOUR_HOST_MACHINE
+</pre></div>
+</div>
+<p>至此，您就可以远程的使用PaddlePaddle啦。</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">安装PaddlePaddle的Docker镜像</a><ul>
+<li><a class="reference internal" href="#id1">PaddlePaddle提供的Docker镜像版本</a></li>
+<li><a class="reference internal" href="#docker">下载和运行Docker镜像</a></li>
+<li><a class="reference internal" href="#id3">注意事项</a><ul>
+<li><a class="reference internal" href="#id4">性能问题</a></li>
+<li><a class="reference internal" href="#id5">远程访问问题和二次开发</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/build_and_install/install/docker_install.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

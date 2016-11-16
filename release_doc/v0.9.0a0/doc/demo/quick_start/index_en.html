@@ -1,0 +1,657 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Quick Start Tutorial &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="next" title="Build And Install PaddlePaddle" href="../../build/index.html" />
+    <link rel="prev" title="Introduction" href="../../introduction/index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../build/index.html" title="Build And Install PaddlePaddle"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../../introduction/index.html" title="Introduction"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="quick-start-tutorial">
+<span id="quick-start-tutorial"></span><h1>Quick Start Tutorial<a class="headerlink" href="#quick-start-tutorial" title="Permalink to this headline">¶</a></h1>
+<p>This tutorial will teach the basics of deep learning (DL), including how to implement many different models in PaddlePaddle. You will learn how to:</p>
+<ul class="simple">
+<li>Prepare data into the standardized format that PaddlePaddle accepts.</li>
+<li>Write data providers that read data into PaddlePaddle.</li>
+<li>Configure neural networks in PaddlePaddle layer by layer.</li>
+<li>Train models.</li>
+<li>Perform inference with trained models.</li>
+</ul>
+<div class="section" id="install">
+<span id="install"></span><h2>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h2>
+<p>To get started, please install PaddlePaddle on your computer. Throughout this tutorial, you will learn by implementing different DL models for text classification.</p>
+<p>To install PaddlePaddle, please follow the instructions here: <a href = "../../build/index.html" >Build and Install</a>.</p>
+</div>
+<div class="section" id="overview">
+<span id="overview"></span><h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>For the first step, you will use PaddlePaddle to build a <strong>text classification</strong> system. For example, suppose you run an e-commence  website, and you want to analyze the sentiment of user reviews to evaluate product quality.</p>
+<p>For example, given the input</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">This</span> <span class="n">monitor</span> <span class="ow">is</span> <span class="n">fantastic</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>Your classifier should output “positive”, since this text snippet shows that the user is satisfied with the product. Given this input:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">The</span> <span class="n">monitor</span> <span class="n">breaks</span> <span class="n">down</span> <span class="n">two</span> <span class="n">months</span> <span class="n">after</span> <span class="n">purchase</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>the classifier should output “negative“.</p>
+<p>To build your text classification system, your code will need to perform five steps:
+<center> <img alt="" src="../../_images/Pipeline_en.jpg" /> </center></p>
+<ul class="simple">
+<li>Preprocess data into a standardized format.</li>
+<li>Provide data to the learning model.</li>
+<li>Specify the neural network structure.</li>
+<li>Train the model.</li>
+<li>Inference (make prediction on test examples).</li>
+</ul>
+<ol class="simple">
+<li>Preprocess data into standardized format<ul>
+<li>In the text classification example, you will start with a text file with one training example per line. Each line contains category id (in machine learning, often denoted the target y), followed by the input text (often denoted x); these two elements are separated by a Tab. For example: <code class="docutils literal"><span class="pre">positive</span> <span class="pre">[tab]</span> <span class="pre">This</span> <span class="pre">monitor</span> <span class="pre">is</span> <span class="pre">fantastic</span></code>. You will preprocess this raw data into a format that Paddle can use.</li>
+</ul>
+</li>
+<li>Provide data to the learning model.<ul>
+<li>You can write data providers in Python. For any required data preprocessing step, you can add the preprocessing code to the PyDataProvider Python file.</li>
+<li>In our text classification example, every word or character will be converted into an integer id, specified in a dictionary file. It perform a dictionary lookup in PyDataProvider to get the id.</li>
+</ul>
+</li>
+<li>Specify neural network structure.  (From easy to hard, we provide 4 kinds of network configurations)<ul>
+<li>A logistic regression model.</li>
+<li>A word embedding model.</li>
+<li>A convolutional neural network model.</li>
+<li>A sequential recurrent neural network model.</li>
+<li>You will also learn different learning algorithms.</li>
+</ul>
+</li>
+<li>Training model.</li>
+<li>Inference.</li>
+</ol>
+</div>
+<div class="section" id="preprocess-data-into-standardized-format">
+<span id="preprocess-data-into-standardized-format"></span><h2>Preprocess data into standardized format<a class="headerlink" href="#preprocess-data-into-standardized-format" title="Permalink to this headline">¶</a></h2>
+<p>In this example, you are going to use <a class="reference external" href="http://jmcauley.ucsd.edu/data/amazon/">Amazon electronic product review dataset</a> to build a bunch of deep neural network models for text classification. Each text in this dataset is a product review. This dataset has two categories: “positive” and “negative”. Positive means the reviewer likes the product, while negative means the reviewer does not like the product.</p>
+<p><code class="docutils literal"><span class="pre">demo/quick_start</span></code> in the <a class="reference external" href="https://github.com/baidu/Paddle">source code</a> provides scripts for downloading data and preprocessing data as shown below. The data process takes several minutes (about 3 minutes in our machine).</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> demo/quick_start
+./data/get_data.sh
+./preprocess.sh
+</pre></div>
+</div>
+</div>
+<div class="section" id="transfer-data-to-model">
+<span id="transfer-data-to-model"></span><h2>Transfer Data to Model<a class="headerlink" href="#transfer-data-to-model" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="write-data-provider-with-python">
+<span id="write-data-provider-with-python"></span><h3>Write Data Provider with Python<a class="headerlink" href="#write-data-provider-with-python" title="Permalink to this headline">¶</a></h3>
+<p>The following <code class="docutils literal"><span class="pre">dataprovider_bow.py</span></code> gives a complete example of writing data provider with Python. It includes the following parts:</p>
+<ul class="simple">
+<li>initalizer： define the additional meta-data of the data provider and the types of the input data.</li>
+<li>process： Each <code class="docutils literal"><span class="pre">yield</span></code> returns a data sample. In this case, it return the text representation and category id. The order of features in the returned result needs to be consistent with the definition of the input types in <code class="docutils literal"><span class="pre">initalizer</span></code>.</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># id of the word not in dictionary</span>
+<span class="n">UNK_IDX</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c1"># initializer is called by the framework during initialization.</span>
+<span class="c1"># It allows the user to describe the data types and setup the</span>
+<span class="c1"># necessary data structure for later use.</span>
+<span class="c1"># `settings` is an object. initializer need to properly fill settings.input_types.</span>
+<span class="c1"># initializer can also store other data structures needed to be used at process().</span>
+<span class="c1"># In this example, dictionary is stored in settings.</span>
+<span class="c1"># `dictionay` and `kwargs` are arguments passed from trainer_config.lr.py</span>
+<span class="k">def</span> <span class="nf">initializer</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="c1"># Put the word dictionary into settings</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span> <span class="o">=</span> <span class="n">dictionary</span>
+
+    <span class="c1"># setting.input_types specifies what the data types the data provider</span>
+    <span class="c1"># generates.</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># The first input is a sparse_binary_vector,</span>
+        <span class="c1"># which means each dimension of the vector is either 0 or 1. It is the</span>
+        <span class="c1"># bag-of-words (BOW) representation of the texts.</span>
+        <span class="n">sparse_binary_vector</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dictionary</span><span class="p">)),</span>
+        <span class="c1"># The second input is an integer. It represents the category id of the</span>
+        <span class="c1"># sample. 2 means there are two labels in the dataset.</span>
+        <span class="c1"># (1 for positive and 0 for negative)</span>
+        <span class="n">integer_value</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+
+<span class="c1"># Delaring a data provider. It has an initializer &#39;data_initialzer&#39;.</span>
+<span class="c1"># It will cache the generated data of the first pass in memory, so that</span>
+<span class="c1"># during later pass, no on-the-fly data generation will be needed.</span>
+<span class="c1"># `setting` is the same object used by initializer()</span>
+<span class="c1"># `file_name` is the name of a file listed train_list or test_list file given</span>
+<span class="c1"># to define_py_data_sources2(). See trainer_config.lr.py.</span>
+<span class="nd">@provider</span><span class="p">(</span><span class="n">init_hook</span><span class="o">=</span><span class="n">initializer</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">CacheType</span><span class="o">.</span><span class="n">CACHE_PASS_IN_MEM</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+    <span class="c1"># Open the input data file.</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="c1"># Read each line.</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+            <span class="c1"># Each line contains the label and text of the comment, separated by \t.</span>
+            <span class="n">label</span><span class="p">,</span> <span class="n">comment</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Split the words into a list.</span>
+            <span class="n">words</span> <span class="o">=</span> <span class="n">comment</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+            <span class="c1"># convert the words into a list of ids by looking them up in word_dict.</span>
+            <span class="n">word_vector</span> <span class="o">=</span> <span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]</span>
+
+            <span class="c1"># Return the features for the current comment. The first is a list</span>
+            <span class="c1"># of ids representing a 0-1 binary sparse vector of the text,</span>
+            <span class="c1"># the second is the integer id of the label.</span>
+            <span class="k">yield</span> <span class="n">word_vector</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="define-python-data-provider-in-configuration-files">
+<span id="define-python-data-provider-in-configuration-files"></span><h3>Define Python Data Provider in Configuration files.<a class="headerlink" href="#define-python-data-provider-in-configuration-files" title="Permalink to this headline">¶</a></h3>
+<p>You need to add a data provider definition <code class="docutils literal"><span class="pre">define_py_data_sources2</span></code> in our network configuration. This definition specifies:</p>
+<ul class="simple">
+<li>The path of the training and testing data (<code class="docutils literal"><span class="pre">data/train.list</span></code>, <code class="docutils literal"><span class="pre">data/test.list</span></code>).</li>
+<li>The location of the data provider file (<code class="docutils literal"><span class="pre">dataprovider_bow</span></code>).</li>
+<li>The function to call to get data. (<code class="docutils literal"><span class="pre">process</span></code>).</li>
+<li>Additional arguments or data. Here it passes the path of word dictionary.</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="nb">file</span> <span class="o">=</span> <span class="s2">&quot;data/dict.txt&quot;</span>
+<span class="n">word_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dict_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">word_dict</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+<span class="c1"># define the data sources for the model.</span>
+<span class="c1"># We need to use different process for training and prediction.</span>
+<span class="c1"># For training, the input data includes both word IDs and labels.</span>
+<span class="c1"># For prediction, the input data only includs word Ids.</span>
+<span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="o">=</span><span class="s1">&#39;data/train.list&#39;</span><span class="p">,</span>
+                        <span class="n">test_list</span><span class="o">=</span><span class="s1">&#39;data/test.list&#39;</span><span class="p">,</span>
+                        <span class="n">module</span><span class="o">=</span><span class="s2">&quot;dataprovider_bow&quot;</span><span class="p">,</span>
+                        <span class="n">obj</span><span class="o">=</span><span class="s2">&quot;process&quot;</span><span class="p">,</span>
+                        <span class="n">args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;dictionary&quot;</span><span class="p">:</span> <span class="n">word_dict</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>You can refer to the following link for more detailed examples and data formats: <a href = "../../ui/data_provider/pydataprovider2.html">PyDataProvider2</a>.</p>
+</div>
+</div>
+<div class="section" id="network-architecture">
+<span id="network-architecture"></span><h2>Network Architecture<a class="headerlink" href="#network-architecture" title="Permalink to this headline">¶</a></h2>
+<p>You will describe four kinds of network architectures in this section.
+<center> <img alt="" src="../../_images/PipelineNetwork_en.jpg" /> </center></p>
+<p>First, you will build a logistic regression model. Later, you will also get chance to build other more powerful network architectures.
+For more detailed documentation, you could refer to: <a href = "../../ui/api/trainer_config_helpers/layers_index.html">Layer documentation</a>。All configuration files are in <code class="docutils literal"><span class="pre">demo/quick_start</span></code> directory.</p>
+<div class="section" id="logistic-regression">
+<span id="logistic-regression"></span><h3>Logistic Regression<a class="headerlink" href="#logistic-regression" title="Permalink to this headline">¶</a></h3>
+<p>The architecture is illustrated in the following picture:
+<center> <img alt="" src="../../_images/NetLR_en.png" /> </center></p>
+<ul class="simple">
+<li>You need define the data for text features. The size of the data layer is the number of words in the dictionary.</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">word</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;word&quot;</span><span class="p">,</span>  <span class="n">size</span><span class="o">=</span><span class="n">voc_dim</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>You also need to define the category id for each example. The size of the data layer is the number of labels.</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">label</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">label_dim</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>It uses logistic regression model to classify the vector, and it will output the classification error during training.<ul>
+<li>Each layer has an <em>input</em> argument that specifies its input layer. Some layers can have multiple input layers. You can use a list of the input layers as input in that case.</li>
+<li><em>size</em> for each layer means the number of neurons of the layer.</li>
+<li><em>act_type</em> means activation function applied to the output of each neuron independently.</li>
+<li>Some layers can have additional special inputs. For example, <code class="docutils literal"><span class="pre">classification_cost</span></code> needs ground truth label as input to compute classification loss and error.</li>
+</ul>
+</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Define a fully connected layer with logistic activation (also called softmax activation).</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">word</span><span class="p">,</span>
+                  <span class="n">size</span><span class="o">=</span><span class="n">label_dim</span><span class="p">,</span>
+                  <span class="n">act_type</span><span class="o">=</span><span class="n">SoftmaxActivation</span><span class="p">())</span>
+<span class="c1"># Define cross-entropy classification loss and error.</span>
+<span class="n">classification_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">output</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Performance summary: You can refer to the training and testing scripts later. In order to compare different network architectures, the model complexity and test classification error are listed in the following table:</p>
+<p><html>
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">Network name</th>
+<th scope="col" class="left">Number of parameters</th>
+<th scope="col" class="left">Test error</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">Logistic regression</td>
+<td class="left">252 KB</td>
+<td class="left">8.652%</td>
+</tr></tbody>
+</table></center>
+</html>
+<br></div>
+<div class="section" id="word-embedding-model">
+<span id="word-embedding-model"></span><h3>Word Embedding Model<a class="headerlink" href="#word-embedding-model" title="Permalink to this headline">¶</a></h3>
+<p>In order to use the word embedding model, you need to change the data provider a little bit to make the input words as a sequence of word IDs. The revised data provider <code class="docutils literal"><span class="pre">dataprovider_emb.py</span></code> is listed below. You only need to change initializer() for the type of the first input. It is changed from sparse_binary_vector to sequence of intergers.  process() remains the same. This data provider can also be used for later sequence models.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">initializer</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="c1"># Put the word dictionary into settings</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span> <span class="o">=</span> <span class="n">dictionary</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">input_types</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># Define the type of the first input as a sequence of integers.</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dictionary</span><span class="p">)),</span>
+        <span class="c1"># Define the second input for label id</span>
+        <span class="n">integer_value</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+
+<span class="nd">@provider</span><span class="p">(</span><span class="n">init_hook</span><span class="o">=</span><span class="n">initializer</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+    <span class="o">...</span>
+    <span class="c1"># omitted, it is same as the data provider for LR model</span>
+</pre></div>
+</div>
+<p>This model is very similar to the framework of logistic regression, but it uses word embedding vectors instead of a sparse vectors to represent words.
+<center> <img alt="" src="../../_images/NetContinuous_en.png" /> </center></p>
+<ul class="simple">
+<li>It can look up the dense word embedding vector in the dictionary  (its words embedding vector is <code class="docutils literal"><span class="pre">word_dim</span></code>). The input is a sequence of N words, the output is N word_dim dimensional vectors.</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">emb</span> <span class="o">=</span> <span class="n">embedding_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">word</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">word_dim</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>It averages all the word embedding in a sentence to get its sentence representation.</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">avg</span> <span class="o">=</span> <span class="n">pooling_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">emb</span><span class="p">,</span> <span class="n">pooling_type</span><span class="o">=</span><span class="n">AvgPooling</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>The other parts of the model are the same as logistic regression network.</p>
+<p>The performance is summarized in the following table:</p>
+<p><html>
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">Network name</th>
+<th scope="col" class="left">Number of parameters</th>
+<th scope="col" class="left">Test error</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">Word embedding model</td>
+<td class="left">15 MB</td>
+<td class="left">8.484%</td>
+</tr></tbody>
+</table>
+</html></center>
+<br></div>
+<div class="section" id="convolutional-neural-network-model">
+<span id="convolutional-neural-network-model"></span><h3>Convolutional Neural Network Model<a class="headerlink" href="#convolutional-neural-network-model" title="Permalink to this headline">¶</a></h3>
+<p>Convolutional neural network converts a sequence of word embeddings into a sentence representation using temporal convolutions. You will transform the fully connected layer of the word embedding model to 3 new sub-steps.
+<center> <img alt="" src="../../_images/NetConv_en.png" /> </center></p>
+<p>Text convolution has 3 steps:</p>
+<ol class="simple">
+<li>Get K nearest neighbor context of each word in a sentence, stack them into a 2D vector representation.</li>
+<li>Apply temporal convolution to this representation to produce a new hidden_dim dimensional vector.</li>
+<li>Apply max-pooling to the new vectors at all the time steps in a sentence to get a sentence representation.</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># context_len means convolution kernel size.</span>
+<span class="c1"># context_start means the start of the convolution. It can be negative. In that case, zero padding is applied.</span>
+<span class="n">text_conv</span> <span class="o">=</span> <span class="n">sequence_conv_pool</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">emb</span><span class="p">,</span>
+                               <span class="n">context_start</span><span class="o">=</span><span class="n">k</span><span class="p">,</span>
+                               <span class="n">context_len</span><span class="o">=</span><span class="mi">2</span> <span class="o">*</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The performance is summarized in the following table：</p>
+<p><html>
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">Network name</th>
+<th scope="col" class="left">Number of parameters</th>
+<th scope="col" class="left">Test error</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">Convolutional model</td>
+<td class="left">16 MB</td>
+<td class="left">5.628%</td>
+</tr></tbody>
+</table></center>
+<br></div>
+<div class="section" id="recurrent-model">
+<span id="recurrent-model"></span><h3>Recurrent Model<a class="headerlink" href="#recurrent-model" title="Permalink to this headline">¶</a></h3>
+<p><center> <img alt="" src="../../_images/NetRNN_en.png" /> </center></p>
+<p>You can use Recurrent neural network as our time sequence model, including simple RNN model, GRU model, and LSTM model。</p>
+<ul class="simple">
+<li>GRU model can be specified via：</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">gru</span> <span class="o">=</span> <span class="n">simple_gru</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">emb</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">gru_size</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>LSTM model can be specified via：</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">lstm</span> <span class="o">=</span> <span class="n">simple_lstm</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">emb</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">lstm_size</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can use single layer LSTM model with Dropout for our text classification problem. The performance is summarized in the following table:</p>
+<p><html>
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">Network name</th>
+<th scope="col" class="left">Number of parameters</th>
+<th scope="col" class="left">Test error</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">Recurrent model</td>
+<td class="left">16 MB</td>
+<td class="left">4.812%</td>
+</tr></tbody>
+</table></center>
+</html>
+<br></div>
+</div>
+<div class="section" id="optimization-algorithm">
+<span id="optimization-algorithm"></span><h2>Optimization Algorithm<a class="headerlink" href="#optimization-algorithm" title="Permalink to this headline">¶</a></h2>
+<p><a href = "../../ui/api/trainer_config_helpers/optimizers.html">Optimization algorithms</a> include Momentum, RMSProp, AdaDelta, AdaGrad, Adam, and Adamax. You can use Adam optimization method here, with L2 regularization and gradient clipping, because Adam has been proved to work very well for training recurrent neural network.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">settings</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+         <span class="n">learning_rate</span><span class="o">=</span><span class="mf">2e-3</span><span class="p">,</span>
+         <span class="n">learning_method</span><span class="o">=</span><span class="n">AdamOptimizer</span><span class="p">(),</span>
+         <span class="n">regularization</span><span class="o">=</span><span class="n">L2Regularization</span><span class="p">(</span><span class="mf">8e-4</span><span class="p">),</span>
+         <span class="n">gradient_clipping_threshold</span><span class="o">=</span><span class="mi">25</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="training-model">
+<span id="training-model"></span><h2>Training Model<a class="headerlink" href="#training-model" title="Permalink to this headline">¶</a></h2>
+<p>After completing data preparation and network architecture specification, you will run the training script.
+<center> <img alt="" src="../../_images/PipelineTrain_en.png" /> </center></p>
+<p>Training script: our training script is in <code class="docutils literal"><span class="pre">train.sh</span></code> file. The training arguments are listed below:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train <span class="se">\</span>
+--config<span class="o">=</span>trainer_config.py <span class="se">\</span>
+--log_period<span class="o">=</span><span class="m">20</span> <span class="se">\</span>
+--save_dir<span class="o">=</span>./output <span class="se">\</span>
+--num_passes<span class="o">=</span><span class="m">15</span> <span class="se">\</span>
+--use_gpu<span class="o">=</span><span class="nb">false</span>
+</pre></div>
+</div>
+<p>If you want to install the remote training platform, which enables distributed training on clusters, follow the instructions here: <a href = "../../cluster/index.html">Platform</a> documentation. We do not provide examples on how to train on clusters. Please refer to other demos or platform training documentation for mode details on training on clusters.</p>
+</div>
+<div class="section" id="inference">
+<span id="inference"></span><h2>Inference<a class="headerlink" href="#inference" title="Permalink to this headline">¶</a></h2>
+<p>You can use the trained model to perform prediction on the dataset with no labels. You can also evaluate the model on dataset with labels to obtain its test accuracy.
+<center> <img alt="" src="../../_images/PipelineTest_en.png" /> </center></p>
+<p>The test script is listed below. PaddlePaddle can evaluate a model on the data with labels specified in <code class="docutils literal"><span class="pre">test.list</span></code>.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train <span class="se">\</span>
+--config<span class="o">=</span>trainer_config.lstm.py <span class="se">\</span>
+--use_gpu<span class="o">=</span><span class="nb">false</span> <span class="se">\</span>
+--job<span class="o">=</span><span class="nb">test</span> <span class="se">\</span>
+--init_model_path<span class="o">=</span>./output/pass-0000x
+</pre></div>
+</div>
+<p>We will give an example of performing prediction using Recurrent model on a dataset with no labels. You can refer to: <a href = "../../ui/predict/swig_py_paddle_en.html">Python Prediction API</a> tutorial，or other <a href = "../../demo/index.html">demo</a> for the prediction process using Python. You can also use the following script for inference or evaluation.</p>
+<p>inference script (predict.sh)：</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">model</span><span class="o">=</span><span class="s2">&quot;output/pass-00003&quot;</span>
+paddle train <span class="se">\</span>
+    --config<span class="o">=</span>trainer_config.lstm.py <span class="se">\</span>
+    --use_gpu<span class="o">=</span><span class="nb">false</span> <span class="se">\</span>
+    --job<span class="o">=</span><span class="nb">test</span> <span class="se">\</span>
+    --init_model_path<span class="o">=</span><span class="nv">$model</span> <span class="se">\</span>
+    --config_args<span class="o">=</span><span class="nv">is_predict</span><span class="o">=</span><span class="m">1</span> <span class="se">\</span>
+    --predict_output_dir<span class="o">=</span>. <span class="se">\</span>
+
+mv rank-00000 result.txt
+</pre></div>
+</div>
+<p>User can choose the best model base on the training log instead of model <code class="docutils literal"><span class="pre">output/pass-00003</span></code>. There are several differences between training and inference network configurations.</p>
+<ul class="simple">
+<li>You do not need labels during inference.</li>
+<li>Outputs need to be specified to the classification probability layer (the output of softmax layer), or the id of maximum probability (<code class="docutils literal"><span class="pre">max_id</span></code> layer). An example to output the id and probability is given in the code snippet.</li>
+<li>batch_size = 1.</li>
+<li>You need to specify the location of <code class="docutils literal"><span class="pre">test_list</span></code> in the test data.</li>
+</ul>
+<p>The results in <code class="docutils literal"><span class="pre">result.txt</span></code> is as follows, each line is one sample.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">predicted_label_id</span><span class="p">;</span><span class="n">probability_of_label_0</span> <span class="n">probability_of_label_1</span>  <span class="c1"># the first sample</span>
+<span class="n">predicted_label_id</span><span class="p">;</span><span class="n">probability_of_label_0</span> <span class="n">probability_of_label_1</span>  <span class="c1"># the second sample</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">is_predict</span> <span class="o">=</span> <span class="n">get_config_arg</span><span class="p">(</span><span class="s1">&#39;is_predict&#39;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+<span class="n">trn</span> <span class="o">=</span> <span class="s1">&#39;data/train.list&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="bp">None</span>
+<span class="n">tst</span> <span class="o">=</span> <span class="s1">&#39;data/test.list&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="s1">&#39;data/pred.list&#39;</span>
+<span class="n">obj</span> <span class="o">=</span> <span class="s1">&#39;process&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="s1">&#39;process_pre&#39;</span>
+<span class="n">batch_size</span> <span class="o">=</span> <span class="mi">128</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_predict</span> <span class="k">else</span> <span class="mi">1</span>
+<span class="k">if</span> <span class="n">is_predict</span><span class="p">:</span>
+    <span class="n">maxid</span> <span class="o">=</span> <span class="n">maxid_layer</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+    <span class="n">outputs</span><span class="p">([</span><span class="n">maxid</span><span class="p">,</span><span class="n">output</span><span class="p">])</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">cls</span> <span class="o">=</span> <span class="n">classification_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">output</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span> <span class="n">outputs</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="summary">
+<span id="summary"></span><h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p>The scripts of data downloading, network configurations, and training scrips are in <code class="docutils literal"><span class="pre">/demo/quick_start</span></code>. The following table summarizes the performance of our network architecture on Amazon-Elec dataset(25k):</p>
+<p><center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">Network name</th>
+<th scope="col" class="left">Number of parameters</th>
+<th scope="col" class="left">Error rate</th>
+<th scope="col" class="left">Configuration file name</th>
+</tr>
+</thead><tbody>
+<tr>
+<td class="left">Logistic regression model(BOW)</td>
+<td class="left"> 252KB </td>
+<td class="left">8.652%</td>
+<td class="left">trainer_config.lr.py</td>
+</tr><tr>
+<td class="left">Word embedding</td>
+<td class="left"> 15MB </td>
+<td class="left"> 8.484%</td>
+<td class="left">trainer_config.bow.py</td>
+</tr><tr>
+<td class="left">Convolution model</td>
+<td class="left"> 16MB </td>
+<td class="left"> 5.628%</td>
+<td class="left">trainer_config.cnn.py</td>
+</tr><tr>
+<td class="left">Time sequence model</td>
+<td class="left"> 16MB </td>
+<td class="left"> 4.812%</td>
+<td class="left">trainer_config.lstm.py</td>
+</tr></tbody>
+</table>
+</center>
+<br></div>
+<div class="section" id="appendix">
+<span id="appendix"></span><h2>Appendix<a class="headerlink" href="#appendix" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="command-line-argument">
+<span id="command-line-argument"></span><h3>Command Line Argument<a class="headerlink" href="#command-line-argument" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>--config：network architecture path.</li>
+<li>--save_dir：model save directory.</li>
+<li>--log_period：the logging period per batch.</li>
+<li>--num_passes：number of training passes. One pass means the training would go over the whole training dataset once.</li>
+<li>--config_args：Other configuration arguments.</li>
+<li>--init_model_path：The path of the initial model parameter.</li>
+</ul>
+<p>By default, the trainer will save model every pass. You can also specify <code class="docutils literal"><span class="pre">saving_period_by_batches</span></code> to set the frequency of batch saving. You can use <code class="docutils literal"><span class="pre">show_parameter_stats_period</span></code> to print the statistics of the parameters, which are very useful for tuning parameters. Other command line arguments can be found in <a href = "../../ui/index.html#command-line-argument">command line argument documentation</a>。</p>
+</div>
+<div class="section" id="log">
+<span id="log"></span><h3>Log<a class="headerlink" href="#log" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">TrainerInternal</span><span class="o">.</span><span class="n">cpp</span><span class="p">:</span><span class="mi">160</span><span class="p">]</span>  <span class="n">Batch</span><span class="o">=</span><span class="mi">20</span> <span class="n">samples</span><span class="o">=</span><span class="mi">2560</span> <span class="n">AvgCost</span><span class="o">=</span><span class="mf">0.628761</span> <span class="n">CurrentCost</span><span class="o">=</span><span class="mf">0.628761</span> <span class="n">Eval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.304297</span>  <span class="n">CurrentEval</span><span class="p">:</span> <span class="n">classification_error_evaluator</span><span class="o">=</span><span class="mf">0.304297</span>
+</pre></div>
+</div>
+<p>During model training, you will see the log like the examples above:
+<center></p>
+<table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border"><thead>
+<th scope="col" class="left">Name</th>
+<th scope="col" class="left">Explanation</th>
+</tr>
+</thead><tr>
+<td class="left">Batch=20</td>
+<td class="left"> You have trained 20 batches. </td>
+</tr><tr>
+<td class="left">samples=2560</td>
+<td class="left"> You have trained 2560 examples. </td>
+</tr><tr>
+<td class="left">AvgCost</td>
+<td class="left"> The average cost from the first batch to the current batch. </td>
+</tr><tr>
+<td class="left">CurrentCost</td>
+<td class="left"> the average cost of the last log_period batches </td>
+</tr><tr>
+<td class="left">Eval: classification_error_evaluator</td>
+<td class="left"> The average classification error from the first batch to the current batch.</td>
+</tr><tr>
+<td class="left">CurrentEval: classification_error_evaluator</td>
+<td class="left"> The average error rate of the last log_period batches </td>
+</tr></tbody>
+</table>
+</center>
+<br></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Quick Start Tutorial</a><ul>
+<li><a class="reference internal" href="#install">Install</a></li>
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#preprocess-data-into-standardized-format">Preprocess data into standardized format</a></li>
+<li><a class="reference internal" href="#transfer-data-to-model">Transfer Data to Model</a><ul>
+<li><a class="reference internal" href="#write-data-provider-with-python">Write Data Provider with Python</a></li>
+<li><a class="reference internal" href="#define-python-data-provider-in-configuration-files">Define Python Data Provider in Configuration files.</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#network-architecture">Network Architecture</a><ul>
+<li><a class="reference internal" href="#logistic-regression">Logistic Regression</a></li>
+<li><a class="reference internal" href="#word-embedding-model">Word Embedding Model</a></li>
+<li><a class="reference internal" href="#convolutional-neural-network-model">Convolutional Neural Network Model</a></li>
+<li><a class="reference internal" href="#recurrent-model">Recurrent Model</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#optimization-algorithm">Optimization Algorithm</a></li>
+<li><a class="reference internal" href="#training-model">Training Model</a></li>
+<li><a class="reference internal" href="#inference">Inference</a></li>
+<li><a class="reference internal" href="#summary">Summary</a></li>
+<li><a class="reference internal" href="#appendix">Appendix</a><ul>
+<li><a class="reference internal" href="#command-line-argument">Command Line Argument</a></li>
+<li><a class="reference internal" href="#log">Log</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../../introduction/index.html"
+                        title="previous chapter">Introduction</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../../build/index.html"
+                        title="next chapter">Build And Install PaddlePaddle</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/demo/quick_start/index_en.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../build/index.html" title="Build And Install PaddlePaddle"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../../introduction/index.html" title="Introduction"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

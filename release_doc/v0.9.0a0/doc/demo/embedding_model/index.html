@@ -1,0 +1,323 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Chinese Word Embedding Model Tutorial &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="Examples and demos" href="../index.html" />
+    <link rel="next" title="Cluster Train" href="../../cluster/index.html" />
+    <link rel="prev" title="Model Zoo - ImageNet" href="../imagenet_model/resnet_model.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../cluster/index.html" title="Cluster Train"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../imagenet_model/resnet_model.html" title="Model Zoo - ImageNet"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Examples and demos</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="chinese-word-embedding-model-tutorial">
+<span id="chinese-word-embedding-model-tutorial"></span><h1>Chinese Word Embedding Model Tutorial<a class="headerlink" href="#chinese-word-embedding-model-tutorial" title="Permalink to this headline">¶</a></h1>
+<hr class="docutils" />
+<p>This tutorial is to guide you through the process of using a Pretrained Chinese Word Embedding Model in the PaddlePaddle standard format.</p>
+<p>We thank &#64;lipeng for the pull request that defined the model schemas and pretrained the models.</p>
+<div class="section" id="introduction">
+<span id="introduction"></span><h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="chinese-word-dictionary">
+<span id="chinese-word-dictionary"></span><h3>Chinese Word Dictionary<a class="headerlink" href="#chinese-word-dictionary" title="Permalink to this headline">¶</a></h3>
+<p>Our Chinese-word dictionary is created on Baidu ZhiDao and Baidu Baike by using in-house word segmentor. For example, the participle of &#8220;《红楼梦》&#8221; is &#8220;《&#8221;，&#8221;红楼梦&#8221;，&#8221;》&#8221;，and &#8220;《红楼梦》&#8221;. Our dictionary (using UTF-8 format) has has two columns: word and its frequency. The total word count is 3206325, including 3 special token:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">&lt;s&gt;</span></code>: the start of a sequence</li>
+<li><code class="docutils literal"><span class="pre">&lt;e&gt;</span></code>: the end of a sequence</li>
+<li><code class="docutils literal"><span class="pre">&lt;unk&gt;</span></code>: a word not included in dictionary</li>
+</ul>
+</div>
+<div class="section" id="pretrained-chinese-word-embedding-model">
+<span id="pretrained-chinese-word-embedding-model"></span><h3>Pretrained Chinese Word Embedding Model<a class="headerlink" href="#pretrained-chinese-word-embedding-model" title="Permalink to this headline">¶</a></h3>
+<p>Inspired by paper <a class="reference external" href="http://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf">A Neural Probabilistic Language Model</a>, our model architecture (<strong>Embedding joint of six words-&gt;FullyConnect-&gt;SoftMax</strong>) is as following graph. And for our dictionary, we pretrain four models with different word vector dimenstions, i.e 32, 64, 128, 256.
+<center><img alt="" src="../../_images/neural-n-gram-model.png" /></center>
+<center>Figure 1. neural-n-gram-model</center></p>
+</div>
+<div class="section" id="download-and-extract">
+<span id="download-and-extract"></span><h3>Download and Extract<a class="headerlink" href="#download-and-extract" title="Permalink to this headline">¶</a></h3>
+<p>To download and extract our dictionary and pretrained model, run the following commands.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/model_zoo/embedding
+./pre_DictAndModel.sh
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="chinese-paraphrasing-example">
+<span id="chinese-paraphrasing-example"></span><h2>Chinese Paraphrasing Example<a class="headerlink" href="#chinese-paraphrasing-example" title="Permalink to this headline">¶</a></h2>
+<p>We provide a paraphrasing task to show the usage of pretrained Chinese Word Dictionary and Embedding Model.</p>
+<div class="section" id="data-preparation-and-preprocess">
+<span id="data-preparation-and-preprocess"></span><h3>Data Preparation and Preprocess<a class="headerlink" href="#data-preparation-and-preprocess" title="Permalink to this headline">¶</a></h3>
+<p>First, run the following commands to download and extract the in-house dataset. The dataset (using UTF-8 format) has 20 training samples, 5 testing samples and 2 generating samples.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/seqToseq/data
+./paraphrase_data.sh
+</pre></div>
+</div>
+<p>Second, preprocess data and build dictionary on train data by running the following commands, and the preprocessed dataset is stored in <code class="docutils literal"><span class="pre">$PADDLE_SOURCE_ROOT/demo/seqToseq/data/pre-paraphrase</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/seqToseq/
+python preprocess.py -i data/paraphrase [--mergeDict]
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--mergeDict</span></code>: if using this option, the source and target dictionary are merged, i.e, two dictionaries have the same context. Here, as source and target data are all chinese words, this option can be used.</li>
+</ul>
+</div>
+<div class="section" id="user-specified-embedding-model">
+<span id="user-specified-embedding-model"></span><h3>User Specified Embedding Model<a class="headerlink" href="#user-specified-embedding-model" title="Permalink to this headline">¶</a></h3>
+<p>The general command of extracting desired parameters from the pretrained embedding model based on user dictionary is:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/model_zoo/embedding
+python extract_para.py --preModel PREMODEL --preDict PREDICT --usrModel USRMODEL--usrDict USRDICT -d DIM
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--preModel</span> <span class="pre">PREMODEL</span></code>: the name of pretrained embedding model</li>
+<li><code class="docutils literal"><span class="pre">--preDict</span> <span class="pre">PREDICT</span></code>: the name of pretrained dictionary</li>
+<li><code class="docutils literal"><span class="pre">--usrModel</span> <span class="pre">USRMODEL</span></code>: the name of extracted embedding model</li>
+<li><code class="docutils literal"><span class="pre">--usrDict</span> <span class="pre">USRDICT</span></code>: the name of user specified dictionary</li>
+<li><code class="docutils literal"><span class="pre">-d</span> <span class="pre">DIM</span></code>: dimension of parameter</li>
+</ul>
+<p>Here, you can simply run the command:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/seqToseq/data/
+./paraphrase_model.sh
+</pre></div>
+</div>
+<p>And you will see following embedding model structure:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paraphrase_model</span>
+<span class="o">|---</span> <span class="n">_source_language_embedding</span>
+<span class="o">|---</span> <span class="n">_target_language_embedding</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="training-model-in-paddlepaddle">
+<span id="training-model-in-paddlepaddle"></span><h3>Training Model in PaddlePaddle<a class="headerlink" href="#training-model-in-paddlepaddle" title="Permalink to this headline">¶</a></h3>
+<p>First, create a model config file, see example <code class="docutils literal"><span class="pre">demo/seqToseq/paraphrase/train.conf</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">seqToseq_net</span> <span class="k">import</span> <span class="o">*</span>
+<span class="n">is_generating</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="c1">################## Data Definition #####################</span>
+<span class="n">train_conf</span> <span class="o">=</span> <span class="n">seq_to_seq_data</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">=</span> <span class="s2">&quot;./data/pre-paraphrase&quot;</span><span class="p">,</span>
+                             <span class="n">job_mode</span> <span class="o">=</span> <span class="n">job_mode</span><span class="p">)</span>
+
+<span class="c1">############## Algorithm Configuration ##################</span>
+<span class="n">settings</span><span class="p">(</span>
+      <span class="n">learning_method</span> <span class="o">=</span> <span class="n">AdamOptimizer</span><span class="p">(),</span>
+      <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+      <span class="n">learning_rate</span> <span class="o">=</span> <span class="mi">5</span><span class="n">e</span><span class="o">-</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="c1">################# Network configure #####################</span>
+<span class="n">gru_encoder_decoder</span><span class="p">(</span><span class="n">train_conf</span><span class="p">,</span> <span class="n">is_generating</span><span class="p">,</span> <span class="n">word_vector_dim</span> <span class="o">=</span> <span class="mi">32</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This config is almost the same as <code class="docutils literal"><span class="pre">demo/seqToseq/translation/train.conf</span></code>.</p>
+<p>Then, train the model by running the command:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_SOURCE_ROOT/demo/seqToseq/paraphrase
+./train.sh
+</pre></div>
+</div>
+<p>where <code class="docutils literal"><span class="pre">train.sh</span></code> is almost the same as <code class="docutils literal"><span class="pre">demo/seqToseq/translation/train.sh</span></code>, the only difference is following two command arguments:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--init_model_path</span></code>: path of the initialization model, here is <code class="docutils literal"><span class="pre">data/paraphrase_model</span></code></li>
+<li><code class="docutils literal"><span class="pre">--load_missing_parameter_strategy</span></code>: operations when model file is missing, here use a normal distibution to initialize the other parameters except for the embedding layer</li>
+</ul>
+<p>For users who want to understand the dataset format, model architecture and training procedure in detail, please refer to <a class="reference internal" href="../text_generation/text_generation.html"><span class="doc">Text generation Tutorial</span></a>.</p>
+</div>
+</div>
+<div class="section" id="optional-function">
+<span id="optional-function"></span><h2>Optional Function<a class="headerlink" href="#optional-function" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="embedding-parameters-observation">
+<span id="embedding-parameters-observation"></span><h3>Embedding Parameters Observation<a class="headerlink" href="#embedding-parameters-observation" title="Permalink to this headline">¶</a></h3>
+<p>For users who want to observe the embedding parameters, this function can convert a PaddlePaddle binary embedding model to a text model by running the command:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/model_zoo/embedding
+python paraconvert.py --b2t -i INPUT -o OUTPUT -d DIM
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">-i</span> <span class="pre">INPUT</span></code>: the name of input binary embedding model</li>
+<li><code class="docutils literal"><span class="pre">-o</span> <span class="pre">OUTPUT</span></code>: the name of output text embedding model</li>
+<li><code class="docutils literal"><span class="pre">-d</span> <span class="pre">DIM</span></code>: the dimension of parameter</li>
+</ul>
+<p>You will see parameters like this in output text model:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">32156096</span>
+<span class="o">-</span><span class="mf">0.7845433</span><span class="p">,</span><span class="mf">1.1937413</span><span class="p">,</span><span class="o">-</span><span class="mf">0.1704215</span><span class="p">,</span><span class="mf">0.4154715</span><span class="p">,</span><span class="mf">0.9566584</span><span class="p">,</span><span class="o">-</span><span class="mf">0.5558153</span><span class="p">,</span><span class="o">-</span><span class="mf">0.2503305</span><span class="p">,</span> <span class="o">......</span>
+<span class="mf">0.0000909</span><span class="p">,</span><span class="mf">0.0009465</span><span class="p">,</span><span class="o">-</span><span class="mf">0.0008813</span><span class="p">,</span><span class="o">-</span><span class="mf">0.0008428</span><span class="p">,</span><span class="mf">0.0007879</span><span class="p">,</span><span class="mf">0.0000183</span><span class="p">,</span><span class="mf">0.0001984</span><span class="p">,</span> <span class="o">......</span>
+<span class="o">......</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>1st line is <strong>PaddlePaddle format file head</strong>, it has 3 attributes:<ul>
+<li>version of PaddlePaddle, here is 0</li>
+<li>sizeof(float), here is 4</li>
+<li>total number of parameter, here is 32156096</li>
+</ul>
+</li>
+<li>Other lines print the paramters (assume <code class="docutils literal"><span class="pre">&lt;dim&gt;</span></code> = 32)<ul>
+<li>each line print 32 paramters splitted by &#8216;,&#8217;</li>
+<li>there is 32156096/32 = 1004877 lines, meaning there is 1004877 embedding words</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="embedding-parameters-revision">
+<span id="embedding-parameters-revision"></span><h3>Embedding Parameters Revision<a class="headerlink" href="#embedding-parameters-revision" title="Permalink to this headline">¶</a></h3>
+<p>For users who want to revise the embedding parameters, this function can convert a revised text embedding model to a PaddlePaddle binary model by running the command:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>cd $PADDLE_ROOT/demo/model_zoo/embedding
+python paraconvert.py --t2b -i INPUT -o OUTPUT
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">-i</span> <span class="pre">INPUT</span></code>: the name of input text embedding model.</li>
+<li><code class="docutils literal"><span class="pre">-o</span> <span class="pre">OUTPUT</span></code>: the name of output binary embedding model</li>
+</ul>
+<p>Note that the format of input text model is as follows:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">-</span><span class="mf">0.7845433</span><span class="p">,</span><span class="mf">1.1937413</span><span class="p">,</span><span class="o">-</span><span class="mf">0.1704215</span><span class="p">,</span><span class="mf">0.4154715</span><span class="p">,</span><span class="mf">0.9566584</span><span class="p">,</span><span class="o">-</span><span class="mf">0.5558153</span><span class="p">,</span><span class="o">-</span><span class="mf">0.2503305</span><span class="p">,</span> <span class="o">......</span>
+<span class="mf">0.0000909</span><span class="p">,</span><span class="mf">0.0009465</span><span class="p">,</span><span class="o">-</span><span class="mf">0.0008813</span><span class="p">,</span><span class="o">-</span><span class="mf">0.0008428</span><span class="p">,</span><span class="mf">0.0007879</span><span class="p">,</span><span class="mf">0.0000183</span><span class="p">,</span><span class="mf">0.0001984</span><span class="p">,</span> <span class="o">......</span>
+<span class="o">......</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>there is no file header in 1st line</li>
+<li>each line stores parameters for one word, the separator is commas &#8216;,&#8217;</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Chinese Word Embedding Model Tutorial</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a><ul>
+<li><a class="reference internal" href="#chinese-word-dictionary">Chinese Word Dictionary</a></li>
+<li><a class="reference internal" href="#pretrained-chinese-word-embedding-model">Pretrained Chinese Word Embedding Model</a></li>
+<li><a class="reference internal" href="#download-and-extract">Download and Extract</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#chinese-paraphrasing-example">Chinese Paraphrasing Example</a><ul>
+<li><a class="reference internal" href="#data-preparation-and-preprocess">Data Preparation and Preprocess</a></li>
+<li><a class="reference internal" href="#user-specified-embedding-model">User Specified Embedding Model</a></li>
+<li><a class="reference internal" href="#training-model-in-paddlepaddle">Training Model in PaddlePaddle</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#optional-function">Optional Function</a><ul>
+<li><a class="reference internal" href="#embedding-parameters-observation">Embedding Parameters Observation</a></li>
+<li><a class="reference internal" href="#embedding-parameters-revision">Embedding Parameters Revision</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../imagenet_model/resnet_model.html"
+                        title="previous chapter">Model Zoo - ImageNet</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../../cluster/index.html"
+                        title="next chapter">Cluster Train</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/demo/embedding_model/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../cluster/index.html" title="Cluster Train"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../imagenet_model/resnet_model.html" title="Model Zoo - ImageNet"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

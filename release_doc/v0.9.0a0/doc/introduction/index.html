@@ -1,0 +1,231 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Introduction &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../index.html" />
+    <link rel="next" title="Quick Start Tutorial" href="../demo/quick_start/index_en.html" />
+    <link rel="prev" title="PaddlePaddle Documentation" href="../index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../demo/quick_start/index_en.html" title="Quick Start Tutorial"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="PaddlePaddle Documentation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="introduction">
+<span id="introduction"></span><h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle is a deep learning platform open-sourced by Baidu. With PaddlePaddle, you can easily train a classic neural network within a couple lines of configuration, or you can build sophisticated models that provide state-of-the-art performance on difficult learning tasks like sentiment analysis, machine translation, image caption and so on.</p>
+<div class="section" id="a-classic-problem">
+<span id="a-classic-problem"></span><h2>1. A Classic Problem<a class="headerlink" href="#a-classic-problem" title="Permalink to this headline">¶</a></h2>
+<p>Now, to give you a hint of what using PaddlePaddle looks like, let&#8217;s start with a fundamental learning problem - <a href="https://en.wikipedia.org/wiki/Simple_linear_regression"><strong>simple linear regression</strong></a> : you have observed a set of two-dimensional data points of <code class="docutils literal"><span class="pre">X</span></code> and <code class="docutils literal"><span class="pre">Y</span></code>, where <code class="docutils literal"><span class="pre">X</span></code> is an explanatory variable and <code class="docutils literal"><span class="pre">Y</span></code> is corresponding dependent variable, and you want to recover the underlying correlation between <code class="docutils literal"><span class="pre">X</span></code> and <code class="docutils literal"><span class="pre">Y</span></code>. Linear regression can be used in many practical scenarios. For example, <code class="docutils literal"><span class="pre">X</span></code> can be a variable about house size, and <code class="docutils literal"><span class="pre">Y</span></code> a variable about house price. You can build a model that captures relationship between them by observing real estate markets.</p>
+</div>
+<div class="section" id="prepare-the-data">
+<span id="prepare-the-data"></span><h2>2. Prepare the Data<a class="headerlink" href="#prepare-the-data" title="Permalink to this headline">¶</a></h2>
+<p>Suppose the true relationship can be characterized as <code class="docutils literal"><span class="pre">Y</span> <span class="pre">=</span> <span class="pre">2X</span> <span class="pre">+</span> <span class="pre">0.3</span></code>, let&#8217;s see how to recover this pattern only from observed data. Here is a piece of python code that feeds synthetic data to PaddlePaddle. The code is pretty self-explanatory, the only extra thing you need to add for PaddlePaddle is a definition of input data types.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># dataprovider.py</span>
+<span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">random</span>
+
+<span class="c1"># define data types of input: 2 real numbers</span>
+<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span><span class="n">dense_vector</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">dense_vector</span><span class="p">(</span><span class="mi">1</span><span class="p">)],</span><span class="n">use_seq</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">input_file</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">2000</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
+        <span class="k">yield</span> <span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="o">*</span><span class="n">x</span><span class="o">+</span><span class="mf">0.3</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="train-a-neuralnetwork-in-paddlepaddle">
+<span id="train-a-neuralnetwork-in-paddlepaddle"></span><h2>3. Train a NeuralNetwork in PaddlePaddle<a class="headerlink" href="#train-a-neuralnetwork-in-paddlepaddle" title="Permalink to this headline">¶</a></h2>
+<p>To recover this relationship between <code class="docutils literal"><span class="pre">X</span></code> and <code class="docutils literal"><span class="pre">Y</span></code>, we use a neural network with one layer of linear activation units and a square error cost layer. Don&#8217;t worry if you are not familiar with these terminologies, it&#8217;s just saying that we are starting from a random line <code class="docutils literal"><span class="pre">Y'</span> <span class="pre">=</span> <span class="pre">wX</span> <span class="pre">+</span> <span class="pre">b</span></code> , then we gradually adapt <code class="docutils literal"><span class="pre">w</span></code> and <code class="docutils literal"><span class="pre">b</span></code> to minimize the difference between <code class="docutils literal"><span class="pre">Y'</span></code> and <code class="docutils literal"><span class="pre">Y</span></code>. Here is what it looks like in PaddlePaddle:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># trainer_config.py</span>
+<span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># 1. read data. Suppose you saved above python code as dataprovider.py</span>
+<span class="n">data_file</span> <span class="o">=</span> <span class="s1">&#39;empty.list&#39;</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">writelines</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+<span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="o">=</span><span class="n">data_file</span><span class="p">,</span> <span class="n">test_list</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> 
+        <span class="n">module</span><span class="o">=</span><span class="s1">&#39;dataprovider&#39;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">,</span><span class="n">args</span><span class="o">=</span><span class="p">{})</span>
+
+<span class="c1"># 2. learning algorithm</span>
+<span class="n">settings</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">learning_method</span><span class="o">=</span><span class="n">MomentumOptimizer</span><span class="p">())</span>
+
+<span class="c1"># 3. Network configuration</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">y_predict</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">param_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">LinearActivation</span><span class="p">(),</span> <span class="n">bias_attr</span><span class="o">=</span><span class="n">ParamAttr</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">))</span>
+<span class="n">cost</span> <span class="o">=</span> <span class="n">regression_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">y_predict</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
+<span class="n">outputs</span><span class="p">(</span><span class="n">cost</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Some of the most fundamental usages of PaddlePaddle are demonstrated:</p>
+<ul class="simple">
+<li>The first part shows how to feed data into PaddlePaddle. In general cases, PaddlePaddle reads raw data from a list of files, and then do some user-defined process to get real input. In this case, we only need to create a placeholder file since we are generating synthetic data on the fly.</li>
+<li>The second part describes learning algorithm. It defines in what ways adjustments are made to model parameters. PaddlePaddle provides a rich set of optimizers, but a simple momentum based optimizer will suffice here, and it processes 12 data points each time.</li>
+<li>Finally, the network configuration. It usually is as simple as &#8220;stacking&#8221; layers. Three kinds of layers are used in this configuration:<ul>
+<li><strong>Data Layer</strong>: a network always starts with one or more data layers. They provide input data to the rest of the network. In this problem, two data layers are used respectively for <code class="docutils literal"><span class="pre">X</span></code> and <code class="docutils literal"><span class="pre">Y</span></code>.</li>
+<li><strong>FC Layer</strong>: FC layer is short for Fully Connected Layer, which connects all the input units to current layer and does the actual computation specified as activation function. Computation layers like this are the fundamental building blocks of a deeper model.</li>
+<li><strong>Cost Layer</strong>: in training phase, cost layers are usually the last layers of the network. They measure the performance of current model, and provide guidence to adjust parameters.</li>
+</ul>
+</li>
+</ul>
+<p>Now that everything is ready, you can train the network with a simple command line call:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> <span class="o">--</span><span class="n">config</span><span class="o">=</span><span class="n">trainer_config</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">save_dir</span><span class="o">=./</span><span class="n">output</span> <span class="o">--</span><span class="n">num_passes</span><span class="o">=</span><span class="mi">30</span>
+</pre></div>
+</div>
+<p>This means that PaddlePaddle will train this network on the synthectic dataset for 30 passes, and save all the models under path <code class="docutils literal"><span class="pre">./output</span></code>. You will see from the messages printed out during training phase that the model cost is decreasing as time goes by, which indicates we are getting a closer guess.</p>
+</div>
+<div class="section" id="evaluate-the-model">
+<span id="evaluate-the-model"></span><h2>4. Evaluate the Model<a class="headerlink" href="#evaluate-the-model" title="Permalink to this headline">¶</a></h2>
+<p>Usually, a different dataset that left out during training phase should be used to evalute the models. However, we are lucky enough to know the real answer: <code class="docutils literal"><span class="pre">w=2,</span> <span class="pre">b=0.3</span></code>, thus a better option is to check out model parameters directly.</p>
+<p>In PaddlePaddle, training is just to get a collection of model parameters, which are <code class="docutils literal"><span class="pre">w</span></code> and <code class="docutils literal"><span class="pre">b</span></code> in this case. Each parameter is saved in an individual file in the popular <code class="docutils literal"><span class="pre">numpy</span></code> array format. Here is the code that reads parameters from last pass.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">file_name</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span> <span class="c1"># skip header for float type.</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        
+<span class="k">print</span> <span class="s1">&#39;w=</span><span class="si">%.6f</span><span class="s1">, b=</span><span class="si">%.6f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;output/pass-00029/w&#39;</span><span class="p">),</span> <span class="n">load</span><span class="p">(</span><span class="s1">&#39;output/pass-00029/b&#39;</span><span class="p">))</span>
+<span class="c1"># w=1.999743, b=0.300137</span>
+</pre></div>
+</div>
+<p><center> <img alt="" src="../_images/parameters.png" /> </center></p>
+<p>Although starts from a random guess, you can see that value of <code class="docutils literal"><span class="pre">w</span></code> changes quickly towards 2 and <code class="docutils literal"><span class="pre">b</span></code> changes quickly towards 0.3. In the end, the predicted line is almost identical with real answer.</p>
+<p>There, you have recovered the underlying pattern between <code class="docutils literal"><span class="pre">X</span></code> and <code class="docutils literal"><span class="pre">Y</span></code> only from observed data.</p>
+</div>
+<div class="section" id="where-to-go-from-here">
+<span id="where-to-go-from-here"></span><h2>5. Where to Go from Here<a class="headerlink" href="#where-to-go-from-here" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a href="../build/index.html"> Build and Installation </a></li>
+<li><a href="../demo/quick_start/index_en.html">Quick Start</a></li>
+<li><a href="../demo/index.html">Example and Demo</a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Introduction</a><ul>
+<li><a class="reference internal" href="#a-classic-problem">1. A Classic Problem</a></li>
+<li><a class="reference internal" href="#prepare-the-data">2. Prepare the Data</a></li>
+<li><a class="reference internal" href="#train-a-neuralnetwork-in-paddlepaddle">3. Train a NeuralNetwork in PaddlePaddle</a></li>
+<li><a class="reference internal" href="#evaluate-the-model">4. Evaluate the Model</a></li>
+<li><a class="reference internal" href="#where-to-go-from-here">5. Where to Go from Here</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../index.html"
+                        title="previous chapter">PaddlePaddle Documentation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../demo/quick_start/index_en.html"
+                        title="next chapter">Quick Start Tutorial</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/introduction/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../demo/quick_start/index_en.html" title="Quick Start Tutorial"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="PaddlePaddle Documentation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,385 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Optimizers &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
+    <link rel="up" title="Model Config Interface" href="index.html" />
+    <link rel="next" title="DataSources" href="data_sources.html" />
+    <link rel="prev" title="Model Config Interface" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="data_sources.html" title="DataSources"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Model Config Interface"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Model Config Interface</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="optimizers">
+<h1>Optimizers<a class="headerlink" href="#optimizers" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="basesgdoptimizer">
+<h2>BaseSGDOptimizer<a class="headerlink" href="#basesgdoptimizer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">BaseSGDOptimizer</code></dt>
+<dd><p>SGD Optimizer.</p>
+<p>SGD is an optimization method, trying to find a neural network that
+minimize the &#8220;cost/error&#8221; of it by iteration. In paddle&#8217;s implementation
+SGD Optimizer is synchronized, which means all gradients will be wait to
+calculate and reduced into one gradient, then do optimize operation.</p>
+<p>The neural network consider the learning problem of minimizing an objective
+function, that has the form of a sum</p>
+<div class="math">
+\[Q(w) = \sum_{i}^{n} Q_i(w)\]</div>
+<p>The value of function Q sometimes is the cost of neural network (Mean
+Square Error between prediction and label for example). The function Q is
+parametrised by w, the weight/bias of neural network. And weights is what to
+be learned. The i is the i-th observation in (trainning) data.</p>
+<p>So, the SGD method will optimize the weight by</p>
+<div class="math">
+\[w = w - \eta \nabla Q(w) = w - \eta \sum_{i}^{n} \nabla Q_i(w)\]</div>
+<p>where <span class="math">\(\eta\)</span> is learning rate. And <span class="math">\(n\)</span> is batch size.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="momentumoptimizer">
+<h2>MomentumOptimizer<a class="headerlink" href="#momentumoptimizer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">MomentumOptimizer</code><span class="sig-paren">(</span><em>momentum=None</em>, <em>sparse=False</em><span class="sig-paren">)</span></dt>
+<dd><p>MomentumOptimizer.</p>
+<p>When sparse=True, the update scheme:</p>
+<div class="math">
+\[\begin{split}\alpha_t &amp;= \alpha_{t-1} / k \\
+\beta_t &amp;= \beta_{t-1} / (1 + \lambda \gamma_t) \\
+u_t &amp;= u_{t-1} - \alpha_t \gamma_t g_t \\
+v_t &amp;= v_{t-1} + \tau_{t-1} \alpha_t \gamma_t g_t \\
+\tau_t &amp;= \tau_{t-1} + \beta_t / \alpha_t\end{split}\]</div>
+<p>where <span class="math">\(k\)</span> is momentum, <span class="math">\(\lambda\)</span> is decay rate,
+<span class="math">\(\gamma_t\)</span> is learning rate at the t&#8217;th step.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sparse</strong> (<em>bool</em>) &#8211; with sparse support or not.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="adamoptimizer">
+<h2>AdamOptimizer<a class="headerlink" href="#adamoptimizer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdamOptimizer</code><span class="sig-paren">(</span><em>beta1=0.9</em>, <em>beta2=0.999</em>, <em>epsilon=1e-08</em><span class="sig-paren">)</span></dt>
+<dd><p>Adam optimizer.
+The details of please refer <a class="reference external" href="https://arxiv.org/abs/1412.6980">Adam: A Method for Stochastic Optimization</a></p>
+<div class="math">
+\[\begin{split}m(w, t) &amp; = \beta_1 m(w, t-1) + (1 - \beta_1) \nabla Q_i(w) \\
+v(w, t) &amp; = \beta_2 v(w, t-1) + (1 - \beta_2)(\nabla Q_i(w)) ^2 \\
+w &amp; = w - \frac{\eta}{\sqrt{v(w,t) + \epsilon}}\end{split}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>beta1</strong> (<em>float</em>) &#8211; the <span class="math">\(\beta_1\)</span> in equation.</li>
+<li><strong>beta2</strong> (<em>float</em>) &#8211; the <span class="math">\(\beta_2\)</span> in equation.</li>
+<li><strong>epsilon</strong> (<em>float</em>) &#8211; the <span class="math">\(\epsilon\)</span> in equation. It is used to prevent
+divided by zero.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="adamaxoptimizer">
+<h2>AdamaxOptimizer<a class="headerlink" href="#adamaxoptimizer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdamaxOptimizer</code><span class="sig-paren">(</span><em>beta1</em>, <em>beta2</em><span class="sig-paren">)</span></dt>
+<dd><p>Adamax optimizer.</p>
+<p>The details of please refer this <a class="reference external" href="https://arxiv.org/abs/1412.6980">Adam: A Method for Stochastic Optimization</a></p>
+<div class="math">
+\[\begin{split}m_t &amp; = \beta_1 * m_{t-1} + (1-\beta_1)* \nabla Q_i(w) \\
+u_t &amp; = max(\beta_2*u_{t-1}, abs(\nabla Q_i(w))) \\
+w_t &amp; = w_{t-1} - (\eta/(1-\beta_1^t))*m_t/u_t\end{split}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>beta1</strong> (<em>float</em>) &#8211; the <span class="math">\(\beta_1\)</span> in the equation.</li>
+<li><strong>beta2</strong> (<em>float</em>) &#8211; the <span class="math">\(\beta_2\)</span> in the equation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="adagradoptimizer">
+<h2>AdaGradOptimizer<a class="headerlink" href="#adagradoptimizer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdaGradOptimizer</code></dt>
+<dd><p>Adagrad(for ADAptive GRAdient algorithm) optimizer.</p>
+<p>For details please refer this <a class="reference external" href="http://www.magicbroom.info/Papers/DuchiHaSi10.pdf">Adaptive Subgradient Methods for
+Online Learning and Stochastic Optimization</a>.</p>
+<div class="math">
+\[\begin{split}G &amp;= \sum_{\tau=1}^{t} g_{\tau} g_{\tau}^T \\
+w &amp; = w - \eta diag(G)^{-\frac{1}{2}} \circ g\end{split}\]</div>
+</dd></dl>
+
+</div>
+<div class="section" id="decayedadagradoptimizer">
+<h2>DecayedAdaGradOptimizer<a class="headerlink" href="#decayedadagradoptimizer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">DecayedAdaGradOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span></dt>
+<dd><p>AdaGrad method with decayed sum gradients. The equations of this method
+show as follow.</p>
+<div class="math">
+\[\begin{split}E(g_t^2) &amp;= \rho * E(g_{t-1}^2) + (1-\rho) * g^2 \\
+learning\_rate &amp;= 1/sqrt( ( E(g_t^2) + \epsilon )\end{split}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>rho</strong> (<em>float</em>) &#8211; The <span class="math">\(\rho\)</span> parameter in that equation</li>
+<li><strong>epsilon</strong> (<em>float</em>) &#8211; The <span class="math">\(\epsilon\)</span> parameter in that equation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="adadeltaoptimizer">
+<h2>AdaDeltaOptimizer<a class="headerlink" href="#adadeltaoptimizer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdaDeltaOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span></dt>
+<dd><p>AdaDelta method. The details of adadelta please refer to this
+<a class="reference external" href="http://www.matthewzeiler.com/pubs/googleTR2012/googleTR2012.pdf">ADADELTA: AN ADAPTIVE LEARNING RATE METHOD</a>.</p>
+<div class="math">
+\[\begin{split}E(g_t^2) &amp;= \rho * E(g_{t-1}^2) + (1-\rho) * g^2 \\
+learning\_rate &amp;= sqrt( ( E(dx_{t-1}^2) + \epsilon ) / ( \
+                  E(g_t^2) + \epsilon ) ) \\
+E(dx_t^2) &amp;= \rho * E(dx_{t-1}^2) + (1-\rho) * (-g*learning\_rate)^2\end{split}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>rho</strong> (<em>float</em>) &#8211; <span class="math">\(\rho\)</span> in equation</li>
+<li><strong>epsilon</strong> (<em>float</em>) &#8211; <span class="math">\(\rho\)</span> in equation</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="rmspropoptimizer">
+<h2>RMSPropOptimizer<a class="headerlink" href="#rmspropoptimizer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">RMSPropOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span></dt>
+<dd><p>RMSProp(for Root Mean Square Propagation) optimizer. For details please
+refer this <a class="reference external" href="http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf">slide</a>.</p>
+<p>The equations of this method as follows:</p>
+<div class="math">
+\[\begin{split}v(w, t) &amp; = \rho v(w, t-1) + (1 - \rho)(\nabla Q_{i}(w))^2 \\
+w &amp; = w - \frac{\eta} {\sqrt{v(w,t) + \epsilon}} \nabla Q_{i}(w)\end{split}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>rho</strong> (<em>float</em>) &#8211; the <span class="math">\(\rho\)</span> in the equation. The forgetting factor.</li>
+<li><strong>epsilon</strong> (<em>float</em>) &#8211; the <span class="math">\(\epsilon\)</span> in the equation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="settings">
+<h2>settings<a class="headerlink" href="#settings" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">settings</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Set the optimization method, learning rate, batch size, and other training
+settings. The currently supported algorithms are SGD and Async-SGD.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Note that the &#8216;batch_size&#8217; in PaddlePaddle is not equal to global
+training batch size. It represents the single training process&#8217;s batch
+size. If you use N processes to train one model, for example use three
+GPU machines, the global batch size is N*&#8217;batch_size&#8217;.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>batch_size</strong> (<em>int</em>) &#8211; batch size for one training process.</li>
+<li><strong>learning_rate</strong> (<em>float</em>) &#8211; learning rate for SGD</li>
+<li><strong>learning_method</strong> (<em>BaseSGDOptimizer</em>) &#8211; The extension optimization algorithms of gradient
+descent, such as momentum, adagrad, rmsprop, etc.
+Note that it should be instance with base type
+BaseSGDOptimizer.</li>
+<li><strong>regularization</strong> (<em>BaseRegularization</em>) &#8211; The regularization method.</li>
+<li><strong>is_async</strong> (<em>bool</em>) &#8211; Is Async-SGD or not. Default value is False.</li>
+<li><strong>model_average</strong> (<em>ModelAverage</em>) &#8211; Model Average Settings.</li>
+<li><strong>gradient_clipping_threshold</strong> (<em>float</em>) &#8211; gradient clipping threshold. If gradient
+value larger than some value, will be
+clipped.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Optimizers</a><ul>
+<li><a class="reference internal" href="#basesgdoptimizer">BaseSGDOptimizer</a></li>
+<li><a class="reference internal" href="#momentumoptimizer">MomentumOptimizer</a></li>
+<li><a class="reference internal" href="#adamoptimizer">AdamOptimizer</a></li>
+<li><a class="reference internal" href="#adamaxoptimizer">AdamaxOptimizer</a></li>
+<li><a class="reference internal" href="#adagradoptimizer">AdaGradOptimizer</a></li>
+<li><a class="reference internal" href="#decayedadagradoptimizer">DecayedAdaGradOptimizer</a></li>
+<li><a class="reference internal" href="#adadeltaoptimizer">AdaDeltaOptimizer</a></li>
+<li><a class="reference internal" href="#rmspropoptimizer">RMSPropOptimizer</a></li>
+<li><a class="reference internal" href="#settings">settings</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Model Config Interface</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="data_sources.html"
+                        title="next chapter">DataSources</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/ui/api/trainer_config_helpers/optimizers.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="data_sources.html" title="DataSources"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Model Config Interface"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Model Config Interface</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

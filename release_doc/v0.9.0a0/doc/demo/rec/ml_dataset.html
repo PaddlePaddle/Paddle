@@ -1,0 +1,250 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MovieLens Dataset &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="Examples and demos" href="../index.html" />
+    <link rel="next" title="Regression MovieLens Ratting" href="ml_regression.html" />
+    <link rel="prev" title="Semantic Role labeling Tutorial" href="../semantic_role_labeling/semantic_role_labeling.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ml_regression.html" title="Regression MovieLens Ratting"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../semantic_role_labeling/semantic_role_labeling.html" title="Semantic Role labeling Tutorial"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Examples and demos</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="movielens-dataset">
+<span id="movielens-dataset"></span><h1>MovieLens Dataset<a class="headerlink" href="#movielens-dataset" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference external" href="http://grouplens.org/datasets/movielens/">MovieLens Dataset</a> was collected by GroupLens Research.
+The data set contains some user information, movie information, and many movie ratings from [1-5].
+The data sets have many version depending on the size of set.
+We use <a class="reference external" href="http://files.grouplens.org/datasets/movielens/ml-1m.zip">MovieLens 1M Dataset</a> as a demo dataset, which contains
+1 million ratings from 6000 users on 4000 movies. Released 2/2003.</p>
+<div class="section" id="dataset-features">
+<span id="dataset-features"></span><h2>Dataset Features<a class="headerlink" href="#dataset-features" title="Permalink to this headline">¶</a></h2>
+<p>In <a class="reference external" href="http://files.grouplens.org/datasets/movielens/ml-1m.zip">ml-1m Dataset</a>, there are many features in these dataset.
+The data files (which have &#8221;.dat&#8221; extension) in <a class="reference external" href="http://files.grouplens.org/datasets/movielens/ml-1m.zip">ml-1m Dataset</a>
+is basically CSV file that delimiter is &#8221;::&#8221;. The description in README we quote here.</p>
+<div class="section" id="ratings-file-description-ratings-dat">
+<span id="ratings-file-description-ratings-dat"></span><h3>RATINGS FILE DESCRIPTION(ratings.dat)<a class="headerlink" href="#ratings-file-description-ratings-dat" title="Permalink to this headline">¶</a></h3>
+<p>All ratings are contained in the file &#8220;ratings.dat&#8221; and are in the
+following format:</p>
+<p>UserID::MovieID::Rating::Timestamp</p>
+<ul class="simple">
+<li>UserIDs range between 1 and 6040</li>
+<li>MovieIDs range between 1 and 3952</li>
+<li>Ratings are made on a 5-star scale (whole-star ratings only)</li>
+<li>Timestamp is represented in seconds since the epoch as returned by time(2)</li>
+<li>Each user has at least 20 ratings</li>
+</ul>
+</div>
+<div class="section" id="users-file-description-users-dat">
+<span id="users-file-description-users-dat"></span><h3>USERS FILE DESCRIPTION(users.dat)<a class="headerlink" href="#users-file-description-users-dat" title="Permalink to this headline">¶</a></h3>
+<p>User information is in the file &#8220;users.dat&#8221; and is in the following
+format:</p>
+<p>UserID::Gender::Age::Occupation::Zip-code</p>
+<p>All demographic information is provided voluntarily by the users and is
+not checked for accuracy.  Only users who have provided some demographic
+information are included in this data set.</p>
+<ul class="simple">
+<li>Gender is denoted by a &#8220;M&#8221; for male and &#8220;F&#8221; for female</li>
+<li>Age is chosen from the following ranges:<ul>
+<li>1:  &#8220;Under 18&#8221;</li>
+<li>18:  &#8220;18-24&#8221;</li>
+<li>25:  &#8220;25-34&#8221;</li>
+<li>35:  &#8220;35-44&#8221;</li>
+<li>45:  &#8220;45-49&#8221;</li>
+<li>50:  &#8220;50-55&#8221;</li>
+<li>56:  &#8220;56+&#8221;</li>
+</ul>
+</li>
+<li>Occupation is chosen from the following choices:<ul>
+<li>0:  &#8220;other&#8221; or not specified</li>
+<li>1:  &#8220;academic/educator&#8221;</li>
+<li>2:  &#8220;artist&#8221;</li>
+<li>3:  &#8220;clerical/admin&#8221;</li>
+<li>4:  &#8220;college/grad student&#8221;</li>
+<li>5:  &#8220;customer service&#8221;</li>
+<li>6:  &#8220;doctor/health care&#8221;</li>
+<li>7:  &#8220;executive/managerial&#8221;</li>
+<li>8:  &#8220;farmer&#8221;</li>
+<li>9:  &#8220;homemaker&#8221;</li>
+<li>10:  &#8220;K-12 student&#8221;</li>
+<li>11:  &#8220;lawyer&#8221;</li>
+<li>12:  &#8220;programmer&#8221;</li>
+<li>13:  &#8220;retired&#8221;</li>
+<li>14:  &#8220;sales/marketing&#8221;</li>
+<li>15:  &#8220;scientist&#8221;</li>
+<li>16:  &#8220;self-employed&#8221;</li>
+<li>17:  &#8220;technician/engineer&#8221;</li>
+<li>18:  &#8220;tradesman/craftsman&#8221;</li>
+<li>19:  &#8220;unemployed&#8221;</li>
+<li>20:  &#8220;writer&#8221;</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="movies-file-description-movies-dat">
+<span id="movies-file-description-movies-dat"></span><h3>MOVIES FILE DESCRIPTION(movies.dat)<a class="headerlink" href="#movies-file-description-movies-dat" title="Permalink to this headline">¶</a></h3>
+<p>Movie information is in the file &#8220;movies.dat&#8221; and is in the following
+format:</p>
+<p>MovieID::Title::Genres</p>
+<ul class="simple">
+<li>Titles are identical to titles provided by the IMDB (including
+year of release)</li>
+<li>Genres are pipe-separated and are selected from the following genres:<ul>
+<li>Action</li>
+<li>Adventure</li>
+<li>Animation</li>
+<li>Children&#8217;s</li>
+<li>Comedy</li>
+<li>Crime</li>
+<li>Documentary</li>
+<li>Drama</li>
+<li>Fantasy</li>
+<li>Film-Noir</li>
+<li>Horror</li>
+<li>Musical</li>
+<li>Mystery</li>
+<li>Romance</li>
+<li>Sci-Fi</li>
+<li>Thriller</li>
+<li>War</li>
+<li>Western</li>
+</ul>
+</li>
+<li>Some MovieIDs do not correspond to a movie due to accidental duplicate
+entries and/or test entries</li>
+<li>Movies are mostly entered by hand, so errors and inconsistencies may exist</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">MovieLens Dataset</a><ul>
+<li><a class="reference internal" href="#dataset-features">Dataset Features</a><ul>
+<li><a class="reference internal" href="#ratings-file-description-ratings-dat">RATINGS FILE DESCRIPTION(ratings.dat)</a></li>
+<li><a class="reference internal" href="#users-file-description-users-dat">USERS FILE DESCRIPTION(users.dat)</a></li>
+<li><a class="reference internal" href="#movies-file-description-movies-dat">MOVIES FILE DESCRIPTION(movies.dat)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../semantic_role_labeling/semantic_role_labeling.html"
+                        title="previous chapter">Semantic Role labeling Tutorial</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ml_regression.html"
+                        title="next chapter">Regression MovieLens Ratting</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/demo/rec/ml_dataset.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ml_regression.html" title="Regression MovieLens Ratting"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../semantic_role_labeling/semantic_role_labeling.html" title="Semantic Role labeling Tutorial"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

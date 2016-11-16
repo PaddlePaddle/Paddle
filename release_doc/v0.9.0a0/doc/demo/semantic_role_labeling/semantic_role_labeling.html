@@ -1,0 +1,331 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Semantic Role labeling Tutorial &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
+    <link rel="up" title="Semantic Role Labeling Tutorial" href="index.html" />
+    <link rel="next" title="MovieLens Dataset" href="../rec/ml_dataset.html" />
+    <link rel="prev" title="Semantic Role Labeling Tutorial" href="index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rec/ml_dataset.html" title="MovieLens Dataset"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Semantic Role Labeling Tutorial"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">Semantic Role Labeling Tutorial</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="semantic-role-labeling-tutorial">
+<span id="semantic-role-labeling-tutorial"></span><h1>Semantic Role labeling Tutorial<a class="headerlink" href="#semantic-role-labeling-tutorial" title="Permalink to this headline">¶</a></h1>
+<p>Semantic role labeling (SRL) is a form of shallow semantic parsing whose goal is to discover the predicate-argument structure of each predicate in a given input sentence. SRL is useful as an intermediate step in a wide range of natural language processing tasks, such as information extraction. automatic document categorization and question answering.  An instance is as following [1]:</p>
+<p>[ <sub>A0</sub> He ] [ <sub>AM-MOD</sub> would ][ <sub>AM-NEG</sub> n’t ] [ <sub>V</sub> accept] [ <sub>A1</sub> anything of value ] from [<sub>A2</sub> those he was writing about ].</p>
+<ul class="simple">
+<li>V: verb</li>
+<li>A0: acceptor</li>
+<li>A1: thing accepted</li>
+<li>A2: accepted-from</li>
+<li>A3: Attribute</li>
+<li>AM-MOD: modal</li>
+<li>AM-NEG: negation</li>
+</ul>
+<p>Given the verb &#8220;accept&#8221;, the chunks in sentence would play certain semantic roles. Here, the label scheme is from Penn Proposition Bank.</p>
+<p>To this date, most of the successful SRL systems are built on top of some form of parsing results where pre-defined feature templates over the syntactic structure are used. This tutorial will present an end-to-end system using deep bidirectional long short-term memory (DB-LSTM)[2] for solving the SRL task, which largely outperforms the previous state-of-the-art systems. The system regards SRL task as the sequence labelling problem.</p>
+<div class="section" id="data-description">
+<span id="data-description"></span><h2>Data Description<a class="headerlink" href="#data-description" title="Permalink to this headline">¶</a></h2>
+<p>The relevant paper[2] takes the data set in CoNLL-2005&amp;2012 Shared Task for training and testing. Accordingto data license,  the demo adopts the test data set of CoNLL-2005, which can be reached on website.</p>
+<p>To download and process the original data, user just need to execute the following command:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> data
+./get_data.sh
+</pre></div>
+</div>
+<p>Several new files appear in the <code class="docutils literal"><span class="pre">data</span></code>directory as follows.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>conll05st-release：the <span class="nb">test</span> data <span class="nb">set</span> of CoNll-2005 shared task 
+test.wsj.words：the Wall Street Journal data sentences
+test.wsj.props:  the propositional arguments
+src.dict：the dictionary of words in sentences
+tgt.dict：the labels dictionary
+feature: the extracted features from data <span class="nb">set</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="training">
+<span id="training"></span><h2>Training<a class="headerlink" href="#training" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="db-lstm">
+<span id="db-lstm"></span><h3>DB-LSTM<a class="headerlink" href="#db-lstm" title="Permalink to this headline">¶</a></h3>
+<p>Please refer to the Sentiment Analysis demo to learn more about the long short-term memory unit.</p>
+<p>Unlike Bidirectional-LSTM that used in Sentiment Analysis demo,  the DB-LSTM adopts another way to stack LSTM layer. First a standard LSTM processes the sequence in forward direction. The input and output of this LSTM layer are taken by the next LSTM layer as input, processed in reversed direction. These two standard LSTM layers compose a pair of LSTM. Then we stack LSTM layers pair after pair to obtain the deep LSTM model.</p>
+<p>The following figure shows a temporal expanded 2-layer DB-LSTM network.
+<center>
+<img alt="pic" src="../../_images/network_arch.png" />
+</center></p>
+</div>
+<div class="section" id="features">
+<span id="features"></span><h3>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h3>
+<p>Two input features play an essential role in this pipeline: predicate (pred) and argument (argu). Two other features: predicate context (ctx-p) and region mark (mr) are also adopted. Because a single predicate word can not exactly describe the predicate information, especially when the same words appear more than one times in a sentence. With the predicate context, the ambiguity can be largely eliminated. Similarly, we use region mark m<sub>r</sub> = 1 to denote the argument position if it locates in the predicate context region, or m<sub>r</sub> = 0 if does not. These four simple features are all we need for our SRL system. Features of one sample with context size set to 1 is showed as following[2]:
+<center>
+<img alt="pic" src="../../_images/feature.jpg" />
+</center></p>
+<p>In this sample, the coresponding labelled sentence is:</p>
+<p>[ <sub>A1</sub> A record date ] has [ <sub>AM-NEG</sub> n&#8217;t ] been [ <sub>V</sub> set ] .</p>
+<p>In the demo, we adopt the feature template as above, consists of :  <code class="docutils literal"><span class="pre">argument</span></code>, <code class="docutils literal"><span class="pre">predicate</span></code>, <code class="docutils literal"><span class="pre">ctx-p</span> <span class="pre">(p=-1,0,1)</span></code>, <code class="docutils literal"><span class="pre">mark</span></code> and use <code class="docutils literal"><span class="pre">B/I/O</span></code> scheme to label each argument. These features and labels are stored in <code class="docutils literal"><span class="pre">feature</span></code> file, and separated by <code class="docutils literal"><span class="pre">\t</span></code>.</p>
+</div>
+<div class="section" id="data-provider">
+<span id="data-provider"></span><h3>Data Provider<a class="headerlink" href="#data-provider" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">dataprovider.py</span></code> is the python file to wrap data. <code class="docutils literal"><span class="pre">hook()</span></code> function is to define the data slots for network. The  Six features and label are all IndexSlots.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">hook</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">word_dict</span><span class="p">,</span> <span class="n">label_dict</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">word_dict</span> <span class="o">=</span> <span class="n">word_dict</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">label_dict</span> <span class="o">=</span> <span class="n">label_dict</span>
+    <span class="c1">#all inputs are integral and sequential type</span>
+    <span class="n">settings</span><span class="o">.</span><span class="n">slots</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">word_dict</span><span class="p">)),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span>
+        <span class="n">integer_value_sequence</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">label_dict</span><span class="p">))]</span>
+</pre></div>
+</div>
+<p>The corresponding data iterator is as following:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nd">@provider</span><span class="p">(</span><span class="n">use_seq</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">init_hook</span><span class="o">=</span><span class="n">hook</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fdata</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">fdata</span><span class="p">:</span>
+            <span class="n">sentence</span><span class="p">,</span> <span class="n">predicate</span><span class="p">,</span> <span class="n">ctx_n1</span><span class="p">,</span> <span class="n">ctx_0</span><span class="p">,</span> <span class="n">ctx_p1</span><span class="p">,</span> <span class="n">mark</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">words</span> <span class="o">=</span> <span class="n">sentence</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="n">sen_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+            <span class="n">word_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]</span>
+
+            <span class="n">predicate_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">predicate</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)]</span> <span class="o">*</span> <span class="n">sen_len</span>
+            <span class="n">ctx_n1_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ctx_n1</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)</span> <span class="p">]</span> <span class="o">*</span> <span class="n">sen_len</span>
+            <span class="n">ctx_0_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ctx_0</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)</span> <span class="p">]</span> <span class="o">*</span> <span class="n">sen_len</span>
+            <span class="n">ctx_p1_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">word_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ctx_p1</span><span class="p">,</span> <span class="n">UNK_IDX</span><span class="p">)</span> <span class="p">]</span> <span class="o">*</span> <span class="n">sen_len</span>
+
+            <span class="n">marks</span> <span class="o">=</span> <span class="n">mark</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="n">mark_slot</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">marks</span><span class="p">]</span>
+
+            <span class="n">label_list</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="n">label_slot</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">label_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">label_list</span><span class="p">]</span>
+
+            <span class="k">yield</span> <span class="n">word_slot</span><span class="p">,</span> <span class="n">predicate_slot</span><span class="p">,</span> <span class="n">ctx_n1_slot</span><span class="p">,</span> <span class="n">ctx_0_slot</span><span class="p">,</span> <span class="n">ctx_p1_slot</span><span class="p">,</span> <span class="n">mark_slot</span><span class="p">,</span> <span class="n">label_slot</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">process</span></code>function yield 7 lists which are six features and labels.</p>
+</div>
+<div class="section" id="neural-network-config">
+<span id="neural-network-config"></span><h3>Neural Network Config<a class="headerlink" href="#neural-network-config" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal"><span class="pre">db_lstm.py</span></code> is the neural network config file to load the dictionaries and define the  data provider module and network architecture during the training procedure.</p>
+<p>Seven <code class="docutils literal"><span class="pre">data_layer</span></code> load instances from data provider. Six features are transformed into embedddings respectively, and mixed by <code class="docutils literal"><span class="pre">mixed_layer</span></code> .  Deep bidirectional LSTM layers extract features for the softmax layer. The objective function is cross entropy of labels.</p>
+</div>
+<div class="section" id="run-training">
+<span id="run-training"></span><h3>Run Training<a class="headerlink" href="#run-training" title="Permalink to this headline">¶</a></h3>
+<p>The script for training is <code class="docutils literal"><span class="pre">train.sh</span></code>, user just need to execute:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>  ./train.sh
+</pre></div>
+</div>
+<p>The content in <code class="docutils literal"><span class="pre">train.sh</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span> <span class="n">train</span> \
+  <span class="o">--</span><span class="n">config</span><span class="o">=./</span><span class="n">db_lstm</span><span class="o">.</span><span class="n">py</span> \
+  <span class="o">--</span><span class="n">save_dir</span><span class="o">=./</span><span class="n">output</span> \
+  <span class="o">--</span><span class="n">trainer_count</span><span class="o">=</span><span class="mi">4</span> \
+  <span class="o">--</span><span class="n">log_period</span><span class="o">=</span><span class="mi">10</span> \
+  <span class="o">--</span><span class="n">num_passes</span><span class="o">=</span><span class="mi">500</span> \
+  <span class="o">--</span><span class="n">use_gpu</span><span class="o">=</span><span class="n">false</span> \
+  <span class="o">--</span><span class="n">show_parameter_stats_period</span><span class="o">=</span><span class="mi">10</span> \
+  <span class="o">--</span><span class="n">test_all_data_in_one_period</span><span class="o">=</span><span class="mi">1</span> \
+<span class="mi">2</span><span class="o">&gt;&amp;</span><span class="mi">1</span> <span class="o">|</span> <span class="n">tee</span> <span class="s1">&#39;train.log&#39;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>--config=./db_lstm.py : network config file.</li>
+<li>--save_di=./output: output path to save models.</li>
+<li>--trainer_count=4 : set thread number (or GPU count).</li>
+<li>--log_period=10 : print log every 20 batches.</li>
+<li>--num_passes=500: set pass number, one pass in PaddlePaddle means training all samples in dataset one time.</li>
+<li>--use_gpu=false: use CPU to train, set true, if you install GPU version of PaddlePaddle and want to use GPU to train.</li>
+<li>--show_parameter_stats_period=10: show parameter statistic every 100 batches.</li>
+<li>--test_all_data_in_one_period=1: test all data in every testing.</li>
+</ul>
+<p>After training, the models  will be saved in directory <code class="docutils literal"><span class="pre">output</span></code>.</p>
+</div>
+<div class="section" id="run-testing">
+<span id="run-testing"></span><h3>Run testing<a class="headerlink" href="#run-testing" title="Permalink to this headline">¶</a></h3>
+<p>The script for testing is <code class="docutils literal"><span class="pre">test.sh</span></code>, user just need to execute:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>  ./test.sh
+</pre></div>
+</div>
+<p>The main part in <code class="docutils literal"><span class="pre">tesh.sh</span></code></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>paddle train \
+  --config=./db_lstm.py \
+  --model_list=$model_list \
+  --job=test \
+  --config_args=is_test=1 \
+</pre></div>
+</div>
+<ul class="simple">
+<li>--config=./db_lstm.py: network config file</li>
+<li>--model_list=$model_list.list: model list file</li>
+<li>--job=test: indicate the test job</li>
+<li>--config_args=is_test=1: flag to indicate test</li>
+</ul>
+</div>
+<div class="section" id="run-prediction">
+<span id="run-prediction"></span><h3>Run prediction<a class="headerlink" href="#run-prediction" title="Permalink to this headline">¶</a></h3>
+<p>The script for prediction is <code class="docutils literal"><span class="pre">predict.sh</span></code>, user just need to execute:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>  ./predict.sh
+  
+</pre></div>
+</div>
+<p>In <code class="docutils literal"><span class="pre">predict.sh</span></code>, user should offer the network config file, model path, label file, word dictionary file, feature file</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>python predict.py 
+     -c $config_file 
+     -w $model_path 
+     -l $label_file 
+     -d $dict_file 
+     -i $input_file
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">predict.py</span></code> is the main executable python script, which includes functions: load model, load data, data prediction. The network model will output the probability distribution of labels. In the demo, we take the label with maximum probability as result. User can also implement the beam search or viterbi decoding upon the probability distribution matrix.</p>
+<p>After prediction,  the result is saved in <code class="docutils literal"><span class="pre">predict.res</span></code>.</p>
+</div>
+</div>
+<div class="section" id="reference">
+<span id="reference"></span><h2>Reference<a class="headerlink" href="#reference" title="Permalink to this headline">¶</a></h2>
+<p>[1] Martha Palmer, Dan Gildea, and Paul Kingsbury. The Proposition Bank: An Annotated Corpus of Semantic Roles , Computational Linguistics, 31(1), 2005.</p>
+<p>[2] Zhou, Jie, and Wei Xu. &#8220;End-to-end learning of semantic role labeling using recurrent neural networks.&#8221; Proceedings of the Annual Meeting of the Association for Computational Linguistics. 2015.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Semantic Role labeling Tutorial</a><ul>
+<li><a class="reference internal" href="#data-description">Data Description</a></li>
+<li><a class="reference internal" href="#training">Training</a><ul>
+<li><a class="reference internal" href="#db-lstm">DB-LSTM</a></li>
+<li><a class="reference internal" href="#features">Features</a></li>
+<li><a class="reference internal" href="#data-provider">Data Provider</a></li>
+<li><a class="reference internal" href="#neural-network-config">Neural Network Config</a></li>
+<li><a class="reference internal" href="#run-training">Run Training</a></li>
+<li><a class="reference internal" href="#run-testing">Run testing</a></li>
+<li><a class="reference internal" href="#run-prediction">Run prediction</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#reference">Reference</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Semantic Role Labeling Tutorial</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../rec/ml_dataset.html"
+                        title="next chapter">MovieLens Dataset</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/demo/semantic_role_labeling/semantic_role_labeling.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../rec/ml_dataset.html" title="MovieLens Dataset"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Semantic Role Labeling Tutorial"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Examples and demos</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" >Semantic Role Labeling Tutorial</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>
