@@ -120,24 +120,19 @@ emb_para = ParameterAttribute(name='emb', initial_std=0., learning_rate=0.)
 std_0 = ParameterAttribute(initial_std=0.)
 std_default = ParameterAttribute(initial_std=default_std) 
 
-word_embedding = embedding_layer(size=word_dim, input=word, param_attr=emb_para)
 predicate_embedding = embedding_layer(size=word_dim, input=predicate, param_attr=ParameterAttribute(name='vemb',initial_std=default_std))
-
-ctx_n2_embedding = embedding_layer(size=word_dim, input=ctx_n2, param_attr=emb_para)
-ctx_n1_embedding = embedding_layer(size=word_dim, input=ctx_n1, param_attr=emb_para)
-ctx_0_embedding = embedding_layer(size=word_dim, input=ctx_0, param_attr=emb_para)
-ctx_p1_embedding = embedding_layer(size=word_dim, input=ctx_p1, param_attr=emb_para)
-ctx_p2_embedding = embedding_layer(size=word_dim, input=ctx_p2, param_attr=emb_para)
 mark_embedding = embedding_layer(name='word_ctx-in_embedding', size=mark_dim, input=mark, param_attr=std_0)
 
-all_emb=[word_embedding, predicate_embedding, ctx_n2_embedding, ctx_n1_embedding, ctx_0_embedding,
-        ctx_p1_embedding, ctx_p2_embedding, mark_embedding]
+word_input=[word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
+emb_layers = [embedding_layer(size=word_dim, input=x, param_attr=emb_para) for x in word_input]
+emb_layers.append(predicate_embedding)
+emb_layers.append(mark_embedding)
 
 hidden_0 = mixed_layer(
     name='hidden0',
     size=hidden_dim,
     bias_attr=std_default,
-    input=[ full_matrix_projection(input=emb, param_attr=std_default ) for emb in all_emb ])
+    input=[ full_matrix_projection(input=emb, param_attr=std_default ) for emb in emb_layers ])
 
 
 mix_hidden_lr = 1e-3
