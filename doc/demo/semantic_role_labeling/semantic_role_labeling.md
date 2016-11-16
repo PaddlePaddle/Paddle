@@ -167,6 +167,7 @@ paddle train \
   - \--model_list=$model_list.list: model list file
   - \--job=test: indicate the test job
   - \--config_args=is_test=1: flag to indicate test
+  - \--test_all_data_in_one_period=1: test all data in 1 period
   
 
 ### Run prediction
