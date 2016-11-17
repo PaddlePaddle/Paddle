@@ -762,6 +762,8 @@ bool hl_cuda_event_is_ready(hl_event_t event) {
 void hl_profiler_start() {
     CHECK_CUDA(dynload::cudaProfilerStart());
 }
+
 void hl_profiler_end() {
     CHECK_CUDA(dynload::cudaProfilerStop());
 }
+

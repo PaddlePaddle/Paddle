@@ -65,6 +65,7 @@ std::ostream& operator<<(std::ostream& outPut, const Stat& stat) {
   auto showStat = [&](const StatInfo* info, pid_t tid, bool isFirst = true) {
     uint64_t average = 0;
     if (info->count_ > 0) {
+      outPut << std::setfill(' ') << std::left;
       if (!isFirst) {
         outPut << std::setw(42) << " ";
       }

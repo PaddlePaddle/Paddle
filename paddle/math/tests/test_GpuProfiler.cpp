@@ -20,7 +20,6 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "paddle/gserver/tests/TestUtil.h"
 #include "paddle/utils/Stat.h"
-#include "hl_cuda.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -106,12 +105,19 @@ void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
 }
 
 TEST(Profiler, BilinearFwdBwd) {
-  hl_profiler_start();
   auto numSamples = 10;
   auto channels = 16;
   auto imgSize = 64;
-  testBilinearFwdBwd(numSamples, imgSize, imgSize, channels);
-  hl_profiler_end();
+  {
+    // nvprof: GPU Proflier
+    REGISTER_GPU_PROFILER("testBilinearFwdBwd",
+      "numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64");
+    // Paddle built-in timer
+    REGISTER_TIMER_INFO("testBilinearFwdBwd",
+      "numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64");
+    testBilinearFwdBwd(numSamples, imgSize, imgSize, channels);
+  }
+  globalStat.printStatus("testBilinearFwdBwd");
 }
 
 int main(int argc, char** argv) {
