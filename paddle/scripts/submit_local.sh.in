@@ -28,6 +28,25 @@ function version(){
         echo "    with_predict_sdk: @WITH_PREDICT_SDK@"
 }
 
+function ver2num() {
+  printf "%03d%03d%03d%03d" \
+    $(echo $1 | sed 's#v##g' | tr '.' ' ' \
+      | tr 'a' ' 0 ' | tr 'b' ' 1 ' | tr 'rc' ' 2 ')
+}
+
+PADDLE_CONF_HOME="$HOME/.config/paddle"
+mkdir -p ${PADDLE_CONF_HOME}
+
+if [ -z "${PADDLE_NO_STAT+x}" ]; then
+    SERVER_VER=`curl -m 5 -X POST --data content="{ version: \"@PADDLE_VERSION@\" }"\
+        -b ${PADDLE_CONF_HOME}/paddle.cookie \
+        -c ${PADDLE_CONF_HOME}/paddle.cookie \
+        http://api.paddlepaddle.org/version 2>/dev/null`
+    if [ $? -eq 0 ] && [ "$(ver2num @PADDLE_VERSION@)" -lt  $(ver2num $SERVER_VER) ]; then
+      echo "Paddle release a new version ${SERVER_VER}, you can get the install package in http://www.paddlepaddle.org" 
+    fi
+fi
+
 
 MYDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
