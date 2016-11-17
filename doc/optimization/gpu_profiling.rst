@@ -62,7 +62,7 @@ The above code snippet includes two methods, you can use any of them to profile 
 2. :code:`REGISTER_GPU_PROFILER` is a general purpose wrapper object of :code:`cudaProfilerStart` and :code:`cudaProfilerStop` to avoid
 program crashes when CPU version of PaddlePaddle invokes them.
 
-You can find all the gory details about how to use both of them in the next session.
+You can find more details about how to use both of them in the next session.
 
 Hands-on Approach
 =================
