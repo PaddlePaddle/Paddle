@@ -29,16 +29,25 @@ function version(){
 }
 
 function ver2num() {
-  printf "%03d%03d%03d%03d" \
-    $(echo $1 | sed 's#v##g' | tr '.' ' ' \
-      | tr 'a' ' 0 ' | tr 'b' ' 1 ' | tr 'rc' ' 2 ')
+  # convert version to number.
+  if [ -z "$1" ]; then # empty argument
+    printf "%03d%03d%03d%03d%03d" 0
+  else
+    local VERN=$(echo $1 | sed 's#v##g' | sed 's#\.# #g' \
+        | sed 's#a# 0 #g' | sed 's#b# 1 #g' | sed 's#rc# 2 #g')
+    if [ `echo $VERN | wc -w` -eq 3 ] ; then
+      printf "%03d%03d%03d%03d%03d" $VERN 999 999
+    else
+      printf "%03d%03d%03d%03d%03d" $VERN
+    fi
+  fi
 }
 
 PADDLE_CONF_HOME="$HOME/.config/paddle"
 mkdir -p ${PADDLE_CONF_HOME}
 
 if [ -z "${PADDLE_NO_STAT+x}" ]; then
-    SERVER_VER=`curl -m 5 -X POST --data content="{ version: \"@PADDLE_VERSION@\" }"\
+    SERVER_VER=`curl -m 5 -X POST --data content="{ \"version\": \"@PADDLE_VERSION@\" }"\
         -b ${PADDLE_CONF_HOME}/paddle.cookie \
         -c ${PADDLE_CONF_HOME}/paddle.cookie \
         http://api.paddlepaddle.org/version 2>/dev/null`
