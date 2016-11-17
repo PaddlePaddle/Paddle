@@ -2,9 +2,16 @@
 
 
 [![Build Status](https://travis-ci.org/baidu/Paddle.svg?branch=master)](https://travis-ci.org/baidu/Paddle)
+[![Downloads](https://img.shields.io/github/downloads/baidu/Paddle/total.svg)](https://github.com/baidu/Paddle/releases)
 [![Coverage Status](https://coveralls.io/repos/github/baidu/Paddle/badge.svg?branch=develop)](https://coveralls.io/github/baidu/Paddle?branch=develop)
-[![Join the chat at https://gitter.im/PaddlePaddle/Deep_Learning](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/PaddlePaddle/Deep_Learning?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)]()
+[![Join the chat at](https://img.shields.io/gitter/room/PaddlePaddle/Deep_Learning.svg)](https://gitter.im/PaddlePaddle/Deep_Learning)
+
+[![Release](https://img.shields.io/github/release/baidu/Paddle.svg)](https://github.com/baidu/Paddle/releases)
+[![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
+
 
 Welcome to the PaddlePaddle GitHub.
 
