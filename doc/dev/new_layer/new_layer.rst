@@ -60,7 +60,7 @@ Implement C++ Class
 
 The C++ class of the layer implements the initialization, forward, and backward part of the layer. The fully connected layer is at :code:`paddle/gserver/layers/FullyConnectedLayer.h` and :code:`paddle/gserver/layers/FullyConnectedLayer.cpp`. We list simplified version of the code below.
 
-It needs to derive the base class :code:`paddle::BaseLayer`, and it needs to override the following functions:
+It needs to derive the base class :code:`paddle::Layer`, and it needs to override the following functions:
 
 - constructor and destructor.
 - :code:`init` function. It is used to initialize the parameters and settings.
