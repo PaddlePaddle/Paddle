@@ -25,8 +25,14 @@ is_discriminator_training = mode == "discriminator_training"
 is_generator = mode == "generator"
 is_discriminator = mode == "discriminator"
 
+# The network structure below follows the dcgan paper 
+# (https://arxiv.org/abs/1511.06434)
+
 print('mode=%s' % mode)
+# the dim of the noise (z) as the input of the generator network
 noise_dim = 100
+# the number of filters in the layer in generator/discriminator that is 
+# closet to the image
 gf_dim = 64
 df_dim = 64
 if dataSource == "mnist":
@@ -47,6 +53,19 @@ settings(
 def conv_bn(input, channels, imgSize, num_filters, output_x, stride, name, 
                  param_attr, bias_attr, param_attr_bn, bn, trans=False, 
                  act=ReluActivation()):
+    
+    """
+    conv_bn is a utility function that constructs a convolution/deconv layer 
+    with an optional batch_norm layer
+
+    :param bn: whether to use batch_norm_layer
+    :type bn: bool
+    :param trans: whether to use conv (False) or deconv (True)
+    :type trans: bool
+    """
+    
+    # calculate the filter_size and padding size based on the given
+    # imgSize and ouput size
     tmp =  imgSize - (output_x - 1) * stride
     if tmp <= 1 or tmp > 5:
         raise ValueError("conv input-output dimension does not fit")
@@ -240,7 +259,6 @@ if is_generator_training or is_discriminator_training:
     classification_error_evaluator(input=prob, label=label, name=mode+'_error')
     outputs(cost)
 
-    
 if is_generator:
     noise = data_layer(name="noise", size=noise_dim)
     outputs(generator(noise))

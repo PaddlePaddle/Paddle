@@ -25,8 +25,11 @@ is_generator = mode == "generator"
 is_discriminator = mode == "discriminator"
 
 print('mode=%s' % mode)
-noise_dim = 10
+# the dim of the noise (z) as the input of the generator network
+noise_dim = 10 
+# the dim of the hidden layer
 hidden_dim = 15
+# the dim of the generated sample
 sample_dim = 2
 
 settings(
@@ -123,7 +126,6 @@ if is_generator_training or is_discriminator_training:
     classification_error_evaluator(input=prob, label=label, name=mode+'_error')
     outputs(cost)
 
-    
 if is_generator:
     noise = data_layer(name="noise", size=noise_dim)
     outputs(generator(noise))
