@@ -14,12 +14,15 @@ limitations under the License. */
 
 #include "paddle/utils/Logging.h"
 #include "ConvBaseLayer.h"
+#include "paddle/math/MathUtils.h"
 namespace paddle {
 
 bool ConvBaseLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
+  isDeconv_ = (config_.type() == "exconv" || config_.type() == "cudnn_conv")
+              ? false : true;
 
   /* Initialize the convolutional layer parameter */
   numFilters_ = config_.num_filters();
@@ -42,8 +45,20 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
     outputW_.push_back(conf.output_x());
   }
 
+  CHECK(inputLayers_.size() == parameters_.size());
+  for (size_t i = 0; i < inputLayers_.size(); i++) {
+    size_t height, width;
+    height = filterPixels_[i] * filterChannels_[i];
+    width = (!isDeconv_) ? numFilters_ : channels_[i];
+
+    // create a new weight
+    CHECK_EQ(parameters_[i]->getSize(), width * height);
+    Weight* w = new Weight(height, width, parameters_[i]);
+    weights_.emplace_back(w);
+  }
+
   /* initialize the biases_ */
-  if (biasParameter_.get() != NULL) {
+  if (biasParameter_.get()) {
     if (sharedBiases_) {
       CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
       biases_ =
@@ -70,23 +85,48 @@ size_t ConvBaseLayer::calOutputSize() {
   clearAndReserve(&outputH_);
   clearAndReserve(&outputW_);
   size_t layerSize = 0;
-  for (size_t i = 0; i < inputLayers_.size(); i++) {
-    imgSizeH_.push_back(inputLayers_[i]->getOutput().getFrameHeight());
-    imgSizeW_.push_back(inputLayers_[i]->getOutput().getFrameWidth());
-    if (imgSizeH_[i] == 0)
-      imgSizeH_[i] = config_.inputs(i).conv_conf().img_size();
-    if (imgSizeW_[i] == 0)
-      imgSizeW_[i] = config_.inputs(i).conv_conf().img_size();
-    outputH_.push_back(outputSize(imgSizeH_[i], filterSizeY_[i], paddingY_[i],
-                                  strideY_[i], caffeMode_));
-    outputW_.push_back(outputSize(imgSizeW_[i], filterSize_[i], padding_[i],
-                                  stride_[i], caffeMode_));
-    CHECK_EQ(outputH_[i], outputH_[0]);
-    CHECK_EQ(outputW_[i], outputW_[0]);
+
+  auto setLayerSize = [&](IntV& inH, IntV& inW, IntV& outH, IntV& outW) {
+    for (size_t i = 0; i < inputLayers_.size(); i++) {
+       inH.push_back(inputLayers_[i]->getOutput().getFrameHeight());
+       inW.push_back(inputLayers_[i]->getOutput().getFrameWidth());
+       if (isDeconv_) {
+         if (inH[i] == 0)
+           inH[i] = config_.inputs(i).conv_conf().output_x();
+         if (inW[i] == 0)
+           inW[i] = config_.inputs(i).conv_conf().output_x();
+         outH.push_back(
+             imageSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i],
+                       caffeMode_));
+         outW.push_back(
+             imageSize(inW[i], filterSize_[i], padding_[i], stride_[i],
+                       caffeMode_));
+       } else {
+         if (inH[i] == 0)
+           inH[i] = config_.inputs(i).conv_conf().img_size();
+         if (inW[i] == 0)
+           inW[i] = config_.inputs(i).conv_conf().img_size();
+         outH.push_back(
+             outputSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i],
+                        caffeMode_));
+         outW.push_back(
+             outputSize(inW[i], filterSize_[i], padding_[i], stride_[i],
+                        caffeMode_));
+       }
+       CHECK_EQ(outH[i], outH[0]);
+       CHECK_EQ(outW[i], outW[0]);
+    }
+    getOutput().setFrameHeight(outH[0]);
+    getOutput().setFrameWidth(outW[0]);
+    layerSize = outH[0] * outW[0] * size_t(numFilters_);
+  };
+
+  if (isDeconv_) {
+    setLayerSize(outputH_, outputW_, imgSizeH_, imgSizeW_);
+  } else {
+    setLayerSize(imgSizeH_, imgSizeW_, outputH_, outputW_);
   }
-  getOutput().setFrameHeight(outputH_[0]);
-  getOutput().setFrameWidth(outputW_[0]);
-  layerSize = outputH_[0] * outputW_[0] * size_t(numFilters_);
+
   return layerSize;
 }
 

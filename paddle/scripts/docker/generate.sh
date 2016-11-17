@@ -58,4 +58,3 @@ m4 -DPADDLE_WITH_GPU=ON -DPADDLE_IS_DEVEL=ON -DPADDLE_WITH_DEMO=ON \
    -DPADDLE_BASE_IMAGE=nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04 \
    -DPADDLE_WITH_AVX=OFF \
    Dockerfile.m4 > Dockerfile.gpu-noavx-demo
-

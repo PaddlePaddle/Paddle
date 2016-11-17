@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/utils/ThreadLocal.h"
 #include "paddle/utils/Thread.h"
 #include "paddle/utils/Flags.h"
+#include "Matrix.h"
 #include "hl_gpu.h"
 #include "hl_table_apply.h"
 
@@ -71,6 +72,31 @@ std::shared_ptr<VectorT<T>> VectorT<T>::create(size_t size,
     LOG(FATAL) << "Wrong";
     return NULL;
   }
+}
+
+template <>
+MatrixPtr VectorT<real>::toOneHotSparseMatrix(size_t idRange, bool useGpu) {
+    LOG(FATAL) << "Wrong for real vector";
+    return nullptr;
+}
+
+template <>
+MatrixPtr VectorT<int>::toOneHotSparseMatrix(size_t idRange, bool useGpu) {
+  int height = getSize();
+  int width = idRange;
+  MatrixPtr mat = Matrix::createSparseMatrix(
+      height, idRange, height, NO_VALUE, SPARSE_CSR, false, useGpu);
+
+  CpuIVector cpuIds(height);
+  cpuIds.copyFrom(*this);
+  int *idData = cpuIds.getData();
+
+  for (int i = 0; i < height; i ++) {
+    const unsigned int id = idData[i];
+    CHECK_LT(id, width);
+    mat->setRow(i, 1, &id, nullptr);
+  }
+  return mat;
 }
 
 template <class T>

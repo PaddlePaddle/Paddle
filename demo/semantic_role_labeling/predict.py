@@ -63,6 +63,10 @@ class Prediction():
             integer_value_sequence(len_dict), 
             integer_value_sequence(2)
             ]
+            integer_value_sequence(len_dict), integer_value_sequence(len_dict),
+            integer_value_sequence(len_dict), integer_value_sequence(len_dict),
+            integer_value_sequence(len_dict), integer_value_sequence(2)
+        ]
         self.converter = DataProviderConverter(slots)
 
     def load_dict_label(self, dict_file, label_file, predicate_dict_file):
@@ -118,8 +122,8 @@ class Prediction():
                 len_sen = len(sen.split())
                 line_labels = lab[index:index + len_sen]
                 index += len_sen
-                fout.write(sen + '\t' + ' '.join([self.labels_reverse[
-                    i] for i in line_labels]) + '\n')
+                fout.write(sen + '\t' + ' '.join(
+                    [self.labels_reverse[i] for i in line_labels]) + '\n')
 
 
 def option_parser():

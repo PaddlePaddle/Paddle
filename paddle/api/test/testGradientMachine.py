@@ -30,8 +30,8 @@ class TestGradientMachine(unittest.TestCase):
         self.assertIsNotNone(model_config)
         machine = swig_paddle.GradientMachine.createByModelConfig(
             model_config, swig_paddle.CREATE_MODE_NORMAL,
-            swig_paddle.ParameterOptimizer.create(
-                opt_config).getParameterTypes())
+            swig_paddle.ParameterOptimizer.create(opt_config).getParameterTypes(
+            ))
         self.assertIsNotNone(machine)
         ipt, _ = util.loadMNISTTrainData()
         output = swig_paddle.Arguments.createArguments(0)
@@ -43,7 +43,7 @@ class TestGradientMachine(unittest.TestCase):
             assert isinstance(param, swig_paddle.Parameter)
             val = param.getBuf(swig_paddle.PARAMETER_VALUE)
             assert isinstance(val, swig_paddle.Vector)
-            arr = numpy.full((len(val),), 0.1, dtype="float32")
+            arr = numpy.full((len(val), ), 0.1, dtype="float32")
             val.copyFromNumpyArray(arr)
             param_config = param.getConfig().toProto()
             assert isinstance(param_config,

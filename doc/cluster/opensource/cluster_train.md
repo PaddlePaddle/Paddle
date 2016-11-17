@@ -1,26 +1,24 @@
-# Cluster Training
+# Distributed Training
 
-We provide some simple scripts ```paddle/scripts/cluster_train``` to help you to launch cluster training Job to harness PaddlePaddle's distributed trainning. For MPI and other cluster scheduler refer this naive script to implement more robust cluster training platform by yourself.
+In this article, we explain how to run distributed Paddle training jobs on clusters.  We will create the distributed version of the single-process training example, [recommendation](https://github.com/baidu/Paddle/tree/develop/demo/recommendation).
 
-The following cluster demo is based on RECOMMENDATION local training demo in PaddlePaddle ```demo/recommendation``` directory.  Assuming you enter the ```paddle/scripts/cluster_train/``` directory.
+[Scripts](https://github.com/baidu/Paddle/tree/develop/paddle/scripts/cluster_train) used in this article launch distributed jobs via SSH.  They also work as a reference for users running more sophisticated cluster management systems like MPI and Kubernetes.
 
-## Pre-requirements
+## Prerequisite
 
-Firstly,
+1. Aforementioned scripts use a Python library [fabric](http://www.fabfile.org/) to run SSH commands.  We can use `pip` to install fabric:
 
-```bash
+   ```bash
 pip install fabric
-```
+   ```
 
-Secondly, go through installing scripts to install PaddlePaddle at all nodes to make sure demo can run as local mode. For CUDA enabled training, we assume that CUDA is installed in ```/usr/local/cuda```, otherwise missed cuda runtime libraries error could be reported at cluster runtime. In one word, the local training environment should be well prepared for the simple scripts.
+1. We need to install PaddlePaddle on all nodes in the cluster.  To enable GPUs, we need to install CUDA in `/usr/local/cuda`; otherwise Paddle would report errors at runtime.
 
-Then you should prepare same ROOT_DIR directory in all nodes. ROOT_DIR is from in cluster_train/conf.py. Assuming that the ROOT_DIR = /home/paddle, you can create ```paddle``` user account as well, at last ```paddle.py``` can ssh connections to all nodes with ```paddle``` user automatically.
-
-At last you can create ssh mutual trust relationship between all nodes for easy ssh login, otherwise ```password``` should be provided at runtime from ```paddle.py```.
+1. Set the `ROOT_DIR` variable in [`cluster_train/conf.py`] on all nodes.  For convenience, we often create a Unix user `paddle` on all nodes and set `ROOT_DIR=/home/paddle`.  In this way, we can write public SSH keys into `/home/paddle/.ssh/authorized_keys` so that user `paddle` can SSH to all nodes without password.
 
 ## Prepare Job Workspace
 
-```Job workspace``` is defined as one package directory which contains dependency libraries, train data, test data, model config file and all other related file dependencies.
+We refer to the directory where we put dependent libraries, config files, etc., as *workspace*.
 
 These ```train/test``` data should be prepared before launching cluster job. To  satisfy the requirement that train/test data are placed in different directory from workspace, PADDLE refers train/test data according to index file named as ```train.list/test.list``` which are used in model config file. So the train/test data also contains train.list/test.list two list file. All local training demo already provides scripts to help you create these two files,  and all nodes in cluster job will handle files with same logical code in normal condition.
 

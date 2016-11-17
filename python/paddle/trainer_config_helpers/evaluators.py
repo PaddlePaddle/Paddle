@@ -15,13 +15,14 @@
 from paddle.trainer.config_parser import *
 from default_decorators import *
 
-__all__ = ["evaluator_base","classification_error_evaluator", "auc_evaluator",
-           "pnpair_evaluator", "precision_recall_evaluator",
-           "ctc_error_evaluator", "chunk_evaluator", "sum_evaluator",
-           "column_sum_evaluator", "value_printer_evaluator",
-           "gradient_printer_evaluator", "maxid_printer_evaluator",
-           "maxframe_printer_evaluator", "seqtext_printer_evaluator",
-           "classification_error_printer_evaluator"]
+__all__ = [
+    "evaluator_base", "classification_error_evaluator", "auc_evaluator",
+    "pnpair_evaluator", "precision_recall_evaluator", "ctc_error_evaluator",
+    "chunk_evaluator", "sum_evaluator", "column_sum_evaluator",
+    "value_printer_evaluator", "gradient_printer_evaluator",
+    "maxid_printer_evaluator", "maxframe_printer_evaluator",
+    "seqtext_printer_evaluator", "classification_error_printer_evaluator"
+]
 
 
 class EvaluatorAttribute(object):
@@ -32,10 +33,7 @@ class EvaluatorAttribute(object):
     FOR_UTILS = 1 << 4
 
     KEYS = [
-        "for_classification",
-        "for_regression",
-        "for_rank",
-        "for_print",
+        "for_classification", "for_regression", "for_rank", "for_print",
         "for_utils"
     ]
 
@@ -55,22 +53,23 @@ def evaluator(*attrs):
             setattr(method, EvaluatorAttribute.to_key(attr), True)
         method.is_evaluator = True
         return method
+
     return impl
 
-def evaluator_base(
-        input,
-        type,
-        label=None,
-        weight=None,
-        name=None,
-        chunk_scheme=None,
-        num_chunk_types=None,
-        classification_threshold=None,
-        positive_label=None,
-        dict_file=None,
-        result_file=None,
-        num_results=None,
-        delimited=None):
+
+def evaluator_base(input,
+                   type,
+                   label=None,
+                   weight=None,
+                   name=None,
+                   chunk_scheme=None,
+                   num_chunk_types=None,
+                   classification_threshold=None,
+                   positive_label=None,
+                   dict_file=None,
+                   result_file=None,
+                   num_results=None,
+                   delimited=None):
     """
     Evaluator will evaluate the network status while training/testing.
 
@@ -130,14 +129,14 @@ def evaluator_base(
         result_file=result_file,
         delimited=delimited)
 
+
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
 @wrap_name_default()
-def classification_error_evaluator(
-        input,
-        label,
-        name=None,
-        weight=None,
-        threshold=None):
+def classification_error_evaluator(input,
+                                   label,
+                                   name=None,
+                                   weight=None,
+                                   threshold=None):
     """
     Classification Error Evaluator. It will print error rate for classification.
 
@@ -170,13 +169,14 @@ def classification_error_evaluator(
     :return: None.
     """
 
-    evaluator_base(name=name,
-                   type="classification_error",
-                   input=input,
-                   label=label,
-                   weight=weight,
-                   classification_threshold=threshold,
-                   )
+    evaluator_base(
+        name=name,
+        type="classification_error",
+        input=input,
+        label=label,
+        weight=weight,
+        classification_threshold=threshold, )
+
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
 @wrap_name_default()
@@ -184,8 +184,7 @@ def auc_evaluator(
         input,
         label,
         name=None,
-        weight=None,
-        ):
+        weight=None, ):
     """
     Auc Evaluator which adapts to binary classification.
 
@@ -205,11 +204,13 @@ def auc_evaluator(
                   [sample_num, 1].
     :type weight: LayerOutput
     """
-    evaluator_base(name=name,
-                   type="last-column-auc",
-                   input=input,
-                   label=label,
-                   weight=weight)
+    evaluator_base(
+        name=name,
+        type="last-column-auc",
+        input=input,
+        label=label,
+        weight=weight)
+
 
 @evaluator(EvaluatorAttribute.FOR_RANK)
 @wrap_name_default()
@@ -218,8 +219,7 @@ def pnpair_evaluator(
         label,
         info,
         name=None,
-        weight=None,
-        ):
+        weight=None, ):
     """
     Positive-negative pair rate Evaluator which adapts to rank task like
     learning to rank. This evaluator must contain at least three layers.
@@ -242,12 +242,14 @@ def pnpair_evaluator(
                   [sample_num, 1]. (TODO, explaination)
     :type weight: LayerOutput
     """
-    evaluator_base(name=name,
-                   type="pnpair",
-                   input=input,
-                   label=label,
-                   info=info,
-                   weight=weight)
+    evaluator_base(
+        name=name,
+        type="pnpair",
+        input=input,
+        label=label,
+        info=info,
+        weight=weight)
+
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
 @wrap_name_default()
@@ -256,8 +258,7 @@ def precision_recall_evaluator(
         label,
         positive_label=None,
         weight=None,
-        name=None,
-        ):
+        name=None, ):
     """
     An Evaluator to calculate precision and recall, F1-score.
     It is adapt to the task with multiple labels.
@@ -286,20 +287,21 @@ def precision_recall_evaluator(
                   [sample_num, 1]. (TODO, explaination)
     :type weight: LayerOutput
     """
-    evaluator_base(name=name,
-                   type="precision_recall",
-                   input=input,
-                   label=label,
-                   positive_label=positive_label,
-                   weight=weight)
+    evaluator_base(
+        name=name,
+        type="precision_recall",
+        input=input,
+        label=label,
+        positive_label=positive_label,
+        weight=weight)
+
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
 @wrap_name_default()
 def ctc_error_evaluator(
         input,
         label,
-        name=None,
-        ):
+        name=None, ):
     """
     This evaluator is to calculate sequence-to-sequence edit distance.
 
@@ -317,10 +319,9 @@ def ctc_error_evaluator(
                   label for ctc_layer
     :type label: LayerOutput
     """
-    evaluator_base(name=name,
-                   type="ctc_edit_distance",
-                   input=input,
-                   label=label)
+    evaluator_base(
+        name=name, type="ctc_edit_distance", input=input, label=label)
+
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
 @wrap_name_default()
@@ -328,8 +329,7 @@ def chunk_evaluator(
         input,
         name=None,
         chunk_scheme=None,
-        num_chunk_types=None,
-        ):
+        num_chunk_types=None, ):
     """
     Chunk evaluator is used to evaluate segment labelling accuracy for a
     sequence. It calculates the chunk detection F1 score.
@@ -375,19 +375,20 @@ def chunk_evaluator(
     :type chunk_scheme: basestring
     :param num_chunk_types: number of chunk types other than "other"
     """
-    evaluator_base(name=name,
-                   type="chunk",
-                   input=input,
-                   chunk_scheme=chunk_scheme,
-                   num_chunk_types=num_chunk_types)
+    evaluator_base(
+        name=name,
+        type="chunk",
+        input=input,
+        chunk_scheme=chunk_scheme,
+        num_chunk_types=num_chunk_types)
+
 
 @evaluator(EvaluatorAttribute.FOR_UTILS)
 @wrap_name_default()
 def sum_evaluator(
         input,
         name=None,
-        weight=None,
-        ):
+        weight=None, ):
     """
     An Evaluator to sum the result of input.
 
@@ -405,18 +406,15 @@ def sum_evaluator(
                   [sample_num, 1]. (TODO, explaination)
     :type weight: LayerOutput
     """
-    evaluator_base(name=name,
-                   type="sum",
-                   input=input,
-                   weight=weight)
+    evaluator_base(name=name, type="sum", input=input, weight=weight)
+
 
 @evaluator(EvaluatorAttribute.FOR_UTILS)
 @wrap_name_default()
 def column_sum_evaluator(
         input,
         name=None,
-        weight=None,
-        ):
+        weight=None, ):
     """
     This Evaluator is used to sum the last column of input.
 
@@ -431,22 +429,22 @@ def column_sum_evaluator(
     :param input: Input Layer name.
     :type input: LayerOutput
     """
-    evaluator_base(name=name,
-                   type="last-column-sum",
-                   input=input,
-                   weight=weight)
+    evaluator_base(
+        name=name, type="last-column-sum", input=input, weight=weight)
+
 
 """
 The following are printer Evaluators which are usually used to
 print the result, like value or gradient of input layers, the
 results generated in machine translation, the classification error etc.
 """
+
+
 @evaluator(EvaluatorAttribute.FOR_PRINT)
 @wrap_name_default()
 def value_printer_evaluator(
         input,
-        name=None,
-        ):
+        name=None, ):
     """
     This Evaluator is used to print the values of input layers. It contains
     one or more input layers.
@@ -462,16 +460,14 @@ def value_printer_evaluator(
     :param name: Evaluator name.
     :type name: None|basestring
     """
-    evaluator_base(name=name,
-                   type="value_printer",
-                   input=input)
+    evaluator_base(name=name, type="value_printer", input=input)
+
 
 @evaluator(EvaluatorAttribute.FOR_PRINT)
 @wrap_name_default()
 def gradient_printer_evaluator(
         input,
-        name=None,
-        ):
+        name=None, ):
     """
     This Evaluator is used to print the gradient of input layers. It contains
     one or more input layers.
@@ -487,17 +483,15 @@ def gradient_printer_evaluator(
     :param name: Evaluator name.
     :type name: None|basestring
     """
-    evaluator_base(name=name,
-                   type="gradient_printer",
-                   input=input)
+    evaluator_base(name=name, type="gradient_printer", input=input)
+
 
 @evaluator(EvaluatorAttribute.FOR_PRINT)
 @wrap_name_default()
 def maxid_printer_evaluator(
         input,
         num_results=None,
-        name=None,
-        ):
+        name=None, ):
     """
     This Evaluator is used to print maximum top k values and their indexes
     of each row of input layers. It contains one or more input layers.
@@ -517,18 +511,16 @@ def maxid_printer_evaluator(
     :param name: Evaluator name.
     :type name: None|basestring
     """
-    evaluator_base(name=name,
-                   type="max_id_printer",
-                   input=input,
-                   num_results=num_results)
+    evaluator_base(
+        name=name, type="max_id_printer", input=input, num_results=num_results)
+
 
 @evaluator(EvaluatorAttribute.FOR_PRINT)
 @wrap_name_default()
 def maxframe_printer_evaluator(
         input,
         num_results=None,
-        name=None,
-        ):
+        name=None, ):
     """
     This Evaluator is used to print the top k frames of each input layers.
     The input layers should contain sequences info or sequences type.
@@ -549,10 +541,12 @@ def maxframe_printer_evaluator(
     :param name: Evaluator name.
     :type name: None|basestring
     """
-    evaluator_base(name=name,
-                   type="max_frame_printer",
-                   input=input,
-                   num_results=num_results)
+    evaluator_base(
+        name=name,
+        type="max_frame_printer",
+        input=input,
+        num_results=num_results)
+
 
 @evaluator(EvaluatorAttribute.FOR_PRINT)
 @wrap_name_default()
@@ -562,8 +556,7 @@ def seqtext_printer_evaluator(
         id_input=None,
         dict_file=None,
         delimited=None,
-        name=None,
-        ):
+        name=None, ):
     """
     Sequence text printer will print text according to index matrix and a
     dictionary. There can be multiple input to this layer:
@@ -636,12 +629,14 @@ def seqtext_printer_evaluator(
         inputs = [id_input, input]
         input.parents.append(id_input)
 
-    evaluator_base(name=name,
-                   type="seq_text_printer",
-                   input=inputs,
-                   dict_file=dict_file,
-                   result_file=result_file,
-                   delimited=delimited)
+    evaluator_base(
+        name=name,
+        type="seq_text_printer",
+        input=inputs,
+        dict_file=dict_file,
+        result_file=result_file,
+        delimited=delimited)
+
 
 @evaluator(EvaluatorAttribute.FOR_PRINT)
 @wrap_name_default()
@@ -649,8 +644,7 @@ def classification_error_printer_evaluator(
         input,
         label,
         threshold=0.5,
-        name=None,
-        ):
+        name=None, ):
     """
     This Evaluator is used to print the classification error of each sample.
 
@@ -667,8 +661,9 @@ def classification_error_printer_evaluator(
     :param name: Evaluator name.
     :type name: None|basestring
     """
-    evaluator_base(name=name,
-                   type="classification_error_printer",
-                   input=input,
-                   label=label,
-                   classification_threshold=threshold)
+    evaluator_base(
+        name=name,
+        type="classification_error_printer",
+        input=input,
+        label=label,
+        classification_threshold=threshold)

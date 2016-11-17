@@ -30,9 +30,9 @@ def hook(settings, word_dict, label_dict, predicate_dict, **kwargs):
         integer_value_sequence(len(word_dict)),
         integer_value_sequence(len(word_dict)),
         integer_value_sequence(len(word_dict)),
-        integer_value_sequence(len(word_dict)),
-        integer_value_sequence(2),
-        integer_value_sequence(len(label_dict))]
+        integer_value_sequence(len(word_dict)), integer_value_sequence(2),
+        integer_value_sequence(len(label_dict))
+    ]
 
 
 def get_batch_size(yeild_data):

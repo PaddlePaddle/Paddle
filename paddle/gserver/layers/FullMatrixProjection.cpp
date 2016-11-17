@@ -52,7 +52,9 @@ void FullMatrixProjection::backward(const UpdateCallback& callback) {
   }
 
   hl_set_sync_flag(syncFlag);
-  parameter_->incUpdate(callback);
+  if (weight_->getWGrad()) {
+    parameter_->incUpdate(callback);
+  }
 }
 
 }  // namespace paddle

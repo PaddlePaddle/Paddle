@@ -90,6 +90,73 @@ void MatrixCheckErr(const Matrix& matrix1, const Matrix& matrix2) {
   EXPECT_EQ(count, 0) << "There are " << count << " different element.";
 }
 
+void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
+                        int channels) {
+  int inWidth = imgSizeH * imgSizeW * channels;
+  int outWidth = 2 * imgSizeH * 2 * imgSizeW * channels;
+  real ratioH = 0.5;
+  real ratioW = 0.5;
+  // forward
+  MatrixPtr input = CpuMatrix::create(numSamples, inWidth, false, false);
+  MatrixPtr inputGpu = GpuMatrix::create(numSamples, inWidth, false, true);
+
+  MatrixPtr target = CpuMatrix::create(numSamples, outWidth, false, false);
+  MatrixPtr targetGpu = GpuMatrix::create(numSamples, outWidth, false, true);
+  MatrixPtr targetCheck = CpuMatrix::create(numSamples, outWidth, false, false);
+
+  input->randomizeUniform();
+  inputGpu->copyFrom(*input);
+
+  target->bilinearForward(*input, imgSizeH, imgSizeW,
+      2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
+  targetGpu->bilinearForward(*inputGpu, imgSizeH, imgSizeW,
+      2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
+
+  // check
+  targetCheck->copyFrom(*targetGpu);
+  MatrixCheckErr(*target, *targetCheck);
+
+  // backward
+  MatrixPtr inputGrad = CpuMatrix::create(numSamples, inWidth, false, false);
+  MatrixPtr inputGpuGrad = GpuMatrix::create(numSamples, inWidth, false, true);
+
+  MatrixPtr targetGrad = CpuMatrix::create(numSamples, outWidth, false, false);
+  MatrixPtr targetGpuGrad = GpuMatrix::create(numSamples, outWidth, false,
+                                              true);
+  MatrixPtr targetCheckGrad =
+      CpuMatrix::create(numSamples, inWidth, false, false);
+
+  inputGrad->randomizeUniform();
+  targetGrad->randomizeUniform();
+  inputGpuGrad->copyFrom(*inputGrad);
+  targetGpuGrad->copyFrom(*targetGrad);
+
+  inputGrad->bilinearBackward(*targetGrad, 2 * imgSizeH, 2 * imgSizeW,
+      imgSizeH, imgSizeW, channels, ratioH, ratioW);
+  inputGpuGrad->bilinearBackward(*targetGpuGrad, 2 * imgSizeH, 2 * imgSizeW,
+      imgSizeH, imgSizeW, channels, ratioH, ratioW);
+
+  // check
+  targetCheckGrad->copyFrom(*inputGpuGrad);
+  MatrixCheckErr(*inputGrad, *targetCheckGrad);
+}
+
+TEST(Matrix, BilinearFwdBwd) {
+  for (auto numSamples : {5, 10}) {
+    for (auto channels : {8, 16}) {
+      for (auto imgSizeH : {14, 28}) {
+        for (auto imgSizeW : {16, 30}) {
+          VLOG(3) << " numSamples=" << numSamples
+                  << " channels=" << channels
+                  << " imgSizeH=" << imgSizeH
+                  << " imgSizeW=" << imgSizeW;
+          testBilinearFwdBwd(numSamples, imgSizeH, imgSizeW, channels);
+        }
+      }
+    }
+  }
+}
+
 void testMatrixProjectionForward(int contextStart, int contextLength,
                                  bool padding, int batchSize, int inputDim) {
   MatrixPtr cpuInput = std::make_shared<CpuMatrix>(batchSize, inputDim);
@@ -647,20 +714,23 @@ void testMatrixInverse(int height) {
   MatrixPtr cpuI = std::make_shared<CpuMatrix>(height, height);
   MatrixPtr gpuI = std::make_shared<GpuMatrix>(height, height);
 
+  /* Make matrix well conditioned: cpu * cpuT + Identity */
   cpu->randomizeUniform();
+  MatrixPtr cpuT = cpu->getTranspose();
+  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, height);
+  outputCheck->mul(cpu, cpuT);
+  cpu->setDiag(1.0);
+  cpu->add(*outputCheck);
+
   gpu->copyFrom(*cpu);
   cpu->inverse(cpuI, false);
   gpu->inverse(gpuI, false);
 
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, height);
   outputCheck->copyFrom(*gpuI);
   MatrixCheckErr(*cpuI, *outputCheck);
 
   outputCheck->mul(cpu, cpuI);
-  cpu->zeroMem();
-  for (int i = 0; i < height; i++) {
-    cpu->getRowBuf(i)[i] = 1.0;
-  }
+  cpu->setDiag(1.0);
   MatrixCheckErr(*cpu, *outputCheck);
 }
 
@@ -2138,7 +2208,6 @@ void testCollectSharedBias(int numSamples, int dim, int channel) {
   MatrixCheckErr(*cpuBias, *check);
 }
 
-
 TEST(Matrix, sharedBias) {
   for (auto numSamples : {1, 100, 520}) {
     for (auto dim : {100 * 16, 100 * 32}) {
@@ -2148,6 +2217,60 @@ TEST(Matrix, sharedBias) {
         testAddSharedBias(numSamples, dim, channel);
         testCollectSharedBias(numSamples, dim, channel);
       }
+    }
+  }
+}
+
+void testMultiBinaryLabelCrossEntropy(int numSamples, int dim) {
+  MatrixPtr output = std::make_shared<CpuMatrix>(numSamples, dim);
+  MatrixPtr cpuOutput = std::make_shared<CpuMatrix>(numSamples, dim);
+  MatrixPtr gpuOutput = std::make_shared<GpuMatrix>(numSamples, dim);
+
+  MatrixPtr cpuEntropy = std::make_shared<CpuMatrix>(numSamples, 1);
+  MatrixPtr gpuEntropy = std::make_shared<GpuMatrix>(numSamples, 1);
+
+  MatrixPtr cpuGrad = std::make_shared<CpuMatrix>(numSamples, dim);
+  MatrixPtr gpuGrad = std::make_shared<GpuMatrix>(numSamples, dim);
+
+  MatrixPtr cpuLabel = std::make_shared<CpuSparseMatrix>
+          (numSamples, dim, numSamples, NO_VALUE, SPARSE_CSR, false);
+  MatrixPtr gpuLabel = std::make_shared<GpuSparseMatrix>
+          (numSamples, dim, numSamples, NO_VALUE, SPARSE_CSR, false);
+  for (int i = 0; i < numSamples; i ++) {
+    const unsigned int id = rand() % dim; // NOLINT
+    cpuLabel->setRow(i, 1, &id, nullptr);
+    gpuLabel->setRow(i, 1, &id, nullptr);
+  }
+
+  output->randomizeUniform();
+  cpuOutput->zeroMem();
+  output->softmax(*cpuOutput);
+  gpuOutput->copyFrom(*cpuOutput);
+
+  cpuEntropy->zeroMem();
+  gpuEntropy->zeroMem();
+  cpuEntropy->multiBinaryLabelCrossEntropy(*cpuOutput, *cpuLabel);
+  gpuEntropy->multiBinaryLabelCrossEntropy(*gpuOutput, *gpuLabel);
+
+  MatrixPtr check1 = std::make_shared<CpuMatrix>(numSamples, 1);
+  check1->copyFrom(*gpuEntropy);
+  MatrixCheckErr(*cpuEntropy, *check1);
+
+  cpuGrad->zeroMem();
+  gpuGrad->zeroMem();
+  cpuGrad->multiBinaryLabelCrossEntropyBp(*cpuOutput, *cpuLabel);
+  gpuGrad->multiBinaryLabelCrossEntropyBp(*gpuOutput, *gpuLabel);
+
+  MatrixPtr check2 = std::make_shared<CpuMatrix>(numSamples, dim);
+  check2->copyFrom(*gpuGrad);
+  MatrixCheckErr(*cpuGrad, *check2);
+}
+
+TEST(Matrix, multiBinaryCrossEntropy) {
+  for (auto numSamples : {100, 1000, 10000}) {
+    for (auto dim : {100, 1000, 10000}) {
+      VLOG(3) << " numSamples=" << numSamples << " dim=" << dim;
+      testMultiBinaryLabelCrossEntropy(numSamples, dim);
     }
   }
 }

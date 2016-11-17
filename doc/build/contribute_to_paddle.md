@@ -1,4 +1,4 @@
-# Contribute to PaddlePaddle
+# Contribute Code
 
 We sincerely appreciate your contributions. You can use fork and pull request
 workflow to merge your code. 

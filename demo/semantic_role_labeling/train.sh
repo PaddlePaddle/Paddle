@@ -26,4 +26,3 @@ paddle train \
   --init_model_path=./data \
   --load_missing_parameter_strategy=rand \
 2>&1 | tee 'train.log'
-

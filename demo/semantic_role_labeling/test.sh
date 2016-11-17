@@ -38,4 +38,3 @@ paddle train \
   --config_args=is_test=1 \
   --test_all_data_in_one_period=1 \
 2>&1 | tee 'test.log'
-

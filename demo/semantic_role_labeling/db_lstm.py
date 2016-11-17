@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import math
 import os
 import sys
@@ -50,7 +49,7 @@ if not is_predict:
 
 
     if is_test:
-        train_list_file = None 
+        train_list_file = None
 
     #define data provider
     define_py_data_sources2(

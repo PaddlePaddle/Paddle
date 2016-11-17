@@ -195,6 +195,8 @@ public:
 
   virtual void resetOne() { LOG(FATAL) << "Not implemented"; }
 
+  void setDiag(real value);
+
   virtual void copyFrom(const Matrix& src) { LOG(FATAL) << "Not implemented"; }
 
   virtual void trimFrom(const CpuSparseMatrix& src) {
@@ -330,6 +332,7 @@ public:
 
   virtual MatrixPtr getInverse() {
     LOG(FATAL) << "Not implemented";
+    return nullptr;
   }
 
   /**
@@ -992,6 +995,26 @@ public:
   virtual void paramReluBackwardDiff(Matrix& oGrad, Matrix& data, Matrix& W) {
     LOG(FATAL) << "Not implemented";
   }
+  virtual void bilinearForward(const Matrix& in,
+                               const size_t inImgH,
+                               const size_t inImgW,
+                               const size_t outImgH,
+                               const size_t outImgW,
+                               const size_t numChannels,
+                               const real ratioH,
+                               const real ratioW) {
+    LOG(FATAL) << "Not implemented";
+  }
+  virtual void bilinearBackward(const Matrix& out,
+                                const size_t outImgH,
+                                const size_t outImgW,
+                                const size_t inImgH,
+                                const size_t inImgW,
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {
+    LOG(FATAL) << "Not implemented";
+  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Matrix& mat) {
@@ -1016,6 +1039,7 @@ public:
 
   void zeroMem();
   void resetOne();
+  void setDiag(real value);
 
   void resize(size_t newHeight, size_t newWidth);
   void resize(size_t newHeight, size_t newWidth,
@@ -1261,6 +1285,28 @@ public:
                                        int contextLength,
                                        int contextStart, int totalPad,
                                        size_t beginPad);
+
+  void bilinearForward(const Matrix& in,
+                       const size_t inImgH,
+                       const size_t inImgW,
+                       const size_t outImgH,
+                       const size_t outImgW,
+                       const size_t numChannels,
+                       const real ratioH,
+                       const real ratioW);
+
+  void bilinearBackward(const Matrix& out,
+                        const size_t outImgH,
+                        const size_t outImgW,
+                        const size_t inImgH,
+                        const size_t inImgW,
+                        const size_t numChannels,
+                        const real ratioH,
+                        const real ratioW);
+
+  void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
+
+  void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label);
 };
 
 class CpuMatrix : public Matrix {
@@ -1280,6 +1326,8 @@ public:
 
   void zeroMem();
   void resetOne();
+  void setDiag(real value);
+
   void resize(size_t newHeight, size_t newWidth);
   void resize(size_t newHeight, size_t newWidth,
               size_t newNnz, /* used to allocate space */
@@ -1547,6 +1595,24 @@ public:
   void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
   void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label);
   void classificationErrorMulti(Matrix& output, Matrix& label, real threshold);
+
+  void bilinearForward(const Matrix& in,
+                       const size_t inImgH,
+                       const size_t inImgW,
+                       const size_t outImgH,
+                       const size_t outImgW,
+                       const size_t numChannels,
+                       const real ratioH,
+                       const real ratioW);
+
+  void bilinearBackward(const Matrix& out,
+                        const size_t outImgH,
+                        const size_t outImgW,
+                        const size_t inImgH,
+                        const size_t inImgW,
+                        const size_t numChannels,
+                        const real ratioH,
+                        const real ratioW);
 };
 
 class SharedCpuMatrix : public CpuMatrix {
