@@ -6,7 +6,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/baidu/Paddle/badge.svg?branch=develop)](https://coveralls.io/github/baidu/Paddle?branch=develop)
 
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)]()
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/cn/index.html)
 [![Join the chat at](https://img.shields.io/gitter/room/PaddlePaddle/Deep_Learning.svg)](https://gitter.im/PaddlePaddle/Deep_Learning)
 
 [![Release](https://img.shields.io/github/release/baidu/Paddle.svg)](https://github.com/baidu/Paddle/releases)
