@@ -2,9 +2,9 @@
 # This scripts downloads the mnist data and unzips it.
 set -e
 DIR="$( cd "$(dirname "$0")" ; pwd -P )"
-rm -rf "$DIR/raw_data"
-mkdir "$DIR/raw_data"
-cd "$DIR/raw_data"
+rm -rf "$DIR/mnist_data"
+mkdir "$DIR/mnist_data"
+cd "$DIR/mnist_data"
 
 echo "Downloading..."
 

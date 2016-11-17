@@ -32,7 +32,7 @@ sample_dim = 2
 settings(
     batch_size=128,
     learning_rate=1e-4,
-    learning_method=AdamOptimizer()
+    learning_method=AdamOptimizer(beta1=0.7)
 )
 
 def discriminator(sample):
@@ -47,16 +47,15 @@ def discriminator(sample):
     bias_attr = ParamAttr(is_static=is_generator_training,
                           initial_mean=1.0,
                           initial_std=0)
+
     hidden = fc_layer(input=sample, name="dis_hidden", size=hidden_dim,
                     bias_attr=bias_attr,
                     param_attr=param_attr,
                     act=ReluActivation())
-                    #act=LinearActivation())
 
     hidden2 = fc_layer(input=hidden, name="dis_hidden2", size=hidden_dim,
                     bias_attr=bias_attr,
                     param_attr=param_attr,
-                    #act=ReluActivation())
                     act=LinearActivation())
     
     hidden_bn = batch_norm_layer(hidden2, 
@@ -88,12 +87,10 @@ def generator(noise):
                     bias_attr=bias_attr,
                     param_attr=param_attr,
                     act=ReluActivation())
-                    #act=LinearActivation())
 
     hidden2 = fc_layer(input=hidden, name="gen_hidden2", size=hidden_dim,
                     bias_attr=bias_attr,
                     param_attr=param_attr,
-                    #act=ReluActivation())
                     act=LinearActivation())
     
     hidden_bn = batch_norm_layer(hidden2, 

@@ -4,5 +4,5 @@ output/
 .project
 *.log
 *.pyc
-data/raw_data/
+data/mnist_data/
 data/cifar-10-batches-py/

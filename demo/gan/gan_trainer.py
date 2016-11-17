@@ -71,7 +71,7 @@ def print_parameters(src):
         print "value is %s \n" % p.getBuf(api.PARAMETER_VALUE).copyToNumpyArray()
         
 def get_real_samples(batch_size, sample_dim):
-    return numpy.random.rand(batch_size, sample_dim).astype('float32') * 10.0 - 10.0
+    return numpy.random.rand(batch_size, sample_dim).astype('float32')
     # return numpy.random.normal(loc=100.0, scale=100.0, size=(batch_size, sample_dim)).astype('float32')
 
 def get_fake_samples(generator_machine, batch_size, noise_dim, sample_dim):
@@ -106,7 +106,7 @@ def prepare_discriminator_data_batch_pos(batch_size, noise_dim, sample_dim):
     labels = numpy.ones(batch_size, dtype='int32')
     inputs = api.Arguments.createArguments(2)
     inputs.setSlotValue(0, api.Matrix.createGpuDenseFromNumpy(real_samples))
-    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumy(labels))
+    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumpy(labels))
     return inputs
 
 def prepare_discriminator_data_batch_neg(generator_machine, batch_size, noise_dim, sample_dim):
@@ -114,7 +114,7 @@ def prepare_discriminator_data_batch_neg(generator_machine, batch_size, noise_di
     labels = numpy.zeros(batch_size, dtype='int32')
     inputs = api.Arguments.createArguments(2)
     inputs.setSlotValue(0, api.Matrix.createGpuDenseFromNumpy(fake_samples))
-    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumy(labels))
+    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumpy(labels))
     return inputs
 
 def prepare_generator_data_batch(batch_size, dim):
@@ -122,7 +122,7 @@ def prepare_generator_data_batch(batch_size, dim):
     label = numpy.ones(batch_size, dtype='int32')
     inputs = api.Arguments.createArguments(2)
     inputs.setSlotValue(0, api.Matrix.createGpuDenseFromNumpy(noise))
-    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumy(label))
+    inputs.setSlotIds(1, api.IVector.createGpuVectorFromNumpy(label))
     return inputs
 
 
@@ -140,7 +140,8 @@ def get_layer_size(model_conf, layer_name):
 
 
 def main():
-    api.initPaddle('--use_gpu=1', '--dot_period=100', '--log_period=10000')
+    api.initPaddle('--use_gpu=1', '--dot_period=10', '--log_period=100', 
+                   '--gpu_id=2')
     gen_conf = parse_config("gan_conf.py", "mode=generator_training")
     dis_conf = parse_config("gan_conf.py", "mode=discriminator_training")
     generator_conf = parse_config("gan_conf.py", "mode=generator")
@@ -175,10 +176,10 @@ def main():
     curr_strike = 0
     MAX_strike = 5
     
-    for train_pass in xrange(10):
+    for train_pass in xrange(100):
         dis_trainer.startTrainPass()
         gen_trainer.startTrainPass()
-        for i in xrange(100000):
+        for i in xrange(1000):
 #             data_batch_dis = prepare_discriminator_data_batch(
 #                     generator_machine, batch_size, noise_dim, sample_dim)
 #             dis_loss = get_training_loss(dis_training_machine, data_batch_dis)
@@ -199,7 +200,7 @@ def main():
             if i % 1000 == 0:
                 print "d_loss is %s    g_loss is %s" % (dis_loss, gen_loss)
                             
-            if (not (curr_train == "dis" and curr_strike == MAX_strike)) and ((curr_train == "gen" and curr_strike == MAX_strike) or dis_loss > 0.690 or dis_loss > gen_loss):
+            if (not (curr_train == "dis" and curr_strike == MAX_strike)) and ((curr_train == "gen" and curr_strike == MAX_strike) or dis_loss > gen_loss):
                 if curr_train == "dis":
                     curr_strike += 1
                 else:

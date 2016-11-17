@@ -113,7 +113,6 @@ def generator(noise):
                     size=s8 * s8 * gf_dim * 4,
                     bias_attr=bias_attr,
                     param_attr=param_attr,
-                    #act=ReluActivation())
                     act=LinearActivation())
     
     h1_bn = batch_norm_layer(h1, 
@@ -235,13 +234,8 @@ if is_discriminator_training:
     sample = data_layer(name="sample", size=sample_dim * sample_dim*c_dim)
 
 if is_generator_training or is_discriminator_training:
-    sample_noise = data_layer(name="sample_noise", 
-                              size=sample_dim * sample_dim * c_dim)
     label = data_layer(name="label", size=1)
-    prob = discriminator(addto_layer([sample, sample_noise], 
-                                     act=LinearActivation(), 
-                                     name="add", 
-                                     bias_attr=False))
+    prob = discriminator(sample)
     cost = cross_entropy(input=prob, label=label)
     classification_error_evaluator(input=prob, label=label, name=mode+'_error')
     outputs(cost)
