@@ -7,6 +7,6 @@ The general training procedures are implemented in gan_trainer.py. The neural ne
 In order to run the model, first download the corresponding data by running the shell script in ./data.
 Then you can run the command below. The flag -d specifies the training data (cifar, mnist or uniform) and flag --useGpu specifies whether to use gpu for training (0 is cpu, 1 is gpu).  
 
-$python gan_trainer_image.py -d cifar --useGpu 1
+$python gan_trainer.py -d cifar --useGpu 1
 
 The generated images will be stored in ./cifar_samples/
