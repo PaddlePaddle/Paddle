@@ -1,40 +1,27 @@
-Lock
-====
+Thread
+======
 
+Thread 
+------
+..  doxygenclass:: paddle::Thread
+    :members:
 
-class RWLock
+ThreadWorker
 ------------
-
-..  doxygenclass:: paddle::RWLock
+..  doxygenclass:: paddle::ThreadWorker
     :members:
 
-class ReadLockGuard
--------------------
-
-..  doxygenclass:: paddle::ReadLockGuard
-    :members:
-
-class SpinLock
+SyncThreadPool 
 --------------
-
-..  doxygenclass:: paddle::SpinLock
+..  doxygenclass:: paddle::SyncThreadPool 
+    :members:
+    
+MultiThreadWorker 
+-----------------
+..  doxygenclass:: paddle::MultiThreadWorker 
     :members:
 
-class Semaphore
+AsyncThreadPool 
 ---------------
-
-..  doxygenclass:: paddle::Semaphore
+..  doxygenclass:: paddle::AsyncThreadPool
     :members:
-
-class ThreadBarrier
--------------------
-
-..  doxygenclass:: paddle::ThreadBarrier
-    :members:
-
-class LockedCondition
----------------------
-
-..  doxygenclass:: paddle::LockedCondition
-    :members:
-
