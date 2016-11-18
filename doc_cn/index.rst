@@ -11,6 +11,7 @@ PaddlePaddle文档
 * `使用示例 <demo/index.html>`_
 * `模型配置 <../doc/ui/api/trainer_config_helpers/index.html>`_
 * `集群训练 <cluster/index.html>`_
+* :ref:`glossary`
 
 开发指南
 --------
@@ -22,7 +23,7 @@ PaddlePaddle文档
 
 * `Recurrent Group教程 <algorithm/rnn/rnn-tutorial.html>`_
 * `单层RNN示例 <../doc/algorithm/rnn/rnn.html>`_
-* `双层RNN示例 <algorithm/rnn/hierarchical-rnn.html>`_
+* :ref:`algo_hrnn_rnn_api_compare`
 * `支持双层序列作为输入的Layer <algorithm/rnn/hierarchical-layer.html>`_
 
 常见问题
