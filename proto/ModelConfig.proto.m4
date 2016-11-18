@@ -92,7 +92,7 @@ message PoolConfig {
   optional uint32 start = 4;
 
   // Defines the stride size between successive pooling squares.
-  required uint32 stride = 5;
+  required uint32 stride = 5 [default = 1];
 
   // The size of output feature map.
   required uint32 output_x = 6;
@@ -105,19 +105,19 @@ message PoolConfig {
   optional uint32 padding = 8 [default = 0];
 
   // if not set, use size_x
-  optional uint32 size_y = 9 [default = 0];
+  optional uint32 size_y = 9;
 
   // if not set, use stride
-  optional uint32 stride_y = 10 [default = 0];
+  optional uint32 stride_y = 10;
 
   // if not set, use output_x
-  optional uint32 output_y = 11 [default = 0];
+  optional uint32 output_y = 11;
 
   // if not set, use img_size
-  optional uint32 img_size_y = 12 [default = 0];
+  optional uint32 img_size_y = 12;
 
   // if not set, use padding
-  optional uint32 padding_y = 13 [default = 0];
+  optional uint32 padding_y = 13;
 }
 
 message SppConfig {
