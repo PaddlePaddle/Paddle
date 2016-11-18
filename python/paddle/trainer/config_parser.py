@@ -815,9 +815,9 @@ class Pool(Cfg):
                  size_y=None,
                  img_width=None,
                  start=None,
-                 stride=None,
+                 stride=1,
                  stride_y=None,
-                 padding=None,
+                 padding=0,
                  padding_y=None):
         self.add_keys(locals())
 
@@ -1111,15 +1111,15 @@ def parse_pool(pool, input_layer_name, pool_conf):
 
     config_assert(not pool.start, "start is deprecated in pooling.")
 
-    if pool.padding is not None:
-        pool_conf.padding = pool.padding
-        pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
-        pool_conf.output_x = cnn_output_size(
-            pool_conf.img_size, pool_conf.size_x, pool_conf.padding,
-            pool_conf.stride, False)
-        pool_conf.output_y = cnn_output_size(
-            pool_conf.img_size_y, pool_conf.size_y, pool_conf.padding_y,
-            pool_conf.stride_y, False)
+    pool_conf.padding = pool.padding
+    pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
+
+    pool_conf.output_x = cnn_output_size(
+        pool_conf.img_size, pool_conf.size_x, pool_conf.padding,
+        pool_conf.stride, False)
+    pool_conf.output_y = cnn_output_size(
+        pool_conf.img_size_y, pool_conf.size_y, pool_conf.padding_y,
+        pool_conf.stride_y, False)
 
 
 def parse_spp(spp, input_layer_name, spp_conf):
