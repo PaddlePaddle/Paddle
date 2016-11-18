@@ -1,8 +1,7 @@
 安装PaddlePaddle的Docker镜像
 ============================
 
-PaddlePaddle提供了Docker的使用镜像。PaddlePaddle推荐使用Docker进行PaddlePaddle的部署和
-运行。Docker是一个基于容器的轻量级虚拟环境。具有和宿主机相近的运行效率，并提供
+PaddlePaddle提供了Docker的使用镜像。PaddlePaddle推荐使用Docker进行PaddlePaddle的部署和运行。Docker是一个基于容器的轻量级虚拟环境。具有和宿主机相近的运行效率，并提供
 了非常方便的二进制分发手段。
 
 下述内容将分为如下几个类别描述。
@@ -41,7 +40,7 @@ PaddlePaddle提供的Docker镜像版本
 * CPU WITHOUT AVX: CPU版本，不支持AVX指令集的CPU也可以运行
 * GPU WITHOUT AVX: GPU版本，不需要AVX指令集的CPU也可以运行。
 
-用户可以选择对应版本的docker image。使用如下脚本可以确定本机的CPU知否支持 :code:`AVX` 指令集\:
+用户可以选择对应版本的docker image。使用如下脚本可以确定本机的CPU是否支持 :code:`AVX` 指令集\:
 
 ..  code-block:: bash
 
