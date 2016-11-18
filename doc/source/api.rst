@@ -1,4 +1,4 @@
-Api
+API
 ===
 
 .. doxygenfile:: paddle/api/PaddleAPI.h

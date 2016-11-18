@@ -1,27 +1,27 @@
 Network
 =======
 
-Socket Server
--------------
+SocketServer
+------------
 ..  doxygenclass:: paddle::SocketServer
     :members:
 
-Socket Worker
--------------
+SocketWorker
+------------
 ..  doxygenclass:: paddle::SocketWorker
     :members:
 
-Socket Client
--------------
+SocketClient
+------------
 ..  doxygenclass:: paddle::SocketClient
     :members:
 
-Socket Channel
---------------
+SocketChannel
+-------------
 ..  doxygenclass:: paddle::SocketChannel
     :members:
 
-Message Reader
---------------
+MessageReader
+-------------
 ..  doxygenclass:: paddle::MsgReader
     :members:

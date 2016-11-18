@@ -1,32 +1,32 @@
 Lock
 ====
 
-class RWLock
-------------
+RWLock
+------
 ..  doxygenclass:: paddle::RWLock
     :members:
 
-class ReadLockGuard
--------------------
+ReadLockGuard
+-------------
 ..  doxygenclass:: paddle::ReadLockGuard
     :members:
 
-class SpinLock
---------------
+SpinLock
+--------
 ..  doxygenclass:: paddle::SpinLock
     :members:
 
-class Semaphore
----------------
+Semaphore
+---------
 ..  doxygenclass:: paddle::Semaphore
     :members:
 
-class ThreadBarrier
--------------------
+ThreadBarrier
+-------------
 ..  doxygenclass:: paddle::ThreadBarrier
     :members:
 
-class LockedCondition
----------------------
+LockedCondition
+---------------
 ..  doxygenclass:: paddle::LockedCondition
     :members:

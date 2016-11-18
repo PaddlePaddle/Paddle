@@ -1,18 +1,18 @@
 Gradient Machines
 =================
 
-Gradient Machine
-----------------
+GradientMachine
+---------------
 ..  doxygenclass:: paddle::GradientMachine
     :members:
 
-Gradient Machine Mode
----------------------
+GradientMachineMode
+-------------------
 ..  doxygenclass:: paddle::IGradientMachineMode
     :members:
 
-Multi Gradient Machine
-----------------------
+MultiGradientMachine
+--------------------
 ..  doxygenclass:: paddle::MultiGradientMachine
     :members:
 
@@ -21,7 +21,7 @@ TrainerThread
 ..  doxygenclass:: paddle::TrainerThread
     :members:
 
-Recurrent Gradient Machine
---------------------------
+RecurrentGradientMachine
+------------------------
 ..  doxygenclass:: paddle::RecurrentGradientMachine
     :members:

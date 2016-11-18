@@ -1,4 +1,4 @@
-Gserver
+GServer
 =======
 
 .. toctree::

@@ -2,11 +2,11 @@
 Data Providers
 ==============
 
-Data Providers
-==============
+DataProviders
+=============
 
-Base DataProvider
------------------
+Base
+----
 ..  doxygenclass:: paddle::DataProvider
     :members:
 
@@ -73,8 +73,8 @@ IPyDataProvider
 ..  doxygenclass:: paddle::PyDataProvider2
     :members:
 
-Proto Data Provider
-===================
+ProtoDataProvider
+=================
 
 ProtoDataProvider
 ----------------

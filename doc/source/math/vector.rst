@@ -21,13 +21,13 @@ GpuVector Template
 ..  doxygenclass:: paddle::GpuVectorT
     :members:
 
-Parallel CpuVector Template
-```````````````````````````
+ParallelCpuVector Template
+``````````````````````````
 ..  doxygenclass:: paddle::ParallelCpuVectorT
     :members:
 
-Parallel GpuVector Template
-```````````````````````````
+ParallelGpuVector Template
+``````````````````````````
 ..  doxygenclass:: paddle::ParallelGpuVectorT
     :members:
 

@@ -10,10 +10,12 @@ Base
 .. doxygenfile:: paddle/cuda/include/hl_gpu_functions.cuh
 .. doxygenfile:: paddle/cuda/include/hl_activation_functions.h
 
+
 CNN Related APIs
 ----------------
 .. doxygenfile:: paddle/cuda/include/hl_cnn.h
 .. doxygenfile:: paddle/cuda/include/hl_cuda_cudnn.h
+.. doxygenfile:: paddle/cuda/include/hl_cuda_cudnn.ph
 
 RNN Related APIs
 ----------------

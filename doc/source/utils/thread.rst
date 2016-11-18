@@ -1,27 +1,27 @@
 Thread
 ======
 
-class Thread 
-------------
+Thread 
+------
 ..  doxygenclass:: paddle::Thread
     :members:
 
-class ThreadWorker
-------------------
+ThreadWorker
+------------
 ..  doxygenclass:: paddle::ThreadWorker
     :members:
 
-class SyncThreadPool 
---------------------
+SyncThreadPool 
+--------------
 ..  doxygenclass:: paddle::SyncThreadPool 
     :members:
     
-class MultiThreadWorker 
------------------------
+MultiThreadWorker 
+-----------------
 ..  doxygenclass:: paddle::MultiThreadWorker 
     :members:
 
-class AsyncThreadPool 
----------------------
+AsyncThreadPool 
+---------------
 ..  doxygenclass:: paddle::AsyncThreadPool
     :members:

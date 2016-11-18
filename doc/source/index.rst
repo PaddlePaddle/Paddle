@@ -7,7 +7,7 @@ Source Code Documents
   gserver/index.rst
   trainer.rst
   parameter/index.rst
-  pserver.rst
+  pserver/index.rst
   api.rst
   cuda/index.rst
   math/index.rst

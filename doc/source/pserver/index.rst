@@ -1,4 +1,4 @@
-Pserver
+PServer
 =======
 
 .. toctree::
