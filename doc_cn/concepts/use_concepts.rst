@@ -32,6 +32,7 @@ PaddlePaddle进程内嵌了一个 :code:`python` 解释器。 这个 :code:`pyth
 
 所以，PaddlePaddle单机训练进程，:code:`paddle train` , 对于用户的主要接口语言为 python。 主要需要用户配置的两个文件为 :code:`DataProvider` 和训练文件 :code:`TrainerConfig` 。
 
+..	_glossary_DataProvider:
 
 DataProvider
 ============
@@ -42,6 +43,7 @@ DataProvider是 :code:`paddle train` 的数据提供器。 它负责将用户的
 
 为了方便用户使用自己的数据格式， PaddlePaddle 提供了 `PyDataProvider`_ 来处理数据。 并且在这个Provider中，PaddlePaddle的 C++ 部分接管了如何shuffle，处理 batch，GPU/CPU通信，双缓冲，异步读取等问题。 用户可以参考 `PyDataProvider`_ 的相关文档，继续深入了解 DataProvider 的使用。
 
+..	_glossary_trainer_config:
 
 训练文件
 ========

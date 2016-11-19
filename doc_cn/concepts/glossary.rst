@@ -11,6 +11,33 @@ PaddlePaddle
 
 TBD
 
+.. _glossary_encode:
+
+encode
+------
+
+参考\ :ref:`glossary_encoder`\ 。
+
+..	_glossary_encoder:
+
+encoder
+-------
+
+TBD
+
+..  _glossary_sample:
+
+样本
+----
+
+TBD Sample的概念
+
+..  _glossary_lstm:
+
+LSTM
+----
+
+TBD
 
 ..  _glossary_memory:
 
@@ -26,6 +53,13 @@ Memory是 :ref:`glossary_paddle` 实现 :ref:`glossary_RNN` 时候使用的一�
 ..  graphviz:: glossary_rnn_with_memory.dot
 
 使用这种方式，:ref:`glossary_paddle` 可以比较简单的判断哪些输出是应该跨越时间步的，哪些不是。
+
+..	_glossary_timestep:
+
+时间步
+------
+
+参考 :ref:`_glossary_Sequence` 。
 
 ..  _glossary_Sequence:
 

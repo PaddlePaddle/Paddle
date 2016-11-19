@@ -1,4 +1,4 @@
-..	algo_hrnn_demo:
+..	_algo_hrnn_demo:
 
 #################
 双层RNN的使用示例

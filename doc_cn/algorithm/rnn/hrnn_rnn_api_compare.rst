@@ -4,101 +4,99 @@
 单双层RNN API对比介绍
 #####################
 
-这篇教程主要介绍了 :ref:`glossary_双层RNN` 的API接口。本文中的以 :ref:`glossary_paddle` 的 :ref:`glossary_双层RNN` 单元测试为示例，用多对效果完全相同的、分别使用单、双层RNN作为网络配置的模型，来讲解如何使用 :ref:`glossary_双层RNN` 。本文中所有的例子，都只是介绍 :ref:`glossary_双层RNN` 的API接口，并不是使用 :ref:`glossary_双层RNN` 解决实际的问题。如果想要了解 :ref:`glossary_双层RNN` 在具体问题中的使用，请参考 :ref:`algo_hrnn_demo` 。文章中示例所使用的单元测试文件是 `test_RecurrentGradientMachine.cpp <https://github.com/reyoung/Paddle/blob/develop/paddle/gserver/tests/test_RecurrentGradientMachine.cpp>`_ 。
+这篇教程主要介绍了\ :ref:`glossary_双层RNN`\ 的API接口。本文中的以\ :ref:`glossary_paddle`\ 的\ :ref:`glossary_双层RNN`\ 单元测试为示例，用多对效果完全相同的、分别使用单、双层RNN作为网络配置的模型，来讲解如何使用\ :ref:`glossary_双层RNN`\ 。本文中所有的例子，都只是介绍\ :ref:`glossary_双层RNN`\ 的API接口，并不是使用\ :ref:`glossary_双层RNN`\ 解决实际的问题。如果想要了解\ :ref:`glossary_双层RNN`\ 在具体问题中的使用，请参考\ :ref:`algo_hrnn_demo`\ 。文章中示例所使用的单元测试文件是\ `test_RecurrentGradientMachine.cpp <https://github.com/reyoung/Paddle/blob/develop/paddle/gserver/tests/test_RecurrentGradientMachine.cpp>`_\ 。
 
 示例1：双层RNN，子序列间无Memory
 ================================
 
+在\ :ref:`glossary_双层RNN`\ 中的经典情况是将内层的每一个\ :ref:`glossary_Sequence`\ 数据，分别进行序列操作。并且内层的序列操作之间是独立没有依赖的，即不需要使用\ :ref:`glossary_Memory`\ 的。
+
+在本问题中，单层\ :ref:`glossary_RNN`\ 和\ :ref:`glossary_双层RNN`\ 的网络配置，都是将每一句分好词后的句子，使用\ :ref:`glossary_lstm`\ 作为\ :ref:`glossary_encoder`\ ，压缩成一个向量。区别是\ :ref:`glossary_RNN`\ 使用两层序列模型，将多句话看成一个整体，同时使用\ :ref:`glossary_encoder`\ 压缩，二者语意上完全一致。这组语意相同的示例配置如下
+
+* 单层 \:ref:`glossary_RNN`\: `sequence_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_layer_group.conf>`_
+* :ref:`glossary_双层RNN`\: `sequence_nest_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_nest_layer_group.conf>`_
 
 
-配置：单层RNN（:code:`sequence_layer_group`）和双层RNN（:code:`sequence_nest_layer_group`），语义完全相同。
+读取双层序列数据
+----------------
 
-读取双层序列的方法
-------------------
+首先，本示例中使用的原始数据如下\:
 
-首先，我们看一下单双层序列的不同数据组织形式（您也可以采用别的组织形式）\:
-
-- 单层序列的数据（ :code:`Sequence/tour_train_wdseg`）如下，一共有10个样本。每个样本由两部分组成，一个label（此处都为2）和一个已经分词后的句子。
+- 本里中的原始数据一共有10个\ :ref:`glossary_sample`\ 。每个\ :ref:`glossary_sample`\ 由两部分组成，一个label（此处都为2）和一个已经分词后的句子。这个数据也被单层\ :ref:`glossary_RNN`\ 网络直接使用。
 
 ..  literalinclude:: ../../../paddle/gserver/tests/Sequence/tour_train_wdseg
     :language: text
 
 
-- 双层序列的数据（ :code:`Sequence/tour_train_wdseg.nest`）如下，一共有4个样本。样本间用空行分开，代表不同的双层序列，序列数据和上面的完全一样。每个样本的子句数分别为2,3,2,3。
+- 双层序列数据一共有4个\ :ref:`glossary_sample`\ 。 每个样本间用空行分开，整体数据和原始数据完全一样。而对于双层序列的\ :ref:`glossary_lstm`\ 来说，第一条数据同时\ :ref:`glossary_encode` 两条数据成两个向量。这四条数据同时处理的句子为\ :code:`[2, 3, 2, 3]`\ 。
 
 ..  literalinclude:: ../../../paddle/gserver/tests/Sequence/tour_train_wdseg.nest
     :language: text
 
-其次，我们看一下单双层序列的不同dataprovider（见 :code:`sequenceGen.py` ）：
-
-- 单层序列的dataprovider如下：
-  
-  - word_slot是integer_value_sequence类型，代表单层序列。
-  - label是integer_value类型，代表一个向量。
+其次，对于两种不同的输入数据类型，不同\ :ref:`glossary_DataProvider`\ 对比如下(`sequenceGen.py <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequenceGen.py>`_)\：
 
 ..  literalinclude:: ../../../paddle/gserver/tests/sequenceGen.py
     :language: python
     :lines: 21-39
+    :linenos:
 
-- 双层序列的dataprovider如下：
-
-  - word_slot是integer_value_sub_sequence类型，代表双层序列。
-  - label是integer_value_sequence类型，代表单层序列，即一个子句一个label。注意：也可以为integer_value类型，代表一个向量，即一个句子一个label。通常根据任务需求进行不同设置。
-  - 关于dataprovider中input_types的详细用法，参见PyDataProvider2。
+- 这是普通的单层\ :ref:`glossary_Sequence`\ 的\ :ref:`glossary_DataProvider`\ 代码，其说明如下：
+  
+  * :ref:`glossary_DataProvider`\ 共返回两个数据，分别是words和label。即上述代码中的第19行。
+  - words是原始数据中的每一句话，所对应的词表index数组。它是integer_value_sequence类型的，即整数数组。words即为这个数据中的单层\ :ref:`glossary_Sequence`\ 。
+  - label是原始数据中对于每一句话的分类标签，它是integer_value类型的。
 
 ..  literalinclude:: ../../../paddle/gserver/tests/sequenceGen.py
     :language: python
     :lines: 42-71
+    :linenos:
 
-模型中的配置
-------------
+- 这是对于同样的数据，本示例中双层\ :ref:`glossary_Sequence`\ 的\ :ref:`glossary_DataProvider`\ 代码，其说明如下：
 
-首先，我们看一下单层序列的配置（见 :code:`sequence_layer_group.conf`）。注意：batchsize=5表示一次过5句单层序列，因此2个batch就可以完成1个pass。
+  - :ref:`glossary_DataProvider`\ 共返回两组数据，分别是sentences和labels。即在双层序列的原始数据中，每一组内的所有句子和labels
+  - sentences是双层\ :ref:`glossary_Sequence`\ 的数据。他内部包括了每组数据中的所有句子，又使用句子中每一个单词的词表index表示每一个句子，故为双层\ :ref:`glossary_Sequence`\ 。类型为 integer_value_sub_sequence 。
+  - labels是每组内每一个句子的标签，故而是一个单层\ :ref:`glossary_Sequence`\ 。
+
+
+:ref:`glossary_trainer_config`\ 的模型配置
+------------------------------------------
+
+首先，我们看一下单层\ :ref:`glossary_RNN`\ 的配置。代码中9-15行即为单层RNN序列的使用代码。这里使用了\ :ref:`glossary_paddle`\ 预定义好的\ :ref:`glossary_RNN`\ 处理函数。在这个函数中，\ :ref:`glossary_RNN`\ 对于每一个\ :ref:`glossary_timestep`\ 通过了一个\ :ref:`glossary_lstm`\ 网络。
 
 ..  literalinclude:: ../../../paddle/gserver/tests/sequence_layer_group.conf
     :language: python
     :lines: 38-63
+    :linenos:
+    :emphasize-lines:  9-15
 
 
-其次，我们看一下语义相同的双层序列配置（见 :code:`sequence_nest_layer_group.conf` ），并对其详细分析：
+其次，我们看一下语义相同的\ :ref:`glossary_双层RNN`\ 的网络配置。
 
-- batchsize=2表示一次过2句双层序列。但从上面的数据格式可知，2句双层序列和5句单层序列的数据完全一样。
-- data_layer和embedding_layer不关心数据是否是序列格式，因此两个配置在这两层上的输出是一样的。
-- lstmemory\:
+* :ref:`glossary_paddle`\ 中的许多layer并不在意输入是否是\ :ref:`glossary_Sequence`\ ，例如\ :code:`embedding_layer`\ 。在这些layer中，所有的操作都是针对每一个\ :ref:`glossary_timestep`\ 来进行的。
 
-  - 单层序列过了一个mixed_layer和lstmemory_group。
-  - 双层序列在同样的mixed_layer和lstmemory_group外，直接加了一层group。由于这个外层group里面没有memory，表示subseq间不存在联系，即起到的作用仅仅是把双层seq拆成单层，因此双层序列过完lstmemory的输出和单层的一样。
+* 在该配置中，7-26行将双层\ :ref:`glossary_Sequence`\ 数据，先变换成单层\ :ref:`glossary_Sequence`\ 数据，在对每一个单层\ :ref:`glossary_Sequence`\ 进行处理。
 
-- last_seq\:
+  * 使用\ :code:`recurrent_group`\ 这个函数进行变换，在变换时需要将输入序列传入。由于我们想要的变换是双层\ :ref:`glossary_Sequence`\ => 单层\ :ref:`glossary_Sequence`\ ，所以我们需要将输入数据标记成\ :code:`SubsequenceInput`\ 。
+  
+  * 在本例中，我们将原始数据的每一组，通过\ :code:`recurrent_group`\ 进行拆解，拆解成的每一句话再通过一个\ :ref:`glossary_lstm`\ 网络。这和单层\ :ref:`glossary_RNN`\ 的配置是等价的。
 
-  - 单层序列直接取了最后一个元素
-  - 双层序列首先（last_seq层）取了每个subseq的最后一个元素，将其拼接成一个新的单层序列；接着（expand_layer层）将其扩展成一个新的双层序列，其中第i个subseq中的所有向量均为输入的单层序列中的第i个向量；最后（average_layer层）取了每个subseq的平均值。
-  - 分析得出：第一个last_seq后，每个subseq的最后一个元素就等于单层序列的最后一个元素，而expand_layer和average_layer后，依然保持每个subseq最后一个元素的值不变（这两层仅是为了展示它们的用法，实际中并不需要）。因此单双层序列的输出是一样旳。
+* 与单层\ :ref:`glossary_RNN`\ 的配置类似，我们只需要知道使用\ :ref:`glossary_lstm` :ref:`glossary_encode`\ 成的最后一个向量。所以对\ :code:`recurrent_group`\ 进行了\ :code:`last_seq`\ 操作。但是，和单层\ :ref:`glossary_RNN`\ 有区别的地方是，我们是对每一个子序列取最后一个元素。于是我们设置\ :code:`agg_level=AggregateLevel.EACH_SEQUENCE`\ 。
+
+* 至此，\ :code:`lstm_last`\ 便和单层\ :ref:`glossary_RNN`\ 的配置中的\ :code:`lstm_last`\ 具有相同的结果了。
 
 ..  literalinclude:: ../../../paddle/gserver/tests/sequence_nest_layer_group.conf
     :language: python
-    :lines: 38-84
+    :lines: 38-64
+    :linenos:
+    :emphasize-lines: 7-26
 
-示例2：双进双出，subseq间有memory
-=================================
+示例2：:ref:`glossary_双层RNN`，子序列间有\ :ref:`glossary_Memory`
+==================================================================
 
-配置：单层RNN（ :code:`sequence_rnn.conf` ），双层RNN（ :code:`sequence_nest_rnn.conf` 和 :code:`sequence_nest_rnn_readonly_memory.conf` ），语义完全相同。
+本示例中，意图使用单层\ :ref:`glossary_RNN`\ 和\ :ref:`glossary_双层RNN`\ 同时实现一个完全等价的全连接\ :ref:`glossary_RNN`\ 。对于单层\ :ref:`glossary_RNN`\ ，输入数据为一个完整的\ :ref:`glossary_Sequence`\ ，例如\ :code:`[4, 5, 2, 0, 9, 8, 1, 4]`\ 。而对于\ :ref:`glossary_双层RNN`\ ，输入数据为在单层\ :ref:`glossary_RNN`\ 数据里面，任意将一些数据组合成双层\ :ref:`glossary_Sequence`\ ，例如\ :code:`[ [4, 5, 2], [0, 9], [8, 1, 4]]`。
 
-读取双层序列的方法
-------------------
-
-我们看一下单双层序列的不同数据组织形式和dataprovider（见 :code:`rnn_data_provider.py`）
-
-..  literalinclude::  ../../../paddle/gserver/tests/rnn_data_provider.py
-    :language: python
-    :lines: 20-32
-
-- 单层序列：有两句，分别为[1,3,2,4,5,2]和[0,2,2,5,0,1,2]。
-- 双层序列：有两句，分别为[[1,3,2],[4,5,2]]（2个子句）和[[0,2],[2,5],[0,1,2]]（3个子句）。
-- 单双层序列的label都分别是0和1
-
-模型中的配置
-------------
+:ref:`glossary_trainer_config`\ 的模型配置
+------------------------------------------
 
 我们选取单双层序列配置中的不同部分，来对比分析两者语义相同的原因。
 
