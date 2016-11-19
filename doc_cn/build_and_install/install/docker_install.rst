@@ -66,7 +66,7 @@ mac osx或者是windows机器，请参考
 
 ..  code-block:: bash
     
-    $ docker run -it paddledev/paddlepaddle:cpu-latest
+    $ docker run -it paddledev/paddle:cpu-latest
 
 即可启动和进入PaddlePaddle的container。如果运行GPU版本的PaddlePaddle，则需要先将
 cuda相关的Driver和设备映射进container中，脚本类似于
@@ -75,7 +75,7 @@ cuda相关的Driver和设备映射进container中，脚本类似于
 
     $ export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
     $ export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddlepaddle:latest-gpu
+    $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
 
 进入Docker container后，运行 :code:`paddle version` 即可打印出PaddlePaddle的版本和构建
 信息。安装完成的PaddlePaddle主体包括三个部分， :code:`paddle` 脚本， python的
