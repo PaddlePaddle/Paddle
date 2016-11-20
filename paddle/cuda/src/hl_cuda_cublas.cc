@@ -104,7 +104,7 @@ CUBLAS_BLAS_ROUTINE_EACH(DYNAMIC_LOAD_CUBLAS_V2_WRAP)
 #endif
 
 const char* hl_cublas_get_error_string(cublasStatus_t status) {
-  switch(status) {
+  switch (status) {
      case CUBLAS_STATUS_NOT_INITIALIZED:
         return "[cublas status]: not initialized";
      case CUBLAS_STATUS_ALLOC_FAILED:
@@ -181,7 +181,7 @@ void hl_matrix_inverse(real *A_d, real *C_d, int dimN, int lda, int ldc) {
   real **inout_d = (real **)hl_malloc_device(sizeof(real *));
   hl_memcpy(inout_d, inout_h, sizeof(real *));
 
-  int *pivot_d = (int *)hl_malloc_device(dimN*sizeof(int));  
+  int *pivot_d = (int *)hl_malloc_device(dimN * sizeof(int));
   int *info_d = (int *)t_resource.gpu_mem;
 
   /* Note: cublasSgetrfBatched is used to calculate a number of
@@ -189,10 +189,9 @@ void hl_matrix_inverse(real *A_d, real *C_d, int dimN, int lda, int ldc) {
      the API for better performance.
    */
   CHECK_CUBLAS(CUBLAS_GETRF(t_resource.handle,
-	       dimN, inout_d, lda, pivot_d,
-               info_d, 1));
+      dimN, inout_d, lda, pivot_d, info_d, 1));
 
-  int info_h; 
+  int info_h;
   hl_memcpy(&info_h, info_d, sizeof(int));
   if (info_h != 0) {
       LOG(FATAL) << "Factorization of matrix failed: matrix may be singular.\n";
@@ -204,8 +203,8 @@ void hl_matrix_inverse(real *A_d, real *C_d, int dimN, int lda, int ldc) {
   hl_memcpy(out_d, out_h, sizeof(real *));
 
   CHECK_CUBLAS(CUBLAS_GETRI(t_resource.handle,
-	       dimN, (const real **)inout_d, lda, pivot_d,
-	       out_d, ldc, info_d, 1));
+      dimN, (const real **)inout_d, lda, pivot_d,
+      out_d, ldc, info_d, 1));
 
   hl_memcpy(&info_h, info_d, sizeof(int));
   if (info_h != 0) {
@@ -215,7 +214,7 @@ void hl_matrix_inverse(real *A_d, real *C_d, int dimN, int lda, int ldc) {
   hl_free_mem_device(inout_d);
   hl_free_mem_device(pivot_d);
   hl_free_mem_device(out_d);
-  
+
   CHECK_SYNC("hl_matrix_inverse failed");
 }
 

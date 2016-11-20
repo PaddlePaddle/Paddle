@@ -19,17 +19,18 @@ limitations under the License. */
 
 P_DEFINE_string(cudnn_dir, "",
                 "Specify path for loading libcudnn.so. For instance, "
-                "/usr/local/cudnn/lib64. If empty [default], dlopen will search "
-                "cudnn from LD_LIBRARY_PATH");
+                "/usr/local/cudnn/lib64. If empty [default], dlopen "
+                "will search cudnn from LD_LIBRARY_PATH");
 
 P_DEFINE_string(cuda_dir, "",
                 "Specify path for loading cuda library, such as libcublas, "
-                "libcurand. For instance, /usr/local/cuda/lib64. "
-                "(Note: libcudart can not be specified by cuda_dir, since some "
+                "libcurand. For instance, /usr/local/cuda/lib64. (Note: "
+                "libcudart can not be specified by cuda_dir, since some "
                 "build-in function in cudart already ran before main entry). "
-                "If empty [default], dlopen will search cuda from LD_LIBRARY_PATH");
+                "If default, dlopen will search cuda from LD_LIBRARY_PATH");
 
-static inline std::string join(const std::string& part1, const std::string& part2) {
+static inline std::string join(const std::string& part1,
+                               const std::string& part2) {
   // directory separator
   const char sep = '/';
 
@@ -49,10 +50,10 @@ static inline std::string join(const std::string& part1, const std::string& part
 static inline void GetDsoHandleFromDefaultPath(
         std::string& dso_path, void** dso_handle, int dynload_flags) {
     VLOG(3) << "Try to find cuda library: " << dso_path
-              << " from default system path.";
-    // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH 
+            << " from default system path.";
+    // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
     *dso_handle = dlopen(dso_path.c_str(), dynload_flags);
-    
+
     // DYLD_LIBRARY_PATH is disabled after Mac OS 10.11 to
     // bring System Integrity Projection (SIP), if dso_handle
     // is null, search from default package path in Mac OS.
@@ -62,13 +63,13 @@ static inline void GetDsoHandleFromDefaultPath(
         *dso_handle = dlopen(dso_path.c_str(), dynload_flags);
         if (nullptr == *dso_handle) {
             if (dso_path == "libcudnn.dylib") {
-                LOG(FATAL) << "Note: [Recommend] copy cudnn into /usr/local/cuda/ \n"
-                << "For instance, sudo tar -xzf cudnn-7.5-osx-x64-v5.0-ga.tgz -C "
-                << "/usr/local \n sudo chmod a+r /usr/local/cuda/include/cudnn.h "
+                LOG(FATAL) << "Note: [Recommend] copy cudnn into /usr/local/cuda/ \n" // NOLINT
+                << "For instance, sudo tar -xzf cudnn-7.5-osx-x64-v5.0-ga.tgz -C "    // NOLINT
+                << "/usr/local \n sudo chmod a+r /usr/local/cuda/include/cudnn.h "    // NOLINT
                 << "/usr/local/cuda/lib/libcudnn*";
             }
-        } 
-    }   
+        }
+    }
     #endif
 }
 
@@ -96,19 +97,19 @@ static inline void GetDsoHandleFromSearchPath(
 
     CHECK(nullptr != *dso_handle)
       << "Failed to find cuda library: " << dlPath << std::endl
-      << "Please specify its path correctly using one of the following ideas: \n"
+      << "Please specify its path correctly using one of the following ways: \n"    // NOLINT
 
-      << "Idea 1. set cuda and cudnn lib path at runtime. "
-      << "http://www.paddlepaddle.org/doc/ui/cmd_argument/argument_outline.html \n"
+      << "Method 1. set cuda and cudnn lib path at runtime. "
+      << "http://www.paddlepaddle.org/doc/ui/cmd_argument/argument_outline.html \n" // NOLINT
       << "For instance, issue command: paddle train --use_gpu=1 "
-      << "--cuda_dir=/usr/local/cudnn/lib --cudnn_dir=/usr/local/cudnn/lib ...\n"
+      << "--cuda_dir=/usr/local/cuda/lib64 --cudnn_dir=/usr/local/cudnn/lib ...\n"  // NOLINT
 
-      << "Idea 2. set environment variable LD_LIBRARY_PATH on Linux or "
+      << "Method 2. set environment variable LD_LIBRARY_PATH on Linux or "
       << "DYLD_LIBRARY_PATH on Mac OS. \n"
       << "For instance, issue command: export LD_LIBRARY_PATH=... \n"
 
       << "Note: After Mac OS 10.11, using the DYLD_LIBRARY_PATH is impossible "
-      << "unless System Integrity Protection (SIP) is disabled. However, @Idea 1"
+      << "unless System Integrity Protection (SIP) is disabled. However, method 1 " // NOLINT
       << "always work well.";
 }
 
