@@ -98,22 +98,27 @@
 :ref:`glossary_trainer_config`\ 的模型配置
 ------------------------------------------
 
-我们选取单双层序列配置中的不同部分，来对比分析两者语义相同的原因。
-
-- 单层序列：过了一个很简单的recurrent_group。每一个时间步，当前的输入y和上一个时间步的输出rnn_state做了一个全链接。
+本例配置了两个完全等价的全连接\ :ref:`glossary_RNN`\ 。对于单层序列模型的配置如下:
 
 ..  literalinclude:: ../../../paddle/gserver/tests/sequence_rnn.conf
     :language: python
     :lines: 36-48
+    :linenos:
+
+在该配置中，名称为\ :code:`rnn_state`\ 的全连接层暂存到了\ :ref:`glossary_Memory`\ 中。这个\ :ref:`glossary_Memory`\ 变量\ :code:`mem`\ 中可以保存到上一个\ :ref:`glossary_timestep`\ 中的全连接层的输出。从而实现一个全连接的\ :ref:`glossary_RNN`\ 。
+
+而对于\ :ref:`glossary_双层RNN`\ 来说，等价的网络配置如下\:
+
+..  literalinclude:: ../../../paddle/gserver/tests/sequence_nest_rnn.conf
+    :language: python
+    :lines: 39-66
 
 - 双层序列，外层memory是一个元素：
 
   - 内层inner_step的recurrent_group和单层序列的几乎一样。除了boot_layer=outer_mem，表示将外层的outer_mem作为内层memory的初始状态。外层outer_step中，outer_mem是一个子句的最后一个向量，即整个双层group是将前一个子句的最后一个向量，作为下一个子句memory的初始状态。
   - 从输入数据上看，单双层序列的句子是一样的，只是双层序列将其又做了子序列划分。因此双层序列的配置中，必须将前一个子句的最后一个元素，作为boot_layer传给下一个子句的memory，才能保证和单层序列的配置中“每一个时间步都用了上一个时间步的输出结果”一致。
 
-..  literalinclude:: ../../../paddle/gserver/tests/sequence_nest_rnn.conf
-    :language: python
-    :lines: 39-66
+
 
 - 双层序列，外层memory是单层序列：
 
