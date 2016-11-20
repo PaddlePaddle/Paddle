@@ -1,16 +1,12 @@
 Queue
 =====
 
-
-class Queue
-------------
-
+Queue
+-----
 ..  doxygenclass:: paddle::Queue
     :members:
 
-
-class BlockingQueue 
--------------------
-
+BlockingQueue 
+-------------
 ..  doxygenclass:: paddle::BlockingQueue 
     :members:
