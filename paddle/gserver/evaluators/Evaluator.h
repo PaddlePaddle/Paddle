@@ -99,19 +99,19 @@ public:
    * @brief print the statistics of evaluate result
    * @note finish() should be called before printStats
    */
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     os << config_.name() << "="
        << (numSamples_ ? totalScore_ / numSamples_ : 0);
   }
 
   friend std::ostream& operator<<(std::ostream& os,
-                                  Evaluator& evaluator) {
+                                  const Evaluator& evaluator) {
     evaluator.printStats(os);
     return os;
   }
 
   friend std::ostream&& operator<<(std::ostream&& os,    // NOLINT
-                                   Evaluator& evaluator) {
+                                   const Evaluator& evaluator) {
     evaluator.printStats(os);
     return std::move(os);
   }
@@ -135,7 +135,7 @@ public:
     return -1;
   }
   virtual void finish() {}
-  virtual void printStats(std::ostream&) {}
+  virtual void printStats(std::ostream&) const {}
 };
 /**
  * @brief evaluate AUC using colIdx-th column as prediction.
@@ -165,7 +165,7 @@ public:
 
   virtual real evalImp(std::vector<Argument>& arguments);
 
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     os << config_.name() << "=" << calcAuc();
   }
 
@@ -189,7 +189,7 @@ private:
     return (X1 > X2 ? (X1 - X2) : (X2 - X1)) * (Y1 + Y2) / 2.0;
   }
 
-  double calcAuc();
+  double calcAuc() const;
 };
 
 /**
@@ -244,7 +244,7 @@ public:
 
   virtual real evalImp(std::vector<Argument>& arguments);
 
-  virtual void printStats(std::ostream& os);
+  virtual void printStats(std::ostream& os) const;
 
   virtual void distributeEval(ParameterClient2* client);
 
@@ -339,7 +339,7 @@ public:
 
   virtual void finish() { calc(predictArray_); }
 
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     os << " pos/neg"
        << "=" << pairArray_[0] / ((pairArray_[1] <= 0) ? 1.0 : pairArray_[1]);
   }
