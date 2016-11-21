@@ -1,20 +1,15 @@
 # PaddlePaddle
 
 
-[![Build Status](https://travis-ci.org/baidu/Paddle.svg?branch=master)](https://travis-ci.org/baidu/Paddle)
-[![Downloads](https://img.shields.io/github/downloads/baidu/Paddle/total.svg)](https://github.com/baidu/Paddle/releases)
-[![Coverage Status](https://coveralls.io/repos/github/baidu/Paddle/badge.svg?branch=develop)](https://coveralls.io/github/baidu/Paddle?branch=develop)
-
+[![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/baidu/Paddle)
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/)
 [![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/cn/index.html)
-[![Join the chat at](https://img.shields.io/gitter/room/PaddlePaddle/Deep_Learning.svg)](https://gitter.im/PaddlePaddle/Deep_Learning)
-
-[![Release](https://img.shields.io/github/release/baidu/Paddle.svg)](https://github.com/baidu/Paddle/releases)
+[![Coverage Status](https://coveralls.io/repos/github/PaddlePaddle/Paddle/badge.svg?branch=develop)](https://coveralls.io/github/baidu/Paddle?branch=develop)
+[![Release](https://img.shields.io/github/release/baidu/Paddle.svg?colorB=fedcba)](https://github.com/baidu/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
 
 Welcome to the PaddlePaddle GitHub.
-
 PaddlePaddle (PArallel Distributed Deep LEarning) is an easy-to-use,
 efficient, flexible and scalable deep learning platform, which is originally
 developed by Baidu scientists and engineers for the purpose of applying deep
