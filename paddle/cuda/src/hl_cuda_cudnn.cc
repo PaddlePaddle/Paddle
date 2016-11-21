@@ -159,13 +159,11 @@ CUDNN_DNN_ROUTINE_EACH_R5(DYNAMIC_LOAD_CUDNN_WRAP)
 bool g_is_libcudnn_init = false;
 int g_cudnn_lib_version = 0;
 
-void hl_cudnn_desc_init(cudnnTensorDescriptor_t*  cudnn_desc)
-{
+void hl_cudnn_desc_init(cudnnTensorDescriptor_t*  cudnn_desc) {
     CHECK_CUDNN(dynload::cudnnCreateTensorDescriptor(cudnn_desc));
 }
 
-void hl_cudnn_init(cudnnHandle_t *cudnn_handle, cudaStream_t stream)
-{
+void hl_cudnn_init(cudnnHandle_t *cudnn_handle, cudaStream_t stream) {
     size_t cudnn_dso_ver = dynload::cudnnGetVersion();
     size_t cudnn_dso_major = cudnn_dso_ver / 1000;
     size_t cudnn_cuh_major = CUDNN_VERSION / 1000;
@@ -212,13 +210,18 @@ void hl_conv_workspace(hl_tensor_descriptor input,
     CHECK_NOTNULL(conv);
 
     // Specify workspace limit directly
-    size_t memoryLimitBytes = (1LL << 20) * FLAGS_cudnn_conv_workspace_limit_in_mb;
+    size_t memoryLimitBytes =
+        (1LL << 20) * FLAGS_cudnn_conv_workspace_limit_in_mb;
 
     // cudnn convolution forward configuration
-    cudnnTensorDescriptor_t       fwd_src_desc = GET_TENSOR_DESCRIPTOR(input);
-    cudnnTensorDescriptor_t       fwd_dest_desc = GET_TENSOR_DESCRIPTOR(output);
-    cudnnFilterDescriptor_t       fwd_filter_desc = GET_FILTER_DESCRIPTOR(filter);
-    cudnnConvolutionDescriptor_t  fwd_conv_desc = GET_CONVOLUTION_DESCRIPTOR(conv);
+    cudnnTensorDescriptor_t       fwd_src_desc =
+                                        GET_TENSOR_DESCRIPTOR(input);
+    cudnnTensorDescriptor_t       fwd_dest_desc =
+                                        GET_TENSOR_DESCRIPTOR(output);
+    cudnnFilterDescriptor_t       fwd_filter_desc =
+                                        GET_FILTER_DESCRIPTOR(filter);
+    cudnnConvolutionDescriptor_t  fwd_conv_desc =
+                                        GET_CONVOLUTION_DESCRIPTOR(conv);
 
     CHECK_CUDNN(dynload::cudnnGetConvolutionForwardAlgorithm(
              t_resource.cudnn_handle,
@@ -250,23 +253,23 @@ void hl_conv_workspace(hl_tensor_descriptor input,
                                           GET_CONVOLUTION_DESCRIPTOR(conv);
 
     CHECK_CUDNN(dynload::cudnnGetConvolutionBackwardDataAlgorithm(
-             t_resource.cudnn_handle,
-             bwd_data_filter_desc,
-             bwd_data_diff_desc,
-             bwd_data_conv_desc,
-             bwd_data_grad_desc,
-             CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
-             memoryLimitBytes,
-             reinterpret_cast<cudnnConvolutionBwdDataAlgo_t*>(convBwdDataAlgo)));
+        t_resource.cudnn_handle,
+        bwd_data_filter_desc,
+        bwd_data_diff_desc,
+        bwd_data_conv_desc,
+        bwd_data_grad_desc,
+        CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
+        memoryLimitBytes,
+        reinterpret_cast<cudnnConvolutionBwdDataAlgo_t*>(convBwdDataAlgo)));
 
     CHECK_CUDNN(dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
-             t_resource.cudnn_handle,
-             bwd_data_filter_desc,
-             bwd_data_diff_desc,
-             bwd_data_conv_desc,
-             bwd_data_grad_desc,
-             static_cast<cudnnConvolutionBwdDataAlgo_t>(*convBwdDataAlgo),
-             bwdDataLimitBytes));
+        t_resource.cudnn_handle,
+        bwd_data_filter_desc,
+        bwd_data_diff_desc,
+        bwd_data_conv_desc,
+        bwd_data_grad_desc,
+        static_cast<cudnnConvolutionBwdDataAlgo_t>(*convBwdDataAlgo),
+        bwdDataLimitBytes));
 
     // cudnn convolution backward filter configuration
     cudnnTensorDescriptor_t       bwd_filter_src_desc =
@@ -279,21 +282,21 @@ void hl_conv_workspace(hl_tensor_descriptor input,
                                       GET_FILTER_DESCRIPTOR(filter);
 
     CHECK_CUDNN(dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
-             t_resource.cudnn_handle,
-             bwd_filter_src_desc,
-             bwd_filter_diff_desc,
-             bwd_filter_conv_desc,
-             bwd_filter_grad_desc,
-             CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
-             memoryLimitBytes,
-             reinterpret_cast<cudnnConvolutionBwdFilterAlgo_t*>(convBwdFilterAlgo)));
+        t_resource.cudnn_handle,
+        bwd_filter_src_desc,
+        bwd_filter_diff_desc,
+        bwd_filter_conv_desc,
+        bwd_filter_grad_desc,
+        CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
+        memoryLimitBytes,
+        reinterpret_cast<cudnnConvolutionBwdFilterAlgo_t*>(convBwdFilterAlgo)));
 
     CHECK_CUDNN(dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
-             t_resource.cudnn_handle, bwd_filter_src_desc,
-             bwd_filter_diff_desc, bwd_filter_conv_desc,
-             bwd_filter_grad_desc,
-             static_cast<cudnnConvolutionBwdFilterAlgo_t>(*convBwdFilterAlgo),
-             bwdFilterLimitBytes));
+        t_resource.cudnn_handle, bwd_filter_src_desc,
+        bwd_filter_diff_desc, bwd_filter_conv_desc,
+        bwd_filter_grad_desc,
+        static_cast<cudnnConvolutionBwdFilterAlgo_t>(*convBwdFilterAlgo),
+        bwdFilterLimitBytes));
 
 #endif
 }
@@ -302,8 +305,7 @@ void hl_create_tensor_descriptor(hl_tensor_descriptor* image_desc,
                                  int batch_size,
                                  int feature_maps,
                                  int height,
-                                 int width)
-{
+                                 int width) {
     CHECK_NOTNULL(image_desc);
 
     cudnn_tensor_descriptor hl_desc =
@@ -359,8 +361,7 @@ void hl_tensor_reshape(hl_tensor_descriptor image_desc,
                        int batch_size,
                        int feature_maps,
                        int height,
-                       int width)
-{
+                       int width) {
     const int stride_w = 1;
     const int stride_h = width * stride_w;
     const int stride_c = height * stride_h;
@@ -384,8 +385,7 @@ void hl_tensor_reshape(hl_tensor_descriptor image_desc,
                        int nStride,
                        int cStride,
                        int hStride,
-                       int wStride)
-{
+                       int wStride) {
     CHECK_NOTNULL(image_desc);
 
     cudnn_tensor_descriptor hl_desc = (cudnn_tensor_descriptor)image_desc;
@@ -408,8 +408,7 @@ void hl_tensor_reshape(hl_tensor_descriptor image_desc,
     hl_desc->width = width;
 }
 
-void hl_destroy_tensor_descriptor(hl_tensor_descriptor image_desc)
-{
+void hl_destroy_tensor_descriptor(hl_tensor_descriptor image_desc) {
     CHECK_NOTNULL(image_desc);
 
     cudnn_tensor_descriptor hl_desc = (cudnn_tensor_descriptor)image_desc;
@@ -430,11 +429,9 @@ void hl_create_pooling_descriptor(hl_pooling_descriptor* pooling_desc,
                                   int height_padding,
                                   int width_padding,
                                   int stride_height,
-                                  int stride_width)
-{
+                                  int stride_width) {
     cudnnPoolingMode_t cudnn_mode;
-    switch (mode)
-    {
+    switch (mode) {
         case HL_POOLING_MAX:
             cudnn_mode = CUDNN_POOLING_MAX;
             break;
@@ -478,13 +475,13 @@ void hl_create_pooling_descriptor(hl_pooling_descriptor* pooling_desc,
     *pooling_desc = (hl_pooling_descriptor)hl_pooling_desc;
 }
 
-void hl_destroy_pooling_descriptor(hl_pooling_descriptor pooling_desc)
-{
+void hl_destroy_pooling_descriptor(hl_pooling_descriptor pooling_desc) {
     CHECK_NOTNULL(pooling_desc);
 
-    cudnn_pooling_descriptor hl_pooling = (cudnn_pooling_descriptor)pooling_desc;
-    CHECK_NOTNULL(hl_pooling->desc);
+    cudnn_pooling_descriptor hl_pooling =
+        (cudnn_pooling_descriptor)pooling_desc;
 
+    CHECK_NOTNULL(hl_pooling->desc);
     CHECK_CUDNN(dynload::cudnnDestroyPoolingDescriptor(hl_pooling->desc));
 
     hl_pooling->desc = NULL;
@@ -496,8 +493,7 @@ void hl_pooling_forward(hl_tensor_descriptor input,
                         real* input_image,
                         hl_tensor_descriptor output,
                         real* output_image,
-                        hl_pooling_descriptor pooling)
-{
+                        hl_pooling_descriptor pooling) {
     cudnnPoolingDescriptor_t    pooling_desc;
     cudnnTensorDescriptor_t     input_desc;
     cudnnTensorDescriptor_t     output_desc;
@@ -531,8 +527,7 @@ void hl_pooling_backward(hl_tensor_descriptor input,
                          hl_tensor_descriptor output,
                          real* output_image,
                          real* output_image_grad,
-                         hl_pooling_descriptor pooling)
-{
+                         hl_pooling_descriptor pooling) {
     cudnnPoolingDescriptor_t    pooling_desc;
     cudnnTensorDescriptor_t     input_desc;
     cudnnTensorDescriptor_t     output_desc;
@@ -571,8 +566,7 @@ void hl_create_filter_descriptor(hl_filter_descriptor* filter,
                                  int input_feature_maps,
                                  int output_feature_maps,
                                  int height,
-                                 int width)
-{
+                                 int width) {
     CHECK_NOTNULL(filter);
 
     cudnn_filter_descriptor hl_filter =
@@ -607,8 +601,7 @@ void hl_create_filter_descriptor(hl_filter_descriptor* filter,
 }
 
 
-void hl_destroy_filter_descriptor(hl_filter_descriptor filter)
-{
+void hl_destroy_filter_descriptor(hl_filter_descriptor filter) {
     CHECK_NOTNULL(filter);
 
     cudnn_filter_descriptor hl_filter = (cudnn_filter_descriptor)filter;
@@ -627,14 +620,13 @@ void hl_create_convolution_descriptor(hl_convolution_descriptor* conv,
                                       int padding_height,
                                       int padding_width,
                                       int stride_height,
-                                      int stride_width)
-{
+                                      int stride_width) {
     CHECK_NOTNULL(conv);
 
-    cudnn_convolution_descriptor hl_conv =
-        (cudnn_convolution_descriptor)malloc(sizeof(_cudnn_convolution_descriptor));
-    CHECK_NOTNULL(hl_conv);
+    cudnn_convolution_descriptor hl_conv = (cudnn_convolution_descriptor)
+        malloc(sizeof(_cudnn_convolution_descriptor));
 
+    CHECK_NOTNULL(hl_conv);
     CHECK_CUDNN(dynload::cudnnCreateConvolutionDescriptor(&hl_conv->desc));
 
     cudnnConvolutionMode_t mode = CUDNN_CROSS_CORRELATION;
@@ -667,8 +659,7 @@ void hl_reset_convolution_descriptor(hl_convolution_descriptor conv,
                                      int padding_height,
                                      int padding_width,
                                      int stride_height,
-                                     int stride_width)
-{
+                                     int stride_width) {
     CHECK_NOTNULL(conv);
     CHECK_NOTNULL(image);
     CHECK_NOTNULL(filter);
@@ -697,8 +688,7 @@ void hl_reset_convolution_descriptor(hl_convolution_descriptor conv,
     hl_conv->mode = mode;
 }
 
-void hl_destroy_convolution_descriptor(hl_convolution_descriptor conv)
-{
+void hl_destroy_convolution_descriptor(hl_convolution_descriptor conv) {
     CHECK_NOTNULL(conv);
 
     cudnn_convolution_descriptor hl_conv = (cudnn_convolution_descriptor)conv;
@@ -753,8 +743,7 @@ void hl_convolution_forward(hl_tensor_descriptor input,
 void hl_convolution_forward_add_bias(hl_tensor_descriptor bias,
                                      real* bias_data,
                                      hl_tensor_descriptor output,
-                                     real* output_data)
-{
+                                     real* output_data) {
     CHECK_NOTNULL(bias);
     CHECK_NOTNULL(output);
     CHECK_NOTNULL(bias_data);
@@ -782,8 +771,7 @@ void hl_convolution_forward_add_bias(hl_tensor_descriptor bias,
 void hl_convolution_backward_bias(hl_tensor_descriptor bias,
                                   real* bias_grad_data,
                                   hl_tensor_descriptor output,
-                                  real* output_grad_data)
-{
+                                  real* output_grad_data) {
     CHECK_NOTNULL(bias);
     CHECK_NOTNULL(output);
     CHECK_NOTNULL(bias_grad_data);
@@ -814,7 +802,6 @@ void hl_convolution_backward_filter(hl_tensor_descriptor input,
                                     void* gpuWorkSpace,
                                     size_t sizeInBytes,
                                     int convBwdFilterAlgo) {
-
     CHECK_NOTNULL(input);
     CHECK_NOTNULL(output);
     CHECK_NOTNULL(filter);
@@ -889,8 +876,7 @@ void hl_convolution_backward_data(hl_tensor_descriptor input,
 void hl_softmax_forward(real *input,
                         real *output,
                         int height,
-                        int width)
-{
+                        int width) {
 #ifndef PADDLE_TYPE_DOUBLE
     cudnnDataType_t data_type = CUDNN_DATA_FLOAT;
 #else
@@ -923,8 +909,7 @@ void hl_softmax_forward(real *input,
 void hl_softmax_backward(real *output_value,
                          real *output_grad,
                          int height,
-                         int width)
-{
+                         int width) {
 #ifndef PADDLE_TYPE_DOUBLE
     cudnnDataType_t data_type = CUDNN_DATA_FLOAT;
 #else
