@@ -214,3 +214,20 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
 * 如果paddle包已经在python的site-packages里面了，那么单元测试时使用的paddle包，就是site-packages里面的python包，而不是源码目录里 :code:`/python` 目录下的python包。
 * 即便设置了 :code:`PYTHONPATH` 到 :code:`/python` 也没用，因为python的搜索路径是优先已经安装的python包。
+
+9. 如何指定GPU设备
+-----------------
+
+例如机器上有4块GPU，编号从0开始，指定使用2、3号GPU：
+
+* 方式1：通过 ``CUDA_VISIBLE_DEVICES`` 环境变量来指定特定的GPU。
+
+..      code-block:: bash
+
+        env CUDA_VISIBLE_DEVICES=2,3 paddle train --use_gpu=true --trainer_count=2
+
+* 方式2：通过命令行参数 ``--gpu_id`` 指定。
+
+..      code-block:: bash
+
+        paddle train --use_gpu=true --trainer_count=2 --gpu_id=2
