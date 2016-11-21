@@ -1,8 +1,7 @@
 安装PaddlePaddle的Docker镜像
 ============================
 
-PaddlePaddle提供了Docker的使用镜像。PaddlePaddle推荐使用Docker进行PaddlePaddle的部署和运行。Docker是一个基于容器的轻量级虚拟环境。具有和宿主机相近的运行效率，并提供
-了非常方便的二进制分发手段。
+PaddlePaddle项目提供官方 `Docker <https://www.docker.com/>`_ 镜像。Docker镜像是我们目前唯一官方支持的部署和运行方式。
 
 下述内容将分为如下几个类别描述。
 
