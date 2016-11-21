@@ -24,7 +24,7 @@ Why we need profiling?
 ======================
 Since training deep neural network typically take a very long time to get over, performance is gradually becoming
 the most important thing in deep learning field. The first step to improve performance is to understand what parts
-are slow. No point in improving performance of a region which doesn’t take much time!
+are slow.  There is no point in improving performance of a region which doesn’t take much time!
 
 
 How to do profiling?
@@ -59,6 +59,7 @@ above profilers.
 The above code snippet includes two methods, you can use any of them to profile the regions of interest.
 
 1. :code:`REGISTER_TIMER_INFO` is a built-in timer wrapper which can calculate the time overhead of both cpu functions and cuda kernels.
+
 2. :code:`REGISTER_GPU_PROFILER` is a general purpose wrapper object of :code:`cudaProfilerStart` and :code:`cudaProfilerStop` to avoid
 program crashes when CPU version of PaddlePaddle invokes them.
 

@@ -203,4 +203,22 @@ StatInfo::~StatInfo() {
   }
 }
 
+static unsigned g_profileCount = 0;
+static std::recursive_mutex g_profileMutex;
+
+GpuProfiler::GpuProfiler(std::string statName, std::string info)
+  : guard_(g_profileMutex)  {
+  if (++g_profileCount == 1) {
+    LOG(INFO) << "Enable GPU Profiler Stat: ["
+              << statName << "] " << info;
+    hl_profiler_start();
+  }
+}
+
+GpuProfiler::~GpuProfiler() {
+  if (--g_profileCount == 0) {
+    hl_profiler_end();
+  }
+}
+
 }  // namespace paddle

@@ -283,8 +283,10 @@ inline StatSet& registerTimerArg2(uint64_t threshold = -1,
 
 class GpuProfiler final {
 public:
-  GpuProfiler() { hl_profiler_start(); }
-  ~GpuProfiler() { hl_profiler_end(); }
+  GpuProfiler(std::string statName, std::string info);
+  ~GpuProfiler();
+private:
+  std::lock_guard<std::recursive_mutex> guard_;
 };
 
 #ifdef PADDLE_DISABLE_PROFILER
@@ -293,10 +295,8 @@ public:
 
 #else
 
-#define REGISTER_GPU_PROFILER(statName, ...)                                \
-  LOG(INFO) << "Enable GPU Profiler Stat: ["                                \
-            << statName << "] " << #__VA_ARGS__;                            \
-  GpuProfiler __gpuProfiler;
+#define REGISTER_GPU_PROFILER(statName, ...) \
+  GpuProfiler __gpuProfiler(statName, #__VA_ARGS__);
 
 #endif  // DISABLE_PROFILER
 

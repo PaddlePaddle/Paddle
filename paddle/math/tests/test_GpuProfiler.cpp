@@ -70,10 +70,14 @@ void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
   input->randomizeUniform();
   inputGpu->copyFrom(*input);
 
-  target->bilinearForward(*input, imgSizeH, imgSizeW,
-      2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
-  targetGpu->bilinearForward(*inputGpu, imgSizeH, imgSizeW,
-      2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
+  {
+    // nvprof: GPU Proflier
+    REGISTER_GPU_PROFILER("testBilinearFwdBwd");
+    target->bilinearForward(*input, imgSizeH, imgSizeW,
+        2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
+    targetGpu->bilinearForward(*inputGpu, imgSizeH, imgSizeW,
+        2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
+  }
 
   // check
   targetCheck->copyFrom(*targetGpu);
@@ -104,25 +108,29 @@ void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
   MatrixCheckErr(*inputGrad, *targetCheckGrad);
 }
 
-TEST(Profiler, BilinearFwdBwd) {
+TEST(Profiler, testBilinearFwdBwd) {
   auto numSamples = 10;
   auto channels = 16;
   auto imgSize = 64;
   {
     // nvprof: GPU Proflier
-    REGISTER_GPU_PROFILER("testBilinearFwdBwd",
-      "numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64");
+    REGISTER_GPU_PROFILER("testBilinearFwdBwd");
     // Paddle built-in timer
     REGISTER_TIMER_INFO("testBilinearFwdBwd",
       "numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64");
     testBilinearFwdBwd(numSamples, imgSize, imgSize, channels);
   }
-  globalStat.printStatus("testBilinearFwdBwd");
+  globalStat.printAllStatus();
 }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);
+
+  // nvprof: GPU Proflier
+  REGISTER_GPU_PROFILER("RecursiveProfilingTest",
+    "numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64");
+
   return RUN_ALL_TESTS();
 }
 
