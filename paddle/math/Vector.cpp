@@ -82,8 +82,8 @@ MatrixPtr VectorT<real>::toOneHotSparseMatrix(size_t idRange, bool useGpu) {
 
 template <>
 MatrixPtr VectorT<int>::toOneHotSparseMatrix(size_t idRange, bool useGpu) {
-  auto height = getSize();
-  auto width = idRange;
+  size_t height = getSize();
+  size_t width = idRange;
   MatrixPtr mat = Matrix::createSparseMatrix(
       height, idRange, height, NO_VALUE, SPARSE_CSR, false, useGpu);
 
