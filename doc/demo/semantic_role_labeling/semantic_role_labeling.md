@@ -129,6 +129,7 @@ paddle train \
   --average_test_period=10000000 \
   --init_model_path=./data \
   --load_missing_parameter_strategy=rand \
+  --test_all_data_in_one_period=1 \
 2>&1 | tee 'train.log'
 ```
 
@@ -142,6 +143,7 @@ paddle train \
 -  \--average_test_period=10000000:  do test on average parameter every average_test_period batches
 -  \--init_model_path=./data: parameter initialization path 
 -  \--load_missing_parameter_strategy=rand: random initialization unexisted parameters
+-  \--test_all_data_in_one_period=1: test all data in one period
 
 
 After training, the models  will be saved in directory `output`. Our training curve is as following:
