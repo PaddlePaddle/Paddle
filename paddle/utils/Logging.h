@@ -23,6 +23,7 @@ limitations under the License. */
 #include <string>
 
 #ifndef PADDLE_USE_GLOG
+#include "CompilerMacros.h"
 
 //! TODO(yuyang18): Move this utility macro into some global header.
 #define PP_CAT(a, b) PP_CAT_I(a, b)
@@ -168,7 +169,7 @@ void setMinLogLevel(int level);
  * @brief Install Log(Fatal) failure function. Default is abort();
  * @param callback: The failure function.
  */
-void installFailureFunction(void (*callback)());
+void installFailureFunction(void (*callback)() ATTR_NORETURN);
 
 /**
  * @brief installFailureWriter

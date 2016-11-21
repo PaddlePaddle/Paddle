@@ -82,8 +82,8 @@ MatrixPtr VectorT<real>::toOneHotSparseMatrix(size_t idRange, bool useGpu) {
 
 template <>
 MatrixPtr VectorT<int>::toOneHotSparseMatrix(size_t idRange, bool useGpu) {
-  int height = getSize();
-  int width = idRange;
+  size_t height = getSize();
+  size_t width = idRange;
   MatrixPtr mat = Matrix::createSparseMatrix(
       height, idRange, height, NO_VALUE, SPARSE_CSR, false, useGpu);
 
@@ -91,7 +91,7 @@ MatrixPtr VectorT<int>::toOneHotSparseMatrix(size_t idRange, bool useGpu) {
   cpuIds.copyFrom(*this);
   int *idData = cpuIds.getData();
 
-  for (int i = 0; i < height; i ++) {
+  for (decltype(height) i = 0; i < height; i ++) {
     const unsigned int id = idData[i];
     CHECK_LT(id, width);
     mat->setRow(i, 1, &id, nullptr);
