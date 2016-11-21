@@ -107,23 +107,29 @@
 
 在该配置中，名称为\ :code:`rnn_state`\ 的全连接层暂存到了\ :ref:`glossary_Memory`\ 中。这个\ :ref:`glossary_Memory`\ 变量\ :code:`mem`\ 中可以保存到上一个\ :ref:`glossary_timestep`\ 中的全连接层的输出。从而实现一个全连接的\ :ref:`glossary_RNN`\ 。
 
+以数据\ :code:`[4, 5, 2, 0, 9, 8, 1, 4]`\ 举例，单层\ :ref:`glossary_RNN`\ 的网络图如下\:
+
+..  graphviz:: simple_full_recurrent.dot
+
 而对于\ :ref:`glossary_双层RNN`\ 来说，等价的网络配置如下\:
 
 ..  literalinclude:: ../../../paddle/gserver/tests/sequence_nest_rnn.conf
     :language: python
     :lines: 39-66
+    :linenos:
+    :emphasize-lines: 4-6
 
-- 双层序列，外层memory是一个元素：
+- 在该配置中，外层的\ :code:`outer_mem`\ 和内层的\ :code:`inner_mem`\ 两个变量配合，实现了和单层\ :ref:`glossary_RNN`\ 等价的全连接\ :ref:`glossary_RNN`\ 。
 
-  - 内层inner_step的recurrent_group和单层序列的几乎一样。除了boot_layer=outer_mem，表示将外层的outer_mem作为内层memory的初始状态。外层outer_step中，outer_mem是一个子句的最后一个向量，即整个双层group是将前一个子句的最后一个向量，作为下一个子句memory的初始状态。
-  - 从输入数据上看，单双层序列的句子是一样的，只是双层序列将其又做了子序列划分。因此双层序列的配置中，必须将前一个子句的最后一个元素，作为boot_layer传给下一个子句的memory，才能保证和单层序列的配置中“每一个时间步都用了上一个时间步的输出结果”一致。
+  - 外层\ :code:`outer_step`\ 中的\ :code:`outer_mem`\ 会将神经网络中每个子序列的最后一个结果记录下来。即将第18行的\ :code:`last`\ 变量记录下来。
+  - 内层\ :code:`inner_step`\ 中的\ :code:`inner_mem`\ 会将神经网络中子序列中的每一个元素的结果记录下来。即将第7行的\ :code:`out`\ 变量记录下来。
+  - 内层的\ :code:`inner_mem`\ 初始值是\ :code:`outer_mem`(:code:`boot_layer`)。于是前一个子序列的最后结果，是新的子序列的初试结果。即完成了简单的全连接\ :code:`glossary_RNN`\ 。
 
+本例中的\ :ref:`glossary_双层RNN`\ ,以数据\ :code:`[ [4, 5, 2], [0, 9], [8, 1, 4]]`\ 举例，配置图如下\:
 
+..  graphviz:: simple_full_hierarchical_recurrent.dot
 
-- 双层序列，外层memory是单层序列：
-
-  - 由于外层每个时间步返回的是一个子句，这些子句的长度往往不等长。因此当外层有is_seq=True的memory时，内层是**无法直接使用**它的，即内层memory的boot_layer不能链接外层的这个memory。
-  - 如果内层memory想**间接使用**这个外层memory，只能通过`pooling_layer`、`last_seq`或`first_seq`这三个layer将它先变成一个元素。但这种情况下，外层memory必须有boot_layer，否则在第0个时间步时，由于外层memory没有任何seq信息，因此上述三个layer的前向会报出“**Check failed: input.sequenceStartPositions**”的错误。
+这里有一点注意事项，Paddle目前实现的\ :ref:`glossary_双层RNN`\ 不完全支持内层\ :ref:`glossary_RNN`\ 的\ :ref:`glossary_Memory`\ 引用外层\ :ref:`glossary_RNN`\ 的某一层序列输入。即\ :code:`inner_mem`的\ :code:`boot_layer`\ 需要是非序列类型的，或者可以是序列类型，但是每个时间步下，序列长度是一致的。从序列类型转换为非序列类型，可以使用\ :code:`pooling_layer`, :code:`last_seq`, :code:`first_seq`\ 等操作进行转换。
 
 示例3：双进双出，输入不等长
 ===========================
