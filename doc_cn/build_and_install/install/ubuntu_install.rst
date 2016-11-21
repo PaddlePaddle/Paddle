@@ -11,7 +11,7 @@ PaddlePaddle的ubuntu安装包分为四个版本，他们是 cpu、gpu、cpu-noa
 
 ..  code-block:: shell
 
-    gdebi paddle-*-cpu.deb
+    gdebi paddle-*-cpu*.deb
 
 如果 :code:`gdebi` 没有安装,则需要使用 :code:`sudo apt-get install gdebi`, 来安装 :code:`gdebi` 。
 
@@ -20,7 +20,7 @@ PaddlePaddle的ubuntu安装包分为四个版本，他们是 cpu、gpu、cpu-noa
 
 ..  code-block:: shell
 
-    dpkg -i paddle-*-cpu.deb
+    dpkg -i paddle-*-cpu*.deb
     apt-get install -f
 
 在 :code:`dpkg -i` 的时候如果报一些依赖未找到的错误是正常的，
