@@ -25,4 +25,5 @@ paddle train \
   --average_test_period=10000000 \
   --init_model_path=./data \
   --load_missing_parameter_strategy=rand \
-2>&1 | tee 'train.log'
+  --test_all_data_in_one_period=1 \
+  2>&1 | tee 'train.log'
