@@ -218,11 +218,12 @@ public:
   }
 
 protected:
-  virtual void showAbstract(std::ostream &output) {}
-  friend std::ostream &operator<<(std::ostream &output, BarrierStatBase &stat);
+  virtual void showAbstract(std::ostream &output) const {}
+  friend std::ostream &operator<<(std::ostream &output,
+                                  const BarrierStatBase &stat);
 
 protected:
-  std::mutex lock_;
+  mutable std::mutex lock_;
   std::mutex abstractLock_;  // see note on updaterStat
   // each freqency for each barrier trainer
   std::vector<struct Abstract> abstract_;
@@ -262,7 +263,7 @@ protected:
    * log_barrier_abstract, log_barrier_lowest_nodes, log_barrier_threshold
    * control details.
    */
-  virtual void showAbstract(std::ostream &output);
+  virtual void showAbstract(std::ostream &output) const;
 
 private:
   std::unique_ptr<TimeVectorEnd> timeVector_;
@@ -286,7 +287,7 @@ public:
   virtual bool checkPassBarrier() { return timeVector_->empty(); }
 
 protected:
-  virtual void showAbstract(std::ostream &outPut);
+  virtual void showAbstract(std::ostream &outPut) const;
 
 private:
   // store delta time in uint64_t, eg BP time of all trainers

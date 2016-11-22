@@ -134,7 +134,7 @@ static void initializeLogFds(char* argv0) {
   gLogInited = true;
 }
 
-static void (*gFailureFunctionPtr)() __attribute__((noreturn)) = abort;
+static void (*gFailureFunctionPtr)() ATTR_NORETURN = abort;
 
 LogMessage::LogMessage(const char* fname, int line, int severity)
     : fname_(fname), line_(line), severity_(severity) {}
@@ -171,7 +171,7 @@ void setMinLogLevel(int level) {
   paddle::internal::gMinLogLevel = level;
 }
 
-void installFailureFunction(void (*callback)()) {
+void installFailureFunction(void (*callback)() ATTR_NORETURN) {
   paddle::internal::gFailureFunctionPtr = callback;
 }
 

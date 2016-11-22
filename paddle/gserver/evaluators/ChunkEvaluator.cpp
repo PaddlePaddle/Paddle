@@ -114,7 +114,7 @@ public:
     numCorrect_ = 0;
   }
 
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     double precision = (double)numCorrect_ / numOutputSegments_;
     double recall = (double)numCorrect_ / numLabelSegments_;
     double f1 =

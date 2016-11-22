@@ -1469,7 +1469,6 @@ void ParameterServer2::waitPassFinish(const WaitPassFinishRequest& request,
 
 void ParameterServer2::synchronize(const SynchronizeRequest& request,
                                    ProtoResponseCallback callback) {
-  CHECK_LT(request.sync_object_id(), SyncObject_ARRAYSIZE);
   synchronizeBarriers_[request.sync_object_id()]->wait();
   dataSize_ = 0;
   callback(SynchronizeResponse());
@@ -1477,7 +1476,6 @@ void ParameterServer2::synchronize(const SynchronizeRequest& request,
 
 void ParameterServer2::asyncFinishPass(const SynchronizeRequest& request,
                                        ProtoResponseCallback callback) {
-  CHECK_LT(request.sync_object_id(), SyncObject_ARRAYSIZE);
   synchronizeBarriers_[request.sync_object_id()]->wait();
   callback(SynchronizeResponse());
 

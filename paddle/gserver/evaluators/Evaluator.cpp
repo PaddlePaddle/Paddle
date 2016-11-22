@@ -315,7 +315,7 @@ public:
     return 0;
   }
 
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     CHECK(colIdx_ + (int32_t)colNum_ >= 0 && colIdx_ - (int32_t)colNum_ < 0)
         << "column index [" << colIdx_ << "] out of range [-" << colNum_ << ", "
         << colNum_ << ")";
@@ -421,7 +421,7 @@ void AucEvaluator::distributeEval(ParameterClient2* client) {
   client->reduce(statNeg_, statNeg_, kBinNum_ + 1, FLAGS_trainer_id, 0);
 }
 
-double AucEvaluator::calcAuc() {
+double AucEvaluator::calcAuc() const {
   double totPos = 0.0;
   double totNeg = 0.0;
   double totPosPrev = 0.0;
@@ -584,7 +584,7 @@ real PrecisionRecallEvaluator::evalImp(std::vector<Argument>& arguments) {
   return 0;
 }
 
-void PrecisionRecallEvaluator::printStats(std::ostream& os) {
+void PrecisionRecallEvaluator::printStats(std::ostream& os) const {
   int label = config_.positive_label();
   if (label != -1) {
     CHECK(label >= 0 && label < (int)statsInfo_.size())

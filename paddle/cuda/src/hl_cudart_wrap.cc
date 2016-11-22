@@ -78,48 +78,38 @@ __host__ cudaError_t CUDARTAPI cudaLaunchKernel(const void *func,
                                                 dim3 blockDim,
                                                 void **args,
                                                 size_t sharedMem,
-                                                cudaStream_t stream)
-{
-  return dynload::cudaLaunchKernel(func, gridDim, blockDim, args, sharedMem, stream);
+                                                cudaStream_t stream) {
+  return dynload::cudaLaunchKernel(func, gridDim, blockDim,
+                                   args, sharedMem, stream);
 }
 #endif /* CUDART_VERSION >= 7000 */
 
 
-__host__ cudaError_t CUDARTAPI cudaLaunch(const void *func)
-{
+__host__ cudaError_t CUDARTAPI cudaLaunch(const void *func) {
   return dynload::cudaLaunch(func);
 }
 
 __host__ cudaError_t CUDARTAPI cudaSetupArgument(const void *arg,
                                                  size_t size,
-                                                 size_t offset)
-{
+                                                 size_t offset) {
   return dynload::cudaSetupArgument(arg, size, offset);
 }
 
 __host__ cudaError_t CUDARTAPI cudaConfigureCall(dim3 gridDim,
                                                  dim3 blockDim,
                                                  size_t sharedMem,
-                                                 cudaStream_t stream)
-{
+                                                 cudaStream_t stream) {
   return dynload::cudaConfigureCall(gridDim, blockDim,
                                     sharedMem, stream);
 }
 
 extern "C" {
 
-void** CUDARTAPI __cudaRegisterFatBinary(
-  void *fatCubin
-)
-{
+void** CUDARTAPI __cudaRegisterFatBinary(void *fatCubin) {
   return dynload::__cudaRegisterFatBinary(fatCubin);
-
 }
 
-void CUDARTAPI __cudaUnregisterFatBinary(
-  void **fatCubinHandle
-)
-{
+void CUDARTAPI __cudaUnregisterFatBinary(void **fatCubinHandle) {
   return dynload::__cudaUnregisterFatBinary(fatCubinHandle);
 }
 

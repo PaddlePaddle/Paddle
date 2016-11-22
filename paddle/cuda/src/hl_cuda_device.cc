@@ -203,8 +203,8 @@ inline pid_t gettid() {
   #endif
   pid_t tid = syscall(__NR_gettid);
 #endif
-  CHECK_NE(tid, -1);
-  return tid;    
+  CHECK_NE((int)tid, -1);
+  return tid;
 }
 
 void hl_init(int device) {
@@ -355,7 +355,8 @@ void* hl_malloc_host(size_t size) {
   void *dest_h;
 
   CHECK(size) << __func__ << ": the size for device memory is 0, please check.";
-  CHECK_CUDA(dynload::cudaHostAlloc((void**)&dest_h, size, cudaHostAllocDefault));
+  CHECK_CUDA(dynload::cudaHostAlloc(
+    (void**)&dest_h, size, cudaHostAllocDefault));
 
   return dest_h;
 }
@@ -364,7 +365,7 @@ void hl_free_mem_host(void *dest_h) {
   CHECK_NOTNULL(dest_h);
 
   cudaError_t err = dynload::cudaFreeHost(dest_h);
-  CHECK (cudaSuccess == err || cudaErrorCudartUnloading == err)
+  CHECK(cudaSuccess == err || cudaErrorCudartUnloading == err)
     << hl_get_device_error_string();
 }
 
@@ -502,7 +503,8 @@ int hl_get_cuda_version() {
   return g_cuda_lib_version;
 }
 
-void hl_create_thread_resources(int device, thread_device_resources device_res) {
+void hl_create_thread_resources(int device,
+  thread_device_resources device_res) {
   CHECK_CUDA(dynload::cudaSetDevice(device));
 
   /* create thread stream */
