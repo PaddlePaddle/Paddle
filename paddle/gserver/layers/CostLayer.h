@@ -42,10 +42,12 @@ public:
 
   virtual void backward(const UpdateCallback& callback = nullptr);
 
-  virtual void forwardImp(Matrix& outputValue, Argument& label,
+  virtual void forwardImp(Matrix& outputValue,
+                          Argument& label,
                           Matrix& cost) = 0;
 
-  virtual void backwardImp(Matrix& outputValue, Argument& label,
+  virtual void backwardImp(Matrix& outputValue,
+                           Argument& label,
                            Matrix& outputGrad) = 0;
 
 protected:
@@ -225,7 +227,9 @@ public:
   void onPassEnd();
 
   real calcNDCG(const real* outputScore, const real* score, int size);
-  void calcGrad(const real* outputScore, const real* score, real* gradData,
+  void calcGrad(const real* outputScore,
+                const real* score,
+                real* gradData,
                 int size);
 
 private:
@@ -274,6 +278,7 @@ public:
  */
 class HuberTwoClass : public CostLayer {
   std::vector<Argument> tmpCpuInput_;
+
 public:
   explicit HuberTwoClass(const LayerConfig& config) : CostLayer(config) {}
 

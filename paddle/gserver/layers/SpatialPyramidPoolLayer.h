@@ -24,7 +24,7 @@ namespace paddle {
  * @brief A layer for spatial pyramid pooling on the input image by taking
  * the max, average, etc. within regions, so that the result vector of
  * different sized images are of the same size.
- * 
+ *
  * The config file api is spp_layer.
  */
 
@@ -47,8 +47,11 @@ public:
 
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
-  ProjectionConfig getConfig(size_t sizeX_, size_t sizeY_, size_t channels,
-                             size_t pyamidLevel_, std::string& poolType_);
+  ProjectionConfig getConfig(size_t sizeX_,
+                             size_t sizeY_,
+                             size_t channels,
+                             size_t pyamidLevel_,
+                             std::string& poolType_);
   size_t getSize();
 
   virtual void forward(PassType passType);

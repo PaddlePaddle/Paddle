@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Stat.h"
 #include "Projection.h"
 
@@ -29,7 +28,8 @@ namespace paddle {
 class IdentityProjection : public Projection {
 public:
   IdentityProjection(const ProjectionConfig& config,
-                     const ParameterPtr& parameter, bool useGpu);
+                     const ParameterPtr& parameter,
+                     bool useGpu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 };
@@ -70,7 +70,8 @@ void IdentityProjection::backward(const UpdateCallback& callback) {
 class IdentityOffsetProjection : public Projection {
 public:
   IdentityOffsetProjection(const ProjectionConfig& config,
-                           const ParameterPtr& parameter, bool useGpu);
+                           const ParameterPtr& parameter,
+                           bool useGpu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 };

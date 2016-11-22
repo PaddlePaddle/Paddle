@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <iostream>
@@ -84,10 +83,11 @@ public:
    * Parameter will have parameterTypes
    */
   static GradientMachine* create(
-      const ModelConfig& config, int mode = kNormal,
+      const ModelConfig& config,
+      int mode = kNormal,
       const std::vector<ParameterType>& parameterTypes =
-          std::vector<ParameterType>{PARAMETER_VALUE, PARAMETER_GRADIENT,
-                                     PARAMETER_MOMENTUM});
+          std::vector<ParameterType>{
+              PARAMETER_VALUE, PARAMETER_GRADIENT, PARAMETER_MOMENTUM});
 
   /**
    * Create a gradient machine from the merged model file.
@@ -137,7 +137,8 @@ public:
    * @note: if passType==PASS_TEST, then backward() should not be called
    */
   virtual void forward(const std::vector<Argument>& inArgs,
-                       std::vector<Argument>* outArgs, PassType passType) = 0;
+                       std::vector<Argument>* outArgs,
+                       PassType passType) = 0;
 
   /**
    * @brief Backward propagation.
@@ -211,7 +212,7 @@ public:
    * @note    This function will only been implemented and used in a
    *          multithreaded environment.
    */
- virtual void start(const TrainerConfig& config,
+  virtual void start(const TrainerConfig& config,
                      DataProviderPtr dataProvider) {
     (void)config;
     (void)dataProvider;
@@ -245,7 +246,6 @@ public:
    *          multithreaded environment.
    */
   virtual void restart() {}
-
 
   /// Set the gradient of the output from outside.
   virtual void setOutputGrad(const std::vector<Argument>& args) {

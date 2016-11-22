@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Stat.h"
 #include "Layer.h"
 #include "CudnnBatchNormLayer.h"
@@ -65,16 +64,31 @@ void CudnnBatchNormLayer::forward(PassType passType) {
     REGISTER_TIMER_INFO("CudnnBatchFwTimer", getName().c_str());
     real* savedMean = savedMean_->getData();
     real* savedInvVar = savedInvVar_->getData();
-    hl_batch_norm_forward_training(ioDesc_, input, ioDesc_, output,
+    hl_batch_norm_forward_training(ioDesc_,
+                                   input,
+                                   ioDesc_,
+                                   output,
                                    bnParamDesc_,
-                                   gamma, beta, 1.0 - movingAvgFraction_,
-                                   movingMean, movingVar,
-                                   EPS, savedMean, savedInvVar);
+                                   gamma,
+                                   beta,
+                                   1.0 - movingAvgFraction_,
+                                   movingMean,
+                                   movingVar,
+                                   EPS,
+                                   savedMean,
+                                   savedInvVar);
   } else {
     // used movingMean and movingVar in testing
-    hl_batch_norm_forward_inference(ioDesc_, input, ioDesc_, output,
-                                    bnParamDesc_, gamma, beta,
-                                    movingMean, movingVar, EPS);
+    hl_batch_norm_forward_inference(ioDesc_,
+                                    input,
+                                    ioDesc_,
+                                    output,
+                                    bnParamDesc_,
+                                    gamma,
+                                    beta,
+                                    movingMean,
+                                    movingVar,
+                                    EPS);
   }
 
   /* activation */ {
@@ -115,10 +129,19 @@ void CudnnBatchNormLayer::backward(const UpdateCallback& callback) {
     create(tmpBiasGrad_, 1, channels_, &betaGrad);
   }
 
-  hl_batch_norm_backward(ioDesc_, input, ioDesc_, outGrad,
-                         ioDesc_, inGrad, bnParamDesc_,
-                         gamma, gammaGrad, betaGrad,
-                         EPS, savedMean, savedInvVar);
+  hl_batch_norm_backward(ioDesc_,
+                         input,
+                         ioDesc_,
+                         outGrad,
+                         ioDesc_,
+                         inGrad,
+                         bnParamDesc_,
+                         gamma,
+                         gammaGrad,
+                         betaGrad,
+                         EPS,
+                         savedMean,
+                         savedInvVar);
 
   {
     REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());

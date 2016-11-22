@@ -104,8 +104,7 @@ void checkSMatrixEqual2Dense(const CpuSparseMatrixPtr& a,
   }
 }
 
-void checkSMatrixErr(const CpuSparseMatrixPtr& a,
-                     const CpuSparseMatrixPtr& b) {
+void checkSMatrixErr(const CpuSparseMatrixPtr& a, const CpuSparseMatrixPtr& b) {
 #ifndef PADDLE_TYPE_DOUBLE
   real err = 1e-3;
 #else
@@ -126,7 +125,8 @@ void checkSMatrixErr(const CpuSparseMatrixPtr& a,
         real bVal = b->getValue()[r];
         if (std::abs(aVal - bVal) > err) {
           if ((std::abs(aVal - bVal) / std::abs(aVal)) > (err / 10.0f)) {
-            LOG(INFO) << "a=" << aVal << "\t" << "b=" << bVal;
+            LOG(INFO) << "a=" << aVal << "\t"
+                      << "b=" << bVal;
             count++;
           }
         }

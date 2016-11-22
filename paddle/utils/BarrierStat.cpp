@@ -20,17 +20,19 @@ limitations under the License. */
 #include "paddle/utils/BarrierStat.h"
 #include "paddle/utils/Flags.h"
 
-P_DEFINE_bool(log_barrier_abstract, true,
+P_DEFINE_bool(log_barrier_abstract,
+              true,
               "if true, show abstract of barrier performance");
-P_DEFINE_int32(log_barrier_lowest_nodes, 5,
+P_DEFINE_int32(log_barrier_lowest_nodes,
+               5,
                "how many lowest node will be logged");
-P_DEFINE_bool(log_barrier_show_log, false,  // for performance tuning insight
+P_DEFINE_bool(log_barrier_show_log,
+              false,  // for performance tuning insight
               "if true, always show barrier abstract even with little gap");
 
 namespace paddle {
 
-std::ostream &operator<<(std::ostream &output,
-                         const BarrierStatBase &stat) {
+std::ostream &operator<<(std::ostream &output, const BarrierStatBase &stat) {
   if (FLAGS_log_barrier_abstract) {
     std::lock_guard<std::mutex> guard(stat.lock_);
     stat.showAbstract(output);
@@ -144,7 +146,8 @@ void BarrierEndStat::showAbstract(std::ostream &output) const {
 
   // duplicate freq info
   std::vector<struct Abstract> outputAbstract = abstract_;
-  std::sort(outputAbstract.begin(), outputAbstract.end(),
+  std::sort(outputAbstract.begin(),
+            outputAbstract.end(),
             [](const struct Abstract &a, const struct Abstract &b) {
               return a.freq > b.freq;
             });
@@ -280,7 +283,8 @@ void BarrierDeltaStat::showAbstract(std::ostream &output) const {
 
   // duplicate freq info
   std::vector<struct Abstract> outputAbstract = abstract_;
-  std::sort(outputAbstract.begin(), outputAbstract.end(),
+  std::sort(outputAbstract.begin(),
+            outputAbstract.end(),
             [](const struct Abstract &a, const struct Abstract &b) {
               return a.freq > b.freq;
             });

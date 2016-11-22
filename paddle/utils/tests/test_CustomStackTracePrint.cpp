@@ -18,7 +18,7 @@ limitations under the License. */
 int main(int argc, char** argv) {
   paddle::initMain(argc, argv);
 
-  for (size_t i=0; i < 1000; ++i) {
+  for (size_t i = 0; i < 1000; ++i) {
     paddle::gLayerStackTrace.push("layer_" + std::to_string(i));
     if (i == 998) {
       throw "Unhandle exception";
