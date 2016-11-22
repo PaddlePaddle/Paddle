@@ -47,17 +47,20 @@ extern void *cudart_dso_handle;
   } __name; /* struct DynLoad__##__name */
 
 /* include all needed cuda functions in HPPL */
-#define CUDA_ROUTINE_EACH(__macro)                                         \
-  __macro(cudaLaunch, cudaError_t) __macro(cudaSetupArgument, cudaError_t) \
-      __macro(cudaConfigureCall, cudaError_t)                              \
-          __macro(__cudaRegisterFatBinary, void **)                        \
-              __macro(__cudaUnregisterFatBinary, void)                     \
-                  __macro(__cudaRegisterFunction, void)                    \
-                      __macro(__cudaRegisterVar, void)                     \
-                          __macro(__cudaRegisterManagedVar, void)          \
-                              __macro(__cudaInitModule, char)              \
-                                  __macro(__cudaRegisterTexture, void)     \
-                                      __macro(__cudaRegisterSurface, void)
+// clang-format off
+#define CUDA_ROUTINE_EACH(__macro)          \
+  __macro(cudaLaunch, cudaError_t)          \
+  __macro(cudaSetupArgument, cudaError_t)   \
+  __macro(cudaConfigureCall, cudaError_t)   \
+  __macro(__cudaRegisterFatBinary, void**)  \
+  __macro(__cudaUnregisterFatBinary, void)  \
+  __macro(__cudaRegisterFunction, void)     \
+  __macro(__cudaRegisterVar, void)          \
+  __macro(__cudaRegisterManagedVar, void)   \
+  __macro(__cudaInitModule, char)           \
+  __macro(__cudaRegisterTexture, void)      \
+  __macro(__cudaRegisterSurface, void)
+// clang-format on
 
 CUDA_ROUTINE_EACH(DYNAMIC_LOAD_CUDART_WRAP)
 

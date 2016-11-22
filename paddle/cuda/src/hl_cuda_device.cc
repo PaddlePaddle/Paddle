@@ -57,10 +57,14 @@ void *curand_dso_handle = nullptr;
 #endif
 
 /* include all needed curand functions in HPPL */
-#define CURAND_RAND_ROUTINE_EACH(__macro)                 \
-  __macro(curandCreateGenerator) __macro(curandSetStream) \
-      __macro(curandSetPseudoRandomGeneratorSeed)         \
-          __macro(curandGenerateUniform) __macro(curandGenerateUniformDouble)
+// clang-format off
+#define CURAND_RAND_ROUTINE_EACH(__macro)    \
+  __macro(curandCreateGenerator)             \
+  __macro(curandSetStream)                   \
+  __macro(curandSetPseudoRandomGeneratorSeed)\
+  __macro(curandGenerateUniform)             \
+  __macro(curandGenerateUniformDouble)
+// clang-format on
 
 CURAND_RAND_ROUTINE_EACH(DYNAMIC_LOAD_CURAND_WRAP)
 
@@ -99,25 +103,38 @@ void *cudart_dso_handle = nullptr;
 #endif
 
 /* include all needed cuda functions in HPPL */
-#define CUDA_ROUTINE_EACH(__macro)                                             \
-  __macro(cudaMalloc) __macro(cudaHostAlloc) __macro(cudaFree)                 \
-      __macro(cudaFreeHost) __macro(cudaMemcpy) __macro(cudaMemset) __macro(   \
-          cudaMemcpyAsync) __macro(cudaSetDevice) __macro(cudaGetDevice)       \
-          __macro(cudaGetDeviceCount) __macro(cudaGetDeviceProperties)         \
-              __macro(cudaDeviceSynchronize) __macro(cudaDeviceCanAccessPeer)  \
-                  __macro(cudaDeviceEnablePeerAccess)                          \
-                      __macro(cudaStreamCreate) __macro(cudaStreamDestroy)     \
-                          __macro(cudaStreamSynchronize) __macro(              \
-                              cudaStreamWaitEvent) __macro(cudaEventCreate)    \
-                              __macro(cudaEventRecord) __macro(cudaEventQuery) \
-                                  __macro(cudaEventDestroy) __macro(           \
-                                      cudaEventSynchronize)                    \
-                                      __macro(cudaEventElapsedTime) __macro(   \
-                                          cudaSetDeviceFlags)                  \
-                                          __macro(cudaGetLastError) __macro(   \
-                                              cudaFuncSetCacheConfig)          \
-                                              __macro(cudaRuntimeGetVersion)   \
-                                                  __macro(cudaGetErrorString)
+// clang-format off
+#define CUDA_ROUTINE_EACH(__macro)        \
+  __macro(cudaMalloc)                     \
+  __macro(cudaHostAlloc)                  \
+  __macro(cudaFree)                       \
+  __macro(cudaFreeHost)                   \
+  __macro(cudaMemcpy)                     \
+  __macro(cudaMemset)                     \
+  __macro(cudaMemcpyAsync)                \
+  __macro(cudaSetDevice)                  \
+  __macro(cudaGetDevice)                  \
+  __macro(cudaGetDeviceCount)             \
+  __macro(cudaGetDeviceProperties)        \
+  __macro(cudaDeviceSynchronize)          \
+  __macro(cudaDeviceCanAccessPeer)        \
+  __macro(cudaDeviceEnablePeerAccess)     \
+  __macro(cudaStreamCreate)               \
+  __macro(cudaStreamDestroy)              \
+  __macro(cudaStreamSynchronize)          \
+  __macro(cudaStreamWaitEvent)            \
+  __macro(cudaEventCreate)                \
+  __macro(cudaEventRecord)                \
+  __macro(cudaEventQuery)                 \
+  __macro(cudaEventDestroy)               \
+  __macro(cudaEventSynchronize)           \
+  __macro(cudaEventElapsedTime)           \
+  __macro(cudaSetDeviceFlags)             \
+  __macro(cudaGetLastError)               \
+  __macro(cudaFuncSetCacheConfig)         \
+  __macro(cudaRuntimeGetVersion)          \
+  __macro(cudaGetErrorString)
+// clang-format on
 
 CUDA_ROUTINE_EACH(DYNAMIC_LOAD_CUDART_WRAP)
 

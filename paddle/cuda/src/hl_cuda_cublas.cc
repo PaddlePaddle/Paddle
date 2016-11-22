@@ -56,9 +56,14 @@ void *cublas_dso_handle = nullptr;
 #define DYNAMIC_LOAD_CUBLAS_V2_WRAP(__name) DYNAMIC_LOAD_CUBLAS_WRAP(__name)
 
 // include all needed cublas functions in HPPL
-#define CUBLAS_BLAS_ROUTINE_EACH(__macro)                        \
-  __macro(cublasSgemv) __macro(cublasDgemv) __macro(cublasSgemm) \
-      __macro(cublasDgemm) __macro(cublasSgeam) __macro(cublasDgeam)
+// clang-format off
+#define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
+  __macro(cublasSgemv)                    \
+  __macro(cublasDgemv)                    \
+  __macro(cublasSgemm)                    \
+  __macro(cublasDgemm)                    \
+  __macro(cublasSgeam)                    \
+  __macro(cublasDgeam)                    \
 
 DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasCreate)
 DYNAMIC_LOAD_CUBLAS_V2_WRAP(cublasDestroy)
@@ -81,6 +86,7 @@ CUBLAS_BLAS_ROUTINE_EACH(DYNAMIC_LOAD_CUBLAS_V2_WRAP)
 
 } /* namespace dynload */
 
+// clang-format on
 #ifndef PADDLE_TYPE_DOUBLE
 #define CUBLAS_GEAM dynload::cublasSgeam
 #define CUBLAS_GEMV dynload::cublasSgemv
