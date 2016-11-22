@@ -1,28 +1,37 @@
 使用deb包在Ubuntu上安装PaddlePaddle
 ===================================
 
-PaddlePaddle目前支持ubuntu 14.04版本使用deb包安装。更多的安装包PaddlePaddle会在近期提供。
-欢迎大家贡献各个发行版的安装包(例如，ubuntu，centos，debian，gentoo)。
+PaddlePaddle目前支持使用deb包安装。Paddle的 :code:`deb` 安装包在ubuntu 14.04中正确，但理论上支持其他的 debian 发行版。
 
-PaddlePaddle的ubuntu安装包分为两个版本，即CPU版本，和GPU版本，他们的下载地址是\:
-https://github.com/baidu/Paddle/releases/tag/V0.8.0b0
 
-需要注意的是，目前PaddlePaddle的安装包只支持 
-`AVX <https://en.wikipedia.org/wiki/Advanced_Vector_Extensions>`_
-指令集的X86 CPU。如果系统使用不支持 `AVX`_ 指令集的CPU运行PaddlePaddle，那么需要从源码
-编译PaddlePaddle，请参考 `编译文档 <../cmake/index.html>`_ 。
+PaddlePaddle的ubuntu安装包分为四个版本，他们是 cpu、gpu、cpu-noavx、gpu-noavx 四个版本。其中 noavx 用于不支持AVX指令集的cpu。安装包的下载地址是\: https://github.com/baidu/Paddle/releases/
 
-用户需要先将PaddlePaddle安装包下载到本地，然后执行如下命令即可完成安装。
+
+用户需要先将PaddlePaddle安装包下载到本地，然后执行如下 :code:`gdebi` 命令即可完成安装。
 
 ..  code-block:: shell
 
-    dpkg -i paddle-0.8.0b-cpu.deb
+    gdebi paddle-*-cpu.deb
+
+如果 :code:`gdebi` 没有安装,则需要使用 :code:`sudo apt-get install gdebi`, 来安装 :code:`gdebi` 。
+
+
+或者使用下面一条命令安装.
+
+..  code-block:: shell
+
+    dpkg -i paddle-*-cpu.deb
     apt-get install -f
 
 在 :code:`dpkg -i` 的时候如果报一些依赖未找到的错误是正常的，
 在 :code:`apt-get install -f` 里会继续安装 PaddlePaddle。
+
 需要注意的是，如果使用GPU版本的PaddlePaddle，请安装CUDA 7.5 和CUDNN 5到本地环境中，
 并设置好对应的环境变量(LD_LIBRARY_PATH等等)。
+
+安装完成后,可以使用命令 :code:`paddle version` 查看安装后的paddle 版本。可能的输出为
+
+..  literalinclude:: paddle_version.txt
 
 可能遇到的问题
 --------------

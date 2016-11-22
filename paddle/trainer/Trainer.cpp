@@ -88,21 +88,8 @@ P_DEFINE_string(model_list, "",
 
 namespace paddle {
 
-void Trainer::init(int argc, char** argv) {
-  initMain(argc, argv);
-  initPython(argc, argv);
-
-  auto config = TrainerConfigHelper::createFromFlagConfig();
-  feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW);
-
-  init(config);
-}
-
 void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
-                   bool testing,
-                   const std::shared_ptr<GradientMachine> &gradientMachine,
-                   const std::shared_ptr<DataProvider> &dataProvider,
-                   const std::shared_ptr<DataProvider> &testDataProvider) {
+                   bool testing) {
   this->stats_ = std::make_shared<TrainerStats>();
 
   config_ = config;
@@ -171,7 +158,7 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
   }
 
   // initialize trainer internal
-  trainerInternal_.init(config_, gradientMachine,
+  trainerInternal_.init(config_,
                         TrainerInternalConfig::createFromMode(mode_),
                         stats_, testing);
   std::unique_ptr<ParameterUtilConfig> paramConfig(
@@ -192,8 +179,7 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
                  (!IGradientMachineMode::dataMustInCpu(mode_,
                                                        FLAGS_trainer_count));
 
-  dataProvider_ = dataProvider;
-  if (!dataProvider_ && config_->hasDataConfig()) {
+  if (config_->hasDataConfig()) {
     dataProvider_.reset(DataProvider::create(*config_, *config_, gpuData));
   }
   if (dataProvider_) {
@@ -209,8 +195,7 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
     }
   }
 
-  testDataProvider_ = testDataProvider;
-  if (!testDataProvider_ && config_->hasTestDataConfig()) {
+  if (config_->hasTestDataConfig()) {
     testDataProvider_.reset(
         DataProvider::create(config_->getTestDataConfig(), *config_, gpuData));
   }

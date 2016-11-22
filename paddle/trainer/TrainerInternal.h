@@ -50,13 +50,11 @@ public:
   /**
    * Intializes trainer internal class
    * @param config network config
-   * @param machine gradient machine
    * @param intconfig training config
    * @param stats training stats
    * @param testing if it is in testing phase
    */
   void init(const std::shared_ptr<TrainerConfigHelper> &config,
-            const GradientMachinePtr &machine,
             std::unique_ptr<TrainerInternalConfig> &&intconfig,
             const std::shared_ptr<TrainerStats> &stats,
             bool testing);

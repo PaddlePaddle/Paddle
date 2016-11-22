@@ -38,7 +38,6 @@ limitations under the License. */
 namespace paddle {
 
 void TrainerInternal::init(const std::shared_ptr<TrainerConfigHelper> &config,
-                           const GradientMachinePtr &gradientMachine,
                            std::unique_ptr<TrainerInternalConfig> &&intconfig,
                            const std::shared_ptr<TrainerStats> &stats,
                            bool testing) {
@@ -53,12 +52,9 @@ void TrainerInternal::init(const std::shared_ptr<TrainerConfigHelper> &config,
       createParameterUpdater(testing);
     }
 
-    gradientMachine_ = gradientMachine;
-    if (!gradientMachine) {
-      gradientMachine_.reset(GradientMachine::create(
-        config_->getConfig().model_config(), intconfig_->mode,
-        parameterUpdater_->getParameterTypes()));
-    }
+   gradientMachine_.reset(GradientMachine::create(
+     config_->getConfig().model_config(), intconfig_->mode,
+     parameterUpdater_->getParameterTypes()));
 }
 
 void TrainerInternal::trainOneBatch(int64_t batchId,
