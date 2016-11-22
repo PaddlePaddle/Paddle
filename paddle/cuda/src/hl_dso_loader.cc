@@ -19,7 +19,7 @@ limitations under the License. */
 
 P_DEFINE_string(cudnn_dir, "",
                 "Specify path for loading libcudnn.so. For instance, "
-                "/usr/local/cudnn/lib64. If empty [default], dlopen "
+                "/usr/local/cudnn/lib. If empty [default], dlopen "
                 "will search cudnn from LD_LIBRARY_PATH");
 
 P_DEFINE_string(cuda_dir, "",
@@ -31,24 +31,23 @@ P_DEFINE_string(cuda_dir, "",
 
 static inline std::string join(const std::string& part1,
                                const std::string& part2) {
-  // directory separator
-  const char sep = '/';
-
-  if (!part2.empty() && part2.front() == sep) {
-    return part2;
-  }
-  std::string ret;
-  ret.reserve(part1.size() + part2.size() + 1);
-  ret = part1;
-  if (!ret.empty() && ret.back() != sep) {
-    ret += sep;
-  }
-  ret += part2;
-  return ret;
+    // directory separator
+    const char sep = '/';
+    if (!part2.empty() && part2.front() == sep) {
+        return part2;
+    }
+    std::string ret;
+    ret.reserve(part1.size() + part2.size() + 1);
+    ret = part1;
+    if (!ret.empty() && ret.back() != sep) {
+        ret += sep;
+    }
+    ret += part2;
+    return ret;
 }
 
 static inline void GetDsoHandleFromDefaultPath(
-        std::string& dso_path, void** dso_handle, int dynload_flags) {
+    std::string& dso_path, void** dso_handle, int dynload_flags) {
     VLOG(3) << "Try to find cuda library: " << dso_path
             << " from default system path.";
     // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
@@ -74,9 +73,9 @@ static inline void GetDsoHandleFromDefaultPath(
 }
 
 static inline void GetDsoHandleFromSearchPath(
-        const std::string& search_root,
-        const std::string& dso_name,
-        void** dso_handle) {
+    const std::string& search_root,
+    const std::string& dso_name,
+    void** dso_handle) {
     int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
     *dso_handle = nullptr;
 
@@ -88,7 +87,7 @@ static inline void GetDsoHandleFromSearchPath(
         dlPath = join(search_root, dso_name);
         *dso_handle = dlopen(dlPath.c_str(), dynload_flags);
         // if not found, search from default path
-        if (nullptr == dso_handle) {
+        if (nullptr == *dso_handle) {
             LOG(WARNING) << "Failed to find cuda library: " << dlPath;
             dlPath = dso_name;
             GetDsoHandleFromDefaultPath(dlPath, dso_handle, dynload_flags);
