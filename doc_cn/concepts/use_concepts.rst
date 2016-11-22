@@ -54,7 +54,7 @@ trainer进程会调用DataProvider函数，将用户的原始数据转换成系�
 ..  literalinclude:: trainer_config.py
     :linenos:
 
-文件开头 ``from paddle.trainer_config_helpers import *`` ，是因为PaddlePaddle配置文件与C++模块通信的最基础协议是protobuf。为了避免用户直接写复杂的protobuf string，我们为用户定以Python接口来配置网络，该Python代码可以生成protobuf包，这就是的作用`trainer_config_helpers`_的作用。因此，在文件的开始，需要import这些函数。 这个包里面包含了模型配置需要的各个模块。
+文件开头 ``from paddle.trainer_config_helpers import *`` ，是因为PaddlePaddle配置文件与C++模块通信的最基础协议是protobuf，为了避免用户直接写复杂的protobuf string，我们为用户定以Python接口来配置网络，该Python代码可以生成protobuf包，这就是`trainer_config_helpers`_的作用。因此，在文件的开始，需要import这些函数。 这个包里面包含了模型配置需要的各个模块。
 
 下面分别介绍DataConfig、OptimizationConfig、ModelConfig这三部分该概念。
 

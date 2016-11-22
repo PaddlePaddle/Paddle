@@ -240,7 +240,7 @@ public:
     seqClassficationError_ = 0;
   }
 
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     os << config_.name() << "="
        << (numSequences_ ? totalScore_ / numSequences_ : 0);
     os << "  deletions error"

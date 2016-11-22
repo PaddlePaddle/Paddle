@@ -29,10 +29,10 @@ P_DEFINE_bool(log_barrier_show_log, false,  // for performance tuning insight
 
 namespace paddle {
 
-std::ostream &operator<<(std::ostream &output, BarrierStatBase &stat) {
+std::ostream &operator<<(std::ostream &output,
+                         const BarrierStatBase &stat) {
   if (FLAGS_log_barrier_abstract) {
-    std::lock_guard<std::mutex> guard(
-        const_cast<BarrierStatBase &>(stat).lock_);
+    std::lock_guard<std::mutex> guard(stat.lock_);
     stat.showAbstract(output);
   }
   return output;
@@ -136,7 +136,7 @@ void BarrierEndStat::reset(bool clearRawData) {
   totAbstract_.minDelta = UINT64_MAX;
 }
 
-void BarrierEndStat::showAbstract(std::ostream &output) {
+void BarrierEndStat::showAbstract(std::ostream &output) const {
   // do not support the case "<=2 pserver"
   if (numConnThreads_ <= 2 || !totSamples_) {
     return;
@@ -272,7 +272,7 @@ void BarrierDeltaStat::reset(bool clearRawData) {
   totAbstract_.minDelta = UINT64_MAX;
 }
 
-void BarrierDeltaStat::showAbstract(std::ostream &output) {
+void BarrierDeltaStat::showAbstract(std::ostream &output) const {
   // do not support the case "<=2 pserver"
   if (numConnThreads_ <= 2 || !totSamples_) {
     return;

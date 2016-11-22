@@ -154,7 +154,7 @@ public:
     return -1;
   }
 
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     for (auto& evaluator : evaluators_) {
       evaluator->printStats(os);
       os << ' ';
