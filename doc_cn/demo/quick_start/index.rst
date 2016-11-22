@@ -40,7 +40,7 @@ PaddlePaddle快速入门教程
 ------------
 
 接下来我们将展示如何用PaddlePaddle训练一个文本分类模型，将 `Amazon电子产品评论数据 <http://jmcauley.ucsd.edu/data/amazon/>`_ 分为好评(正样本)和差评(负样本)两种类别。
-`源代码 <https://github.com/baidu/Paddle>`_ 的 ``demo/quick_start`` 目录里提供了该数据的下载脚本和预处理脚本。
+`源代码 <https://github.com/PaddlePaddle/Paddle>`_ 的 ``demo/quick_start`` 目录里提供了该数据的下载脚本和预处理脚本，你只需要在命令行输入以下命令，就能够很方便的完成数据下载和相应的预处理工作。
 
 .. code-block:: bash
 
@@ -51,7 +51,7 @@ PaddlePaddle快速入门教程
 向系统传送数据
 ==============
 
-Python数据读取脚本
+Python脚本读取数据
 ------------------
 
 `DataProvider <../../ui/data_provider/index.html>`_ 是PaddlePaddle负责提供数据的模块。``DataProvider`` 主要职责在于将训练数据传入内存或者显存，让模型能够得到训练更新，其包括两个函数：
@@ -146,7 +146,7 @@ Python数据读取脚本
 以下是对上述数据加载的解释：
 
 - data/train.list,data/test.list: 指定训练数据和测试数据
-- module="dataprovider_bow": 数据处理的Python脚本文件名
+- module="dataprovider_bow": 处理数据的Python脚本文件
 - obj="process": 指定生成数据的函数
 - args={"dictionary": word_dict}: 额外的参数，这里指定词典
 
@@ -162,8 +162,8 @@ Python数据读取脚本
         :scale: 80%
 
 
-我们将以基本的逻辑回归网络作为起点，并逐渐展示更加深入的功能。更详细的网络配置连接请参考 `Layer文档 <../../../doc/layer.html>`_ 。
-所有配置都在 `源代码 <https://github.com/baidu/Paddle>`_ 的 ``demo/quick_start`` 目录下。
+我们将以最基本的逻辑回归网络作为起点，并逐渐展示更加深入的功能。更详细的网络配置连接请参考 `Layer文档 <../../../doc/layer.html>`_ 。
+所有配置都能在 `源代码 <https://github.com/PaddlePaddle/Paddle>`_ 的 ``demo/quick_start`` 目录下找到。
 
 逻辑回归模型
 ------------
@@ -174,7 +174,7 @@ Python数据读取脚本
         :align: center
         :scale: 80%
 
-- 获取利用one-hot vector表示的每个单词，维度是词典大小
+- 获取利用 `one-hot vector <https://en.wikipedia.org/wiki/One-hot>`_ 表示的每个单词，维度是词典大小
 
     .. code-block:: python
 
@@ -198,7 +198,7 @@ Python数据读取脚本
         classification_cost(input=output, label=label)
 
 
- - input: 除过data层，每个层都有一个或多个input,多个input以list方式输入
+ - input: 除去data层，每个层都有一个或多个input,多个input以list方式输入
  - size: 该层神经元个数
  - act_type: 激活函数类型
 
@@ -213,7 +213,7 @@ Python数据读取脚本
 词向量模型
 ----------
 
-embedding模型需要稍微改变数据提供的脚本，即 ``dataprovider_emb.py``，词向量模型、
+embedding模型需要稍微改变提供数据的Python脚本，即 ``dataprovider_emb.py``，词向量模型、
 卷积模型、时序模型均使用该脚本。其中文本输入类型定义为整数时序类型integer_value_sequence。
 
 .. code-block:: python
@@ -232,20 +232,19 @@ embedding模型需要稍微改变数据提供的脚本，即 ``dataprovider_emb.
         ...
         # omitted, it is same as the data provider for LR model
 
-该模型依然是使用逻辑回归分类网络的框架， 只是将句子利用连续向量表示替换稀疏
-向量表示， 即对第3步进行替换。句子表示的计算更新为2步：
+该模型依然使用逻辑回归分类网络的框架， 只是将句子用连续向量表示替换为用稀疏向量表示， 即对第三步进行替换。句子表示的计算更新为两步：
 
 ..  image:: NetContinuous.jpg
     :align: center
     :scale: 80%
 
-- 利用单词Id查找对应的该单词的连续表示向量(维度为word_dim)， 输入N个单词，输出为N个word_dim维度向量
+- 利用单词Id查找该单词对应的连续向量(维度为word_dim)， 输入N个单词，输出为N个word_dim维度向量
 
     .. code-block:: python
 
         emb = embedding_layer(input=word, size=word_dim)
 
-- 将该句话包含的所有单词向量求平均得到句子的表示
+- 将该句话包含的所有单词向量求平均, 得到句子的表示
 
     .. code-block:: python
 
@@ -264,20 +263,21 @@ embedding模型需要稍微改变数据提供的脚本，即 ``dataprovider_emb.
 卷积模型
 -----------
 
-卷积网络是一种特殊的从词向量表示到句子表示的方法， 也就是将词向量模型额步
-骤3-2进行进一步演化， 变为3个新的子步骤。
+卷积网络是一种特殊的从词向量表示到句子表示的方法， 也就是将词向量模型进一步演化为三个新步骤。
 
 ..  image:: NetConv.jpg
     :align: center
     :scale: 80%
 
-文本卷积分为三个步骤:
+文本卷积分可为三个步骤:
 
-1. 获取每个单词左右各k个近邻， 拼接成一个新的向量表示；
+1. 首先，从每个单词左右两端分别获取k个相邻的单词, 拼接成一个新的向量；
 
-2. 对该表示进行非线性变换 （例如Sigmoid变换）, 成为维度为hidden_dim的新的向量；
+2. 其次，对该向量进行非线性变换(例如Sigmoid变换), 使其转变为维度为hidden_dim的新向量；
 
-3. 在每个维度上取出在该句话新的向量集合上该维度的最大值作为最后的句子表示向量。 这3个子步骤可配置为:
+3. 最后，对整个新向量集合的每一个维度取最大值来表示最后的句子。
+
+这三个步骤可配置为:
 
 .. code-block:: python
 
@@ -300,7 +300,7 @@ embedding模型需要稍微改变数据提供的脚本，即 ``dataprovider_emb.
     :align: center
     :scale: 80%
 
-时序模型即为RNN模型, 包括简单的RNN模型、GRU模型、LSTM模型等。
+时序模型，也称为RNN模型, 包括简单的RNN模型, GRU模型和LSTM模型等等。
 
 - GRU模型配置：
 
@@ -315,7 +315,7 @@ embedding模型需要稍微改变数据提供的脚本，即 ``dataprovider_emb.
 
         lstm = simple_lstm(input=emb, size=lstm_size)
 
-针对本问题，我们采用单层LSTM模型，并使用了Dropout，**效果总结：**
+本次试验，我们采用单层LSTM模型，并使用了Dropout，**效果总结：**
 
     =====================  ===============================  =========================
     网络名称	                    参数数量                    错误率
@@ -326,8 +326,8 @@ embedding模型需要稍微改变数据提供的脚本，即 ``dataprovider_emb.
 优化算法
 =========
 
-`优化算法 <../../../doc/ui/trainer_config_helpers_api.html#module-paddle.trainer_config_helpers.optimizers>`_ 包括
-Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优化方法，加了L2正则和梯度截断。
+`优化算法 <http://www.paddlepaddle.org/doc/ui/api/trainer_config_helpers/optimizers_index.html>`_ 包括
+Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优化方法，同时使用了L2正则和梯度截断。
 
 .. code-block:: python
 
@@ -340,13 +340,19 @@ Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优�
 训练模型
 =========
 
-在完成了数据和网络结构搭建之后， 我们进入到训练部分。
+在数据加载和网络配置完成之后， 我们就可以训练模型了。
 
 ..  image:: PipelineTrain.jpg
     :align: center
     :scale: 80%
 
-训练脚本：我们将训练的命令行保存在了 ``train.sh`` 文件中。训练时所需设置的主要参数如下：
+训练模型，我们只需要运行 ``train.sh`` 训练脚本：
+
+    .. code-block:: bash
+
+        ./train.sh
+
+``train.sh``中包含了训练模型的基本命令。训练时所需设置的主要参数如下：
 
     .. code-block:: bash
 
@@ -357,30 +363,19 @@ Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优�
         --num_passes=15 \
         --use_gpu=false
 
-这里没有介绍多机分布式训练，可以参考 `分布式训练 <../../cluster/index.html>`_ 的demo学习如何进行多机训练。
+这里只简单介绍了单机训练，如何进行分布式训练，可以参考教程 `分布式训练 <../../cluster/index.html>`_ 。
 
 预测
 =====
 
-可以使用训练好的模型评估带有label的验证集，也可以预测没有label的测试集。
+当模型训练好了之后，我们就可以进行预测了。
 
 ..  image:: PipelineTest.jpg
     :align: center
     :scale: 80%
 
-测试脚本如下，将会测试配置文件中test.list指定的数据。
-
-    .. code-block:: bash
-
-        paddle train \
-        --use_gpu=false \
-        --job=test \
-        --init_model_path=./output/pass-0000x
-
-可以参考 `Python API预测 <../../ui/predict/swig_py_paddle.html>`_
-教程，或其他 `demo <../../demo/index.html>`_ 的Python预测过程。也可以通过如下方式预测。
-
-预测脚本(``predict.sh``)：
+之前配置文件中 ``test.list`` 指定的数据将会被测试，这里直接通过预测脚本 ``predict.sh`` 进行预测,
+更详细的说明，可以参考 `Python API预测 <../../ui/predict/swig_py_paddle.html>`_ 教程。
 
     .. code-block:: bash
 
@@ -395,8 +390,7 @@ Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优�
 
         mv rank-00000 result.txt
 
-这里以 ``output/pass-00003`` 为例进行预测，用户可以根据训练log选择test结果最好的模型来预测。与训练网络配置不同的是：无需label相关的层，指定outputs输出概率层(softmax输出)，
-指定batch_size=1，数据传输无需label数据，预测数据指定test_list的位置。
+这里以 ``output/pass-00003`` 为例进行预测，用户可以根据训练日志，选择测试结果最好的模型来预测。
 
 预测结果以文本的形式保存在 ``result.txt`` 中，一行为一个样本，格式如下：
 
@@ -405,29 +399,14 @@ Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优�
         预测ID;ID为0的概率 ID为1的概率
         预测ID;ID为0的概率 ID为1的概率
 
-    .. code-block:: python
-
-        is_predict = get_config_arg('is_predict', bool, False)
-        trn = 'data/train.list' if not is_predict else None
-        tst = 'data/test.list' if not is_predict else 'data/pred.list'
-        obj = 'process' if not is_predict else 'process_pre'
-        batch_size = 128 if not is_predict else 1
-        if is_predict:
-            maxid = maxid_layer(output)
-            outputs([maxid,output])
-        else:
-            label = data_layer(name="label", size=2)
-            cls = classification_cost(input=output, label=label)
-            outputs(cls)
-
 总体效果总结
 ==============
 
-这些流程中的数据下载、网络配置、训练脚本在 ``/demo/quick_start`` 目录，我们在此总
-结上述网络结构在Amazon-Elec测试集(25k)上的效果:
+在 ``/demo/quick_start`` 目录下，能够找到这里使用的所有数据, 网络配置, 训练脚本等等。
+对于Amazon-Elec测试集(25k), 如下表格，展示了上述网络模型的训练效果:
 
     =====================  ===============================  =============  ==================================
-    网络名称	                    参数数量                    错误率          配置文件
+    网络名称	                   参数数量                    错误率          配置文件
     =====================  ===============================  =============  ==================================
     逻辑回归模型	                  252 KB                     8.652%          trainer_config.lr.py
     词向量模型      	               15 MB                      8.484%         trainer_config.emb.py
@@ -460,15 +439,15 @@ Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优�
 
     TrainerInternal.cpp:160]  Batch=20 samples=2560 AvgCost=0.628761 CurrentCost=0.628761 Eval: classification_error_evaluator=0.304297  CurrentEval: classification_error_evaluator=0.304297
 
-模型训练会看到这样的日志，详细的参数解释如下面表格：
+模型训练会看到类似上面这样的日志信息，详细的参数解释，请参考如下表格：
 
-    ===========================================  ========================================================== 
+    ===========================================  ==============================================================
     名称	                                         解释
-    ===========================================  ==========================================================
+    ===========================================  ==============================================================
     Batch=20	                                  表示过了20个batch
     samples=2560	                              表示过了2560个样本
     AvgCost	                                      每个pass的第0个batch到当前batch所有样本的平均cost
     CurrentCost	                                  当前log_period个batch所有样本的平均cost
     Eval: classification_error_evaluator	      每个pass的第0个batch到当前batch所有样本的平均分类错误率
     CurrentEval: classification_error_evaluator	  当前log_period个batch所有样本的平均分类错误率
-    ===========================================  ==========================================================
+    ===========================================  ==============================================================
