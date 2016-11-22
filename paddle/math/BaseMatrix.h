@@ -457,6 +457,13 @@ public:
 
   /**
    * @code
+   * swap(this, b)
+   * @endcode
+   */
+  void deepSwap(BaseMatrixT& b);
+
+  /**
+   * @code
    * this = this + p
    * @endcode
    */
