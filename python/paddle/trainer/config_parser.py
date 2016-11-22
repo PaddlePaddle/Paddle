@@ -216,6 +216,10 @@ def Inputs(*args):
         if g_current_submodel is g_root_submodel:
             g_config.model_config.input_layer_names.append(name)
 
+@config_func
+def HasInputsSet():
+    return len(g_config.model_config.input_layer_names) != 0
+
 
 # Define the name of the output layers of the NeuralNetwork.
 # Usually the output is simply the cost layer.
@@ -627,6 +631,47 @@ class ContextProjection(Projection):
     _total_pad = 0
 
 
+@config_class
+class ConvProjection(Projection):
+    type = 'conv'
+
+    def __init__(
+            self,
+            input_layer_name,
+            num_filters=None,
+            conv_conf=None,
+            **xargs):
+        super(ConvProjection, self).__init__(input_layer_name, **xargs)
+
+        if num_filters is not None:
+            self.proj_conf.num_filters = num_filters
+
+        parse_conv(conv_conf,
+                   input_layer_name,
+                   self.proj_conf.conv_conf)
+        # TODO: support rectangle input
+        self.proj_conf.output_size = (self.proj_conf.conv_conf.output_x  ** 2) * num_filters
+
+    def calc_output_size(self, input_layer_config):
+        return self.proj_conf.output_size
+
+    def calc_parameter_size(self, input_size, output_size):
+        co = self.proj_conf.num_filters
+        ci = self.proj_conf.conv_conf.channels
+        fh = self.proj_conf.conv_conf.filter_size
+        fw = self.proj_conf.conv_conf.filter_size_y
+        return co * ci * fh * fw
+
+    def calc_bias_size(self):
+        return self.proj_conf.num_filters
+
+    def calc_parameter_dims(self, input_size, output_size):
+        return None
+        # or [self.proj_conf.conv_conf.channels *
+        #     self.proj_conf.conv_conf.filter_size * self.proj_conf.conv_conf.filter_size_y,
+        #     self.config.num_filters]
+
+
 # Define a operator for mixed layer
 @config_class
 class Operator(Cfg):
@@ -961,10 +1006,6 @@ def parse_pool(pool, input_layer_name, pool_conf):
                   "['max-projection', 'avg-projection', "
                   "'cudnn-max-pool', 'cudnn-avg-pool']"
                   % pool.pool_type)
-    if pool.size_y or pool.stride_y or pool.img_width or pool.padding_y:
-        config_assert(pool.pool_type.startswith('cudnn'),
-                      "'size_y', 'stride_y' and 'img_width' and 'padding_y'"
-                      "can only be used for cudnn")
 
     pool_conf.channels = pool.channels
     pool_conf.size_x = pool.size_x
@@ -974,36 +1015,25 @@ def parse_pool(pool, input_layer_name, pool_conf):
     pool_conf.stride_y = default(pool.stride_y, pool_conf.stride);
 
     img_pixels = g_layer_map[input_layer_name].size / pool.channels
+    # the img_width may be removed,
+    # and it can be calculated automatically later.
     pool_conf.img_size = default(pool.img_width, int(img_pixels ** 0.5))
     pool_conf.img_size_y = img_pixels / pool_conf.img_size
     config_assert(pool_conf.img_size * pool_conf.img_size_y == img_pixels,
                   "Incorrect input image size %d for input image pixels %d"
                   % (pool_conf.img_size, img_pixels))
 
-    if pool.start is not None:
-        config_assert(pool.padding is None,
-              'At most one of start and padding can be set.')
-        pool_conf.start = pool.start
-        pool_conf.padding = 0
-        pool_conf.output_x = int(math.ceil((pool_conf.img_size - \
-            pool_conf.start - pool_conf.size_x) / \
-            float(pool_conf.stride))) + 1
+    config_assert(not pool.start, "start is deprecated in pooling.")
 
-        pool_conf.output_y = int(math.ceil((pool_conf.img_size_y - \
-            pool_conf.start - pool_conf.size_y) / \
-            float(pool_conf.stride_y))) + 1
-    elif pool.padding is not None:
+    if pool.padding is not None:
         pool_conf.padding = pool.padding
         pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
-        pool_conf.start = 0
         pool_conf.output_x = int(math.ceil((pool_conf.img_size + \
             2*pool_conf.padding - pool_conf.size_x) / \
             float(pool_conf.stride))) + 1
         pool_conf.output_y = int(math.ceil((pool_conf.img_size_y + \
             2*pool_conf.padding_y - pool_conf.size_y) / \
             float(pool_conf.stride_y))) + 1
-    else:
-        raise ValueError('At least one of start and padding should be set.')
 
 def parse_image(image, input_layer_name, image_conf):
     image_conf.channels = image.channels
@@ -1603,7 +1633,7 @@ class PoolLayer(LayerBase):
             pool_conf = self.config.inputs[input_index].pool_conf
             print("output size for %s is %d*%d " % (
                 name, pool_conf.output_y, pool_conf.output_x))
-            self.set_layer_size((pool_conf.output_x ** 2) * pool_conf.channels)
+            self.set_layer_size((pool_conf.output_x * pool_conf.output_y) * pool_conf.channels)
 
 @config_layer('batch_norm')
 class BatchNormLayer(LayerBase):
@@ -1730,7 +1760,6 @@ def define_cost(class_name, cost_type):
     g_cost_map[cost_type] = cls
 
 define_cost('MultiClassCrossEntropy', 'multi-class-cross-entropy')
-define_cost('ClassificationErrorLayer', 'classification_error')
 define_cost('RankingCost', 'rank-cost')
 define_cost('AucValidation', 'auc-validation')
 define_cost('PnpairValidation', 'pnpair-validation')
@@ -2508,8 +2537,11 @@ class MixedLayer(LayerBase):
             record_operator_conf = self.config.operator_confs.add()
             record_operator_conf.CopyFrom(operator_conf)
 
-
-        self.create_bias_parameter(bias, self.config.size)
+        psize = self.config.size
+        if isinstance(self.inputs[0], ConvProjection):
+          # ConvProjection only support shared bias
+          psize = self.inputs[0].calc_bias_size()
+        self.create_bias_parameter(bias, psize)
 
         if error_clipping_threshold is not None:
             self.config.error_clipping_threshold = error_clipping_threshold
@@ -2527,8 +2559,10 @@ class ConcatenateLayer(LayerBase):
             self,
             name,
             inputs,
+            bias=False,
             **xargs):
         config_assert(inputs, 'inputs cannot be empty')
+        config_assert(not bias, 'ConcatenateLayer cannot support bias.')
         super(ConcatenateLayer, self).__init__(
             name, 'concat', 0, inputs=inputs, **xargs)
         size = 0
@@ -2547,10 +2581,18 @@ class ConcatenateLayer2(LayerBase):
             self,
             name,
             inputs,
+            bias=False,
             **xargs):
         config_assert(inputs, 'inputs cannot be empty')
         super(ConcatenateLayer2, self).__init__(
             name, 'concat2', 0, inputs=inputs, **xargs)
+
+        if isinstance(self.inputs[0], ConvProjection):
+          for input_index in xrange(len(self.inputs) - 1):
+              input = self.inputs[input_index + 1]
+              config_assert(isinstance(input, ConvProjection),
+                  "All the inputs of ConcatenateLayer2 should be ConvProjection.")
+
         size = 0
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
@@ -2575,6 +2617,14 @@ class ConcatenateLayer2(LayerBase):
             dims = input.calc_parameter_dims(input.proj_conf.input_size,
               input.proj_conf.output_size)
             self.create_input_parameter(input_index, psize, dims)
+
+        psize = self.config.size
+        if isinstance(self.inputs[0], ConvProjection):
+          psize = 0
+          for input_index in xrange(len(self.inputs)):
+              input = self.inputs[input_index]
+              psize += input.calc_bias_size()
+        self.create_bias_parameter(bias, psize)
 
 @config_layer('recurrent')
 class RecurrentLayer(LayerBase):

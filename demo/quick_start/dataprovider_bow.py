@@ -79,6 +79,6 @@ def predict_initializer(settings, dictionary, **kwargs):
 def process_predict(settings, file_name):
     with open(file_name, 'r') as f:
         for line in f:
-            comment = line.strip()
+            comment = line.strip().split()
             word_vector = [settings.word_dict.get(w, UNK_IDX) for w in comment]
             yield word_vector

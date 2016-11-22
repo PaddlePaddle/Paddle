@@ -208,7 +208,6 @@ def provider(input_types=None, should_shuffle=None, pool_size=-1,
              calc_batch_size=None,
              cache=CacheType.NO_CACHE,
              check=False, check_fail_continue=False,
-             use_dynamic_order=True,
              init_hook=None, **kwargs):
     """
     Provider decorator. Use it to make a function into PyDataProvider2 object.
@@ -228,9 +227,15 @@ def provider(input_types=None, should_shuffle=None, pool_size=-1,
     The configuration of data provider should be setup by\:
 
     :param input_types: Specify the input types, can also be set in init_hook.
-                        It is a list of InputType object. For example, input_types= \
-                        [dense_vector(9), integer_value(2)].
-    :type input_types: list|tuple
+                        It could be a list of InputType object. For example,
+                        input_types=[dense_vector(9), integer_value(2)]. Or user
+                        can set a dict of InputType object, which key is
+                        data_layer's name. For example, input_types=\
+                        {'img': img_features, 'label': label}. when using dict of
+                        InputType, user could yield a dict of feature values, which
+                        key is also data_layer's name.
+
+    :type input_types: list|tuple|dict
 
     :param should_shuffle: True if data should shuffle. Pass None means shuffle
                            when is training and not to shuffle when is testing.
@@ -281,12 +286,6 @@ def provider(input_types=None, should_shuffle=None, pool_size=-1,
                                 drop the wrong format data when it is True. Has
                                 no effect when check set to False.
     :type check_fail_continue: bool
-
-    :param use_dynamic_order: Allow provider to yield a dictionary object, whose
-                              key is a input data layer name, and value is the
-                              feature value. The tuples are still allowed when
-                              use_dynmaic_order is True.
-    :type use_dynamic_order: bool
     """
 
     def __wrapper__(generator):
@@ -339,6 +338,11 @@ def provider(input_types=None, should_shuffle=None, pool_size=-1,
                     self.slots = self.input_types
                 assert self.slots is not None
                 assert self.generator is not None
+
+                use_dynamic_order = False
+                if isinstance(self.slots, dict):  # reorder input_types
+                    self.slots = [self.slots[ipt] for ipt in self.input_order]
+                    use_dynamic_order = True
 
                 if len(self.slots) == 1:
                     self.generator = SingleSlotWrapper(self.generator)

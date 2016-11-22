@@ -14,20 +14,43 @@ PaddlePaddle提供了Docker的使用镜像。PaddlePaddle推荐使用Docker进�
 PaddlePaddle提供的Docker镜像版本
 --------------------------------
 
-我们提供了6个Docker image\:
+我们提供了12个 `Docker image <https://hub.docker.com/r/paddledev/paddle/tags/>`_ ，他们的image name都是 :code:`paddle-dev/paddle` ，tag分别为
 
-* paddledev/paddle\:cpu-latest\: PaddlePaddle的CPU二进制
-* paddledev/paddle\:gpu-latest\： PaddlePaddle的GPU二进制
-* paddledev/paddle\:cpu-devel-latest\: PaddlePaddle的CPU二进制,同时包含CPU开发环境和源码
-* paddledev/paddle\:gpu-devel-latest\: PaddlePaddle的GPU二进制,同时包含GPU开发环境和源码
-* paddledev/paddle\:cpu-demo-latest\: PaddlePaddle的CPU二进制,同时包含CPU开发环境、源码和运行demo的必要依赖
-* paddledev/paddle\:gpu-demo-latest\: PaddlePaddle的GPU二进制,同时包含GPU开发环境、源码和运行demo的必要依赖
++-----------------+------------------+------------------------+-----------------------+
+|                 |   normal         |           devel        |          demo         |
++=================+==================+========================+=======================+
+|       CPU       | cpu-latest       | cpu-devel-latest       | cpu-demo-latest       |
++-----------------+------------------+------------------------+-----------------------+
+|       GPU       | gpu-latest       | gpu-devel-latest       | gpu-demo-latest       |
++-----------------+------------------+------------------------+-----------------------+
+| CPU WITHOUT AVX | cpu-noavx-latest | cpu-noavx-devel-latest | cpu-noavx-demo-latest |
++-----------------+------------------+------------------------+-----------------------+
+| GPU WITHOUT AVX | gpu-noavx-latest | gpu-noavx-devel-latest | gpu-noavx-demo-latest |
++-----------------+------------------+------------------------+-----------------------+
 
-同时，不同的稳定版本，会将latest替换成稳定版本的版本号。
+其中，横向包括三个版本，normal，devel和demo。
+
+* Normal: 正常的Docker image，只包括paddle的二进制
+* Devel: 包括Paddle的二进制、编译环境和源代码
+* Demo: 包括Paddle运行demo所需要的依赖
+
+纵向包括四个版本，他们是。
+
+* CPU: CPU版本。需要支持AVX指令集的CPU
+* GPU: GPU版本。需要支持AVX指令集的CPU
+* CPU WITHOUT AVX: CPU版本，不支持AVX指令集的CPU也可以运行
+* GPU WITHOUT AVX: GPU版本，不需要AVX指令集的CPU也可以运行。
+
+用户可以选择对应版本的docker image。使用如下脚本可以确定本机的CPU知否支持 :code:`AVX` 指令集\:
+
+..  code-block:: bash
+
+    if cat /proc/cpuinfo | grep -q avx ; then echo "Support AVX"; else echo "Not support AVX"; fi
+
+如果输出 :code:`Support AVX`，则可以选择上表中的AVX版本PaddlePaddle。否则需要选择非AVX的PaddlePaddle。选择普通CPU版本的devel版本的image，则可以使用 :code:`paddle-dev/paddle:cpu-devel-latest` 来引用这个image。
 
 PaddlePaddle提供的镜像并不包含任何命令运行，想要运行PaddlePaddle，您需要进入镜像运行PaddlePaddle
-程序或者自定义一个含有启动脚本的image。具体请参考注意事项中的 
-`使用ssh访问PaddlePaddle镜像`
+程序或者自定义一个含有启动脚本的image。具体请参考注意事项中的 :code:`使用ssh访问PaddlePaddle镜像`
 
 下载和运行Docker镜像
 --------------------
@@ -44,7 +67,7 @@ mac osx或者是windows机器，请参考
 
 ..  code-block:: bash
     
-    $ docker run -it paddledev/paddlepaddle:latest-cpu
+    $ docker run -it paddledev/paddlepaddle:cpu-latest
 
 即可启动和进入PaddlePaddle的container。如果运行GPU版本的PaddlePaddle，则需要先将
 cuda相关的Driver和设备映射进container中，脚本类似于
@@ -53,7 +76,7 @@ cuda相关的Driver和设备映射进container中，脚本类似于
 
     $ export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
     $ export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    $ docker run -it paddledev/paddlepaddle:latest-gpu
+    $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddlepaddle:latest-gpu
 
 进入Docker container后，运行 :code:`paddle version` 即可打印出PaddlePaddle的版本和构建
 信息。安装完成的PaddlePaddle主体包括三个部分， :code:`paddle` 脚本， python的

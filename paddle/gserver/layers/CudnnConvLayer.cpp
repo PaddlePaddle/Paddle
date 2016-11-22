@@ -90,25 +90,6 @@ bool CudnnConvLayer::init(const LayerMap &layerMap,
   return true;
 }
 
-void CudnnConvLayer::allocConvWorkSpace(size_t maxWorkSpace) {
-  size_t totalWorkSpace = maxWorkSpace * maxGroups_;
-
-  if (totalWorkSpace  > workSpaceInBytes_) {
-      if (workSpaceInBytes_ != 0) {
-          hl_free_mem_device(workSpaceData_);
-      }
-      // total amount of storage needed over all groups
-      workSpaceData_ = hl_malloc_device(totalWorkSpace);
-
-      // update work space address for each group
-      for (int i = 0; i < maxGroups_; ++i) {
-            workSpace_[i] = reinterpret_cast<char *>(workSpaceData_)
-                                  + i * maxWorkSpace;
-      }
-      workSpaceInBytes_ = totalWorkSpace;
-  }
-}
-
 void CudnnConvLayer::reshape(int batchSize) {
   CHECK_NE(inputLayers_.size(), 0UL);
   imageH_ = inputLayers_[0]->getOutput().getFrameHeight();
@@ -129,7 +110,7 @@ void CudnnConvLayer::reshape(int batchSize) {
 
   outputH_ = outputSize(imageH_, filterSizeY_[0], paddingY_[0], strideY_[0]);
   outputW_ = outputSize(imageW_, filterSize_[0], padding_[0], stride_[0]);
-  // check outputH & outputW
+  // set outputH & outputW
   getOutput().setFrameHeight(outputH_);
   getOutput().setFrameWidth(outputW_);
 
@@ -166,15 +147,12 @@ void CudnnConvLayer::reshape(int batchSize) {
 
       maxWorkSpace = std::max(fwdLimitBytes_[i], bwdDataLimitBytes_[i]);
       maxWorkSpace = std::max(maxWorkSpace, bwdFilterLimitBytes_[i]);
+      workSpaceInBytes_ = (maxWorkSpace + sizeof(real) - 1) / sizeof(real);
 
       VLOG(3) << getName() << " Fwd / BwdData / BwdFilter algo: " << fwdAlgo_[i]
                            << " / " << bwdDataAlgo_[i]
                            << " / " << bwdFilterAlgo_[i];
     }
-  }
-
-  if (!isSelectAlgo_) {
-    allocConvWorkSpace(maxWorkSpace);
   }
 
   isSelectAlgo_ = true;
@@ -186,6 +164,12 @@ void CudnnConvLayer::forward(PassType passType) {
   reshape(batchSize);
   resetOutput(batchSize, outputH_ * outputW_ * numFilters_);
 
+  void* workSpace = NULL;
+  if (workSpaceInBytes_ > 0) {
+    MatrixPtr tmpMat = Matrix::getTmpMatrix(1, workSpaceInBytes_, true);
+    workSpace = (void*)tmpMat->getData();
+  }
+
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
     REGISTER_TIMER_INFO("CudnnConvFwTimer", getName().c_str());
     for (int g = 0; g < groups_[i]; ++g) {
@@ -194,7 +178,7 @@ void CudnnConvLayer::forward(PassType passType) {
       real *outData = getOutputValue()->getData() + outputOffset_[i] * g;
       hl_convolution_forward(inputDesc_[i], inputData, outputDesc_[i],
                              outData, filterDesc_[i], wgtData,
-                             convDesc_[i], workSpace_[g],
+                             convDesc_[i], workSpace,
                              fwdLimitBytes_[i], fwdAlgo_[i]);
     }
   }
@@ -242,6 +226,12 @@ void CudnnConvLayer::backward(const UpdateCallback &callback) {
     biases_->getParameterPtr()->incUpdate(callback);
   }
 
+  void* workSpace = NULL;
+  if (workSpaceInBytes_ > 0) {
+    MatrixPtr tmpMat = Matrix::getTmpMatrix(1, workSpaceInBytes_, true);
+    workSpace = (void*)tmpMat->getData();
+  }
+
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
     REGISTER_TIMER_INFO("CudnnConvBpTimer", getName().c_str());
     for (int g = 0; g < groups_[i]; ++g) {
@@ -252,7 +242,7 @@ void CudnnConvLayer::backward(const UpdateCallback &callback) {
             weights_[i]->getWGrad()->getData() + weightOffset_[i] * g;
         hl_convolution_backward_filter(
             inputDesc_[i], inputData, outputDesc_[i], outGrad, filterDesc_[i],
-            weightGrad, convDesc_[i], workSpace_[g], bwdFilterLimitBytes_[i],
+            weightGrad, convDesc_[i], workSpace, bwdFilterLimitBytes_[i],
             bwdFilterAlgo_[i]);
       }
 
@@ -262,7 +252,7 @@ void CudnnConvLayer::backward(const UpdateCallback &callback) {
         real *wgtData = weights_[i]->getW()->getData() + weightOffset_[i] * g;
         hl_convolution_backward_data(
             inputDesc_[i], inputGrad, outputDesc_[i], outGrad, filterDesc_[i],
-            wgtData, convDesc_[i], workSpace_[g], bwdDataLimitBytes_[i],
+            wgtData, convDesc_[i], workSpace, bwdDataLimitBytes_[i],
             bwdDataAlgo_[i]);
       }
     }
@@ -271,7 +261,7 @@ void CudnnConvLayer::backward(const UpdateCallback &callback) {
 }
 
 CudnnConvLayer::~CudnnConvLayer() {
-  if (biasDesc_) {
+  if (biases_.get()) {
     hl_destroy_tensor_descriptor(biasDesc_);
   }
 
@@ -280,10 +270,6 @@ CudnnConvLayer::~CudnnConvLayer() {
     hl_destroy_tensor_descriptor(outputDesc_[i]);
     hl_destroy_filter_descriptor(filterDesc_[i]);
     hl_destroy_convolution_descriptor(convDesc_[i]);
-  }
-  if (workSpaceInBytes_ != 0) {
-    hl_free_mem_device(workSpaceData_);
-    workSpaceInBytes_ = 0;
   }
 }
 
