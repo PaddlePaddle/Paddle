@@ -30,7 +30,8 @@ namespace paddle {
 class FullMatrixProjection : public Projection {
 public:
   FullMatrixProjection(const ProjectionConfig& config,
-                       const ParameterPtr& parameter, bool useGpu);
+                       const ParameterPtr& parameter,
+                       bool useGpu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 

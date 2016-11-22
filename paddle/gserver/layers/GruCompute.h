@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/utils/TypeDefs.h"
@@ -29,7 +28,9 @@ public:
   void forward(hl_gru_value value, int frameSize, int batchSize = 1);
 
   template <bool useGpu>
-  void backward(hl_gru_value value, hl_gru_grad grad, int frameSize,
+  void backward(hl_gru_value value,
+                hl_gru_grad grad,
+                int frameSize,
                 int batchSize = 1);
 
 public:

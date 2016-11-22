@@ -54,7 +54,7 @@ TEST(Logging, Check) {
 
   auto pcheckDown = [&] { P_CHECK(a == b); };
   ASSERT_DEATH(pcheckDown(),
-    "F .*test_Logging.cpp:[0-9]+] Check failed: a == b ");
+               "F .*test_Logging.cpp:[0-9]+] Check failed: a == b ");
 
   P_CHECK_LE(a, b);
   P_CHECK_LT(a, b);
@@ -157,8 +157,6 @@ int main(int argc, char** argv) {
 
 #else
 
-int main(int, char**) {
-  return 0;
-}
+int main(int, char**) { return 0; }
 
 #endif

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <algorithm>
@@ -41,12 +40,15 @@ public:
 
   /// heightStore is max number of rows of the sparse matrix.
   SparseRowCpuMatrix(CpuMemHandlePtr dataHandle,
-                     size_t height, size_t width,
-                     IndexDictPtr indexDictHandle = nullptr, bool trans = false)
+                     size_t height,
+                     size_t width,
+                     IndexDictPtr indexDictHandle = nullptr,
+                     bool trans = false)
       : CpuMatrix(nullptr, height, width, trans),
         storeMat_(dataHandle,
                   dataHandle ? dataHandle->getSize() / sizeof(real) / width : 0,
-                  width, trans),
+                  width,
+                  trans),
         indexDictHandle_(indexDictHandle) {
     init(height, width);
   }
@@ -123,8 +125,12 @@ public:
    * While pass finished, caller should call this func one more time
    *  with (fini=true) to let weight decay catch up current time.
    */
-  void sgdUpdate(BaseMatrix& value, IVector& t0, real learningRate,
-                 int currentTime, real decayRate, bool useL1,
+  void sgdUpdate(BaseMatrix& value,
+                 IVector& t0,
+                 real learningRate,
+                 int currentTime,
+                 real decayRate,
+                 bool useL1,
                  bool fini = false);
 
   /**
@@ -135,7 +141,9 @@ public:
    *  ids occured in *this* append to *ids*
    *  filtered by  (id % numThreads == tid)
    */
-  void addTo(BaseMatrix& dest, std::vector<uint32_t>& ids, size_t tid,
+  void addTo(BaseMatrix& dest,
+             std::vector<uint32_t>& ids,
+             size_t tid,
              size_t numThreads);
 
   /**
@@ -166,7 +174,7 @@ public:
   }
 
 protected:
-  template<typename Func>
+  template <typename Func>
   void apply(Func f) {
     real* data = storeMat_.getData() ? storeMat_.getData() : rowStore_.data();
     f(data, localIndices_->size() * width_);
@@ -211,9 +219,11 @@ class SyncThreadPool;
 class SparsePrefetchRowCpuMatrix : public SparseRowCpuMatrix {
 public:
   SparsePrefetchRowCpuMatrix(CpuMemHandlePtr dataHandle,
-                             size_t height, size_t width,
+                             size_t height,
+                             size_t width,
                              IndexDictPtr indexDictHandle = nullptr,
-                             SyncThreadPool* pool = nullptr, bool trans = false)
+                             SyncThreadPool* pool = nullptr,
+                             bool trans = false)
       : SparseRowCpuMatrix(dataHandle, height, width, indexDictHandle, trans),
         pool_(pool) {}
 
@@ -239,7 +249,8 @@ protected:
 
 class SparseAutoGrowRowCpuMatrix : public SparseRowCpuMatrix {
 public:
-  SparseAutoGrowRowCpuMatrix(size_t height, size_t width,
+  SparseAutoGrowRowCpuMatrix(size_t height,
+                             size_t width,
                              IndexDictPtr indexDictHandle = nullptr,
                              bool trans = false)
       : SparseRowCpuMatrix(nullptr, height, width, indexDictHandle, trans) {}
@@ -261,8 +272,10 @@ public:
 
 class CacheRowCpuMatrix : public SparseAutoGrowRowCpuMatrix {
 public:
-  CacheRowCpuMatrix(size_t height, size_t width,
-                    IndexDictPtr indexDictHandle = nullptr, bool trans = false)
+  CacheRowCpuMatrix(size_t height,
+                    size_t width,
+                    IndexDictPtr indexDictHandle = nullptr,
+                    bool trans = false)
       : SparseAutoGrowRowCpuMatrix(height, width, indexDictHandle, trans),
         sourceData_(nullptr) {}
 
@@ -277,8 +290,8 @@ public:
       id = globalIndices_[row] = localIndices_->size();
       localIndices_->push_back(row);
       checkStoreSize();
-      memcpy(getLocalRow(id), sourceData_ + width_ * row,
-             sizeof(float) * width_);
+      memcpy(
+          getLocalRow(id), sourceData_ + width_ * row, sizeof(float) * width_);
     }
     return getLocalRow(id);
   }
@@ -300,7 +313,9 @@ public:
  */
 class SparseRowIdsCpuMatrix : public CpuMatrix {
 public:
-  SparseRowIdsCpuMatrix(CpuMemHandlePtr dataHandle, size_t height, size_t width,
+  SparseRowIdsCpuMatrix(CpuMemHandlePtr dataHandle,
+                        size_t height,
+                        size_t width,
                         bool trans = false)
       : CpuMatrix(dataHandle, height, width, trans) {}
 

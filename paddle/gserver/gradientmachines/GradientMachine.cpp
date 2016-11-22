@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "GradientMachine.h"
 
 #include "paddle/utils/Logging.h"
@@ -29,7 +28,8 @@ limitations under the License. */
 namespace paddle {
 
 GradientMachine* GradientMachine::create(
-    const ModelConfig& config, int mode,
+    const ModelConfig& config,
+    int mode,
     const std::vector<ParameterType>& parameterTypes) {
   if (auto gm = IGradientMachineMode::tryCreateGradientMachine(mode, config)) {
     return gm;
@@ -49,10 +49,11 @@ GradientMachine* GradientMachine::create(
       /* single thread calculate */
       nn = NeuralNetwork::create(config);
     }
-    ParamInitCallback testParamInitCb =
-        [](int paramId, Parameter* para) { para->enableType(PARAMETER_VALUE); };
-    nn->init(config, mode == kTesting ? testParamInitCb : nullptr,
-             parameterTypes);
+    ParamInitCallback testParamInitCb = [](int paramId, Parameter* para) {
+      para->enableType(PARAMETER_VALUE);
+    };
+    nn->init(
+        config, mode == kTesting ? testParamInitCb : nullptr, parameterTypes);
     return nn;
   }
   LOG(FATAL) << "Unknown model type: " << config.type();

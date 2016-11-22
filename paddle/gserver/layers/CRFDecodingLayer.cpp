@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "CRFDecodingLayer.h"
 
 namespace paddle {
@@ -46,7 +45,8 @@ void CRFDecodingLayer::forward(PassType passType) {
 
   for (size_t i = 0; i < numSequences; ++i) {
     crf_->decode(output.value->getData() + numClasses_ * starts[i],
-                 output_.ids->getData() + starts[i], starts[i + 1] - starts[i]);
+                 output_.ids->getData() + starts[i],
+                 starts[i + 1] - starts[i]);
   }
 
   if (inputLayers_.size() == 2) {

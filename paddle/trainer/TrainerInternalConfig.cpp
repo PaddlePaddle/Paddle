@@ -14,7 +14,8 @@ limitations under the License. */
 
 #include "TrainerInternalConfig.h"
 
-P_DEFINE_int32(show_parameter_stats_period, 0,
+P_DEFINE_int32(show_parameter_stats_period,
+               0,
                "Whether to show parameter stats during training");
 
 P_DEFINE_int32(dot_period, 1, "Print '.' every so many batches");

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <fenv.h>
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/StringUtil.h"
@@ -34,7 +33,7 @@ P_DECLARE_string(rdma_tcp);
 using namespace paddle;  // NOLINT
 
 int main(int argc, char** argv) {
-  // write logs instantly (never buffer log messages)
+// write logs instantly (never buffer log messages)
 #ifdef PADDLE_USE_GLOG
   FLAGS_logbuflevel = -1;
 #endif

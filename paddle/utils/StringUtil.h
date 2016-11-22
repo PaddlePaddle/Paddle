@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <string>
@@ -67,8 +66,6 @@ inline T to(const std::string& s) {
   CHECK(ok) << "Cannot convert s(" << s << ") to type " << typeid(T).name();
   return v;
 }
-
-
 
 }  // namespace str
 

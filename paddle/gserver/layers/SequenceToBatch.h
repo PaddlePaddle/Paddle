@@ -43,8 +43,10 @@ public:
   explicit SequenceToBatch(bool useGpu) : useGpu_(useGpu) {}
 
   /* resize and calculate the batchIndex_ */
-  void resizeOrCreateBatch(int batchSize, size_t numSequences,
-                           const int *seqStarts, bool reversed,
+  void resizeOrCreateBatch(int batchSize,
+                           size_t numSequences,
+                           const int *seqStarts,
+                           bool reversed,
                            bool prevBatchState = false);
 
   /* sequence matrix and batch matrix copy:
@@ -81,9 +83,13 @@ public:
   }
 
 protected:
-  void sequence2BatchCopy(Matrix &batch, Matrix &sequence,
-                          IVector &seq2BatchIdx, bool seq2batch);
-  void sequence2BatchAdd(Matrix &batch, Matrix &sequence, IVector &seq2BatchIdx,
+  void sequence2BatchCopy(Matrix &batch,
+                          Matrix &sequence,
+                          IVector &seq2BatchIdx,
+                          bool seq2batch);
+  void sequence2BatchAdd(Matrix &batch,
+                         Matrix &sequence,
+                         IVector &seq2BatchIdx,
                          bool seq2batch);
 
   IVectorPtr batchStartPositions_;

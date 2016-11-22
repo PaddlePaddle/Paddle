@@ -39,9 +39,11 @@ namespace paddle {
 class Projection {
 public:
   static Projection* create(const ProjectionConfig& config,
-                            ParameterPtr parameter, bool useGpu);
+                            ParameterPtr parameter,
+                            bool useGpu);
 
-  Projection(const ProjectionConfig& config, ParameterPtr parameter,
+  Projection(const ProjectionConfig& config,
+             ParameterPtr parameter,
              bool useGpu)
       : config_(config), parameter_(parameter), useGpu_(useGpu) {}
 

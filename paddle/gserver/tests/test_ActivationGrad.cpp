@@ -42,9 +42,9 @@ void testActivation(const string& act) {
     testLayerGrad(config,
                   act + "_activation",
                   100,
-                  /* trans= */false,
+                  /* trans= */ false,
                   useGpu,
-                  /* useWeight */true);
+                  /* useWeight */ true);
   }
 }
 
