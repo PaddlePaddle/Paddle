@@ -22,3 +22,7 @@
 # not all of our python code is runnable. Some are used for 
 # documenation
 #    -   id: debug-statements
+-   repo: https://github.com/PaddlePaddle/clang-format-pre-commit-hook.git
+    sha: 38b232ea0fd2be46c26a691b9f32dd94d1ee3333
+    hooks:
+    -   id: clang-formater
