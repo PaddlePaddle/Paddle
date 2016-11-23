@@ -25,26 +25,9 @@ PaddlePaddle使用swig对常用的预测接口进行了封装，通过编译会�
 
 如下是一段使用mnist model来实现手写识别的预测代码。完整的代码见 ``src_root/doc/ui/predict/predict_sample.py`` 。mnist model可以通过 ``src_root\demo\mnist`` 目录下的demo训练出来。
 
-.. code-block:: python
-
-    from py_paddle import swig_paddle, DataProviderConverter
-    from paddle.trainer.PyDataProvider2 import dense_vector
-    from paddle.trainer.config_parser import parse_config
-    
-    TEST_DATA = [...]
-    
-    def main():
-        conf = parse_config("./mnist_model/trainer_config.py", "")
-        network = swig_paddle.GradientMachine.createFromConfigProto(conf.model_config)
-        assert isinstance(network, swig_paddle.GradientMachine)  # For code hint.
-        network.loadParameters("./mnist_model/")
-        converter = DataProviderConverter([dense_vector(784)])
-        inArg = converter(TEST_DATA)
-        print network.forwardTest(inArg)
-    
-    if __name__ == '__main__':
-        swig_paddle.initPaddle("--use_gpu=0")
-        main()
+..  literalinclude:: ../../../doc/ui/predict/predict_sample.py
+    :language: python
+    :lines: 15-18,121-136
 
 
 Demo预测输出如下，其中value即为softmax层的输出。由于TEST_DATA包含两条预测数据，所以输出的value包含两个向量 。
