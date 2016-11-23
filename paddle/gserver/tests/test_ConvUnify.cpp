@@ -86,13 +86,14 @@ MatrixPtr doOneConvTest(size_t imgSize, size_t output_x, size_t stride,
     initTestLayer(config, &layerMap, &parameters, &convLayer);
     convLayer->getBiasParameter()->zeroMem();
     convLayer->getParameters()[0]->zeroMem();
-    convLayer->getParameters()[0]->getBuf(PARAMETER_VALUE)->copyFrom(param, 18);
+    convLayer->getParameters()[0]->getBuf(PARAMETER_VALUE)->copyFrom(param,
+        channel* filter_size * filter_size * config.layerConfig.num_filters());
     convLayer->forward(PASS_GC);
 
     return convLayer->getOutputValue();
 }
 
-TEST(Layer, convTransLayerFwd2) {
+TEST(Layer, convParaUnified) {
     MatrixPtr input, resultCpu, resultGpu;
     input = Matrix::create(1, 4 * 4, false, false);
     float inputData[] = {1, 2, 3, 4,
@@ -121,6 +122,38 @@ TEST(Layer, convTransLayerFwd2) {
                        /*channel*/ 1,
                        /*numfilters*/ 2,
                        input, param, true);
+    checkMatrixEqual(resultCpu, resultGpu);
+
+    input = Matrix::create(1, 3 * 3 * 2, false, false);
+    float inputData2[] = {1, 2, 3,
+                          4, 5, 6,
+                          7, 8, 9,
+
+                          10, 11, 12,
+                          13, 14, 15,
+                          16, 17, 18};
+    float param2[] = {1, 2, 3, 4, 5, 6, 7, 8,
+                      8, 7, 6, 5, 4, 3, 2, 1};
+
+    input->setData(inputData2);
+
+    resultCpu = doOneConvTest(/* imgSize */ 3,
+                   /* output_x */ 2,
+                   /* stride */ 1,
+                   /* padding */ 0,
+                   /* filter_size */ 2,
+                   /*channel*/ 2,
+                   /*numfilters*/ 2,
+                   input, param2, false);
+
+    resultGpu = doOneConvTest(/* imgSize */ 3,
+                       /* output_x */ 2,
+                       /* stride */ 1,
+                       /* padding */ 0,
+                       /* filter_size */ 2,
+                       /*channel*/ 2,
+                       /*numfilters*/ 2,
+                       input, param2, true);
     checkMatrixEqual(resultCpu, resultGpu);
 }
 
