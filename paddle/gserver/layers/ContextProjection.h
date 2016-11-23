@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Projection.h"
@@ -50,7 +49,8 @@ public:
    * and if it is set, constructor will set learned weight, which is used to
    * pad output.
    */
-  ContextProjection(const ProjectionConfig& config, ParameterPtr parameter,
+  ContextProjection(const ProjectionConfig& config,
+                    ParameterPtr parameter,
                     bool useGpu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);

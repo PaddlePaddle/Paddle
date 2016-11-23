@@ -50,7 +50,7 @@ if(NOT WITH_PYTHON)
 endif()
 
 if(WITH_GPU)
-    add_paddle_culib(paddle_gserver ${GSERVER_SOURCES})
+    cuda_add_library(paddle_gserver ${GSERVER_SOURCES})
 else()
     add_library(paddle_gserver STATIC
         ${GSERVER_SOURCES})

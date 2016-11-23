@@ -44,8 +44,8 @@ void AgentLayer::forward(PassType passType) {
     if (realOutput.ids) {
       output_.ids->subVecFrom(*realOutput.ids, 0, numSamples_);
     } else {
-      output_.subArgFrom(realOutput, /* offset */ 0, numSamples_, getSize(),
-                         useGpu_);
+      output_.subArgFrom(
+          realOutput, /* offset */ 0, numSamples_, getSize(), useGpu_);
     }
   } else {
     output_ = realOutput;
@@ -64,9 +64,15 @@ void SequenceAgentLayer::forward(PassType passType) {
     int numRows =
         realOutput.sequenceStartPositions->getData(false)[numSamples_];
     CHECK(!realOutput.ids) << "Not supported";
-    output_.subArgFrom(realOutput, /* offset */ 0, numRows, getSize(), useGpu_,
-                       /* trans */ false, /* seqFlag */ true,
-                       /* seqStart */ 0, /* seqSize */ numSamples_ + 1);
+    output_.subArgFrom(realOutput,
+                       /* offset */ 0,
+                       numRows,
+                       getSize(),
+                       useGpu_,
+                       /* trans */ false,
+                       /* seqFlag */ true,
+                       /* seqStart */ 0,
+                       /* seqSize */ numSamples_ + 1);
   } else {
     output_ = realOutput;
   }
@@ -107,7 +113,8 @@ void GatherAgentLayer::forward(PassType passType) {
   for (size_t i = 0; i < realLayers_.size(); ++i) {
     const MatrixPtr& realV = realLayers_[i]->getOutputValue();
     idsVec_[i] = IVector::create(allIds_->getData() + idIndex_[i],
-                                 /* size */ realV->getHeight(), useGpu_);
+                                 /* size */ realV->getHeight(),
+                                 useGpu_);
     realV->addToRows(*outV, *idsVec_[i]);
   }
 }
@@ -140,8 +147,8 @@ void ScatterAgentLayer::forward(PassType passType) {
 
   int width = this->getSize();
   if (realOutArg_.value || realOutArg_.ids) {
-    output_.subArgFrom(realOutArg_, /* offset */ idIndex_, idSize_, width,
-                       useGpu_);
+    output_.subArgFrom(
+        realOutArg_, /* offset */ idIndex_, idSize_, width, useGpu_);
   } else {  // used in generation
     if (realLayer_->getOutput().ids) {
       IVector::resizeOrCreate(output_.ids, ids_->getSize(), useGpu_);
@@ -223,8 +230,13 @@ void SequenceScatterAgentLayer::forward(PassType passType) {
 
   if (realOutArg_.value || realOutArg_.ids) {
     CHECK(realOutArg_.sequenceStartPositions);
-    output_.subArgFrom(realOutArg_, /* offset */ idIndex_, idSize_, width,
-                       useGpu_, /* trans */ false, /* seqFlag */ true,
+    output_.subArgFrom(realOutArg_,
+                       /* offset */ idIndex_,
+                       idSize_,
+                       width,
+                       useGpu_,
+                       /* trans */ false,
+                       /* seqFlag */ true,
                        /* seqStart */ seqStartPosIndex_,
                        /* seqSize */ numSequences_);
   } else {
@@ -247,8 +259,8 @@ void SequenceScatterAgentLayer::forward(PassType passType) {
 
     CHECK_NE(input.sequenceStartPositions.get(),
              output_.sequenceStartPositions.get());
-    ICpuGpuVector::resizeOrCreate(output_.sequenceStartPositions,
-                                  numSequences + 1, false);
+    ICpuGpuVector::resizeOrCreate(
+        output_.sequenceStartPositions, numSequences + 1, false);
     int* outStarts = output_.sequenceStartPositions->getMutableData(false);
 
     ICpuGpuVector::resizeOrCreate(inputStartPos_, height, false);

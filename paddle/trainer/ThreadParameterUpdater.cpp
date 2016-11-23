@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "ThreadParameterUpdater.h"
 
 #include "paddle/utils/Logging.h"
@@ -45,7 +44,8 @@ void SgdThreadUpdater::init(std::vector<ParameterPtr>& parameters) {
   optimizers_.resize(maxId + 1);
   for (auto& para : parameters_) {
     int pid = para->getID();
-    optimizers_[pid].reset(sgdOptimizerCreate(config_, para->getConfig(),
+    optimizers_[pid].reset(sgdOptimizerCreate(config_,
+                                              para->getConfig(),
                                               para->isGradSparseUpdate(),
                                               false /*inPserver*/));
     size_t numRows = para->isGradSparseUpdate() ? para->getConfig().dims(0) : 0;
@@ -91,8 +91,10 @@ void SgdThreadUpdater::updateImpl(Parameter* para) {
 }
 
 void SgdThreadUpdater::threadTraverse(
-    const ParameterOptimizer::TraverseCallback& callback, int tid,
-    size_t numThreads, Parameter* para) {
+    const ParameterOptimizer::TraverseCallback& callback,
+    int tid,
+    size_t numThreads,
+    Parameter* para) {
   VectorPtr* vecs = Parameter::getTlsTempBufs();
   if (para->isGradSparseUpdate()) {
     size_t height = para->getConfig().dims(0);
@@ -106,8 +108,8 @@ void SgdThreadUpdater::threadTraverse(
     }
   } else {  // dense
     // setup sub bufs
-    auto interval = calcSplitArrayInterval(para->getSize(), (size_t)tid,
-                                           numThreads, 8LU /*for avx*/);
+    auto interval = calcSplitArrayInterval(
+        para->getSize(), (size_t)tid, numThreads, 8LU /*for avx*/);
     for (auto type : parameterTypes_) {
       vecs[type]->subVecFrom(*para->getBuf(type), interval);
     }
@@ -150,7 +152,7 @@ void SgdThreadUpdater::traverse(GetTraverseCallback getTraverseCallback) {
   } else if (hasCpuPara) {
     getGlobalSyncThreadPool()->exec(cpuTraverse);
   } else if (hasGpuPara) {
-      gpuTraverse(0, 0);
+    gpuTraverse(0, 0);
   }
 }
 
@@ -168,9 +170,8 @@ void SgdThreadUpdater::catchUpWith() {
 void SgdThreadUpdater::apply() {
   catchUpWith();
 
-  traverse([this](Parameter* para) {
-    return optimizers_[para->getID()]->apply();
-  });
+  traverse(
+      [this](Parameter* para) { return optimizers_[para->getID()]->apply(); });
 }
 
 void SgdThreadUpdater::restore() {
@@ -205,9 +206,9 @@ void SgdThreadUpdater::finishBatch(real cost) {
   }
 }
 
-void SgdThreadUpdater::threadUpdateSparse(
-    int tid, size_t numThreads, Parameter* para) {
-
+void SgdThreadUpdater::threadUpdateSparse(int tid,
+                                          size_t numThreads,
+                                          Parameter* para) {
   int pid = para->getID();
   ParameterOptimizer* optimizer = optimizers_[pid].get();
   VectorPtr* vecs = Parameter::getTlsTempBufs();
@@ -216,10 +217,10 @@ void SgdThreadUpdater::threadUpdateSparse(
   size_t width = para->getConfig().dims(1);
 
   if (dynamic_cast<SparseRowIdsCpuMatrix*>(
-        para->getMat(PARAMETER_GRADIENT).get())) {
+          para->getMat(PARAMETER_GRADIENT).get())) {
     // From MultiGradientMachine
     SparseRowIdsCpuMatrix* mainMat = dynamic_cast<SparseRowIdsCpuMatrix*>(
-      para->getMat(PARAMETER_GRADIENT).get());
+        para->getMat(PARAMETER_GRADIENT).get());
     std::vector<uint32_t>& sparseIds = mainMat->getIds(tid);
 
     for (auto id : sparseIds) {
@@ -232,16 +233,16 @@ void SgdThreadUpdater::threadUpdateSparse(
     }
     sparseIds.clear();
   } else if (dynamic_cast<SparseRowCpuMatrix*>(
-               para->getMat(PARAMETER_GRADIENT).get())) {
+                 para->getMat(PARAMETER_GRADIENT).get())) {
     // From NeuralNetwork
     SparseRowCpuMatrix* mainMat = dynamic_cast<SparseRowCpuMatrix*>(
-      para->getMat(PARAMETER_GRADIENT).get());
+        para->getMat(PARAMETER_GRADIENT).get());
 
     std::vector<unsigned int>& localIndices =
         mainMat->getIndexDictHandle()->localIndices;
 
-    auto interval = calcSplitArrayInterval(
-      localIndices.size(), tid, numThreads);
+    auto interval =
+        calcSplitArrayInterval(localIndices.size(), tid, numThreads);
     for (size_t i = interval.first; i < interval.second; ++i) {
       auto id = localIndices[i];
       real* row = mainMat->getLocalRow(i);
@@ -258,14 +259,13 @@ void SgdThreadUpdater::threadUpdateSparse(
     }
     // For numThreads > 1, MultiGradientMachine is used, which goes
     // to the above branch.
-    CHECK_EQ(numThreads, 1);
+    CHECK_EQ(numThreads, 1UL);
     mainMat->clearIndices();
   } else {
-    auto & m = *para->getMat(PARAMETER_GRADIENT).get();
+    auto& m = *para->getMat(PARAMETER_GRADIENT).get();
     LOG(FATAL) << "Internal error: " << para->getName() << " "
                << typeid(m).name();
   }
-
 
   if (auto callback = optimizer->needSpecialTraversal(para->getConfig())) {
     for (size_t i = tid; i < height; i += numThreads) {
@@ -278,14 +278,15 @@ void SgdThreadUpdater::threadUpdateSparse(
   }
 }
 
-void SgdThreadUpdater::threadUpdateDense(int tid, size_t numThreads,
+void SgdThreadUpdater::threadUpdateDense(int tid,
+                                         size_t numThreads,
                                          Parameter* para) {
   int pid = para->getID();
   ParameterOptimizer* optimizer = optimizers_[pid].get();
   VectorPtr* vecs = Parameter::getTlsTempBufs();
 
-  auto interval = calcSplitArrayInterval(para->getSize(), (size_t)tid,
-                                         numThreads, 8LU /*for avx*/);
+  auto interval = calcSplitArrayInterval(
+      para->getSize(), (size_t)tid, numThreads, 8LU /*for avx*/);
 
   // setup sub bufs
   for (auto type : parameterTypes_) {

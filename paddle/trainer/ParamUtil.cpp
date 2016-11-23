@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "ParamUtil.h"
 
 #include <fenv.h>
@@ -48,8 +47,6 @@ ParameterUtil::ParameterUtil(
   pUpdater_ = parameterUpdater;
 }
 
-
-
 bool ParameterUtil::loadParameters(int passId, bool local, bool remote) {
   constexpr int kBufLen = 100;
   char buf[kBufLen];
@@ -60,8 +57,9 @@ bool ParameterUtil::loadParameters(int passId, bool local, bool remote) {
   return true;
 }
 
-void ParameterUtil::loadParametersWithPath(const std::string& dir,
-                                    bool local, bool remote) {
+void ParameterUtil::loadParametersWithPath(const std::string &dir,
+                                           bool local,
+                                           bool remote) {
   if (local) {
     gserver_->loadParameters(dir);
   }
@@ -89,13 +87,16 @@ void ParameterUtil::saveParameters(int passId, int passInnerId) {
   }
 
   std::string basePath = config_->getSaveDir();
+  if (basePath.find('/') == std::string::npos) {
+    basePath = "./" + basePath;
+  }
   mkDirRecursively(basePath.c_str());
 
   std::string saveDir = path::join(basePath, buf);
   mkDir(saveDir.c_str());
   if (!intConfig_->load_save_param_pserver_) {
     pUpdater_->getParametersRemote(true /*full parameter*/,
-                                  true /*after apply*/);
+                                   true /*after apply*/);
   }
 
   gserver_->saveParameters(saveDir);
@@ -114,9 +115,13 @@ void ParameterUtil::saveParameters(int passId, int passInnerId) {
 void ParameterUtil::deleteParameters(int passId, int passInnerId) {
   constexpr int kBufLen = 100;
   char buf[kBufLen];
-  const std::string& saveDir = config_->getSaveDir();
+  const std::string &saveDir = config_->getSaveDir();
   if (passInnerId > 0) {
-    snprintf(buf, kBufLen, "%s/pass-%05d-%03d", saveDir.c_str(), passId,
+    snprintf(buf,
+             kBufLen,
+             "%s/pass-%05d-%03d",
+             saveDir.c_str(),
+             passId,
              passInnerId);
   } else {
     snprintf(buf, kBufLen, "%s/pass-%05d", saveDir.c_str(), passId);
@@ -126,8 +131,7 @@ void ParameterUtil::deleteParameters(int passId, int passInnerId) {
   rmDir(buf);
 }
 
-
-void ParameterUtil::saveConfigWithPath(const std::string& path) {
+void ParameterUtil::saveConfigWithPath(const std::string &path) {
   std::string src;
   // save config in some path
   if (!intConfig_->config_.empty()) {

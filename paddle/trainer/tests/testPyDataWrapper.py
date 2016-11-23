@@ -21,7 +21,10 @@ import json
 import string
 
 
-@provider(slots=[SparseNonValueSlot(10), DenseSlot(2), SparseValueSlot(10), StringSlot(1), IndexSlot(3)])
+@provider(slots=[
+    SparseNonValueSlot(10), DenseSlot(2), SparseValueSlot(10), StringSlot(1),
+    IndexSlot(3)
+])
 def processNonSequenceData(obj, filename):
     with open(filename, "rb") as f:
         for line in f:
@@ -50,6 +53,7 @@ val_randomer = lambda: random.uniform(-1.0, 1.0)
 seq_count_randomer = lambda: random.randrange(1, SEQUENCE_LIMIT)
 str_count_randomer = lambda: random.randrange(1, STRING_LIMIT)
 
+
 class IDRandomer():  # A random generator, return unique id
     def __init__(self):
         self.id_set = set()
@@ -61,38 +65,57 @@ class IDRandomer():  # A random generator, return unique id
             return idx
         else:
             return self.__call__()
+
+
 # SparseValueSlot
 def sparse_value_creator(_):
     rand = IDRandomer()
     return [(rand(), val_randomer()) for _ in xrange(sparse_count_randomer())]
+
+
 sparse_value = map(sparse_value_creator, range(seq_count_randomer()))
+
 
 # DenseSlot
 def dense_creator(_):
     return [val_randomer() for _ in xrange(SPARSE_ID_LIMIT)]
+
+
 dense = map(dense_creator, range(seq_count_randomer()))
+
 
 # SparseNonValueSlot
 def sparse_creator(_):
     rand = IDRandomer()
     return [rand() for _ in xrange(sparse_count_randomer())]
+
+
 sparse_nonvalue = map(sparse_creator, range(seq_count_randomer()))
 
 # IndexSlot
 ids = [sparse_id_randomer() for _ in range(seq_count_randomer())]
 
+
 # StringSlot
-def random_str(size = 8, chars=string.ascii_letters + string.digits):
+def random_str(size=8, chars=string.ascii_letters + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
+
+
 strs = [random_str(str_count_randomer()) for _ in range(seq_count_randomer())]
+
 
 def processSeqAndGenerateDataInit(obj, *args, **kwargs):
     obj.json_filename = kwargs.get("load_data_args", "test_data.json")
 
-@provider(slots=[SparseValueSlot(SPARSE_ID_LIMIT), DenseSlot(SPARSE_ID_LIMIT),
-                 SparseNonValueSlot(SPARSE_ID_LIMIT), IndexSlot(SPARSE_ID_LIMIT),
-                 StringSlot(SPARSE_ID_LIMIT)],
-          use_seq=True, init_hook=processSeqAndGenerateDataInit)
+
+@provider(
+    slots=[
+        SparseValueSlot(SPARSE_ID_LIMIT), DenseSlot(SPARSE_ID_LIMIT),
+        SparseNonValueSlot(SPARSE_ID_LIMIT), IndexSlot(SPARSE_ID_LIMIT),
+        StringSlot(SPARSE_ID_LIMIT)
+    ],
+    use_seq=True,
+    init_hook=processSeqAndGenerateDataInit)
 def processSeqAndGenerateData(obj, name):
     retv = [sparse_value, dense, sparse_nonvalue, ids, strs]
     # Write to protoseq.
@@ -104,10 +127,15 @@ def processSeqAndGenerateData(obj, name):
 def processSubSeqAndGenerateDataInit(obj, *args, **kwargs):
     obj.json_filename = kwargs.get("load_data_args", "test_data.json")
 
-@provider(slots=[SparseValueSlot(SPARSE_ID_LIMIT), DenseSlot(SPARSE_ID_LIMIT),
-                 SparseNonValueSlot(SPARSE_ID_LIMIT), IndexSlot(SPARSE_ID_LIMIT),
-                 StringSlot(SPARSE_ID_LIMIT)],
-          use_seq=True, init_hook=processSubSeqAndGenerateDataInit)
+
+@provider(
+    slots=[
+        SparseValueSlot(SPARSE_ID_LIMIT), DenseSlot(SPARSE_ID_LIMIT),
+        SparseNonValueSlot(SPARSE_ID_LIMIT), IndexSlot(SPARSE_ID_LIMIT),
+        StringSlot(SPARSE_ID_LIMIT)
+    ],
+    use_seq=True,
+    init_hook=processSubSeqAndGenerateDataInit)
 def processSubSeqAndGenerateData(obj, name):
     retv_json = [sparse_value, dense, sparse_nonvalue, ids, strs]
     retv_wrapper = [[sparse_value], [dense], [sparse_nonvalue], [ids], [strs]]
@@ -115,6 +143,7 @@ def processSubSeqAndGenerateData(obj, name):
     with open(obj.json_filename, "w") as f:
         json.dump(retv_json, f)
     yield retv_wrapper
+
 
 if __name__ == "__main__":
     pvd = processNonSequenceData("test.txt")

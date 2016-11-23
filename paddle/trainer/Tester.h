@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/utils/Util.h"
@@ -49,10 +48,10 @@ public:
    *                         for getting parameter from parameter-server.
    * @param testDataProvider Test data provider.
    */
-  Tester(const std::shared_ptr<TrainerConfigHelper> &config,
-         std::unique_ptr<TesterConfig> &&intconfig,
-         const GradientMachinePtr &gradientMachine,
-         const std::shared_ptr<ParameterUpdater> &parameterUpdater,
+  Tester(const std::shared_ptr<TrainerConfigHelper>& config,
+         std::unique_ptr<TesterConfig>&& intconfig,
+         const GradientMachinePtr& gradientMachine,
+         const std::shared_ptr<ParameterUpdater>& parameterUpdater,
          std::shared_ptr<DataProvider> testDataProvider);
 
   /**
@@ -68,6 +67,10 @@ public:
    * is training at same time.
    */
   void testOnePeriod();
+  void startTestPeriod();
+  void finishTestPeriod();
+  void testOneDataBatch(const DataBatch& dataBatch,
+                        std::vector<Argument>* outArgs);
 
   /**
    * Test for given data batch.
@@ -75,14 +78,14 @@ public:
    * @param evaluator Evaluator
    * @return cost
    */
-  real testOneBatch(const DataBatch &dataBatch, Evaluator *evaluator);
-
+  real forwardOneBatch(const DataBatch& dataBatch,
+                       Evaluator* evaluator,
+                       std::vector<Argument>* outArgs);
 
   /**
    * performance the full pass of test given test data provider
    */
   void test();
-
 
 protected:
   std::shared_ptr<ParameterClient2> testParameterClient_;
@@ -99,6 +102,10 @@ protected:
   std::ofstream os_;
   std::vector<MatrixPtr> cpuMat_;
   std::vector<IVectorPtr> cpuVec_;
+  struct {
+    int64_t numSamples;
+    real cost;
+  } testContext_;
 
 private:
   /**

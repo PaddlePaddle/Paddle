@@ -1,5 +1,5 @@
 You also should install tflearn:
 
 ```bash
-pip install tflearn
+pip install -r requirements.txt
 ```

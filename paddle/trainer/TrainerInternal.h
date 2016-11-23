@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/utils/Util.h"
@@ -28,7 +27,6 @@ limitations under the License. */
 #include "TrainerConfigHelper.h"
 #include "TrainerInternalConfig.h"
 
-
 namespace paddle {
 
 /**
@@ -40,12 +38,10 @@ public:
   struct ParaStat {
     real maxAbsGrad;
     real avgAbsGrad;
-    ParaStat() :maxAbsGrad(.0), avgAbsGrad(.0){
-    }
+    ParaStat() : maxAbsGrad(.0), avgAbsGrad(.0) {}
   };
 
-  TrainerInternal() {
-  }
+  TrainerInternal() {}
 
   /**
    * Intializes trainer internal class
@@ -55,10 +51,10 @@ public:
    * @param stats training stats
    * @param testing if it is in testing phase
    */
-  void init(const std::shared_ptr<TrainerConfigHelper> &config,
-            const GradientMachinePtr &machine,
-            std::unique_ptr<TrainerInternalConfig> &&intconfig,
-            const std::shared_ptr<TrainerStats> &stats,
+  void init(const std::shared_ptr<TrainerConfigHelper>& config,
+            const GradientMachinePtr& machine,
+            std::unique_ptr<TrainerInternalConfig>&& intconfig,
+            const std::shared_ptr<TrainerStats>& stats,
             bool testing);
 
   virtual ~TrainerInternal() {}
@@ -81,7 +77,9 @@ public:
    * @param batchId current batch id
    * @param dataBatch data for the batch
    */
-  void trainOneBatch(int64_t batchId, const DataBatch& dataBatch);
+  void trainOneBatch(int64_t batchId,
+                     const DataBatch& dataBatch,
+                     std::vector<Argument>* outArgs);
 
   /**
    * showParameterStats
@@ -92,7 +90,7 @@ public:
   /**
    * getGradientMachine
    */
-  inline const GradientMachinePtr & getGradientMachine() const {
+  inline const GradientMachinePtr& getGradientMachine() const {
     return gradientMachine_;
   }
 
@@ -107,17 +105,13 @@ public:
    * setCurrentEvaluator
    * @param eval evaluator to set
    */
-  inline void setCurrentEvaluator(Evaluator* eval) {
-    currentEvaluator_ = eval;
-  }
+  inline void setCurrentEvaluator(Evaluator* eval) { currentEvaluator_ = eval; }
 
   /**
    * setEvaluator
    * @param eval evaluator to set
    */
-  inline void setEvaluator(Evaluator* eval) {
-    evaluator_ = eval;
-  }
+  inline void setEvaluator(Evaluator* eval) { evaluator_ = eval; }
 
   /**
    * forwardBackwardBatch

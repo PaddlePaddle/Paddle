@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
-#include "PoolLayer.h"
-#include "paddle/math/Matrix.h"
 #include <vector>
+#include "PoolLayer.h"
+#include "PoolProjection.h"
+#include "paddle/math/Matrix.h"
 
 namespace paddle {
 /**
@@ -27,33 +27,18 @@ class PoolProjectionLayer : public PoolLayer {
 protected:
   size_t imgSizeH_, imgSizeW_;
   size_t outputH_, outputW_;
+  std::unique_ptr<PoolProjection> poolProjection_;
+  ProjectionConfig projectionConfig_;
 
 public:
+  explicit PoolProjectionLayer(const LayerConfig& config) : PoolLayer(config) {
+    PoolConfig* conf = projectionConfig_.mutable_pool_conf();
+    *conf = config_.inputs(0).pool_conf();
+    poolProjection_.reset(
+        PoolProjection::create(projectionConfig_, nullptr, useGpu_));
+  }
+
   size_t getSize();
-  explicit PoolProjectionLayer(const LayerConfig& config) : PoolLayer(config) {}
-};
-/**
- * @brief A layer for max pooling
- */
-class MaxPoolProjectionLayer : public PoolProjectionLayer {
-public:
-  explicit MaxPoolProjectionLayer(const LayerConfig& config)
-      : PoolProjectionLayer(config) {}
-
-  ~MaxPoolProjectionLayer() {}
-
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback = nullptr);
-};
-/**
- * @brief A layer for average pooling
- */
-class AvgPoolProjectionLayer : public PoolProjectionLayer {
-public:
-  explicit AvgPoolProjectionLayer(const LayerConfig& config)
-      : PoolProjectionLayer(config) {}
-
-  ~AvgPoolProjectionLayer() {}
 
   virtual void forward(PassType passType);
   virtual void backward(const UpdateCallback& callback = nullptr);

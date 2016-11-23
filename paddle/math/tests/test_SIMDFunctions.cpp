@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-
 #include "paddle/math/SIMDFunctions.h"
 #include "paddle/utils/Util.h"
 
@@ -128,13 +126,13 @@ TEST(SIMDFunction, decayL1_WithLR) {
   typedef std::function<void(float*, float*, float*, float, size_t)>
       DecayL1MethodType;
 
-  DecayL1MethodType naive = [](float* d, float* s, float* lr, float l,
-                               size_t len) {
+  DecayL1MethodType naive = [](
+      float* d, float* s, float* lr, float l, size_t len) {
     paddle::simd::naive::decayL1<float>(d, s, lr, l, len);
   };
 
-  DecayL1MethodType simd = [](float* d, float* s, float* lr, float l,
-                              size_t len) {
+  DecayL1MethodType simd = [](
+      float* d, float* s, float* lr, float l, size_t len) {
     paddle::simd::decayL1<float>(d, s, lr, l, len);
   };
 

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "ParameterUpdater.h"
 
 #include "paddle/utils/Logging.h"
@@ -30,7 +29,8 @@ SgdUpdaterWithCpuAverager::SgdUpdaterWithCpuAverager(
   CHECK(FLAGS_use_gpu && optConfig.do_average_in_cpu());
   averager_.reset(AverageOptimizer::create(optConfig,
                                            new DummyOptimizer(optConfig),
-                                           false /*sparse*/, true /*apply*/));
+                                           false /*sparse*/,
+                                           true /*apply*/));
   updateWorker_.addJob([]() { hl_set_device(FLAGS_gpu_id); });
 }
 

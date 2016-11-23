@@ -41,7 +41,8 @@ struct DataOut {
   std::vector<VectorPtr> paraGrads;
 };
 
-void initArgument(DataIn& data, const std::string& configPath,
+void initArgument(DataIn& data,
+                  const std::string& configPath,
                   bool useGpu = FLAGS_use_gpu) {
   TrainerConfigHelper config(configPath);
   size_t batchSize = config.getOptConfig().batch_size();
@@ -122,9 +123,10 @@ void calcGradient(DataIn& in, DataOut& out, const std::string& configPath) {
   }
   gradientMachine->backward();
   for (size_t i = 0; i < in.outGrads.size(); i++) {
-    MatrixPtr value =
-        Matrix::create(outArgs[i].value->getHeight(),
-                       outArgs[i].value->getWidth(), false, false);
+    MatrixPtr value = Matrix::create(outArgs[i].value->getHeight(),
+                                     outArgs[i].value->getWidth(),
+                                     false,
+                                     false);
     value->copyFrom(*outArgs[i].value);
     out.outValues.push_back(value);
   }
@@ -147,8 +149,12 @@ void calcGradient(DataIn& in, DataOut& out, const std::string& configPath) {
   gradientMachine->finish();
 }
 
-void checkBuffer(real* A, const char* desA, real* B, const char* desB,
-                 size_t len, size_t width = 1) {
+void checkBuffer(real* A,
+                 const char* desA,
+                 real* B,
+                 const char* desB,
+                 size_t len,
+                 size_t width = 1) {
   int nNum = 0;
   for (size_t i = 0; i < len; ++i) {
     real diff = fabs(A[i] - B[i]);
@@ -168,8 +174,10 @@ void compareGradient(DataOut& outA, DataOut& outB) {
             << "------------------------------";
   for (size_t i = 0; i < outA.outValues.size(); ++i) {
     LOG(INFO) << "OUTPUT VALUE: " << i;
-    checkBuffer(outA.outValues[i]->getData(), "network A output",
-                outB.outValues[i]->getData(), "network B output",
+    checkBuffer(outA.outValues[i]->getData(),
+                "network A output",
+                outB.outValues[i]->getData(),
+                "network B output",
                 outA.outValues[i]->getElementCnt(),
                 outA.outValues[i]->getWidth());
   }
@@ -180,8 +188,10 @@ void compareGradient(DataOut& outA, DataOut& outB) {
               << "------------------------------";
     for (size_t i = 0; i < outA.paraGrads.size(); ++i) {
       LOG(INFO) << "PARAMETER GRADIENT: " << i;
-      checkBuffer(outA.paraGrads[i]->getData(), "Network A",
-                  outB.paraGrads[i]->getData(), "Network B",
+      checkBuffer(outA.paraGrads[i]->getData(),
+                  "Network A",
+                  outB.paraGrads[i]->getData(),
+                  "Network B",
                   outA.paraGrads[i]->getSize());
     }
   }
@@ -236,8 +246,16 @@ TEST(Compare, img_pool) {
   compareNetwork(config_file_a, config_file_b);
   FLAGS_use_gpu = useGpu;
 }
-#endif
 
+TEST(Compare, img_conv) {
+  std::string config_file_a = "./gserver/tests/img_conv_a.conf";
+  std::string config_file_b = "./gserver/tests/img_conv_b.conf";
+  bool useGpu = FLAGS_use_gpu;
+  FLAGS_use_gpu = true;
+  compareNetwork(config_file_a, config_file_b);
+  FLAGS_use_gpu = useGpu;
+}
+#endif
 
 P_DEFINE_string(config_file_a, "", "config of one network to compare");
 P_DEFINE_string(config_file_b, "", "config of another network to compare");

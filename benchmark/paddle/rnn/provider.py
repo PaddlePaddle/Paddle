@@ -1,19 +1,25 @@
-import io,os
+import io, os
 import random
 import numpy as np
 import six.moves.cPickle as pickle
 from paddle.trainer.PyDataProvider2 import *
 
+
 def remove_unk(x, n_words):
     return [[1 if w >= n_words else w for w in sen] for sen in x]
+
 
 # ==============================================================
 #  tensorflow uses fixed length, but PaddlePaddle can process
 #  variable-length. Padding is used in benchmark in order to
 #  compare with other platform. 
 # ==============================================================
-def pad_sequences(sequences, maxlen=None, dtype='int32', padding='post',
-                  truncating='post', value=0.):
+def pad_sequences(sequences,
+                  maxlen=None,
+                  dtype='int32',
+                  padding='post',
+                  truncating='post',
+                  value=0.):
     lengths = [len(s) for s in sequences]
 
     nb_samples = len(sequences)
@@ -43,12 +49,14 @@ def pad_sequences(sequences, maxlen=None, dtype='int32', padding='post',
 def initHook(settings, vocab_size, pad_seq, maxlen, **kwargs):
     settings.vocab_size = vocab_size
     settings.pad_seq = pad_seq
-    settings.maxlen = maxlen 
+    settings.maxlen = maxlen
     settings.input_types = [
-        integer_value_sequence(vocab_size),
-        integer_value(2)]
+        integer_value_sequence(vocab_size), integer_value(2)
+    ]
 
-@provider(init_hook=initHook, min_pool_size=-1, cache=CacheType.CACHE_PASS_IN_MEM)
+
+@provider(
+    init_hook=initHook, min_pool_size=-1, cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, file):
     f = open(file, 'rb')
     train_set = pickle.load(f)
@@ -57,8 +65,8 @@ def process(settings, file):
 
     # remove unk, namely remove the words out of dictionary
     x = remove_unk(x, settings.vocab_size)
-    if settings.pad_seq: 
+    if settings.pad_seq:
         x = pad_sequences(x, maxlen=settings.maxlen, value=0.)
 
     for i in range(len(y)):
-        yield map(int,x[i]), int(y[i])
+        yield map(int, x[i]), int(y[i])

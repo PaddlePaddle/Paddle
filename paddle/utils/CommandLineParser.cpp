@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "CommandLineParser.h"
 #ifndef PADDLE_USE_GFLAGS
 #include "paddle/utils/StringUtil.h"
@@ -31,7 +30,6 @@ static constexpr int kStatusOK = 0;
 static constexpr int kStatusInvalid = 1;
 static constexpr int kStatusNotFound = 2;
 
-
 /**
  * \brief: Convert a string to any type value.
  *
@@ -48,13 +46,16 @@ template <>
 bool StringToValue<bool>(const std::string& content, bool* value) {
   std::string tmp = content;
 
-  std::transform(tmp.begin(), tmp.end(), tmp.begin(), [](char in) -> char {
-    if (in <= 'Z' && in >= 'A') {
-      return in - ('Z' - 'z');
-    } else {
-      return in;
-    }
-  });  // tolower.
+  std::transform(tmp.begin(),
+                 tmp.end(),
+                 tmp.begin(),
+                 [](char in) -> char {
+                   if (in <= 'Z' && in >= 'A') {
+                     return in - ('Z' - 'z');
+                   } else {
+                     return in;
+                   }
+                 });  // tolower.
 
   if (tmp == "true" || tmp == "1") {
     *value = true;
@@ -121,20 +122,16 @@ int ParseArgument(const std::string& argument, std::string* extraInfo) {
  * parse '--flag_name', '-flag_name' as true; '--noflag_name', '-noflag_name' as
  * false
  */
-static int ParseBoolArgumentExtra(
-    const std::string& argument, std::string* extraInfo) {
+static int ParseBoolArgumentExtra(const std::string& argument,
+                                  std::string* extraInfo) {
   (void)(extraInfo);  // unused extraInfo, just make api same.
 
   //! @warning: The order and content of prefixes is DESIGNED for parsing
   //! command line. The length of prefixes are 1, 2, 3, 4. The parse logic takes
   //! use of this fact. DO NOT CHANGE IT without reading how to parse command
   //! below.
-  static const std::vector<std::pair<const char*, bool> >  prefixes = {
-    {"-", true},
-    {"--", true},
-    {"-no", false},
-    {"--no", false}
-  };
+  static const std::vector<std::pair<const char*, bool>> prefixes = {
+      {"-", true}, {"--", true}, {"-no", false}, {"--no", false}};
 
   for (flags_internal::CommandLineFlagRegistry<bool>::Command& command :
        flags_internal::CommandLineFlagRegistry<bool>::Instance()->commands) {
@@ -153,7 +150,6 @@ static int ParseBoolArgumentExtra(
   return kStatusNotFound;
 }
 
-
 /**
  * \brief: Print command line arguments' usage with type T.
  */
@@ -170,12 +166,9 @@ static void PrintTypeUsage() {
   }
 }
 
-template <typename ...TS>
+template <typename... TS>
 static void PrintTypeUsages() {
-  int unused[] = {
-    0,
-    (PrintTypeUsage<TS>(), 0) ...
-  };
+  int unused[] = {0, (PrintTypeUsage<TS>(), 0)...};
   (void)(unused);
 }
 /**
@@ -190,7 +183,8 @@ static void PrintUsageAndExit(const char* argv0) {
 /**
  * \brief: Print the error flags, usage, and exit.
  */
-static void PrintParseError(const std::string& name, const char* actualInput,
+static void PrintParseError(const std::string& name,
+                            const char* actualInput,
                             const char* arg0) {
   std::cerr << "Parse command flag " << name << " error! User input is "
             << actualInput << std::endl;
@@ -211,7 +205,7 @@ void ParseCommandLineFlags(int* argc, char** argv, bool withHelp) {
     PrintParseError(extra, argv[i], argv[0]); \
   }
 
-    ParseArgumentWithType(bool);    // NOLINT
+    ParseArgumentWithType(bool);  // NOLINT
     ParseArgumentWithType(int32_t);
     ParseArgumentWithType(double);  // NOLINT
     ParseArgumentWithType(int64_t);

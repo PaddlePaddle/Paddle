@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Operator.h"
 
 namespace paddle {
@@ -42,8 +41,8 @@ DotMulOperator::DotMulOperator(const OperatorConfig& config, bool useGpu)
 }
 
 void DotMulOperator::forward() {
-  out_->value->addDotMul(*ins_[0]->value, *ins_[1]->value, 1,
-                         config_.dotmul_scale());
+  out_->value->addDotMul(
+      *ins_[0]->value, *ins_[1]->value, 1, config_.dotmul_scale());
 }
 
 void DotMulOperator::backward() {

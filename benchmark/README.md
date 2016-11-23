@@ -5,11 +5,11 @@ Machine:
 - CPU: 12-core Intel(R) Xeon(R) CPU E5-2620 v2 @2.10GHz
 - GPU: Tesla K40m
 - cuDNN: v5.1
-- system: Docker 1.12.1, all platform are tested in docker environment.
+- system: Docker 1.12.1, all platforms are tested in docker environment.
 
 Platforms: 
 
-- PaddlePaddle: 
+- PaddlePaddle: paddledev/paddle:gpu-devel-v0.9.0a0 
 - Tensorflow: gcr.io/tensorflow/tensorflow:0.11.0rc0-gpu 
 - Caffe: kaixhin/cuda-caffe
 
@@ -28,7 +28,7 @@ AlexNet, GoogleNet and a small network used in Caffe.
 - [SmallNet](https://github.com/BVLC/caffe/blob/master/examples/cifar10/cifar10\_quick\_train\_test.prototxt)
 
 
-### Singe-GPU
+### Single-GPU
 
 - AlexNet:  input - 3 * 227 * 227,  Time: ms/batch
 
@@ -61,7 +61,7 @@ All platforms use cuDNN-v5.1. We see that caffe is slower in this experiment, be
 
 **Notation**
 
-All the experiments in caffe use `caffe time` to execute, which does not include the time of parameter updating. The time in PaddlePaddle and TensorFlow contains it. But, compared with the total time, the time of parameter updating is relatively little.
+All the experiments in caffe use `caffe time` to execute, which does not include the time of parameter updating. While PaddlePaddle and TensorFlow contains this time. But, compared with the total time, the time of parameter updating is relatively little on single machine.
 
 In Tensorflow, they implement algorithm searching method instead of using the algorithm searching interface in cuDNN.
 
@@ -106,7 +106,7 @@ We use lstm network for text classfication to test benchmark.
 - Dictionary size=30000 
 - Peephole connection is used in `lstmemory` by default in PaddlePaddle. It is also configured in TensorFlow.
 
-### Single GPU
+### Single-GPU
 
 #### LSTM in Text Classification
 

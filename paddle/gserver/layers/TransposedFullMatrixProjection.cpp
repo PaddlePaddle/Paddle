@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Stat.h"
 #include "Projection.h"
 
@@ -27,7 +26,8 @@ namespace paddle {
 class TransposedFullMatrixProjection : public Projection {
 public:
   TransposedFullMatrixProjection(const ProjectionConfig& config,
-                                 ParameterPtr parameter, bool useGPu);
+                                 ParameterPtr parameter,
+                                 bool useGPu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 

@@ -23,6 +23,7 @@ fi
 cd ~
 git clone https://github.com/baidu/Paddle.git paddle
 cd paddle
+git checkout ${GIT_CHECKOUT}
 mkdir build
 cd build
 cmake .. -DWITH_DOC=OFF -DWITH_GPU=${WITH_GPU} -DWITH_SWIG_PY=ON\

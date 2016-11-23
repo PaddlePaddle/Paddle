@@ -31,10 +31,12 @@ limitations under the License. */
 #include "paddle/utils/GlobalConstants.h"
 
 P_DEFINE_int32(pserver_num_threads, 1, "number of threads for sync op exec");
-P_DEFINE_double(async_lagged_ratio_min, 1.0,
+P_DEFINE_double(async_lagged_ratio_min,
+                1.0,
                 "control config_.async_lagged_grad_discard_ratio() min value");
 P_DEFINE_double(
-    async_lagged_ratio_default, 1.5,
+    async_lagged_ratio_default,
+    1.5,
     "if async_lagged_grad_discard_ratio is not set in trainer_config.conf"
     "use it as defalut value");
 
@@ -47,7 +49,8 @@ const std::string ParameterServer2::kRetMsgInvalidVectorHandle =
 const std::string ParameterServer2::kRetMsgUnknownOperation =
     "Unknown operation";
 
-ParameterServer2::ParameterServer2(const std::string& addr, int port,
+ParameterServer2::ParameterServer2(const std::string& addr,
+                                   int port,
                                    int rdmaCpu)
     : ProtoServer(addr, port, rdmaCpu),
       dataSize_(0),
@@ -59,12 +62,12 @@ ParameterServer2::ParameterServer2(const std::string& addr, int port,
       allClientPassFinish_(false),
       serverId_(-1),
       batchId_(-1) {
- /**
-  * register function for remote client calling, these functions
-  * will be mapped to a data structure for quick looking up. each
-  * request from trainer can contains one function name to indicate
-  * remote action. this architecture looks like rpc style for pserver.
-  */
+  /**
+   * register function for remote client calling, these functions
+   * will be mapped to a data structure for quick looking up. each
+   * request from trainer can contains one function name to indicate
+   * remote action. this architecture looks like rpc style for pserver.
+   */
   REGISTER_SERVICE_FUNCTION_EX(ParameterServer2, sendParameter);
   REGISTER_SERVICE_FUNCTION_EX(ParameterServer2, sendData);
   REGISTER_SERVICE_FUNCTION(ParameterServer2, setConfig);
@@ -150,12 +153,12 @@ void ParameterServer2::setConfig(const SetConfigRequest& request,
       mkDir(request.save_dir().c_str());
     }
 
-  for (const auto& config : request.param_configs()) {
-    CHECK(!configMap_.count(config.para_id()))
-        << "Duplicated parameter name: " << config.name();
-    configMap_[config.para_id()] = config;
-    CHECK_EQ(config.sparse_remote_update(), isSparseServer_);
-  }
+    for (const auto& config : request.param_configs()) {
+      CHECK(!configMap_.count(config.para_id()))
+          << "Duplicated parameter name: " << config.name();
+      configMap_[config.para_id()] = config;
+      CHECK_EQ(config.sparse_remote_update(), isSparseServer_);
+    }
 
     config_ = request.opt_config();
     if (config_.algorithm() == TrainAlgorithm::AsyncSGD) {
@@ -264,6 +267,15 @@ void ParameterServer2::setParameter(const SendParameterRequest& request,
   std::vector<int64_t> blockIds;
   blockIds.reserve(request.blocks_size());
   int bufferIndex = 0;
+
+  if (!request.blocks().size()) {
+    LOG(WARNING)
+        << "--ports_num or --ports_num_for_sparse might be too large, "
+        << "or total dense parameter size or sparse parameters size "
+        << "might be too small, this psever doesn't store any parameter.";
+    return;
+  }
+
   for (const auto& block : request.blocks()) {
     /// block size for parameter(e.g. 128 for sparse row, 1K for dense)
     uint64_t blockSize = getParameterConfig(block).parameter_block_size();
@@ -330,8 +342,8 @@ void ParameterServer2::setParameter(const SendParameterRequest& request,
           << "width : " << width;
     }
     info.optimizer->init(1, info.config);
-    usedSegments_.push_back(std::make_pair(offsets[i],
-                offsets[i] + request.blocks(i).block_size()));
+    usedSegments_.push_back(std::make_pair(
+        offsets[i], offsets[i] + request.blocks(i).block_size()));
   }
   mergeSegments(&usedSegments_);
 
@@ -355,15 +367,18 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
                                    std::vector<Buffer>* outputBuffers) {
   VLOG(1) << "pserver: addGradient";
 
-  /// forwardbackward delta from all trainers
-  /// indicate the fluctuation caused by forwardbackward.
+/// forwardbackward delta from all trainers
+/// indicate the fluctuation caused by forwardbackward.
 #ifndef PADDLE_METRIC_LEARNING
   // @TODO(yanfei):
   // add support tuning forwardbackward balance for metric learning
   if (!numPassFinishClients_) {
     REGISTER_BARRIER_DELTA_SERVER_SET(
-        *statSet_, "forwardbackwardDelta", FLAGS_num_gradient_servers,
-        request.trainer_id(), request.forwardbackward_time(),
+        *statSet_,
+        "forwardbackwardDelta",
+        FLAGS_num_gradient_servers,
+        request.trainer_id(),
+        request.forwardbackward_time(),
         isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
   }
 #endif
@@ -381,14 +396,19 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
   /// barrier fluctuation caused by network and previous forwardbackward
   if (!numPassFinishClients_) {
     REGISTER_BARRIER_TIMER_SERVER_SET(
-        *statSet_, "handleReqBegin", FLAGS_num_gradient_servers,
-        request.trainer_id(), (*handleRequestBegin_),
+        *statSet_,
+        "handleReqBegin",
+        FLAGS_num_gradient_servers,
+        request.trainer_id(),
+        (*handleRequestBegin_),
         isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
   }
 
   if (!numPassFinishClients_) {
     REGISTER_BARRIER_TIMER_SERVER(
-        *statSet_, "addGradBegin", FLAGS_num_gradient_servers,
+        *statSet_,
+        "addGradBegin",
+        FLAGS_num_gradient_servers,
         request.trainer_id(),
         isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
   }
@@ -405,8 +425,8 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
 
       int64_t blockId = getBlockId(block);
       CHECK_GE(blockId, 0) << "Only existing parameter block is allowed: "
-                          << " id=" << block.para_id()
-                          << " block id=" << block.block_id();
+                           << " id=" << block.para_id()
+                           << " block id=" << block.block_id();
 
       Buffer buffer = inputBuffers[bufferIndex];
       ++bufferIndex;
@@ -429,7 +449,9 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
 
     if (!numPassFinishClients_) {
       REGISTER_BARRIER_TIMER_SERVER(
-          *statSet_, "addGradCoreFinish", FLAGS_num_gradient_servers,
+          *statSet_,
+          "addGradCoreFinish",
+          FLAGS_num_gradient_servers,
           request.trainer_id(),
           isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
     }
@@ -444,7 +466,9 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
     /// numPassFinishClients_ means some trainer has entered finishPass
     if (!numPassFinishClients_) {
       REGISTER_SLOW_NODES_PROBE(
-          *statSet_, "SLOW_NODES", FLAGS_num_gradient_servers,
+          *statSet_,
+          "SLOW_NODES",
+          FLAGS_num_gradient_servers,
           request.trainer_id(),
           isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
     }
@@ -454,7 +478,9 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
 
     /// if wait pass finish does not start, do check
     if (!numPassFinishClients_) {
-      CHECK_BARRIER_TIMER(*statSet_, "SLOW_NODES", FLAGS_num_gradient_servers,
+      CHECK_BARRIER_TIMER(*statSet_,
+                          "SLOW_NODES",
+                          FLAGS_num_gradient_servers,
                           isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
     }
 
@@ -462,7 +488,9 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
     /// can indicate the fluctation caused by computation at pserver.
     if (!numPassFinishClients_) {
       REGISTER_BARRIER_TIMER_SERVER(
-          *statSet_, "paraReady", FLAGS_num_gradient_servers,
+          *statSet_,
+          "paraReady",
+          FLAGS_num_gradient_servers,
           request.trainer_id(),
           isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
     }
@@ -472,7 +500,8 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
     {
       /// total time except overhead of network.
       REGISTER_TIMER_DYNAMIC_SET("sendParaNoRecvNoSend",
-                                 timeToMicroSecond(*addGradBegin_), -1,
+                                 timeToMicroSecond(*addGradBegin_),
+                                 -1,
                                  *statSet_);
     }
   }
@@ -600,7 +629,8 @@ void ParameterServer2::asyncSGD(const SendParameterRequest& request,
                         << " block id=" << block.block_id();
     int64_t blockId = getBlockId(block);
     CHECK_GE(blockId, 0) << "Only existing parameter block is allowed: "
-        << " id=" << block.para_id() << " block id=" << block.block_id();
+                         << " id=" << block.para_id()
+                         << " block id=" << block.block_id();
     Buffer buffer = inputBuffers[bufferIndex];
     ++bufferIndex;
 
@@ -721,10 +751,11 @@ void ParameterServer2::sendBackParameter(const ParameterBlock& block,
 
   int64_t offset = getBlockOffset(block);
   CHECK_GE(offset, 0) << "Only existing parameter block is allowed: "
-      << " id=" << block.para_id() << " block id=" << block.block_id();
+                      << " id=" << block.para_id()
+                      << " block id=" << block.block_id();
 
   real* valueBuffer = vectors_[parameterType]->getPoint(offset);
-  outputBuffers->push_back({valueBuffer, (size_t) block.block_size()});
+  outputBuffers->push_back({valueBuffer, (size_t)block.block_size()});
 }
 
 void ParameterServer2::sendBackParameter(const ParameterBlock& block,
@@ -740,7 +771,8 @@ void ParameterServer2::sendBackParameter(const ParameterBlock& block,
 
   int64_t offset = getBlockOffset(block);
   CHECK_GE(offset, 0) << "Only existing parameter block is allowed: "
-      << " id=" << block.para_id() << " block id=" << block.block_id();
+                      << " id=" << block.para_id()
+                      << " block id=" << block.block_id();
 
   size_t size = buffer->size;
   real* valueBuffer = vectors_[parameterType]->getPoint(offset);
@@ -750,8 +782,11 @@ void ParameterServer2::sendBackParameter(const ParameterBlock& block,
 }
 
 void ParameterServer2::sendBackParameterSparse(
-    const ParameterBlock& block, int parameterType,
-    SendParameterResponse* response, Buffer* buffer, size_t width,
+    const ParameterBlock& block,
+    int parameterType,
+    SendParameterResponse* response,
+    Buffer* buffer,
+    size_t width,
     std::vector<Buffer>* outputBuffers) {
   ParameterBlock* returnBlock = response->add_blocks();
   returnBlock->set_para_id(block.para_id());
@@ -760,7 +795,8 @@ void ParameterServer2::sendBackParameterSparse(
   returnBlock->set_block_size(block.block_size());
   int64_t offset = getBlockOffset(block);
   CHECK_GE(offset, 0) << "Only existing parameter block is allowed: "
-      << " id=" << block.para_id() << " block id=" << block.block_id();
+                      << " id=" << block.para_id()
+                      << " block id=" << block.block_id();
 
   real* valueBuffer = vectors_[parameterType]->getPoint(offset);
   CHECK_EQ(buffer->size, width);
@@ -772,7 +808,7 @@ void ParameterServer2::readAllBlocks(
     MsgReader* msgReader, std::vector<ParameterServer2::Buffer>* buffers) {
   auto& buffer = *readWriteBuffer_;
   size_t numBlocks = msgReader->getNumBlocks();
-  buffer.resizeWithAlignHints(msgReader->getTotalLength()/sizeof(real),
+  buffer.resizeWithAlignHints(msgReader->getTotalLength() / sizeof(real),
                               numBlocks);
   std::vector<void*> bufs(numBlocks);
   buffers->clear();
@@ -852,7 +888,9 @@ void ParameterServer2::sendParameter(const SendParameterRequest& request,
         /// indicates network flucatuation for big message.
         if (!numPassFinishClients_) {
           REGISTER_BARRIER_TIMER_SERVER(
-              *statSet_, "sendParamFinish", FLAGS_num_gradient_servers,
+              *statSet_,
+              "sendParamFinish",
+              FLAGS_num_gradient_servers,
               request.trainer_id(),
               isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
         }
@@ -862,13 +900,15 @@ void ParameterServer2::sendParameter(const SendParameterRequest& request,
           /// total time including overhead of network.
           REGISTER_TIMER_DYNAMIC_SET("sendParaTotal",
                                      timeToMicroSecond(*handleRequestBegin_),
-                                     -1, *statSet_);
+                                     -1,
+                                     *statSet_);
         }
         /// all time exhausted in pserverServer except recieve network.
         {
           /// total time except overhead of network receive
           REGISTER_TIMER_DYNAMIC_SET("sendParaNoRecv",
-                                     timeToMicroSecond(*addGradBegin_), -1,
+                                     timeToMicroSecond(*addGradBegin_),
+                                     -1,
                                      *statSet_);
         }
       }
@@ -998,36 +1038,42 @@ void ParameterServer2::clearUnusedSegments(CpuVector* vec) {
     return;
   }
   memset(data, 0, sizeof(real) * usedSegments_[0].first);
-  memset(data + usedSegments_.back().second, 0,
+  memset(data + usedSegments_.back().second,
+         0,
          sizeof(real) * (size_ - usedSegments_.back().second));
   size_t n = size_ - usedSegments_.back().second;
 
   for (size_t i = 1; i < usedSegments_.size(); ++i) {
     memset(
-        data + usedSegments_[i - 1].second, 0,
+        data + usedSegments_[i - 1].second,
+        0,
         sizeof(real) * (usedSegments_[i].first - usedSegments_[i - 1].second));
     n += usedSegments_[i].first - usedSegments_[i - 1].second;
   }
 }
 
 void ParameterServer2::parallelExecForEachBlock(ExecFunc func) {
-  SyncThreadPool::execHelper(syncThreadPool_.get(), [&](int tid,
-                                                        size_t numThreads) {
-    int64_t numBlocks = blockIdMap_.size();
-    VectorPtr* vecs = Parameter::getTlsTempBufs();
-    for (int64_t blockId = tid; blockId < numBlocks; blockId += numThreads) {
-      func(blockId, vecs);
-    }
-  });
+  SyncThreadPool::execHelper(syncThreadPool_.get(),
+                             [&](int tid, size_t numThreads) {
+                               int64_t numBlocks = blockIdMap_.size();
+                               VectorPtr* vecs = Parameter::getTlsTempBufs();
+                               for (int64_t blockId = tid; blockId < numBlocks;
+                                    blockId += numThreads) {
+                                 func(blockId, vecs);
+                               }
+                             });
 }
 
 void ParameterServer2::blockTraverse(
-    BlockInfo& info, const ParameterConfig& config, int64_t offset, size_t size,
+    BlockInfo& info,
+    const ParameterConfig& config,
+    int64_t offset,
+    size_t size,
     const VectorPtr vecs[],
     const ParameterOptimizer::TraverseCallback& callback) {
   /// setup sub bufs
   for (const auto type : info.optimizer->getParameterTypes()) {
-      vecs[type]->subVecFrom(*vectors_[type], offset, size);
+    vecs[type]->subVecFrom(*vectors_[type], offset, size);
   }
   callback(vecs, config, config.sparse_remote_update() ? 0 : -1LU);
 }
@@ -1055,10 +1101,10 @@ void ParameterServer2::op_SGD(const Operation& operation,
       info.optimizer->startBatch(numSamplesProcessed_);
 
       for (const auto type : info.optimizer->getParameterTypes()) {
-          vecs[type]->subVecFrom(*vectors_[type], offset, size);
+        vecs[type]->subVecFrom(*vectors_[type], offset, size);
       }
-      info.optimizer->update(vecs, config,
-              config.sparse_remote_update() ? 0 : -1LU);
+      info.optimizer->update(
+          vecs, config, config.sparse_remote_update() ? 0 : -1LU);
       vecs[PARAMETER_GRADIENT]->zeroMem();
 
       if (auto callback = info.optimizer->needSpecialTraversal(config)) {
@@ -1460,7 +1506,6 @@ void ParameterServer2::waitPassFinish(const WaitPassFinishRequest& request,
 
 void ParameterServer2::synchronize(const SynchronizeRequest& request,
                                    ProtoResponseCallback callback) {
-  CHECK_LT(request.sync_object_id(), SyncObject_ARRAYSIZE);
   synchronizeBarriers_[request.sync_object_id()]->wait();
   dataSize_ = 0;
   callback(SynchronizeResponse());
@@ -1468,7 +1513,6 @@ void ParameterServer2::synchronize(const SynchronizeRequest& request,
 
 void ParameterServer2::asyncFinishPass(const SynchronizeRequest& request,
                                        ProtoResponseCallback callback) {
-  CHECK_LT(request.sync_object_id(), SyncObject_ARRAYSIZE);
   synchronizeBarriers_[request.sync_object_id()]->wait();
   callback(SynchronizeResponse());
 

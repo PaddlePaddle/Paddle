@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "TableProjection.h"
 
 namespace paddle {
@@ -20,7 +19,8 @@ namespace paddle {
 REGISTER_PROJECTION(table, TableProjection);
 
 TableProjection::TableProjection(const ProjectionConfig& config,
-                                 const ParameterPtr& parameter, bool useGpu)
+                                 const ParameterPtr& parameter,
+                                 bool useGpu)
     : Projection(config, parameter, useGpu) {
   table_.reset(
       new Weight(config.input_size(), config.output_size(), parameter));

@@ -46,36 +46,41 @@ def hook(settings, img_size, mean_img_size, num_classes, color, meta, use_jpeg,
 
     settings.img_mean = image_util.load_meta(settings.meta_path,
                                              settings.mean_img_size,
-                                             settings.img_size,
-                                             settings.color)
+                                             settings.img_size, settings.color)
 
     settings.logger.info('Image size: %s', settings.img_size)
     settings.logger.info('Meta path: %s', settings.meta_path)
     settings.input_types = [
         dense_vector(settings.img_raw_size),  # image feature
-        integer_value(settings.num_classes)]  # labels
+        integer_value(settings.num_classes)
+    ]  # labels
 
     settings.logger.info('DataProvider Initialization finished')
 
 
-@provider(init_hook=hook)
-def processData(settings, file_name):
+@provider(init_hook=hook, min_pool_size=0)
+def processData(settings, file_list):
     """
     The main function for loading data.
     Load the batch, iterate all the images and labels in this batch.
-    file_name: the batch file name.
+    file_list: the batch file list.
     """
-    data = cPickle.load(io.open(file_name, 'rb'))
-    indexes = list(range(len(data['images'])))
-    if settings.is_train:
-        random.shuffle(indexes)
-    for i in indexes:
-        if settings.use_jpeg == 1:
-            img = image_util.decode_jpeg(data['images'][i])
-        else:
-            img = data['images'][i]
-        img_feat = image_util.preprocess_img(img, settings.img_mean,
-                                             settings.img_size, settings.is_train,
-                                             settings.color)
-        label = data['labels'][i]
-        yield img_feat.tolist(), int(label)
+    with open(file_list, 'r') as fdata:
+        lines = [line.strip() for line in fdata]
+        random.shuffle(lines)
+        for file_name in lines:
+            with io.open(file_name.strip(), 'rb') as file:
+                data = cPickle.load(file)
+                indexes = list(range(len(data['images'])))
+                if settings.is_train:
+                    random.shuffle(indexes)
+                for i in indexes:
+                    if settings.use_jpeg == 1:
+                        img = image_util.decode_jpeg(data['images'][i])
+                    else:
+                        img = data['images'][i]
+                    img_feat = image_util.preprocess_img(
+                        img, settings.img_mean, settings.img_size,
+                        settings.is_train, settings.color)
+                    label = data['labels'][i]
+                    yield img_feat.astype('float32'), int(label)

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Projection.h"
 
 namespace paddle {
@@ -29,7 +28,8 @@ namespace paddle {
 class DotMulProjection : public Projection {
 public:
   DotMulProjection(const ProjectionConfig& config,
-                   const ParameterPtr& parameter, bool useGpu);
+                   const ParameterPtr& parameter,
+                   bool useGpu);
   virtual void forward();
   virtual void backward(const UpdateCallback& callback);
 
@@ -41,7 +41,8 @@ protected:
 REGISTER_PROJECTION(dot_mul, DotMulProjection);
 
 DotMulProjection::DotMulProjection(const ProjectionConfig& config,
-                                   const ParameterPtr& parameter, bool useGpu)
+                                   const ParameterPtr& parameter,
+                                   bool useGpu)
     : Projection(config, parameter, useGpu) {
   weight_.reset(new Weight(1LU, config.output_size(), parameter));
 }

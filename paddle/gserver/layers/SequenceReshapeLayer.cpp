@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
@@ -69,8 +68,7 @@ void SequenceReshapeLayer::forward(PassType passType) {
   size_t outDim = getSize();
 
   size_t numSequences = input.getNumSequences();
-  auto startPositions =
-      input.sequenceStartPositions->getVector(false);
+  auto startPositions = input.sequenceStartPositions->getVector(false);
   const int* starts = startPositions->getData();
 
   CHECK_EQ(starts[numSequences], input.getBatchSize());
@@ -96,9 +94,7 @@ void SequenceReshapeLayer::forward(PassType passType) {
 
     // modify the sequenceStartPositions
     ICpuGpuVector::resizeOrCreate(
-        output_.sequenceStartPositions,
-        numSequences + 1,
-        false);
+        output_.sequenceStartPositions, numSequences + 1, false);
 
     int* tgtBuf = output_.sequenceStartPositions->getMutableData(false);
 
@@ -134,8 +130,11 @@ void SequenceReshapeLayer::backward(const UpdateCallback& callback) {
   REGISTER_TIMER_INFO("SequenceReshapeLayerBackward", getName().c_str());
 
   if (inputGrad) {
-    Matrix::resizeOrCreate(reshapedOutputGrad, inputGrad->getHeight(),
-                           inputGrad->getWidth(), false, useGpu_);
+    Matrix::resizeOrCreate(reshapedOutputGrad,
+                           inputGrad->getHeight(),
+                           inputGrad->getWidth(),
+                           false,
+                           useGpu_);
     reshapedOutputGrad->copyFrom(*outputGrad);
     inputGrad->add(*reshapedOutputGrad);
   }

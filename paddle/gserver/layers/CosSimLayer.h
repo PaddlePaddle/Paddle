@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Layer.h"
@@ -35,8 +34,7 @@ namespace paddle {
  */
 class CosSimLayer : public Layer {
 public:
-  explicit CosSimLayer(const LayerConfig& config)
-      : Layer(config) {}
+  explicit CosSimLayer(const LayerConfig& config) : Layer(config) {}
 
   ~CosSimLayer() {}
 

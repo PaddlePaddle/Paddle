@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_MATRIX_STUB_H_
 #define HL_MATRIX_STUB_H_
 
@@ -26,36 +25,30 @@ inline void hl_matrix_add(real* A_d,
                           real alpha,
                           real beta) {}
 
-inline void hl_matrix_softmax(real *A_d, real *C_d, int dimM, int dimN) {}
+inline void hl_matrix_softmax(real* A_d, real* C_d, int dimM, int dimN) {}
 
-inline void hl_sequence_softmax_forward(real *A_d,
-                                        real *C_d,
+inline void hl_sequence_softmax_forward(real* A_d,
+                                        real* C_d,
                                         const int* index,
                                         int numSequence) {}
 
-inline void hl_matrix_softmax_derivative(real* grad_d,
-                                         real* output_d,
-                                         real* sftmaxSum_d,
-                                         int dimM,
-                                         int dimN) {}
+inline void hl_matrix_softmax_derivative(
+    real* grad_d, real* output_d, real* sftmaxSum_d, int dimM, int dimN) {}
 
-inline void hl_matrix_classification_error(real* A_d,
-                                           int* B_d,
-                                           real* C_d,
-                                           int dimM,
-                                           int dimN) {}
+inline void hl_matrix_classification_error(
+    real* A_d, int* B_d, real* C_d, int dimM, int dimN) {}
 
-inline void hl_matrix_cross_entropy(real* A_d,
-                                    real* C_d,
-                                    int* label_d,
-                                    int dimM,
-                                    int dimN) {}
+inline void hl_matrix_cross_entropy(
+    real* A_d, real* C_d, int* label_d, int dimM, int dimN) {}
 
-inline void hl_matrix_cross_entropy_bp(real* grad_d,
-                                       real* output_d,
-                                       int* label_d,
-                                       int dimM,
-                                       int dimN) {}
+inline void hl_matrix_cross_entropy_bp(
+    real* grad_d, real* output_d, int* label_d, int dimM, int dimN) {}
+
+inline void hl_matrix_multi_binary_cross_entropy(
+    real* output, real* entropy, hl_sparse_matrix_s mat, int dimM, int dimN) {}
+
+inline void hl_matrix_multi_binary_cross_entropy_bp(
+    real* output, real* grad, hl_sparse_matrix_s mat, int dimM, int dimN) {}
 
 inline void hl_matrix_zero_mem(real* data, int num) {}
 
@@ -89,7 +82,6 @@ inline void hl_cossim(real* output,
                       int input2_height,
                       real scale) {}
 
-
 inline void hl_cossim_derivative(real* grad,
                                  real* output,
                                  real* prevOutX,
@@ -101,4 +93,17 @@ inline void hl_cossim_derivative(real* grad,
                                  int input2_height,
                                  real scale) {}
 
+inline void hl_matrix_add_shared_bias(real* A_d,
+                                      real* B_d,
+                                      const int channel,
+                                      const int dimM,
+                                      const int dimN,
+                                      real scale) {}
+
+inline void hl_matrix_collect_shared_bias(real* B_d,
+                                          real* A_d,
+                                          const int channel,
+                                          const int dimM,
+                                          const int dimN,
+                                          real scale) {}
 #endif  // HL_MATRIX_STUB_H_

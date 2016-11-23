@@ -8,14 +8,13 @@ import tflearn
 from tflearn.data_utils import to_categorical, pad_sequences
 from tflearn.datasets import imdb
 
-
 FLAGS = tf.app.flags.FLAGS
+
 
 class DataSet(object):
     def __init__(self, data, labels):
         assert data.shape[0] == labels.shape[0], (
-            'data.shape: %s labels.shape: %s' % (data.shape,
-                                                 labels.shape))
+            'data.shape: %s labels.shape: %s' % (data.shape, labels.shape))
         self._num_examples = data.shape[0]
 
         self._data = data
@@ -64,8 +63,11 @@ class DataSet(object):
 def create_datasets(file_path, vocab_size=30000, val_fraction=0.0):
 
     # IMDB Dataset loading
-    train, test, _ = imdb.load_data(path=file_path, n_words=vocab_size,
-                                valid_portion=val_fraction, sort_by_len=False)
+    train, test, _ = imdb.load_data(
+        path=file_path,
+        n_words=vocab_size,
+        valid_portion=val_fraction,
+        sort_by_len=False)
     trainX, trainY = train
     testX, testY = test
 
