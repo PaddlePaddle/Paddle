@@ -32,10 +32,10 @@ limitations under the License. */
 
 /**
  * Generate Unique Variable Name, Usefully in macro.
- * @SEE http://stackoverflow.com/questions/1082192/how-to-generate-random-variable-names-in-c-using-macros
+ * @SEE
+ * http://stackoverflow.com/questions/1082192/how-to-generate-random-variable-names-in-c-using-macros
  */
 #define UNIQUE_NAME(base) PP_CAT(base, __LINE__)
-
 
 namespace paddle {
 
@@ -175,7 +175,7 @@ void installFailureFunction(void (*callback)() ATTR_NORETURN);
  * @brief installFailureWriter
  * @note: not implemented currently.
  */
-inline void installFailureWriter(void(*callback)(const char*, int)) {
+inline void installFailureWriter(void (*callback)(const char*, int)) {
   (void)(callback);  // unused callback.
 }
 }  //  namespace logging
@@ -187,7 +187,7 @@ void initializeLogging(int argc, char** argv);
 namespace logging {
 void setMinLogLevel(int level);
 void installFailureFunction(void (*callback)());
-void installFailureWriter(void(*callback)(const char*, int));
+void installFailureWriter(void (*callback)(const char*, int));
 }  //  namespace logging
 }
 #endif  // PADDLE_USE_GLOG

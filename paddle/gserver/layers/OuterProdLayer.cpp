@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
@@ -58,12 +57,15 @@ bool OuterProdLayer::init(const LayerMap& layerMap,
 
   CHECK_EQ(dim0 * dim1, getSize()) << "Dimension mismatch";
 
-  tmpRow0 = Matrix::create(nullptr, /* height= */ 1, dim0, /* trans= */ false,
+  tmpRow0 = Matrix::create(
+      nullptr, /* height= */ 1, dim0, /* trans= */ false, useGpu_);
+  tmpRow1 = Matrix::create(
+      nullptr, /* height= */ 1, dim1, /* trans= */ false, useGpu_);
+  tmpMtx0 = Matrix::create(nullptr,
+                           /* height= */ dim0,
+                           dim1,
+                           /* trans= */ false,
                            useGpu_);
-  tmpRow1 = Matrix::create(nullptr, /* height= */ 1, dim1, /* trans= */ false,
-                           useGpu_);
-  tmpMtx0 = Matrix::create(nullptr, /* height= */ dim0, dim1,
-                           /* trans= */ false, useGpu_);
   return true;
 }
 

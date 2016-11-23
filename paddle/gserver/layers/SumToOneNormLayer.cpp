@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
@@ -21,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * A layer for sum-to-one normalization, 
+ * A layer for sum-to-one normalization,
  * which is used in NEURAL TURING MACHINE.
  * \f[
  *   out[i] = \frac {in[i]} {\sum_{k=1}^N in[k]}

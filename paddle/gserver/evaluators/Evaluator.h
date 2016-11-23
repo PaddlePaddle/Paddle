@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/pserver/ParameterClient2.h"
@@ -110,7 +109,7 @@ public:
     return os;
   }
 
-  friend std::ostream&& operator<<(std::ostream&& os,    // NOLINT
+  friend std::ostream&& operator<<(std::ostream&& os,  // NOLINT
                                    const Evaluator& evaluator) {
     evaluator.printStats(os);
     return std::move(os);
@@ -184,7 +183,9 @@ private:
 
   AucEvaluator() {}
 
-  inline static double trapezoidArea(double X1, double X2, double Y1,
+  inline static double trapezoidArea(double X1,
+                                     double X2,
+                                     double Y1,
                                      double Y2) {
     return (X1 > X2 ? (X1 - X2) : (X2 - X1)) * (Y1 + Y2) / 2.0;
   }
@@ -218,7 +219,9 @@ private:
   MatrixPtr pv_;
   std::vector<std::pair<real, int>> outputPair_;
 
-  double calcRankAuc(real* outputData, real* clickData, real* pvData,
+  double calcRankAuc(real* outputData,
+                     real* clickData,
+                     real* pvData,
                      size_t size);
 };
 /**
@@ -269,10 +272,12 @@ private:
   IVectorPtr cpuLabel_;
   MatrixPtr cpuWeight_;
 
-  void calcStatsInfo(const MatrixPtr& output, const IVectorPtr& label,
+  void calcStatsInfo(const MatrixPtr& output,
+                     const IVectorPtr& label,
                      const MatrixPtr& weight);
 
-  void calcStatsInfoMulti(const MatrixPtr& output, const MatrixPtr& label,
+  void calcStatsInfoMulti(const MatrixPtr& output,
+                          const MatrixPtr& label,
                           const MatrixPtr& weight);
 
   inline static double calcPrecision(double TP, double FP) {
@@ -333,8 +338,12 @@ public:
     }
   }
 
-  void stat(size_t start, size_t end, PredictionResult* answers, double& pos,
-            double& neg, double& spe);
+  void stat(size_t start,
+            size_t end,
+            PredictionResult* answers,
+            double& pos,
+            double& neg,
+            double& spe);
   void calc(std::vector<PredictionResult>& predictArray);
 
   virtual void finish() { calc(predictArray_); }

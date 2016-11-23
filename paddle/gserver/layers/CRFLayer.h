@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <memory>
@@ -39,7 +38,7 @@ protected:
   ParameterPtr parameter_;
   std::vector<LinearChainCRF> crfs_;
   LayerPtr weightLayer_;  // weight for each sequence
-  real coeff_;  // weight for the layer
+  real coeff_;            // weight for the layer
 };
 
 }  // namespace paddle

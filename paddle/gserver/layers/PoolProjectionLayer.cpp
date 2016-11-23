@@ -18,7 +18,6 @@ limitations under the License. */
 
 namespace paddle {
 
-
 size_t PoolProjectionLayer::getSize() {
   CHECK_EQ(inputLayers_.size(), 1UL);
   size_t layerSize = 0;
@@ -31,9 +30,15 @@ size_t PoolProjectionLayer::getSize() {
     imgSizeW_ = imgSize_;
   }
 
-  outputH_ = outputSize(imgSizeH_, sizeY_, confPaddingY_, strideY_,
+  outputH_ = outputSize(imgSizeH_,
+                        sizeY_,
+                        confPaddingY_,
+                        strideY_,
                         /* caffeMode */ false);
-  outputW_ = outputSize(imgSizeW_, sizeX_, confPadding_, stride_,
+  outputW_ = outputSize(imgSizeW_,
+                        sizeX_,
+                        confPadding_,
+                        stride_,
                         /* caffeMode */ false);
 
   layerSize = outputH_ * outputW_ * channels_;

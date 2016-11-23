@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <random>
 
 #include <gtest/gtest.h>
@@ -43,7 +42,7 @@ TEST(MultinomialSampler, gen) {
   int size = 1024 * 4;
   default_random_engine reng;
 
-  for (size_t iter=0; iter < 256; ++iter) {
+  for (size_t iter = 0; iter < 256; ++iter) {
     uniform_int_distribution<int> rand(1, numGrids / size * 1.8);
     vector<real> prob;
     int sum = 0;
@@ -137,7 +136,6 @@ void benchmarkRandom() {
   }
   LOG(INFO) << "sum1=" << sum1;
 }
-
 
 int main(int argc, char** argv) {
   initMain(argc, argv);

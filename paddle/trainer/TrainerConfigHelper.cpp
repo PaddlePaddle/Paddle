@@ -29,9 +29,8 @@ P_DECLARE_bool(with_gpu);
 P_DECLARE_bool(parallel_nn);
 P_DECLARE_string(config_args);
 
-
-const char* kConfigParserModuleName = "paddle.trainer.config_parser";
-const char* kConfigParserFuncName = "parse_config_and_serialize";
+const char *kConfigParserModuleName = "paddle.trainer.config_parser";
+const char *kConfigParserFuncName = "parse_config_and_serialize";
 
 namespace paddle {
 
@@ -40,12 +39,10 @@ struct TrainerConfigHelperPrivate {
 };
 
 TrainerConfigHelper::TrainerConfigHelper(const std::string &configFilePath)
-  :m(new TrainerConfigHelperPrivate()) {
+    : m(new TrainerConfigHelperPrivate()) {
   std::ostringstream configArgs;
-  configArgs << "trainer_id=" << FLAGS_trainer_id
-             << ",local=" << FLAGS_local
-             << ",with_cost=" << FLAGS_with_cost
-             << ",use_gpu=" << FLAGS_use_gpu
+  configArgs << "trainer_id=" << FLAGS_trainer_id << ",local=" << FLAGS_local
+             << ",with_cost=" << FLAGS_with_cost << ",use_gpu=" << FLAGS_use_gpu
              << ",parallel_nn=" << FLAGS_parallel_nn
              << ",cudnn_version=" << hl_get_cudnn_lib_version();
   if (!FLAGS_config_args.empty()) {
@@ -54,16 +51,16 @@ TrainerConfigHelper::TrainerConfigHelper(const std::string &configFilePath)
 
   VLOG(3) << "Parsing trainer config " << configFilePath;
   std::string configProtoStr =
-      callPythonFunc(kConfigParserModuleName, kConfigParserFuncName,
+      callPythonFunc(kConfigParserModuleName,
+                     kConfigParserFuncName,
                      {configFilePath, configArgs.str()});
   CHECK(m->conf.ParseFromString(configProtoStr));
 }
 
-TrainerConfigHelper::TrainerConfigHelper(const TrainerConfig& config)
-  :m(new TrainerConfigHelperPrivate()) {
+TrainerConfigHelper::TrainerConfigHelper(const TrainerConfig &config)
+    : m(new TrainerConfigHelperPrivate()) {
   m->conf = config;
 }
-
 
 TrainerConfigHelper::~TrainerConfigHelper() {
   if (m) {
@@ -71,14 +68,9 @@ TrainerConfigHelper::~TrainerConfigHelper() {
   }
 }
 
-const TrainerConfig &
-TrainerConfigHelper::getConfig() const {
-  return m->conf;
-}
+const TrainerConfig &TrainerConfigHelper::getConfig() const { return m->conf; }
 
-TrainerConfig& TrainerConfigHelper::getMutableConfig() {
-  return m->conf;
-}
+TrainerConfig &TrainerConfigHelper::getMutableConfig() { return m->conf; }
 
 const OptimizationConfig &TrainerConfigHelper::getOptConfig() const {
   return m->conf.opt_config();
@@ -173,8 +165,7 @@ std::string TrainerConfigHelper::getConfigName(bool *ok) const {
   } else if (!m->conf.init_model_path().empty()) {
     retv = getConfigNameFromPath(m->conf.init_model_path());
   } else if (m->conf.start_pass() >= 1) {
-    retv = getConfigNameFromPassId(m->conf.start_pass(),
-                                   m->conf.save_dir());
+    retv = getConfigNameFromPassId(m->conf.start_pass(), m->conf.save_dir());
   }
 
   if (ok) {
@@ -191,8 +182,8 @@ std::shared_ptr<TrainerConfigHelper> TrainerConfigHelper::createFromFlags() {
   } else if (!FLAGS_init_model_path.empty()) {
     configPath = getConfigNameFromPath(FLAGS_init_model_path);
   } else if (FLAGS_start_pass >= 1) {
-    configPath = getConfigNameFromPassId(FLAGS_start_pass - 1,
-                                         FLAGS_init_model_path);
+    configPath =
+        getConfigNameFromPassId(FLAGS_start_pass - 1, FLAGS_init_model_path);
   } else {
     return nullptr;
   }

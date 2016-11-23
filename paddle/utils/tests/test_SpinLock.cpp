@@ -21,17 +21,18 @@ limitations under the License. */
 
 P_DEFINE_int32(test_thread_num, 100, "testing thread number");
 
-void testNormalImpl(size_t thread_num, const std::function
-    <void(size_t, size_t&, paddle::SpinLock&)>& callback) {
+void testNormalImpl(
+    size_t thread_num,
+    const std::function<void(size_t, size_t&, paddle::SpinLock&)>& callback) {
   paddle::SpinLock mutex;
   std::vector<std::thread> threads;
   threads.reserve(thread_num);
 
   size_t count = 0;
   for (size_t i = 0; i < thread_num; ++i) {
-      threads.emplace_back([&thread_num, &count, &mutex, &callback]{
-          callback(thread_num, count, mutex);
-      });
+    threads.emplace_back([&thread_num, &count, &mutex, &callback] {
+      callback(thread_num, count, mutex);
+    });
   }
   for (auto& thread : threads) {
     thread.join();
@@ -41,12 +42,13 @@ void testNormalImpl(size_t thread_num, const std::function
 }
 
 TEST(ThreadSpinLock, normalTest) {
-  for (auto &thread_num : {10, 30, 50 , 100 , 300, 1000}) {
-    testNormalImpl(thread_num, [](size_t thread_num,
-        size_t& count, paddle::SpinLock& mutex){
-        std::lock_guard<paddle::SpinLock> lock(mutex);
-        ++count;
-    });
+  for (auto& thread_num : {10, 30, 50, 100, 300, 1000}) {
+    testNormalImpl(
+        thread_num,
+        [](size_t thread_num, size_t& count, paddle::SpinLock& mutex) {
+          std::lock_guard<paddle::SpinLock> lock(mutex);
+          ++count;
+        });
   }
 }
 
