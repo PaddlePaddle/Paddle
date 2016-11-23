@@ -791,21 +791,24 @@ void setPoolConfig(TestConfig* config, PoolConfig* pool,
   (*config).biasSize = 0;
   (*config).layerConfig.set_type("pool");
   (*config).layerConfig.set_num_filters(16);
-  (*config).layerConfig.set_partial_sum(1);
-  (*config).layerConfig.set_shared_biases(true);
 
+  int kw = 3, kh = 3;
+  int pw = 0, ph = 0;
+  int sw = 2, sh = 2;
   pool->set_pool_type(poolType);
   pool->set_channels(16);
-  pool->set_size_x(3);
-  if (poolType == "cudnn-max-pool" || poolType == "cudnn-avg-pool") {
-    pool->set_padding(0);
-  } else {
-    pool->set_start(0);
-  }
-  pool->set_stride(2);
-  pool->set_output_x((pool->img_size() - pool->start() - pool->size_x()) /
-                         ((float)pool->stride()) +
-                     1.5);
+  pool->set_size_x(kw);
+  pool->set_size_y(kh);
+  pool->set_start(0);
+  pool->set_padding(pw);
+  pool->set_padding_y(ph);
+  pool->set_stride(sw);
+  pool->set_stride_y(sh);
+
+  int ow = (pool->img_size() - kw + 2 * pw + sw - 1) / sw + 1;
+  int oh = (pool->img_size_y() - kh + 2 * ph + sh - 1) / sh + 1;
+  pool->set_output_x(ow);
+  pool->set_output_y(oh);
 }
 
 void testPoolLayer(const string& poolType, bool trans, bool useGpu) {
@@ -814,9 +817,10 @@ void testPoolLayer(const string& poolType, bool trans, bool useGpu) {
   LayerInputConfig* input = config.layerConfig.add_inputs();
   PoolConfig* pool = input->mutable_pool_conf();
 
-  setPoolConfig(&config, pool, poolType);
   pool->set_img_size(14);
-  config.layerConfig.set_size(pool->output_x() * pool->output_x() *
+  pool->set_img_size_y(14);
+  setPoolConfig(&config, pool, poolType);
+  config.layerConfig.set_size(pool->output_x() * pool->output_y() *
                               pool->channels());
 
   testLayerGrad(config, "pool", 100, trans, useGpu);
@@ -829,11 +833,11 @@ void testPoolLayer2(const string& poolType, bool trans, bool useGpu) {
   LayerInputConfig* input = config.layerConfig.add_inputs();
   PoolConfig* pool = input->mutable_pool_conf();
 
-  setPoolConfig(&config, pool, poolType);
   pool->set_size_y(4);
   pool->set_stride_y(3);
   pool->set_img_size(10);
   pool->set_img_size_y(20);
+  setPoolConfig(&config, pool, poolType);
   pool->set_output_y((pool->img_size_y() - pool->start() - pool->size_y()) /
                          ((float)pool->stride_y()) +
                      1.5);
@@ -1251,8 +1255,6 @@ TEST(Layer, MultiplexLayer) {
     testLayerGrad(config, "multiplex", 512, /* trans= */ false, useGpu);
   }
 }
-
-
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

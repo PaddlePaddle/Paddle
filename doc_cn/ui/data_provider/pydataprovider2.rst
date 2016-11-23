@@ -141,8 +141,6 @@ DataProvider创建的时候执行。这个初始化函数具有如下参数:
    是一个batch size，但是有时为了计算均衡性，可以将一条数据设置成多个batch size
 *  cache 是数据缓存的策略，参考 `cache`_
 *  init_hook 是初始化时调用的函数，参考 `init_hook`_
-*  use_dynamic_order 如果是true的话，可以返回一个dict，key是data_layer的名字，value是特征值。同时，也可以
-   返回一个list或者tuple。如果是false的话，只能够返回list或者tuple
 *  check 设置成true的话，会根据input_types检查数据的合法性。
 *  check_fail_continue 如果设置成true的话，即使在check中数据不合法，也会扔到这条数据，继续训练。 如果
    check是false的话，没有作用。

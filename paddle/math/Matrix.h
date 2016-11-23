@@ -253,7 +253,7 @@ public:
     LOG(FATAL) << "copy data from int vector only available on CpuMatrix.";
   }
 
-  virtual void copyByRowIndex(Matrix& b, IVector& rowIndex) {
+  virtual void copyByRowIndex(Matrix& b, const IVector& rowIndex) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -742,31 +742,37 @@ public:
    */
   virtual void maxPoolForward(Matrix& inputMat, size_t imgSizeH,
                               size_t imgSizeW, size_t channels, size_t sizeX,
-                              int start_, size_t stride, size_t outputH,
-                              size_t outputW) {
+                              size_t sizeY, size_t strideH, size_t strideW,
+                              size_t outputH, size_t outputW,
+                              size_t paddingH, size_t paddingW) {
     LOG(FATAL) << "Not implemeted";
   }
 
   /// Pooling backward operation.
   virtual void maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
                                Matrix& outGrad, Matrix& outV, size_t sizeX,
-                               int start, size_t stride, size_t outputH,
-                               size_t outputW, real scaleTargets,
-                               real scaleOutput) {
+                               size_t sizeY, size_t strideH, size_t strideW,
+                               size_t outputH, size_t outputW,
+                               real scaleTargets, real scaleOutput,
+                               size_t paddingH, size_t paddingW) {
     LOG(FATAL) << "Not implemeted";
   }
 
   /// Pooling forward operation, caculate the average of sizeX elements.
   virtual void avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                              size_t channels, size_t sizeX, int start,
-                              size_t stride, size_t outputH, size_t outputW) {
+                              size_t channels, size_t sizeX, size_t sizeY,
+                              size_t strideH, size_t strideW,
+                              size_t outputH, size_t outputW,
+                              size_t paddingH, size_t paddingW) {
     LOG(FATAL) << "Not implemeted";
   }
 
   virtual void avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                               size_t sizeX, int start, size_t stride,
+                               size_t sizeX, size_t sizeY,
+                               size_t strideH, size_t strideW,
                                size_t outputH, size_t outputW,
-                               real scaleTargets, real scaleOutput) {
+                               real scaleTargets, real scaleOutput,
+                               size_t paddingH, size_t paddingW) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -973,7 +979,7 @@ public:
 
   void copyFrom(const IVector& src);
 
-  void copyByRowIndex(Matrix& b, IVector& rowIndex);
+  void copyByRowIndex(Matrix& b, const IVector& rowIndex);
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
 
@@ -1131,21 +1137,30 @@ public:
                   real alpha = 1.0f, real beta = 0.0f);
 
   void maxPoolForward(Matrix& inputMat, size_t imgSizeH, size_t imgSizeW,
-                      size_t channels, size_t sizeX, int start_, size_t stride,
-                      size_t outputH, size_t outputW);
+                      size_t channels, size_t sizeX, size_t sizeY,
+                      size_t strideH, size_t strideW,
+                      size_t outputH, size_t outputW,
+                      size_t paddingH, size_t paddingW);
 
   void maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
-                       Matrix& outGrad, Matrix& outV, size_t sizeX, int start,
-                       size_t stride, size_t outputH, size_t outputW,
-                       real scaleTargets, real scaleOutput);
+                       Matrix& outGrad, Matrix& outV, size_t sizeX,
+                       size_t sizeY, size_t strideH, size_t strideW,
+                       size_t outputH, size_t outputW,
+                       real scaleTargets, real scaleOutput,
+                       size_t paddingH, size_t paddingW);
 
   void avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                      size_t channels, size_t sizeX, int start, size_t stride,
-                      size_t outputH, size_t outputW);
+                      size_t channels, size_t sizeX, size_t sizeY,
+                      size_t strideH, size_t strideW,
+                      size_t outputH, size_t outputW,
+                      size_t paddingH, size_t paddingW);
 
   void avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                       size_t sizeX, int start, size_t stride, size_t outputH,
-                       size_t outputW, real scaleTargets, real scaleOutput);
+                       size_t sizeX, size_t sizeY,
+                       size_t strideH, size_t strideW,
+                       size_t outputH, size_t outputW,
+                       real scaleTargets, real scaleOutput,
+                       size_t paddingH, size_t paddingW);
 
   void crossMapNormalFwd(Matrix& input, size_t imgSizeH, size_t imgSizeW,
                          Matrix& denoms, size_t channels, size_t sizeX,
@@ -1226,7 +1241,7 @@ public:
 
   void copyFrom(CpuSparseMatrix& src);
 
-  void copyByRowIndex(Matrix& b, IVector& rowIndex);
+  void copyByRowIndex(Matrix& b, const IVector& rowIndex);
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
 
@@ -1242,21 +1257,31 @@ public:
                   real alpha = 1.0f, real beta = 0.0f);
 
   void maxPoolForward(Matrix& inputMat, size_t imgSizeH, size_t imgSizeW,
-                      size_t channels, size_t sizeX, int start_, size_t stride,
-                      size_t outputH, size_t outputW);
+                      size_t channels, size_t sizeX, size_t sizeY,
+                      size_t strideH, size_t strideW,
+                      size_t outputH, size_t outputW,
+                      size_t paddingH, size_t paddingW);
 
   void maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
-                       Matrix& outGrad, Matrix& outV, size_t sizeX, int start,
-                       size_t stride, size_t outputH, size_t outputW,
-                       real scaleTargets, real scaleOutput);
+                       Matrix& outGrad, Matrix& outV,
+                       size_t sizeX, size_t sizeY,
+                       size_t strideH, size_t strideW,
+                       size_t outputH, size_t outputW,
+                       real scaleTargets, real scaleOutput,
+                       size_t paddingH, size_t paddingW);
 
   void avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                      size_t channels, size_t sizeX, int start, size_t stride,
-                      size_t outputH, size_t outputW);
+                      size_t channels, size_t sizeX, size_t sizeY,
+                      size_t strideH, size_t strideW,
+                      size_t outputH, size_t outputW,
+                      size_t paddingH, size_t paddingW);
 
   void avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                       size_t sizeX, int start, size_t stride, size_t outputH,
-                       size_t outputW, real scaleTargets, real scaleOutput);
+                       size_t sizeX, size_t sizeY,
+                       size_t strideH, size_t strideW,
+                       size_t outputH, size_t outputW,
+                       real scaleTargets, real scaleOutput,
+                       size_t paddingH, size_t paddingW);
 
   void crossMapNormalFwd(Matrix& input, size_t imgSizeH, size_t imgSizeW,
                          Matrix& denoms, size_t channels, size_t sizeX,

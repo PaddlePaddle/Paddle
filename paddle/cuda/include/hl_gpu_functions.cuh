@@ -28,7 +28,7 @@ namespace hppl {
     const real min = SIGMOID_THRESHOLD_MIN;
     const real max = SIGMOID_THRESHOLD_MAX;
     real tmp = (a < min) ? min : ((a > max) ? max : a);
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
     return __fdividef(1.0f, 1.0f + __expf(-tmp));
 #else
     return 1.0 / (1.0 + exp(-tmp));
@@ -36,7 +36,7 @@ namespace hppl {
   }
 
   __device__ static real tanh(const real a) {
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
     return __fdividef(2.0f, (1.0f + __expf(-2.0f*a))) - 1.0f;
 #else
     return (2.0 / (1.0 + exp(-2.0*a))) - 1.0;

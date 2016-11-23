@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/utils/Util.h"
 
 #include "paddle/utils/Logging.h"
+#include "paddle/math/SparseMatrix.h"
 
 #include "AddtoLayer.h"
 #include "CosSimLayer.h"
@@ -290,14 +291,30 @@ void Layer::showOutputStats() {
               << " is 0, skip to show the statistics";
     return;
   }
-  real mean = out->getSum() / out->getElementCnt();
-  MatrixPtr outSquare = out->clone();
-  outSquare->copyFrom(*out);
+  MatrixPtr outSquare;
+  if (dynamic_cast<GpuSparseMatrix*>(out.get())) {
+    GpuSparseMatrix *tmp = dynamic_cast<GpuSparseMatrix*>(out.get());
+    outSquare = std::make_shared<CpuSparseMatrix>(
+      tmp->getHeight(), tmp->getWidth(), tmp->getElementCnt(),
+      tmp->getValueType(), tmp->getFormat());
+  } else {
+    outSquare = out->clone();
+  }
+  outSquare->copyFrom(*out, HPPL_STREAM_DEFAULT);
+  hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+
+  real mean = outSquare->getSum() / out->getElementCnt();
+  real min;
+  real max;
   if (dynamic_cast<CpuSparseMatrix*>(outSquare.get())) {
     auto tmpMat = dynamic_cast<CpuSparseMatrix*>(outSquare.get());
+    min = tmpMat->getMin();
+    max = tmpMat->getMax();
     tmpMat->square();
     LOG(INFO) << "show statistics of [none zero values] in sparse matrix";
   } else {
+    min = outSquare->getMin();
+    max = outSquare->getMax();
     outSquare->square();
   }
   real std = (outSquare->getSum() / outSquare->getElementCnt()) - mean * mean;
@@ -306,8 +323,8 @@ void Layer::showOutputStats() {
             << ", "
             << "std=" << std
             << ", "
-            << "min=" << out->getMin() << ", "
-            << "max=" << out->getMax();
+            << "min=" << min << ", "
+            << "max=" << max;
 }
 
 void Layer::forwardActivation() {

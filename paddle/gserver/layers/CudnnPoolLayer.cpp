@@ -51,7 +51,6 @@ bool CudnnPoolLayer::init(const LayerMap &layerMap,
   PoolLayer::init(layerMap, parameterMap);
 
   CHECK(useGpu_) << "CudnnPoolLayer only support gpu";
-  CHECK_EQ(start_, 0) << poolType_ << " dose not support 'start'";
 
   hl_create_tensor_descriptor(&inputDesc_);
   hl_create_tensor_descriptor(&outputDesc_);
