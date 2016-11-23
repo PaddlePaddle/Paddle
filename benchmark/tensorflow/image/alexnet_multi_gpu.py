@@ -279,7 +279,6 @@ def run_benchmark():
                                     staircase=True)
 
     # Create an optimizer that performs gradient descent.
-    # opt = tf.train.GradientDescentOptimizer(lr)
     opt = tf.train.MomentumOptimizer(lr, 0.9)
 
     # Calculate the gradients for each model tower.

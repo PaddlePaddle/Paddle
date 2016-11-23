@@ -1,5 +1,8 @@
 set -e
 
+# If use `paddle train` to run, it must use DataProvider to
+# pass the data type to PaddlePaddle system.
+# And PaddlePaddle requires training set list (train.list),
 function gen_file() {
   if [ ! -d "train.txt" ]; then
     for ((i=1;i<=1024;i++))
@@ -26,7 +29,6 @@ function train() {
     --log_period=10 \
     --test_period=100 \
     --config_args=$args \
-    --cudnn_dir=/home/dangqingqing/tools/cudnn-5.1/lib64 \
     > logs/$prefix-${thread}gpu-$bz.log 2>&1 
 }
 
@@ -52,3 +54,12 @@ train smallnet_mnist_cifar.py 1 64 smallnet
 train smallnet_mnist_cifar.py 1 128 smallnet
 train smallnet_mnist_cifar.py 1 256 smallnet
 train smallnet_mnist_cifar.py 1 512 smallnet
+
+
+############################
+#========multi-gpus=========#
+train alexnet.py 4 512 alexnet
+train alexnet.py 4 1024 alexnet
+
+train googlenet.py 4 512 googlenet 
+train googlenet.py 4 1024 googlenet

@@ -36,3 +36,15 @@ train rnn.py 1 2 1 1280 128
 train rnn.py 1 2 1 256 256 
 train rnn.py 1 2 1 512 256 
 train rnn.py 1 2 1 1280 256 
+
+
+#==================multi gpus=====================#
+# hidden_size=256, lstm_num=2, different batch size
+train rnn.py 4 2 1 256 128 
+train rnn.py 4 2 1 256 256 
+train rnn.py 4 2 1 256 512 
+
+# hidden_size=512, lstm_num=4, different batch size
+train rnn.py 4 2 1 512 128 
+train rnn.py 4 2 1 512 256 
+train rnn.py 4 2 1 512 512 

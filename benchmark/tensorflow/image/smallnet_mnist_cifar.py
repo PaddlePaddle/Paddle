@@ -222,7 +222,6 @@ def run_benchmark():
     objective = loss(last_layer, labels)
 
     # Compute gradients.
-    # opt = tf.train.GradientDescentOptimizer(0.001)
     opt = tf.train.MomentumOptimizer(0.001, 0.9)
     grads = opt.compute_gradients(objective) 
     global_step = tf.get_variable('global_step', [],

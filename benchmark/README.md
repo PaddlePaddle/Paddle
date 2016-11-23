@@ -7,19 +7,19 @@ Machine:
 - cuDNN: v5.1
 - system: Docker 1.12.1, all platform are tested in docker environment.
 
-Platform: 
+Platforms: 
 
 - PaddlePaddle: 
 - Tensorflow: gcr.io/tensorflow/tensorflow:0.11.0rc0-gpu 
-- Caffe: 
+- Caffe: kaixhin/cuda-caffe
 
-Several convolutional neural networks and recurrent neural network are used to test.
+Several convolutional neural networks and recurrent neural networks are used to test.
 
 ## Image
 
 ### Benchmark Model
 
-AlexNet, GooleNet and a small network which refer the config of cifar10 in Caffe are used.
+AlexNet, GoogleNet and a small network used in Caffe.
 
 - [AlexNet](https://github.com/BVLC/caffe/tree/master/models/bvlc_alexnet): but the group size is one.
 
@@ -38,9 +38,9 @@ AlexNet, GooleNet and a small network which refer the config of cifar10 in Caffe
 | TensorFlow   | 223 | 364  | 645   | 1235 |
 | Caffe        | 324 | 627  | 1232  | 2513 |
  
-##### Notation
+**Notation**
 
-All platforms use cuDnn-v5.1. You might see that caffe is slower, because the workspace limit size is 8 * 1024 * 1024 in Caffe's cuDnn-conv interface. This size is larger in PaddlePaddle and TensorFlow. Caffe will be faster if increasing the workspace limit size.
+All platforms use cuDNN-v5.1. We see that caffe is slower in this experiment, because its workspace limit size of cuDNN-conv interface is 8 * 1024 * 1024, which is smaller in PaddlePaddle and TensorFlow. Note that Caffe will be faster if increasing the workspace limit size.
  
 - GoogletNet:  input - 3 * 224 * 224, Time: ms/batch
 
@@ -59,9 +59,9 @@ All platforms use cuDnn-v5.1. You might see that caffe is slower, because the wo
 | TensorFlow   | 9     | 15       | 28      | 59       |
 | Caffe        | 9.373  | 16.6606  | 31.4797 | 59.719  |
 
-##### Notation
+**Notation**
 
-All the tests in caffe use `caffe time` to execute, which is not including the parameter updating process. But the time in PaddlePaddle and TensorFlow contains it.
+All the experiments in caffe use `caffe time` to execute, which does not include the time of parameter updating. The time in PaddlePaddle and TensorFlow contains it. But, compared with the total time, the time of parameter updating is relatively little.
 
 In Tensorflow, they implement algorithm searching method instead of using the algorithm searching interface in cuDNN.
 
@@ -69,13 +69,13 @@ In Tensorflow, they implement algorithm searching method instead of using the al
 
 - AlexNet,  ms / batch
 
-| totoal-BatchSize | 128 * 4  | 256 * 4    |
+| total-BatchSize | 128 * 4  | 256 * 4    |
 |------------------|----------| -----------|
 | PaddlePaddle     | 347      | 622        |
 | TensorFlow       | 377      | 675        |
 | Caffe            | 1229     | 2435       |
 
-For example, if `totoal-BatchSize = 128 * 4`, the speed is calculated by 
+For example, if `total-BatchSize = 128 * 4`, the speedup ratio is calculated by 
 
 ```
   time_at_1gpu_batch_128 * 4 / time_at_4gpu_total_batch_512 
@@ -86,9 +86,9 @@ For example, if `totoal-BatchSize = 128 * 4`, the speed is calculated by
 <img src="figs/alexnet-4gpu.png" width="420">
 
 
-- GooleNet, ms / batch
+- GoogleNet, ms / batch
 
-| totoal-BatchSize  | 128 * 4      |  256 * 4    |
+| total-BatchSize  | 128 * 4      |  256 * 4    |
 |-------------------|--------------| ----------- |
 | PaddlePaddle      | 1178         | 2367        |
 | TensorFlow        | 1210         | 2292        |
@@ -102,7 +102,7 @@ We use lstm network for text classfication to test benchmark.
 
 ### Dataset
 -  [IMDB](http://www.iro.umontreal.ca/~lisa/deep/data/imdb.pkl)
-- Sequence legth=100, in fact, PaddlePaddle support training with variable-length sequence. But TensorFlow need to pad, in order to compare, we also pad sequence length to 100 in PaddlePaddle.
+- Sequence legth is 100. In fact, PaddlePaddle supports training with variable-length sequence, but TensorFlow needs to pad, we also pad sequence length to 100 in PaddlePaddle in order to compare.
 - Dictionary size=30000 
 - Peephole connection is used in `lstmemory` by default in PaddlePaddle. It is also configured in TensorFlow.
 
@@ -110,7 +110,7 @@ We use lstm network for text classfication to test benchmark.
 
 #### LSTM in Text Classification
 
-Testing network for different hidden size, batch size with `2 lstm layer + fc` network.
+Testing `2 lstm layer + fc` network with different hidden size and batch size.
   
 - Batch size = 64, ms / batch
  
@@ -138,7 +138,7 @@ Testing network for different hidden size, batch size with `2 lstm layer + fc` n
 
 #### Seq2Seq
 
-The benchmark of sequence-to-sequence network will be add later.
+The benchmark of sequence-to-sequence network will be added later.
  
 
 ### Multi GPU: 4 GPUs
@@ -165,4 +165,4 @@ The benchmark of sequence-to-sequence network will be add later.
 
 #### Seq2Seq
 
-The benchmark of sequence-to-sequence network will be add later.
+The benchmark of sequence-to-sequence network will be added later.
