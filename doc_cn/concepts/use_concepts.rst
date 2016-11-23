@@ -15,7 +15,7 @@ PaddlePaddle是一个深度学习框架，支持单机模式和多机模式。
 系统框图
 ========
 
-下图描述了用户使用框图，PaddlePaddle里链接了Python解释器，trainer进程可以利用这个解释器执行Python脚本，Python脚本里定义了模型配置、训练算法、以及数据读取函数。其中，数据读取程序往往定义在一个单独Python脚本文件里，被称为DataProvider，通常是一个Python函数。模型配置、训练算法通常定义在另一单独Python文件中。下面将分别介绍这两部分。
+下图描述了用户使用框图，PaddlePaddle的trainer进程里内嵌了Python解释器，trainer进程可以利用这个解释器执行Python脚本，Python脚本里定义了模型配置、训练算法、以及数据读取函数。其中，数据读取程序往往定义在一个单独Python脚本文件里，被称为DataProvider，通常是一个Python函数。模型配置、训练算法通常定义在另一单独Python文件中。下面将分别介绍这两部分。
 
 ..	graphviz:: 
 
@@ -37,17 +37,15 @@ PaddlePaddle是一个深度学习框架，支持单机模式和多机模式。
 DataProvider
 ============
 
-在不同的应用里，训练数据的格式往往各不相同。因此，为了用户能够灵活的处理数据，我们提供了Python处理数据的接口，称为 `PyDataProvider`_ 。
+DataProvider是PaddlePaddle系统的数据提供器，trainer进程会调用DataProvider函数，将用户的原始数据转换成系统可以识别的数据类型。当所有数据读取完一轮后，DataProvider返回空数据，通知系统一轮数据读取结束，系统每一轮训练开始时会重置DataProvider。需要注意的是，DataProvider是被系统调用，而不是新数据驱动系统，一些随机化噪声添加都应该在DataProvider中完成。
 
-trainer进程会调用DataProvider函数，将用户的原始数据转换成系统可以识别的数据类型。当所有数据读取完一轮后，DataProvider返回空数据，通知系统一轮数据读取结束，系统每一轮训练开始时会重置DataProvider。需要注意的是，DataProvider是被系统调用，而不是新数据驱动系统，一些随机化噪声添加都应该在DataProvider中完成。
-
-在 ``PyDataProvider`` 中，系统C++模块接管了shuffle、处理batch、GPU和CPU通信、双缓冲、异步读取等问题，一些情况下(如：``min_pool_size=0``)需要Python接口里处理shuffle，可以参考 `PyDataProvider`_ 的相关文档继续深入了解。
+在不同的应用里，训练数据的格式往往各不相同。因此，为了用户能够灵活的处理数据，我们提供了Python处理数据的接口，称为 `PyDataProvider`_ 。在 ``PyDataProvider`` 中，系统C++模块接管了shuffle、处理batch、GPU和CPU通信、双缓冲、异步读取等问题，一些情况下(如：``min_pool_size=0``)需要Python接口里处理shuffle，可以参考 `PyDataProvider`_ 的相关文档继续深入了解。
 
 
 模型配置文件
 ============
 
-模型配置主要包括数据传入接口定义(DataConfig)、优化算法(OptimizationConfig)、网络结构(ModelConfig)。 其中数据传入接口定义与DataProvider的关系是：DataProvider里定义数据读取函数，配置文件的DataConfig里指定DataProvider文件名字、生成数据函数接口，请不要混淆。
+模型配置文件主要包括数据传入接口定义(DataConfig)、优化算法(OptimizationConfig)、网络结构(ModelConfig)。 其中数据传入接口定义与DataProvider的关系是：DataProvider里定义数据读取函数，配置文件的DataConfig里指定DataProvider文件名字、生成数据函数接口，请不要混淆。
 
 一个简单的模型配置文件为：
 
@@ -61,7 +59,7 @@ trainer进程会调用DataProvider函数，将用户的原始数据转换成系�
 DataConfig
 ----------
 
-使用函数 ``define_py_data_sources2`` 配置数据源，后缀 2 是Paddle历史遗留问题，因为Paddle之前使用的PyDataProvider性能问题，重构了一个新的 `PyDataProvider`_ 。
+使用 `PyDataProvider`_ 的函数 ``define_py_data_sources2`` 配置数据源，后缀 2 是Paddle历史遗留问题，因为Paddle之前使用的PyDataProvider性能问题，重构了一个新的 `PyDataProvider`_ 。
 
 ``define_py_data_sources2`` 里通过train_list和test_list指定是训练文件列表和测试文件列表。 如果传入字符串的话，是指一个数据列表文件。这个数据列表文件中包含的是每一个训练或者测试文件的路径。如果传入一个list的话，则会默认生成一个list文件，再传入给train.list或者test.list。
 
@@ -70,7 +68,7 @@ DataConfig
 OptimizationConfig
 ------------------
 
-通过`settings`_ 接口设置神经网络所使用的训练参数和优化算法，包括学习率、batch_size、优化算法、正则方法等，具体的使用方法请参考 `settings`_ 文档。
+通过`settings`_ 接口设置神经网络所使用的训练参数和 `优化算法`_ ，包括学习率、batch_size、优化算法、正则方法等，具体的使用方法请参考 `settings`_ 文档。
 
 ModelConfig
 -----------
@@ -150,6 +148,7 @@ PaddlePaddle多机采用经典的 Parameter Server 架构对多个节点的 trai
 
 ..  _PyDataProvider: ../ui/data_provider/pydataprovider2.html
 .. _settings: ../../doc/ui/api/trainer_config_helpers/optimizers.html#settings
+.. _优化算法: ../../doc/ui/api/trainer_config_helpers/optimizers.html#optimizers
 .. _trainer_config_helper: ../../doc/ui/api/trainer_config_helpers/index.html
 .. _data_layer: ../../doc/ui/api/trainer_config_helpers/layers.html#data-layer
 .. _simple_img_conv_pool: ../../doc/ui/api/trainer_config_helpers/networks.html#simple-img-conv-pool
