@@ -32,13 +32,11 @@
 
 ## 数据格式准备(Data Preparation)
 在本问题中，我们使用[Amazon电子产品评论数据](http://jmcauley.ucsd.edu/data/amazon/)，
-将评论分为好评(正样本)和差评(负样本)两类。[源码](https://github.com/baidu/Paddle)的`demo/quick_start`里提供了数据下载脚本
-和预处理脚本。
+将评论分为好评(正样本)和差评(负样本)两类。[源码](https://github.com/baidu/Paddle)的`demo/quick_start`里提供了下载已经预处理数据的脚本（如果想从最原始的数据处理，可以使用脚本 `./demo/quick_start/data/proc_from_raw_data/get_data.sh`）。
 
 ```bash
 cd demo/quick_start
 ./data/get_data.sh
-./preprocess.sh
 ```
 
 ## 数据向模型传送(Transfer Data to Model)

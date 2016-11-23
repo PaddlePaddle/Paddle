@@ -16,9 +16,22 @@
 # 1. size of pos : neg = 1:1.
 # 2. size of testing set = min(25k, len(all_data) * 0.1), others is traning set.
 # 3. distinct train set and test set.
-# 4. build dict
 
 set -e
+
+DIR="$( cd "$(dirname "$0")" ; pwd -P )"
+cd $DIR
+
+# Download data
+echo "Downloading Amazon Electronics reviews data..."
+# http://jmcauley.ucsd.edu/data/amazon/
+#wget http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Electronics_5.json.gz
+echo "Downloading mosesdecoder..."
+#https://github.com/moses-smt/mosesdecoder
+#wget https://github.com/moses-smt/mosesdecoder/archive/master.zip
+#unzip master.zip
+#rm master.zip
+echo "Done."
 
 export LC_ALL=C
 UNAME_STR=`uname`
@@ -29,10 +42,11 @@ else
   SHUF_PROG='gshuf'
 fi
 
-mkdir -p data/tmp
-python preprocess.py -i data/reviews_Electronics_5.json.gz
+# Start preprocess 
+mkdir -p tmp
+python preprocess.py -i reviews_Electronics_5.json.gz
 # uniq and shuffle
-cd data/tmp
+cd tmp
 echo 'uniq and shuffle...'
 cat pos_*|sort|uniq|${SHUF_PROG}> pos.shuffed
 cat neg_*|sort|uniq|${SHUF_PROG}> neg.shuffed
@@ -53,11 +67,11 @@ cat train.pos train.neg | ${SHUF_PROG} >../train.txt
 cat test.pos test.neg | ${SHUF_PROG} >../test.txt
 
 cd -
-echo 'data/train.txt' > data/train.list
-echo 'data/test.txt' > data/test.list
+echo 'train.txt' > train.list
+echo 'test.txt' > test.list
 
 # use 30k dict
-rm -rf data/tmp
-mv data/dict.txt data/dict_all.txt
-cat data/dict_all.txt | head -n 30001 > data/dict.txt
+rm -rf tmp
+mv dict.txt dict_all.txt
+cat dict_all.txt | head -n 30001 > dict.txt
 echo 'preprocess finished'
