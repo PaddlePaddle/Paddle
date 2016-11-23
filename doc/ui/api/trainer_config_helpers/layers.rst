@@ -1,3 +1,7 @@
+======
+Layers
+======
+
 Base
 ======
 
@@ -46,6 +50,12 @@ conv_operator
     :members: conv_operator
     :noindex:
 
+conv_projection
+---------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: conv_projection
+    :noindex:
+
 conv_shift_layer
 ------------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -71,6 +81,12 @@ img_pool_layer
 --------------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: img_pool_layer
+    :noindex:   
+
+spp_layer
+--------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: spp_layer
     :noindex:
 
 maxout_layer
@@ -175,6 +191,12 @@ embedding_layer
     :members: embedding_layer
     :noindex:
 
+scaling_projection
+------------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: scaling_projection
+    :noindex:
+
 dotmul_projection
 -----------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -254,6 +276,12 @@ expand_layer
     :members: expand_layer
     :noindex:
 
+repeat_layer
+------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: repeat_layer
+    :noindex:
+
 Math Layers
 ===========
 
@@ -273,6 +301,12 @@ interpolation_layer
 -------------------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: interpolation_layer
+    :noindex:
+
+bilinear_interp_layer
+----------------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: bilinear_interp_layer
     :noindex:
 
 power_layer
@@ -393,6 +427,12 @@ hsigmoid
 ---------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: hsigmoid
+    :noindex:
+
+sum_cost
+---------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: sum_cost
     :noindex:
 
 Check Layer 

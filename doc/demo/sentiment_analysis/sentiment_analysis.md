@@ -6,7 +6,7 @@ Sentiment analysis is also used to monitor social media based on large amount of
 
 On the other hand, grabbing the user comments of products and analyzing their sentiment are useful to understand user preferences for companies, products, even competing products.
 
-This tutorial will guide you through the process of training a Long Short Term Memory (LSTM) Network to classify the sentiment of sentences from [Large Movie Review Dataset](http://ai.stanford.edu/~amaas/data/sentiment/), sometimes known as the [Internet Movie Database (IMDB)](http://ai.stanford.edu/~amaas/papers/wvSent_acl2011.pdf). This dataset contains movie reviews along with their associated binary sentiment polarity labels, namely positive and negative. So randomly guessing yields 50% accuracy.
+This tutorial will guide you through the process of training a Long Short Term Memory (LSTM) Network to classify the sentiment of sentences from [Large Movie Review Dataset](http://ai.stanford.edu/~amaas/data/sentiment/), sometimes known as the Internet Movie Database (IMDB). This dataset contains movie reviews along with their associated binary sentiment polarity labels, namely positive and negative. So randomly guessing yields 50% accuracy.
 
 ## Data Preparation
 
@@ -39,7 +39,7 @@ imdbEr.txt  imdb.vocab  README  test  train
 * imdbEr.txt: expected rating for each token in imdb.vocab.
 * README: data documentation.
 
-Both train and test set directory contains:
+The file in train set directory is as follows. The test set also contains them except `unsup` and `urls_unsup.txt`.
 
 ```
 labeledBow.feat  neg  pos  unsup  unsupBow.feat  urls_neg.txt  urls_pos.txt  urls_unsup.txt
@@ -151,6 +151,7 @@ settings(
   batch_size=128,
   learning_rate=2e-3,
   learning_method=AdamOptimizer(),
+  average_window=0.5,
   regularization=L2Regularization(8e-4),
   gradient_clipping_threshold=25
 )
@@ -163,17 +164,18 @@ stacked_lstm_net(dict_dim, class_dim=class_dim,
 
 * **Data Definition**:
    * get\_config\_arg(): get arguments setted by `--config_args=xx` in commandline argument.
-   * Define TrainData and TestData provider, here using Python interface (PyDataProviderWrapper) of PaddlePaddle to load data. For details, you can refer to the document of PyDataProvider.
+   * Define data provider, here using Python interface to load data. For details, you can refer to the document of PyDataProvider2.
 
 * **Algorithm Configuration**:
-   * use sgd algorithm.
-   * use adam optimization.
    * set batch size of 128.
-   * set average sgd window.
    * set global learning rate.
+   * use adam optimization.
+   * set average sgd window.
+   * set L2 regularization.
+   * set gradient clipping threshold.
 * **Network Configuration**:
-   * dict_dim: get dictionary dimension.
-   * class_dim: set category number, IMDB has two label, namely positive and negative label.
+   * dict_dim: dictionary dimension.
+   * class_dim: category number, IMDB has two label, namely positive and negative label.
    * `stacked_lstm_net`: predefined network as shown in Figure 3, use this network by default.
    * `bidirectional_lstm_net`: predefined network as shown in Figure 2.
 

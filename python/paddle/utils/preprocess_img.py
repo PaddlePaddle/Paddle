@@ -28,16 +28,18 @@ def resize_image(img, target_size):
     img: the input image to be resized.
     target_size: the target resized image size.
     """
-    percent = (target_size/float(min(img.size[0], img.size[1])))
+    percent = (target_size / float(min(img.size[0], img.size[1])))
     resized_size = int(round(img.size[0] * percent)),\
                    int(round(img.size[1] * percent))
     img = img.resize(resized_size, Image.ANTIALIAS)
     return img
 
+
 class DiskImage:
     """
     A class of image data on disk.
     """
+
     def __init__(self, path, target_size):
         """
         path: path of the image.
@@ -77,6 +79,7 @@ class ImageClassificationDatasetCreater(preprocess_util.DatasetCreater):
     """
     A class to process data for image classification.
     """
+
     def __init__(self, data_path, target_size, color=True):
         """
         data_path: the path to store the training data and batches.
@@ -95,8 +98,7 @@ class ImageClassificationDatasetCreater(preprocess_util.DatasetCreater):
         The meta file contains the meam image, as well as some configs.
         data: the training Dataaet.
         """
-        output_path = os.path.join(self.data_path,
-                                   self.batch_dir_name,
+        output_path = os.path.join(self.data_path, self.batch_dir_name,
                                    self.meta_filename)
         if self.color:
             mean_img = np.zeros((3, self.target_size, self.target_size))
@@ -108,12 +110,13 @@ class ImageClassificationDatasetCreater(preprocess_util.DatasetCreater):
             mean_img += cropped_img
         mean_img /= len(data.data)
         mean_img = mean_img.astype('int32').flatten()
-        preprocess_util.save_file({"data_mean": mean_img,
-                                   "image_size": self.target_size,
-                                   "mean_image_size": self.target_size,
-                                   "num_classes": self.num_classes,
-                                   "color": self.color},
-                                  output_path)
+        preprocess_util.save_file({
+            "data_mean": mean_img,
+            "image_size": self.target_size,
+            "mean_image_size": self.target_size,
+            "num_classes": self.num_classes,
+            "color": self.color
+        }, output_path)
         pass
 
     def create_dataset_from_list(self, path):
@@ -125,11 +128,10 @@ class ImageClassificationDatasetCreater(preprocess_util.DatasetCreater):
             label_name = items[1]
             if not label_name in label_set:
                 label_set[label_name] = len(label_set.keys())
-            img = DiskImage(path = image_path, target_size = self.target_size)
-            label = preprocess_util.Lablel(label = label_set[label_name],
-                                           name=label_name)
+            img = DiskImage(path=image_path, target_size=self.target_size)
+            label = preprocess_util.Lablel(
+                label=label_set[label_name], name=label_name)
         return preprocess_util.Dataset(data, self.keys), label_set
-
 
     def create_dataset_from_dir(self, path):
         """
@@ -143,11 +145,12 @@ class ImageClassificationDatasetCreater(preprocess_util.DatasetCreater):
         label_set = preprocess_util.get_label_set_from_dir(path)
         data = []
         for l_name in label_set.keys():
-            image_paths = preprocess_util.list_images(os.path.join(path, l_name))
+            image_paths = preprocess_util.list_images(
+                os.path.join(path, l_name))
             for p in image_paths:
-                img = DiskImage(path = p, target_size = self.target_size)
-                label = preprocess_util.Label(label = label_set[l_name],
-                                              name = l_name)
+                img = DiskImage(path=p, target_size=self.target_size)
+                label = preprocess_util.Label(
+                    label=label_set[l_name], name=l_name)
                 data.append((img, label))
         random.shuffle(data)
         return preprocess_util.Dataset(data, self.keys), label_set

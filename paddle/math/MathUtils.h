@@ -41,7 +41,30 @@ namespace paddle {
  *
  * rows is [1, 3, 4, 0, 2, 4, 1, 2, 3, 4]
  */
-void sparseRand(int* major, int* minor, int nnz, int majorLen, int minorMax,
-                bool useGpu);
+void sparseRand(
+    int* major, int* minor, int nnz, int majorLen, int minorMax, bool useGpu);
+
+/**
+ * Calculate output size based on caffeMode_.
+ * - input(+padding): 0123456789
+ * - imageSize(+padding) = 10;
+ * - filterSize = 3;
+ * - stride = 2;
+ * - caffeMode is true:
+     - output: (012), (234), (456), (678)
+     - outputSize = 4;
+ * - caffeMode is false:
+ *   - output: (012), (234), (456), (678), (9)
+ *   - outputSize = 5;
+ */
+int outputSize(
+    int imageSize, int filterSize, int padding, int stride, bool caffeMode);
+
+/**
+ * Calculate image size based on output size and caffeMode_.
+ * It is the reverse function of outputSize()
+ */
+int imageSize(
+    int outputSize, int filterSize, int padding, int stride, bool caffeMode);
 
 }  // namespace paddle

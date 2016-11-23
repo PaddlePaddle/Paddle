@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Stat.h"
 #include "MixedLayer.h"
 
@@ -29,8 +28,8 @@ bool MixedLayer::init(const LayerMap& layerMap,
   projections_.resize(inputLayers_.size());
   for (size_t i = 0; i < inputLayers_.size(); i++) {
     if (config_.inputs(i).has_proj_conf()) {
-      projections_[i].reset(Projection::create(config_.inputs(i).proj_conf(),
-                                               parameters_[i], useGpu_));
+      projections_[i].reset(Projection::create(
+          config_.inputs(i).proj_conf(), parameters_[i], useGpu_));
     } else {
       CHECK(!parameters_[i]) << "should no parameters for operators";
     }
@@ -46,8 +45,7 @@ bool MixedLayer::init(const LayerMap& layerMap,
   if (biasParameter_.get() != NULL) {
     sharedBias_ = config_.shared_biases();
     size_t psize = config_.bias_size();
-    biases_ = std::unique_ptr<Weight>(
-        new Weight(1, psize, biasParameter_));
+    biases_ = std::unique_ptr<Weight>(new Weight(1, psize, biasParameter_));
   }
 
   return true;

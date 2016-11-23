@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 This module provide a wrapper(decorator) to wrap a data process method into a
 PyDataProvider. Some examples are shown `here <data_provider/python_case.html>`_.
@@ -46,6 +45,7 @@ except ImportError:
     import pickle
 
 import io
+
 
 class SlotType(object):  # Just a hint for user.
     pass
@@ -83,6 +83,7 @@ class SparseNonValueSlot(SlotType):
     - **SubSeq**: [[[int, int, ...], [int, ....], ...] ,  \
                    [[int, int, ...], [int, ....], ...] , ...]
     """
+
     def __init__(self, dim):
         """
         :param dim: slot dimension
@@ -294,8 +295,9 @@ class GeneralPyDataProvider:
                 fn = "%s_%d" % (self.profile_filename, self.profile_count)
                 sortby = "cumulative"
                 with open(fn, "w") as f:
-                    pstats.Stats(self.profiler, stream=f).sort_stats(
-                        sortby).print_stats()
+                    pstats.Stats(
+                        self.profiler,
+                        stream=f).sort_stats(sortby).print_stats()
                 self.logger.info("saving profile to file %s" % fn)
                 self.profile_count += 1
             self.logger.info("resetting profile")
@@ -453,9 +455,10 @@ class GeneralPyDataProvider:
             seq_stream.flush()
             subseq_stream.flush()
 
-            return "".join([self.int_packer.pack(current_batch_size),
-                            data_bytes.getvalue(),
-                            seq_bytes.getvalue(), subseq_bytes.getvalue()])
+            return "".join([
+                self.int_packer.pack(current_batch_size), data_bytes.getvalue(),
+                seq_bytes.getvalue(), subseq_bytes.getvalue()
+            ])
 
         finally:
             data_stream.close()
@@ -516,7 +519,7 @@ class GeneralPyDataProvider:
                         self.data_pool[idx])
                     idx -= 1
 
-                ret_list += self.data_pool[self.data_pool_idx: idx + 1]
+                ret_list += self.data_pool[self.data_pool_idx:idx + 1]
 
                 # for speed reason, just shift left index, not delete data actually.
                 self.data_pool_idx = idx + 1
@@ -537,8 +540,8 @@ class GeneralPyDataProvider:
         if self.max_pool_size == 0:
             for i in xrange(min(self.file_count, len(self.generators))):
                 self.data_pool += list(self.generators[i])
-            self.generators = self.generators[
-                              min(self.file_count, len(self.generators)):]
+            self.generators = self.generators[min(self.file_count,
+                                                  len(self.generators)):]
             self.max_pool_size = len(self.data_pool)
         else:
             while len(self.data_pool) < self.max_pool_size and len(
@@ -562,9 +565,15 @@ def default_init_hook(cls, *args, **kwargs):
     del cls, args, kwargs
 
 
-def provider(slots=None, use_seq=False, should_shuffle=True, pool_size=1,
-             can_over_batch_size=True, calc_batch_size=lambda data: 1,
-             debug=False, init_hook=default_init_hook, profile_filename=None):
+def provider(slots=None,
+             use_seq=False,
+             should_shuffle=True,
+             pool_size=1,
+             can_over_batch_size=True,
+             calc_batch_size=lambda data: 1,
+             debug=False,
+             init_hook=default_init_hook,
+             profile_filename=None):
     """
     The decorator for PyDataProvider. User should use this to create Provider class.
     User should only concern how to read sample from file.
@@ -663,7 +672,7 @@ def provider(slots=None, use_seq=False, should_shuffle=True, pool_size=1,
             def __init__(self, *file_list, **kwargs):
                 logging.basicConfig(
                     format="[%(levelname)s %(asctime)s %(filename)s:%(lineno)s]"
-                           " %(message)s")
+                    " %(message)s")
 
                 self.logger = logging.getLogger("")
                 if debug:

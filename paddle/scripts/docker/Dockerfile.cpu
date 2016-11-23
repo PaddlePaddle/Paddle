@@ -1,6 +1,7 @@
 FROM ubuntu:14.04
 MAINTAINER PaddlePaddle Dev Team <paddle-dev@baidu.com>
 COPY build.sh /root/
+ENV GIT_CHECKOUT=v0.9.0a0
 ENV WITH_GPU=OFF
 ENV IS_DEVEL=OFF
 ENV WITH_DEMO=OFF

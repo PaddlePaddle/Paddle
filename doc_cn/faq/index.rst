@@ -177,3 +177,40 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
     pip install --upgrade pip
 
+8.  python相关的单元测试都过不了
+--------------------------------
+
+如果出现以下python相关的单元测试都过不了的情况：
+
+..  code-block:: bash
+
+    24 - test_PyDataProvider (Failed)
+    26 - test_RecurrentGradientMachine (Failed)
+    27 - test_NetworkCompare (Failed)
+    28 - test_PyDataProvider2 (Failed)
+    32 - test_Prediction (Failed)
+    33 - test_Compare (Failed)
+    34 - test_Trainer (Failed)
+    35 - test_TrainerOnePass (Failed)
+    36 - test_CompareTwoNets (Failed)
+    37 - test_CompareTwoOpts (Failed)
+    38 - test_CompareSparse (Failed)
+    39 - test_recurrent_machine_generation (Failed)
+    40 - test_PyDataProviderWrapper (Failed)
+    41 - test_config_parser (Failed)
+    42 - test_swig_api (Failed)
+    43 - layers_test (Failed)
+    
+并且查询PaddlePaddle单元测试的日志，提示：
+
+..  code-block:: bash
+    
+    paddle package is already in your PYTHONPATH. But unittest need a clean environment.
+    Please uninstall paddle package before start unittest. Try to 'pip uninstall paddle'.
+    
+解决办法是：卸载paddle包 :code:`pip uninstall paddle`。
+
+原因是：单元测试使用了一个旧版本的python包，而没有测试到代码中实际修改的python包。即单元测试需要一个干净的环境：
+
+* 如果paddle包已经在python的site-packages里面了，那么单元测试时使用的paddle包，就是site-packages里面的python包，而不是源码目录里 :code:`/python` 目录下的python包。
+* 即便设置了 :code:`PYTHONPATH` 到 :code:`/python` 也没用，因为python的搜索路径是优先已经安装的python包。

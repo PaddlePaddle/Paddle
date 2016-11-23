@@ -1,3 +1,7 @@
+==========
+Optimizers
+==========
+
 BaseSGDOptimizer
 ================
 ..  automodule:: paddle.trainer_config_helpers.optimizers
@@ -51,4 +55,3 @@ settings
 ..  automodule:: paddle.trainer_config_helpers.optimizers
     :members: settings
     :noindex:
-

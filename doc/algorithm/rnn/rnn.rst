@@ -1,5 +1,5 @@
-Recurrent Neural Network Configuration
-======================================
+RNN Configuration
+=================
 
 This tutorial will guide you how to configure recurrent neural network in PaddlePaddle. PaddlePaddle supports highly flexible and efficient recurrent neural network configuration. In this tutorial, you will learn how to:
 
@@ -17,7 +17,7 @@ PaddlePaddle does not need any preprocessing to sequence data, such as padding. 
 
 .. code-block:: python
 
-    settings.slots = [
+    settings.input_types = [
       integer_value_sequence(len(settings.src_dict)),
       integer_value_sequence(len(settings.trg_dict)),
       integer_value_sequence(len(settings.trg_dict))]

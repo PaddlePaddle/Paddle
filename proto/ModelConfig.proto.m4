@@ -92,7 +92,7 @@ message PoolConfig {
   optional uint32 start = 4;
 
   // Defines the stride size between successive pooling squares.
-  required uint32 stride = 5;
+  required uint32 stride = 5 [default = 1];
 
   // The size of output feature map.
   required uint32 output_x = 6;
@@ -105,19 +105,27 @@ message PoolConfig {
   optional uint32 padding = 8 [default = 0];
 
   // if not set, use size_x
-  optional uint32 size_y = 9 [default = 0];
+  optional uint32 size_y = 9;
 
   // if not set, use stride
-  optional uint32 stride_y = 10 [default = 0];
+  optional uint32 stride_y = 10;
 
   // if not set, use output_x
-  optional uint32 output_y = 11 [default = 0];
+  optional uint32 output_y = 11;
 
   // if not set, use img_size
-  optional uint32 img_size_y = 12 [default = 0];
+  optional uint32 img_size_y = 12;
 
   // if not set, use padding
-  optional uint32 padding_y = 13 [default = 0];
+  optional uint32 padding_y = 13;
+}
+
+message SppConfig {
+  required string pool_type = 1;
+  required uint32 pyramid_height = 2;
+  required uint32 channels = 3;
+  required uint32 img_size = 4;
+  optional uint32 img_size_y = 5;
 }
 
 message NormConfig {
@@ -196,6 +204,9 @@ message ProjectionConfig {
 
   // For IdentityOffsetProjection
   optional uint64 offset = 11 [default = 0];
+
+  // For pool
+  optional PoolConfig pool_conf = 12;
 }
 
 message OperatorConfig {
@@ -212,6 +223,15 @@ message OperatorConfig {
   optional int32 num_filters = 7;
 }
 
+message BilinearInterpConfig {
+  // The size of input feature map.
+  optional uint32 img_size_x = 1;
+  optional uint32 img_size_y = 2;
+  // The size of output feature map.
+  required uint32 out_size_x = 3;
+  required uint32 out_size_y = 4;
+  required uint32 num_channels = 5;
+}
 
 message ImageConfig {
   // The image data dimensionality.
@@ -234,7 +254,9 @@ message LayerInputConfig {
   // If the input layer has multi-output.
   // Set the argument name.
   optional string input_layer_argument = 9;
-  optional MaxOutConfig maxout_conf = 10;
+  optional BilinearInterpConfig bilinear_interp_conf = 10;
+  optional MaxOutConfig maxout_conf = 11;
+  optional SppConfig spp_conf = 12;
 }
 
 message LayerConfig {

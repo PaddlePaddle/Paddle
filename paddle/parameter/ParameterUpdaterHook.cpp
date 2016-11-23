@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "ParameterUpdaterHook.h"
 
 #include <fstream>
@@ -155,7 +154,8 @@ private:
   std::hash<int> intHasher_;
 };
 
-static WeakKVCache<std::pair<std::string, int>, IParameterUpdaterHook,
+static WeakKVCache<std::pair<std::string, int>,
+                   IParameterUpdaterHook,
                    StringIntPairHasher> g_hookCache_;
 
 /**

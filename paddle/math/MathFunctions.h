@@ -35,49 +35,60 @@ extern "C" {
 
 namespace paddle {
 
-template<class T>
-void gemm(const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
-          const int M, const int N, const int K,
-          const T alpha, const T* A, const int lda,
-          const T* B, const int ldb,
-          const T beta, T* C, const int ldc);
+template <class T>
+void gemm(const CBLAS_TRANSPOSE transA,
+          const CBLAS_TRANSPOSE transB,
+          const int M,
+          const int N,
+          const int K,
+          const T alpha,
+          const T* A,
+          const int lda,
+          const T* B,
+          const int ldb,
+          const T beta,
+          T* C,
+          const int ldc);
 
-template<class T>
-int getrf(const CBLAS_ORDER Order, const int M, const int N,
-          T *A, const int lda, int *ipiv);
+template <class T>
+int getrf(const CBLAS_ORDER Order,
+          const int M,
+          const int N,
+          T* A,
+          const int lda,
+          int* ipiv);
 
-template<class T>
-int getri(const CBLAS_ORDER Order, const int N, T *A,
-          const int lda, const int *ipiv);
+template <class T>
+int getri(
+    const CBLAS_ORDER Order, const int N, T* A, const int lda, const int* ipiv);
 
-template<class T>
+template <class T>
 void axpy(const int n, const T alpha, const T* x, T* y);
 
-template<class T>
+template <class T>
 T dotProduct(const int n, const T* x, const T* y);
 
-template<class T>
+template <class T>
 void vExp(const int n, const T* a, T* r);
 
-template<class T>
+template <class T>
 void vPow(const int n, const T* a, const T b, T* r);
 
-template<class T>
+template <class T>
 void vLog(const int n, const T* a, T* r);
 
-template<class T>
+template <class T>
 void vAdd(const int n, const T* a, const T* b, T* r);
 
-template<class T>
+template <class T>
 void vInvSqrt(const int n, const T* a, T* r);
 
-template<class T>
+template <class T>
 void vLog1p(const int n, const T* a, T* r);
 
-template<class T>
+template <class T>
 void vTanh(const int n, const T* a, T* r);
 
 }  // namespace paddle
 
 #endif  // MATHFUNCTIONS_H_
-

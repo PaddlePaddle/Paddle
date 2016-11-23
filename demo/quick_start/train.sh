@@ -20,6 +20,7 @@ cfg=trainer_config.lr.py
 #cfg=trainer_config.lstm.py
 #cfg=trainer_config.bidi-lstm.py
 #cfg=trainer_config.db-lstm.py
+#cfg=trainer_config.resnet-lstm.py
 paddle train \
   --config=$cfg \
   --save_dir=./output \

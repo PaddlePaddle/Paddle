@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Projection.h"
+#include "paddle/math/MathUtils.h"
 
 namespace paddle {
 
@@ -27,7 +27,8 @@ public:
   /**
    * Constructor.
    */
-  ConvProjection(const ProjectionConfig& config, ParameterPtr parameter,
+  ConvProjection(const ProjectionConfig& config,
+                 ParameterPtr parameter,
                  bool useGpu);
 
   ~ConvProjection();
@@ -42,17 +43,21 @@ protected:
   void reshapeTensorDesc(int batchSize);
   void reshape(int batchSize);
 
-  int outputSize(int imageSize, int filterSize, int padding, int stride) {
-    return (imageSize - filterSize + 2 * padding) / stride + 1;
-  }
-
   size_t calOutputSize() {
     imageH_ = in_->getFrameHeight();
     imageW_ = in_->getFrameWidth();
     if (imageH_ == 0) imageH_ = configImgH_;
     if (imageW_ == 0) imageW_ = configImgW_;
-    outputH_ = outputSize(imageH_, filterH_, paddingH_, strideH_);
-    outputW_ = outputSize(imageW_, filterW_, paddingW_, strideW_);
+    outputH_ = outputSize(imageH_,
+                          filterH_,
+                          paddingH_,
+                          strideH_,
+                          /* caffeMode */ true);
+    outputW_ = outputSize(imageW_,
+                          filterW_,
+                          paddingW_,
+                          strideW_,
+                          /* caffeMode */ true);
 
     const_cast<Argument*>(out_)->setFrameHeight(outputH_);
     const_cast<Argument*>(out_)->setFrameWidth(outputW_);

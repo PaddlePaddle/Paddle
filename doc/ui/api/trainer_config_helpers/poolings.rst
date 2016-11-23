@@ -1,3 +1,7 @@
+========
+Poolings
+========
+
 BasePoolingType
 ===============
 ..  automodule:: paddle.trainer_config_helpers.poolings
@@ -27,4 +31,3 @@ SquareRootNPooling
 ..  automodule:: paddle.trainer_config_helpers.poolings
     :members: SquareRootNPooling
     :noindex:
-

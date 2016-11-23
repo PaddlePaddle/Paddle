@@ -20,7 +20,7 @@ using paddle::AsyncThreadPool;  // NOLINT
 
 TEST(AsyncThreadPool, addJob) {
   AsyncThreadPool pool(8);
-  auto a = pool.addJob([]{ return 1; });
+  auto a = pool.addJob([] { return 1; });
   auto b = pool.addJob([] { return true; });
   auto c = pool.addJob([] { return false; });
 
@@ -36,10 +36,7 @@ TEST(AsyncThreadPool, addBatchJob) {
   std::vector<AsyncThreadPool::JobFunc> jobs;
 
   for (int i = 0; i < 10000; i++) {
-    jobs.emplace_back(
-        [&] {
-          counter++;
-        });
+    jobs.emplace_back([&] { counter++; });
   }
 
   pool.addBatchJobs(jobs);
@@ -55,13 +52,16 @@ TEST(AsyncThreadPool, multiThreadAddBatchJob) {
   int counter = 0;
   const int numMonitors = 300;
   const int numSlaves = 300;
-  std::vector<AsyncThreadPool::JobFunc> moniterJobs(numMonitors, [&] {
-      std::vector<AsyncThreadPool::JobFunc> slaveJobs(numSlaves,
-          [mut, &counter] {
-            std::lock_guard<std::mutex> lk(*mut);
-            counter++;
-          });
-      levelTwoPool.addBatchJobs(slaveJobs);
+  std::vector<AsyncThreadPool::JobFunc> moniterJobs(
+      numMonitors,
+      [&] {
+        std::vector<AsyncThreadPool::JobFunc> slaveJobs(
+            numSlaves,
+            [mut, &counter] {
+              std::lock_guard<std::mutex> lk(*mut);
+              counter++;
+            });
+        levelTwoPool.addBatchJobs(slaveJobs);
       });
   levelOnePool.addBatchJobs(moniterJobs);
   ASSERT_EQ(counter, numMonitors * numSlaves);
@@ -70,13 +70,10 @@ TEST(AsyncThreadPool, multiThreadAddBatchJob) {
 TEST(AsyncThreadPool, addBatchJobWithResults) {
   AsyncThreadPool pool(100);
 
-  std::vector<std::function<int()> > jobs;
+  std::vector<std::function<int()>> jobs;
   const int numJobs = 100;
   for (int i = 0; i < numJobs; i++) {
-    jobs.emplace_back(
-        [i]{
-          return i;
-        });
+    jobs.emplace_back([i] { return i; });
   }
 
   std::vector<int> res;

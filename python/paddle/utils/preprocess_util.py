@@ -18,6 +18,7 @@ import cPickle as pickle
 import random
 import collections
 
+
 def save_file(data, filename):
     """
     Save data into pickle format.
@@ -25,6 +26,7 @@ def save_file(data, filename):
     filename: the output filename.
     """
     pickle.dump(data, open(filename, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
 
 def save_list(l, outfile):
     """
@@ -42,15 +44,20 @@ def exclude_pattern(f):
     """
     return f.startswith(".") or f.endswith("~")
 
+
 def list_dirs(path):
     """
     Return a list of directories in path. Exclude all the directories that
     start with '.'.
     path: the base directory to search over.
     """
-    return [os.path.join(path, d) for d in next(os.walk(path))[1] if not exclude_pattern(d)]
+    return [
+        os.path.join(path, d) for d in next(os.walk(path))[1]
+        if not exclude_pattern(d)
+    ]
 
-def list_images(path, exts = set(["jpg", "png", "bmp", "jpeg"])):
+
+def list_images(path, exts=set(["jpg", "png", "bmp", "jpeg"])):
     """
     Return a list of images in path.
     path: the base directory to search over.
@@ -60,6 +67,7 @@ def list_images(path, exts = set(["jpg", "png", "bmp", "jpeg"])):
             if os.path.isfile(os.path.join(path, d)) and not exclude_pattern(d)\
             and os.path.splitext(d)[-1][1:] in exts]
 
+
 def list_files(path):
     """
     Return a list of files in path.
@@ -68,6 +76,7 @@ def list_files(path):
     """
     return [os.path.join(path, d) for d in  os.listdir(path) \
             if os.path.isfile(os.path.join(path, d)) and not exclude_pattern(d)]
+
 
 def get_label_set_from_dir(path):
     """
@@ -84,6 +93,7 @@ class Label:
     """
     A class of label data.
     """
+
     def __init__(self, label, name):
         """
         label: the id of the label.
@@ -98,8 +108,9 @@ class Label:
         """
         return int(self.label)
 
-    def  __hash__(self):
+    def __hash__(self):
         return hash((self.label))
+
 
 class Dataset:
     """
@@ -108,6 +119,7 @@ class Dataset:
     For example: in image classification dataset, each item contains two slot,
     The first slot is an image, and the second slot is a label.
     """
+
     def __init__(self, data, keys):
         """
         data: a list of data.
@@ -120,7 +132,7 @@ class Dataset:
 
     def check_valid(self):
         for d in self.data:
-            assert(len(d) == len(self.keys))
+            assert (len(d) == len(self.keys))
 
     def permute(self, key_id, num_per_batch):
         """
@@ -167,8 +179,9 @@ class Dataset:
         while len(permuted_data) < len(self.data):
             for k in keyvalue_indices:
                 begin_idx = keyvalue_readpointer[k]
-                end_idx = int(min(begin_idx + num_data_per_key_batch,
-                              len(keyvalue_indices[k])))
+                end_idx = int(
+                    min(begin_idx + num_data_per_key_batch,
+                        len(keyvalue_indices[k])))
                 print "begin_idx, end_idx"
                 print begin_idx, end_idx
                 for idx in range(begin_idx, end_idx):
@@ -177,12 +190,12 @@ class Dataset:
         self.data = permuted_data
 
 
-
 class DataBatcher:
     """
     A class that is used to create batches for both training and testing
     datasets.
     """
+
     def __init__(self, train_data, test_data, label_set):
         """
         train_data, test_data: Each one is a dataset object repesenting
@@ -190,10 +203,10 @@ class DataBatcher:
         label_set: a dictionary storing the mapping from label name to label id.
         """
         self.train_data = train_data
-        self.test_data  = test_data
+        self.test_data = test_data
         self.label_set = label_set
         self.num_per_batch = 5000
-        assert(self.train_data.keys == self.test_data.keys)
+        assert (self.train_data.keys == self.test_data.keys)
 
     def create_batches_and_list(self, output_path, train_list_name,
                                 test_list_name, label_set_name):
@@ -202,16 +215,19 @@ class DataBatcher:
         It also create train.list and test.list to indicate the list
         of the batch files for training and testing data, respectively.
         """
-        train_list = self.create_batches(self.train_data, output_path,
-                                         "train_", self.num_per_batch)
+        train_list = self.create_batches(self.train_data, output_path, "train_",
+                                         self.num_per_batch)
         test_list = self.create_batches(self.test_data, output_path, "test_",
-                                       self.num_per_batch)
+                                        self.num_per_batch)
         save_list(train_list, os.path.join(output_path, train_list_name))
         save_list(test_list, os.path.join(output_path, test_list_name))
         save_file(self.label_set, os.path.join(output_path, label_set_name))
 
-    def create_batches(self, data, output_path,
-                       prefix = "", num_data_per_batch=5000):
+    def create_batches(self,
+                       data,
+                       output_path,
+                       prefix="",
+                       num_data_per_batch=5000):
         """
         Create batches for a Dataset object.
         data: the Dataset object to process.
@@ -244,6 +260,7 @@ class DatasetCreater(object):
        - create_dataset()
        - create_meta_file()
     """
+
     def __init__(self, data_path):
         """
         data_path: the path to store the training data and batches.
@@ -324,24 +341,22 @@ class DatasetCreater(object):
         out_path = os.path.join(self.data_path, self.batch_dir_name)
         if not os.path.exists(out_path):
             os.makedirs(out_path)
-        if (self.overwrite or
-            not os.path.exists(os.path.join(out_path, self.train_list_name))):
+        if (self.overwrite or not os.path.exists(
+                os.path.join(out_path, self.train_list_name))):
             train_data, train_label_set = \
                 self.create_dataset(train_path)
             test_data, test_label_set = \
                 self.create_dataset(test_path)
 
-            train_data.permute(self.keys.index(self.permutate_key),
-                               self.num_per_batch)
+            train_data.permute(
+                self.keys.index(self.permutate_key), self.num_per_batch)
 
-            assert(train_label_set == test_label_set)
-            data_batcher = DataBatcher(train_data, test_data,
-                                       train_label_set)
+            assert (train_label_set == test_label_set)
+            data_batcher = DataBatcher(train_data, test_data, train_label_set)
             data_batcher.num_per_batch = self.num_per_batch
-            data_batcher.create_batches_and_list(self.output_path,
-                                                 self.train_list_name,
-                                                 self.test_list_name,
-                                                 self.label_set_name)
+            data_batcher.create_batches_and_list(
+                self.output_path, self.train_list_name, self.test_list_name,
+                self.label_set_name)
             self.num_classes = len(train_label_set.keys())
             self.create_meta_file(train_data)
         return out_path

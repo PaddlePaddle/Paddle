@@ -26,16 +26,22 @@ from py_paddle import swig_paddle, DataProviderConverter
 from paddle.trainer.PyDataProvider2 import dense_vector
 from paddle.trainer.config_parser import parse_config
 
-logging.basicConfig(format='[%(levelname)s %(asctime)s %(filename)s:%(lineno)s] %(message)s')
+logging.basicConfig(
+    format='[%(levelname)s %(asctime)s %(filename)s:%(lineno)s] %(message)s')
 logging.getLogger().setLevel(logging.INFO)
 
+
 class ImageClassifier():
-    def __init__(self, train_conf, model_dir=None,
-                 resize_dim=256, crop_dim=224,
+    def __init__(self,
+                 train_conf,
+                 model_dir=None,
+                 resize_dim=256,
+                 crop_dim=224,
                  use_gpu=True,
                  mean_file=None,
                  output_layer=None,
-                 oversample=False, is_color=True):
+                 oversample=False,
+                 is_color=True):
         """
         train_conf: network configure.
         model_dir: string, directory of model.
@@ -62,24 +68,25 @@ class ImageClassifier():
             assert isinstance(self.output_layer, basestring)
             self.output_layer = self.output_layer.split(",")
 
-        self.transformer = image_util.ImageTransformer(is_color = is_color)
-        self.transformer.set_transpose((2,0,1))
-        self.transformer.set_channel_swap((2,1,0))
+        self.transformer = image_util.ImageTransformer(is_color=is_color)
+        self.transformer.set_transpose((2, 0, 1))
+        self.transformer.set_channel_swap((2, 1, 0))
 
         self.mean_file = mean_file
         if self.mean_file is not None:
             mean = np.load(self.mean_file)['data_mean']
             mean = mean.reshape(3, self.crop_dims[0], self.crop_dims[1])
-            self.transformer.set_mean(mean) # mean pixel
+            self.transformer.set_mean(mean)  # mean pixel
         else:
             # if you use three mean value, set like:
             # this three mean value is calculated from ImageNet.
-            self.transformer.set_mean(np.array([103.939,116.779,123.68]))
+            self.transformer.set_mean(np.array([103.939, 116.779, 123.68]))
 
         conf_args = "is_test=1,use_gpu=%d,is_predict=1" % (int(use_gpu))
         conf = parse_config(train_conf, conf_args)
         swig_paddle.initPaddle("--use_gpu=%d" % (int(use_gpu)))
-        self.network = swig_paddle.GradientMachine.createFromConfigProto(conf.model_config)
+        self.network = swig_paddle.GradientMachine.createFromConfigProto(
+            conf.model_config)
         assert isinstance(self.network, swig_paddle.GradientMachine)
         self.network.loadParameters(self.model_dir)
 
@@ -105,14 +112,14 @@ class ImageClassifier():
             # image_util.resize_image: short side is self.resize_dim
             image = image_util.resize_image(image, self.resize_dim)
             image = np.array(image)
-            input = np.zeros((1, image.shape[0], image.shape[1], 3),
-                             dtype=np.float32)
+            input = np.zeros(
+                (1, image.shape[0], image.shape[1], 3), dtype=np.float32)
             input[0] = image.astype(np.float32)
             input = image_util.oversample(input, self.crop_dims)
         else:
             image = image.resize(self.crop_dims, Image.ANTIALIAS)
-            input = np.zeros((1, self.crop_dims[0], self.crop_dims[1], 3),
-                             dtype=np.float32)
+            input = np.zeros(
+                (1, self.crop_dims[0], self.crop_dims[1], 3), dtype=np.float32)
             input[0] = np.array(image).astype(np.float32)
 
         data_in = []
@@ -172,7 +179,7 @@ class ImageClassifier():
             logging.info("Label of %s is: %d", image, lab[0])
         return results
 
-    def extract(self, data_file, output_dir, batch_size = 10000):
+    def extract(self, data_file, output_dir, batch_size=10000):
         """
         extract and save features of output layers, which are
         specify in Outputs() in network configure.
@@ -197,7 +204,7 @@ class ImageClassifier():
             image_feature[file_name] = feature
             sample_num += 1
             if sample_num == batch_size:
-                batch_name = os.path.join(output_dir, 'batch_%d' %(batch_num))
+                batch_name = os.path.join(output_dir, 'batch_%d' % (batch_num))
                 self.save_file(image_feature, batch_name)
                 logging.info('Finish batch %d', batch_num)
                 batch_num += 1
@@ -206,7 +213,7 @@ class ImageClassifier():
             if idx % 1000 == 0:
                 logging.info('%d/%d, %s', idx, len(image_files), file_name)
         if sample_num > 0:
-            batch_name = os.path.join(output_dir, 'batch_%d' %(batch_num))
+            batch_name = os.path.join(output_dir, 'batch_%d' % (batch_num))
             self.save_file(image_feature, batch_name)
             logging.info('Finish batch %d', batch_num)
         logging.info('Done: make image feature batch')
@@ -215,38 +222,64 @@ class ImageClassifier():
         of = open(file, 'wb')
         cPickle.dump(data, of, protocol=cPickle.HIGHEST_PROTOCOL)
 
+
 def option_parser():
     """
     Main entry for predciting
     """
     usage = "%prog -c config -i data_list -w model_dir [options]"
     parser = OptionParser(usage="usage: %s" % usage)
-    parser.add_option("-j", "--job",
-                      action="store", dest="job_type",
-                      help="job type: predict, extract\
+    parser.add_option(
+        "-j",
+        "--job",
+        action="store",
+        dest="job_type",
+        help="job type: predict, extract\
                             predict: predicting,\
                             extract: extract features")
-    parser.add_option("-c", "--conf",
-                      action="store", dest="train_conf",
-                      help="network config")
-    parser.add_option("-i", "--data",
-                      action="store", dest="data_file",
-                      help="image list")
-    parser.add_option("-w", "--model",
-                      action="store", dest="model_path",
-                      default=None, help="model path")
-    parser.add_option("-g", "--use_gpu", action="store",
-                      dest="use_gpu", default=True,
-                      help="Whether to use gpu mode.")
-    parser.add_option("-o", "--output_dir",
-                      action="store", dest="output_dir",
-                      default="output", help="output path")
-    parser.add_option("-m", "--mean", action="store",
-                      dest="mean", default=None,
-                      help="mean file.")
-    parser.add_option("-p", "--multi_crop", action="store_true",
-                      dest="multi_crop", default=False,
-                      help="Wether to use multiple crops on image.")
+    parser.add_option(
+        "-c",
+        "--conf",
+        action="store",
+        dest="train_conf",
+        help="network config")
+    parser.add_option(
+        "-i", "--data", action="store", dest="data_file", help="image list")
+    parser.add_option(
+        "-w",
+        "--model",
+        action="store",
+        dest="model_path",
+        default=None,
+        help="model path")
+    parser.add_option(
+        "-g",
+        "--use_gpu",
+        action="store",
+        dest="use_gpu",
+        default=True,
+        help="Whether to use gpu mode.")
+    parser.add_option(
+        "-o",
+        "--output_dir",
+        action="store",
+        dest="output_dir",
+        default="output",
+        help="output path")
+    parser.add_option(
+        "-m",
+        "--mean",
+        action="store",
+        dest="mean",
+        default=None,
+        help="mean file.")
+    parser.add_option(
+        "-p",
+        "--multi_crop",
+        action="store_true",
+        dest="multi_crop",
+        default=False,
+        help="Wether to use multiple crops on image.")
     parser.add_option("-l", "--output_layer", action="store",
                       dest="output_layer", default=None,
                       help="--job=extract, specify layers to extract "\
@@ -254,24 +287,26 @@ def option_parser():
                            "classification probability, output in resnet.py.")
     return parser.parse_args()
 
+
 def main():
     """
     1. parse input arguments.
     2. predicting or extract features according job type.
     """
     options, args = option_parser()
-    obj = ImageClassifier(options.train_conf,
-                          options.model_path,
-                          use_gpu=options.use_gpu,
-                          mean_file=options.mean,
-                          output_layer=options.output_layer,
-                          oversample=options.multi_crop)
+    obj = ImageClassifier(
+        options.train_conf,
+        options.model_path,
+        use_gpu=options.use_gpu,
+        mean_file=options.mean,
+        output_layer=options.output_layer,
+        oversample=options.multi_crop)
     if options.job_type == "predict":
         obj.predict(options.data_file)
 
     elif options.job_type == "extract":
-        obj.extract(options.data_file,
-                    options.output_dir)
+        obj.extract(options.data_file, options.output_dir)
+
 
 if __name__ == '__main__':
     main()

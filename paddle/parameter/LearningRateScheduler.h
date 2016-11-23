@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "TrainerConfig.pb.h"
@@ -20,9 +19,10 @@ limitations under the License. */
 
 namespace paddle {
 // NOLINTNEXTLINES_4
-#define REGISTER_LEARNING_RATE_SCHEDULER(__type_name, __class_name)              \
-  static InitFunction __reg_type_##__type_name([]() {                            \
-    LearningRateScheduler::registrar_.registerClass<__class_name>(#__type_name); \
+#define REGISTER_LEARNING_RATE_SCHEDULER(__type_name, __class_name) \
+  static InitFunction __reg_type_##__type_name([]() {               \
+    LearningRateScheduler::registrar_.registerClass<__class_name>(  \
+        #__type_name);                                              \
   })
 
 class LearningRateScheduler {

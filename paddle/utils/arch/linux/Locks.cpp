@@ -22,26 +22,19 @@ public:
   sem_t sem;
 };
 
-Semaphore::Semaphore(int initValue): m(new SemaphorePrivate()) {
+Semaphore::Semaphore(int initValue) : m(new SemaphorePrivate()) {
   sem_init(&m->sem, 0, initValue);
 }
 
-Semaphore::~Semaphore() {
-  sem_destroy(&m->sem);
-}
+Semaphore::~Semaphore() { sem_destroy(&m->sem); }
 
 bool Semaphore::timeWait(struct timespec* ts) {
   return (0 == sem_timedwait(&m->sem, ts));
 }
 
-void Semaphore::wait() {
-  sem_wait(&m->sem);
-}
+void Semaphore::wait() { sem_wait(&m->sem); }
 
-void Semaphore::post() {
-  sem_post(&m->sem);
-}
-
+void Semaphore::post() { sem_post(&m->sem); }
 
 class SpinLockPrivate {
 public:
@@ -51,25 +44,20 @@ public:
   char padding_[64 - sizeof(pthread_spinlock_t)];
 };
 
-SpinLock::SpinLock():m(new SpinLockPrivate()) {}
-
+SpinLock::SpinLock() : m(new SpinLockPrivate()) {}
 
 SpinLock::~SpinLock() { delete m; }
 
-void SpinLock::lock() {
-  pthread_spin_lock(&m->lock_);
-}
+void SpinLock::lock() { pthread_spin_lock(&m->lock_); }
 
-void SpinLock::unlock() {
-  pthread_spin_unlock(&m->lock_);
-}
+void SpinLock::unlock() { pthread_spin_unlock(&m->lock_); }
 
 class ThreadBarrierPrivate {
 public:
   pthread_barrier_t barrier_;
 };
 
-ThreadBarrier::ThreadBarrier(int count): m(new ThreadBarrierPrivate()) {
+ThreadBarrier::ThreadBarrier(int count) : m(new ThreadBarrierPrivate()) {
   pthread_barrier_init(&m->barrier_, nullptr, count);
 }
 
@@ -78,8 +66,6 @@ ThreadBarrier::~ThreadBarrier() {
   delete m;
 }
 
-void ThreadBarrier::wait() {
-  pthread_barrier_wait(&m->barrier_);
-}
+void ThreadBarrier::wait() { pthread_barrier_wait(&m->barrier_); }
 
 }  // namespace paddle

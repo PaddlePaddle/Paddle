@@ -91,8 +91,8 @@ static inline int env2index(const char* envName,
 }
 
 static bool gLogToStderr = env2bool("PLOG_LOGTOSTDERR", true);
-static const std::vector<std::string> gLevelName = {"INFO", "WARNING", "ERROR",
-                                                    "FATAL"};
+static const std::vector<std::string> gLevelName = {
+    "INFO", "WARNING", "ERROR", "FATAL"};
 static int gMinLogLevel =
     env2int("PLOG_MINLOGLEVEL", env2index("PLOG_MINLOGLEVEL", gLevelName, 0));
 
@@ -134,7 +134,7 @@ static void initializeLogFds(char* argv0) {
   gLogInited = true;
 }
 
-static void (*gFailureFunctionPtr)() __attribute__((noreturn)) = abort;
+static void (*gFailureFunctionPtr)() ATTR_NORETURN = abort;
 
 LogMessage::LogMessage(const char* fname, int line, int severity)
     : fname_(fname), line_(line), severity_(severity) {}
@@ -143,11 +143,19 @@ LogMessage::~LogMessage() { this->generateLogMessage(); }
 
 void LogMessage::generateLogMessage() {
   if (!gLogInited) {
-    fprintf(stderr, "%c %s:%d] %s\n", "IWEF"[severity_], fname_, line_,
+    fprintf(stderr,
+            "%c %s:%d] %s\n",
+            "IWEF"[severity_],
+            fname_,
+            line_,
             str().c_str());
   } else {
     for (auto& fd : gLogFds[this->severity_]) {
-      dprintf(fd, "%c %s:%d] %s\n", "IWEF"[severity_], fname_, line_,
+      dprintf(fd,
+              "%c %s:%d] %s\n",
+              "IWEF"[severity_],
+              fname_,
+              line_,
               str().c_str());
     }
   }
@@ -167,11 +175,9 @@ void initializeLogging(int argc, char** argv) {
 }
 
 namespace logging {
-void setMinLogLevel(int level) {
-  paddle::internal::gMinLogLevel = level;
-}
+void setMinLogLevel(int level) { paddle::internal::gMinLogLevel = level; }
 
-void installFailureFunction(void (*callback)()) {
+void installFailureFunction(void (*callback)() ATTR_NORETURN) {
   paddle::internal::gFailureFunctionPtr = callback;
 }
 
@@ -191,13 +197,11 @@ void initializeLogging(int argc, char** argv) {
 }
 
 namespace logging {
-void setMinLogLevel(int level) {
-  FLAGS_minloglevel = level;
-}
+void setMinLogLevel(int level) { FLAGS_minloglevel = level; }
 void installFailureFunction(void (*callback)()) {
   google::InstallFailureFunction(callback);
 }
-void installFailureWriter(void(*callback)(const char*, int)) {
+void installFailureWriter(void (*callback)(const char*, int)) {
   google::InstallFailureWriter(callback);
 }
 }  // namespace logging

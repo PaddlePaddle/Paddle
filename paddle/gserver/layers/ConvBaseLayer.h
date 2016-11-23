@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Layer.h"
+#include "paddle/math/MathUtils.h"
 namespace paddle {
 
 /**
@@ -26,6 +26,9 @@ namespace paddle {
 class ConvBaseLayer : public Layer {
 protected:
   typedef std::vector<int> IntV;
+
+  /// True if it's deconv layer, false if it's convolution layer
+  bool isDeconv_;
 
   /// The number of filters.
   int numFilters_;
@@ -87,31 +90,6 @@ public:
   virtual size_t calOutputSize();
 
   Weight& getWeight(int idx) { return *weights_[idx]; }
-
-  /**
-   * Calculate output size based on caffeMode_.
-   * - input(+padding): 0123456789
-   * - imageSize(+padding) = 10;
-   * - filterSize = 3;
-   * - stride = 2;
-   * - caffeMode_ is true:
-       - output: (012), (234), (456), (678)
-       - outputSize = 4;
-   * - caffeMode_ is false:
-   *   - output: (012), (234), (456), (678), (9)
-   *   - outputSize = 5;
-   */
-  int outputSize(int imageSize, int filterSize, int padding, int stride) {
-    int outputSize;
-    if (!caffeMode_) {
-     outputSize =
-          (imageSize - filterSize + 2 * padding + stride - 1) / stride + 1;
-    } else {
-      outputSize = (imageSize - filterSize + 2 * padding) / stride + 1;
-    }
-    CHECK_GE(outputSize, 1);
-    return outputSize;
-  }
 };
 
 }  // namespace paddle
