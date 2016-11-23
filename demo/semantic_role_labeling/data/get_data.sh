@@ -14,6 +14,10 @@
 # limitations under the License.
 set -e
 wget http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz
+wget https://www.googledrive.com/host/0B7Q8d52jqeI9ejh6Q1RpMTFQT1k/semantic_role_labeling/verbDict.txt --no-check-certificate
+wget https://www.googledrive.com/host/0B7Q8d52jqeI9ejh6Q1RpMTFQT1k/semantic_role_labeling/targetDict.txt --no-check-certificate
+wget https://www.googledrive.com/host/0B7Q8d52jqeI9ejh6Q1RpMTFQT1k/semantic_role_labeling/wordDict.txt --no-check-certificate
+wget https://www.googledrive.com/host/0B7Q8d52jqeI9ejh6Q1RpMTFQT1k/semantic_role_labeling/emb --no-check-certificate
 tar -xzvf conll05st-tests.tar.gz
 rm conll05st-tests.tar.gz
 cp ./conll05st-release/test.wsj/words/test.wsj.words.gz  .
@@ -22,4 +26,4 @@ gunzip test.wsj.words.gz
 gunzip test.wsj.props.gz
 
 python extract_pairs.py  -w test.wsj.words -p test.wsj.props -o test.wsj.seq_pair
-python extract_dict_feature.py -p test.wsj.seq_pair -f feature  -s src.dict  -t tgt.dict
+python extract_dict_feature.py -p test.wsj.seq_pair -f feature 

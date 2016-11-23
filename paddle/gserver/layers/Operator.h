@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/parameter/Parameter.h"
@@ -48,12 +47,14 @@ public:
   static ClassRegistrar<Operator, OperatorConfig, bool> registrar_;
 
   /**
-   * Forward propagation. If backward() will be called, in and out must be kept valid until then.
+   * Forward propagation. If backward() will be called, in and out must be kept
+   * valid until then.
    * @param ins inputs of operator
    * @param out output of operator
    * @param passType PASS_TRAIN of PASS_TEST
    */
-  void forward(std::vector<const Argument*> ins, Argument* out,
+  void forward(std::vector<const Argument*> ins,
+               Argument* out,
                PassType passType) {
     ins_ = ins;
     out_ = out;

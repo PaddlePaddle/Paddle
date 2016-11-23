@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
@@ -26,7 +25,7 @@ namespace paddle {
  * \f[
  *   y.row[i] = w[i] * x.row[i]
  * \f]
- * where \f$x\f$ is (batchSize x dataDim) input, \f$w\f$ is 
+ * where \f$x\f$ is (batchSize x dataDim) input, \f$w\f$ is
  * (batchSize x 1) weight vector, and \f$y\f$ is (batchSize x dataDim) output.
  *
  * The config file api is scaling_layer.

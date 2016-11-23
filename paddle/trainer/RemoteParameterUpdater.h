@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <thread>
@@ -56,7 +55,8 @@ namespace paddle {
 class RemoteParameterUpdater : public ParameterUpdater {
 public:
   RemoteParameterUpdater(
-      const OptimizationConfig& config, int expectedPpassCount,
+      const OptimizationConfig& config,
+      int expectedPpassCount,
       std::unique_ptr<ParameterUpdater>&& localUpdater = nullptr);
   ~RemoteParameterUpdater() {
     if (controllerThread_) {
@@ -180,7 +180,8 @@ protected:
 class ConcurrentRemoteParameterUpdater : public RemoteParameterUpdater {
 public:
   ConcurrentRemoteParameterUpdater(
-      OptimizationConfig config, int expectedPassCount,
+      OptimizationConfig config,
+      int expectedPassCount,
       std::unique_ptr<ParameterUpdater>&& localUpdater);
   ~ConcurrentRemoteParameterUpdater();
 
@@ -264,7 +265,8 @@ private:
 class SparseRemoteParameterUpdater : public ParameterUpdater {
 public:
   SparseRemoteParameterUpdater(const OptimizationConfig& config,
-                               int expectedPassCount, bool testing);
+                               int expectedPassCount,
+                               bool testing);
   ~SparseRemoteParameterUpdater() {
     if (controllerThread_) {
       controllerThread_->join();
@@ -345,7 +347,9 @@ public:
    * @note  use syncThreadPool to synchronize these two updaters
    */
   SparseRemoteParameterUpdaterComposite(
-      const OptimizationConfig& config, int expectedPassCount, bool testing,
+      const OptimizationConfig& config,
+      int expectedPassCount,
+      bool testing,
       std::unique_ptr<ParameterUpdater>&& normalUpdater) {
     updaters_.resize(NUMBER_UPDATERS);
     updaters_[UPDATER_SPARSE_REMOTE].reset(
@@ -373,11 +377,11 @@ public:
    */
   static void addCreator(
       const std::function<ParameterUpdater*(
-          const std::string&,  // algo
+          const std::string&,         // algo
           const OptimizationConfig&,  // optConfig
-          bool,  // isLocal
-          size_t  // numPasses
-        )>& creator) {    // NOLINT  explicit move closing ) in this line
+          bool,                       // isLocal
+          size_t                      // numPasses
+          )>& creator) {  // NOLINT  explicit move closing ) in this line
                           // for readability
     constructors_.push_back(creator);
   }
@@ -395,7 +399,7 @@ public:
                                             const OptimizationConfig& optConfig,
                                             bool isLocal,
                                             size_t numPasses) {
-    for (auto & c : constructors_) {
+    for (auto& c : constructors_) {
       if (auto updater = c(algo, optConfig, isLocal, numPasses)) {
         return updater;
       }
@@ -406,7 +410,7 @@ public:
 private:
   static std::vector<std::function<ParameterUpdater*(
       const std::string&, const OptimizationConfig&, bool, size_t)>>
-  constructors_;
+      constructors_;
 };
 
 }  // namespace paddle

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <fstream>
 #include "paddle/math/MathUtils.h"
 #include "AverageOptimizer.h"
@@ -27,11 +26,13 @@ limitations under the License. */
 #include "hl_gpu.h"
 #include "paddle/utils/CommandLineParser.h"
 
-P_DEFINE_int32(enable_grad_share, (100 * 1024 * 1024),
+P_DEFINE_int32(enable_grad_share,
+               (100 * 1024 * 1024),
                "threshold for enable gradient parameter share for batch "
                "multi-cpu training");
 P_DEFINE_int32(
-    grad_share_block_num, 64,
+    grad_share_block_num,
+    64,
     "block number of gradient parameter share for batch multi-cpu training");
 
 namespace paddle {
@@ -95,13 +96,12 @@ void Parameter::randomize(const VectorPtr& value,
     real initial_max = config.initial_mean() + config.initial_std();
     value->uniform(initial_min, initial_max);
     VLOG(1) << config.name() << ": initial_min=" << initial_min
-                            << ", initial_max=" << initial_max;
+            << ", initial_max=" << initial_max;
   } else if (PARAMETER_INIT_NORMAL == config.initial_strategy()) {
     /* Initialize the parameters randomly */
     value->randnorm(config.initial_mean(), config.initial_std());
-    VLOG(1) << config.name()
-                            << ": initial_mean=" << config.initial_mean()
-                            << ", initial_std=" << config.initial_std();
+    VLOG(1) << config.name() << ": initial_mean=" << config.initial_mean()
+            << ", initial_std=" << config.initial_std();
   } else {
     LOG(FATAL) << "not supported initial_strategy: "
                << config.initial_strategy();
@@ -116,12 +116,18 @@ void Parameter::randomize() {
   if (config_.is_sparse()) {
     if (format_ == SPARSE_CSC) {
       sparseRand(intBufs_[PARAMETER_COLS]->getData(),
-                 intBufs_[PARAMETER_ROWS]->getData(), config_.size(),
-                 config_.dims(1) + 1, config_.dims(0), useGpu_);
+                 intBufs_[PARAMETER_ROWS]->getData(),
+                 config_.size(),
+                 config_.dims(1) + 1,
+                 config_.dims(0),
+                 useGpu_);
     } else {
       sparseRand(intBufs_[PARAMETER_ROWS]->getData(),
-                 intBufs_[PARAMETER_COLS]->getData(), config_.size(),
-                 config_.dims(0) + 1, config_.dims(1), useGpu_);
+                 intBufs_[PARAMETER_COLS]->getData(),
+                 config_.size(),
+                 config_.dims(0) + 1,
+                 config_.dims(1),
+                 useGpu_);
     }
   }
   setValueUpdated();
@@ -152,7 +158,7 @@ bool Parameter::isValueShared() {
 
 bool Parameter::isGradSparseUpdate() const {
   return !useGpu_ && !isStatic() &&
-      (config_.sparse_update() || config_.sparse_remote_update());
+         (config_.sparse_update() || config_.sparse_remote_update());
 }
 
 void Parameter::setMat(ParameterType pType, int matType) {
@@ -180,30 +186,42 @@ void Parameter::setMat(ParameterType pType, int matType) {
         CHECK_EQ(width + 1, intBufs_[PARAMETER_COLS]->getSize());
         CHECK_EQ(size, intBufs_[PARAMETER_ROWS]->getSize());
       }
-      mats_[pType] = Matrix::createSparseMatrix(
-          bufs_[pType]->getData(), intBufs_[PARAMETER_ROWS]->getData(),
-          intBufs_[PARAMETER_COLS]->getData(), height, width,
-          bufs_[pType]->getSize(), FLOAT_VALUE, format_, false, useGpu_);
+      mats_[pType] =
+          Matrix::createSparseMatrix(bufs_[pType]->getData(),
+                                     intBufs_[PARAMETER_ROWS]->getData(),
+                                     intBufs_[PARAMETER_COLS]->getData(),
+                                     height,
+                                     width,
+                                     bufs_[pType]->getSize(),
+                                     FLOAT_VALUE,
+                                     format_,
+                                     false,
+                                     useGpu_);
     }
   } else if (matType == MAT_NORMAL_SHARED) {
     CHECK_EQ(height * width, bufs_[pType]->getSize());
     size_t blockNum = 0;
     CHECK(isGradShared(&blockNum));
     mats_[pType] = std::make_shared<SharedCpuMatrix>(
-        blockNum, std::dynamic_pointer_cast<CpuMemoryHandle>(
-                      bufs_[pType]->getMemoryHandle()),
-        height, width);
+        blockNum,
+        std::dynamic_pointer_cast<CpuMemoryHandle>(
+            bufs_[pType]->getMemoryHandle()),
+        height,
+        width);
   } else if (matType == MAT_VALUE_SHARED) {
     CHECK_EQ(height * width, bufs_[pType]->getSize());
     mats_[pType] = std::make_shared<SharedCpuMatrix>(
         std::dynamic_pointer_cast<CpuMemoryHandle>(
-        bufs_[pType]->getMemoryHandle()), height, width);
+            bufs_[pType]->getMemoryHandle()),
+        height,
+        width);
   } else if (matType == MAT_SPARSE_ROW_IDS) {
     CHECK_EQ(height * width, bufs_[pType]->getSize());
     mats_[pType] = std::make_shared<SparseRowIdsCpuMatrix>(
         std::dynamic_pointer_cast<CpuMemoryHandle>(
             bufs_[pType]->getMemoryHandle()),
-        height, width);
+        height,
+        width);
   } else if (matType == MAT_SPARSE_ROW) {
     auto valueMat =
         std::dynamic_pointer_cast<SparseRowCpuMatrix>(mats_[PARAMETER_VALUE]);
@@ -214,29 +232,31 @@ void Parameter::setMat(ParameterType pType, int matType) {
                       << " MAT_SPARSE_ROW_PREFETCH or MAT_CACHE_ROW";
       indexDict = valueMat->getIndexDictHandle();
     }
-    auto mat = std::make_shared<SparseRowCpuMatrix>(
-        nullptr, height, width,
-        // grad share index with value
-        indexDict);
+    auto mat =
+        std::make_shared<SparseRowCpuMatrix>(nullptr,
+                                             height,
+                                             width,
+                                             // grad share index with value
+                                             indexDict);
     mats_[pType] = mat;
   } else if (matType == MAT_CACHE_ROW) {
     CHECK(isGradSparseUpdate());
-    auto mat = std::make_shared<CacheRowCpuMatrix>(
-      height, width);
+    auto mat = std::make_shared<CacheRowCpuMatrix>(height, width);
     mats_[pType] = mat;
   } else if (matType == MAT_SPARSE_ROW_PREFETCH_FULL_SIZE ||
              matType == MAT_SPARSE_ROW_PREFETCH) {
     auto mat = std::make_shared<SparsePrefetchRowCpuMatrix>(
         bufs_[pType] ? std::dynamic_pointer_cast<CpuMemoryHandle>(
-          bufs_[pType]->getMemoryHandle()) : nullptr,
-        height, width,
+                           bufs_[pType]->getMemoryHandle())
+                     : nullptr,
+        height,
+        width,
         nullptr,  // indexDictHandle
         getGlobalSyncThreadPool());
     mats_[pType] = mat;
   } else if (matType == MAT_SPARSE_ROW_AUTO_GROW) {
     CHECK(isGradSparseUpdate());
-    mats_[pType] = std::make_shared<SparseAutoGrowRowCpuMatrix>(
-      height, width);
+    mats_[pType] = std::make_shared<SparseAutoGrowRowCpuMatrix>(height, width);
   } else {
     LOG(FATAL) << "Unsupported mat type" << matType;
   }
@@ -252,30 +272,43 @@ SparsePrefetchRowCpuMatrix* Parameter::getPrefetchMatrix() {
 }
 
 void Parameter::updateWithGradient(real learningRate) {
-  sgdUpdate(learningRate * config_.learning_rate(), config_.momentum(),
-            config_.decay_rate(), bufs_[PARAMETER_VALUE].get(),
-            bufs_[PARAMETER_GRADIENT].get(), bufs_[PARAMETER_MOMENTUM].get());
+  sgdUpdate(learningRate * config_.learning_rate(),
+            config_.momentum(),
+            config_.decay_rate(),
+            bufs_[PARAMETER_VALUE].get(),
+            bufs_[PARAMETER_GRADIENT].get(),
+            bufs_[PARAMETER_MOMENTUM].get());
 }
 
-void Parameter::updateWithGradient(real learningRate, MatrixPtr gradMat,
-                                   IVectorPtr t0, int currentTime, bool fini) {
+void Parameter::updateWithGradient(real learningRate,
+                                   MatrixPtr gradMat,
+                                   IVectorPtr t0,
+                                   int currentTime,
+                                   bool fini) {
   SparseRowCpuMatrix* sparseMat =
       dynamic_cast<SparseRowCpuMatrix*>(gradMat.get());
   CHECK(sparseMat);
   CHECK_EQ(config_.momentum(), 0.0f)
       << "not support momentum in sparse input sgd";
   bool useL1 = (config_.decay_rate_l1() != 0.0f);
-  sparseMat->sgdUpdate(*bufs_[PARAMETER_VALUE], *t0,
-                       learningRate * config_.learning_rate(), currentTime,
+  sparseMat->sgdUpdate(*bufs_[PARAMETER_VALUE],
+                       *t0,
+                       learningRate * config_.learning_rate(),
+                       currentTime,
                        useL1 ? config_.decay_rate_l1() : config_.decay_rate(),
-                       useL1, fini);
+                       useL1,
+                       fini);
 }
 
-void Parameter::updateWithGradient(real learningRate, VectorPtr gradVec,
+void Parameter::updateWithGradient(real learningRate,
+                                   VectorPtr gradVec,
                                    bool normalUpdate) {
   if (normalUpdate) {
-    sgdUpdate(learningRate * config_.learning_rate(), config_.momentum(),
-              config_.decay_rate(), bufs_[PARAMETER_VALUE].get(), gradVec.get(),
+    sgdUpdate(learningRate * config_.learning_rate(),
+              config_.momentum(),
+              config_.decay_rate(),
+              bufs_[PARAMETER_VALUE].get(),
+              gradVec.get(),
               bufs_[PARAMETER_MOMENTUM].get());
   } else {
     size_t size = gradVec->getSize();
@@ -361,7 +394,7 @@ bool Parameter::load(const std::string& filename) {
       return true;
     }
     LOG(FATAL) << "unsupported load_missing_parameter_strategy: "
-        << FLAGS_load_missing_parameter_strategy;
+               << FLAGS_load_missing_parameter_strategy;
     return false;
   }
   return load(fs);
@@ -372,8 +405,8 @@ bool Parameter::load(std::istream& s) {
   Header header;
   CHECK(s.read(reinterpret_cast<char*>(&header), sizeof(header)))
       << "Fail to read parameter " << getName();
-  CHECK_EQ(header.version, kFormatVersion)
-      << "Incorrect format version: " << header.version;
+  CHECK_EQ(header.version, kFormatVersion) << "Incorrect format version: "
+                                           << header.version;
   CHECK_EQ(header.size, getSize())
       << "The size (" << header.size << ") in the file does not match the size "
       << "(" << getSize() << ") of the parameter: " << getName();
@@ -382,7 +415,7 @@ bool Parameter::load(std::istream& s) {
   CHECK(s.read(reinterpret_cast<char*>(vec.getData()),
                header.size * sizeof(real)));
 
-  auto & tmp = *bufs_[PARAMETER_VALUE].get();
+  auto& tmp = *bufs_[PARAMETER_VALUE].get();
   if (typeid(tmp) == typeid(GpuVector)) {
     bufs_[PARAMETER_VALUE]->copyFrom(vec);
   }
@@ -393,7 +426,11 @@ bool Parameter::load(std::istream& s) {
     auto height = config_.dims(0);
     auto width = config_.dims(1);
     auto mat = Matrix::create(vec.getData(), height, width);
-    CpuSparseMatrix sparseMat(height, width, 0, FLOAT_VALUE, format_,
+    CpuSparseMatrix sparseMat(height,
+                              width,
+                              0,
+                              FLOAT_VALUE,
+                              format_,
                               /*trans*/ false);
     sparseMat.copyFrom(*mat, HPPL_STREAM_DEFAULT);
     auto nnz = sparseMat.getElementCnt();
@@ -423,11 +460,11 @@ bool Parameter::load(std::istream& s) {
         s.read(reinterpret_cast<char*>(rows.getData()), rowSize * sizeof(int)));
     CHECK(
         s.read(reinterpret_cast<char*>(cols.getData()), colSize * sizeof(int)));
-    auto & paramRows = *intBufs_[PARAMETER_ROWS].get();
+    auto& paramRows = *intBufs_[PARAMETER_ROWS].get();
     if (typeid(paramRows) == typeid(GpuIVector)) {
       intBufs_[PARAMETER_ROWS]->copyFrom(rows);
     }
-    auto & paramCols = *intBufs_[PARAMETER_COLS].get();
+    auto& paramCols = *intBufs_[PARAMETER_COLS].get();
     if (typeid(paramCols) == typeid(GpuIVector)) {
       intBufs_[PARAMETER_COLS]->copyFrom(cols);
     }
@@ -457,8 +494,8 @@ void Parameter::exec(ExecFunc func) {
       func(this->getBufs());
     } else {  // multi thread
       VectorPtr* vecs = Parameter::getTlsTempBufs();
-      auto interval = calcSplitArrayInterval(this->getSize(), (size_t)tid,
-                                             numThreads, 8LU /*for avx*/);
+      auto interval = calcSplitArrayInterval(
+          this->getSize(), (size_t)tid, numThreads, 8LU /*for avx*/);
       for (size_t i = 0; i < (size_t)NUM_PARAMETER_TYPES; ++i) {
         if (bufs_[i]) {
           vecs[i]->subVecFrom(*bufs_[i], interval);

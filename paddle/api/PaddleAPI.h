@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <stddef.h>
@@ -61,8 +60,8 @@ class RangeError {};
 /// Not support Error, such as access GPU memory directly, etc.
 class UnsupportError : public std::runtime_error {
 public:
-  UnsupportError() : std::runtime_error(" ") {};
-  UnsupportError(const std::string& message) : std::runtime_error(message) {};
+  UnsupportError() : std::runtime_error(" "){};
+  UnsupportError(const std::string& message) : std::runtime_error(message){};
 };
 
 /// This type will map to python's list of float.
@@ -112,7 +111,8 @@ public:
   /**
    * Create A Matrix with height,width, which is filled by zero.
    */
-  static Matrix* createZero(size_t height, size_t width,
+  static Matrix* createZero(size_t height,
+                            size_t width,
                             bool useGpu = isUsingGpu());
 
   /**
@@ -124,8 +124,11 @@ public:
    *
    * @note the default sparse type is SPARSE_CSR.
    */
-  static Matrix* createSparse(size_t height, size_t width, size_t nnz,
-                              bool isNonVal = true, bool trans = false,
+  static Matrix* createSparse(size_t height,
+                              size_t width,
+                              size_t nnz,
+                              bool isNonVal = true,
+                              bool trans = false,
                               bool useGpu = isUsingGpu());
 
   /**
@@ -134,13 +137,17 @@ public:
    * @param data  list of float should be passed in python.
    * @note        the value will be copy into a new matrix.
    */
-  static Matrix* createDense(const std::vector<float>& data, size_t height,
-                             size_t width, bool useGpu = isUsingGpu());
+  static Matrix* createDense(const std::vector<float>& data,
+                             size_t height,
+                             size_t width,
+                             bool useGpu = isUsingGpu());
 
-  static Matrix* createDenseFromNumpy(float* data, int dim1, int dim2,
-                                      bool copy = true,
-                                      bool useGpu = isUsingGpu())
-                                      throw (UnsupportError);
+  static Matrix* createDenseFromNumpy(
+      float* data,
+      int dim1,
+      int dim2,
+      bool copy = true,
+      bool useGpu = isUsingGpu()) throw(UnsupportError);
 
   /**
    *  Create Cpu Dense Matrix from numpy matrix, dtype=float32
@@ -151,7 +158,9 @@ public:
    *  @param copy  true if copy into a new matrix, false will create
    *               matrix inplace.
    */
-  static Matrix* createCpuDenseFromNumpy(float* data, int dim1, int dim2,
+  static Matrix* createCpuDenseFromNumpy(float* data,
+                                         int dim1,
+                                         int dim2,
                                          bool copy = false);
 
   /// Create Gpu Dense Matrix from numpy matrix, dtype=float32
@@ -171,11 +180,13 @@ public:
    * numpy_mat = m.toNumpyMat()
    * @endcode
    */
-  void toNumpyMatInplace(float** view_data, int* dim1,
+  void toNumpyMatInplace(float** view_data,
+                         int* dim1,
                          int* dim2) throw(UnsupportError);
 
   /// Copy To numpy mat.
-  void copyToNumpyMat(float** view_m_data, int* dim1,
+  void copyToNumpyMat(float** view_m_data,
+                      int* dim1,
                       int* dim2) throw(UnsupportError);
 
   /// Copy From Numpy Mat
@@ -248,15 +259,18 @@ public:
   static Vector* create(const std::vector<float>& data,
                         bool useGpu = isUsingGpu());
 
-  static Vector* createVectorFromNumpy(float* data, int dim, bool copy = true,
-                                       bool useGpu = isUsingGpu())
-                                       throw (UnsupportError);
+  static Vector* createVectorFromNumpy(
+      float* data,
+      int dim,
+      bool copy = true,
+      bool useGpu = isUsingGpu()) throw(UnsupportError);
   /**
    * Create Cpu Vector from numpy array, which dtype=float32
    *
    * If copy is false, it will create vector inplace.
    */
-  static Vector* createCpuVectorFromNumpy(float* data, int dim,
+  static Vector* createCpuVectorFromNumpy(float* data,
+                                          int dim,
                                           bool copy = false);
 
   /// Create Gpu Vector from numpy array, which dtype=float32
@@ -312,16 +326,19 @@ public:
   static IVector* create(const std::vector<int>& data,
                          bool useGpu = isUsingGpu());
 
-  static IVector* createVectorFromNumpy(int* data, int dim, bool copy = true,
-                                        bool useGpu = isUsingGpu())
-                                        throw (UnsupportError);
+  static IVector* createVectorFromNumpy(
+      int* data,
+      int dim,
+      bool copy = true,
+      bool useGpu = isUsingGpu()) throw(UnsupportError);
 
   /**
    * Create Cpu IVector from numpy array, which dtype=int32
    *
    * If copy is false, it will create vector inplace
    */
-  static IVector* createCpuVectorFromNumpy(int* data, int dim,
+  static IVector* createCpuVectorFromNumpy(int* data,
+                                           int dim,
                                            bool copy = false);
   /**
    * Create Gpu IVector from numpy array, which dtype=int32
@@ -605,7 +622,8 @@ class ParameterTraverseCallback {
 public:
   ~ParameterTraverseCallback();
 
-  void apply(const std::vector<Vector*>& vecs, const ParameterConfig& config,
+  void apply(const std::vector<Vector*>& vecs,
+             const ParameterConfig& config,
              size_t sparseId);
 
 private:
@@ -638,7 +656,8 @@ public:
 
   void finishBatch();
 
-  void update(const std::vector<Vector*>& vecs, const ParameterConfig& conf,
+  void update(const std::vector<Vector*>& vecs,
+              const ParameterConfig& conf,
               size_t sparseId = NO_SPARSE_ID);
 
   std::vector<int> getParameterTypes() const;
@@ -678,7 +697,8 @@ public:
    * model config by TrainerConfig
    */
   static GradientMachine* createByModelConfig(
-      ModelConfig* conf, GradientMatchineCreateMode mode = CREATE_MODE_NORMAL,
+      ModelConfig* conf,
+      GradientMatchineCreateMode mode = CREATE_MODE_NORMAL,
       const std::vector<int>& parameterTypes = defaultParamTypes);
 
   /**
@@ -701,7 +721,8 @@ public:
   /**
    * Combine forward/backward
    */
-  void forwardBackward(const Arguments& inArgs, Arguments* outArgs,
+  void forwardBackward(const Arguments& inArgs,
+                       Arguments* outArgs,
                        PassType passType,
                        const UpdateCallback& callback = UpdateCallback());
 
@@ -722,14 +743,17 @@ public:
    */
   SequenceGenerator* asSequenceGenerator(
       const std::vector<std::string>& dict = std::vector<std::string>(),
-      size_t begin_id = 0UL, size_t end_id = 0UL, size_t max_length = 100UL,
+      size_t begin_id = 0UL,
+      size_t end_id = 0UL,
+      size_t max_length = 100UL,
       size_t beam_size = -1UL);
 
 private:
   GradientMachinePrivate* m;
 
   static GradientMachine* createFromPaddleModelPtr(
-      const void* confPtr, GradientMatchineCreateMode mode,
+      const void* confPtr,
+      GradientMatchineCreateMode mode,
       const std::vector<int>& types);
 
   // Not to use c++ 11 init-list, so we use static var as function default arg.
@@ -751,8 +775,8 @@ public:
   /// Create A Trainer By TrainerConfig. using paddle command line.
   static Trainer* createByCommandLine() throw(IOError);
 
-  static Trainer* create(TrainerConfig* optConfig, GradientMachine* gm)
-      throw(IOError);
+  static Trainer* create(TrainerConfig* optConfig,
+                         GradientMachine* gm) throw(IOError);
 
   /// Start training
   void startTrain();

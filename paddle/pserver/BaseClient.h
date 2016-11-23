@@ -62,7 +62,10 @@ public:
 
   /// send data to server, support only synchronize
   template <class DataType>
-  void putData(int clientId, SendDataType type, DataType* datas, size_t size,
+  void putData(int clientId,
+               SendDataType type,
+               DataType* datas,
+               size_t size,
                DataUpdateMode mode) {
     synchronize(SYNC_DATA);
     sendData(clientId, type, mode, datas, size);
@@ -71,16 +74,23 @@ public:
   }
 
   template <class DataType>
-  void putOwnData(int clientId, SendDataType type, DataType* datas,
+  void putOwnData(int clientId,
+                  SendDataType type,
+                  DataType* datas,
                   size_t size) {
     putData(clientId, type, datas, size, DATA_UPDATE_MODE_SET_OWN);
   }
 
   template <class DataType>
-  void getAllData(int clientId, SendDataType type, DataType* datas,
+  void getAllData(int clientId,
+                  SendDataType type,
+                  DataType* datas,
                   size_t size) {
-    sendData(clientId, type, DATA_UPDATE_MODE_GET_ALL,
-             reinterpret_cast<DataType*>(NULL), 0);
+    sendData(clientId,
+             type,
+             DATA_UPDATE_MODE_GET_ALL,
+             reinterpret_cast<DataType*>(NULL),
+             0);
     recvData();
     size_t dataOffset = 0;
     for (auto& recvMem : recvDataMems_) {
@@ -100,7 +110,10 @@ public:
    * The results are saved in recvBuf of rootId client
    */
   template <class DataType>
-  void reduce(DataType* sendBuf, DataType* recvBuf, size_t size, int clientId,
+  void reduce(DataType* sendBuf,
+              DataType* recvBuf,
+              size_t size,
+              int clientId,
               int rootId) {
     putOwnData(clientId, DATA_REDUCE_SUM, sendBuf, size);
     if (rootId == clientId) {
@@ -147,8 +160,12 @@ protected:
   void finishThreads();
 
   template <class DataType>
-  void prepareData(int clientId, SendDataType type, DataUpdateMode updateMode,
-                   DataType* datas, size_t size, SendJob* sendJob) {
+  void prepareData(int clientId,
+                   SendDataType type,
+                   DataUpdateMode updateMode,
+                   DataType* datas,
+                   size_t size,
+                   SendJob* sendJob) {
     sendJob->parallelDataRequests.resize(serviceNum_);
     sendJob->parallelInputIovs.resize(serviceNum_);
     for (int i = 0; i < serviceNum_; ++i) {
@@ -192,8 +209,11 @@ protected:
    *        synchronization in metric learning.
    */
   template <class DataType>
-  void sendData(int clientId, SendDataType type, DataUpdateMode updateMode,
-                DataType* datas, size_t size) {
+  void sendData(int clientId,
+                SendDataType type,
+                DataUpdateMode updateMode,
+                DataType* datas,
+                size_t size) {
     SendJobPtr sendJob = std::make_shared<SendJob>();
     prepareData(clientId, type, updateMode, datas, size, sendJob.get());
     for (int i = 0; i < threadNum_; ++i) {
@@ -210,7 +230,8 @@ protected:
 
   /// send request, and recv responses
   template <typename ProtoIn, typename ProtoOut>
-  void multiCall(const char* funcName, const ProtoIn& request,
+  void multiCall(const char* funcName,
+                 const ProtoIn& request,
                  std::vector<ProtoOut>* responses) {
     responses->resize(clients_.size());
     size_t numClients = clients_.size();

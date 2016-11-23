@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Util.h"
 #include "paddle/utils/Flags.h"
 #include "Regularizer.h"
@@ -21,8 +20,9 @@ namespace paddle {
 
 Regularizer* Regularizer::get(const std::vector<ParameterType>& types,
                               const ParameterConfig& paraConfig) {
-  bool useLearningRateVec = std::find(types.begin(), types.end(),
-                                      PARAMETER_LEARNING_RATE) != types.end();
+  bool useLearningRateVec =
+      std::find(types.begin(), types.end(), PARAMETER_LEARNING_RATE) !=
+      types.end();
   if (paraConfig.decay_rate_l1() > 0.0f &&
       paraConfig.decay_rate() > 0.0f) {  // use L1 and L2
     if (useLearningRateVec) {

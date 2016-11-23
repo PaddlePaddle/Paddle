@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Stat.h"
 #include "paddle/gserver/evaluators/Evaluator.h"
 
@@ -74,17 +73,19 @@ public:
     }
 
     const MatrixPtr errorMat = Matrix::create(output->getHeight(),
-      1, /* trans= */ false, useGpu(arguments[0].deviceId));
+                                              1,
+                                              /* trans= */ false,
+                                              useGpu(arguments[0].deviceId));
     errorMat->zeroMem();
     if (label != nullptr) {
       errorMat->classificationError(output, label);
     } else if (dynamic_cast<CpuSparseMatrix*>(multiBinaryLabel.get()) ||
                dynamic_cast<GpuSparseMatrix*>(multiBinaryLabel.get())) {
-      errorMat->classificationErrorMulti(*output, *multiBinaryLabel,
-                                         config_.classification_threshold());
+      errorMat->classificationErrorMulti(
+          *output, *multiBinaryLabel, config_.classification_threshold());
     } else {
-      errorMat->binaryClassificationError(0, *output, *multiBinaryLabel,
-                                          config_.classification_threshold());
+      errorMat->binaryClassificationError(
+          0, *output, *multiBinaryLabel, config_.classification_threshold());
     }
 
     if (supportWeight) {
@@ -126,8 +127,8 @@ public:
     int errCounter = 0;
     CpuVector errorVec(0, nullptr);
     for (size_t i = 0; i < sequenceStartPositions->getSize() - 1; ++i) {
-      errorVec.subVecFrom(errorMat->getData(), starts[i],
-                          starts[i + 1] - starts[i]);
+      errorVec.subVecFrom(
+          errorMat->getData(), starts[i], starts[i + 1] - starts[i]);
       if (errorVec.getSum() > 0) {
         errCounter += 1;
       }
@@ -315,7 +316,7 @@ public:
     return 0;
   }
 
-  virtual void printStats(std::ostream& os) {
+  virtual void printStats(std::ostream& os) const {
     CHECK(colIdx_ + (int32_t)colNum_ >= 0 && colIdx_ - (int32_t)colNum_ < 0)
         << "column index [" << colIdx_ << "] out of range [-" << colNum_ << ", "
         << colNum_ << ")";
@@ -330,8 +331,8 @@ public:
   }
 
   void distributeEval(ParameterClient2* client) {
-    client->reduce(sum_->getData(), sum_->getData(), colNum_, FLAGS_trainer_id,
-                   0);
+    client->reduce(
+        sum_->getData(), sum_->getData(), colNum_, FLAGS_trainer_id, 0);
     client->reduce(&numSamples_, &numSamples_, 1, FLAGS_trainer_id, 0);
   }
 
@@ -379,8 +380,11 @@ real AucEvaluator::evalImp(std::vector<Argument>& arguments) {
   }
 
   if (dynamic_cast<GpuMatrix*>(output.get())) {
-    Matrix::resizeOrCreate(cpuOutput_, insNum, outputDim,
-                           /* trans=*/false, /* useGpu=*/false);
+    Matrix::resizeOrCreate(cpuOutput_,
+                           insNum,
+                           outputDim,
+                           /* trans=*/false,
+                           /* useGpu=*/false);
     cpuOutput_->copyFrom(*output);
     IVector::resizeOrCreate(cpuLabel_, insNum, false);
     cpuLabel_->copyFrom(*label);
@@ -421,7 +425,7 @@ void AucEvaluator::distributeEval(ParameterClient2* client) {
   client->reduce(statNeg_, statNeg_, kBinNum_ + 1, FLAGS_trainer_id, 0);
 }
 
-double AucEvaluator::calcAuc() {
+double AucEvaluator::calcAuc() const {
   double totPos = 0.0;
   double totNeg = 0.0;
   double totPosPrev = 0.0;
@@ -479,19 +483,24 @@ real RankAucEvaluator::evalImp(std::vector<Argument>& arguments) {
   for (size_t i = 0; i < batchNum; ++i) {
     int beginPos = startPosData[i];
     int endPos = startPosData[i + 1];
-    batchAuc += calcRankAuc(outputData + beginPos, clickData + beginPos,
-                            pvData + beginPos, endPos - beginPos);
+    batchAuc += calcRankAuc(outputData + beginPos,
+                            clickData + beginPos,
+                            pvData + beginPos,
+                            endPos - beginPos);
   }
   return batchAuc;
 }
 
-double RankAucEvaluator::calcRankAuc(real* outputData, real* clickData,
-                                     real* pvData, size_t size) {
+double RankAucEvaluator::calcRankAuc(real* outputData,
+                                     real* clickData,
+                                     real* pvData,
+                                     size_t size) {
   outputPair_.clear();
   for (size_t i = 0; i < size; ++i) {
     outputPair_.push_back(std::make_pair(outputData[i], i));
   }
-  std::sort(outputPair_.begin(), outputPair_.end(),
+  std::sort(outputPair_.begin(),
+            outputPair_.end(),
             [](const std::pair<real, int>& a, const std::pair<real, int>& b) {
               return a.first > b.first;
             });
@@ -584,7 +593,7 @@ real PrecisionRecallEvaluator::evalImp(std::vector<Argument>& arguments) {
   return 0;
 }
 
-void PrecisionRecallEvaluator::printStats(std::ostream& os) {
+void PrecisionRecallEvaluator::printStats(std::ostream& os) const {
   int label = config_.positive_label();
   if (label != -1) {
     CHECK(label >= 0 && label < (int)statsInfo_.size())
@@ -790,8 +799,12 @@ real PnpairEvaluator::evalImp(std::vector<Argument>& arguments) {
   return 0;
 }
 
-void PnpairEvaluator::stat(size_t start, size_t end, PredictionResult* answers,
-                           double& pos, double& neg, double& spe) {
+void PnpairEvaluator::stat(size_t start,
+                           size_t end,
+                           PredictionResult* answers,
+                           double& pos,
+                           double& neg,
+                           double& spe) {
   for (size_t i = start; i < end; i++) {
     for (size_t j = i + 1; j < end; j++) {
       CHECK_EQ(answers[i].queryid, answers[j].queryid);
@@ -817,7 +830,8 @@ void PnpairEvaluator::stat(size_t start, size_t end, PredictionResult* answers,
 }
 
 void PnpairEvaluator::calc(std::vector<PredictionResult>& predictArray) {
-  std::sort(predictArray.begin(), predictArray.end(),
+  std::sort(predictArray.begin(),
+            predictArray.end(),
             [](const PredictionResult& x, const PredictionResult& y) {
               return x.queryid < y.queryid;
             });
@@ -828,11 +842,16 @@ void PnpairEvaluator::calc(std::vector<PredictionResult>& predictArray) {
   auto start = predictArray.begin();
   while (start != predictArray.end()) {
     auto end = std::find_if(
-        start + 1, predictArray.end(),
+        start + 1,
+        predictArray.end(),
         [=](const PredictionResult& x) { return x.queryid != start->queryid; });
     CHECK(end != start);
-    stat(start - predictArray.begin(), end - predictArray.begin(),
-         predictArray.data(), pos, neg, special);
+    stat(start - predictArray.begin(),
+         end - predictArray.begin(),
+         predictArray.data(),
+         pos,
+         neg,
+         special);
 
     start = end;
   }
@@ -1120,8 +1139,8 @@ public:
 
     auto resizeMatrix = [](MatrixPtr& dest, const MatrixPtr& src) {
       if (src && src->useGpu()) {
-        Matrix::resizeOrCreate(dest, src->getHeight(), src->getWidth(), false,
-                               false);
+        Matrix::resizeOrCreate(
+            dest, src->getHeight(), src->getWidth(), false, false);
         dest->copyFrom(*src);
       } else {
         dest = src;
