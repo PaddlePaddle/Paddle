@@ -1,8 +1,9 @@
+########
 用户接口
-========
+########
 
 数据提供
-''''''''
+========
 
 ..  toctree::
     :maxdepth: 1
@@ -11,14 +12,19 @@
 
 
 命令行参数
-''''''''''
+==========
+
+..  toctree::
+
+    cmd/index.rst
+
 * `Use Case <../../doc/ui/cmd_argument/use_case.html>`_
 * `Argument Outline <../../doc/ui/cmd_argument/argument_outline.html>`_
 * `Detail Description <../../doc/ui/cmd_argument/detail_introduction.html>`_
 
 
 预测
-''''
+====
 
 ..  toctree::
 
