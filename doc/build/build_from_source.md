@@ -9,7 +9,7 @@ Installing from Sources
 You can download PaddlePaddle from the [github source](https://github.com/PaddlePaddle/Paddle).
 
 ```bash
-git clone https://github.com/baidu/Paddle paddle
+git clone https://github.com/PaddlePaddle/Paddle paddle
 cd paddle
 ```
 
