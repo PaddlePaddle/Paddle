@@ -75,8 +75,8 @@ void AverageLayer::backward(const UpdateCallback& callback) {
         // empty sequence
         continue;
       }
-      dataMtx_->setData(gradientData + starts[sequenceId] * dim, sequenceLength,
-                        dim);
+      dataMtx_->setData(
+          gradientData + starts[sequenceId] * dim, sequenceLength, dim);
       outMtx_->setData(gradient + sequenceId * dim);
       switch (mode_) {
         case kAverage: {

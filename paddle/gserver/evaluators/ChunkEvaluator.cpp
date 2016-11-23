@@ -144,7 +144,8 @@ public:
     size_t numSequences = sequenceStartPositions->getSize() - 1;
     const int* starts = sequenceStartPositions->getData();
     for (size_t i = 0; i < numSequences; ++i) {
-      eval1(output->getData() + starts[i], label->getData() + starts[i],
+      eval1(output->getData() + starts[i],
+            label->getData() + starts[i],
             starts[i + 1] - starts[i]);
     }
     return 0;

@@ -45,7 +45,10 @@ public:
     const Argument& input = getInput(0);
     size_t batchSize = input.getBatchSize();
     IVector::resizeOrCreate(output_.ids, batchSize * beamSize_, useGpu_);
-    Matrix::resizeOrCreate(output_.in, batchSize, beamSize_, false,
+    Matrix::resizeOrCreate(output_.in,
+                           batchSize,
+                           beamSize_,
+                           false,
                            /* useGpu */ useGpu_);
     output_.value = nullptr;
     input.value->rowMax(*output_.ids, *output_.in);

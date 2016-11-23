@@ -12,19 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "PoolLayer.h"
 
 namespace paddle {
 
- /**
-  * @brief CudnnPoolLayer is subclass of PoolLayer, which is implemented by
-  * cudnn api and only supports GPU.
-  *
-  * The config file api is img_pool_layer.
-  */
+/**
+ * @brief CudnnPoolLayer is subclass of PoolLayer, which is implemented by
+ * cudnn api and only supports GPU.
+ *
+ * The config file api is img_pool_layer.
+ */
 
 class CudnnPoolLayer : public PoolLayer {
 protected:

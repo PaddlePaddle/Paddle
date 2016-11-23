@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "TestUtil.h"
 
 #include "paddle/utils/CommandLineParser.h"
@@ -30,8 +29,11 @@ std::string randStr(const int len) {
   return s;
 }
 
-MatrixPtr makeRandomSparseMatrix(size_t height, size_t width, bool withValue,
-                                 bool useGpu, bool equalNnzPerSample) {
+MatrixPtr makeRandomSparseMatrix(size_t height,
+                                 size_t width,
+                                 bool withValue,
+                                 bool useGpu,
+                                 bool equalNnzPerSample) {
   std::vector<int64_t> ids(height);
   std::vector<int64_t> indices(height + 1);
   indices[0] = 0;
@@ -55,8 +57,8 @@ MatrixPtr makeRandomSparseMatrix(size_t height, size_t width, bool withValue,
     for (size_t i = 0; i < data.size(); ++i) {
       data[i].col = uniformRandom(width);
     }
-    auto mat = Matrix::createSparseMatrix(height, width, data.size(), NO_VALUE,
-                                          SPARSE_CSR, false, useGpu);
+    auto mat = Matrix::createSparseMatrix(
+        height, width, data.size(), NO_VALUE, SPARSE_CSR, false, useGpu);
     if (useGpu) {
       std::dynamic_pointer_cast<GpuSparseMatrix>(mat)->copyFrom(
           ids.data(), indices.data(), data.data(), HPPL_STREAM_DEFAULT);
@@ -93,7 +95,7 @@ void generateSequenceStartPositions(size_t batchSize,
 }
 
 void generateSequenceStartPositions(size_t batchSize,
-    ICpuGpuVectorPtr& sequenceStartPositions) {
+                                    ICpuGpuVectorPtr& sequenceStartPositions) {
   int numSeqs;
   if (FLAGS_fixed_seq_length != 0) {
     numSeqs = std::ceil((float)batchSize / (float)FLAGS_fixed_seq_length);
@@ -101,7 +103,7 @@ void generateSequenceStartPositions(size_t batchSize,
     numSeqs = batchSize / 10 + 1;
   }
   sequenceStartPositions =
-      ICpuGpuVector::create(numSeqs + 1, /* useGpu= */false);
+      ICpuGpuVector::create(numSeqs + 1, /* useGpu= */ false);
   int* buf = sequenceStartPositions->getMutableData(false);
   int64_t pos = 0;
   int len = FLAGS_fixed_seq_length;
@@ -109,7 +111,8 @@ void generateSequenceStartPositions(size_t batchSize,
   for (int i = 0; i < numSeqs; ++i) {
     if (FLAGS_fixed_seq_length == 0) {
       len = uniformRandom(
-            std::min<int64_t>(maxLen, batchSize - pos - numSeqs + i)) + 1;
+                std::min<int64_t>(maxLen, batchSize - pos - numSeqs + i)) +
+            1;
     }
     buf[i] = pos;
     pos += len;
@@ -117,7 +120,6 @@ void generateSequenceStartPositions(size_t batchSize,
   }
   buf[numSeqs] = batchSize;
 }
-
 
 void generateSubSequenceStartPositions(
     const ICpuGpuVectorPtr& sequenceStartPositions,
@@ -148,7 +150,6 @@ void generateSubSequenceStartPositions(
   subBuf[j] = buf[numSeqs];
 }
 
-
 void generateMDimSequenceData(const IVectorPtr& sequenceStartPositions,
                               IVectorPtr& cpuSequenceDims) {
   /* generate sequences with 2 dims */
@@ -174,9 +175,8 @@ void generateMDimSequenceData(const IVectorPtr& sequenceStartPositions,
   }
 }
 
-void generateMDimSequenceData(
-    const ICpuGpuVectorPtr& sequenceStartPositions,
-    IVectorPtr& cpuSequenceDims) {
+void generateMDimSequenceData(const ICpuGpuVectorPtr& sequenceStartPositions,
+                              IVectorPtr& cpuSequenceDims) {
   /* generate sequences with 2 dims */
   int numSeqs = sequenceStartPositions->getSize() - 1;
   int numDims = 2;

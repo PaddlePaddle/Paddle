@@ -60,14 +60,20 @@ Weight::Weight(size_t height, size_t width, ParameterPtr param, size_t offset) {
 
   // weight_
   if (vPtr) {
-    weight_ = Matrix::create(vPtr->getData() + offset, height, width,
-                             /* trans */ false, param->useGpu());
+    weight_ = Matrix::create(vPtr->getData() + offset,
+                             height,
+                             width,
+                             /* trans */ false,
+                             param->useGpu());
   }
 
   // weightGrad
   if (gPtr) {
-    weightGrad_ = Matrix::create(gPtr->getData() + offset, height, width,
-                                 /* trans */ false, param->useGpu());
+    weightGrad_ = Matrix::create(gPtr->getData() + offset,
+                                 height,
+                                 width,
+                                 /* trans */ false,
+                                 param->useGpu());
   }
 
   parameter_ = param;

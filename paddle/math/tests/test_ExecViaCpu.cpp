@@ -23,7 +23,10 @@ using namespace paddle;  // NOLINT
 const int height = 10;
 const int width = 16;
 
-real f(Matrix& mat1, const Matrix& mat2, IVector& vec1, const IVector& vec2,
+real f(Matrix& mat1,
+       const Matrix& mat2,
+       IVector& vec1,
+       const IVector& vec2,
        real scalar) {
   CHECK(!mat1.useGpu());
   CHECK(!mat2.useGpu());
@@ -37,8 +40,11 @@ real f(Matrix& mat1, const Matrix& mat2, IVector& vec1, const IVector& vec2,
 
 class Functor {
 public:
-  real operator()(Matrix& mat1, const Matrix& mat2, IVector& vec1,
-                  const IVector& vec2, real scalar) {
+  real operator()(Matrix& mat1,
+                  const Matrix& mat2,
+                  IVector& vec1,
+                  const IVector& vec2,
+                  real scalar) {
     a_ = f(mat1, mat2, vec1, vec2, scalar);
     return a_;
   }
@@ -93,9 +99,13 @@ TEST(ExecViaCpu, test1) {
   testWrapper(f);
   testWrapper(&f);
 
-  auto lambda =
-      [](Matrix& mat1, const Matrix& mat2, IVector& vec1, const IVector& vec2,
-         real scalar) -> real { return f(mat1, mat2, vec1, vec2, scalar); };
+  auto lambda = [](Matrix& mat1,
+                   const Matrix& mat2,
+                   IVector& vec1,
+                   const IVector& vec2,
+                   real scalar) -> real {
+    return f(mat1, mat2, vec1, vec2, scalar);
+  };
   LOG(INFO) << "lambda is_class=" << std::is_class<decltype(lambda)>::value
             << " is_function=" << std::is_function<decltype(lambda)>::value;
   testWrapper(lambda);

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Util.h"
 #include "paddle/utils/Flags.h"
 
@@ -71,13 +70,15 @@ void SparseMomentumParameterOptimizer::update(const VectorPtr vecs[],
                                      tau_ * alpha_ * gamma_ * learningRate_);
     vecs[PARAMETER_VALUE]->add(*vecs[PARAMETER_MOMENTUM_UT],
                                tau_ / beta_ + 1.0 / alpha_,
-                               *vecs[PARAMETER_MOMENTUM_VT], 1.0 / beta_);
+                               *vecs[PARAMETER_MOMENTUM_VT],
+                               1.0 / beta_);
 
   } else {
-    vecs[PARAMETER_VALUE]->sgdUpdate(
-        *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-        learningRate_ * paraConfig.learning_rate(), paraConfig.momentum(),
-        applyDecay_ ? paraConfig.decay_rate() : 0);
+    vecs[PARAMETER_VALUE]->sgdUpdate(*vecs[PARAMETER_GRADIENT],
+                                     *vecs[PARAMETER_MOMENTUM],
+                                     learningRate_ * paraConfig.learning_rate(),
+                                     paraConfig.momentum(),
+                                     applyDecay_ ? paraConfig.decay_rate() : 0);
   }
 }
 
@@ -90,7 +91,8 @@ SparseMomentumParameterOptimizer::needSpecialTraversal(
     //  2. Note that \tau * u_t + v_t = \beta \theta_t, therefore:
     //     u_t should be rescaled to u_t/alpha_
     //     v_t should be reset to \theta_t
-    return [this](const VectorPtr vecs[], const ParameterConfig& config,
+    return [this](const VectorPtr vecs[],
+                  const ParameterConfig& config,
                   size_t sparseId) {
       vecs[PARAMETER_MOMENTUM_UT]->divScalar(alpha_);
       vecs[PARAMETER_MOMENTUM_VT]->assign(*vecs[PARAMETER_VALUE]);
@@ -120,10 +122,12 @@ void AdagradParameterOptimizer::update(const VectorPtr vecs[],
   vecs[PARAMETER_LEARNING_RATE]->add(optConfig_.ada_epsilon());
   vecs[PARAMETER_LEARNING_RATE]->invSqrt(*vecs[PARAMETER_LEARNING_RATE]);
 
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate_ * config.learning_rate(),
-      config.momentum(), applyDecay_ ? config.decay_rate() : 0);
+  vecs[PARAMETER_VALUE]->sgdUpdate(*vecs[PARAMETER_GRADIENT],
+                                   *vecs[PARAMETER_MOMENTUM],
+                                   *vecs[PARAMETER_LEARNING_RATE],
+                                   learningRate_ * config.learning_rate(),
+                                   config.momentum(),
+                                   applyDecay_ ? config.decay_rate() : 0);
 }
 
 ParameterOptimizer::TraverseCallback
@@ -132,7 +136,8 @@ AdagradParameterOptimizer::needSpecialTraversal(
   if (numUpdates_ % kMaxNumAccumulates == 0) {
     // Move the sum to a different buffer to avoid loss of precision
     // due to too many sums.
-    return [this](const VectorPtr vecs[], const ParameterConfig& config,
+    return [this](const VectorPtr vecs[],
+                  const ParameterConfig& config,
                   size_t sparseId) {
       vecs[PARAMETER_GRADIENT_SQURESUM]->add(
           *vecs[PARAMETER_GRADIENT_SQURESUM1]);
@@ -148,24 +153,29 @@ void AdaDeltaParameterOptimizer::update(const VectorPtr vecs[],
                                         size_t sparseId) const {
   CHECK(sparseId == -1LU) << "Sparse update is not supported";
   // E(g_t^2) = \rou * E(g_{t-1}^2) + (1-\rou) * g^2
-  vecs[PARAMETER_GRADIENT_SQURESUM]->decayAddSquare(*vecs[PARAMETER_GRADIENT],
-                                                    rou_, 1.0f - rou_);
+  vecs[PARAMETER_GRADIENT_SQURESUM]->decayAddSquare(
+      *vecs[PARAMETER_GRADIENT], rou_, 1.0f - rou_);
 
   // learn_rate = sqrt( ( E(dx_{t-1}^2) + epsilon ) / ( E(g_t^2) + epsilon ) )
   vecs[PARAMETER_LEARNING_RATE]->dotDiv(*vecs[PARAMETER_GRADIENT_SQURESUM1],
                                         *vecs[PARAMETER_GRADIENT_SQURESUM],
-                                        epsilon_, epsilon_);
+                                        epsilon_,
+                                        epsilon_);
   vecs[PARAMETER_LEARNING_RATE]->sqrt();
 
   // E(dx_t^2) = \rou * E(dx_{t-1}^2) + (1-\rou) * (-g*learn_rate)^2
   vecs[PARAMETER_GRADIENT_SQURESUM1]->decayAddSquareMul(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_LEARNING_RATE], rou_,
+      *vecs[PARAMETER_GRADIENT],
+      *vecs[PARAMETER_LEARNING_RATE],
+      rou_,
       1.0f - rou_);
 
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate_ * config.learning_rate(),
-      config.momentum(), applyDecay_ ? config.decay_rate() : 0);
+  vecs[PARAMETER_VALUE]->sgdUpdate(*vecs[PARAMETER_GRADIENT],
+                                   *vecs[PARAMETER_MOMENTUM],
+                                   *vecs[PARAMETER_LEARNING_RATE],
+                                   learningRate_ * config.learning_rate(),
+                                   config.momentum(),
+                                   applyDecay_ ? config.decay_rate() : 0);
 }
 
 void RMSPropParameterOptimizer::update(const VectorPtr vecs[],
@@ -185,12 +195,13 @@ void RMSPropParameterOptimizer::update(const VectorPtr vecs[],
   // For the first time update, make the sum be the current square
   // so that the initial estimation of E(g_t^2) will not be too small.
   vecs[PARAMETER_GRADIENT_SQURESUM]->decayAddSquare(
-      *vecs[PARAMETER_GRADIENT], accumulatedRou,
+      *vecs[PARAMETER_GRADIENT],
+      accumulatedRou,
       firstTime ? 1.0f : 1.0f - rou_);
 
   // E(g_t) = \rou * E(g_{t-1}) + (1-\rou) * g
-  vecs[PARAMETER_GRADIENT_SQURESUM1]->add(*vecs[PARAMETER_GRADIENT],
-                                          accumulatedRou, 1.0f - rou_);
+  vecs[PARAMETER_GRADIENT_SQURESUM1]->add(
+      *vecs[PARAMETER_GRADIENT], accumulatedRou, 1.0f - rou_);
 
   // learn_rate = 1/sqrt( ( E(g_t^2) - (E(g_t))^2 + epsilon )
   // Basiclly if the sign of the gradient changes more often,
@@ -201,10 +212,12 @@ void RMSPropParameterOptimizer::update(const VectorPtr vecs[],
   vecs[PARAMETER_LEARNING_RATE]->add(optConfig_.ada_epsilon());
   vecs[PARAMETER_LEARNING_RATE]->invSqrt(*vecs[PARAMETER_LEARNING_RATE]);
 
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate_ * config.learning_rate(),
-      config.momentum(), applyDecay_ ? config.decay_rate() : 0);
+  vecs[PARAMETER_VALUE]->sgdUpdate(*vecs[PARAMETER_GRADIENT],
+                                   *vecs[PARAMETER_MOMENTUM],
+                                   *vecs[PARAMETER_LEARNING_RATE],
+                                   learningRate_ * config.learning_rate(),
+                                   config.momentum(),
+                                   applyDecay_ ? config.decay_rate() : 0);
 }
 
 void DecayedAdagradParameterOptimizer::update(const VectorPtr vecs[],
@@ -224,7 +237,8 @@ void DecayedAdagradParameterOptimizer::update(const VectorPtr vecs[],
   // For the first time update, make the sum be the current square
   // so that the initial estimation of E(g_t^2) will not be too small.
   vecs[PARAMETER_GRADIENT_SQURESUM]->decayAddSquare(
-      *vecs[PARAMETER_GRADIENT], accumulatedRou,
+      *vecs[PARAMETER_GRADIENT],
+      accumulatedRou,
       firstTime ? 1.0f : 1.0f - rou_);
 
   // learn_rate = 1/sqrt( ( E(g_t^2) + epsilon )
@@ -234,10 +248,12 @@ void DecayedAdagradParameterOptimizer::update(const VectorPtr vecs[],
   vecs[PARAMETER_LEARNING_RATE]->add(*vecs[PARAMETER_GRADIENT_SQURESUM]);
   vecs[PARAMETER_LEARNING_RATE]->invSqrt(*vecs[PARAMETER_LEARNING_RATE]);
 
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate_ * config.learning_rate(),
-      config.momentum(), applyDecay_ ? config.decay_rate() : 0);
+  vecs[PARAMETER_VALUE]->sgdUpdate(*vecs[PARAMETER_GRADIENT],
+                                   *vecs[PARAMETER_MOMENTUM],
+                                   *vecs[PARAMETER_LEARNING_RATE],
+                                   learningRate_ * config.learning_rate(),
+                                   config.momentum(),
+                                   applyDecay_ ? config.decay_rate() : 0);
 }
 
 void AdamParameterOptimizer::update(const VectorPtr vecs[],
@@ -289,7 +305,6 @@ void AdamaxParameterOptimizer::update(const VectorPtr vecs[],
   learningRate /= (1 - std::pow(beta1_, step_));
   theta->add(*theta, 1.0, *g, -learningRate);
 }
-
 
 void OptimizerWithGradientClipping::update(const VectorPtr vecs[],
                                            const ParameterConfig& config,

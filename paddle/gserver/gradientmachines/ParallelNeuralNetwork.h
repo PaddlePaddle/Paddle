@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "NeuralNetwork.h"
@@ -35,24 +34,27 @@ enum TaskType {
 class ParallelNeuralNetwork : public NeuralNetwork {
 public:
   ParallelNeuralNetwork(std::string subModelName = "",
-      NeuralNetwork* rootNetwork = nullptr)
-    : NeuralNetwork(subModelName, rootNetwork) {}
+                        NeuralNetwork *rootNetwork = nullptr)
+      : NeuralNetwork(subModelName, rootNetwork) {}
 
   virtual void init(
-      const ModelConfig &config, ParamInitCallback callback = nullptr,
-      const std::vector<ParameterType> &
-          parameterTypes = std::vector<ParameterType>{PARAMETER_VALUE,
-                                                      PARAMETER_GRADIENT,
-                                                      PARAMETER_MOMENTUM},
+      const ModelConfig &config,
+      ParamInitCallback callback = nullptr,
+      const std::vector<ParameterType>
+          &parameterTypes = std::vector<ParameterType>{PARAMETER_VALUE,
+                                                       PARAMETER_GRADIENT,
+                                                       PARAMETER_MOMENTUM},
       bool useGpu = FLAGS_use_gpu);
 
   virtual void forward(const std::vector<Argument> &inArgs,
-                       std::vector<Argument> *outArgs, PassType passType);
+                       std::vector<Argument> *outArgs,
+                       PassType passType);
 
   virtual void backward(const UpdateCallback &callback = nullptr);
 
   void forwardBackward(const std::vector<Argument> &inArgs,
-                       std::vector<Argument> *outArgs, PassType passType,
+                       std::vector<Argument> *outArgs,
+                       PassType passType,
                        const UpdateCallback &callback = NULL);
 
   virtual void start(const TrainerConfig &config, DataProviderPtr dataProvider);

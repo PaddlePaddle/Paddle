@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <unistd.h>
 
 #include "ParameterClient2.h"
@@ -27,7 +26,8 @@ P_DEFINE_int32(parallel_thread_num, 1, "Thread number for parameter send");
 namespace paddle {
 
 template <class T>
-void copyToRepeatedField(google::protobuf::RepeatedField<T>* dest, const T* src,
+void copyToRepeatedField(google::protobuf::RepeatedField<T>* dest,
+                         const T* src,
                          size_t size) {
   dest->Clear();
   dest->Reserve(size);
@@ -46,10 +46,9 @@ void copyToRepeatedField(const std::vector<T>& src,
 ParameterClient2::ParameterClient2(bool separate, int port, int numPorts)
     : BaseClient(separate, numPorts), port_(port) {
 #ifndef PADDLE_DISABLE_TIMER
-    forwardbackwordTime_ = 0;
+  forwardbackwordTime_ = 0;
 #endif
 }
-
 
 int ParameterClient2::calcParameterBlockSize(
     const std::vector<ParameterPtr>& parameters, size_t serviceNum) {
@@ -89,8 +88,8 @@ bool ParameterClient2::init(const std::vector<ParameterPtr>& parameters) {
   for (auto& para : parameters) {
     /// set block size for each parameter
     para->getConfig().set_parameter_block_size(
-            para->getConfig().sparse_remote_update() ?
-            para->getConfig().dims(1) : denseBlockSize);
+        para->getConfig().sparse_remote_update() ? para->getConfig().dims(1)
+                                                 : denseBlockSize);
   }
 
   for (auto& para : parameters) {
@@ -107,7 +106,7 @@ bool ParameterClient2::init(const std::vector<ParameterPtr>& parameters) {
     allSegments_.push_back(segments);
     if (para->getConfig().sparse_remote_update()) {
       CHECK_EQ(para->getConfig().parameter_block_size(),
-              para->getConfig().dims(1))
+               para->getConfig().dims(1))
           << "For sparse remote update parameter,"
           << " block size is the width of each row.";
     }
@@ -152,7 +151,8 @@ void ParameterClient2::destroy() {
   clients_.clear();
 }
 
-void ParameterClient2::sendParallel(int tid, size_t numThreads,
+void ParameterClient2::sendParallel(int tid,
+                                    size_t numThreads,
                                     ParameterType recvParameterType) {
   int numMyClients = divup(serviceNum_ - tid, numThreads);
 
@@ -163,7 +163,8 @@ void ParameterClient2::sendParallel(int tid, size_t numThreads,
     /// at the same time so that they will not flood data to the same
     /// pserver.
     i = calcClientId(i, serviceNum_);
-    clients_[i].send("sendParameter", sendJob_.parallelRequests[i],
+    clients_[i].send("sendParameter",
+                     sendJob_.parallelRequests[i],
                      sendJob_.parallelInputIovs[i]);
 
     /// clear large structure
@@ -204,10 +205,15 @@ void ParameterClient2::sendParallel(int tid, size_t numThreads,
 }
 
 void ParameterClient2::prepareSendData(
-    ParameterUpdateMode updateMode, ParameterType parameterType,
-    const std::vector<ParameterSegments>& parameterSegments, int64_t numSamples,
-    real cost, bool sendBackParameter, ParameterType sendBackParameterType,
-    BatchStatus batchStatus, SendJob* sendJob) {
+    ParameterUpdateMode updateMode,
+    ParameterType parameterType,
+    const std::vector<ParameterSegments>& parameterSegments,
+    int64_t numSamples,
+    real cost,
+    bool sendBackParameter,
+    ParameterType sendBackParameterType,
+    BatchStatus batchStatus,
+    SendJob* sendJob) {
   sendJob->parallelRequests.resize(serviceNum_);
   sendJob->parallelInputIovs.resize(serviceNum_);
 
@@ -247,11 +253,11 @@ void ParameterClient2::prepareSendData(
       const auto prefetchMat = parameter->getPrefetchMatrix();
       CHECK(prefetchMat != nullptr) << "prefetchMat is nullptr";
       auto sendMat = dynamic_cast<SparseRowCpuMatrix*>(
-        parameter->getMat(parameterType).get());
+          parameter->getMat(parameterType).get());
       CHECK(sendMat != nullptr) << "sendMat is nullptr";
 
       syncThreadPool_->exec([&](int tid, size_t numThreads) {
-        const auto &localIndices = prefetchMat->getLocalIndices();
+        const auto& localIndices = prefetchMat->getLocalIndices();
         /// num of sparse rows
         size_t nLocalBlocks = localIndices.size();
         uint64_t beginDim = 0;
@@ -278,17 +284,17 @@ void ParameterClient2::prepareSendData(
 
           if (sendingPara) {
             sendJob->parallelInputIovs[serverId].push_back(
-                {sendMat->getLocalRow(row), sizeof(real) * (size_t) blockSize});
+                {sendMat->getLocalRow(row), sizeof(real) * (size_t)blockSize});
             /// detect sparse parameter distribution
             sparseDistribution_->probeDistribution(serverId,
-                    sizeof(real) * blockSize);
+                                                   sizeof(real) * blockSize);
           }
         }
       });
 
     } else {  /// parameter set for dense and sparse
-      real* buf = sendingPara ?
-          parameter->getBuf(parameterType)->getPoint(0) : nullptr;
+      real* buf =
+          sendingPara ? parameter->getBuf(parameterType)->getPoint(0) : nullptr;
       uint64_t endDim = 0;
       for (uint64_t beginDim = 0; beginDim < paraSize; beginDim = endDim) {
         endDim = std::min<int64_t>(beginDim + blockSize, paraSize);
@@ -302,8 +308,8 @@ void ParameterClient2::prepareSendData(
         block->set_begin_pos(beginDim);
         block->set_block_size(endDim - beginDim);
         if (buf) {
-            sendJob->parallelInputIovs[serverId].push_back({buf + beginDim,
-                     sizeof(real) * ((size_t) (endDim - beginDim))});
+          sendJob->parallelInputIovs[serverId].push_back(
+              {buf + beginDim, sizeof(real) * ((size_t)(endDim - beginDim))});
         }
       }
     }
@@ -313,13 +319,23 @@ void ParameterClient2::prepareSendData(
 }
 
 void ParameterClient2::sendAndReceiveParameter(
-    ParameterUpdateMode updateMode, ParameterType parameterType,
-    const std::vector<ParameterSegments>& parameterSegments, int64_t numSamples,
-    real cost, bool sendBackParameter, ParameterType sendBackParameterType,
+    ParameterUpdateMode updateMode,
+    ParameterType parameterType,
+    const std::vector<ParameterSegments>& parameterSegments,
+    int64_t numSamples,
+    real cost,
+    bool sendBackParameter,
+    ParameterType sendBackParameterType,
     ParameterType recvParameterType) {
-  prepareSendData(updateMode, parameterType, parameterSegments, numSamples,
-                  cost, sendBackParameter, sendBackParameterType,
-                  /*batchStatus = */ BATCH_START_AND_FINISH, &sendJob_);
+  prepareSendData(updateMode,
+                  parameterType,
+                  parameterSegments,
+                  numSamples,
+                  cost,
+                  sendBackParameter,
+                  sendBackParameterType,
+                  /*batchStatus = */ BATCH_START_AND_FINISH,
+                  &sendJob_);
 
   syncThreadPool_->exec([&](int tid, size_t numThreads) {
     this->sendParallel(tid, numThreads, recvParameterType);
@@ -327,12 +343,22 @@ void ParameterClient2::sendAndReceiveParameter(
 }
 
 void ParameterClient2::sendParameter(
-    ParameterUpdateMode updateMode, ParameterType parameterType,
-    const std::vector<ParameterSegments>& parameterSegments, int64_t numSamples,
-    real cost, bool sendBackParameter, BatchStatus batchStatus) {
+    ParameterUpdateMode updateMode,
+    ParameterType parameterType,
+    const std::vector<ParameterSegments>& parameterSegments,
+    int64_t numSamples,
+    real cost,
+    bool sendBackParameter,
+    BatchStatus batchStatus) {
   SendJobPtr sendJob = std::make_shared<SendJob>();
-  prepareSendData(updateMode, parameterType, parameterSegments, numSamples,
-                  cost, sendBackParameter, PARAMETER_VALUE, batchStatus,
+  prepareSendData(updateMode,
+                  parameterType,
+                  parameterSegments,
+                  numSamples,
+                  cost,
+                  sendBackParameter,
+                  PARAMETER_VALUE,
+                  batchStatus,
                   sendJob.get());
 
   for (int i = 0; i < threadNum_; i++) {
@@ -360,10 +386,12 @@ void ParameterClient2::send(int threadId) {
       /// pserver.
       i = calcClientId(i, serviceNum_);
       if (recvJob->parallelRequests.size()) {
-        clients_[i].send("sendParameter", recvJob->parallelRequests[i],
+        clients_[i].send("sendParameter",
+                         recvJob->parallelRequests[i],
                          recvJob->parallelInputIovs[i]);
       } else {
-        clients_[i].send("sendData", recvJob->parallelDataRequests[i],
+        clients_[i].send("sendData",
+                         recvJob->parallelDataRequests[i],
                          recvJob->parallelInputIovs[i]);
       }
     }
@@ -586,12 +614,13 @@ void PreparedOperations::addOperationHelper(Operation* op, CpuMatrixPtr mat) {
   ProtoMatrix& pmat = *op->add_matrices();
   pmat.set_num_cols(mat->getWidth());
   pmat.set_num_rows(mat->getHeight());
-  copyToRepeatedField(pmat.mutable_values(), mat->getData(),
-                      pmat.num_cols() * pmat.num_rows());
+  copyToRepeatedField(
+      pmat.mutable_values(), mat->getData(), pmat.num_cols() * pmat.num_rows());
 }
 
 void ParameterClient2::doOperation(PreparedOperations& ops,
-                                   bool waitForGradient, bool sendBackGradient,
+                                   bool waitForGradient,
+                                   bool sendBackGradient,
                                    bool releasePass) {
   std::vector<DoOperationResponse> responses;
   ops.request_.set_wait_for_gradient(waitForGradient);
@@ -666,7 +695,8 @@ void ParameterClient2::doOperation(PreparedOperations& ops,
         CHECK_EQ(rmat->getWidth(), (size_t)mat.num_cols());
         CpuMatrixPtr amat =
             std::make_shared<CpuMatrix>(const_cast<real*>(mat.values().data()),
-                                        rmat->getHeight(), rmat->getWidth());
+                                        rmat->getHeight(),
+                                        rmat->getWidth());
         rmat->add(*amat);
       }
     }
@@ -700,14 +730,17 @@ void ParameterClient2::vectorAddMult(PServerVector u, PServerVector v, real a) {
   doOperation(ops, false, false);
 }
 
-void ParameterClient2::vectorAddMultInto(PServerVector u, PServerVector v,
-                                         PServerVector w, real a) {
+void ParameterClient2::vectorAddMultInto(PServerVector u,
+                                         PServerVector v,
+                                         PServerVector w,
+                                         real a) {
   PreparedOperations ops;
   ops.addOperation(PSERVER_OP_au_bv_cw, v, w, u, (real)1, a, (real)0);
   doOperation(ops, false, false);
 }
 
-void ParameterClient2::vectorScaleInto(PServerVector u, PServerVector v,
+void ParameterClient2::vectorScaleInto(PServerVector u,
+                                       PServerVector v,
                                        real a) {
   PreparedOperations ops;
   ops.addOperation(PSERVER_OP_au_bv, v, u, a, (real)0);

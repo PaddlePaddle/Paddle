@@ -12,41 +12,42 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_CUDA_CUBLAS_STUB_H_
 #define HL_CUDA_CUBLAS_STUB_H_
 
 #include "hl_cuda_cublas.h"
 
-inline void hl_matrix_transpose(real *A_d,
-                                real *C_d,
-                                int dimM,
-                                int dimN,
-                                int lda,
-                                int ldc) {}
+inline void hl_matrix_transpose(
+    real *A_d, real *C_d, int dimM, int dimN, int lda, int ldc) {}
 
-inline void hl_matrix_transpose(real *A_d,
-                                real *C_d,
-                                int dimM,
-                                int dimN) {}
+inline void hl_matrix_transpose(real *A_d, real *C_d, int dimM, int dimN) {}
 
-inline void hl_matrix_inverse(real *A_d,
-                              real *C_d,
-                              int dimN,
-                              int lda,
-                              int ldc) {}
+inline void hl_matrix_inverse(
+    real *A_d, real *C_d, int dimN, int lda, int ldc) {}
 
-inline void hl_matrix_mul(real *A_d, hl_trans_op_t transa,
-                          real *B_d, hl_trans_op_t transb,
+inline void hl_matrix_mul(real *A_d,
+                          hl_trans_op_t transa,
+                          real *B_d,
+                          hl_trans_op_t transb,
                           real *C_d,
-                          int dimM, int dimN, int dimK,
-                          real alpha, real beta,
-                          int lda, int ldb, int ldc) {}
+                          int dimM,
+                          int dimN,
+                          int dimK,
+                          real alpha,
+                          real beta,
+                          int lda,
+                          int ldb,
+                          int ldc) {}
 
-inline void hl_matrix_mul(real *A_d, hl_trans_op_t transa,
-                          real *B_d, hl_trans_op_t transb,
+inline void hl_matrix_mul(real *A_d,
+                          hl_trans_op_t transa,
+                          real *B_d,
+                          hl_trans_op_t transb,
                           real *C_d,
-                          int dimM, int dimN, int dimK,
-                          real alpha, real beta) {}
+                          int dimM,
+                          int dimN,
+                          int dimK,
+                          real alpha,
+                          real beta) {}
 
 #endif  // HL_CUDA_CUBLAS_STUB_H_

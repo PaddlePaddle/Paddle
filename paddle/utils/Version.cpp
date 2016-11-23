@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Version.h"
 
 #include "Flags.h"
@@ -34,17 +33,21 @@ void printVersion(std::ostream& os) {
 #ifndef PADDLE_VERSION
 #define PADDLE_VERSION "unknown"
 #endif
-  os << "paddle version: " << PADDLE_VERSION << std::endl << std::boolalpha
-      << "\t" << "withGpu: " << version::isWithGpu() << std::endl
-      << "\t" << "withAvx: " << version::isWithAvx() << std::endl
-      << "\t" << "withPyDataProvider: " << version::isWithPyDataProvider()
-      << std::endl
-      << "\t" << "withTimer: " << version::isWithTimer() << std::endl
-      << "\t" << "withFpga: " << version::isWithFpga() << std::endl
-      << "\t" << "real byte size: "<< version::sizeofReal() << std::endl
-      << std::endl;
+  os << "paddle version: " << PADDLE_VERSION << std::endl
+     << std::boolalpha << "\t"
+     << "withGpu: " << version::isWithGpu() << std::endl
+     << "\t"
+     << "withAvx: " << version::isWithAvx() << std::endl
+     << "\t"
+     << "withPyDataProvider: " << version::isWithPyDataProvider() << std::endl
+     << "\t"
+     << "withTimer: " << version::isWithTimer() << std::endl
+     << "\t"
+     << "withFpga: " << version::isWithFpga() << std::endl
+     << "\t"
+     << "real byte size: " << version::sizeofReal() << std::endl
+     << std::endl;
 }
-
 
 void printVersion() {
   if (FLAGS_version) {
