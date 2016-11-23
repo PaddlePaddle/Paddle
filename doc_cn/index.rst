@@ -11,7 +11,6 @@ PaddlePaddle文档
 * `使用示例 <demo/index.html>`_
 * `模型配置 <../doc/ui/api/trainer_config_helpers/index.html>`_
 * `集群训练 <cluster/index.html>`_
-* :ref:`glossary`
 
 开发指南
 --------
