@@ -419,6 +419,21 @@ void testMatrixGetSum(int height, int width) {
   EXPECT_LE(fabs(cpuSum - gpuSum), err);
 }
 
+void testMatrixGetMinMax(int height, int width) {
+  MatrixPtr cpuInput = std::make_shared<CpuMatrix>(height, width);
+  MatrixPtr gpuInput = std::make_shared<GpuMatrix>(height, width);
+  cpuInput->randomizeUniform();
+  gpuInput->copyFrom(*cpuInput);
+
+  real cpuMin = cpuInput->getMin();
+  real gpuMin = gpuInput->getMin();
+  real cpuMax = cpuInput->getMax();
+  real gpuMax = gpuInput->getMax();
+
+  EXPECT_EQ(cpuMin, gpuMin);
+  EXPECT_EQ(cpuMax, gpuMax);
+}
+
 void testMatrixZeroAtOffset(int height, int width) {
   MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
   MatrixPtr gpuA = std::make_shared<GpuMatrix>(height, width);
@@ -814,6 +829,9 @@ TEST(Matrix, unary) {
 
       // sum
       testMatrixGetSum(height, width);
+
+      // min and max
+      testMatrixGetMinMax(height, width);
 
       // transpose
       testMatrixTranspose(height, width);

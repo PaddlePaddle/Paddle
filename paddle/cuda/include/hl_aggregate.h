@@ -84,6 +84,23 @@ extern void hl_matrix_column_max(real *A_d, real *C_d, int dimM, int dimN);
 extern void hl_matrix_column_min(real *A_d, real *C_d, int dimM, int dimN);
 
 /**
+ * @brief  C_h = max(A_d[i]).
+ * @param[in]  A_d     input
+ * @param[in]  C_h     output(host memory)
+ * @param[in]  dimM    size of vector
+ */
+extern void hl_vector_max(real *A_d, real *C_h, int dimM);
+
+
+/**
+ * @brief  C_h = min(A_d[i]).
+ * @param[in]  A_d     input
+ * @param[in]  C_h     output(host memory)
+ * @param[in]  dimM    size of vector
+ */
+extern void hl_vector_min(real *A_d, real *C_h, int dimM);
+
+/**
  * @brief   C_h = sum(A_d[i]).
  *
  * @param[in]   A_d     input(m).

@@ -274,6 +274,20 @@ real GpuMatrix::getSum() {
   return sum;
 }
 
+real GpuMatrix::getMin() {
+  CHECK(isContiguous());
+  real min = std::numeric_limits<real>::max();
+  hl_vector_min(data_, &min, height_ * width_);
+  return min;
+}
+
+real GpuMatrix::getMax() {
+  CHECK(isContiguous());
+  real max = std::numeric_limits<real>::min();
+  hl_vector_max(data_, &max, height_ * width_);
+  return max;
+}
+
 void GpuMatrix::accumulateColSum(Matrix& src) {
   CHECK_EQ(getWidth(), src.getWidth());
   CHECK_EQ(getHeight(), (size_t)1);
