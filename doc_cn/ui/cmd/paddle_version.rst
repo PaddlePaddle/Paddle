@@ -1,9 +1,7 @@
 paddle version的命令行参数
 ==========================
 
-paddle version可以打印出paddle的版本信息和编译的选项。常见的输出格式为
+paddle version用于打印当前的版本信息和相关编译选项。常见的输出格式如下。第一行说明了paddle的版本信息，后面跟着一些主要的编译选项。编译选项的具体意义可以参考
+`编译参数选项文件 <../../build_and_install/cmake/compile_options.html>`_
 
 ..  literalinclude:: paddle_version.txt
-
-其第一行说明了paddle的版本，后面跟着一系列编译参数。这里可以参考paddle的
-`编译参数选项文件 <../../build/cmake/compile_options.html>`_
