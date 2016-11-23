@@ -1,4 +1,4 @@
-#edit-mode: -*- python -*-
+# edit-mode: -*- python -*-
 # Copyright (c) 2016 Baidu, Inc. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,46 +35,37 @@ speaker2 = data_layer(name="word2", size=dict_dim)
 emb1 = embedding_layer(input=speaker1, size=word_dim)
 emb2 = embedding_layer(input=speaker2, size=word_dim)
 
-# This hierachical RNN is designed to be equivalent to the simple RNN in
+
+# This hierarchical RNN is designed to be equivalent to the simple RNN in
 # sequence_rnn_multi_unequalength_inputs.conf
-
-
 def outer_step(x1, x2):
-    outer_mem1 = memory(name="outer_rnn_state1", size=hidden_dim)
-    outer_mem2 = memory(name="outer_rnn_state2", size=hidden_dim)
+    index = [0]
 
-    def inner_step1(y):
-        inner_mem = memory(
-            name='inner_rnn_state_' + y.name,
-            size=hidden_dim,
-            boot_layer=outer_mem1)
-        out = fc_layer(
-            input=[y, inner_mem],
-            size=hidden_dim,
-            act=TanhActivation(),
-            bias_attr=True,
-            name='inner_rnn_state_' + y.name)
-        return out
+    def inner_step(ipt):
+        index[0] += 1
+        i = index[0]
+        outer_mem = memory(name="outer_rnn_state_%d" % i, size=hidden_dim)
 
-    def inner_step2(y):
-        inner_mem = memory(
-            name='inner_rnn_state_' + y.name,
-            size=hidden_dim,
-            boot_layer=outer_mem2)
-        out = fc_layer(
-            input=[y, inner_mem],
-            size=hidden_dim,
-            act=TanhActivation(),
-            bias_attr=True,
-            name='inner_rnn_state_' + y.name)
-        return out
+        def inner_step_impl(y):
+            inner_mem = memory(
+                name="inner_rnn_state_" + y.name,
+                size=hidden_dim,
+                boot_layer=outer_mem)
+            out = fc_layer(
+                input=[y, inner_mem],
+                size=hidden_dim,
+                act=TanhActivation(),
+                bias_attr=True,
+                name='inner_rnn_state_' + y.name)
+            return out
 
-    encoder1 = recurrent_group(step=inner_step1, name='inner1', input=x1)
+        encoder = recurrent_group(
+            step=inner_step_impl, name='inner_%d' % i, input=ipt)
+        last = last_seq(name="outer_rnn_state_%d" % i, input=encoder)
+        return encoder, last
 
-    encoder2 = recurrent_group(step=inner_step2, name='inner2', input=x2)
-
-    sentence_last_state1 = last_seq(input=encoder1, name='outer_rnn_state1')
-    sentence_last_state2_ = last_seq(input=encoder2, name='outer_rnn_state2')
+    _, sentence_last_state1 = inner_step(ipt=x1)
+    encoder2, _ = inner_step(ipt=x2)
 
     encoder1_expand = expand_layer(
         input=sentence_last_state1, expand_as=encoder2)

@@ -139,20 +139,21 @@
 
 本例中的配置，使用了单层\ :ref:`glossary_RNN`\ 和\ :ref:`glossary_双层RNN`\ 使用一个\ :code:`recurrent_group`\ 将两个序列同时过完全连接的\ :ref:`glossary_RNN`\ 。对于单层\ :ref:`glossary_RNN`\ 的code如下。
 
-..  literalinclude:: ../../../paddle/gserver/tests/sequence_rnn_multi_unequalength_inputs.conf
+..  literalinclude:: ../../../paddle/gserver/tests/sequence_rnn_multi_unequalength_inputs.py
     :language: python
-    :lines: 41-58
+    :lines: 42-59
     :linenos:
 
 - 双层序列\：
 
   - 双层RNN中，对输入的两个特征分别求时序上的连续全连接(`inner_step1`和`inner_step2`分别处理fea1和fea2)，其功能与示例2中`sequence_nest_rnn.conf`的`outer_step`函数完全相同。不同之处是，此时输入`[SubsequenceInput(emb1), SubsequenceInput(emb2)]`在各时刻并不等长。
-  - 函数`outer_step`中可以分别处理这两个特征，但我们需要用<font color=red>targetInlink</font>指定recurrent_group的输出的格式（各子句长度）只能和其中一个保持一致，如这里选择了和emb2的长度一致。
+  - 函数`outer_step`中可以分别处理这两个特征，但我们需要用\ :red:`targetInlink`\ 指定recurrent_group的输出的格式（各子句长度）只能和其中一个保持一致，如这里选择了和emb2的长度一致。
   - 最后，依然是取encoder1_rep的最后一个时刻和encoder2_rep的所有时刻分别相加得到context。
 
-..  literalinclude:: ../../../paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.conf
+..  literalinclude:: ../../../paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py
     :language: python
-    :lines: 41-89
+    :lines: 42-75, 82-89
+    :linenos:
 
 示例4：beam_search的生成
 ========================
