@@ -259,7 +259,9 @@ typedef Queue<BufferBatch*> BufferBatchQueue;
 
 class DoubleBuffer {
 public:
-  DoubleBuffer(DataProvider* dataPool, bool useGpu, int64_t batchSize = 0);
+  DoubleBuffer(DataProvider* dataPool,
+               bool useGpu,
+               int64_t batchSize = 0);
   virtual ~DoubleBuffer();
   void removeOneBatch(DataBatch* dataBatch);
 
@@ -308,7 +310,8 @@ public:
   /**
    * @brief create only used for unittest.
    */
-  inline static DataProvider* create(const DataConfig &config, bool useGpu) {
+  inline static DataProvider* create(const DataConfig &config,
+                                     bool useGpu = FLAGS_use_gpu) {
     return create(config, ModelConfig(), useGpu);
   }
 
@@ -348,7 +351,6 @@ public:
    */
   virtual void reset() {
     if (doubleBuffer_ != nullptr) {
-      LOG(INFO) << "the double-buffer is starting ...";
       doubleBuffer_->startAsyncLoad();
     }
   }

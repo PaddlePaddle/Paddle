@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Logging.h"
 #include <dispatch/dispatch.h>
+#include <atomic>
 #include <libkern/OSAtomic.h>
+
 namespace paddle {
 
 class SemaphorePrivate {
@@ -50,21 +52,19 @@ void Semaphore::post() {
 
 class SpinLockPrivate {
 public:
-  SpinLockPrivate(): lock_(OS_SPINLOCK_INIT) {}
-
-  OSSpinLock lock_;
-  char padding_[64 - sizeof(OSSpinLock)];  // Padding to cache line size
+  std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
+  char padding_[64 - sizeof(lock_)];  // Padding to cache line size
 };
 
 SpinLock::SpinLock(): m(new SpinLockPrivate()) {}
 SpinLock::~SpinLock() { delete m; }
 
 void SpinLock::lock() {
-  OSSpinLockLock(&m->lock_);
+  while (m->lock_.test_and_set(std::memory_order_acquire)) {}
 }
 
 void SpinLock::unlock() {
-  OSSpinLockUnlock(&m->lock_);
+  m->lock_.clear(std::memory_order_release);
 }
 
 

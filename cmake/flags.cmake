@@ -64,12 +64,19 @@ set(COMMON_FLAGS
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
     -Wno-error=literal-suffix
-    -Wno-error=unused-local-typedefs)
+    -Wno-error=unused-local-typedefs
+    -Wno-error=unused-function  # Warnings in Numpy Header.
+)
 
 foreach(flag ${COMMON_FLAGS})
     safe_set_cflag(CMAKE_C_FLAGS ${flag})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
 endforeach()
+
+# On Mac OS X build fat binaries with x86_64 architectures by default.
+if (APPLE)
+    set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+endif ()
 
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
@@ -88,15 +95,15 @@ endfunction()
 
 # Common gpu architectures: Kepler, Maxwell
 foreach(capability 30 35 50)
-    list(APPEND __arch_flags " -gencode arch=compute_${capability},code=sm_${capability}")
+      list(APPEND __arch_flags " -gencode arch=compute_${capability},code=sm_${capability}")
 endforeach()
 
-if (CUDA_VERSION VERSION_GREATER "7.0")
+if (CUDA_VERSION VERSION_GREATER "7.0" OR CUDA_VERSION VERSION_EQUAL "7.0")
       list(APPEND __arch_flags " -gencode arch=compute_52,code=sm_52")
 endif()
 
 # Modern gpu architectures: Pascal
-if (CUDA_VERSION VERSION_GREATER "8.0")
+if (CUDA_VERSION VERSION_GREATER "8.0" OR CUDA_VERSION VERSION_EQUAL "8.0")
       list(APPEND __arch_flags " -gencode arch=compute_60,code=sm_60")
 endif()
 

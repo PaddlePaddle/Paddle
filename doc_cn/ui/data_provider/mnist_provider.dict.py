@@ -2,10 +2,10 @@ from paddle.trainer.PyDataProvider2 import *
 
 
 # Define a py data provider
-@provider(input_types=[
-    dense_vector(28 * 28),
-    integer_value(10)
-])
+@provider(input_types={
+    'pixel': dense_vector(28 * 28),
+    'label': integer_value(10)
+})
 def process(settings, filename):  # settings is not used currently.
     f = open(filename, 'r')  # open one of training file
 
@@ -20,6 +20,6 @@ def process(settings, filename):  # settings is not used currently.
             pixels_float.append(float(each_pixel_str))
 
         # give data to paddle.
-        yield { "pixel": pixels_float, 'label': int(label) }
+        yield {"pixel": pixels_float, 'label': int(label)}
 
     f.close()  # close file

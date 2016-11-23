@@ -73,6 +73,12 @@ img_pool_layer
     :members: img_pool_layer
     :noindex:
 
+maxout_layer
+------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: maxout_layer
+    :noindex:
+
 Norm Layer
 ==========
 
@@ -129,6 +135,12 @@ gru_step_layer
 
 Recurrent Layer Group
 =====================
+
+memory
+------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: memory
+    :noindex:
 
 recurrent_group
 ---------------
@@ -369,6 +381,12 @@ ctc_layer
 -----------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: ctc_layer
+    :noindex:
+
+nce_layer
+-----------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: nce_layer
     :noindex:
 
 hsigmoid
