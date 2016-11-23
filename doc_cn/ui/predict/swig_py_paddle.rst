@@ -1,38 +1,53 @@
-PaddlePaddle的Python预测接口
-==================================
+基于Python的预测
+================
 
-PaddlePaddle目前使用Swig对其常用的预测接口进行了封装，使在Python环境下的预测接口更加简单。
-在Python环境下预测结果，主要分为以下几个步骤。
+Python预测接口
+--------------
 
-* 读入解析训练配置
-* 构造GradientMachine
-* 准备数据
-* 预测
+PaddlePaddle使用swig对常用的预测接口进行了封装，通过编译会生成py_paddle软件包，安装该软件包就可以在python环境下实现模型预测。可以使用python的 ``help()`` 函数查询软件包相关API说明。
 
-典型的预测代码如下，使用mnist手写识别作为样例, 完整代码见
-:code:`src_root/doc/ui/predict/predict_sample.py` 。
+基于Python的模型预测，主要包括以下五个步骤。
 
-..  literalinclude:: ../../../doc/ui/predict/predict_sample.py
-    :language: python
-    :lines: 15-18,90-100,101-104
+1. 初始化PaddlePaddle环境
+  在程序开始阶段，通过调用 ``swig_paddle.initPaddle()`` 并传入相应的命令行参数初始化PaddlePaddle。
+2. 解析模型配置文件
+  初始化之后，可以通过调用 ``parse_config()`` 解析训练模型时用的配置文件。注意预测数据通常不包含label, 同时预测网络通常直接输出最后一层的结果而不是像训练网络一样再接一层cost layer，所以一般需要对训练用的模型配置文件稍作相应修改才能在预测时使用。
+3. 构造paddle.GradientMachine
+  通过调用 ``swig_paddle.GradientMachine.createFromConfigproto()`` 传入上一步解析出来的模型配置就可以创建一个 ``GradientMachine``。
+4. 准备预测数据
+  swig_paddle中的预测接口的参数是自定义的C++数据类型，py_paddle里面提供了一个工具类 ``DataProviderConverter`` 可以用于接收和PyDataProvider2一样的输入数据并转换成预测接口所需的数据类型。
+5. 模型预测
+  通过调用 ``forwardTest()`` 传入预测数据，直接返回计算结果。
 
-主要的软件包为py_paddle.swig_paddle，这个软件包文档相对完善。可以使用python的
-:code:`help()` 函数查询文档。主要步骤为:
 
-* 在程序开始阶段，使用 :code:`swig_paddle.initPaddle()` 传入命令行参数初始化
-  PaddlePaddle。详细的命令行参数请参考
-  `命令行参数 <../cmd_argument/detail_introduction.html>`_ 。
-* 接下来使用 :code:`parse_config()` 解析训练时的配置文件。这里要注意预测数据通常
-  不包含label, 而且预测网络通常直接输出最后一层的结果而不是像训练时一样以cost
-  layer作为输出，所以用于预测的配置文件要做相应的修改。
-* 使用 :code:`swig_paddle.GradientMachine.createFromConfigproto()` 根据上一步解
-  析好的配置创建神经网络。
-* 创建一个 :code:`DataProviderConverter` 对象converter。
-    - swig_paddle接受的原始数据是C++的Matrix，也就是直接写内存的float数组。
-      这个接口并不用户友好。所以，我们提供了一个工具类DataProviderConverter。
-      这个工具类接收和PyDataProvider2一样的输入数据，详情请参考
-      `PyDataProvider2文档 <../../../doc/ui/data_provider/pydataprovider2.html>`_ 。
-* 最后使用 :code:`forwardTest()` 直接提取出神经网络Output层的输出结果。典型的输出结果为\:
+基于Python的预测Demo
+--------------------
+
+如下是一段使用mnist model来实现手写识别的预测代码。完整的代码见 ``src_root/doc/ui/predict/predict_sample.py`` 。mnist model可以通过 ``src_root\demo\mnist`` 目录下的demo训练出来。
+
+.. code-block:: python
+
+    from py_paddle import swig_paddle, DataProviderConverter
+    from paddle.trainer.PyDataProvider2 import dense_vector
+    from paddle.trainer.config_parser import parse_config
+    
+    TEST_DATA = [...]
+    
+    def main():
+        conf = parse_config("./mnist_model/trainer_config.py", "")
+        network = swig_paddle.GradientMachine.createFromConfigProto(conf.model_config)
+        assert isinstance(network, swig_paddle.GradientMachine)  # For code hint.
+        network.loadParameters("./mnist_model/")
+        converter = DataProviderConverter([dense_vector(784)])
+        inArg = converter(TEST_DATA)
+        print network.forwardTest(inArg)
+    
+    if __name__ == '__main__':
+        swig_paddle.initPaddle("--use_gpu=0")
+        main()
+
+
+Demo预测输出如下，其中value即为softmax层的输出。由于TEST_DATA包含两条预测数据，所以输出的value包含两个向量 。
 
 ..  code-block:: text
 
@@ -45,4 +60,4 @@ PaddlePaddle目前使用Swig对其常用的预测接口进行了封装，使在P
           2.70634608e-08,   3.48565123e-08,   5.25639710e-09,
           4.48684503e-08]], dtype=float32)}]
 
-其中，value即为softmax层的输出。由于数据是两条，所以输出的value包含两个向量 。
+
