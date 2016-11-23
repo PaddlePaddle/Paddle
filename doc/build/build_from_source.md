@@ -6,7 +6,7 @@ Installing from Sources
 * [3. Build on Ubuntu](#ubuntu)
 
 ## <span id="download">Download and Setup</span> 
-You can download PaddlePaddle from the [github source](https://github.com/gangliao/Paddle).
+You can download PaddlePaddle from the [github source](https://github.com/PaddlePaddle/Paddle).
 
 ```bash
 git clone https://github.com/baidu/Paddle paddle
