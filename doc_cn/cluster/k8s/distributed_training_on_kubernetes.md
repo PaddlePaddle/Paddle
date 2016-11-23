@@ -1,11 +1,11 @@
 
-# Paddle on Kubernetes：分布式训练
+# PaddlePaddle on Kubernetes：分布式训练
 
-前一篇文章介绍了如何在Kubernetes集群上启动一个单机PaddlePaddle训练作业 (Job)。在这篇文章里，我们介绍如何在Kubernetes集群上进行分布式PaddlePaddle训练作业。关于PaddlePaddle的分布式训练，可以参考 [Cluster Training](https://github.com/baidu/Paddle/blob/develop/doc/cluster/opensource/cluster_train.md)，本文利用Kubernetes的调度功能与容器编排能力，快速构建PaddlePaddle容器集群，进行分布式训练任务。
+前一篇文章介绍了如何在Kubernetes集群上启动一个单机PaddlePaddle训练作业 (Job)。在这篇文章里，我们介绍如何在Kubernetes集群上进行分布式PaddlePaddle训练作业。关于PaddlePaddle的分布式训练，文章 [Cluster Training](https://github.com/baidu/Paddle/blob/develop/doc/cluster/opensource/cluster_train.md)介绍了一种通过SSH远程分发任务，进行分布式训练的方法，与此不同的是，本文将介绍在Kubernetes容器管理平台上快速构建PaddlePaddle容器集群，进行分布式训练的方案。
 
 ## Kubernetes 基本概念
 
-[*Kubernetes*](http://kubernetes.io/)是Google开源的容器集群管理系统，其提供应用部署、维护、 扩展机制等功能，利用Kubernetes能方便地管理跨机器运行容器化的应用。在介绍分布式训练之前，需要对[Kubernetes](http://kubernetes.io/)有一个基本的认识，下面先简要介绍一下本文用到的几个Kubernetes概念。
+[*Kubernetes*](http://kubernetes.io/)是Google开源的容器集群管理系统，其提供应用部署、维护、 扩展机制等功能，利用Kubernetes能方便地管理跨机器运行容器化的应用。Kubernetes可以在物理机或虚拟机上运行，且支持部署到[AWS](http://kubernetes.io/docs/getting-started-guides/aws)，[Azure](http://kubernetes.io/docs/getting-started-guides/azure/)，[GCE](http://kubernetes.io/docs/getting-started-guides/gce)等多种公有云环境。介绍分布式训练之前，需要对[Kubernetes](http://kubernetes.io/)有一个基本的认识，下面先简要介绍一下本文用到的几个Kubernetes概念。
 
 - [*Node*](http://kubernetes.io/docs/admin/node/) 表示一个Kubernetes集群中的一个工作节点，这个节点可以是物理机或者虚拟机，Kubernetes集群就是由node节点与master节点组成的。
 
@@ -21,9 +21,11 @@
 
 ### 部署Kubernetes集群
 
-首先，我们需要拥有一个Kubernetes集群，在这个集群中所有node与pod都可以互相通信。关于Kubernetes集群搭建，可以参考[官方文档](http://kubernetes.io/docs/getting-started-guides/kubeadm/)，在以后的文章中我们也会介绍AWS上搭建的方案。本文假设大家能找到几台物理机，并且可以按照官方文档在上面部署Kubernetes。在本文的环境中，Kubernetes集群中所有node都挂载了一个*mfs*(分布式文件系统)共享目录，我们通过这个目录来存放训练文件与最终输出的模型。在训练之前，用户将配置与训练数据切分好放在mfs目录中，训练时，程序从此目录拷贝文件到容器内进行训练，将结果保存到此目录里。整体的结果图如下：
+首先，我们需要拥有一个Kubernetes集群，在这个集群中所有node与pod都可以互相通信。关于Kubernetes集群搭建，可以参考[官方文档](http://kubernetes.io/docs/getting-started-guides/kubeadm/)，在以后的文章中我们也会介绍AWS上搭建的方案。本文假设大家能找到几台物理机，并且可以按照官方文档在上面部署Kubernetes。在本文的环境中，Kubernetes集群中所有node都挂载了一个[MFS](http://moosefs.org/)（Moose filesystem，一种分布式文件系统）共享目录，我们通过这个目录来存放训练文件与最终输出的模型。关于MFS的安装部署，可以参考[MooseFS documentation](https://moosefs.com/documentation.html)。在训练之前，用户将配置与训练数据切分好放在MFS目录中，训练时，程序从此目录拷贝文件到容器内进行训练，将结果保存到此目录里。整体的结构图如下：
 
 ![paddle on kubernetes结构图](k8s-paddle-arch.png)
+
+上图描述了一个3节点的分布式训练场景，Kubernetes集群的每个node上都挂载了一个MFS目录，这个目录可以通过volume的形式挂载到容器中。Kubernetes为这次训练创建了3个pod并且调度到了3个node上运行，每个pod包含一个PaddlePaddle容器。在容器创建后，会启动pserver与trainer进程，读取volume中的数据进行这次分布式训练。
 
 ### 使用 Job
 
@@ -31,7 +33,7 @@
 
 在Kubernetes中，可以通过编写一个YAML文件，来描述这个job，在这个文件中，主要包含了一些配置信息，例如PaddlePaddle的节点个数，`paddle pserver`开放的端口个数与端口号，使用的网卡设备等，这些信息通过环境变量的形式传递给容器内的程序使用。
 
-在一次分布式训练中，用户确定好本次训练需要的PaddlePaddle节点个数，将切分好的训练数据与配置文件上传到mfs共享目录中。然后编写这次训练的job YAML文件，提交给Kubernetes集群创建并开始作业。
+在一次分布式训练中，用户确定好本次训练需要的PaddlePaddle节点个数，将切分好的训练数据与配置文件上传到MFS共享目录中。然后编写这次训练的job YAML文件，提交给Kubernetes集群创建并开始作业。
 
 ### 创建PaddlePaddle节点
 
@@ -39,14 +41,14 @@
 
 ### 启动训练
 
-在容器启动后，会通过脚本来启动这次分布式训练，我们知道`paddle train`进程启动时需要知道其他节点的IP地址以及本节点的trainer_id，由于Paddle本身不提供类似服务发现的功能，所以在本文的启动脚本中，每个节点会根据job name向Kubernetes apiserver查询这个job对应的所有pod信息(Kubernetes默认会在每个容器的环境变量中写入apiserver的地址)。
+在容器启动后，会通过脚本来启动这次分布式训练，我们知道`paddle train`进程启动时需要知道其他节点的IP地址以及本节点的trainer_id，由于PaddlePaddle本身不提供类似服务发现的功能，所以在本文的启动脚本中，每个节点会根据job name向Kubernetes apiserver查询这个job对应的所有pod信息(Kubernetes默认会在每个容器的环境变量中写入apiserver的地址)。
 
 根据这些pod信息，就可以通过某种方式，为每个pod分配一个唯一的trainer_id。本文把所有pod的IP地址进行排序，将顺序作为每个PaddlePaddle节点的trainer_id。启动脚本的工作流程大致如下：
 
   1. 查询Kubernetes apiserver获取pod信息，根据IP分配trainer_id
-  1. 从mfs共享目录中拷贝训练文件到容器内
+  1. 从MFS共享目录中拷贝训练文件到容器内
   1. 根据环境变量，解析出`paddle pserver`与`paddle train`的启动参数，启动进程
-  1. 训练时，PaddlePaddle会自动将结果保存在trainer_id为0的节点上，将输出路径设置为mfs目录，保存输出的文件
+  1. 训练时，PaddlePaddle会自动将结果保存在trainer_id为0的节点上，将输出路径设置为MFS目录，保存输出的文件
 
 
 ## 搭建过程
@@ -160,7 +162,7 @@ docker push  your_repo/paddle:mypaddle
 
 ### 上传训练文件
 
-本文使用Paddle官方的[recommendation demo](http://www.paddlepaddle.org/doc/demo/index.html#recommendation)作为这次训练的内容，我们将训练文件与数据放在一个job name命名的目录中，上传到mfs共享存储。完成后mfs上的文件内容大致如下：
+本文使用PaddlePaddle官方的[recommendation demo](http://www.paddlepaddle.org/doc/demo/index.html#recommendation)作为这次训练的内容，我们将训练文件与数据放在一个job name命名的目录中，上传到MFS共享存储。完成后MFS上的文件内容大致如下：
 
 ```bash
 [root@paddle-kubernetes-node0 mfs]# tree -d
@@ -176,7 +178,7 @@ docker push  your_repo/paddle:mypaddle
     └── recommendation
 ```
 
-目录中paddle-cluster-job是本次训练对应的job name，本次训练要求有3个Paddle节点，在paddle-cluster-job/data目录中存放切分好的数据，文件夹0，1，2分别代表3个节点的trainer_id。recommendation文件夹内存放训练文件，output文件夹存放训练结果与日志。
+目录中paddle-cluster-job是本次训练对应的job name，本次训练要求有3个PaddlePaddle节点，在paddle-cluster-job/data目录中存放切分好的数据，文件夹0，1，2分别代表3个节点的trainer_id。recommendation文件夹内存放训练文件，output文件夹存放训练结果与日志。
 
 ### 创建Job
 
@@ -229,7 +231,7 @@ spec:
       restartPolicy: Never
 ```
 
-文件中，`metadata`下的`name`表示这个job的名字。`parallelism，completions`字段表示这个job会同时开启3个Paddle节点，成功训练且退出的pod数目为3时，这个job才算成功结束。然后申明一个存储卷`jobpath`，代表宿主机目录`/home/work/mfs`，在对容器的描述`containers`字段中，将此目录挂载为容器的`/home/jobpath`目录，这样容器的`/home/jobpath`目录就成为了共享存储，放在这个目录里的文件其实是保存到了mfs上。
+文件中，`metadata`下的`name`表示这个job的名字。`parallelism，completions`字段表示这个job会同时开启3个PaddlePaddle节点，成功训练且退出的pod数目为3时，这个job才算成功结束。然后申明一个存储卷`jobpath`，代表宿主机目录`/home/work/mfs`，在对容器的描述`containers`字段中，将此目录挂载为容器的`/home/jobpath`目录，这样容器的`/home/jobpath`目录就成为了共享存储，放在这个目录里的文件其实是保存到了MFS上。
 
 `env`字段表示容器的环境变量，我们将`paddle`运行的一些参数通过这种方式传递到容器内。
 
@@ -254,7 +256,7 @@ kubectl create -f job.yaml
 
 ### 查看输出
 
-在训练过程中，可以在共享存储上查看输出的日志和模型，例如output目录下就存放了输出结果。注意node_0，node_1，node_2这几个目录表示Paddle节点与trainer_id，并不是Kubernetes中的node概念。
+在训练过程中，可以在共享存储上查看输出的日志和模型，例如output目录下就存放了输出结果。注意node_0，node_1，node_2这几个目录表示PaddlePaddle节点与trainer_id，并不是Kubernetes中的node概念。
 
 ```bash
 [root@paddle-kubernetes-node0 output]# tree -d
