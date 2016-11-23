@@ -592,6 +592,7 @@ class DotMulProjection(Projection):
     def calc_parameter_dims(self, input_size, output_size):
         return [1, output_size]
 
+
 # ScalingProjection
 @config_class
 class ScalingProjection(Projection):
@@ -808,17 +809,18 @@ class BilinearInterp(Cfg):
 # please refer to the comments in proto/ModelConfig.proto
 @config_class
 class Pool(Cfg):
-    def __init__(self,
-                 pool_type,
-                 channels,
-                 size_x,
-                 size_y=None,
-                 img_width=None,
-                 start=None,
-                 stride=None,
-                 stride_y=None,
-                 padding=None,
-                 padding_y=None):
+    def __init__(
+            self,
+            pool_type,
+            channels,
+            size_x,
+            size_y=None,
+            img_width=None,
+            start=None,
+            stride=None,  # 1 by defalut in protobuf
+            stride_y=None,
+            padding=None,  # 0 by defalut in protobuf
+            padding_y=None):
         self.add_keys(locals())
 
 
@@ -1113,13 +1115,13 @@ def parse_pool(pool, input_layer_name, pool_conf):
 
     if pool.padding is not None:
         pool_conf.padding = pool.padding
-        pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
-        pool_conf.output_x = cnn_output_size(
-            pool_conf.img_size, pool_conf.size_x, pool_conf.padding,
-            pool_conf.stride, False)
-        pool_conf.output_y = cnn_output_size(
-            pool_conf.img_size_y, pool_conf.size_y, pool_conf.padding_y,
-            pool_conf.stride_y, False)
+    pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
+    pool_conf.output_x = cnn_output_size(pool_conf.img_size, pool_conf.size_x,
+                                         pool_conf.padding, pool_conf.stride,
+                                         False)
+    pool_conf.output_y = cnn_output_size(pool_conf.img_size_y, pool_conf.size_y,
+                                         pool_conf.padding_y,
+                                         pool_conf.stride_y, False)
 
 
 def parse_spp(spp, input_layer_name, spp_conf):
