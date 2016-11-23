@@ -1,21 +1,5 @@
 set -e
 
-# If use `paddle train` to run, it must use DataProvider to
-# pass the data type to PaddlePaddle system.
-# And PaddlePaddle requires training set list (train.list),
-function gen_file() {
-  if [ ! -d "train.txt" ]; then
-    for ((i=1;i<=1024;i++))
-    do
-      echo "train/n09246464/n09246464_38735.jpeg 972" >> train.txt
-    done
-  fi
-
-  if [ ! -d "train.list" ]; then
-    echo "train.txt" > train.list
-  fi
-}
-
 function train() {
   cfg=$1
   thread=$2
@@ -32,7 +16,9 @@ function train() {
     > logs/$prefix-${thread}gpu-$bz.log 2>&1 
 }
 
-gen_file
+if [ ! -d "train.list" ]; then
+  echo " " > train.list
+fi
 if [ ! -d "logs" ]; then
   mkdir logs
 fi
