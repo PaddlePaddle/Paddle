@@ -63,10 +63,15 @@ TEST(CommandLineParser, defaultValue) {
 }
 
 TEST(CommandLineParser, normal) {
-  char* argv[] = {
-      cc("test_program"), cc("--i2=32"),              cc("--str1=abc"),
-      cc("--b2=1"),       cc("-b1=False"),            cc("--d2=.34"),
-      cc("--d1=0"),       cc("--l1=-12345678901234"), cc("-ul2=3212")};
+  char* argv[] = {cc("test_program"),
+                  cc("--i2=32"),
+                  cc("--str1=abc"),
+                  cc("--b2=1"),
+                  cc("-b1=False"),
+                  cc("--d2=.34"),
+                  cc("--d1=0"),
+                  cc("--l1=-12345678901234"),
+                  cc("-ul2=3212")};
   int argc = sizeof(argv) / sizeof(char*);
   paddle::ParseCommandLineFlags(&argc, argv);
   ASSERT_EQ(argc, 1);
@@ -104,8 +109,6 @@ int main(int argc, char** argv) {
 
 #else
 
-int main(int argc, char** argv) {
-  return 0;
-}
+int main(int argc, char** argv) { return 0; }
 
 #endif

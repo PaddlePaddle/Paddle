@@ -48,7 +48,8 @@ struct MatrixPara {
 };
 
 #ifndef PADDLE_ONLY_CPU
-void test_sparse_matrix_mul(MatrixPara paraA, MatrixPara paraB,
+void test_sparse_matrix_mul(MatrixPara paraA,
+                            MatrixPara paraB,
                             MatrixPara paraC) {
   // for cpu sparse matrix mul
   MatrixPtr cpuMatrixA, cpuMatrixB, cpuMatrixC, gpuMatrixC_d2h;
@@ -58,12 +59,20 @@ void test_sparse_matrix_mul(MatrixPara paraA, MatrixPara paraB,
   MatrixPtr cpuDenseA, cpuDenseB, cpuDenseC;
 
   if (paraA.sparse) {
-    cpuMatrixA = Matrix::createSparseMatrix(paraA.height, paraA.width,
-                                            paraA.nnz, FLOAT_VALUE,
-                                            paraA.format, paraA.trans, false);
-    gpuMatrixA = Matrix::createSparseMatrix(paraA.height, paraA.width,
-                                            paraA.nnz, FLOAT_VALUE,
-                                            paraA.format, paraA.trans, true);
+    cpuMatrixA = Matrix::createSparseMatrix(paraA.height,
+                                            paraA.width,
+                                            paraA.nnz,
+                                            FLOAT_VALUE,
+                                            paraA.format,
+                                            paraA.trans,
+                                            false);
+    gpuMatrixA = Matrix::createSparseMatrix(paraA.height,
+                                            paraA.width,
+                                            paraA.nnz,
+                                            FLOAT_VALUE,
+                                            paraA.format,
+                                            paraA.trans,
+                                            true);
   } else {
     cpuMatrixA = Matrix::create(paraA.height, paraA.width, paraA.trans, false);
     gpuMatrixA = Matrix::create(paraA.height, paraA.width, paraA.trans, true);
@@ -71,12 +80,20 @@ void test_sparse_matrix_mul(MatrixPara paraA, MatrixPara paraB,
   cpuDenseA = Matrix::create(paraA.height, paraA.width, paraA.trans, false);
 
   if (paraB.sparse) {
-    cpuMatrixB = Matrix::createSparseMatrix(paraB.height, paraB.width,
-                                            paraB.nnz, FLOAT_VALUE,
-                                            paraB.format, paraB.trans, false);
-    gpuMatrixB = Matrix::createSparseMatrix(paraB.height, paraB.width,
-                                            paraB.nnz, FLOAT_VALUE,
-                                            paraB.format, paraB.trans, true);
+    cpuMatrixB = Matrix::createSparseMatrix(paraB.height,
+                                            paraB.width,
+                                            paraB.nnz,
+                                            FLOAT_VALUE,
+                                            paraB.format,
+                                            paraB.trans,
+                                            false);
+    gpuMatrixB = Matrix::createSparseMatrix(paraB.height,
+                                            paraB.width,
+                                            paraB.nnz,
+                                            FLOAT_VALUE,
+                                            paraB.format,
+                                            paraB.trans,
+                                            true);
   } else {
     cpuMatrixB = Matrix::create(paraB.height, paraB.width, paraB.trans, false);
     gpuMatrixB = Matrix::create(paraB.height, paraB.width, paraB.trans, true);
@@ -84,15 +101,27 @@ void test_sparse_matrix_mul(MatrixPara paraA, MatrixPara paraB,
   cpuDenseB = Matrix::create(paraB.height, paraB.width, paraB.trans, false);
 
   if (paraC.sparse) {
-    cpuMatrixC = Matrix::createSparseMatrix(paraC.height, paraC.width,
-                                            paraC.nnz, FLOAT_VALUE,
-                                            paraC.format, paraC.trans, false);
-    gpuMatrixC = Matrix::createSparseMatrix(paraC.height, paraC.width,
-                                            paraC.nnz, FLOAT_VALUE,
-                                            paraC.format, paraC.trans, true);
-    gpuMatrixC_d2h = Matrix::createSparseMatrix(
-        paraC.height, paraC.width, paraC.nnz, FLOAT_VALUE, paraC.format,
-        paraC.trans, false);
+    cpuMatrixC = Matrix::createSparseMatrix(paraC.height,
+                                            paraC.width,
+                                            paraC.nnz,
+                                            FLOAT_VALUE,
+                                            paraC.format,
+                                            paraC.trans,
+                                            false);
+    gpuMatrixC = Matrix::createSparseMatrix(paraC.height,
+                                            paraC.width,
+                                            paraC.nnz,
+                                            FLOAT_VALUE,
+                                            paraC.format,
+                                            paraC.trans,
+                                            true);
+    gpuMatrixC_d2h = Matrix::createSparseMatrix(paraC.height,
+                                                paraC.width,
+                                                paraC.nnz,
+                                                FLOAT_VALUE,
+                                                paraC.format,
+                                                paraC.trans,
+                                                false);
   } else {
     cpuMatrixC = Matrix::create(paraC.height, paraC.width, paraC.trans, false);
     gpuMatrixC = Matrix::create(paraC.height, paraC.width, paraC.trans, true);
@@ -267,8 +296,8 @@ TEST(Matrix, CpuSparseMatrixSubMatrix) {
   }
 }
 
-void sparseValid(int* major, int* minor, size_t nnz, size_t majorLen,
-                 size_t minorLen) {
+void sparseValid(
+    int* major, int* minor, size_t nnz, size_t majorLen, size_t minorLen) {
   CHECK_EQ(nnz, size_t(major[majorLen - 1]));
   CHECK_EQ(nnz, minorLen);
   for (size_t i = 0; i < majorLen - 1; i++) {
@@ -375,14 +404,25 @@ TEST(Matrix, SparseMatrixCSRFormatTrimFrom) {
   int64_t trimedIndices[11] = {0, 1, 3, 3, 7, 7, 9, 10, 12, 16, 19};
   sparse_float_value_t trimedData[19];
   int trimedValue[19] = {
-      1,           // row_0 : 1
-      3, 1,        // row_1 : 2
-      0, 1, 2, 3,  // row_3 : 4
-      2, 3,        // row_5 : 2
-      3,           // row_6 : 1
-      0, 1,        // row_7 : 2
-      0, 1, 2, 3,  // row_8 : 4
-      2, 3, 1      // row_9 : 3
+      1,  // row_0 : 1
+      3,
+      1,  // row_1 : 2
+      0,
+      1,
+      2,
+      3,  // row_3 : 4
+      2,
+      3,  // row_5 : 2
+      3,  // row_6 : 1
+      0,
+      1,  // row_7 : 2
+      0,
+      1,
+      2,
+      3,  // row_8 : 4
+      2,
+      3,
+      1  // row_9 : 3
   };
   for (size_t i = 0; i < 19; i++) {
     trimedData[i].col = trimedValue[i];
@@ -415,9 +455,13 @@ TEST(Matrix, SparseMatrixCSRFormatTrimFrom) {
       height, trimedWidth, height, FLOAT_VALUE, SPARSE_CSR, true);
   matC->trimFrom(*mat);
 
-  CpuSparseMatrixPtr matD = std::make_shared<CpuSparseMatrix>(
-      height, trimedWidth, matC->getElementCnt(), FLOAT_VALUE, SPARSE_CSR,
-      false);
+  CpuSparseMatrixPtr matD =
+      std::make_shared<CpuSparseMatrix>(height,
+                                        trimedWidth,
+                                        matC->getElementCnt(),
+                                        FLOAT_VALUE,
+                                        SPARSE_CSR,
+                                        false);
   matD->copyFrom(*matC, HPPL_STREAM_DEFAULT);
   hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   checkSMatrixEqual2(matA, matD);
@@ -462,11 +506,17 @@ TEST(Matrix, SparseMatrixCSCFormatTrimFrom) {
   int trimedIndices[6] = {0, 1, 5, 5, 9, 13};
   int trimedValue[13] = {
       1,  // col_0 : 1
-      5, 3, 1,
+      5,
+      3,
+      1,
       6,  // col_1 : 4
-      0, 1, 2,
+      0,
+      1,
+      2,
       3,  // col_3 : 4
-      4, 5, 6,
+      4,
+      5,
+      6,
       7  // col_4 : 4
   };
   std::vector<int> rowsA(trimedValue, trimedValue + 13);
@@ -499,9 +549,13 @@ TEST(Matrix, SparseMatrixCSCFormatTrimFrom) {
       height, trimedWidth, height, FLOAT_VALUE, SPARSE_CSC, true);
   matC->trimFrom(*mat);
 
-  CpuSparseMatrixPtr matD = std::make_shared<CpuSparseMatrix>(
-      height, trimedWidth, matC->getElementCnt(), FLOAT_VALUE, SPARSE_CSC,
-      false);
+  CpuSparseMatrixPtr matD =
+      std::make_shared<CpuSparseMatrix>(height,
+                                        trimedWidth,
+                                        matC->getElementCnt(),
+                                        FLOAT_VALUE,
+                                        SPARSE_CSC,
+                                        false);
   matD->copyFrom(*matC, HPPL_STREAM_DEFAULT);
   hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   checkSMatrixEqual2(matA, matD);

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "PaddleAPI.h"
 #include "PaddleAPIPrivate.h"
 #include "paddle/trainer/Trainer.h"
@@ -44,8 +43,7 @@ TrainerConfig* TrainerConfig::createFromTrainerConfigFile(
   return retv;
 }
 
-TrainerConfig* TrainerConfig::createFromProtoString(
-    const std::string& str) {
+TrainerConfig* TrainerConfig::createFromProtoString(const std::string& str) {
   auto retv = new TrainerConfig();
   paddle::TrainerConfig trainerConfigProto;
   auto conf = std::make_shared<paddle::TrainerConfigHelper>(trainerConfigProto);

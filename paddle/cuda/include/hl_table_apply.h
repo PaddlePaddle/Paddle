@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_TABLE_APPLY_H_
 #define HL_TABLE_APPLY_H_
 
@@ -31,8 +30,10 @@ limitations under the License. */
  * @param[in]   dim             width of table.
  *
  */
-extern void hl_matrix_select_rows(real* output, int ldo,
-                                  real* table, int ldt,
+extern void hl_matrix_select_rows(real* output,
+                                  int ldo,
+                                  real* table,
+                                  int ldt,
                                   int* ids,
                                   int numSamples,
                                   int tableSize,
@@ -53,8 +54,10 @@ extern void hl_matrix_select_rows(real* output, int ldo,
  * @param[in]   dim             width of table.
  *
  */
-extern void hl_matrix_add_to_rows(real* table, int ldt,
-                                  real* input, int ldi,
+extern void hl_matrix_add_to_rows(real* table,
+                                  int ldt,
+                                  real* input,
+                                  int ldi,
                                   int* ids,
                                   int numSamples,
                                   int tableSize,
@@ -72,8 +75,7 @@ extern void hl_matrix_add_to_rows(real* table, int ldt,
  *
  */
 template <class T>
-extern void hl_vector_select_from(T* dst, int sized,
-                                  const T* src, int sizes,
-                                  const int* ids, int sizei);
+extern void hl_vector_select_from(
+    T* dst, int sized, const T* src, int sizes, const int* ids, int sizei);
 
-#endif  /* HL_TABLE_APPLY_H_ */
+#endif /* HL_TABLE_APPLY_H_ */

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <vector>
@@ -25,11 +24,15 @@ public:
   LinearChainCTC(int numClasses, bool normByTimes);
 
   // Calculate the negative log probability as loss
-  real forward(real* softmaxSeq, int softmaxSeqLen, int* labelSeq,
+  real forward(real* softmaxSeq,
+               int softmaxSeqLen,
+               int* labelSeq,
                int labelSeqLen);
 
   // calculate the gradient
-  void backward(real* softmaxSeq, real* softmaxSeqGrad, int* labelSeq,
+  void backward(real* softmaxSeq,
+                real* softmaxSeqGrad,
+                int* labelSeq,
                 int labelSeqLen);
 
 protected:

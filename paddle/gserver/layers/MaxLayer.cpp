@@ -23,8 +23,8 @@ REGISTER_LAYER(max, MaxLayer);
 void MaxLayer::forward(PassType passType) {
   SequencePoolLayer::forward(passType);
 
-  IVector::resizeOrCreate(maxIndex_, newBatchSize_ * getSize(),
-                          useGpu(deviceId_));
+  IVector::resizeOrCreate(
+      maxIndex_, newBatchSize_ * getSize(), useGpu(deviceId_));
   maxIndex_->zeroMem();
 
   MatrixPtr inputValue = getInputValue(0);

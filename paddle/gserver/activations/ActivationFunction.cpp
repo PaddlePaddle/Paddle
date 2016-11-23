@@ -51,12 +51,14 @@ static ClassRegistrar<ActivationFunction> gActivationRegistrar;
  * @brief Macro for registering a derived activation class
  */
 #define END_DEFINE_ACTIVATION(ACTIVATION_NAME)                     \
-  };                                                               \
+  }                                                                \
+  ;                                                                \
   const std::string ACTIVATION_CLASS_NAME(ACTIVATION_NAME)::name = \
       #ACTIVATION_NAME;                                            \
   static InitFunction __reg_activation__##ACTIVATION_NAME([] {     \
-    gActivationRegistrar.registerClass<                            \
-        ACTIVATION_CLASS_NAME(ACTIVATION_NAME)>(#ACTIVATION_NAME); \
+    gActivationRegistrar                                           \
+        .registerClass<ACTIVATION_CLASS_NAME(ACTIVATION_NAME)>(    \
+            #ACTIVATION_NAME);                                     \
   });
 
 /**
@@ -111,14 +113,22 @@ void backward(Argument& act) {
     outputG->softmaxBackward(*outputV);
   } else {
     SetDevice device(act.deviceId);
-    Matrix::resizeOrCreate(sftMaxDot_, outputG->getHeight(),
+    Matrix::resizeOrCreate(sftMaxDot_,
+                           outputG->getHeight(),
                            outputG->getWidth(),
-                           /* trans */ false, useGpu(act.deviceId));
-    Matrix::resizeOrCreate(sftMaxSum_, outputG->getHeight(), 1,
-                           /* trans */ false, useGpu(act.deviceId));
+                           /* trans */ false,
+                           useGpu(act.deviceId));
+    Matrix::resizeOrCreate(sftMaxSum_,
+                           outputG->getHeight(),
+                           1,
+                           /* trans */ false,
+                           useGpu(act.deviceId));
     if (!one_ || one_->getWidth() != outputG->getWidth()) {
-      Matrix::resizeOrCreate(one_, 1, outputG->getWidth(),
-                             /* trans */ false, useGpu(act.deviceId));
+      Matrix::resizeOrCreate(one_,
+                             1,
+                             outputG->getWidth(),
+                             /* trans */ false,
+                             useGpu(act.deviceId));
       one_->one();
     }
 
@@ -129,7 +139,6 @@ void backward(Argument& act) {
   }
 }
 END_DEFINE_ACTIVATION(softmax)
-
 
 /**
  * @brief Sequence_softmax Activation
@@ -146,10 +155,16 @@ void forward(Argument& act) {
   CHECK_EQ(act.value->getWidth(), 1UL);
 
   if (!argument_.value) {
-    argument_.value = Matrix::create(nullptr, /* height= */ 1, 1,
-                                     /* trans= */ false, useGpu(act.deviceId));
-    argument_.grad = Matrix::create(nullptr, /* height= */ 1, 1,
-                                    /* trans= */ false, useGpu(act.deviceId));
+    argument_.value = Matrix::create(nullptr,
+                                     /* height= */ 1,
+                                     1,
+                                     /* trans= */ false,
+                                     useGpu(act.deviceId));
+    argument_.grad = Matrix::create(nullptr,
+                                    /* height= */ 1,
+                                    1,
+                                    /* trans= */ false,
+                                    useGpu(act.deviceId));
   }
 
   auto starts = act.sequenceStartPositions->getVector(useGpu(act.deviceId));
@@ -267,8 +282,11 @@ END_DEFINE_ACTIVATION(softrelu)
 BEGIN_DEFINE_ACTIVATION(abs)
 void forward(Argument& act) {
   SetDevice device(act.deviceId);
-  Matrix::resizeOrCreate(act.in, act.value->getHeight(), act.value->getWidth(),
-                         /* trans */ false, useGpu(act.deviceId));
+  Matrix::resizeOrCreate(act.in,
+                         act.value->getHeight(),
+                         act.value->getWidth(),
+                         /* trans */ false,
+                         useGpu(act.deviceId));
 
   act.in->copyFrom(*act.value);
   act.value->abs(*act.value);
@@ -286,8 +304,11 @@ END_DEFINE_ACTIVATION(abs)
 BEGIN_DEFINE_ACTIVATION(square)
 void forward(Argument& act) {
   SetDevice device(act.deviceId);
-  Matrix::resizeOrCreate(act.in, act.value->getHeight(), act.value->getWidth(),
-                         /* trans */ false, useGpu(act.deviceId));
+  Matrix::resizeOrCreate(act.in,
+                         act.value->getHeight(),
+                         act.value->getWidth(),
+                         /* trans */ false,
+                         useGpu(act.deviceId));
 
   act.in->copyFrom(*act.value);
   act.value->square(*act.value);
@@ -317,8 +338,11 @@ END_DEFINE_ACTIVATION(exponential)
 BEGIN_DEFINE_ACTIVATION(log)
 void forward(Argument& act) {
   SetDevice device(act.deviceId);
-  Matrix::resizeOrCreate(act.in, act.value->getHeight(), act.value->getWidth(),
-                         /* trans */ false, useGpu(act.deviceId));
+  Matrix::resizeOrCreate(act.in,
+                         act.value->getHeight(),
+                         act.value->getWidth(),
+                         /* trans */ false,
+                         useGpu(act.deviceId));
 
   act.in->copyFrom(*act.value);
   act.value->log(*act.value);
@@ -333,11 +357,9 @@ ActivationFunction* ActivationFunction::create(const std::string& type) {
 
 std::vector<std::string> ActivationFunction::getAllRegisteredTypes() {
   std::vector<std::string> types;
-  gActivationRegistrar.forEachType([&](const std::string& type) {
-      types.push_back(type);
-    });
+  gActivationRegistrar.forEachType(
+      [&](const std::string& type) { types.push_back(type); });
   return types;
 }
-
 
 }  // namespace paddle

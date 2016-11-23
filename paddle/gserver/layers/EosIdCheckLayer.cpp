@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "Layer.h"
 
@@ -20,7 +19,7 @@ namespace paddle {
 /**
  * A layer for checking EOS for each sample:
  * - output_id = (input_id == conf.eos_id)
- * 
+ *
  * The result is stored in output_.ids.
  * It is used by recurrent layer group.
  */

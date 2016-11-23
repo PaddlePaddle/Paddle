@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Layer.h"
@@ -82,7 +81,8 @@ public:
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
   // call before addRealLayer
-  void copyIdAndSequenceInfo(const Argument& input, const IVectorPtr& allIds,
+  void copyIdAndSequenceInfo(const Argument& input,
+                             const IVectorPtr& allIds,
                              const std::vector<int>& idIndex);
 
   // add one real layer, can call many times
@@ -140,11 +140,12 @@ public:
    *
    * @param layer[input]    realLayer
    * @param ids[input]      row id in real layer
-   * @param copyId[input]   whether to copy a cpu version of ids, 
-   *                        false(default) in ScatterAgentLayer, and 
+   * @param copyId[input]   whether to copy a cpu version of ids,
+   *                        false(default) in ScatterAgentLayer, and
    *                        true in SequenceScatterAgentLayer.
    */
-  void setRealLayer(LayerPtr layer, const std::vector<int>& ids,
+  void setRealLayer(LayerPtr layer,
+                    const std::vector<int>& ids,
                     bool copyId = false) {
     realLayer_ = layer;
     IVector::resizeOrCreate(ids_, ids.size(), useGpu_);
@@ -161,8 +162,11 @@ public:
 
   // set real layer and output, [idIndex, idIndex + idSize) of *ids*
   // are selected row for realOutArg in realLayer
-  void setRealLayerAndOutput(LayerPtr layer, const Argument& outArg,
-                             const IVectorPtr& ids, int idIndex, int idSize) {
+  void setRealLayerAndOutput(LayerPtr layer,
+                             const Argument& outArg,
+                             const IVectorPtr& ids,
+                             int idIndex,
+                             int idSize) {
     realLayer_ = layer;
     realOutArg_ = outArg;
     ids_ = ids;
@@ -170,9 +174,9 @@ public:
     idSize_ = idSize;
   }
 
-  void setSequenceStartPositions(
-      const ICpuGpuVectorPtr& sequenceStartPositions,
-      int seqStartPosIndex, int numSequences) {
+  void setSequenceStartPositions(const ICpuGpuVectorPtr& sequenceStartPositions,
+                                 int seqStartPosIndex,
+                                 int numSequences) {
     realOutArg_.sequenceStartPositions = sequenceStartPositions;
     seqStartPosIndex_ = seqStartPosIndex;
     numSequences_ = numSequences;

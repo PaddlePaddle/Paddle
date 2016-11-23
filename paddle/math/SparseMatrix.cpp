@@ -22,18 +22,25 @@ limitations under the License. */
 
 namespace paddle {
 
-GpuSparseMatrix::GpuSparseMatrix(size_t height, size_t width, size_t nnz,
-                                 SparseValueType valueType, SparseFormat format,
+GpuSparseMatrix::GpuSparseMatrix(size_t height,
+                                 size_t width,
+                                 size_t nnz,
+                                 SparseValueType valueType,
+                                 SparseFormat format,
                                  bool trans)
     : Matrix(NULL, height, width, trans, true) {
   resize(height, width, nnz, valueType, format);
 }
 
 GpuSparseMatrix::GpuSparseMatrix(GpuMemHandlePtr dataHandle,
-                                 hl_sparse_matrix_s_ptr sMatrix, size_t height,
-                                 size_t width, size_t nnz,
-                                 SparseValueType valueType, SparseFormat format,
-                                 bool trans, MemoryHandlePtr sMemoryHandle)
+                                 hl_sparse_matrix_s_ptr sMatrix,
+                                 size_t height,
+                                 size_t width,
+                                 size_t nnz,
+                                 SparseValueType valueType,
+                                 SparseFormat format,
+                                 bool trans,
+                                 MemoryHandlePtr sMemoryHandle)
     : Matrix(dataHandle, height, width, trans, true) {
   CHECK(dataHandle && sMatrix) << "Invalid argument pointer";
 
@@ -67,10 +74,14 @@ GpuSparseMatrix::GpuSparseMatrix(GpuMemHandlePtr dataHandle,
     sparseResizeCSC();
 }
 
-GpuSparseMatrix::GpuSparseMatrix(hl_sparse_matrix_s_ptr sMatrix, size_t height,
-                                 size_t width, size_t nnz,
-                                 SparseValueType valueType, SparseFormat format,
-                                 bool trans, MemoryHandlePtr sMemoryHandle)
+GpuSparseMatrix::GpuSparseMatrix(hl_sparse_matrix_s_ptr sMatrix,
+                                 size_t height,
+                                 size_t width,
+                                 size_t nnz,
+                                 SparseValueType valueType,
+                                 SparseFormat format,
+                                 bool trans,
+                                 MemoryHandlePtr sMemoryHandle)
     : Matrix(NULL, height, width, trans, true) {
   CHECK(sMatrix) << "Invalid argument pointer";
   sMatrix_ = sMatrix;
@@ -80,9 +91,14 @@ GpuSparseMatrix::GpuSparseMatrix(hl_sparse_matrix_s_ptr sMatrix, size_t height,
   valueType_ = valueType;
 }
 
-GpuSparseMatrix::GpuSparseMatrix(real* value, int* rows, int* cols,
-                                 size_t height, size_t width, size_t nnz,
-                                 SparseValueType valueType, SparseFormat format,
+GpuSparseMatrix::GpuSparseMatrix(real* value,
+                                 int* rows,
+                                 int* cols,
+                                 size_t height,
+                                 size_t width,
+                                 size_t nnz,
+                                 SparseValueType valueType,
+                                 SparseFormat format,
                                  bool trans)
     : Matrix(NULL, height, width, trans, true) {
   size_t size = 0;
@@ -118,9 +134,15 @@ GpuSparseMatrix::GpuSparseMatrix(real* value, int* rows, int* cols,
       /* construct hl_sparse_matrix_s */
       hl_sparse_matrix_s tmp;
       hl_construct_sparse_matrix(
-          &tmp, value, rows, cols, HL_SPARSE_CSR,
-          valueType_ == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE, height_,
-          width_, elementCnt_);
+          &tmp,
+          value,
+          rows,
+          cols,
+          HL_SPARSE_CSR,
+          valueType_ == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE,
+          height_,
+          width_,
+          elementCnt_);
       hl_sparse_matrix_s_ptr tmp2(tmp, hl_destruct_sparse_matrix);
       sMatrix_ = tmp2;
     }
@@ -143,9 +165,15 @@ GpuSparseMatrix::GpuSparseMatrix(real* value, int* rows, int* cols,
       /* construct hl_sparse_matrix_s */
       hl_sparse_matrix_s tmp;
       hl_construct_sparse_matrix(
-          &tmp, value, rows, cols, HL_SPARSE_CSC,
-          valueType_ == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE, height_,
-          width_, elementCnt_);
+          &tmp,
+          value,
+          rows,
+          cols,
+          HL_SPARSE_CSC,
+          valueType_ == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE,
+          height_,
+          width_,
+          elementCnt_);
       hl_sparse_matrix_s_ptr tmp2(tmp, hl_destruct_sparse_matrix);
       sMatrix_ = tmp2;
     }
@@ -171,8 +199,13 @@ void GpuSparseMatrix::sparseResizeCSR() {
     /* construct hl_sparse_matrix_s */
     hl_sparse_matrix_s tmp;
     hl_construct_sparse_matrix(
-        &tmp, data_, memoryHandle_->getSize(), HL_SPARSE_CSR,
-        valueType_ == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE, height_, width_,
+        &tmp,
+        data_,
+        memoryHandle_->getSize(),
+        HL_SPARSE_CSR,
+        valueType_ == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE,
+        height_,
+        width_,
         elementCnt_);
     hl_sparse_matrix_s_ptr tmp2(tmp, hl_destruct_sparse_matrix);
     sMatrix_ = tmp2;
@@ -197,16 +230,24 @@ void GpuSparseMatrix::sparseResizeCSC() {
     /* construct hl_sparse_matrix_s */
     hl_sparse_matrix_s tmp;
     hl_construct_sparse_matrix(
-        &tmp, memoryHandle_->getBuf(), memoryHandle_->getSize(), HL_SPARSE_CSC,
-        valueType_ == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE, height_, width_,
+        &tmp,
+        memoryHandle_->getBuf(),
+        memoryHandle_->getSize(),
+        HL_SPARSE_CSC,
+        valueType_ == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE,
+        height_,
+        width_,
         elementCnt_);
     hl_sparse_matrix_s_ptr tmp2(tmp, hl_destruct_sparse_matrix);
     sMatrix_ = tmp2;
   }
 }
 
-void GpuSparseMatrix::resize(size_t newHeight, size_t newWidth, size_t newNnz,
-                             SparseValueType valueType, SparseFormat format) {
+void GpuSparseMatrix::resize(size_t newHeight,
+                             size_t newWidth,
+                             size_t newNnz,
+                             SparseValueType valueType,
+                             SparseFormat format) {
   if (format == SPARSE_CSR) {
     resizeCSR(newHeight, newWidth, newNnz, valueType);
   } else {
@@ -214,8 +255,10 @@ void GpuSparseMatrix::resize(size_t newHeight, size_t newWidth, size_t newNnz,
   }
 }
 
-void GpuSparseMatrix::resizeCSR(size_t newHeight, size_t newWidth,
-                                size_t newNnz, SparseValueType valueType) {
+void GpuSparseMatrix::resizeCSR(size_t newHeight,
+                                size_t newWidth,
+                                size_t newNnz,
+                                SparseValueType valueType) {
   size_t newSize = (newHeight + 1) * sizeof(int) + newNnz * sizeof(int);
   if (NO_VALUE != valueType) {
     newSize += newNnz * sizeof(real);
@@ -266,8 +309,10 @@ void GpuSparseMatrix::resizeCSR(size_t newHeight, size_t newWidth,
   }
 }
 
-void GpuSparseMatrix::resizeCSC(size_t newHeight, size_t newWidth,
-                                size_t newNnz, SparseValueType valueType) {
+void GpuSparseMatrix::resizeCSC(size_t newHeight,
+                                size_t newWidth,
+                                size_t newNnz,
+                                SparseValueType valueType) {
   size_t newSize = (newWidth + 1) * sizeof(int) + newNnz * sizeof(int);
   if (NO_VALUE != valueType) {
     newSize += newNnz * sizeof(real);
@@ -327,24 +372,37 @@ MatrixPtr GpuSparseMatrix::getTranspose() {
   CHECK(memoryHandle_.get() || sMatrix_) << "not supported";
   if (memoryHandle_.get()) {
     MatrixPtr copy_T(new GpuSparseMatrix(
-        std::dynamic_pointer_cast<GpuMemoryHandle>(memoryHandle_), sMatrix_,
-        height_, width_, elementCnt_, valueType_, format_, true,
+        std::dynamic_pointer_cast<GpuMemoryHandle>(memoryHandle_),
+        sMatrix_,
+        height_,
+        width_,
+        elementCnt_,
+        valueType_,
+        format_,
+        true,
         sMemoryHandle_));
     return copy_T;
   } else {
-    MatrixPtr copy_T(new GpuSparseMatrix(sMatrix_, height_, width_, elementCnt_,
-                                         valueType_, format_, true,
+    MatrixPtr copy_T(new GpuSparseMatrix(sMatrix_,
+                                         height_,
+                                         width_,
+                                         elementCnt_,
+                                         valueType_,
+                                         format_,
+                                         true,
                                          sMemoryHandle_));
     return copy_T;
   }
 }
 
-void GpuSparseMatrix::copyRow(int offsets, size_t colNum,
+void GpuSparseMatrix::copyRow(int offsets,
+                              size_t colNum,
                               const sparse_non_value_t* row) {
   memcpy(cols_ + offsets, row, sizeof(int) * colNum);
 }
 
-void GpuSparseMatrix::copyRow(int offsets, size_t colNum,
+void GpuSparseMatrix::copyRow(int offsets,
+                              size_t colNum,
                               const sparse_float_value_t* row) {
   for (size_t j = 0; j < colNum; j++) {
     cols_[offsets + j] = row[j].col;
@@ -368,7 +426,9 @@ void GpuSparseMatrix::copyFrom(const Matrix& src) {
 }
 
 template <class T>
-void GpuSparseMatrix::copyFrom(int64_t* ids, int64_t* indices, T* data,
+void GpuSparseMatrix::copyFrom(int64_t* ids,
+                               int64_t* indices,
+                               T* data,
                                hl_stream_t stream) {
   CHECK_EQ(format_, SPARSE_CSR);
   size_t nnz = 0;
@@ -377,7 +437,9 @@ void GpuSparseMatrix::copyFrom(int64_t* ids, int64_t* indices, T* data,
     nnz += indices[id + 1] - indices[id];
   }
 
-  resize(height_, width_, nnz,
+  resize(height_,
+         width_,
+         nnz,
          sizeof(T) == sizeof(sparse_non_value_t) ? NO_VALUE : FLOAT_VALUE,
          format_);
 
@@ -399,8 +461,10 @@ void GpuSparseMatrix::copyFrom(int64_t* ids, int64_t* indices, T* data,
   hl_memcpy_csr_matrix(sMatrix_.get(), value_, rows_, cols_, stream);
 }
 
-void GpuSparseMatrix::setRow(size_t row, size_t colNum,
-                             const unsigned int* cols, const real* values) {
+void GpuSparseMatrix::setRow(size_t row,
+                             size_t colNum,
+                             const unsigned int* cols,
+                             const real* values) {
   CHECK_EQ(format_, SPARSE_CSR);
   if (NO_VALUE == valueType_) {
     CHECK_LT(row, height_);
@@ -427,8 +491,8 @@ void GpuSparseMatrix::setRow(size_t row, size_t colNum,
     sMatrix_->rows = height_;
     sMatrix_->cols = width_;
     sMatrix_->nnz = elementCnt_;
-    hl_memcpy_csr_matrix(sMatrix_.get(), value_, rows_, cols_,
-                         HPPL_STREAM_DEFAULT);
+    hl_memcpy_csr_matrix(
+        sMatrix_.get(), value_, rows_, cols_, HPPL_STREAM_DEFAULT);
   }
 }
 
@@ -438,8 +502,8 @@ void GpuSparseMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   CHECK_EQ(format_, SPARSE_CSC);
   int nnz = sMatrix_->nnz;
   if (memAlloc) {
-    matTrans = std::make_shared<GpuSparseMatrix>(width_, height_, nnz,
-                                                 valueType_, format_, false);
+    matTrans = std::make_shared<GpuSparseMatrix>(
+        width_, height_, nnz, valueType_, format_, false);
   } else {
     CHECK(matTrans != nullptr);
   }
@@ -449,9 +513,14 @@ void GpuSparseMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   CpuIVector cols_full(nnz);
   CpuVector value(nnz);
   hl_stream_t stream = HPPL_STREAM_1;
-  hl_memcpy_from_csc_matrix(value.getData(), nnz, rows.getData(), nnz,
-                            cols.getData(), width_ + 1,
-                            sMatrix_.get(), stream);
+  hl_memcpy_from_csc_matrix(value.getData(),
+                            nnz,
+                            rows.getData(),
+                            nnz,
+                            cols.getData(),
+                            width_ + 1,
+                            sMatrix_.get(),
+                            stream);
 
   hl_stream_synchronize(stream);
 
@@ -465,12 +534,14 @@ void GpuSparseMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
 
   /*sort row index and column index by the ascending order*/
   for (int i = 0; i < nnz; i++) {
-    dataVec.emplace_back(rows.getData()[i], cols_full.getData()[i],
-                         value.getData()[i]);
+    dataVec.emplace_back(
+        rows.getData()[i], cols_full.getData()[i], value.getData()[i]);
   }
-  std::sort(dataVec.begin(), dataVec.end(), [](Element a, Element b) {
-    return a.row < b.row || (a.row == b.row && a.col < b.col);
-  });
+  std::sort(dataVec.begin(),
+            dataVec.end(),
+            [](Element a, Element b) {
+              return a.row < b.row || (a.row == b.row && a.col < b.col);
+            });
 
   /*get sorted data, row index, and col index, put them in the right place*/
   cols.resize(height_ + 1);
@@ -494,13 +565,18 @@ void GpuSparseMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   /*copy back from cpu*/
   GpuSparseMatrixPtr dest =
       std::dynamic_pointer_cast<GpuSparseMatrix>(matTrans);
-  hl_memcpy_csc_matrix((dest->sMatrix_).get(), value.getData(),
-                       rows.getData(), cols.getData(), stream);
+  hl_memcpy_csc_matrix((dest->sMatrix_).get(),
+                       value.getData(),
+                       rows.getData(),
+                       cols.getData(),
+                       stream);
   hl_stream_synchronize(stream);
 }
 
-void GpuSparseMatrix::mul(const GpuMatrixPtr a, const GpuMatrixPtr b,
-                          real scaleAB, real scaleT) {
+void GpuSparseMatrix::mul(const GpuMatrixPtr a,
+                          const GpuMatrixPtr b,
+                          real scaleAB,
+                          real scaleT) {
   CHECK(a->useGpu_ && b->useGpu_) << "type not match";
   CHECK(!trans_) << "trans not supported";
   real* A_d = a->getData();
@@ -527,11 +603,13 @@ void GpuSparseMatrix::mul(const GpuMatrixPtr a, const GpuMatrixPtr b,
   int dimM = height_;
   int dimN = width_;
   int dimK = !b->trans_ ? b->getHeight() : b->getWidth();
-  hl_sparse_matrix_mul(A_d, a_trans, B_d, b_trans, C_d, dimM,
-                       dimN, dimK, scaleAB, scaleT);
+  hl_sparse_matrix_mul(
+      A_d, a_trans, B_d, b_trans, C_d, dimM, dimN, dimK, scaleAB, scaleT);
 }
 
-void GpuSparseMatrix::mul(const MatrixPtr a, const MatrixPtr b, real scaleAB,
+void GpuSparseMatrix::mul(const MatrixPtr a,
+                          const MatrixPtr b,
+                          real scaleAB,
                           real scaleT) {
   if (std::dynamic_pointer_cast<GpuMatrix>(a) &&
       std::dynamic_pointer_cast<GpuMatrix>(b)) {
@@ -559,9 +637,14 @@ void GpuSparseMatrix::print(std::ostream& os) const {
     IVectorPtr cols = IVector::create(width_ + 1, false);
     VectorPtr value = Vector::create(nnz, false);
     hl_stream_t stream = HPPL_STREAM_DEFAULT;
-    hl_memcpy_from_csc_matrix(
-        value->getData(), value->getSize(), rows->getData(), rows->getSize(),
-        cols->getData(), cols->getSize(), sMatrix_.get(), stream);
+    hl_memcpy_from_csc_matrix(value->getData(),
+                              value->getSize(),
+                              rows->getData(),
+                              rows->getSize(),
+                              cols->getData(),
+                              cols->getSize(),
+                              sMatrix_.get(),
+                              stream);
     hl_stream_synchronize(stream);
 
     printBuf(os, cols->getData(), width_ + 1, "col idx");
@@ -574,11 +657,10 @@ void GpuSparseMatrix::copyFromCSR(CpuSparseMatrix& src, hl_stream_t stream) {
   trans_ = src.trans_;
   size_t nnz = src.getElementCnt();
 
-  resize(src.getHeight(), src.getWidth(), nnz, valueType_,
-         src.getFormat());
+  resize(src.getHeight(), src.getWidth(), nnz, valueType_, src.getFormat());
   // if have different value type, only copy rows and cols
   SparseValueType vType =
-    valueType_ != src.getValueType() ? NO_VALUE : valueType_;
+      valueType_ != src.getValueType() ? NO_VALUE : valueType_;
 
   sMatrix_->format = HL_SPARSE_CSR;
   sMatrix_->type = vType == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE;
@@ -588,7 +670,9 @@ void GpuSparseMatrix::copyFromCSR(CpuSparseMatrix& src, hl_stream_t stream) {
 
   hl_memcpy_csr_matrix(sMatrix_.get(),
                        vType == NO_VALUE ? NULL : src.getValue(),
-                       src.getRows(), src.getCols(), stream);
+                       src.getRows(),
+                       src.getCols(),
+                       stream);
 
   // restore type of sMatrix_
   sMatrix_->type = valueType_ == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE;
@@ -598,12 +682,11 @@ void GpuSparseMatrix::copyFromCSC(CpuSparseMatrix& src, hl_stream_t stream) {
   trans_ = src.trans_;
   size_t nnz = src.getElementCnt();
 
-  resize(src.getHeight(), src.getWidth(), nnz, valueType_,
-         src.getFormat());
+  resize(src.getHeight(), src.getWidth(), nnz, valueType_, src.getFormat());
 
   // if have different value type, only copy rows and cols
   SparseValueType vType =
-    valueType_ != src.getValueType() ? NO_VALUE : valueType_;
+      valueType_ != src.getValueType() ? NO_VALUE : valueType_;
 
   sMatrix_->format = HL_SPARSE_CSC;
   sMatrix_->type = vType == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE;
@@ -613,7 +696,9 @@ void GpuSparseMatrix::copyFromCSC(CpuSparseMatrix& src, hl_stream_t stream) {
 
   hl_memcpy_csc_matrix(sMatrix_.get(),
                        vType == NO_VALUE ? NULL : src.getValue(),
-                       src.getRows(), src.getCols(), stream);
+                       src.getRows(),
+                       src.getCols(),
+                       stream);
 
   // restore type of sMatrix_
   sMatrix_->type = valueType_ == NO_VALUE ? HL_NO_VALUE : HL_FLOAT_VALUE;
@@ -622,23 +707,24 @@ void GpuSparseMatrix::copyFromCSC(CpuSparseMatrix& src, hl_stream_t stream) {
 void GpuSparseMatrix::copyFrom(GpuSparseMatrix& src, hl_stream_t stream) {
   CHECK(trans_ == src.trans_);
   CHECK(format_ == src.getFormat());
-  resize(src.getHeight(), src.getWidth(), elementCnt_, valueType_,
+  resize(src.getHeight(),
+         src.getWidth(),
+         elementCnt_,
+         valueType_,
          src.getFormat());
 
   size_t rowSize = format_ == SPARSE_CSC ? elementCnt_ : height_ + 1;
   size_t colSize = format_ == SPARSE_CSC ? width_ + 1 : elementCnt_;
 
   if (valueType_ == FLOAT_VALUE && src.getValueType() == FLOAT_VALUE) {
-    hl_memcpy_async(getValue(), src.getValue(),
-                    sizeof(real) * elementCnt_, stream);
+    hl_memcpy_async(
+        getValue(), src.getValue(), sizeof(real) * elementCnt_, stream);
   }
   CHECK(getRows());
   CHECK(src.getRows());
 
-  hl_memcpy_async(getRows(), src.getRows(),
-                  sizeof(int) * rowSize, stream);
-  hl_memcpy_async(getCols(), src.getCols(),
-                  sizeof(int) * colSize, stream);
+  hl_memcpy_async(getRows(), src.getRows(), sizeof(int) * rowSize, stream);
+  hl_memcpy_async(getCols(), src.getCols(), sizeof(int) * colSize, stream);
 }
 
 void GpuSparseMatrix::copyFrom(CpuSparseMatrix& src, hl_stream_t stream) {
@@ -652,7 +738,8 @@ void GpuSparseMatrix::copyFrom(CpuSparseMatrix& src, hl_stream_t stream) {
 void GpuSparseMatrix::trimFromCSR(const CpuSparseMatrix& src) {
   trans_ = src.trans_;
   int* srcCols = src.getCols();
-  size_t nnz = std::count_if(srcCols, srcCols + src.getElementCnt(),
+  size_t nnz = std::count_if(srcCols,
+                             srcCols + src.getElementCnt(),
                              [this](size_t n) { return n < this->width_; });
   resize(height_, width_, nnz, valueType_, format_);
 
@@ -678,9 +765,11 @@ void GpuSparseMatrix::trimFromCSR(const CpuSparseMatrix& src) {
   sMatrix_->cols = width_;
   sMatrix_->nnz = nnz;
 
-  hl_memcpy_csr_matrix(
-      sMatrix_.get(), valueType_ == NO_VALUE ? NULL : value_, rows_, cols_,
-      /*default stream = */ HPPL_STREAM_DEFAULT);
+  hl_memcpy_csr_matrix(sMatrix_.get(),
+                       valueType_ == NO_VALUE ? NULL : value_,
+                       rows_,
+                       cols_,
+                       /*default stream = */ HPPL_STREAM_DEFAULT);
 }
 
 void GpuSparseMatrix::trimFromCSC(const CpuSparseMatrix& src) {
@@ -703,9 +792,11 @@ void GpuSparseMatrix::trimFromCSC(const CpuSparseMatrix& src) {
   sMatrix_->cols = width_;
   sMatrix_->nnz = nnz;
 
-  hl_memcpy_csc_matrix(
-      sMatrix_.get(), valueType_ == NO_VALUE ? NULL : value_, rows_, cols_,
-      /*default stream = */ HPPL_STREAM_DEFAULT);
+  hl_memcpy_csc_matrix(sMatrix_.get(),
+                       valueType_ == NO_VALUE ? NULL : value_,
+                       rows_,
+                       cols_,
+                       /*default stream = */ HPPL_STREAM_DEFAULT);
 }
 
 void GpuSparseMatrix::trimFrom(const CpuSparseMatrix& src) {
@@ -766,10 +857,12 @@ void GpuSparseMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
 #endif
 }
 
-template void GpuSparseMatrix::copyFrom(int64_t* ids, int64_t* indices,
+template void GpuSparseMatrix::copyFrom(int64_t* ids,
+                                        int64_t* indices,
                                         sparse_non_value_t* data,
                                         hl_stream_t stream);
-template void GpuSparseMatrix::copyFrom(int64_t* ids, int64_t* indices,
+template void GpuSparseMatrix::copyFrom(int64_t* ids,
+                                        int64_t* indices,
                                         sparse_float_value_t* data,
                                         hl_stream_t stream);
 }  // namespace paddle

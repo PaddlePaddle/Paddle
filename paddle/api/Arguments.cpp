@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "PaddleAPI.h"
 #include "PaddleAPIPrivate.h"
 
@@ -112,7 +111,7 @@ void Arguments::setSlotSequenceStartPositions(size_t idx,
 }
 
 void Arguments::setSlotSubSequenceStartPositions(
-    size_t idx, IVector *vec) throw(RangeError) {
+    size_t idx, IVector* vec) throw(RangeError) {
   auto& a = m->getArg(idx);
   auto& v = m->cast<paddle::IVector>(vec->getSharedPtr());
   a.subSequenceStartPositions = std::make_shared<paddle::ICpuGpuVector>(v);

@@ -53,7 +53,7 @@ above profilers.
 
 .. literalinclude:: ../../paddle/math/tests/test_GpuProfiler.cpp
    :language: c++
-   :lines: 107-121
+   :lines: 111-124
    :linenos:
 
 The above code snippet includes two methods, you can use any of them to profile the regions of interest.
@@ -75,12 +75,12 @@ To enable built-in timer in PaddlePaddle, first you have to add :code:`REGISTER_
 Then, all information could be stamped in the console via :code:`printStatus` or :code:`printAllStatus` function.
 As a simple example, consider the following:
 
-1. Add :code:`REGISTER_TIMER_INFO` and :code:`printStatus` functions (see the emphasize-lines).
+1. Add :code:`REGISTER_TIMER_INFO` and :code:`printAllStatus` functions (see the emphasize-lines).
 
     .. literalinclude:: ../../paddle/math/tests/test_GpuProfiler.cpp
         :language: c++
-        :lines: 107-121
-        :emphasize-lines: 10-11,14
+        :lines: 111-124
+        :emphasize-lines: 8-10,13
         :linenos:
 
 2. Configure cmake with **WITH_TIMER** and recompile PaddlePaddle.
@@ -126,8 +126,8 @@ To use this command line profiler **nvprof**, you can simply issue the following
 
     .. literalinclude:: ../../paddle/math/tests/test_GpuProfiler.cpp
         :language: c++
-        :lines: 107-121
-        :emphasize-lines: 7-8
+        :lines: 111-124
+        :emphasize-lines: 6-7
         :linenos:
 
 2. Configure cmake with **WITH_PROFILER** and recompile PaddlePaddle.

@@ -16,7 +16,8 @@ limitations under the License. */
 #include "ThreadLocal.h"
 #include "CommandLineParser.h"
 
-P_DEFINE_bool(thread_local_rand_use_global_seed, false,
+P_DEFINE_bool(thread_local_rand_use_global_seed,
+              false,
               "Whether to use global seed in thread local rand.");
 
 namespace paddle {

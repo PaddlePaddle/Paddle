@@ -63,13 +63,19 @@ public:
   LayerStatePtr getState();
 
 protected:
-  void forwardSequence(int batchSize, size_t numSequences,
-                       const int *starts, MatrixPtr inputValue);
-  void backwardSequence(int batchSize, size_t numSequences,
-                        const int *starts, MatrixPtr inputGrad);
+  void forwardSequence(int batchSize,
+                       size_t numSequences,
+                       const int* starts,
+                       MatrixPtr inputValue);
+  void backwardSequence(int batchSize,
+                        size_t numSequences,
+                        const int* starts,
+                        MatrixPtr inputGrad);
 
-  void forwardBatch(int batchSize, size_t numSequences,
-                    const int *starts, MatrixPtr inputValue);
+  void forwardBatch(int batchSize,
+                    size_t numSequences,
+                    const int* starts,
+                    MatrixPtr inputValue);
   void backwardBatch(int batchSize, MatrixPtr inputGrad);
 
 protected:

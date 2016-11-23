@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <chrono>
 #include <stdlib.h>
 #include <iostream>
@@ -21,8 +20,7 @@ limitations under the License. */
 using std::chrono::high_resolution_clock;
 
 int64_t getCurrentTimeStick() {
-    high_resolution_clock::time_point tp = high_resolution_clock::now();
-    high_resolution_clock::duration dtn = tp.time_since_epoch();
-    return dtn.count();
+  high_resolution_clock::time_point tp = high_resolution_clock::now();
+  high_resolution_clock::duration dtn = tp.time_since_epoch();
+  return dtn.count();
 }
-

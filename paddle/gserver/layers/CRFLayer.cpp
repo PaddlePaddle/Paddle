@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "CRFLayer.h"
 
 namespace paddle {
@@ -73,12 +72,13 @@ void CRFLayer::forward(PassType passType) {
       crfs_.emplace_back(numClasses_,
                          parameter_->getBuf(PARAMETER_VALUE)->getData(),
                          parameter_->getBuf(PARAMETER_GRADIENT)
-                            ? parameter_->getBuf(PARAMETER_GRADIENT)->getData()
-                            : nullptr);
+                             ? parameter_->getBuf(PARAMETER_GRADIENT)->getData()
+                             : nullptr);
     }
-    output_.value->getData()[i] = crfs_[i].forward(
-        output.value->getData() + numClasses_ * starts[i],
-        label.ids->getData() + starts[i], starts[i + 1] - starts[i]);
+    output_.value->getData()[i] =
+        crfs_[i].forward(output.value->getData() + numClasses_ * starts[i],
+                         label.ids->getData() + starts[i],
+                         starts[i + 1] - starts[i]);
   }
 
   if (weightLayer_) {
@@ -87,7 +87,7 @@ void CRFLayer::forward(PassType passType) {
   }
 }
 
-void CRFLayer::backward(const UpdateCallback &callback) {
+void CRFLayer::backward(const UpdateCallback& callback) {
   const Argument& output = getInput(0);
   const Argument& label = getInput(1);
   const int* starts = label.sequenceStartPositions->getData(false);
@@ -100,7 +100,7 @@ void CRFLayer::backward(const UpdateCallback &callback) {
                       starts[i + 1] - starts[i]);
     if (weightLayer_) {
       real weight = getInputValue(*weightLayer_)->getElement(i, 0);
-      MatrixPtr grad = output.grad->subRowMatrix(starts[i], starts[i+1]);
+      MatrixPtr grad = output.grad->subRowMatrix(starts[i], starts[i + 1]);
       grad->mulScalar(weight);
     }
   }

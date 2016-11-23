@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/math/Matrix.h"
@@ -31,8 +30,8 @@ namespace paddle {
 
 class ExpandConvLayer : public ExpandConvBaseLayer {
 public:
-  explicit ExpandConvLayer(const LayerConfig& config) :
-    ExpandConvBaseLayer(config) {}
+  explicit ExpandConvLayer(const LayerConfig& config)
+      : ExpandConvBaseLayer(config) {}
 
   ~ExpandConvLayer() {}
 
