@@ -32,10 +32,12 @@ P_DECLARE_string(nics);
 
 P_DEFINE_string(config_file_a, "", "config of one network to compare");
 P_DEFINE_string(config_file_b, "", "config of another network to compare");
-P_DEFINE_bool(need_high_accuracy, false,
+P_DEFINE_bool(need_high_accuracy,
+              false,
               "whether need to run in double accuracy");
 P_DEFINE_double(
-    max_diff_ratio, 0.0f,
+    max_diff_ratio,
+    0.0f,
     "max diff ratio allowed for outputs and parameters (value/gradient)");
 P_DECLARE_bool(thread_local_rand_use_global_seed);
 P_DECLARE_int32(seed);
@@ -71,14 +73,18 @@ void calcGradient(ComData& data, const string configFile) {
   vector<Argument>& inArgs = dataBatch.getStreams();
 
   trainer.getGradientMachine()->start(trainer.getConfig(), nullptr);
-  trainer.getGradientMachine()->forwardBackward(inArgs, &data.outArgs,
-                                                PASS_TRAIN);
+  trainer.getGradientMachine()->forwardBackward(
+      inArgs, &data.outArgs, PASS_TRAIN);
 
   trainer.getGradientMachine()->finish();
 }
 
-void checkBuffer(real* A, const char* desA, real* B, const char* desB,
-                 size_t len, size_t width = 1) {
+void checkBuffer(real* A,
+                 const char* desA,
+                 real* B,
+                 const char* desB,
+                 size_t len,
+                 size_t width = 1) {
   int nNum = 0;
   real maxVal = 0;
   for (size_t i = 0; i < len; ++i) {
@@ -90,8 +96,8 @@ void checkBuffer(real* A, const char* desA, real* B, const char* desB,
     maxDiff = std::max(maxDiff, diff);
     if (diff > maxVal * FLAGS_max_diff_ratio) {
       nNum++;
-      VLOG(1) << "Row: " << i / width << ", " << desA << " : " << A[i]
-              << "    " << desB << " : " << B[i] << " diff=" << diff;
+      VLOG(1) << "Row: " << i / width << ", " << desA << " : " << A[i] << "    "
+              << desB << " : " << B[i] << " diff=" << diff;
     }
   }
   EXPECT_EQ(0, nNum);
@@ -114,8 +120,12 @@ void compareGradient(ComData& comDataA, ComData& comDataB) {
     LOG(INFO) << "\n--------------------------------"
               << " Check Network Output_" << i << ":"
               << " -------------------------------------\n";
-    checkBuffer(matA.getData(), "network A output", matB.getData(),
-                "network B output", matA.getElementCnt(), matA.getWidth());
+    checkBuffer(matA.getData(),
+                "network A output",
+                matB.getData(),
+                "network B output",
+                matA.getElementCnt(),
+                matA.getWidth());
   }
 
   vector<ParameterPtr>& parametersA = comDataA.parameters;
@@ -136,7 +146,10 @@ void compareGradient(ComData& comDataA, ComData& comDataB) {
 
     LOG(INFO) << "\n\n----------- PARAMETER_VALUE:  " << parameterA->getName()
               << " ; size : " << paraA.getSize() << " ------------";
-    checkBuffer(paraA.getData(), "Network A", paraB.getData(), "Network B",
+    checkBuffer(paraA.getData(),
+                "Network A",
+                paraB.getData(),
+                "Network B",
                 paraA.getSize());
 
     CpuVector gradA(*parameterA->getBuf(PARAMETER_GRADIENT));
@@ -144,7 +157,10 @@ void compareGradient(ComData& comDataA, ComData& comDataB) {
 
     LOG(INFO) << "\n\n----------- PARAMETER_GRADIENT: " << parameterA->getName()
               << " ; size : " << gradA.getSize() << " -----------";
-    checkBuffer(gradA.getData(), "Network A", gradB.getData(), "Network B",
+    checkBuffer(gradA.getData(),
+                "Network A",
+                gradB.getData(),
+                "Network B",
                 gradA.getSize());
   }
 }

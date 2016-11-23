@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <memory>
@@ -138,7 +137,8 @@ protected:
    *
    * @note this code depends on protobuf 2.4.0. There is nothing like
    * CodedInputStream::CurrentPosition() in protobuf 2.5.0 to tell us how many
-   * bytes has the object readed so far. Therefore, we calculated bytes ourselves.
+   * bytes has the object readed so far. Therefore, we calculated bytes
+   * ourselves.
    */
   int approximateReadedBytes_;
 };

@@ -22,7 +22,8 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
   isDeconv_ = (config_.type() == "exconv" || config_.type() == "cudnn_conv")
-              ? false : true;
+                  ? false
+                  : true;
 
   /* Initialize the convolutional layer parameter */
   numFilters_ = config_.num_filters();
@@ -88,33 +89,25 @@ size_t ConvBaseLayer::calOutputSize() {
 
   auto setLayerSize = [&](IntV& inH, IntV& inW, IntV& outH, IntV& outW) {
     for (size_t i = 0; i < inputLayers_.size(); i++) {
-       inH.push_back(inputLayers_[i]->getOutput().getFrameHeight());
-       inW.push_back(inputLayers_[i]->getOutput().getFrameWidth());
-       if (isDeconv_) {
-         if (inH[i] == 0)
-           inH[i] = config_.inputs(i).conv_conf().output_x();
-         if (inW[i] == 0)
-           inW[i] = config_.inputs(i).conv_conf().output_x();
-         outH.push_back(
-             imageSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i],
-                       caffeMode_));
-         outW.push_back(
-             imageSize(inW[i], filterSize_[i], padding_[i], stride_[i],
-                       caffeMode_));
-       } else {
-         if (inH[i] == 0)
-           inH[i] = config_.inputs(i).conv_conf().img_size();
-         if (inW[i] == 0)
-           inW[i] = config_.inputs(i).conv_conf().img_size();
-         outH.push_back(
-             outputSize(inH[i], filterSizeY_[i], paddingY_[i], strideY_[i],
-                        caffeMode_));
-         outW.push_back(
-             outputSize(inW[i], filterSize_[i], padding_[i], stride_[i],
-                        caffeMode_));
-       }
-       CHECK_EQ(outH[i], outH[0]);
-       CHECK_EQ(outW[i], outW[0]);
+      inH.push_back(inputLayers_[i]->getOutput().getFrameHeight());
+      inW.push_back(inputLayers_[i]->getOutput().getFrameWidth());
+      if (isDeconv_) {
+        if (inH[i] == 0) inH[i] = config_.inputs(i).conv_conf().output_x();
+        if (inW[i] == 0) inW[i] = config_.inputs(i).conv_conf().output_x();
+        outH.push_back(imageSize(
+            inH[i], filterSizeY_[i], paddingY_[i], strideY_[i], caffeMode_));
+        outW.push_back(imageSize(
+            inW[i], filterSize_[i], padding_[i], stride_[i], caffeMode_));
+      } else {
+        if (inH[i] == 0) inH[i] = config_.inputs(i).conv_conf().img_size();
+        if (inW[i] == 0) inW[i] = config_.inputs(i).conv_conf().img_size();
+        outH.push_back(outputSize(
+            inH[i], filterSizeY_[i], paddingY_[i], strideY_[i], caffeMode_));
+        outW.push_back(outputSize(
+            inW[i], filterSize_[i], padding_[i], stride_[i], caffeMode_));
+      }
+      CHECK_EQ(outH[i], outH[0]);
+      CHECK_EQ(outW[i], outW[0]);
     }
     getOutput().setFrameHeight(outH[0]);
     getOutput().setFrameWidth(outW[0]);

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "RemoteParameterUpdater.h"
 #include "Trainer.h"
 #include "paddle/utils/Stat.h"
@@ -31,7 +30,8 @@ const std::string RemoteParameterUpdater::kAverage = "average";
 const std::string RemoteParameterUpdater::kElasticAverage = "elastic_average";
 
 RemoteParameterUpdater::RemoteParameterUpdater(
-    const OptimizationConfig& config, int expectedPassCount,
+    const OptimizationConfig& config,
+    int expectedPassCount,
     std::unique_ptr<ParameterUpdater>&& localUpdater)
     : config_(config),
       localUpdater_(std::move(localUpdater)),
@@ -94,8 +94,8 @@ void RemoteParameterUpdater::init(std::vector<ParameterPtr>& parameters) {
     parameterClient_->getParameter();
     copyParametersToDevice(PARAMETER_VALUE);
   }
-  if (FLAGS_trainer_id == 0 && (config_.algorithm()
-                                != TrainAlgorithm::AsyncSGD)) {
+  if (FLAGS_trainer_id == 0 &&
+      (config_.algorithm() != TrainAlgorithm::AsyncSGD)) {
     startController();
     useApplyInPserver_ = useApplyInPserver(config_);
   }
@@ -241,7 +241,9 @@ void RemoteParameterUpdater::finishBatch(real cost) {
 
   {
     REGISTER_TIMER("sendAndRecv_dense");
-    parameterClient_->sendAndReceiveParameter(mode, sendType, batchSize_,
+    parameterClient_->sendAndReceiveParameter(mode,
+                                              sendType,
+                                              batchSize_,
                                               0,  // cost = 0
                                               sendBackParameter);
   }
@@ -356,7 +358,8 @@ void RemoteParameterUpdater::restore() {
 }
 
 ConcurrentRemoteParameterUpdater::ConcurrentRemoteParameterUpdater(
-    OptimizationConfig config, int passCount,
+    OptimizationConfig config,
+    int passCount,
     std::unique_ptr<ParameterUpdater>&& localUpdater)
     : RemoteParameterUpdater(config, passCount, std::move(localUpdater)) {
   sendThread_.reset(new std::thread([this]() { this->send(); }));
@@ -423,7 +426,10 @@ void ConcurrentRemoteParameterUpdater::send(Parameter* para) {
   std::vector<ParameterSegments> paraSegment;
   if (para == NULL) {
     parameterClient_->sendParameter(
-        mode, sendType, paraSegment, batchSize_,
+        mode,
+        sendType,
+        paraSegment,
+        batchSize_,
         0,              // cost=0
         true,           // sendBackParameter = true
         batchStatus_);  // batchStatus_ = BATCH_FINISH
@@ -440,7 +446,10 @@ void ConcurrentRemoteParameterUpdater::send(Parameter* para) {
       copySingleParaFromDevice(para, sendType);
       hl_stream_synchronize(kDeviceToHostStream);
     }
-    parameterClient_->sendParameter(mode, sendType, paraSegment, batchSize_,
+    parameterClient_->sendParameter(mode,
+                                    sendType,
+                                    paraSegment,
+                                    batchSize_,
                                     0,     // cost=0
                                     true,  // sendBackParameter = true
                                     batchStatus_);
@@ -589,14 +598,14 @@ SparseRemoteParameterUpdater::SparseRemoteParameterUpdater(
 void SparseRemoteParameterUpdater::init(std::vector<ParameterPtr>& parameters) {
   ParameterUpdater::init(parameters);
 
-  parameterClient_.reset(new ParameterClient2(false,
-      FLAGS_port + FLAGS_ports_num, FLAGS_ports_num_for_sparse));
+  parameterClient_.reset(new ParameterClient2(
+      false, FLAGS_port + FLAGS_ports_num, FLAGS_ports_num_for_sparse));
   parameterClient_->init(parameters_);
   parameterClient_->setTrainerId(FLAGS_trainer_id);
 
   if (FLAGS_trainer_id == 0) {
-    parameterClient_->setConfig(config_, FLAGS_save_dir,
-                                true /*is_sparse_server*/);
+    parameterClient_->setConfig(
+        config_, FLAGS_save_dir, true /*is_sparse_server*/);
     if (parameters[0]->isFullSize()) {
       parameterClient_->setParameter();
     } else {  // init in pserver
@@ -615,9 +624,8 @@ void SparseRemoteParameterUpdater::startController() {
 }
 
 void SparseRemoteParameterUpdater::controller() {
-  ParameterClient2 client(false,
-                          FLAGS_port + FLAGS_ports_num,
-                          FLAGS_ports_num_for_sparse);
+  ParameterClient2 client(
+      false, FLAGS_port + FLAGS_ports_num, FLAGS_ports_num_for_sparse);
   client.init(parameters_);
 
   while (true) {
@@ -679,7 +687,9 @@ void SparseRemoteParameterUpdater::finishBatch(real cost) {
   ParameterType sendType = PARAMETER_GRADIENT;
 
   REGISTER_TIMER("sendSparseParam");
-  parameterClient_->sendAndReceiveParameter(mode, sendType, batchSize_,
+  parameterClient_->sendAndReceiveParameter(mode,
+                                            sendType,
+                                            batchSize_,
                                             0,       // cost = 0
                                             false);  // sendBackParameter
 
@@ -823,6 +833,6 @@ void SparseRemoteParameterUpdaterComposite::init(
 
 std::vector<std::function<ParameterUpdater*(
     const std::string&, const OptimizationConfig&, bool, size_t)>>
-ParameterUpdaterCreators::constructors_;
+    ParameterUpdaterCreators::constructors_;
 
 }  // namespace paddle

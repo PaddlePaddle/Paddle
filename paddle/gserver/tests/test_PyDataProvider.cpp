@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <memory>
 #include <string>
 
@@ -114,9 +113,10 @@ void simpleValueCheck(const vector<Argument>& argumentList, bool useGpu) {
   // Dense
   real* data;
   if (useGpu) {
-    MatrixPtr cpuMatrixPtr =
-        Matrix::create(argumentList[0].value->getHeight(),
-                       argumentList[0].value->getWidth(), 0, 0);
+    MatrixPtr cpuMatrixPtr = Matrix::create(argumentList[0].value->getHeight(),
+                                            argumentList[0].value->getWidth(),
+                                            0,
+                                            0);
     cpuMatrixPtr->copyFrom(*argumentList[0].value);
     data = cpuMatrixPtr->getData();
   } else {

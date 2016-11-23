@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/utils/Stat.h"
@@ -79,9 +78,12 @@ void FeatureMapExpandLayer::forward(PassType passType) {
     for (size_t i = 0; i < batchSize; i++) {
       MatrixPtr outVTmp =
           Matrix::create(outputV->getData() + i * imgSize * numFilters_,
-                         numFilters_, imgSize, false, useGpu_);
-      MatrixPtr inVTmp = Matrix::create(inputV->getData() + i * imgSize, 1,
-                                        imgSize, false, useGpu_);
+                         numFilters_,
+                         imgSize,
+                         false,
+                         useGpu_);
+      MatrixPtr inVTmp = Matrix::create(
+          inputV->getData() + i * imgSize, 1, imgSize, false, useGpu_);
       outVTmp->addRowVector(*inVTmp);
     }
   }
@@ -101,9 +103,12 @@ void FeatureMapExpandLayer::backward(const UpdateCallback& callback) {
     for (size_t i = 0; i < batchSize; i++) {
       MatrixPtr outGradTmp =
           Matrix::create(outGrad->getData() + i * imgSize * numFilters_,
-                         numFilters_, imgSize, false, useGpu_);
-      MatrixPtr inGradTmp = Matrix::create(inGrad->getData() + i * imgSize, 1,
-                                           imgSize, false, useGpu_);
+                         numFilters_,
+                         imgSize,
+                         false,
+                         useGpu_);
+      MatrixPtr inGradTmp = Matrix::create(
+          inGrad->getData() + i * imgSize, 1, imgSize, false, useGpu_);
       inGradTmp->collectBias(*outGradTmp, 1);
     }
   }

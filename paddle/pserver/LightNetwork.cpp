@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -32,19 +31,22 @@ limitations under the License. */
 #include "RDMANetwork.h"
 
 /// quick ack can reduce the latency of small message
-P_DEFINE_bool(small_messages, false,
+P_DEFINE_bool(small_messages,
+              false,
               "if message size is small, recommend set it True to enable quick "
               "ack and no delay");
 
 /// reasonable sock_send_buf_size can control the traffic injected into switch
 /// network. Injecting too many data into traffic could cause packets loss which
 /// cause long latency and degrade the efficiency of communication.
-P_DEFINE_int32(sock_send_buf_size, 1024 * 1024 * 40,
+P_DEFINE_int32(sock_send_buf_size,
+               1024 * 1024 * 40,
                "restrict sock send buff size, can reduce network congestion if "
                "set carefully");
 
 /// reasonable size can hold bursted packets and reduce packets loss
-P_DEFINE_int32(sock_recv_buf_size, 1024 * 1024 * 40,
+P_DEFINE_int32(sock_recv_buf_size,
+               1024 * 1024 * 40,
                "restrict sock recv buff size");
 
 namespace paddle {
@@ -174,7 +176,8 @@ void SocketServer::tcpServer() {
   if (!addr_.empty()) {
     server = gethostbyname(addr_.c_str());
     PCHECK(server) << "ERROR, no such host: " << addr_;
-    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr,
+    bcopy((char *)server->h_addr,
+          (char *)&serv_addr.sin_addr.s_addr,
           server->h_length);
   } else {
     serv_addr.sin_addr.s_addr = INADDR_ANY;
@@ -347,29 +350,32 @@ void SocketClient::TcpClient(const std::string &serverAddr, int serverPort) {
   struct sockaddr_in serv_addr;
   struct hostent *server;
 
-  int errRet;      // temp for gethostbyname_r
+  int errRet;  // temp for gethostbyname_r
 
   /// Create a socket point
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   PCHECK(sockfd >= 0) << "ERROR opening socket";
 
 #if defined(__OSX__) || defined(__APPLE__)
-   server = getipnodebyname(serverAddr.c_str(), AF_INET, AI_DEFAULT, &errRet);
-   CHECK_NE(HOST_NOT_FOUND, errRet)
-     << "ERROR, no such host: " << serverAddr << " ret = " << errRet;
-   CHECK(server) << "getipnodebyname error!";
+  server = getipnodebyname(serverAddr.c_str(), AF_INET, AI_DEFAULT, &errRet);
+  CHECK_NE(HOST_NOT_FOUND, errRet) << "ERROR, no such host: " << serverAddr
+                                   << " ret = " << errRet;
+  CHECK(server) << "getipnodebyname error!";
 #else
-   struct hostent hostinfo;
-   char buf[1024];  // temp for gethostbyname_r
-   CHECK_EQ(0, gethostbyname_r(serverAddr.c_str(), &hostinfo, buf, sizeof(buf),
-                               &server, &errRet))
-       << "ERROR, no such host: " << serverAddr << " ret = " << errRet;
-   CHECK(server) << "gethostbyname_r error!";
+  struct hostent hostinfo;
+  char buf[1024];  // temp for gethostbyname_r
+  CHECK_EQ(
+      0,
+      gethostbyname_r(
+          serverAddr.c_str(), &hostinfo, buf, sizeof(buf), &server, &errRet))
+      << "ERROR, no such host: " << serverAddr << " ret = " << errRet;
+  CHECK(server) << "gethostbyname_r error!";
 #endif
 
   bzero((char *)&serv_addr, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
-  bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr,
+  bcopy((char *)server->h_addr,
+        (char *)&serv_addr.sin_addr.s_addr,
         server->h_length);
   serv_addr.sin_port = htons(serverPort);
 
@@ -421,7 +427,8 @@ void SocketClient::RdmaClient(const std::string &serverAddr, int serverPort) {
  *
  * @note  responsible for building one connection to specified pserver port
  */
-SocketClient::SocketClient(const std::string &serverAddr, int serverPort,
+SocketClient::SocketClient(const std::string &serverAddr,
+                           int serverPort,
                            enum ChannelType channelType) {
   if (channelType == F_RDMA)
     RdmaClient(serverAddr, serverPort);

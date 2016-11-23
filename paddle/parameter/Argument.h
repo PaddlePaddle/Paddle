@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "hl_gpu.h"
@@ -153,9 +152,8 @@ struct Argument {
   }
 
   int64_t getNumSubSequences() const {
-    return subSequenceStartPositions
-               ? subSequenceStartPositions->getSize() - 1
-               : getBatchSize();
+    return subSequenceStartPositions ? subSequenceStartPositions->getSize() - 1
+                                     : getBatchSize();
   }
 
   bool hasSubseq() const { return subSequenceStartPositions != nullptr; }
@@ -190,9 +188,14 @@ struct Argument {
    * @param seqStart[in]    offset of input.sequenceStartPositions
    * @param seqSize[in]     lenght of output.sequenceStartPositions
    */
-  void subArgFrom(const Argument& input, size_t offset, size_t height,
-                  size_t width, bool useGpu, bool trans = false,
-                  bool seqFlag = false, size_t seqStart = 0,
+  void subArgFrom(const Argument& input,
+                  size_t offset,
+                  size_t height,
+                  size_t width,
+                  bool useGpu,
+                  bool trans = false,
+                  bool seqFlag = false,
+                  size_t seqStart = 0,
                   size_t seqSize = 0);
   /*
    * for sequence input:
@@ -206,16 +209,21 @@ struct Argument {
    * Note that when specifying the stream explicitly in this case,
    * synchronize should also be called somewhere after this function
    */
-  int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
-                            int32_t copySize, bool useGpu, hl_stream_t stream);
+  int32_t resizeAndCopyFrom(const Argument& src,
+                            int32_t startSeq,
+                            int32_t copySize,
+                            bool useGpu,
+                            hl_stream_t stream);
 
   /*
    * same with the above function, except that the stream is
    * HPPL_STREAM_DEFAULT and synchronize is automatically called
    * inside it
    */
-  int32_t resizeAndCopyFrom(const Argument& src, int32_t startSeq,
-                            int32_t copySize, bool useGpu = FLAGS_use_gpu);
+  int32_t resizeAndCopyFrom(const Argument& src,
+                            int32_t startSeq,
+                            int32_t copySize,
+                            bool useGpu = FLAGS_use_gpu);
 
   void resizeAndCopyFrom(const Argument& src, bool useGpu, hl_stream_t stream);
 
@@ -237,13 +245,16 @@ struct Argument {
    */
   void concat(const std::vector<Argument>& args,
               const std::vector<int>& selectRows,
-              const std::vector<int>& seqStartPos, bool useGpu,
-              hl_stream_t stream, PassType passType);
+              const std::vector<int>& seqStartPos,
+              bool useGpu,
+              hl_stream_t stream,
+              PassType passType);
 
   /*
     Concatenate several args into one and put the result into this.
    */
-  void concat(const std::vector<Argument>& src, bool useGpu = FLAGS_use_gpu,
+  void concat(const std::vector<Argument>& src,
+              bool useGpu = FLAGS_use_gpu,
               hl_stream_t stream = HPPL_STREAM_DEFAULT,
               PassType passType = PASS_TEST);
 

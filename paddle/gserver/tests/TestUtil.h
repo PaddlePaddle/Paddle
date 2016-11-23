@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <gtest/gtest.h>
@@ -28,8 +27,11 @@ inline bool approximatelyEqual(float a, float b, float epsilon) {
   return fabs(a - b) <= ((fabs(a) < fabs(b) ? fabs(b) : fabs(a)) * epsilon);
 }
 
-MatrixPtr makeRandomSparseMatrix(size_t height, size_t width, bool withValue,
-                                 bool useGpu, bool equalNnzPerSample = false);
+MatrixPtr makeRandomSparseMatrix(size_t height,
+                                 size_t width,
+                                 bool withValue,
+                                 bool useGpu,
+                                 bool equalNnzPerSample = false);
 
 /**
  * @brief generate sequenceStartPositions for INPUT_SEQUENCE_DATA,
@@ -39,10 +41,10 @@ MatrixPtr makeRandomSparseMatrix(size_t height, size_t width, bool withValue,
  *        sequenceStartPositions[out] generation output
  */
 void generateSequenceStartPositions(size_t batchSize,
-    IVectorPtr& sequenceStartPositions);
+                                    IVectorPtr& sequenceStartPositions);
 
 void generateSequenceStartPositions(size_t batchSize,
-   ICpuGpuVectorPtr& sequenceStartPositions);
+                                    ICpuGpuVectorPtr& sequenceStartPositions);
 
 /**
  * @brief generate subSequenceStartPositions for INPUT_HASSUB_SEQUENCE_DATA
@@ -51,9 +53,8 @@ void generateSequenceStartPositions(size_t batchSize,
  * @param sequenceStartPositions[in]     input
  *        subSequenceStartPositions[out] generation output
  */
-void generateSubSequenceStartPositions(
-    const IVectorPtr& sequenceStartPositions,
-    IVectorPtr& subSequenceStartPositions);
+void generateSubSequenceStartPositions(const IVectorPtr& sequenceStartPositions,
+                                       IVectorPtr& subSequenceStartPositions);
 
 void generateSubSequenceStartPositions(
     const ICpuGpuVectorPtr& sequenceStartPositions,
@@ -66,12 +67,10 @@ void generateSubSequenceStartPositions(
  * @param sequenceStartPositions[in]     input
  *        cpuSequenceDims[out]              generation output
  */
-void generateMDimSequenceData(
-    const IVectorPtr& sequenceStartPositions,
-    IVectorPtr& cpuSequenceDims);
-void generateMDimSequenceData(
-    const ICpuGpuVectorPtr& sequenceStartPositions,
-    IVectorPtr& cpuSequenceDims);
+void generateMDimSequenceData(const IVectorPtr& sequenceStartPositions,
+                              IVectorPtr& cpuSequenceDims);
+void generateMDimSequenceData(const ICpuGpuVectorPtr& sequenceStartPositions,
+                              IVectorPtr& cpuSequenceDims);
 
 void checkMatrixEqual(const MatrixPtr& a, const MatrixPtr& b);
 

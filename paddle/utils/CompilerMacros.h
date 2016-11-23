@@ -14,27 +14,4 @@ limitations under the License. */
 
 #pragma once
 
-#include "Layer.h"
-#include "paddle/math/Matrix.h"
-#include <vector>
-
-namespace paddle {
-/**
- * A layer for transposition.
- * \f[
-     y = x^\mathrm{T}
- * \f]
- * where \f$x\f$ is (M x N) input, and \f$y\f$ is (N x M) output.
- *
- * The config file api is trans_layer.
- */
-class TransLayer : public Layer {
-public:
-  explicit TransLayer(const LayerConfig& config) : Layer(config) {}
-
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
-};
-}  // namespace paddle
+#define ATTR_NORETURN __attribute__((noreturn))

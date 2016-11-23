@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/utils/Util.h"
@@ -94,9 +93,7 @@ public:
    * @brief get all processed samples' number
    * @return all processed samples' number
    */
-  inline int64_t getNumProcessed() const {
-    return this->numProcessed_;
-  }
+  inline int64_t getNumProcessed() const { return this->numProcessed_; }
 
   /**
    * @brief same function as addCost. But it is simple to invoke.
@@ -111,7 +108,7 @@ public:
    * @param p a pair of parameter, first is numProcessed, second is cost.
    * @return *this
    */
-  inline TrainerStats& operator += (const std::pair<int64_t, real>& p) {
+  inline TrainerStats& operator+=(const std::pair<int64_t, real>& p) {
     this->addCost(p.first, p.second);
     return *this;
   }
@@ -121,9 +118,7 @@ public:
    *
    * reset stat when constructed.
    */
-  inline TrainerStats() {
-    this->reset();
-  }
+  inline TrainerStats() { this->reset(); }
 
   /**
    * @brief show stats to ostream.
@@ -137,7 +132,7 @@ public:
     os << "samples=" << this->getNumProcessed()
        << " AvgCost=" << this->getAvgCost();
     if (withCurrentCost) {
-       os << " CurrentCost=" << this->getCurrentAvgCost();
+      os << " CurrentCost=" << this->getCurrentAvgCost();
     }
   }
 

@@ -97,8 +97,7 @@ void ConcatenateLayer::backward(const UpdateCallback& callback) {
  */
 class ConcatenateLayer2 : public Layer {
 public:
-  explicit ConcatenateLayer2(const LayerConfig& config) :
-      Layer(config) {}
+  explicit ConcatenateLayer2(const LayerConfig& config) : Layer(config) {}
 
   ~ConcatenateLayer2() {}
 
@@ -130,8 +129,8 @@ bool ConcatenateLayer2::init(const LayerMap& layerMap,
   size_t startCol = 0;
   size_t endCol = 0;
   for (size_t i = 0; i < inputLayers_.size(); i++) {
-    projections_.emplace_back(Projection::create(config_.inputs(i).proj_conf(),
-                                                 parameters_[i], useGpu_));
+    projections_.emplace_back(Projection::create(
+        config_.inputs(i).proj_conf(), parameters_[i], useGpu_));
 
     endCol += projections_[i]->getOutputSize();
     projCol_.push_back(std::make_pair(startCol, endCol));

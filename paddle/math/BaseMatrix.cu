@@ -1449,8 +1449,8 @@ template<>
 template <class Agg>
 int BaseMatrixT<real>::applyRow(Agg agg, BaseMatrixT& b) {
   MatrixOffset offset(0, 0, 0, 0, 0, 0);
-  int numRows = b.height_;
-  int numCols = b.width_;
+  size_t numRows = b.height_;
+  size_t numCols = b.width_;
   CHECK_EQ(height_, numRows);
   CHECK_EQ(width_, 1UL);
   aggregate(agg, base::unary::identity(), base::binary::second(), b, numRows,
@@ -1463,8 +1463,8 @@ template<>
 template <class Agg, class Saver>
 int BaseMatrixT<real>::applyRow(Agg agg, Saver sv, BaseMatrixT& b) {
   MatrixOffset offset(0, 0, 0, 0, 0, 0);
-  int numRows = b.height_;
-  int numCols = b.width_;
+  size_t numRows = b.height_;
+  size_t numCols = b.width_;
   CHECK_EQ(height_, numRows);
   CHECK_EQ(width_, 1UL);
   aggregate(agg, base::unary::identity(), sv, b, numRows, numCols, offset,
@@ -1493,8 +1493,8 @@ template <class Agg, class Op, class Saver>
 int BaseMatrixT<real>::applyRow(Agg agg, Op op, Saver sv,
                                 BaseMatrixT& b, BaseMatrixT& c) {
   MatrixOffset offset(0, 0, 0, 0, 0, 0);
-  int numRows = b.height_;
-  int numCols = b.width_;
+  size_t numRows = b.height_;
+  size_t numCols = b.width_;
   CHECK_EQ(height_, numRows);
   CHECK_EQ(width_, 1UL);
   CHECK_EQ(c.height_, numRows);
@@ -1524,8 +1524,8 @@ template<>
 template <class Agg>
 int BaseMatrixT<real>::applyCol(Agg agg, BaseMatrixT& b) {
   MatrixOffset offset(0, 0, 0, 0, 0, 0);
-  int numRows = b.height_;
-  int numCols = b.width_;
+  size_t numRows = b.height_;
+  size_t numCols = b.width_;
   CHECK_EQ(width_, numCols);
   CHECK_EQ(height_, 1UL);
   aggregate(agg, base::unary::identity(), base::binary::second(), b, numRows,
@@ -1538,8 +1538,8 @@ template<>
 template <class Agg, class Saver>
 int BaseMatrixT<real>::applyCol(Agg agg, Saver sv, BaseMatrixT& b) {
   MatrixOffset offset(0, 0, 0, 0, 0, 0);
-  int numRows = b.height_;
-  int numCols = b.width_;
+  size_t numRows = b.height_;
+  size_t numCols = b.width_;
   CHECK_EQ(width_, numCols);
   CHECK_EQ(height_, 1UL);
   aggregate(agg, base::unary::identity(), sv, b, numRows, numCols, offset,

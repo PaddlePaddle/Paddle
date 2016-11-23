@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <memory>
 #include <algorithm>
 #include <fstream>
@@ -68,8 +67,11 @@ void AucValidation::validationImp(MatrixPtr output, IVectorPtr label) {
   if (dynamic_cast<GpuMatrix*>(output.get())) {
     size_t height = output->getHeight();
     size_t width = output->getWidth();
-    Matrix::resizeOrCreate(cpuOutput_, height, width,
-                           /* trans=*/false, /* useGpu=*/false);
+    Matrix::resizeOrCreate(cpuOutput_,
+                           height,
+                           width,
+                           /* trans=*/false,
+                           /* useGpu=*/false);
     cpuOutput_->copyFrom(*output);
     IVector::resizeOrCreate(cpuLabel_, height, false);
     cpuLabel_->copyFrom(*label);

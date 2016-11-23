@@ -64,12 +64,11 @@ Trainer* Trainer::createByCommandLine() throw(IOError) {
 
 Trainer::Trainer(TrainerConfig* config, GradientMachine* gm)
     : m(new TrainerPrivate()) {
-  m->init(config->m->conf, /* testing= */false, gm ? gm->m->machine : nullptr);
+  m->init(config->m->conf, /* testing= */ false, gm ? gm->m->machine : nullptr);
 }
 
-Trainer* Trainer::create(TrainerConfig* config, GradientMachine* gm)
-    throw(IOError)
-{
+Trainer* Trainer::create(TrainerConfig* config,
+                         GradientMachine* gm) throw(IOError) {
   auto retv = new Trainer(config, gm);
   if (retv->m->getConfig().IsInitialized()) {
     return retv;
@@ -134,15 +133,17 @@ void Trainer::finishTestPeriod() { m->finishTestPeriod(); }
 
 Matrix* Trainer::getLayerOutput(const std::string& layerName) {
   auto nn = std::dynamic_pointer_cast<paddle::NeuralNetwork>(
-          this->m->getGradientMachine());
+      this->m->getGradientMachine());
   CHECK(nn) << "trainerInternal_.getGradientMachine() is not NeuralNetwork";
   auto m = nn->getLayerOutput(layerName);
   return Matrix::createByPaddleMatrixPtr(&m);
 }
 
-void Trainer::forwardOneBatch(size_t batchSize) { m->forwardOneBatch(batchSize); }
+void Trainer::forwardOneBatch(size_t batchSize) {
+  m->forwardOneBatch(batchSize);
+}
 
-bool TrainerPrivate::forwardOneBatch(size_t batchSize)  {
+bool TrainerPrivate::forwardOneBatch(size_t batchSize) {
   CHECK(dataProvider_) << "data_provider is not specified";
   paddle::DataBatch dataBatch;
   int num = dataProvider_->getNextBatch(batchSize, &dataBatch);
@@ -156,7 +157,6 @@ bool TrainerPrivate::forwardOneBatch(size_t batchSize)  {
 
 void TrainerPrivate::forwardOneDataBatch(
     const std::vector<paddle::Argument>& inArgs) {
-
   std::vector<paddle::Argument>& outArgs = forwardOutput_;
 
   if (config_->getOptConfig().use_sparse_remote_updater()) {

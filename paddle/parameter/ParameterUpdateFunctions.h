@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/utils/TypeDefs.h"
@@ -31,14 +30,27 @@ namespace paddle {
  * momentum = 0 or decayRate = 0 are specially handled to avoid unnecessary
  * computation.
  */
-void sgdUpdate(real learningRate, real momentum, real decayRate, Vector* value,
-               Vector* grad, Vector* momentumVec);
+void sgdUpdate(real learningRate,
+               real momentum,
+               real decayRate,
+               Vector* value,
+               Vector* grad,
+               Vector* momentumVec);
 
-void sgdUpdateCpu(real learningRate, real momentum, real decayRate, size_t size,
-                  real* value, const real* grad, real* momentumVec);
+void sgdUpdateCpu(real learningRate,
+                  real momentum,
+                  real decayRate,
+                  size_t size,
+                  real* value,
+                  const real* grad,
+                  real* momentumVec);
 
-void sgdUpdateAvx(float learningRate, float momentum, float decayRate,
-                  size_t size, float* value, const float* grad,
+void sgdUpdateAvx(float learningRate,
+                  float momentum,
+                  float decayRate,
+                  size_t size,
+                  float* value,
+                  const float* grad,
                   float* momentumVec);
 
 }  // namespace paddle

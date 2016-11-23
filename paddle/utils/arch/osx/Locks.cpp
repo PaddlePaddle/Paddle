@@ -22,20 +22,16 @@ namespace paddle {
 
 class SemaphorePrivate {
 public:
-  ~SemaphorePrivate() {
-    dispatch_release(sem);
-  }
+  ~SemaphorePrivate() { dispatch_release(sem); }
 
   dispatch_semaphore_t sem;
 };
 
-Semaphore::Semaphore(int initValue): m(new SemaphorePrivate()) {
+Semaphore::Semaphore(int initValue) : m(new SemaphorePrivate()) {
   m->sem = dispatch_semaphore_create(initValue);
 }
 
-Semaphore::~Semaphore() {
-  delete m;
-}
+Semaphore::~Semaphore() { delete m; }
 
 bool Semaphore::timeWait(timespec *ts) {
   dispatch_time_t tm = dispatch_walltime(ts, 0);
@@ -46,9 +42,7 @@ void Semaphore::wait() {
   dispatch_semaphore_wait(m->sem, DISPATCH_TIME_FOREVER);
 }
 
-void Semaphore::post() {
-  dispatch_semaphore_signal(m->sem);
-}
+void Semaphore::post() { dispatch_semaphore_signal(m->sem); }
 
 class SpinLockPrivate {
 public:
@@ -56,17 +50,15 @@ public:
   char padding_[64 - sizeof(lock_)];  // Padding to cache line size
 };
 
-SpinLock::SpinLock(): m(new SpinLockPrivate()) {}
+SpinLock::SpinLock() : m(new SpinLockPrivate()) {}
 SpinLock::~SpinLock() { delete m; }
 
 void SpinLock::lock() {
-  while (m->lock_.test_and_set(std::memory_order_acquire)) {}
+  while (m->lock_.test_and_set(std::memory_order_acquire)) {
+  }
 }
 
-void SpinLock::unlock() {
-  m->lock_.clear(std::memory_order_release);
-}
-
+void SpinLock::unlock() { m->lock_.clear(std::memory_order_release); }
 
 class ThreadBarrierPrivate {
 public:
@@ -75,7 +67,7 @@ public:
   int count_;
   int tripCount_;
 
-  inline explicit ThreadBarrierPrivate(int cnt):count_(0), tripCount_(cnt) {
+  inline explicit ThreadBarrierPrivate(int cnt) : count_(0), tripCount_(cnt) {
     CHECK_NE(cnt, 0);
     CHECK_GE(pthread_mutex_init(&mutex_, 0), 0);
     CHECK_GE(pthread_cond_init(&cond_, 0), 0);
@@ -106,7 +98,7 @@ public:
   }
 };
 
-ThreadBarrier::ThreadBarrier(int count): m(new ThreadBarrierPrivate(count)) {}
+ThreadBarrier::ThreadBarrier(int count) : m(new ThreadBarrierPrivate(count)) {}
 ThreadBarrier::~ThreadBarrier() { delete m; }
 void ThreadBarrier::wait() { m->wait(); }
 

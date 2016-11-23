@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Layer.h"
 #include "GatedRecurrentLayer.h"
 #include "paddle/utils/Stat.h"
@@ -30,8 +29,8 @@ bool GatedRecurrentLayer::init(const LayerMap& layerMap,
   CHECK_EQ(getSize() * 3, biasParameter_->getSize());
   weight_.reset(new Weight(getSize(), getSize() * 3, parameters_[0]));
   gateWeight_.reset(new Weight(getSize(), getSize() * 2, parameters_[0], 0));
-  stateWeight_.reset(new Weight(getSize(), getSize(), parameters_[0],
-                                2 * getSize() * getSize()));
+  stateWeight_.reset(new Weight(
+      getSize(), getSize(), parameters_[0], 2 * getSize() * getSize()));
   if (biasParameter_.get() != NULL) {
     bias_.reset(new Weight(1, getSize() * 3, biasParameter_));
   }
@@ -48,8 +47,8 @@ bool GatedRecurrentLayer::init(const LayerMap& layerMap,
 void GatedRecurrentLayer::resetState() {
   CHECK(!reversed_) << "state is not allowed for reversed gated "
                        "recurrent layer";
-  Matrix::resizeOrCreate(prevOutput_, 1, getSize(), /* trans= */ false,
-                         useGpu_);
+  Matrix::resizeOrCreate(
+      prevOutput_, 1, getSize(), /* trans= */ false, useGpu_);
   prevOutput_->zeroMem();
 
   // TODO(hedaoyuan): support prev_batch_state
@@ -85,10 +84,16 @@ void GatedRecurrentLayer::forward(PassType passType) {
   // batchSize = length of total frames in a batch (NOT size of mini-batch)
   CHECK_EQ(starts[numSequences], batchSize);
 
-  Matrix::resizeOrCreate(gate_.value, /* height= */batchSize,
-                         getSize() * 3, /* trans= */false, useGpu_);
-  Matrix::resizeOrCreate(resetOutput_.value, /* height= */batchSize,
-                         getSize(), /* trans= */false, useGpu_);
+  Matrix::resizeOrCreate(gate_.value,
+                         /* height= */ batchSize,
+                         getSize() * 3,
+                         /* trans= */ false,
+                         useGpu_);
+  Matrix::resizeOrCreate(resetOutput_.value,
+                         /* height= */ batchSize,
+                         getSize(),
+                         /* trans= */ false,
+                         useGpu_);
 
   if (useBatch_) {
     forwardBatch(batchSize, numSequences, starts, input.value);
@@ -105,10 +110,16 @@ void GatedRecurrentLayer::backward(const UpdateCallback& callback) {
   const int* starts = input.sequenceStartPositions->getData(false);
   size_t numSequences = input.getNumSequences();
 
-  Matrix::resizeOrCreate(gate_.grad, /* height= */batchSize,
-                         getSize() * 3, /* trans= */false, useGpu_);
-  Matrix::resizeOrCreate(resetOutput_.grad, /* height= */batchSize,
-                         getSize(), /* trans= */false, useGpu_);
+  Matrix::resizeOrCreate(gate_.grad,
+                         /* height= */ batchSize,
+                         getSize() * 3,
+                         /* trans= */ false,
+                         useGpu_);
+  Matrix::resizeOrCreate(resetOutput_.grad,
+                         /* height= */ batchSize,
+                         getSize(),
+                         /* trans= */ false,
+                         useGpu_);
 
   if (useBatch_) {
     backwardBatch(batchSize, input.grad);
@@ -125,7 +136,7 @@ void GatedRecurrentLayer::backward(const UpdateCallback& callback) {
 
 void GatedRecurrentLayer::forwardSequence(int batchSize,
                                           size_t numSequences,
-                                          const int *starts,
+                                          const int* starts,
                                           MatrixPtr inputValue) {
   REGISTER_TIMER_INFO("GruFwSequenceTime", getName().c_str());
   gate_.value->assign(*inputValue);
@@ -198,7 +209,7 @@ void GatedRecurrentLayer::forwardSequence(int batchSize,
 
 void GatedRecurrentLayer::backwardSequence(int batchSize,
                                            size_t numSequences,
-                                           const int *starts,
+                                           const int* starts,
                                            MatrixPtr inputGrad) {
   REGISTER_TIMER_INFO("GruBwSequenceTime", getName().c_str());
 
@@ -211,9 +222,10 @@ void GatedRecurrentLayer::backwardSequence(int batchSize,
 
   hl_gru_grad gruGrad;
   gruGrad.gateWeightGrad =
-    (gateWeight_->getWGrad() ? gateWeight_->getWGrad()->getData() : nullptr);
+      (gateWeight_->getWGrad() ? gateWeight_->getWGrad()->getData() : nullptr);
   gruGrad.stateWeightGrad =
-    (stateWeight_->getWGrad() ? stateWeight_->getWGrad()->getData() : nullptr);
+      (stateWeight_->getWGrad() ? stateWeight_->getWGrad()->getData()
+                                : nullptr);
   gruGrad.gateGrad = gate_.grad->getData();
   gruGrad.resetOutputGrad = resetOutput_.grad->getData();
   gruGrad.outputGrad = output_.grad->getData();
@@ -298,11 +310,10 @@ void GatedRecurrentLayer::forwardBatch(int batchSize,
   if (!batchValue_) {
     batchValue_.reset(new SequenceToBatch(useGpu_));
   }
-  batchValue_->resizeOrCreateBatch(batchSize, numSequences, starts,
-                                   reversed_);
+  batchValue_->resizeOrCreateBatch(batchSize, numSequences, starts, reversed_);
 
   batchValue_->resizeOrCreate(*output_.value);
-  batchValue_->copy(*inputValue, *gate_.value, /* seq2batch */true);
+  batchValue_->copy(*inputValue, *gate_.value, /* seq2batch */ true);
   if (bias_ && bias_->getWGrad()) {
     gate_.value->addBias(*(bias_->getW()), 1);
   }
@@ -315,14 +326,14 @@ void GatedRecurrentLayer::forwardBatch(int batchSize,
       MatrixPtr outputValueTmp = batchValue_->getBatchValue(n);
       gruValue.outputValue = outputValueTmp->getData();
       gruValue.gateValue =
-        (batchValue_->getBatchValue(*gate_.value, n))->getData();
+          (batchValue_->getBatchValue(*gate_.value, n))->getData();
       gruValue.resetOutputValue =
-        (batchValue_->getBatchValue(*resetOutput_.value, n))->getData();
+          (batchValue_->getBatchValue(*resetOutput_.value, n))->getData();
 
       batchSize = outputValueTmp->getHeight();
       gruValue.prevOutValue =
-        (n == 0 ? nullptr
-                : (batchValue_->getBatchValue(n - 1, batchSize))->getData());
+          (n == 0 ? nullptr
+                  : (batchValue_->getBatchValue(n - 1, batchSize))->getData());
 
       {
         if (useGpu_) {
@@ -333,13 +344,10 @@ void GatedRecurrentLayer::forwardBatch(int batchSize,
       }
     }
   }
-  {
-    batchValue_->copyBackSeq(*output_.value);
-  }
+  { batchValue_->copyBackSeq(*output_.value); }
 }
 
-void GatedRecurrentLayer::backwardBatch(int batchSize,
-                                        MatrixPtr inputGrad) {
+void GatedRecurrentLayer::backwardBatch(int batchSize, MatrixPtr inputGrad) {
   REGISTER_TIMER_INFO("GruBwBatchTime", getName().c_str());
   hl_gru_value gruValue;
   gruValue.gateWeight = (gateWeight_->getW())->getData();
@@ -347,18 +355,17 @@ void GatedRecurrentLayer::backwardBatch(int batchSize,
 
   hl_gru_grad gruGrad;
   gruGrad.gateWeightGrad =
-    (gateWeight_->getWGrad() ? gateWeight_->getWGrad()->getData() : nullptr);
+      (gateWeight_->getWGrad() ? gateWeight_->getWGrad()->getData() : nullptr);
   gruGrad.stateWeightGrad =
-    (stateWeight_->getWGrad() ? stateWeight_->getWGrad()->getData() : nullptr);
+      (stateWeight_->getWGrad() ? stateWeight_->getWGrad()->getData()
+                                : nullptr);
 
   if (!batchGrad_) {
     batchGrad_.reset(new SequenceToBatch(useGpu_));
   }
   batchGrad_->shareIndexWith(*batchValue_);
 
-  {
-    batchGrad_->copyFromSeq(*output_.grad);
-  }
+  { batchGrad_->copyFromSeq(*output_.grad); }
 
   {
     int numBatch = batchGrad_->getNumBatch();
@@ -366,39 +373,36 @@ void GatedRecurrentLayer::backwardBatch(int batchSize,
     AsyncGpuBlock asyncGpuBlock;
     for (int n = (int)numBatch - 1; n >= 0; n--) {
       gruValue.gateValue =
-        (batchGrad_->getBatchValue(*gate_.value, n))->getData();
+          (batchGrad_->getBatchValue(*gate_.value, n))->getData();
       gruValue.resetOutputValue =
-        (batchGrad_->getBatchValue(*resetOutput_.value, n))->getData();
+          (batchGrad_->getBatchValue(*resetOutput_.value, n))->getData();
 
-      MatrixPtr outputGradTmp  = batchGrad_->getBatchValue(n);
+      MatrixPtr outputGradTmp = batchGrad_->getBatchValue(n);
       gruGrad.outputGrad = outputGradTmp->getData();
-      gruGrad.gateGrad =
-        (batchGrad_->getBatchValue(*gate_.grad , n))->getData();
+      gruGrad.gateGrad = (batchGrad_->getBatchValue(*gate_.grad, n))->getData();
       gruGrad.resetOutputGrad =
-        (batchGrad_->getBatchValue(*resetOutput_.grad , n))->getData();
+          (batchGrad_->getBatchValue(*resetOutput_.grad, n))->getData();
 
       {
         batchSize = outputGradTmp->getHeight();
         gruValue.prevOutValue =
-          (n == 0 ? nullptr
-                  : (batchValue_->getBatchValue(n - 1, batchSize))->getData());
+            (n == 0 ? nullptr : (batchValue_->getBatchValue(n - 1, batchSize))
+                                    ->getData());
         gruGrad.prevOutGrad =
-          (n == 0 ? nullptr
-                  : (batchGrad_->getBatchValue(n - 1, batchSize))->getData());
+            (n == 0 ? nullptr
+                    : (batchGrad_->getBatchValue(n - 1, batchSize))->getData());
 
         if (useGpu_) {
-          GruCompute::backward<1>(gruValue, gruGrad, getSize(),
-                                  batchSize);
+          GruCompute::backward<1>(gruValue, gruGrad, getSize(), batchSize);
         } else {
-          GruCompute::backward<0>(gruValue, gruGrad, getSize(),
-                                  batchSize);
+          GruCompute::backward<0>(gruValue, gruGrad, getSize(), batchSize);
         }
       }
     }
   }
 
   if (inputGrad) {
-    batchGrad_->add(*inputGrad, *gate_.grad, /* seq2batch */false);
+    batchGrad_->add(*inputGrad, *gate_.grad, /* seq2batch */ false);
   }
   if (bias_ && bias_->getWGrad()) {
     bias_->getWGrad()->collectBias(*gate_.grad, /* scale */ 1);
