@@ -1,0 +1,3 @@
+[submodule "contrib/ci"]
+	path = contrib/ci
+	url = https://github.com/wangkuiyi/ci.git
