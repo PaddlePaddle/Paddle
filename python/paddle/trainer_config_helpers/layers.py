@@ -50,6 +50,7 @@ __all__ = ["full_matrix_projection", "AggregateLevel", "ExpandLevel",
            'slope_intercept_layer', 'trans_full_matrix_projection',
            'linear_comb_layer',
            'convex_comb_layer', 'ctc_layer', 'crf_layer', 'crf_decoding_layer',
+           'nce_layer',
            'cross_entropy_with_selfnorm', 'cross_entropy',
            'multi_binary_label_cross_entropy',
            'rank_cost', 'lambda_cost', 'huber_cost',
@@ -115,6 +116,7 @@ class LayerType(object):
     CTC_LAYER = "ctc"
     CRF_LAYER = "crf"
     CRF_DECODING_LAYER = "crf_decoding"
+    NCE_LAYER = 'nce'
 
     RANK_COST = "rank-cost"
     LAMBDA_COST = "lambda_cost"
@@ -168,7 +170,7 @@ class LayerOutput(object):
     :param activation: Layer Activation.
     :type activation: BaseActivation.
     :param parents: Layer's parents.
-    :type parents: list|tuple|collection.Sequence
+    :type parents: list|tuple|collections.Sequence
     """
 
     def __init__(self, name, layer_type, parents=None, activation=None,
@@ -210,7 +212,7 @@ DEVICE = 'device'
 
 
 def layer_support(*attrs):
-    attrs_list = list(attrs) 
+    attrs_list = list(attrs)
     attrs_list.append(DEVICE)
     def decorator(method):
         @functools.wraps(method)
@@ -1627,7 +1629,9 @@ def img_conv_layer(input, filter_size, num_filters,
 @layer_support()
 def img_pool_layer(input, pool_size, name=None,
                    num_channels=None, pool_type=None,
-                   stride=1, start=None, padding=0, layer_attr=None):
+                   stride=1, start=None, padding=0, layer_attr=None,
+                   pool_size_y=None, stride_y=None, padding_y=None,
+                   img_width=None):
     """
     Image pooling Layer.
 
@@ -1635,25 +1639,34 @@ def img_pool_layer(input, pool_size, name=None,
 
     .. _pooling: http://ufldl.stanford.edu/tutorial/supervised/Pooling/
 
-    :param padding: pooling padding
+    :param padding: pooling padding width.
     :type padding: int
+    :param padding_y: pooling padding height. It's equal to padding by default.
+    :type padding_y: int|None
     :param name: name of pooling layer
     :type name: basestring.
     :param input: layer's input
     :type input: LayerOutput
-    :param pool_size: pooling size
+    :param pool_size: pooling window width
     :type pool_size: int
+    :param pool_size_y: pooling window height. It's eaqual to pool_size by default.
+    :type pool_size_y: int|None
     :param num_channels: number of input channel.
     :type num_channels: int
     :param pool_type: pooling type. MaxPooling or AveragePooling. Default is
                       MaxPooling.
     :type pool_type: BasePoolingType
-    :param stride: stride of pooling.
+    :param stride: stride width of pooling.
     :type stride: int
-    :param start: start position of pooling operation.
-    :type start: int
+    :param stride_y: stride height of pooling. It is equal to stride by default.
+    :type stride_y: int|None
+    :param start: start position of pooling operation. Note it is deprecated now.
+    :type start: int|None
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param img_width: the width of input feature map. If it is None, the input feature
+                      map should be square.
+    :type img_width: int|None
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -1666,17 +1679,29 @@ def img_pool_layer(input, pool_size, name=None,
     elif isinstance(pool_type, AvgPooling):
         pool_type.name = 'avg'
 
+    type_name = pool_type.name + '-projection' \
+      if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+      else pool_type.name
+
+    pool_size_y = pool_size if pool_size_y is None else pool_size_y
+    stride_y = stride if stride_y is None else stride_y
+    padding_y = padding if padding_y is None else padding_y
+
     Layer(
         name=name,
         type=LayerType.POOL_LAYER,
         inputs=[Input(input.name,
                       pool=Pool(
-                          pool_type=''.join([pool_type.name, '-projection']),
+                          pool_type=type_name,
                           channels=num_channels,
                           size_x=pool_size,
                           start=start,
                           stride=stride,
-                          padding=padding
+                          padding=padding,
+                          size_y=pool_size_y,
+                          stride_y=stride_y,
+                          padding_y=padding_y,
+                          img_width=img_width
                       ))],
         **ExtraLayerAttribute.to_kwargs(layer_attr)
     )
@@ -1965,10 +1990,16 @@ def concat_layer(input, act=None, name=None, layer_attr=None):
     Concat all input vector into one huge vector.
     Inputs can be list of LayerOutput or list of projection.
 
+    The example usage is:
+
+    ..  code-block:: python
+
+        concat = concat_layer(input=[layer1, layer2])
+
     :param name: Layer name.
     :type name: basestring
     :param input: input layers or projections
-    :type input: list|tuple|collection.Sequence
+    :type input: list|tuple|collections.Sequence
     :param act: Activation type.
     :type act: BaseActivation
     :param layer_attr: Extra Layer Attribute.
@@ -2347,7 +2378,7 @@ class SubsequenceInput(object):
 
 
 @wrap_name_default("recurrent_group")
-def recurrent_group(step, input, reverse=False, name=None):
+def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
     """
     Recurrent layer group is an extremely flexible recurrent unit in
     PaddlePaddle. As long as the user defines the calculation done within a
@@ -2401,6 +2432,17 @@ def recurrent_group(step, input, reverse=False, name=None):
     :param reverse: If reverse is set true, the recurrent unit will process the
                     input sequence in a reverse order.
     :type reverse: bool
+
+    :param targetInlink: the input layer which share info with layer group's output
+
+                         Param input specifies multiple input layers. For
+                         SubsequenceInput inputs, config should assign one input
+                         layer that share info(the number of sentences and the number
+                         of words in each sentence) with all layer group's outputs.
+                         targetInlink should be one of the layer group's input.
+
+    :type targetInlink: LayerOutput|SubsequenceInput
+
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2419,6 +2461,20 @@ def recurrent_group(step, input, reverse=False, name=None):
 
     in_links = filter(is_in_links, input)
 
+    def targetInlink_in_inlinks():
+        for inlink in in_links:
+            if isinstance(inlink, SubsequenceInput):
+                if targetInlink == inlink.input:
+                    return True
+            elif targetInlink == inlink:
+                return True
+        return False
+
+    assert(targetInlink == None or targetInlink_in_inlinks())
+    targetInlinkName = None if targetInlink == None \
+                            else targetInlink.name if isinstance(targetInlink, LayerOutput) \
+                                                   else targetInlink.input.name
+
     contains_sub_seq = [False]
 
     def map_in_links(x):
@@ -2430,7 +2486,8 @@ def recurrent_group(step, input, reverse=False, name=None):
 
     RecurrentLayerGroupWithoutOutLinksBegin(
         name=name, in_links=map(map_in_links, in_links),
-        seq_reversed=reverse)
+        seq_reversed=reverse,
+        target_inlinkname=targetInlinkName)
     in_args = []
     for each_input in input:
         assert is_single_input(each_input)
@@ -2725,33 +2782,50 @@ def beam_search(step, input, bos_id, eos_id, beam_size,
 
     tmp = recurrent_group(step=__real_step__, input=real_input, reverse=False,
                           name=name)
-    
+
     return tmp
 
+def __cost_input__(input, label, weight=None):
+    """
+    inputs and parents for cost layers. 
+    """
+    ipts = [Input(input.name), Input(label.name)]
+    parents = [input, label]
+    if weight is not None:
+        assert weight.layer_type == LayerType.DATA
+        ipts.append(Input(weight.name))
+        parents.append(weight)
+    return ipts, parents
+    
 
 @wrap_name_default()
-def regression_cost(input, label, cost='square_error', name=None):
+def regression_cost(input, label, weight=None, name=None):
     """
     Regression Layer.
 
     TODO(yuyang18): Complete this method.
 
     :param name: layer name.
+    :type name: basestring
     :param input: Network prediction.
+    :type input: LayerOutput
     :param label: Data label.
-    :param cost: Cost method.
+    :type label: LayerOutput
+    :param weight: The weight affects the cost, namely the scale of cost.
+                   It is an optional argument.
+    :type weight: LayerOutput
     :return: LayerOutput object.
+    :rtype: LayerOutput
     """
-    Layer(inputs=[Input(input.name), Input(label.name)], type=cost, name=name)
-    return LayerOutput(
-        name, LayerType.COST, parents=[input, label]
-    )
+    ipts, parents = __cost_input__(input, label, weight)
+
+    Layer(inputs=ipts, type="square_error", name=name)
+    return LayerOutput(name, LayerType.COST, parents=parents)
 
 
 @wrap_name_default("cost")
 @layer_support()
-def classification_cost(input, label, name=None,
-                        cost="multi-class-cross-entropy",
+def classification_cost(input, label, weight=None, name=None,
                         evaluator=classification_error_evaluator,
                         layer_attr=None):
     """
@@ -2763,8 +2837,9 @@ def classification_cost(input, label, name=None,
     :type input: LayerOutput
     :param label: label layer name. data_layer often.
     :type label: LayerOutput
-    :param cost: cost method.
-    :type cost: basestring
+    :param weight: The weight affects the cost, namely the scale of cost.
+                   It is an optional argument.
+    :type weight: LayerOutput
     :param evaluator: Evaluator method.
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -2774,7 +2849,10 @@ def classification_cost(input, label, name=None,
     assert input.layer_type != LayerType.DATA
     assert isinstance(input.activation, SoftmaxActivation)
     assert label.layer_type == LayerType.DATA
-    Layer(name=name, type=cost, inputs=[Input(input.name), Input(label.name)],
+
+    ipts, parents = __cost_input__(input, label, weight)
+
+    Layer(name=name, type="multi-class-cross-entropy", inputs=ipts,
           **ExtraLayerAttribute.to_kwargs(layer_attr))
 
     def __add_evaluator__(e):
@@ -2786,7 +2864,7 @@ def classification_cost(input, label, name=None,
         assert isinstance(e.for_classification, bool)
         assert e.for_classification
 
-        e(name=e.__name__, input=input, label=label)
+        e(name=e.__name__, input=input, label=label, weight=weight)
 
     if not isinstance(evaluator, collections.Sequence):
         evaluator = [evaluator]
@@ -2794,7 +2872,7 @@ def classification_cost(input, label, name=None,
     for each_evaluator in evaluator:
         __add_evaluator__(each_evaluator)
 
-    return LayerOutput(name, LayerType.COST, parents=[input, label])
+    return LayerOutput(name, LayerType.COST, parents=parents)
 
 
 def conv_operator(img, filter, filter_size, num_filters,
@@ -3413,6 +3491,83 @@ def crf_decoding_layer(input, size, label=None, param_attr=None, name=None):
         parents.append(label)
     return LayerOutput(name, LayerType.CRF_DECODING_LAYER, parents, size=size)
 
+@wrap_bias_attr_default(has_bias=True)
+@wrap_name_default()
+@layer_support()
+def nce_layer(input, label, num_classes, weight=None,
+              num_neg_samples=10, neg_distribution=None,
+              name=None, bias_attr=None, layer_attr=None):
+    """
+    Noise-contrastive estimation.
+    Implements the method in the following paper:
+    A fast and simple algorithm for training neural probabilistic language models.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       cost = nce_layer(input=layer1, label=layer2, weight=layer3,
+                        num_classes=3, neg_distribution=[0.1,0.3,0.6])
+
+    :param name: layer name
+    :type name: basestring
+    :param input: input layers. It could be a LayerOutput of list/tuple of LayerOutput.
+    :type input: LayerOutput|list|tuple|collections.Sequence
+    :param label: label layer
+    :type label: LayerOutput
+    :param weight: weight layer, can be None(default)
+    :type weight: LayerOutput
+    :param num_classes: number of classes.
+    :type num_classes: int 
+    :param num_neg_samples: number of negative samples. Default is 10.
+    :type num_neg_samples: int 
+    :param neg_distribution: The distribution for generating the random negative labels.
+                             A uniform distribution will be used if not provided.
+                             If not None, its length must be equal to num_classes.
+    :type neg_distribution: list|tuple|collections.Sequence|None
+    :param bias_attr: Bias parameter attribute. True if no bias.
+    :type bias_attr: ParameterAttribute|None|False
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: layer name.
+    :rtype: LayerOutput
+    """
+    if isinstance(input, LayerOutput):
+        input = [input]
+    assert isinstance(input, collections.Sequence)
+    assert isinstance(label, LayerOutput)
+    assert label.layer_type == LayerType.DATA
+    if neg_distribution is not None:
+        assert isinstance(neg_distribution, collections.Sequence)
+        assert len(neg_distribution) == num_classes
+        assert sum(neg_distribution) == 1
+    
+    ipts_for_layer = []
+    parents = []
+    for each_input in input:
+        assert isinstance(each_input, LayerOutput)
+        ipts_for_layer.append(each_input.name)
+        parents.append(each_input)
+    ipts_for_layer.append(label.name)
+    parents.append(label)
+
+    if weight is not None:
+        assert isinstance(weight, LayerOutput)
+        assert weight.layer_type == LayerType.DATA
+        ipts_for_layer.append(weight.name)
+        parents.append(weight)
+
+    Layer(
+        name=name,
+        type=LayerType.NCE_LAYER,
+        num_classes=num_classes,
+        neg_sampling_dist=neg_distribution,
+        num_neg_samples=num_neg_samples,
+        inputs=ipts_for_layer,
+        bias=ParamAttr.to_bias(bias_attr),
+        **ExtraLayerAttribute.to_kwargs(layer_attr)
+    )
+    return LayerOutput(name, LayerType.NCE_LAYER, parents=parents)
 
 """
 following are cost Layers.
@@ -3659,8 +3814,8 @@ def multi_binary_label_cross_entropy(input, label, name=None, coeff=1.0):
     if input.activation is None or \
             not isinstance(input.activation, SigmoidActivation):
         logger.log(logging.WARN,
-                   "%s is not recommend for batch normalization's activation, "
-                   "maybe the relu is better" % repr(input.activation))
+                   "%s is not recommend for multi_binary_label_cross_entropy's activation, "
+                   "maybe the sigmoid is better" % repr(input.activation))
 
     Layer(name=name,
           type=LayerType.MULTI_BIN_LABEL_CROSS_ENTROPY,

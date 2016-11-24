@@ -64,6 +64,11 @@ void AverageLayer::forward(PassType passType) {
 
   size_t dim = getSize();
   const Argument& input = getInput(0);
+  CHECK(input.sequenceStartPositions);
+  if (type_) {
+    CHECK(input.subSequenceStartPositions)
+      << "when trans_type = seq, input must hasSubseq";
+  }
   int64_t newBatchSize =
       type_ ? input.getNumSubSequences() : input.getNumSequences();
   ICpuGpuVectorPtr startPositions =
@@ -75,11 +80,6 @@ void AverageLayer::forward(PassType passType) {
   // check
   CHECK_EQ(numSequences, (size_t)newBatchSize);
   CHECK_EQ(starts[numSequences], input.getBatchSize());
-  if (type_) {
-    // when trans_type = seq, input must hasSubseq
-    CHECK_EQ(input.hasSubseq(), 1UL);
-  }
-
   CHECK_EQ(dim, input.value->getWidth());
 
   resetOutput(newBatchSize, dim);

@@ -308,7 +308,8 @@ public:
   /**
    * @brief create only used for unittest.
    */
-  inline static DataProvider* create(const DataConfig &config, bool useGpu) {
+  inline static DataProvider* create(const DataConfig &config,
+                                     bool useGpu = FLAGS_use_gpu) {
     return create(config, ModelConfig(), useGpu);
   }
 

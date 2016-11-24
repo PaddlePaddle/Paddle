@@ -28,7 +28,7 @@ namespace paddle {
 class PoolLayer : public Layer {
 protected:
   size_t channels_, sizeX_, stride_, outputX_, imgSize_;
-  int start_, confPadding_;
+  int confPadding_;
 
   size_t sizeY_;
   size_t imgSizeY_;
@@ -47,6 +47,16 @@ public:
   static Layer* create(const LayerConfig& config);
 
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+
+  /**
+   * Calculate output size according window size and padding size.
+   */
+  int outputSize(int imageSize, int windowSize, int padding, int stride) {
+    int outputSize;
+    outputSize =
+        (imageSize - windowSize + 2 * padding + stride - 1) / stride + 1;
+    return outputSize;
+  }
 };
 
 }  // namespace paddle
