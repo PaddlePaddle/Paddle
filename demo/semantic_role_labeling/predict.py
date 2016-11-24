@@ -55,18 +55,14 @@ class Prediction():
 
         slots = [
             integer_value_sequence(len_dict),
-            integer_value_sequence(len_pred),
             integer_value_sequence(len_dict),
             integer_value_sequence(len_dict),
             integer_value_sequence(len_dict),
             integer_value_sequence(len_dict),
             integer_value_sequence(len_dict), 
+            integer_value_sequence(len_pred),
             integer_value_sequence(2)
             ]
-            integer_value_sequence(len_dict), integer_value_sequence(len_dict),
-            integer_value_sequence(len_dict), integer_value_sequence(len_dict),
-            integer_value_sequence(len_dict), integer_value_sequence(2)
-        ]
         self.converter = DataProviderConverter(slots)
 
     def load_dict_label(self, dict_file, label_file, predicate_dict_file):
@@ -104,8 +100,8 @@ class Prediction():
                 marks = mark.split()
                 mark_slot = [int(w) for w in marks]
                 
-                yield word_slot, predicate_slot, ctx_n2_slot, ctx_n1_slot, \
-                      ctx_0_slot, ctx_p1_slot, ctx_p2_slot,  mark_slot
+                yield word_slot, ctx_n2_slot, ctx_n1_slot, \
+                      ctx_0_slot, ctx_p1_slot, ctx_p2_slot, predicate_slot, mark_slot
 
     def predict(self, data_file, output_file):
         """
