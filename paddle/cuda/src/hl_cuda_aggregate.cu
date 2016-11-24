@@ -222,20 +222,6 @@ void hl_matrix_column_min(real *A_d, real *C_d, int dimM, int dimN) {
   CHECK_SYNC("hl_matrix_column_min failed");
 }
 
-void hl_vector_max(real *A_d, real *C_h, int dimM) {
-  real *C_d = (real *)hl_malloc_device(sizeof(real));
-  hl_matrix_column_max(A_d, C_d, dimM, 1);
-  hl_memcpy_device2host(C_h, C_d, sizeof(real));
-  hl_free_mem_device(C_d);
-}
-
-void hl_vector_min(real *A_d, real *C_h, int dimM) {
-  real *C_d = (real *)hl_malloc_device(sizeof(real));
-  hl_matrix_column_min(A_d, C_d, dimM, 1);
-  hl_memcpy_device2host(C_h, C_d, sizeof(real));
-  hl_free_mem_device(C_d);
-}
-
 template <int blockSize>
 __global__ void KeVectorSum(real *E, real *Sum, int dimM) {
   __shared__ double sum_s[blockSize];
