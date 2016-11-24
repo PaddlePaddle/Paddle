@@ -144,16 +144,14 @@
     :lines: 42-59
     :linenos:
 
-- 双层序列\：
-
-  - 双层RNN中，对输入的两个特征分别求时序上的连续全连接(`inner_step1`和`inner_step2`分别处理fea1和fea2)，其功能与示例2中`sequence_nest_rnn.conf`的`outer_step`函数完全相同。不同之处是，此时输入`[SubsequenceInput(emb1), SubsequenceInput(emb2)]`在各时刻并不等长。
-  - 函数`outer_step`中可以分别处理这两个特征，但我们需要用\ :red:`targetInlink`\ 指定recurrent_group的输出的格式（各子句长度）只能和其中一个保持一致，如这里选择了和emb2的长度一致。
-  - 最后，依然是取encoder1_rep的最后一个时刻和encoder2_rep的所有时刻分别相加得到context。
+而双层序列的代码如下。
 
 ..  literalinclude:: ../../../paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py
     :language: python
-    :lines: 42-75, 82-89
+    :lines: 41-80
     :linenos:
+
+在上面代码中，单层和双层序列的使用和示例2中的示例类似，区别是同时处理了两个输入。而对于双层序列，两个输入的子序列长度也并不相同。但是，我们使用了\ :code:`targetInlink`\ 参数设置了外层\ :code:`recurrent_group`\ 的输出格式。所以外层输出的序列形状，和\ :code:`emb2`的序列形状一致。
 
 示例4：beam_search的生成
 ========================
