@@ -25,14 +25,17 @@ cd $DIR
 # Download data
 echo "Downloading Amazon Electronics reviews data..."
 # http://jmcauley.ucsd.edu/data/amazon/
-#wget http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Electronics_5.json.gz
+wget http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Electronics_5.json.gz
 echo "Downloading mosesdecoder..."
-#https://github.com/moses-smt/mosesdecoder
-#wget https://github.com/moses-smt/mosesdecoder/archive/master.zip
-#unzip master.zip
-#rm master.zip
-echo "Done."
+# https://github.com/moses-smt/mosesdecoder
+wget https://github.com/moses-smt/mosesdecoder/archive/master.zip
 
+unzip master.zip
+rm master.zip
+
+##################
+# Preprocess data 
+echo "Preprocess data..."
 export LC_ALL=C
 UNAME_STR=`uname`
 
@@ -42,12 +45,11 @@ else
   SHUF_PROG='gshuf'
 fi
 
-# Start preprocess 
 mkdir -p tmp
 python preprocess.py -i reviews_Electronics_5.json.gz
 # uniq and shuffle
 cd tmp
-echo 'uniq and shuffle...'
+echo 'Uniq and shuffle...'
 cat pos_*|sort|uniq|${SHUF_PROG}> pos.shuffed
 cat neg_*|sort|uniq|${SHUF_PROG}> neg.shuffed
 
@@ -74,4 +76,4 @@ echo 'test.txt' > test.list
 rm -rf tmp
 mv dict.txt dict_all.txt
 cat dict_all.txt | head -n 30001 > dict.txt
-echo 'preprocess finished'
+echo 'Done.'
