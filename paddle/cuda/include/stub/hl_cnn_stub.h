@@ -38,29 +38,45 @@ inline void hl_expand_feature2col(
     real* dataCol) {}
 
 inline void hl_maxpool_forward(
-    int frameCnt, const real* inputData, int channels,
-    int height, int width, int pooledH, int pooledW,
-    int sizeX, int stride, int start, real* tgtData) {}
+    const int frameCnt, const real* inputData,
+    const int channels,
+    const int height, const int width,
+    const int pooledH, const int pooledW,
+    const int sizeX, const int sizeY,
+    const int strideH, const int strideW,
+    const int paddingH, const int paddingW, real* tgtData) {}
 
 inline void hl_maxpool_backward(
-    int frameCnt, const real* inputData,
+    const int frameCnt, const real* inputData,
     const real* outData, const real* outGrad,
-    int channels, int height, int width,
-    int pooledH, int pooledW, int sizeX,
-    int stride, int start, real* targetGrad,
-    real scaleA, real scaleB) {}
+    const int channels, const int height,
+    const int width,
+    const int pooledH, const int pooledW,
+    const int sizeX, const int sizeY,
+    const int strideH, const int strideW,
+    const int paddingH, const int paddingW,
+    real scaleA, real scaleB,
+    real* targetGrad) {}
 
 inline void hl_avgpool_forward(
-    int frameCnt, const real* inputData, int channels,
-    int height, int width, int pooledH, int pooledW,
-    int sizeX, int stride, int start, real* tgtData) {}
+    const int frameCnt, const real* inputData,
+    const int channels,
+    const int height, const int width,
+    const int pooledH, const int pooledW,
+    const int sizeX, const int sizeY,
+    const int strideH, const int strideW,
+    const int paddingH, const int paddingW, real* tgtData) {}
 
 inline void hl_avgpool_backward(
-    int frameCnt, const real* outGrad,
-    int channels, int height, int width,
-    int pooledH, int pooledW, int sizeX,
-    int stride, int start, real* backGrad,
-    real scaleA, real scaleB) {}
+    const int frameCnt, const real* outGrad,
+    const int channels, const int height,
+    const int width,
+    const int pooledH, const int pooledW,
+    const int sizeX, const int sizeY,
+    const int strideH, const int strideW,
+    int paddingH, int paddingW,
+    real scaleA, real scaleB,
+    real* backGrad) {}
 
 inline void hl_CMRNorm_forward(
     size_t frameCnt, const real* in, real* scale, real* out,
