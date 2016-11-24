@@ -18,9 +18,9 @@
 
     cmd/index.rst
 
-* `Use Case <../../doc/ui/cmd_argument/use_case.html>`_
-* `Argument Outline <../../doc/ui/cmd_argument/argument_outline.html>`_
-* `Detail Description <../../doc/ui/cmd_argument/detail_introduction.html>`_
+* `参数分类 <../../doc/ui/cmd_argument/argument_outline.html>`_
+* `参数描述 <../../doc/ui/cmd_argument/detail_introduction.html>`_
+* `参数用例 <../../doc/ui/cmd_argument/use_case.html>`_
 
 
 预测
