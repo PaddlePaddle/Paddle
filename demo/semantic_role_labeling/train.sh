@@ -16,12 +16,18 @@
 set -e
 paddle train \
   --config=./db_lstm.py \
+  --use_gpu=0 \
+  --log_period=5000 \
+  --trainer_count=1 \
+  --show_parameter_stats_period=5000 \
+  --saving_period=1 \
   --save_dir=./output \
-  --trainer_count=4 \
-  --log_period=10 \
-  --num_passes=500 \
-  --use_gpu=false \
-  --show_parameter_stats_period=10 \
-  --test_all_data_in_one_period=1 \
+  --local=1 \
+  --num_passes=10000 \
+  --test_period=0 \
+  --average_test_period=10000000 \
+  --init_model_path=./data \
+  --load_missing_parameter_strategy=rand \
+  --dot_period=100  \
 2>&1 | tee 'train.log'
 
