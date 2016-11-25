@@ -18,14 +18,13 @@ set -e
 function get_best_pass() {
   cat $1  | grep -Pzo 'Test .*\n.*pass-.*' | \
   sed  -r 'N;s/Test.* cost=([0-9]+\.[0-9]+).*\n.*pass-([0-9]+)/\1 \2/g' | \
-  sort | head -n 1
+  sort -n | head -n 1
 }   
 
 log=train.log
 LOG=`get_best_pass $log`
 LOG=(${LOG})
 best_model_path="output/pass-${LOG[1]}"
-
 
 config_file=db_lstm.py
 dict_file=./data/src.dict
