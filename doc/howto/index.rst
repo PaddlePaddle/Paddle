@@ -7,5 +7,6 @@ How to
   cmd_argument/index.md
   cluster/cluster_train.md
   algorithm/index.rst
+  optimization/index.rst
   dev/index.rst
   contribute_to_paddle.md
