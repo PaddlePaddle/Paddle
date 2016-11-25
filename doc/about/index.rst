@@ -1,5 +1,9 @@
+About
+=======
+
+
 Credits
-========
+--------
 
 PaddlPaddle is an easy-to-use, efficient, flexible and scalable deep learning platform,
 which is originally developed by Baidu scientists and engineers for the purpose of applying deep learning to many products at Baidu.
