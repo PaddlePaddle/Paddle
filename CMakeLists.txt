@@ -12,11 +12,11 @@ include(package)
 find_package(SWIG 2.0)
 find_package(CUDA QUIET)
 find_package(Protobuf REQUIRED)
-# Set up the versions we know about, in the order we will search.
-# Always add the user supplied additional versions to the front.
+# Set up the version of python, which always be added to the front.
+# Required for old versions of cmake, for instance, cmake 2.8
 set(Python_ADDITIONAL_VERSIONS 2.7)
-find_package(PythonInterp 2.7 REQUIRED)
-find_package(PythonLibs 2.7 REQUIRED)
+find_package(PythonInterp REQUIRED)
+find_package(PythonLibs REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(NumPy REQUIRED)
 find_package(Threads REQUIRED)
