@@ -1,4 +1,4 @@
-# Examples and demos
+# Tutorials
 There are serveral examples and demos here.
 
 ## Image

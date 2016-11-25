@@ -4,7 +4,9 @@ PaddlePaddle Documentation
 ..  toctree::
   :maxdepth: 1
 
-  introduction/index.md
-  user_guide.rst
-  dev/index.rst
-  algorithm/index.rst
+  introduction/index.rst
+  tutorials/index.md
+  howto/index.rst
+  api/index.rst
+  about/index.rst 
+ 

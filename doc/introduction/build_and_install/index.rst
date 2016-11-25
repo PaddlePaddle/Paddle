@@ -8,8 +8,6 @@ Install PaddlePaddle
     :maxdepth: 1
     :glob:
 
-    install_*
-    internal/install_from_jumbo.md
     docker_install.rst
     ubuntu_install.rst
 
@@ -25,4 +23,3 @@ Build from Source
     :glob:
 
     build_from_source.md
-    contribute_to_paddle.md

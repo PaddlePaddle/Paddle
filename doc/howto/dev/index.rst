@@ -2,8 +2,8 @@ Development Guide
 =================
 
 ..  toctree::
-  :maxdepth: 1
+  :maxdepth: 2
 
   layer.md
   new_layer/new_layer.rst
-  ../source/index.md
+  source/index.rst

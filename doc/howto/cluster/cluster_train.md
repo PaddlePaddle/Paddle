@@ -9,7 +9,7 @@ In this article, we explain how to run distributed Paddle training jobs on clust
 1. Aforementioned scripts use a Python library [fabric](http://www.fabfile.org/) to run SSH commands.  We can use `pip` to install fabric:
 
    ```bash
-pip install fabric
+   pip install fabric
    ```
 
 1. We need to install PaddlePaddle on all nodes in the cluster.  To enable GPUs, we need to install CUDA in `/usr/local/cuda`; otherwise Paddle would report errors at runtime.
