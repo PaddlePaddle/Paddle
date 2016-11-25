@@ -8,8 +8,8 @@
 ..  toctree::
     :maxdepth: 1
 
-    data_provider/index.rst
-
+    data_provider/dataprovider.rst
+    data_provider/pydataprovider2.rst
 
 命令行参数
 ==========
@@ -22,9 +22,8 @@
 * `参数描述 <../../doc/ui/cmd_argument/detail_introduction.html>`_
 * `参数用例 <../../doc/ui/cmd_argument/use_case.html>`_
 
-
 预测
-====
+=======
 
 ..  toctree::
 
