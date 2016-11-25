@@ -1,4 +1,4 @@
-# Quick Start Tutorial
+# Quick Start
 
 This tutorial will teach the basics of deep learning (DL), including how to implement many different models in PaddlePaddle. You will learn how to:
   - Prepare data into the standardized format that PaddlePaddle accepts.
@@ -477,7 +477,7 @@ The scripts of data downloading, network configurations, and training scrips are
 <td class="left">Word embedding</td>
 <td class="left"> 15MB </td>
 <td class="left"> 8.484%</td>
-<td class="left">trainer_config.bow.py</td>
+<td class="left">trainer_config.emb.py</td>
 </tr>
 
 <tr>
