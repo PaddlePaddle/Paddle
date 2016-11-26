@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
 project(paddle CXX C)
-set(PADDLE_MAJOR_VERSION 0)
-set(PADDLE_MINOR_VERSION 9)
-set(PADDLE_PATCH_VERSION 0a0)
-set(PADDLE_VERSION ${PADDLE_MAJOR_VERSION}.${PADDLE_MINOR_VERSION}.${PADDLE_PATCH_VERSION})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 set(PROJ_ROOT ${CMAKE_SOURCE_DIR})
@@ -64,31 +60,31 @@ include(check_packages)
 include(swig)
 include(coveralls)
 
-# add PaddlePaddle version
-if(DEFINED ENV{PADDLE_VERSION})
-    add_definitions(-DPADDLE_VERSION=\"$ENV{PADDLE_VERSION}\")
+# Set PaddlePaddle version to Git tag name or Git commit ID.
+find_package(Git REQUIRED)
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} describe --tags --exact-match --abbrev=0
+  WORKING_DIRECTORY ${PROJ_ROOT}
+  OUTPUT_VARIABLE GIT_TAG_NAME
+  RESULT_VARIABLE GIT_RESULT
+  ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+if(NOT ${GIT_RESULT})
+  set(PADDLE_VERSION ${GIT_TAG_NAME})
 else()
-    if(EXISTS ${PROJ_ROOT}/.svn/)
-        find_package(Subversion REQUIRED)
-        if(SUBVERSION_FOUND)
-            Subversion_WC_INFO(${PROJ_ROOT} Project)
-            add_definitions(-DPADDLE_VERSION=${Project_WC_REVISION})
-        endif()
-    elseif(EXISTS ${PROJ_ROOT}/.git/)
-        find_package(Git REQUIRED)
-        execute_process(
-            COMMAND ${GIT_EXECUTABLE} log -1 --format=%H
-            WORKING_DIRECTORY ${PROJ_ROOT}
-            OUTPUT_VARIABLE GIT_SHA1
-            RESULT_VARIABLE GIT_RESULT
-            ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-        if(NOT ${GIT_RESULT})
-            add_definitions(-DPADDLE_VERSION=\"${GIT_SHA1}\")
-        else()
-            message(WARNING "Cannot add paddle version from git tag")
-        endif()
-    endif()
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} log -1 --format=%H
+    WORKING_DIRECTORY ${PROJ_ROOT}
+    OUTPUT_VARIABLE GIT_SHA1
+    RESULT_VARIABLE GIT_RESULT
+    ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(NOT ${GIT_RESULT})
+    set(PADDLE_VERSION ${GIT_SHA1})
+  else()
+    set(PADDLE_VERSION "unknown")
+    message(WARNING "Cannot add paddle version from git tag")
+  endif()
 endif()
+add_definitions(-DPADDLE_VERSION=\"${PADDLE_VERSION}\")
 
 
 if(NOT WITH_GPU)
