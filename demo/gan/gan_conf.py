@@ -24,6 +24,9 @@ is_discriminator_training = mode == "discriminator_training"
 is_generator = mode == "generator"
 is_discriminator = mode == "discriminator"
 
+# The network structure below follows the ref https://arxiv.org/abs/1406.2661
+# Here we used two hidden layers and batch_norm
+
 print('mode=%s' % mode)
 # the dim of the noise (z) as the input of the generator network
 noise_dim = 10 

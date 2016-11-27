@@ -1,4 +1,7 @@
 output/
+uniform_params/
+cifar_params/
+mnist_params/
 *.png
 .pydevproject
 .project
