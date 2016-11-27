@@ -40,60 +40,61 @@ MatrixPtr doOneConvTest(size_t imgSize, size_t output_x, size_t stride,
                     size_t padding, size_t filter_size, size_t channel,
                     size_t numfilters, MatrixPtr& inputData,
                     real* param, bool useGpu) {
-    TestConfig config;
-    config.biasSize = numfilters;
-    if (useGpu) {
-      config.layerConfig.set_type("cudnn_conv");
-    } else {
-      config.layerConfig.set_type("exconv");
-    }
-    config.layerConfig.set_num_filters(numfilters);
-    config.layerConfig.set_partial_sum(1);
-    config.layerConfig.set_shared_biases(true);
+  TestConfig config;
+  config.biasSize = numfilters;
+  if (useGpu) {
+    config.layerConfig.set_type("cudnn_conv");
+  } else {
+    config.layerConfig.set_type("exconv");
+  }
+  config.layerConfig.set_num_filters(numfilters);
+  config.layerConfig.set_partial_sum(1);
+  config.layerConfig.set_shared_biases(true);
 
-    config.inputDefs.push_back({INPUT_DATA, "layer_0",
-                                imgSize * imgSize * channel,
-        channel* filter_size * filter_size * config.layerConfig.num_filters()});
-    LayerInputConfig* input = config.layerConfig.add_inputs();
-    ConvConfig* conv = input->mutable_conv_conf();
-    conv->set_filter_size(filter_size);
-    conv->set_filter_size_y(filter_size);
-    conv->set_channels(channel);
-    conv->set_padding(padding);
-    conv->set_padding_y(padding);
-    conv->set_stride(stride);
-    conv->set_stride_y(stride);
-    conv->set_groups(1);
-    conv->set_filter_channels(channel);
-    conv->set_img_size(imgSize);
-    conv->set_output_x(output_x);
+  config.inputDefs.push_back({INPUT_DATA, "layer_0",
+                              imgSize * imgSize * channel,
+      channel* filter_size * filter_size * config.layerConfig.num_filters()});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ConvConfig* conv = input->mutable_conv_conf();
+  conv->set_filter_size(filter_size);
+  conv->set_filter_size_y(filter_size);
+  conv->set_channels(channel);
+  conv->set_padding(padding);
+  conv->set_padding_y(padding);
+  conv->set_stride(stride);
+  conv->set_stride_y(stride);
+  conv->set_groups(1);
+  conv->set_filter_channels(channel);
+  conv->set_img_size(imgSize);
+  conv->set_output_x(output_x);
 
-    config.layerConfig.set_size(conv->output_x() * conv->output_x() *
-                                config.layerConfig.num_filters());
-    config.layerConfig.set_name("conv");
+  config.layerConfig.set_size(conv->output_x() * conv->output_x() *
+                              config.layerConfig.num_filters());
+  config.layerConfig.set_name("conv");
 
-    std::vector<DataLayerPtr> dataLayers;
-    LayerMap layerMap;
-    vector<Argument> datas;
-    initDataLayer(config, &dataLayers, &datas, &layerMap, "conv",
-                  1, false, useGpu);
-    dataLayers[0]->getOutputValue()->zeroMem();
-    dataLayers[0]->getOutputValue()->copyFrom(*inputData);
+  std::vector<DataLayerPtr> dataLayers;
+  LayerMap layerMap;
+  vector<Argument> datas;
+  initDataLayer(config, &dataLayers, &datas, &layerMap, "conv",
+                1, false, useGpu);
+  dataLayers[0]->getOutputValue()->zeroMem();
+  dataLayers[0]->getOutputValue()->copyFrom(*inputData);
 
-    // test layer initialize
-    std::vector<ParameterPtr> parameters;
-    LayerPtr convLayer;
-    initTestLayer(config, &layerMap, &parameters, &convLayer);
-    convLayer->getBiasParameter()->zeroMem();
-    convLayer->getParameters()[0]->zeroMem();
-    convLayer->getParameters()[0]->getBuf(PARAMETER_VALUE)->copyFrom(param,
-        channel* filter_size * filter_size * config.layerConfig.num_filters());
-    convLayer->forward(PASS_GC);
+  // test layer initialize
+  std::vector<ParameterPtr> parameters;
+  LayerPtr convLayer;
+  initTestLayer(config, &layerMap, &parameters, &convLayer);
+  convLayer->getBiasParameter()->zeroMem();
+  convLayer->getParameters()[0]->zeroMem();
+  convLayer->getParameters()[0]->getBuf(PARAMETER_VALUE)->copyFrom(param,
+      channel* filter_size * filter_size * config.layerConfig.num_filters());
+  convLayer->forward(PASS_GC);
 
-    return convLayer->getOutputValue();
+  return convLayer->getOutputValue();
 }
 
 TEST(Layer, convParaUnified) {
+  #ifndef PADDLE_ONLY_CPU
     MatrixPtr input, resultCpu, resultGpu;
     input = Matrix::create(1, 4 * 4, false, false);
     float inputData[] = {1, 2, 3, 4,
@@ -155,6 +156,7 @@ TEST(Layer, convParaUnified) {
                        /*numfilters*/ 2,
                        input, param2, true);
     checkMatrixEqual(resultCpu, resultGpu);
+  #endif
 }
 
 int main(int argc, char** argv) {
