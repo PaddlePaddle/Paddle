@@ -20,22 +20,28 @@ For each version of PaddlePaddle, we release 4 variants of Docker images:
 |    gpu-noavx    |   no        |  yes  |
 +-----------------+-------------+-------+
 
-The following command line detects if your CPU supports :code:`AVX`.
+We run the following command on Linux to check if the CPU supports :code:`AVX`.
 
-..  code-block:: bash
+.. code-block:: bash
 
-    if cat /proc/cpuinfo | grep -q avx ; then echo "Support AVX"; else echo "Not support AVX"; fi
+   if cat /proc/cpuinfo | grep -i avx; then echo Yes; else echo No; fi
+
+On Mac OS X, we need to run
+
+.. code-block:: bash
+
+   sysctl -a | grep machdep.cpu.leaf7_features
 
 
 Once we determine the proper variant, we can cope with the Docker image tag name by appending the version number.  For example, the following command runs the AVX-enabled image of the most recent version:
 
-..  code-block:: bash
+.. code-block:: bash
 
     docker run -it --rm paddledev/paddle:cpu-latest /bin/bash
 
 To run a GPU-enabled image, you need to install CUDA and let Docker knows about it:
 
-..  code-block:: bash
+.. code-block:: bash
 
     export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
     export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
@@ -43,13 +49,13 @@ To run a GPU-enabled image, you need to install CUDA and let Docker knows about 
 
 The default entry point of all our Docker images starts the OpenSSH server.  To run PaddlePaddle and to expose OpenSSH port to 2202 on the host computer:
 
-..  code-block:: bash
+.. code-block:: bash
 
     docker run -d -p 2202:22 paddledev/paddle:cpu-latest
 
 Then we can login to the container using username :code:`root` and password :code:`root`:
 
-..  code-block:: bash
+.. code-block:: bash
 
     ssh -p 2202 root@localhost
 

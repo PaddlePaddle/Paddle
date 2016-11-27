@@ -4,7 +4,8 @@ MAINTAINER PaddlePaddle Dev Team <paddle-dev@baidu.com>
 # It is good to run apt-get install with Dockerfile RUN directive,
 # because if the following invocation to /root/build.sh fails, `docker
 # build` wouldn't have to re-install packages after we fix
-# /root/build.sh.
+# /root/build.sh.  For more about Docker build cache, please refer to
+# https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/#/build-cache.
 RUN apt-get update && \
     apt-get install -y cmake libprotobuf-dev protobuf-compiler git \
     libgoogle-glog-dev libgflags-dev libatlas-dev libatlas3-base g++ m4 python-pip \
