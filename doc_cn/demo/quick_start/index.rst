@@ -48,6 +48,11 @@ PaddlePaddle快速入门教程
     ./data/get_data.sh
     ./preprocess.sh
 
+数据预处理完成之后，通过配置类似于 ``dataprovider_*.py`` 的数据读取脚本和类似于 ``trainer_config.*.py`` 的训练模型脚本，PaddlePaddle将以设置参数的方式来设置
+相应的数据读取脚本和训练模型脚本。接下来，我们将对这两个步骤给出了详细的解释，你也可以先跳过本文的解释环节，直接进入训练环节, 使用 ``sh train.sh`` 开始训练模型，
+查看`train.sh`内容，通过 **自底向上法** (bottom-up approach)来帮助你理解PaddlePaddle的内部运行机制。
+
+
 向系统传送数据
 ==============
 
