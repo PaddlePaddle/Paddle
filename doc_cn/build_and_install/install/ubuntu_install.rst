@@ -62,5 +62,5 @@ libcudart.so/libcudnn.so找不到
 
 	0831 12:36:04.151525  1085 hl_dso_loader.cc:70] Check failed: nullptr != *dso_handle For Gpu version of PaddlePaddle, it couldn't find CUDA library: libcudart.so Please make sure you already specify its path.Note: for training data on Cpu using Gpu version of PaddlePaddle,you must specify libcudart.so via LD_LIBRARY_PATH.
 
-原因是未设置cuda运行时环境变量，请参考**如何设置CUDA环境运行GPU版本** 。
+原因是未设置cuda运行时环境变量，请参考 **如何设置CUDA环境运行GPU版本** 。
 
