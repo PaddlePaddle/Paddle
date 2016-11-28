@@ -37,6 +37,7 @@ public:
         }
       }
     }
+
     return true;
   }
 
@@ -61,7 +62,7 @@ template <>
 class CopyToCpu<GpuMatrix> {
 public:
   explicit CopyToCpu(const GpuMatrix& arg)
-    : arg_(arg.getHeight(), arg.getWidth()) {
+      : arg_(arg.getHeight(), arg.getWidth()) {
     arg_.copyFrom(arg);
   }
   CpuMatrix& copiedArg() { return arg_; }
@@ -70,7 +71,7 @@ private:
   CpuMatrix arg_;
 };
 
-template<typename AssertEq>
+template <typename AssertEq>
 void TensorCheck(AssertEq compare,
                  const CpuMatrix& matrix1,
                  const CpuMatrix& matrix2) {
@@ -94,15 +95,19 @@ void TensorCheck(AssertEq compare,
   EXPECT_EQ(count, 0) << "There are " << count << " different element.";
 }
 
-template<typename AssertEq, typename Tensor1, typename Tensor2>
+template <typename AssertEq, typename Tensor1, typename Tensor2>
 extern void TensorCheck(AssertEq compare,
                         const Tensor1& tensor1,
                         const Tensor2& tensor2) {
-  TensorCheck(
-    compare,
-    CopyToCpu<Tensor1>(tensor1).copiedArg(),
-    CopyToCpu<Tensor2>(tensor2).copiedArg());
+  TensorCheck(compare,
+              CopyToCpu<Tensor1>(tensor1).copiedArg(),
+              CopyToCpu<Tensor2>(tensor2).copiedArg());
+}
+
+template <typename AssertEq>
+void TensorCheck(AssertEq compare, real args1, real args2) {
+  EXPECT_EQ(compare(args1, args2), true) << "[Test error] args1 = " << args1
+                                         << ", args2 = " << args2;
 }
 
 }  // namespace autotest
-

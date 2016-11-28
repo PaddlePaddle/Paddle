@@ -693,24 +693,6 @@ TEST(Matrix, unary) {
   }
 }
 
-void testMatrixSoftmax(int height, int width) {
-  MatrixPtr cpuInput = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr cpuOutput = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuInput = std::make_shared<GpuMatrix>(height, width);
-  MatrixPtr gpuOutput = std::make_shared<GpuMatrix>(height, width);
-
-  cpuInput->randomizeUniform();
-  gpuInput->copyFrom(*cpuInput);
-  cpuOutput->zero();
-  gpuOutput->zero();
-  cpuInput->softmax(*cpuOutput);
-  gpuInput->softmax(*gpuOutput);
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, width);
-  outputCheck->copyFrom(*gpuOutput);
-  MatrixCheckErr(*cpuOutput, *outputCheck);
-}
-
 void testSequenceSoftmax(int batchSize) {
   // forward
   int inputDim = 1;
@@ -793,7 +775,6 @@ TEST(Matrix, softmax) {
     for (auto width : {1, 32, 100, 512, 1000}) {
       VLOG(3) << " height=" << height << " width=" << width;
 
-      testMatrixSoftmax(height, width);
       testMatrixSoftmaxBp(height, width);
       testMatrixSoftmaxThreshold(height, width);
     }
