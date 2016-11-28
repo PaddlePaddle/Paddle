@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Layer.h"
 #include "LstmCompute.h"
 #include "paddle/utils/Stat.h"
@@ -49,24 +48,36 @@ bool LstmStepLayer::init(const LayerMap& layerMap,
   if (!Layer::init(layerMap, parameterMap)) return false;
   CHECK_EQ(2U, inputLayers_.size());
 
-  checkIg_ =
-      Matrix::create(nullptr,
-                     /* height= */ 1, getSize(), /* trans= */ false, useGpu_);
-  checkFg_ =
-      Matrix::create(nullptr,
-                     /* height= */ 1, getSize(), /* trans= */ false, useGpu_);
-  checkOg_ =
-      Matrix::create(nullptr,
-                     /* height= */ 1, getSize(), /* trans= */ false, useGpu_);
-  checkIgGrad_ =
-      Matrix::create(nullptr,
-                     /* height= */ 1, getSize(), /* trans= */ false, useGpu_);
-  checkFgGrad_ =
-      Matrix::create(nullptr,
-                     /* height= */ 1, getSize(), /* trans= */ false, useGpu_);
-  checkOgGrad_ =
-      Matrix::create(nullptr,
-                     /* height= */ 1, getSize(), /* trans= */ false, useGpu_);
+  checkIg_ = Matrix::create(nullptr,
+                            /* height= */ 1,
+                            getSize(),
+                            /* trans= */ false,
+                            useGpu_);
+  checkFg_ = Matrix::create(nullptr,
+                            /* height= */ 1,
+                            getSize(),
+                            /* trans= */ false,
+                            useGpu_);
+  checkOg_ = Matrix::create(nullptr,
+                            /* height= */ 1,
+                            getSize(),
+                            /* trans= */ false,
+                            useGpu_);
+  checkIgGrad_ = Matrix::create(nullptr,
+                                /* height= */ 1,
+                                getSize(),
+                                /* trans= */ false,
+                                useGpu_);
+  checkFgGrad_ = Matrix::create(nullptr,
+                                /* height= */ 1,
+                                getSize(),
+                                /* trans= */ false,
+                                useGpu_);
+  checkOgGrad_ = Matrix::create(nullptr,
+                                /* height= */ 1,
+                                getSize(),
+                                /* trans= */ false,
+                                useGpu_);
 
   if (biasParameter_.get() != NULL) {
     CHECK_EQ(getSize() * 3, biasParameter_->getSize());
@@ -101,12 +112,21 @@ void LstmStepLayer::forward(PassType passType) {
   CHECK_EQ(getSize(), prevState.value->getWidth());
   int batchSize = input.getBatchSize();
   reserveOutput(batchSize, getSize());
-  resetSpecifyOutput(state_, batchSize, getSize(), /*  isValueClean */ false,
+  resetSpecifyOutput(state_,
+                     batchSize,
+                     getSize(),
+                     /*  isValueClean */ false,
                      /* isGradClean */ true);
-  resetSpecifyOutput(gate_, batchSize, getSize() * 4,
-                     /* isValueClean */ false, /* isGradClean */ false);
-  resetSpecifyOutput(stateActive_, batchSize, getSize(),
-                     /*  isValueClean */ false, /* isGradClean */ false);
+  resetSpecifyOutput(gate_,
+                     batchSize,
+                     getSize() * 4,
+                     /* isValueClean */ false,
+                     /* isGradClean */ false);
+  resetSpecifyOutput(stateActive_,
+                     batchSize,
+                     getSize(),
+                     /*  isValueClean */ false,
+                     /* isGradClean */ false);
   gate_.value->assign(*input.value);
 
   hl_lstm_value lstmValue;
@@ -156,11 +176,9 @@ void LstmStepLayer::backward(const UpdateCallback& callback) {
   lstmGrad.checkOgGrad = checkOgGrad_->getData();
 
   if (useGpu_) {
-    LstmCompute::backwardBatch<1>(lstmValue, lstmGrad, getSize(),
-                                  batchSize);
+    LstmCompute::backwardBatch<1>(lstmValue, lstmGrad, getSize(), batchSize);
   } else {
-    LstmCompute::backwardBatch<0>(lstmValue, lstmGrad, getSize(),
-                                  batchSize);
+    LstmCompute::backwardBatch<0>(lstmValue, lstmGrad, getSize(), batchSize);
   }
 
   if (input.grad) {

@@ -30,11 +30,13 @@ protected:
   std::string poolType_;
 
 public:
-  PoolProjection(const ProjectionConfig& config, ParameterPtr parameter,
+  PoolProjection(const ProjectionConfig& config,
+                 ParameterPtr parameter,
                  bool useGpu);
 
   static PoolProjection* create(const ProjectionConfig& config,
-                                ParameterPtr parameter, bool useGpu);
+                                ParameterPtr parameter,
+                                bool useGpu);
 
   const std::string& getPoolType() const { return poolType_; }
 
@@ -43,7 +45,8 @@ public:
 
 class MaxPoolProjection : public PoolProjection {
 public:
-  MaxPoolProjection(const ProjectionConfig& config, ParameterPtr parameter,
+  MaxPoolProjection(const ProjectionConfig& config,
+                    ParameterPtr parameter,
                     bool useGpu)
       : PoolProjection(config, parameter, useGpu) {}
 
@@ -53,7 +56,8 @@ public:
 
 class AvgPoolProjection : public PoolProjection {
 public:
-  AvgPoolProjection(const ProjectionConfig& config, ParameterPtr parameter,
+  AvgPoolProjection(const ProjectionConfig& config,
+                    ParameterPtr parameter,
                     bool useGpu)
       : PoolProjection(config, parameter, useGpu) {}
 

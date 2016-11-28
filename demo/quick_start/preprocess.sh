@@ -23,7 +23,7 @@ set -e
 export LC_ALL=C
 UNAME_STR=`uname`
 
-if [[ ${UNAME_STR} == 'Linux' ]]; then
+if [ ${UNAME_STR} == 'Linux' ]; then
   SHUF_PROG='shuf'
 else
   SHUF_PROG='gshuf'

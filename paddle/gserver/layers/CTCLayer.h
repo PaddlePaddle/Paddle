@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Layer.h"
@@ -28,7 +27,8 @@ public:
   void forwardImp(const Argument& softmaxSeqs, const Argument& labelSeqs);
   virtual void backward(const UpdateCallback& callback);
   void backwardImp(const UpdateCallback& callback,
-                   const Argument& softmaxSeqs, const Argument& labelSeqs);
+                   const Argument& softmaxSeqs,
+                   const Argument& labelSeqs);
 
 protected:
   size_t numClasses_;

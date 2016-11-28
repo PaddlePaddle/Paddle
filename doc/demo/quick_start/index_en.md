@@ -477,7 +477,7 @@ The scripts of data downloading, network configurations, and training scrips are
 <td class="left">Word embedding</td>
 <td class="left"> 15MB </td>
 <td class="left"> 8.484%</td>
-<td class="left">trainer_config.bow.py</td>
+<td class="left">trainer_config.emb.py</td>
 </tr>
 
 <tr>

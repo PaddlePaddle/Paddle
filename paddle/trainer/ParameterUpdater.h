@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/utils/Thread.h"
@@ -69,7 +68,8 @@ public:
     ParameterUpdater::init(parameters);
     optimizer_->init(parameters_.size(), nullptr);
     // check no L1 decay in parameter configs
-    CHECK(std::find_if(parameters.begin(), parameters.end(),
+    CHECK(std::find_if(parameters.begin(),
+                       parameters.end(),
                        [](const ParameterPtr& para) {
                          return para->getConfig().decay_rate_l1() > 0.0f;
                        }) == parameters.end())
@@ -146,7 +146,6 @@ protected:
     para->getBuf(PARAMETER_GRADIENT)->zeroMem();
   }
 
-
   std::unique_ptr<ParameterOptimizer> optimizer_;
 
   /**
@@ -163,10 +162,10 @@ class SgdCpuUpdater : public SgdLocalUpdater, public Deprecated {
 public:
   explicit SgdCpuUpdater(const OptimizationConfig& optConfig)
       : SgdLocalUpdater(optConfig),
-        Deprecated("SgdCpuUpdater is used only in recursive neural network, "
-                   "and recursive neural network is deprecated in paddle. "
-                   "Use it all by your own.")
-  {}
+        Deprecated(
+            "SgdCpuUpdater is used only in recursive neural network, "
+            "and recursive neural network is deprecated in paddle. "
+            "Use it all by your own.") {}
 
   /**
    * @brief update all parameter on finish batch.

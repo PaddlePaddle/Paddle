@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "LstmLayer.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/BaseMatrix.h"
@@ -106,7 +105,8 @@ public:
 
   bool end() { return end_; }
 
-  bool getPrePos(const std::vector<int>& delays, int idx,
+  bool getPrePos(const std::vector<int>& delays,
+                 int idx,
                  std::vector<int>& prePos) {
     bool isAvial = true;
     prePos.clear();
@@ -129,7 +129,8 @@ public:
     return isAvial;
   }
 
-  bool getNextPos(const std::vector<int>& delays, int idx,
+  bool getNextPos(const std::vector<int>& delays,
+                  int idx,
                   std::vector<int>& nextPos) {
     bool isAvial = true;
     nextPos.clear();
@@ -232,24 +233,46 @@ bool MDLstmLayer::init(const LayerMap& layerMap,
       new Weight(numBlocks_, numBlocks_ * (3 + numDims_), parameters_[0]));
   if (biasParameter_.get() != NULL) {
     bias_.reset(new Weight(1, numBlocks_ * (5 + 2 * numDims_), biasParameter_));
-    localBias_ =
-        Matrix::create(nullptr, /* height= */ 1, numBlocks_ * (3 + numDims_),
-                       /* trans= */ false, useGpu_);
-    checkIg_ = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                              /* trans= */ false, useGpu_);
-    checkFg_ = Matrix::create(nullptr, /* height= */ numDims_, numBlocks_,
-                              /* trans= */ false, useGpu_);
-    checkOg_ = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                              /* trans= */ false, useGpu_);
-    localBiasGrad_ =
-        Matrix::create(nullptr, /* height= */ 1, numBlocks_ * (3 + numDims_),
-                       /* trans= */ false, useGpu_);
-    checkIgGrad_ = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                                  /* trans= */ false, useGpu_);
-    checkFgGrad_ = Matrix::create(nullptr, /* height= */ numDims_, numBlocks_,
-                                  /* trans= */ false, useGpu_);
-    checkOgGrad_ = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                                  /* trans= */ false, useGpu_);
+    localBias_ = Matrix::create(nullptr,
+                                /* height= */ 1,
+                                numBlocks_ * (3 + numDims_),
+                                /* trans= */ false,
+                                useGpu_);
+    checkIg_ = Matrix::create(nullptr,
+                              /* height= */ 1,
+                              numBlocks_,
+                              /* trans= */ false,
+                              useGpu_);
+    checkFg_ = Matrix::create(nullptr,
+                              /* height= */ numDims_,
+                              numBlocks_,
+                              /* trans= */ false,
+                              useGpu_);
+    checkOg_ = Matrix::create(nullptr,
+                              /* height= */ 1,
+                              numBlocks_,
+                              /* trans= */ false,
+                              useGpu_);
+    localBiasGrad_ = Matrix::create(nullptr,
+                                    /* height= */ 1,
+                                    numBlocks_ * (3 + numDims_),
+                                    /* trans= */ false,
+                                    useGpu_);
+    checkIgGrad_ = Matrix::create(nullptr,
+                                  /* height= */ 1,
+                                  numBlocks_,
+                                  /* trans= */ false,
+                                  useGpu_);
+    checkFgGrad_ = Matrix::create(nullptr,
+                                  /* height= */ numDims_,
+                                  numBlocks_,
+                                  /* trans= */ false,
+                                  useGpu_);
+    checkOgGrad_ = Matrix::create(nullptr,
+                                  /* height= */ 1,
+                                  numBlocks_,
+                                  /* trans= */ false,
+                                  useGpu_);
 
     localBias_->setData(bias_->getW()->getData());
     checkIg_->setData(bias_->getW()->getData() + numBlocks_ * (3 + numDims_));
@@ -315,49 +338,79 @@ void MDLstmLayer::forward(PassType passType) {
   frameOutput_.reserve(batchSize);
 
   Matrix::resizeOrCreate(gate_.value,
-                         /* height= */ batchSize, numBlocks_ * (3 + numDims_),
-                         /* trans= */ false, useGpu_);
+                         /* height= */ batchSize,
+                         numBlocks_ * (3 + numDims_),
+                         /* trans= */ false,
+                         useGpu_);
 
   for (int i = frameGate_.size(); i < batchSize; i++) {
     Argument arg;
-    arg.value =
-        Matrix::create(nullptr, /* height= */ 1, numBlocks_ * (3 + numDims_),
-                       /* trans= */ false, useGpu_);
-    arg.grad =
-        Matrix::create(nullptr, /* height= */ 1, numBlocks_ * (3 + numDims_),
-                       /* trans= */ false, useGpu_);
+    arg.value = Matrix::create(nullptr,
+                               /* height= */ 1,
+                               numBlocks_ * (3 + numDims_),
+                               /* trans= */ false,
+                               useGpu_);
+    arg.grad = Matrix::create(nullptr,
+                              /* height= */ 1,
+                              numBlocks_ * (3 + numDims_),
+                              /* trans= */ false,
+                              useGpu_);
     frameGate_.push_back(arg);
   }
   for (int i = frameInputGate_.size(); i < batchSize; i++) {
     Argument arg;
-    arg.value = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                               /* trans= */ false, useGpu_);
-    arg.grad = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                              /* trans= */ false, useGpu_);
+    arg.value = Matrix::create(nullptr,
+                               /* height= */ 1,
+                               numBlocks_,
+                               /* trans= */ false,
+                               useGpu_);
+    arg.grad = Matrix::create(nullptr,
+                              /* height= */ 1,
+                              numBlocks_,
+                              /* trans= */ false,
+                              useGpu_);
     frameInputGate_.push_back(arg);
   }
   for (int i = frameForgetGate_.size(); i < batchSize; i++) {
     Argument arg;
-    arg.value = Matrix::create(nullptr, /* height= */ numDims_, numBlocks_,
-                               /* trans= */ false, useGpu_);
-    arg.grad = Matrix::create(nullptr, /* height= */ numDims_, numBlocks_,
-                              /* trans= */ false, useGpu_);
+    arg.value = Matrix::create(nullptr,
+                               /* height= */ numDims_,
+                               numBlocks_,
+                               /* trans= */ false,
+                               useGpu_);
+    arg.grad = Matrix::create(nullptr,
+                              /* height= */ numDims_,
+                              numBlocks_,
+                              /* trans= */ false,
+                              useGpu_);
     frameForgetGate_.push_back(arg);
   }
   for (int i = frameOutputGate_.size(); i < batchSize; i++) {
     Argument arg;
-    arg.value = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                               /* trans= */ false, useGpu_);
-    arg.grad = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                              /* trans= */ false, useGpu_);
+    arg.value = Matrix::create(nullptr,
+                               /* height= */ 1,
+                               numBlocks_,
+                               /* trans= */ false,
+                               useGpu_);
+    arg.grad = Matrix::create(nullptr,
+                              /* height= */ 1,
+                              numBlocks_,
+                              /* trans= */ false,
+                              useGpu_);
     frameOutputGate_.push_back(arg);
   }
   for (int i = frameInputNode_.size(); i < batchSize; i++) {
     Argument arg;
-    arg.value = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                               /* trans= */ false, useGpu_);
-    arg.grad = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                              /* trans= */ false, useGpu_);
+    arg.value = Matrix::create(nullptr,
+                               /* height= */ 1,
+                               numBlocks_,
+                               /* trans= */ false,
+                               useGpu_);
+    arg.grad = Matrix::create(nullptr,
+                              /* height= */ 1,
+                              numBlocks_,
+                              /* trans= */ false,
+                              useGpu_);
     frameInputNode_.push_back(arg);
   }
   for (int i = frameState_.size(); i < batchSize; i++) {
@@ -374,10 +427,16 @@ void MDLstmLayer::forward(PassType passType) {
   }
   for (int i = frameOutput_.size(); i < batchSize; i++) {
     Argument arg;
-    arg.value = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                               /* trans= */ false, useGpu_);
-    arg.grad = Matrix::create(nullptr, /* height= */ 1, numBlocks_,
-                              /* trans= */ false, useGpu_);
+    arg.value = Matrix::create(nullptr,
+                               /* height= */ 1,
+                               numBlocks_,
+                               /* trans= */ false,
+                               useGpu_);
+    arg.grad = Matrix::create(nullptr,
+                              /* height= */ 1,
+                              numBlocks_,
+                              /* trans= */ false,
+                              useGpu_);
     frameOutput_.push_back(arg);
   }
 
@@ -432,13 +491,19 @@ void MDLstmLayer::forwardGate2OutputSequence(int start,
           *frameState_[start + preOffsetV[i]].value, *checkIg_, 1.0, 1.0);
 
       MatrixPtr fgGateOneDim = Matrix::create(
-          frameForgetGate_[idxCurr].value->getData() + i * numBlocks_, 1,
-          numBlocks_, false, useGpu_);
+          frameForgetGate_[idxCurr].value->getData() + i * numBlocks_,
+          1,
+          numBlocks_,
+          false,
+          useGpu_);
       MatrixPtr checkFgOneDim =
-          Matrix::create(checkFg_->getData() + i * numBlocks_, 1.0, numBlocks_,
-                         false, useGpu_);
-      fgGateOneDim->addDotMul(*frameState_[start + preOffsetV[i]].value,
-                              *checkFgOneDim, 1.0, 1.0);
+          Matrix::create(checkFg_->getData() + i * numBlocks_,
+                         1.0,
+                         numBlocks_,
+                         false,
+                         useGpu_);
+      fgGateOneDim->addDotMul(
+          *frameState_[start + preOffsetV[i]].value, *checkFgOneDim, 1.0, 1.0);
     }
   }
   activationGate_->forward(frameInputGate_[idxCurr]);
@@ -449,18 +514,22 @@ void MDLstmLayer::forwardGate2OutputSequence(int start,
   for (int i = 0; i < numDims_; i++) {
     if (preOffsetV[i] >= 0) {
       MatrixPtr fgGateOneDim = Matrix::create(
-          frameForgetGate_[idxCurr].value->getData() + i * numBlocks_, 1,
-          numBlocks_, false, useGpu_);
+          frameForgetGate_[idxCurr].value->getData() + i * numBlocks_,
+          1,
+          numBlocks_,
+          false,
+          useGpu_);
       frameState_[idxCurr].value->addDotMul(
           *frameState_[start + preOffsetV[i]].value, *fgGateOneDim, 1.0, 1.0);
     }
   }
   frameState_[idxCurr].value->addDotMul(*frameInputNode_[idxCurr].value,
-                                        *frameInputGate_[idxCurr].value, 1.0,
+                                        *frameInputGate_[idxCurr].value,
+                                        1.0,
                                         1.0);
 
-  frameOutputGate_[idxCurr].value->addDotMul(*frameState_[idxCurr].value,
-                                             *checkOg_, 1.0, 1.0);
+  frameOutputGate_[idxCurr].value->addDotMul(
+      *frameState_[idxCurr].value, *checkOg_, 1.0, 1.0);
   activationGate_->forward(frameOutputGate_[idxCurr]);
 
   framePreOutput_[idxCurr].value->copyFrom(*(frameState_[idxCurr].value));
@@ -493,8 +562,10 @@ void MDLstmLayer::backward(const UpdateCallback& callback) {
   size_t numSequences = input.getNumSequences();
 
   Matrix::resizeOrCreate(gate_.grad,
-                         /* height= */ batchSize, numBlocks_ * (3 + numDims_),
-                         /* trans= */ false, useGpu_);
+                         /* height= */ batchSize,
+                         numBlocks_ * (3 + numDims_),
+                         /* trans= */ false,
+                         useGpu_);
 
   for (int i = 0; i < batchSize; i++) {
     if (frameState_[i].grad == NULL)
@@ -576,8 +647,8 @@ void MDLstmLayer::backwardGate2OutputSequence(int start,
                                          *framePreOutput_[idxCurr].value);
   activationGate_->backward(frameOutputGate_[idxCurr]);
 
-  frameState_[idxCurr].grad->addDotMul(*frameOutputGate_[idxCurr].grad,
-                                       *checkOg_, 1.0, 1.0);
+  frameState_[idxCurr].grad->addDotMul(
+      *frameOutputGate_[idxCurr].grad, *checkOg_, 1.0, 1.0);
   for (int i = 0; i < numDims_; i++) {
     if (nextOffsetV[i] >= 0) {
       frameState_[idxCurr].grad->addDotMul(
@@ -586,18 +657,26 @@ void MDLstmLayer::backwardGate2OutputSequence(int start,
       MatrixPtr fgGateOneDimGrad = Matrix::create(
           frameForgetGate_[start + nextOffsetV[i]].grad->getData() +
               i * numBlocks_,
-          1, numBlocks_, false, useGpu_);
+          1,
+          numBlocks_,
+          false,
+          useGpu_);
       MatrixPtr fgGateOneDimVal = Matrix::create(
           frameForgetGate_[start + nextOffsetV[i]].value->getData() +
               i * numBlocks_,
-          1, numBlocks_, false, useGpu_);
+          1,
+          numBlocks_,
+          false,
+          useGpu_);
       MatrixPtr checkFgOneDim = Matrix::create(
           checkFg_->getData() + i * numBlocks_, 1, numBlocks_, false, useGpu_);
 
-      frameState_[idxCurr].grad->addDotMul(*fgGateOneDimGrad, *checkFgOneDim,
-                                           1.0, 1.0);
       frameState_[idxCurr].grad->addDotMul(
-          *frameState_[start + nextOffsetV[i]].grad, *fgGateOneDimVal, 1.0,
+          *fgGateOneDimGrad, *checkFgOneDim, 1.0, 1.0);
+      frameState_[idxCurr].grad->addDotMul(
+          *frameState_[start + nextOffsetV[i]].grad,
+          *fgGateOneDimVal,
+          1.0,
           1.0);
     }
   }
@@ -611,11 +690,15 @@ void MDLstmLayer::backwardGate2OutputSequence(int start,
   for (int i = 0; i < numDims_; i++) {
     if (preOffsetV[i] >= 0) {
       MatrixPtr fgGateOneDimGrad = Matrix::create(
-          frameForgetGate_[idxCurr].grad->getData() + i * numBlocks_, 1,
-          numBlocks_, false, useGpu_);
+          frameForgetGate_[idxCurr].grad->getData() + i * numBlocks_,
+          1,
+          numBlocks_,
+          false,
+          useGpu_);
       fgGateOneDimGrad->addDotMul(*frameState_[idxCurr].grad,
                                   *frameState_[start + preOffsetV[i]].value,
-                                  1.0, 1.0);
+                                  1.0,
+                                  1.0);
     }
   }
 
@@ -627,22 +710,30 @@ void MDLstmLayer::backwardGate2OutputSequence(int start,
     for (int i = 0; i < numDims_; i++) {
       if (preOffsetV[i] >= 0) {
         checkIgGrad_->addDotMul(*frameInputGate_[idxCurr].grad,
-                                *frameState_[start + preOffsetV[i]].value, 1.0,
+                                *frameState_[start + preOffsetV[i]].value,
+                                1.0,
                                 1.0);
 
         MatrixPtr fgGateOneDimGrad = Matrix::create(
-            frameForgetGate_[idxCurr].grad->getData() + i * numBlocks_, 1,
-            numBlocks_, false, useGpu_);
+            frameForgetGate_[idxCurr].grad->getData() + i * numBlocks_,
+            1,
+            numBlocks_,
+            false,
+            useGpu_);
         MatrixPtr checkFgOneDimGrad =
-            Matrix::create(checkFgGrad_->getData() + i * numBlocks_, 1,
-                           numBlocks_, false, useGpu_);
+            Matrix::create(checkFgGrad_->getData() + i * numBlocks_,
+                           1,
+                           numBlocks_,
+                           false,
+                           useGpu_);
         checkFgOneDimGrad->addDotMul(*fgGateOneDimGrad,
                                      *frameState_[start + preOffsetV[i]].value,
-                                     1.0, 1.0);
+                                     1.0,
+                                     1.0);
       }
     }
-    checkOgGrad_->addDotMul(*frameOutputGate_[idxCurr].grad,
-                            *frameState_[idxCurr].value, 1.0, 1.0);
+    checkOgGrad_->addDotMul(
+        *frameOutputGate_[idxCurr].grad, *frameState_[idxCurr].value, 1.0, 1.0);
   }
 }
 
@@ -660,7 +751,9 @@ void MDLstmLayer::backwardOneSequence(int start, CoordIterator& coordIter) {
         if (weight_->getWGrad()) {
           weight_->getWGrad()->mul(
               frameOutput_[start + preOffset].value->getTranspose(),
-              frameGate_[start + offset].grad, 1.0, 1.0);
+              frameGate_[start + offset].grad,
+              1.0,
+              1.0);
         }
       }
     }

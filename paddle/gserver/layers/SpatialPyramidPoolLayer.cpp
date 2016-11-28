@@ -94,7 +94,8 @@ bool SpatialPyramidPoolLayer::init(const LayerMap& layerMap,
   size_t endCol = 0;
   for (size_t i = 0; i < pyramidHeight_; i++) {
     poolProjections_.emplace_back(PoolProjection::create(
-        getConfig(imgSizeW_, imgSizeH_, channels_, i, poolType_), nullptr,
+        getConfig(imgSizeW_, imgSizeH_, channels_, i, poolType_),
+        nullptr,
         useGpu_));
     endCol += poolProjections_[i]->getOutputSize();
     projCol_.push_back(std::make_pair(startCol, endCol));

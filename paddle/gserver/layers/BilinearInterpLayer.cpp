@@ -40,10 +40,10 @@ size_t BilinearInterpLayer::getSize() {
   CHECK(inImgH_ > 0 && inImgW_ > 0);
   CHECK(numChannels_);
 
-  ratioH_ = (outImgH_ > 1) ?
-    static_cast<real>(inImgH_ - 1) / (outImgH_ - 1) : 0.f;
-  ratioW_ = (outImgW_ > 1) ?
-    static_cast<real>(inImgW_ - 1) / (outImgW_ - 1) : 0.f;
+  ratioH_ =
+      (outImgH_ > 1) ? static_cast<real>(inImgH_ - 1) / (outImgH_ - 1) : 0.f;
+  ratioW_ =
+      (outImgW_ > 1) ? static_cast<real>(inImgW_ - 1) / (outImgW_ - 1) : 0.f;
 
   getOutput().setFrameHeight(outImgH_);
   getOutput().setFrameWidth(outImgW_);
@@ -74,21 +74,33 @@ void BilinearInterpLayer::forward(PassType passType) {
   MatrixPtr outV = getOutputValue();
   {
     REGISTER_TIMER_INFO("FwBilinearInterpTimer", getName().c_str());
-    outV->bilinearForward(*inV, inImgH_, inImgW_, outImgH_, outImgW_,
-      numChannels_, ratioH_, ratioW_);
+    outV->bilinearForward(*inV,
+                          inImgH_,
+                          inImgW_,
+                          outImgH_,
+                          outImgW_,
+                          numChannels_,
+                          ratioH_,
+                          ratioW_);
   }
 }
 
 void BilinearInterpLayer::backward(const UpdateCallback& callback) {
-  (void) callback;
+  (void)callback;
 
   MatrixPtr inputG = getInputGrad(0);
   MatrixPtr outG = getOutputGrad();
   {
     REGISTER_TIMER_INFO("BwBilinearInterpTimer", getName().c_str());
     if (inputG) {
-      inputG->bilinearBackward(*outG, outImgH_, outImgW_, inImgH_, inImgW_,
-        numChannels_, ratioH_, ratioW_);
+      inputG->bilinearBackward(*outG,
+                               outImgH_,
+                               outImgW_,
+                               inImgH_,
+                               inImgW_,
+                               numChannels_,
+                               ratioH_,
+                               ratioW_);
     }
   }
 }

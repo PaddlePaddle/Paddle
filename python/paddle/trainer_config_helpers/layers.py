@@ -2849,11 +2849,11 @@ def recurrent_group(step,
     :type targetInlink: LayerOutput|SubsequenceInput
 
     :param is_generating: If is generating, none of input type should be LayerOutput;
-                          else, for training or testing, one of the input type must 
+                          else, for training or testing, one of the input type must
                           be LayerOutput.
 
     : type is_generating: bool
-    
+
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2901,15 +2901,16 @@ def recurrent_group(step,
         seq_reversed=reverse,
         target_inlinkname=targetInlinkName)
     in_args = []
-    has_LayerOutput = True
+    has_LayerOutput = False
     for each_input in input:
         assert is_single_input(each_input)
         if isinstance(each_input, LayerOutput):
             in_args.append(each_input)
+            has_LayerOutput = True
         elif isinstance(each_input, SubsequenceInput):
             in_args.append(each_input.input)
+            has_LayerOutput = True
         else:
-            has_LayerOutput = False
             mem_name = "__%s_memory__" % each_input.input.name
             mem = memory(
                 name=mem_name,

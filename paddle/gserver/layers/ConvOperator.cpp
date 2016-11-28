@@ -155,9 +155,15 @@ void ConvOperator::reshape(int batchSize) {
   reshapeImageDescriptors();
 
   if (!isSelectAlgo_) {
-    hl_conv_workspace(inputDesc_, outputDesc_, filterDesc_, convDesc_,
-                      &fwdAlgo_, &fwdLimitBytes_, &bwdDataAlgo_,
-                      &bwdDataLimitBytes_, &bwdFilterAlgo_,
+    hl_conv_workspace(inputDesc_,
+                      outputDesc_,
+                      filterDesc_,
+                      convDesc_,
+                      &fwdAlgo_,
+                      &fwdLimitBytes_,
+                      &bwdDataAlgo_,
+                      &bwdDataLimitBytes_,
+                      &bwdFilterAlgo_,
                       &bwdFilterLimitBytes_);
 
     size_t maxWorkSpace = 0;
@@ -171,8 +177,8 @@ void ConvOperator::reshape(int batchSize) {
 }
 
 void ConvOperator::computeConvSizes() {
-  hl_create_filter_descriptor(&filterDesc_, channels_, numFilters_,
-                              filterSizeY_, filterSize_);
+  hl_create_filter_descriptor(
+      &filterDesc_, channels_, numFilters_, filterSizeY_, filterSize_);
   hl_create_tensor_descriptor(&inputDesc_);
   int outputX =
       outputSize(imgSize_, filterSize_, padding_, stride_, caffeMode_);
@@ -181,19 +187,41 @@ void ConvOperator::computeConvSizes() {
   CHECK_EQ(outputX, outputX_);
   CHECK_EQ(outputY, outputY_);
   hl_create_tensor_descriptor(&outputDesc_);
-  hl_create_convolution_descriptor(&convDesc_, inputDesc_, filterDesc_,
-                                   paddingY_, padding_, strideY_, stride_);
+  hl_create_convolution_descriptor(&convDesc_,
+                                   inputDesc_,
+                                   filterDesc_,
+                                   paddingY_,
+                                   padding_,
+                                   strideY_,
+                                   stride_);
 }
 
 void ConvOperator::reshapeImageDescriptors() {
-  hl_tensor_reshape(inputDesc_, 1, channels_, imageH_, imageW_,
-                    channels_ * imageH_ * imageW_, imageH_ * imageW_, imageW_,
+  hl_tensor_reshape(inputDesc_,
+                    1,
+                    channels_,
+                    imageH_,
+                    imageW_,
+                    channels_ * imageH_ * imageW_,
+                    imageH_ * imageW_,
+                    imageW_,
                     1);
-  hl_tensor_reshape(outputDesc_, 1, numFilters_, outputH_, outputW_,
-                    numFilters_ * outputH_ * outputW_, outputH_ * outputW_,
-                    outputW_, 1);
-  hl_reset_convolution_descriptor(convDesc_, inputDesc_, filterDesc_, paddingY_,
-                                  padding_, strideY_, stride_);
+  hl_tensor_reshape(outputDesc_,
+                    1,
+                    numFilters_,
+                    outputH_,
+                    outputW_,
+                    numFilters_ * outputH_ * outputW_,
+                    outputH_ * outputW_,
+                    outputW_,
+                    1);
+  hl_reset_convolution_descriptor(convDesc_,
+                                  inputDesc_,
+                                  filterDesc_,
+                                  paddingY_,
+                                  padding_,
+                                  strideY_,
+                                  stride_);
   inputOffset_ = channels_ * imageH_ * imageW_;
   outputOffset_ = numFilters_ * outputH_ * outputW_;
   weightOffset_ = numFilters_ * channels_ * filterSize_ * filterSize_;
@@ -225,17 +253,27 @@ void ConvOperator::forward() {
   reshape(batchSize);
   CHECK_EQ(ins_[1]->value->getHeight(), batchSize);
   checkFilterSize(ins_[1]->value);
-  Matrix::resizeOrCreate(out_->value, batchSize,
-                         outputH_ * outputW_ * numFilters_, false, useGpu_);
+  Matrix::resizeOrCreate(out_->value,
+                         batchSize,
+                         outputH_ * outputW_ * numFilters_,
+                         false,
+                         useGpu_);
   {
     AsyncGpuBlock block;
     for (size_t batchId = 0; batchId < batchSize; ++batchId) {
       real *inputData = ins_[0]->value->getData() + inputOffset_ * batchId;
       real *wgtData = ins_[1]->value->getData() + weightOffset_ * batchId;
       real *outData = out_->value->getData() + outputOffset_ * batchId;
-      hl_convolution_forward(inputDesc_, inputData, outputDesc_, outData,
-                             filterDesc_, wgtData, convDesc_, workSpace_,
-                             workSpaceInBytes_, fwdAlgo_);
+      hl_convolution_forward(inputDesc_,
+                             inputData,
+                             outputDesc_,
+                             outData,
+                             filterDesc_,
+                             wgtData,
+                             convDesc_,
+                             workSpace_,
+                             workSpaceInBytes_,
+                             fwdAlgo_);
     }
   }
 }
@@ -249,9 +287,15 @@ void ConvOperator::backward() {
       if (ins_[1]->grad) {
         real *inputData = ins_[0]->value->getData() + inputOffset_ * batchId;
         real *weightGrad = ins_[1]->grad->getData() + weightOffset_ * batchId;
-        hl_convolution_backward_filter(inputDesc_, inputData, outputDesc_,
-                                       outGrad, filterDesc_, weightGrad,
-                                       convDesc_, workSpace_, workSpaceInBytes_,
+        hl_convolution_backward_filter(inputDesc_,
+                                       inputData,
+                                       outputDesc_,
+                                       outGrad,
+                                       filterDesc_,
+                                       weightGrad,
+                                       convDesc_,
+                                       workSpace_,
+                                       workSpaceInBytes_,
                                        bwdFilterAlgo_);
       }
 
@@ -259,9 +303,16 @@ void ConvOperator::backward() {
       if (NULL != preGrad) {
         real *inputGrad = preGrad->getData() + inputOffset_ * batchId;
         real *wgtData = ins_[1]->value->getData() + weightOffset_ * batchId;
-        hl_convolution_backward_data(
-            inputDesc_, inputGrad, outputDesc_, outGrad, filterDesc_, wgtData,
-            convDesc_, workSpace_, workSpaceInBytes_, bwdDataAlgo_);
+        hl_convolution_backward_data(inputDesc_,
+                                     inputGrad,
+                                     outputDesc_,
+                                     outGrad,
+                                     filterDesc_,
+                                     wgtData,
+                                     convDesc_,
+                                     workSpace_,
+                                     workSpaceInBytes_,
+                                     bwdDataAlgo_);
       }
     }
   }

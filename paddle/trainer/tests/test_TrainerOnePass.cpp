@@ -41,12 +41,13 @@ public:
   }
 };
 
-
-
 int gNumDevices = 0;
 
-void trainerOnePassTest(const string& configFile, bool useGpu, bool parallel,
-                        int trainerCount = 1, double averageWindow = 0.0f,
+void trainerOnePassTest(const string& configFile,
+                        bool useGpu,
+                        bool parallel,
+                        int trainerCount = 1,
+                        double averageWindow = 0.0f,
                         bool doAverageInCpu = false) {
   FLAGS_use_gpu = useGpu;
   FLAGS_parallel_nn = parallel;
@@ -164,13 +165,13 @@ double checkRemoteParameterUpdater(TrainerForTest& trainer) {
   const vector<Argument>& inArgs = dataBatch.getStreams();
   vector<Argument> outArgs;
 
-  UpdateCallback updateCallback =
-      [parameterUpdater, parameterCheck](Parameter* para) {
-        parameterCheck[para->getID()]
-            ->getBuf(PARAMETER_GRADIENT)
-            ->copyFrom(*para->getBuf(PARAMETER_GRADIENT));
-        parameterUpdater->update(para);
-      };
+  UpdateCallback updateCallback = [parameterUpdater,
+                                   parameterCheck](Parameter* para) {
+    parameterCheck[para->getID()]
+        ->getBuf(PARAMETER_GRADIENT)
+        ->copyFrom(*para->getBuf(PARAMETER_GRADIENT));
+    parameterUpdater->update(para);
+  };
 
   parameterUpdater->startPass();
   parameterUpdaterCheck->startPass();
@@ -178,8 +179,8 @@ double checkRemoteParameterUpdater(TrainerForTest& trainer) {
   for (int i = 0; i < config.opt_config().num_batches_per_get_parameter() * 2;
        ++i) {
     PassType passType = parameterUpdater->startBatch(actualBatchSize);
-    gradientMachine->forwardBackward(inArgs, &outArgs, passType,
-                                     updateCallback);
+    gradientMachine->forwardBackward(
+        inArgs, &outArgs, passType, updateCallback);
     parameterUpdater->finishBatch(0);
 
     parameterUpdaterCheck->startBatch(actualBatchSize);
@@ -191,7 +192,7 @@ double checkRemoteParameterUpdater(TrainerForTest& trainer) {
 
   double sum = 0.0f;
   for (size_t i = 0; i != parameters.size(); ++i) {
-    real* v1, *v2;
+    real *v1, *v2;
     CpuVector trainerPara(parameters[i]->getSize());
     trainerPara.copyFrom(*parameters[i]->getBuf(PARAMETER_VALUE));
     if (!FLAGS_use_gpu) {
@@ -217,8 +218,10 @@ double checkRemoteParameterUpdater(TrainerForTest& trainer) {
   return sum;
 }
 
-void checkRemoteParameterUpdaterTest(const string& configFile, bool useGpu,
-                                     bool parallel, int trainerCount = 1,
+void checkRemoteParameterUpdaterTest(const string& configFile,
+                                     bool useGpu,
+                                     bool parallel,
+                                     int trainerCount = 1,
                                      bool useOldUpdater = false,
                                      int num_batches_per_get_parameter = 1) {
   FLAGS_use_gpu = useGpu;

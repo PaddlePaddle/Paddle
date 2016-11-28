@@ -65,6 +65,7 @@ std::ostream& operator<<(std::ostream& outPut, const Stat& stat) {
   auto showStat = [&](const StatInfo* info, pid_t tid, bool isFirst = true) {
     uint64_t average = 0;
     if (info->count_ > 0) {
+      outPut << std::setfill(' ') << std::left;
       if (!isFirst) {
         outPut << std::setw(42) << " ";
       }
@@ -199,6 +200,24 @@ StatInfo::~StatInfo() {
     stat_->destructStat_.total_ += this->total_;
     stat_->destructStat_.count_ += this->count_;
     stat_->threadLocalBuf_.remove({this, getTID()});
+  }
+}
+
+static unsigned g_profileCount = 0;
+static std::recursive_mutex g_profileMutex;
+
+GpuProfiler::GpuProfiler(std::string statName, std::string info)
+  : guard_(g_profileMutex)  {
+  if (++g_profileCount == 1) {
+    LOG(INFO) << "Enable GPU Profiler Stat: ["
+              << statName << "] " << info;
+    hl_profiler_start();
+  }
+}
+
+GpuProfiler::~GpuProfiler() {
+  if (--g_profileCount == 0) {
+    hl_profiler_end();
   }
 }
 

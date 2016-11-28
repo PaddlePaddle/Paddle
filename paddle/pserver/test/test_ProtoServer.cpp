@@ -126,9 +126,11 @@ TEST(ProtoServer, extended) {
         GetStatusResponse response;
         {
           REGISTER_TIMER("sendAndRecv");
-          auto msgReader = client->sendAndRecv(
-              "getStatusEx", request, {{cpuGrad.getData(), (size_t)dataSize}},
-              &response);
+          auto msgReader =
+              client->sendAndRecv("getStatusEx",
+                                  request,
+                                  {{cpuGrad.getData(), (size_t)dataSize}},
+                                  &response);
 
           EXPECT_EQ(msgReader->getNumBlocks(), (size_t)1);
           EXPECT_EQ(msgReader->getNextBlockLength(), (size_t)dataSize);

@@ -6,10 +6,10 @@ Installing from Sources
 * [3. Build on Ubuntu](#ubuntu)
 
 ## <span id="download">Download and Setup</span> 
-You can download PaddlePaddle from the [github source](https://github.com/gangliao/Paddle).
+You can download PaddlePaddle from the [github source](https://github.com/PaddlePaddle/Paddle).
 
 ```bash
-git clone https://github.com/baidu/Paddle paddle
+git clone https://github.com/PaddlePaddle/Paddle paddle
 cd paddle
 ```
 
@@ -95,7 +95,7 @@ As a simple example, consider the following:
     ```bash
     # necessary
     sudo apt-get update
-    sudo apt-get install -y g++ make cmake build-essential libatlas-base-dev python python-pip libpython-dev m4 libprotobuf-dev protobuf-compiler python-protobuf python-numpy git
+    sudo apt-get install -y g++ make cmake swig build-essential libatlas-base-dev python python-pip libpython-dev m4 libprotobuf-dev protobuf-compiler python-protobuf python-numpy git
     # optional
     sudo apt-get install libgoogle-glog-dev
     sudo apt-get install libgflags-dev
@@ -149,15 +149,15 @@ If still not found, you can manually set it based on CMake error information fro
 
 As a simple example, consider the following:
 
-- **Only CPU**
+- **Only CPU with swig**
 
   ```bash
-  cmake  .. -DWITH_GPU=OFF
+  cmake  .. -DWITH_GPU=OFF -DWITH_SWIG_PY=ON
   ```
-- **GPU**
+- **GPU with swig**
 
   ```bash
-  cmake .. -DWITH_GPU=ON
+  cmake .. -DWITH_GPU=ON -DWITH_SWIG_PY=ON
   ```
 
 - **GPU with doc and swig**
@@ -170,14 +170,12 @@ Finally, you can build PaddlePaddle:
 
 ```bash
 # you can add build option here, such as:    
-cmake .. -DWITH_GPU=ON -DCMAKE_INSTALL_PREFIX=<path to install>
+cmake .. -DWITH_GPU=ON -DCMAKE_INSTALL_PREFIX=<path to install> -DWITH_SWIG_PY=ON
 # please use sudo make install, if you want to install PaddlePaddle into the system
 make -j `nproc` && make install
 # set PaddlePaddle installation path in ~/.bashrc
 export PATH=<path to install>/bin:$PATH
 ```
-
-**Note:**
 
 If you set `WITH_SWIG_PY=ON`, related python dependencies also need to be installed.
 Otherwise, PaddlePaddle will automatically install python dependencies
