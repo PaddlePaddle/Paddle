@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-1. (remove HTML before or not)tokensizing
+1. Tokenize the words and punctuation 
 2. pos sample : rating score 5; neg sample: rating score 1-2.
 
 Usage:
@@ -76,7 +76,11 @@ def tokenize(sentences):
     sentences : a list of input sentences.
     return: a list of processed text.
     """
-    dir = './data/mosesdecoder-master/scripts/tokenizer/tokenizer.perl'
+    dir = './mosesdecoder-master/scripts/tokenizer/tokenizer.perl'
+    if not os.path.exists(dir):
+        sys.exit(
+            "The ./mosesdecoder-master/scripts/tokenizer/tokenizer.perl does not exists."
+        )
     tokenizer_cmd = [dir, '-l', 'en', '-q', '-']
     assert isinstance(sentences, list)
     text = "\n".join(sentences)
@@ -104,7 +108,7 @@ def tokenize_batch(id):
         num_batch, instance, pre_fix = parse_queue.get()
         if num_batch == -1:  ### parse_queue finished
             tokenize_queue.put((-1, None, None))
-            sys.stderr.write("tokenize theread %s finish\n" % (id))
+            sys.stderr.write("Thread %s finish\n" % (id))
             break
         tokenize_instance = tokenize(instance)
         tokenize_queue.put((num_batch, tokenize_instance, pre_fix))
