@@ -448,125 +448,6 @@ void testMatrixZeroAtOffset(int height, int width) {
   MatrixCheckEqual(*cpuA, *cpuTest);
 }
 
-void testMatrixBinaryAdd(int height, int width) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(height, width);
-  MatrixPtr gpuB = std::make_shared<GpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  cpuB->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  gpuB->copyFrom(*cpuB);
-  cpuA->add(*cpuB);
-  gpuA->add(*gpuB);
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, width);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckEqual(*cpuA, *outputCheck);
-}
-
-void testMatrixAssign(int height, int width) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  cpuA->assign(2.5);
-  gpuA->assign(2.5);
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, width);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckEqual(*cpuA, *outputCheck);
-}
-
-void testMatrixAdd(int height, int width) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  cpuA->add(2.5);
-  gpuA->add(2.5);
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, width);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckEqual(*cpuA, *outputCheck);
-}
-
-void testMatrixSqrt(int height, int width) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  cpuA->sqrt();
-  gpuA->sqrt();
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, width);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckErr(*cpuA, *outputCheck);
-}
-
-void testMatrixTanhDerivative(int height, int width) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(height, width);
-  MatrixPtr gpuB = std::make_shared<GpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  cpuB->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  gpuB->copyFrom(*cpuB);
-  cpuA->tanhDerivative(*cpuB);
-  gpuA->tanhDerivative(*gpuB);
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, width);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckErr(*cpuA, *outputCheck);
-}
-
-void testMatrixTanh(int height, int width) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(height, width);
-  MatrixPtr gpuB = std::make_shared<GpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  cpuB->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  gpuB->copyFrom(*cpuB);
-  cpuA->tanh(*cpuB);
-  gpuA->tanh(*gpuB);
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, width);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckErr(*cpuA, *outputCheck);
-}
-
-void testMatrixTernarySub(int height, int width) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr cpuC = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(height, width);
-  MatrixPtr gpuB = std::make_shared<GpuMatrix>(height, width);
-  MatrixPtr gpuC = std::make_shared<GpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  cpuB->randomizeUniform();
-  cpuC->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  gpuB->copyFrom(*cpuB);
-  gpuC->copyFrom(*cpuC);
-
-  cpuA->sub(*cpuB, *cpuC);
-  gpuA->sub(*gpuB, *gpuC);
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, width);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckEqual(*cpuA, *outputCheck);
-}
-
 void testMatrixSumOfSquaresBp(int height, int width) {
   MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
   MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
@@ -789,18 +670,7 @@ TEST(Matrix, unary) {
     for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
       VLOG(3) << " height=" << height << " width=" << width;
 
-      // applyUnary
-      testMatrixAssign(height, width);
-      testMatrixAdd(height, width);
-      testMatrixSqrt(height, width);
-
-      // applyBinary
-      testMatrixBinaryAdd(height, width);
-      testMatrixTanh(height, width);
-      testMatrixTanhDerivative(height, width);
-
       // applyTernary
-      testMatrixTernarySub(height, width);
       testMatrixSumOfSquaresBp(height, width);
 
       // asRowVector
@@ -931,165 +801,6 @@ TEST(Matrix, softmax) {
   }
 }
 
-void testMatrixAddDotMulVMM(int height, int width, int endCol = 0) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(1, width);
-  MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr cpuC = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(1, width);
-  MatrixPtr gpuB = std::make_shared<GpuMatrix>(height, width);
-  MatrixPtr gpuC = std::make_shared<GpuMatrix>(height, width);
-
-  MatrixPtr cpuA1 = std::make_shared<CpuMatrix>(1, width);
-  MatrixPtr cpuB1 = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr cpuC1 = std::make_shared<CpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  cpuB->randomizeUniform();
-  cpuC->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  gpuB->copyFrom(*cpuB);
-  gpuC->copyFrom(*cpuC);
-  cpuA1->copyFrom(*cpuA);
-  cpuB1->copyFrom(*cpuB);
-  cpuC1->copyFrom(*cpuC);
-
-  if (!endCol) {
-    cpuA->addDotMulVMM(*cpuB, *cpuC);
-    gpuA->addDotMulVMM(*gpuB, *gpuC);
-    cpuA1->addDotMulVMM2(*cpuB1, *cpuC1);
-
-    MatrixCheckErr(*cpuA, *cpuA1);
-  } else {
-    MatrixPtr subCpuA = cpuA->subColMatrix(0, endCol);
-    MatrixPtr subCpuB = cpuB->subColMatrix(0, endCol);
-    MatrixPtr subCpuC = cpuC->subColMatrix(0, endCol);
-    MatrixPtr subGpuA = gpuA->subColMatrix(0, endCol);
-    MatrixPtr subGpuB = gpuB->subColMatrix(0, endCol);
-    MatrixPtr subGpuC = gpuC->subColMatrix(0, endCol);
-    subCpuA->addDotMulVMM(*subCpuB, *subCpuC);
-    subGpuA->addDotMulVMM(*subGpuB, *subGpuC);
-  }
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(1, width);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckErr(*cpuA, *outputCheck);
-}
-
-void testMatrixRowSum(int height, int width) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, 1);
-  MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(height, 1);
-  MatrixPtr gpuB = std::make_shared<GpuMatrix>(height, width);
-
-  MatrixPtr cpuA1 = std::make_shared<CpuMatrix>(height, 1);
-  MatrixPtr cpuB1 = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA1 = std::make_shared<GpuMatrix>(height, 1);
-  MatrixPtr gpuB1 = std::make_shared<GpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  cpuB->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  gpuB->copyFrom(*cpuB);
-  cpuA1->copyFrom(*cpuA);
-  cpuB1->copyFrom(*cpuB);
-  gpuA1->copyFrom(*cpuA);
-  gpuB1->copyFrom(*cpuB);
-
-  cpuA->colMerge(*cpuB);
-  gpuA->colMerge(*gpuB);
-
-  cpuB1->rowSum(*cpuA1);
-  gpuB1->rowSum(*gpuA1);
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, 1);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckErr(*cpuA, *outputCheck);
-  outputCheck->copyFrom(*gpuA1);
-  MatrixCheckErr(*cpuA1, *outputCheck);
-}
-
-void testMatrixRowMax(int height, int width, int endCol = 0) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, 1);
-  MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(height, 1);
-  MatrixPtr gpuB = std::make_shared<GpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  cpuB->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  gpuB->copyFrom(*cpuB);
-
-  if (!endCol) {
-    cpuB->rowMax(*cpuA);
-    gpuB->rowMax(*gpuA);
-  } else {
-    MatrixPtr subCpuB = cpuB->subColMatrix(0, endCol);
-    MatrixPtr subGpuB = gpuB->subColMatrix(0, endCol);
-    subCpuB->rowMax(*cpuA);
-    subGpuB->rowMax(*gpuA);
-  }
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, 1);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckErr(*cpuA, *outputCheck);
-}
-
-void testMatrixColSum(int height, int width, int endCol = 0) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(1, width);
-  MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(1, width);
-  MatrixPtr gpuB = std::make_shared<GpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  cpuB->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  gpuB->copyFrom(*cpuB);
-
-  if (!endCol) {
-    cpuA->accumulateColSum(*cpuB);
-    gpuA->accumulateColSum(*gpuB);
-  } else {
-    MatrixPtr subCpuA = cpuA->subColMatrix(0, endCol);
-    MatrixPtr subGpuA = gpuA->subColMatrix(0, endCol);
-    MatrixPtr subCpuB = cpuB->subColMatrix(0, endCol);
-    MatrixPtr subGpuB = gpuB->subColMatrix(0, endCol);
-    subCpuA->accumulateColSum(*subCpuB);
-    subGpuA->accumulateColSum(*subGpuB);
-  }
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(1, width);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckErr(*cpuA, *outputCheck);
-}
-
-void testMatrixColMax(int height, int width, int endCol = 0) {
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(1, width);
-  MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(1, width);
-  MatrixPtr gpuB = std::make_shared<GpuMatrix>(height, width);
-
-  cpuA->randomizeUniform();
-  cpuB->randomizeUniform();
-  gpuA->copyFrom(*cpuA);
-  gpuB->copyFrom(*cpuB);
-
-  if (!endCol) {
-    cpuB->colMax(*cpuA);
-    gpuB->colMax(*gpuA);
-  } else {
-    MatrixPtr subCpuA = cpuA->subColMatrix(0, endCol);
-    MatrixPtr subGpuA = gpuA->subColMatrix(0, endCol);
-    MatrixPtr subCpuB = cpuB->subColMatrix(0, endCol);
-    MatrixPtr subGpuB = gpuB->subColMatrix(0, endCol);
-    subCpuB->colMax(*subCpuA);
-    subGpuB->colMax(*subGpuA);
-  }
-
-  MatrixPtr outputCheck = std::make_shared<CpuMatrix>(1, width);
-  outputCheck->copyFrom(*gpuA);
-  MatrixCheckErr(*cpuA, *outputCheck);
-}
-
 void testMatrixCollectBias(int height, int width) {
   MatrixPtr cpuA = std::make_shared<CpuMatrix>(1, width);
   MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
@@ -1182,13 +893,8 @@ TEST(Matrix, aggregate) {
   for (auto height : {1, 11, 16, 32, 64, 73, 128, 200, 1024, 2345}) {
     for (auto width : {1, 9, 16, 32, 64, 100, 512, 1000, 1024, 2453}) {
       VLOG(3) << " height=" << height << " width=" << width;
-      testMatrixRowSum(height, width);
-      testMatrixRowMax(height, width);
-      testMatrixColSum(height, width);
-      testMatrixColMax(height, width);
       testMatrixCollectBias(height, width);
       testMatrixTernaryRowDotMul(height, width);
-      testMatrixAddDotMulVMM(height, width);
 
       testMatrixSumOfSquares(height, width);
       testMatrixBinaryClassificationError(height, width);
@@ -1203,11 +909,7 @@ TEST(Matrix, aggregate2) {
       VLOG(3) << " height=" << height << " width=" << width;
 
       int endCol = rand() % width;  // NOLINT
-      testMatrixRowMax(height, width, endCol);
       testMatrixSumOfSquares(height, width, endCol);
-      testMatrixColSum(height, width, endCol);
-      testMatrixColMax(height, width, endCol);
-      testMatrixAddDotMulVMM(height, width, endCol);
     }
   }
 }

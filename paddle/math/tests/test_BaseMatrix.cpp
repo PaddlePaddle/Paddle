@@ -26,25 +26,224 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-TEST(BaseMatrix, apply) {
-  // member function with no argument
-  BaseMatrixCompare(&BaseMatrix::neg);
+/**
+ * Test member functions which prototype is
+ * void (BaseMatrix::*)().
+ */
+TEST(BaseMatrix, void) {
+  typedef void (BaseMatrix::*FunctionProto)();
+  #define BASEMATRIXCOMPARE(function) \
+    BaseMatrixCompare(static_cast<FunctionProto>(&BaseMatrix::function));
 
-  // If the member function are overloaded, use static_cast to specify which
-  // member function need be test.
-  BaseMatrixCompare(
-    static_cast<void (BaseMatrix::*)()>(&BaseMatrix::exp));
-  BaseMatrixCompare(
-    static_cast<void (BaseMatrix::*)()>(&BaseMatrix::sqrt));
+  BASEMATRIXCOMPARE(neg);
+  BASEMATRIXCOMPARE(exp);
+  BASEMATRIXCOMPARE(log);
+  BASEMATRIXCOMPARE(sqrt);
+  BASEMATRIXCOMPARE(square);
+  BASEMATRIXCOMPARE(reciprocal);
+  BASEMATRIXCOMPARE(abs);
+  BASEMATRIXCOMPARE(sign);
+  BASEMATRIXCOMPARE(zero);
+  BASEMATRIXCOMPARE(one);
 
-  // member function with one argument
+  #undef BASEMATRIXCOMPARE
+}
 
-  BaseMatrixCompare<0>(&BaseMatrix::tanh);
+/**
+ * Test member functions which prototype is
+ * void (BaseMatrix::*)(real).
+ */
+TEST(BaseMatrix, real) {
+  typedef void (BaseMatrix::*FunctionProto)(real);
+  #define BASEMATRIXCOMPARE(function) \
+    BaseMatrixCompare<0>(static_cast<FunctionProto>(&BaseMatrix::function));
 
-  BaseMatrixCompare<0>(
-    static_cast<void (BaseMatrix::*)(real)>(&BaseMatrix::assign));
-  BaseMatrixCompare<0>(
-    static_cast<void (BaseMatrix::*)(real)>(&BaseMatrix::pow));
+  BASEMATRIXCOMPARE(pow);
+  BASEMATRIXCOMPARE(subScalar);
+  BASEMATRIXCOMPARE(mulScalar);
+  BASEMATRIXCOMPARE(divScalar);
+  BASEMATRIXCOMPARE(assign);
+  BASEMATRIXCOMPARE(add);
+  BASEMATRIXCOMPARE(biggerThanScalar);
+  BASEMATRIXCOMPARE(downClip);
+
+  #undef BASEMATRIXCOMPARE
+}
+
+/**
+ * Test member functions which prototype is
+ * void (BaseMatrix::*)(real, real).
+ */
+TEST(BaseMatrix, real_real) {
+  typedef void (BaseMatrix::*FunctionProto)(real, real);
+  #define BASEMATRIXCOMPARE(function) \
+    BaseMatrixCompare<0, 1>(static_cast<FunctionProto>(&BaseMatrix::function));
+
+  BASEMATRIXCOMPARE(add);
+  BASEMATRIXCOMPARE(clip);
+
+  #undef BASEMATRIXCOMPARE
+}
+
+/**
+ * Test member functions which prototype is
+ * void (BaseMatrix::*)(BaseMatrix&).
+ */
+TEST(BaseMatrix, BaseMatrix) {
+  typedef void (BaseMatrix::*FunctionProto)(BaseMatrix&);
+  #define BASEMATRIXCOMPARE(function) \
+    BaseMatrixCompare<0>(static_cast<FunctionProto>(&BaseMatrix::function));
+
+  BASEMATRIXCOMPARE(assign);
+  BASEMATRIXCOMPARE(add);
+  BASEMATRIXCOMPARE(relu);
+  BASEMATRIXCOMPARE(reluDerivative);
+  BASEMATRIXCOMPARE(softrelu);
+  BASEMATRIXCOMPARE(softreluDerivative);
+  BASEMATRIXCOMPARE(brelu);
+  BASEMATRIXCOMPARE(breluDerivative);
+  BASEMATRIXCOMPARE(square);
+  BASEMATRIXCOMPARE(squareDerivative);
+  BASEMATRIXCOMPARE(tanh);
+  BASEMATRIXCOMPARE(tanhDerivative);
+
+  BASEMATRIXCOMPARE(reciprocal);
+  BASEMATRIXCOMPARE(reciprocalDerivative);
+  BASEMATRIXCOMPARE(abs);
+  BASEMATRIXCOMPARE(absDerivative);
+  BASEMATRIXCOMPARE(sigmoid);
+  BASEMATRIXCOMPARE(sigmoidDerivative);
+  BASEMATRIXCOMPARE(expDerivative);
+  BASEMATRIXCOMPARE(sign);
+  BASEMATRIXCOMPARE(exp);
+  BASEMATRIXCOMPARE(log);
+  BASEMATRIXCOMPARE(sqrt);
+  BASEMATRIXCOMPARE(dotMul);
+  BASEMATRIXCOMPARE(dotMulSquare);
+  BASEMATRIXCOMPARE(dotSquareMul);
+
+  BASEMATRIXCOMPARE(addColVector);
+  BASEMATRIXCOMPARE(addRowVector);
+  BASEMATRIXCOMPARE(mulRowVector);
+  BASEMATRIXCOMPARE(divRowVector);
+  BASEMATRIXCOMPARE(addP2P);
+  BASEMATRIXCOMPARE(invSqrt);
+
+  #undef BASEMATRIXCOMPARE
+}
+
+/**
+ * Test member functions which prototype is
+ * void (BaseMatrix::*)(BaseMatrix&, real).
+ */
+TEST(BaseMatrix, BaseMatrix_real) {
+  typedef void (BaseMatrix::*FunctionProto)(BaseMatrix&, real);
+  #define BASEMATRIXCOMPARE(function) \
+    BaseMatrixCompare<0, 1>(static_cast<FunctionProto>(&BaseMatrix::function));
+
+  BASEMATRIXCOMPARE(addBias);
+  BASEMATRIXCOMPARE(add);
+  BASEMATRIXCOMPARE(sub);
+  BASEMATRIXCOMPARE(pow);
+  BASEMATRIXCOMPARE(addScalar);
+  BASEMATRIXCOMPARE(subScalar);
+  BASEMATRIXCOMPARE(mulScalar);
+  BASEMATRIXCOMPARE(divScalar);
+  BASEMATRIXCOMPARE(scalarDiv);
+  BASEMATRIXCOMPARE(addSquare);
+
+  BASEMATRIXCOMPARE(isEqualTo);
+
+  #undef BASEMATRIXCOMPARE
+}
+
+/**
+ * Test member functions which prototype is
+ * void (BaseMatrix::*)(BaseMatrix&, BaseMatrix&).
+ */
+TEST(BaseMatrix, BaseMatrix_BaseMatrix) {
+  typedef void (BaseMatrix::*FunctionProto)(BaseMatrix&, BaseMatrix&);
+  #define BASEMATRIXCOMPARE(function) \
+    BaseMatrixCompare<0, 1>(static_cast<FunctionProto>(&BaseMatrix::function));
+
+  BASEMATRIXCOMPARE(softCrossEntropy);
+  BASEMATRIXCOMPARE(softCrossEntropyBp);
+  BASEMATRIXCOMPARE(binaryLabelCrossEntropy);
+  BASEMATRIXCOMPARE(binaryLabelCrossEntropyBp);
+  BASEMATRIXCOMPARE(sub);
+  BASEMATRIXCOMPARE(add2);
+  BASEMATRIXCOMPARE(dotMul);
+  BASEMATRIXCOMPARE(dotDiv);
+  BASEMATRIXCOMPARE(logisticRegressionLoss);
+  BASEMATRIXCOMPARE(logisticRegressionLossBp);
+  BASEMATRIXCOMPARE(biggerThan);
+  BASEMATRIXCOMPARE(max);
+  BASEMATRIXCOMPARE(dotMulSquare);
+  BASEMATRIXCOMPARE(dotSquareSquare);
+
+  #undef BASEMATRIXCOMPARE
+}
+
+/**
+ * Test aggregate member functions which prototype is
+ * void (BaseMatrix::*)(BaseMatrix&).
+ */
+TEST(Aggregate, BaseMatrix) {
+  typedef void (BaseMatrix::*FunctionProto)(BaseMatrix&);
+  #define BASEMATRIXAPPLYROW(function) \
+    BaseMatrixApplyRow<0>(static_cast<FunctionProto>(&BaseMatrix::function));
+
+ #define BASEMATRIXAPPLYCOL(function) \
+    BaseMatrixApplyCol<0>(static_cast<FunctionProto>(&BaseMatrix::function));
+
+  BASEMATRIXAPPLYROW(maxRows);
+  BASEMATRIXAPPLYROW(minRows);
+
+  BASEMATRIXAPPLYCOL(sumCols);
+  BASEMATRIXAPPLYCOL(maxCols);
+  BASEMATRIXAPPLYCOL(minCols);
+
+  #undef BASEMATRIXAPPLYROW
+  #undef BASEMATRIXAPPLYCOL
+}
+
+/**
+ * Test aggregate member functions which prototype is
+ * void (BaseMatrix::*)(BaseMatrix&, BaseMatrix&).
+ */
+TEST(Aggregate, BaseMatrix_BaseMatrix) {
+  typedef void (BaseMatrix::*FunctionProto)(BaseMatrix&, BaseMatrix&);
+  #define BASEMATRIXAPPLYROW(function) \
+    BaseMatrixApplyRow<0, 1>(static_cast<FunctionProto>(&BaseMatrix::function));
+
+  #define BASEMATRIXAPPLYCOL(function) \
+    BaseMatrixApplyCol<0, 1>(static_cast<FunctionProto>(&BaseMatrix::function));
+
+  BASEMATRIXAPPLYCOL(addDotMulVMM);
+
+  #undef BASEMATRIXAPPLYROW
+  #undef BASEMATRIXAPPLYCOL
+}
+
+/**
+ * Test aggregate member functions which prototype is
+ * void (BaseMatrix::*)(BaseMatrix&, real, real).
+ */
+TEST(Aggregate, BaseMatrix_real_real) {
+  typedef void (BaseMatrix::*FunctionProto)(BaseMatrix&, real, real);
+  #define BASEMATRIXAPPLYROW(function) \
+    BaseMatrixApplyRow<0, 1, 2>(\
+      static_cast<FunctionProto>(&BaseMatrix::function));
+
+  #define BASEMATRIXAPPLYCOL(function) \
+    BaseMatrixApplyCol<0, 1, 2>(\
+      static_cast<FunctionProto>(&BaseMatrix::function));
+
+  BASEMATRIXAPPLYROW(sumRows);
+  BASEMATRIXAPPLYCOL(sumCols);
+
+  #undef BASEMATRIXAPPLYROW
+  #undef BASEMATRIXAPPLYCOL
 }
 
 int main(int argc, char** argv) {

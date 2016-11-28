@@ -107,12 +107,16 @@ R call(C& obj, R (FC::*f)(FArgs...), Args&&... args) {
   return (obj.*f)(args...);
 }
 
-template <std::size_t... I, typename C, typename R, typename ...Args>
-void BaseMatrixCompare(R (C::*f)(Args...)) {
+template <bool ApplyRow, bool ApplyCol,
+          std::size_t... I, typename C, typename R, typename ...Args,
+          typename AssertEq>
+void BaseMatrixCompare(R (C::*f)(Args...), AssertEq compare) {
   for (auto height : {1, 11, 73, 128, 200, 330}) {
-    for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
-      CpuMatrix obj1(height, width);
-      GpuMatrix obj2(height, width);
+    for (auto width : {1, 3, 32, 100, 512, 1000}) {
+      CpuMatrix obj1(ApplyCol ? 1 : height,
+                     ApplyRow ? 1 : width);
+      GpuMatrix obj2(ApplyCol ? 1 : height,
+                     ApplyRow ? 1 : width);
       init(obj1);
       copy(obj2, obj1);
 
@@ -132,7 +136,7 @@ void BaseMatrixCompare(R (C::*f)(Args...)) {
       call(obj1, f, std::get<I>(tuple1)...);
       call(obj2, f, std::get<I>(tuple2)...);
 
-      TensorCheckErr(obj1, obj2);
+      TensorCheck(compare, obj1, obj2);
     }
   }
 }
@@ -144,6 +148,39 @@ void BaseMatrixCompare(R (C::*f)(Args...)) {
   static_assert(sizeof...(I) == sizeof...(Args),
     "size of parameter packs are not equal");
 
-  autotest::BaseMatrixCompare<I...>(f);
+#ifndef PADDLE_TYPE_DOUBLE
+  autotest::AssertEqual compare(1e-5);
+#else
+  autotest::AssertEqual compare(1e-10);
+#endif
+
+  autotest::BaseMatrixCompare<false, false, I...>(f, compare);
+}
+
+template <std::size_t... I, typename C, typename R, typename ...Args>
+void BaseMatrixApplyRow(R (C::*f)(Args...)) {
+  static_assert(sizeof...(I) == sizeof...(Args),
+    "size of parameter packs are not equal");
+
+#ifndef PADDLE_TYPE_DOUBLE
+  autotest::AssertEqual compare(1e-3);
+#else
+  autotest::AssertEqual compare(1e-8);
+#endif
+
+  autotest::BaseMatrixCompare<true, false, I...>(f, compare);
+}
+
+template <std::size_t... I, typename C, typename R, typename ...Args>
+void BaseMatrixApplyCol(R (C::*f)(Args...)) {
+  static_assert(sizeof...(I) == sizeof...(Args),
+    "size of parameter packs are not equal");
+
+#ifndef PADDLE_TYPE_DOUBLE
+  autotest::AssertEqual compare(1e-3);
+#else
+  autotest::AssertEqual compare(1e-8);
+#endif
+  autotest::BaseMatrixCompare<false, true, I...>(f, compare);
 }
 
