@@ -49,7 +49,7 @@ PaddlePaddle快速入门教程
     ./preprocess.sh
 
 数据预处理完成之后，通过配置类似于 ``dataprovider_*.py`` 的数据读取脚本和类似于 ``trainer_config.*.py`` 的训练模型脚本，PaddlePaddle将以设置参数的方式来设置
-相应的数据读取脚本和训练模型脚本。接下来，我们将对这两个步骤给出了详细的解释，你也可以先跳过本文的解释环节，直接进入训练环节, 使用 ``sh train.sh`` 开始训练模型，
+相应的数据读取脚本和训练模型脚本。接下来，我们将对这两个步骤给出了详细的解释，你也可以先跳过本文的解释环节，直接进入训练模型章节, 使用 ``sh train.sh`` 开始训练模型，
 查看`train.sh`内容，通过 **自底向上法** (bottom-up approach)来帮助你理解PaddlePaddle的内部运行机制。
 
 
@@ -66,86 +66,23 @@ Python脚本读取数据
 
 ``dataprovider_bow.py`` 文件给出了完整例子：
 
-.. code-block:: python
+..  literalinclude:: ../../../demo/quick_start/dataprovider_bow.py
+     :language: python
+     :lines: 21-70
+     :linenos:
+     :emphasize-lines: 8,33
 
-    from paddle.trainer.PyDataProvider2 import *
-
-    # id of the word not in dictionary
-    UNK_IDX = 0
-
-    # initializer is called by the framework during initialization.
-    # It allows the user to describe the data types and setup the
-    # necessary data structure for later use.
-    # `settings` is an object. initializer need to properly fill settings.input_types.
-    # initializer can also store other data structures needed to be used at process().
-    # In this example, dictionary is stored in settings.
-    # `dictionay` and `kwargs` are arguments passed from trainer_config.lr.py
-    def initializer(settings, dictionary, **kwargs):
-        # Put the word dictionary into settings
-        settings.word_dict = dictionary
-
-        # setting.input_types specifies what the data types the data provider
-        # generates.
-        settings.input_types = [
-            # The first input is a sparse_binary_vector,
-            # which means each dimension of the vector is either 0 or 1. It is the
-            # bag-of-words (BOW) representation of the texts.
-            sparse_binary_vector(len(dictionary)),
-            # The second input is an integer. It represents the category id of the
-            # sample. 2 means there are two labels in the dataset.
-            # (1 for positive and 0 for negative)
-            integer_value(2)]
-
-    # Delaring a data provider. It has an initializer 'data_initialzer'.
-    # It will cache the generated data of the first pass in memory, so that
-    # during later pass, no on-the-fly data generation will be needed.
-    # `setting` is the same object used by initializer()
-    # `file_name` is the name of a file listed train_list or test_list file given
-    # to define_py_data_sources2(). See trainer_config.lr.py.
-    @provider(init_hook=initializer, cache=CacheType.CACHE_PASS_IN_MEM)
-    def process(settings, file_name):
-        # Open the input data file.
-        with open(file_name, 'r') as f:
-            # Read each line.
-            for line in f:
-                # Each line contains the label and text of the comment, separated by \t.
-                label, comment = line.strip().split('\t')
-
-                # Split the words into a list.
-                words = comment.split()
-
-                # convert the words into a list of ids by looking them up in word_dict.
-                word_vector = [settings.word_dict.get(w, UNK_IDX) for w in words]
-
-                # Return the features for the current comment. The first is a list
-                # of ids representing a 0-1 binary sparse vector of the text,
-                # the second is the integer id of the label.
-                yield word_vector, int(label)
 
 配置中的数据加载定义
 --------------------
 
 在模型配置中通过 ``define_py_data_sources2`` 接口来加载数据：
 
-.. code-block:: python
-
-    from paddle.trainer_config_helpers import *
-
-    file = "data/dict.txt"
-    word_dict = dict()
-    with open(dict_file, 'r') as f:
-        for i, line in enumerate(f):
-            w = line.strip().split()[0]
-            word_dict[w] = i
-    # define the data sources for the model.
-    # We need to use different process for training and prediction.
-    # For training, the input data includes both word IDs and labels.
-    # For prediction, the input data only includs word Ids.
-    define_py_data_sources2(train_list='data/train.list',
-                            test_list='data/test.list',
-                            module="dataprovider_bow",
-                            obj="process",
-                            args={"dictionary": word_dict})
+..  literalinclude:: ../../../demo/quick_start/trainer_config.emb.py
+     :language: python
+     :lines: 19-35
+     :linenos:
+     :emphasize-lines: 12
 
 
 以下是对上述数据加载的解释：
