@@ -155,8 +155,6 @@ PaddlePaddle的数据包括四种主要类型，和三种序列模式。
 
 其中，f代表一个浮点数，i代表一个整数。
 
-注意：sparse_binary_vector和sparse_float_vector中的元素，可以有None；但dense_vector和integer中的元素，不能出现None。
-
 init_hook
 +++++++++
 
