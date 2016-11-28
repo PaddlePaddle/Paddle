@@ -1,12 +1,12 @@
 # PaddlePaddle快速入门教程
 
-我们以文本分类问题作为背景，介绍PaddlePaddle使用流程和常用的网络基础单元的配置方法。
+我们以<a href = "https://en.wikipedia.org/wiki/Document_classification">文本分类问题</a>为例，介绍PaddlePaddle的基本使用方法。
 
-## 安装(Install)
+## 安装
 
-首先请参考<a href = "../../build_and_install/index.html">安装教程</a>安装PaddlePaddle。
+请参考<a href = "../../build_and_install/index.html">安装教程</a>安装PaddlePaddle。
 
-## 使用概述(Overview)
+## 使用概述
 
 **文本分类问题**：对于给定的一条文本， 我们从提前给定的类别集合中选择其所属类
 别。比如通过用户对电子商务网站评论，评估产品的质量：
@@ -14,25 +14,22 @@
 - 这个显示器很棒！ （好评）
 - 用了两个月之后这个显示器屏幕碎了。（差评）
 
-每一个任务流程都可以分为如下5个基础部分。
+每一个任务流程都可以分为如下5个步骤。
 <center> ![](./Pipeline.jpg) </center>
 
 1. 数据格式准备
-    - 每行保存一条样本，类别Id 和文本信息用Tab间隔， 文本中的单词用空格分隔（如果不切词，则字与字之间用空格分隔），例如：```类别Id ‘\t’ 这 个 显 示 器 很 棒 ！```
-2. 数据向模型传送
-    - PaddlePaddle可以读取Python写的传输数据脚本，所有字符都将转换为连续整数表示的Id传给模型
-3. 网络结构（由易到难展示4种不同的网络配置）
-    - 逻辑回归模型
-    - 词向量模型
-    - 卷积模型
-    - 时序模型
-    - 优化算法
+    - 本例每行保存一条样本，类别Id 和文本信息用Tab间隔， 文本中的单词用空格分隔（如果不切词，则字与字之间用空格分隔），例如：```类别Id ‘\t’ 这 个 显 示 器 很 棒 ！```
+2. 数据向系统传送
+    - PaddlePaddle可以执行用户的python脚本程序来读取各种格式的数据文件。
+    - 本例的所有字符都将转换为连续整数表示的Id传给模型。
+3. 描述网络结构和优化算法
+    - 本例由易到难展示4种不同的文本分类网络配置：逻辑回归模型，词向量模型，卷积模型，时序模型。
+    - 常用优化算法包括Momentum, RMSProp，AdaDelta，AdaGrad，Adam，Adamax等，本例采用Adam优化方法，加了L2正则和梯度截断。
 4. 训练模型
-5. 预测
+5. 应用模型
 
-## 数据格式准备(Data Preparation)
-在本问题中，我们使用[Amazon电子产品评论数据](http://jmcauley.ucsd.edu/data/amazon/)，
-将评论分为好评(正样本)和差评(负样本)两类。[源码](https://github.com/baidu/Paddle)的`demo/quick_start`里提供了数据下载脚本
+## 数据格式准备
+接下来我们展示如何用PaddlePaddle训练一个文本分类模型，将[Amazon电子产品评论数据](http://jmcauley.ucsd.edu/data/amazon/)分为好评(正样本)和差评(负样本)两类。[源码](https://github.com/baidu/Paddle)的`demo/quick_start`里提供了数据下载脚本
 和预处理脚本。
 
 ```bash
@@ -41,14 +38,16 @@ cd demo/quick_start
 ./preprocess.sh
 ```
 
-## 数据向模型传送(Transfer Data to Model)
+## 数据向系统传送
 
-### Python数据加载脚本(Data Provider Script)
+### Python数据读取脚本
 
-下面dataprovider_bow.py文件给出了完整例子，主要包括两部分：
+<a href = "../../ui/data_provider/index.html">DataProvider</a>是PaddlePaddle负责提供数据的模块。其作用是将训练数据传入内存或者显存，让神经网络可以进行训练。通常包括两个函数：
 
-* initalizer： 定义文本信息、类别Id的数据类型。
-* process： yield文本信息和类别Id，和initalizer里定义顺序一致。
+* initalizer： PaddlePaddle会在调用读取数据的Python脚本之前，先调用initializer函数。下面例子里，我们在initialzier函数里初始化词表，并且在随后的读取数据过程中填充词表。
+* process： PaddlePaddle调用process函数来读取数据。每次读取一条数据后，process函数会用yield语句输出这条数据，从而被PaddlePaddle“捕获”。
+
+dataprovider_bow.py文件给出了完整例子：
 
 ```python
 from paddle.trainer.PyDataProvider2 import *
@@ -106,7 +105,7 @@ def process(settings, file_name):
             yield word_vector, int(label)
 ```
 
-### 配置中的数据加载定义(Data Provider in Configure)
+### 配置中的数据加载定义
 
 在模型配置中利用`define_py_data_sources2`加载数据：
 
@@ -137,7 +136,7 @@ define_py_data_sources2(train_list='data/train.list',
 更详细数据格式和用例请参考<a href = "../../ui/data_provider/pydataprovider2.html">
 PyDataProvider2</a>。
 
-## 网络结构(Network Architecture)
+## 网络结构
 本节我们将专注于网络结构的介绍。
 <center> ![](./PipelineNetwork.jpg) </center>
 
@@ -145,7 +144,7 @@ PyDataProvider2</a>。
 连接请参考<a href = "../../../doc/layer.html">Layer文档</a>。
 所有配置在[源码](https://github.com/baidu/Paddle)`demo/quick_start`目录，首先列举逻辑回归网络。
 
-### 逻辑回归模型(Logistic Regression)
+### 逻辑回归模型
 
 流程如下：
 <center> ![](./NetLR.jpg) </center>
@@ -203,7 +202,7 @@ classification_cost(input=output, label=label)
 </html>
 <br>
 
-### 词向量模型(Word Vector)
+### 词向量模型
 
 embedding模型需要稍微改变数据提供的脚本，即`dataprovider_emb.py`，词向量模型、
 卷积模型、时序模型均使用该脚本。其中文本输入类型定义为整数时序类型integer_value_sequence。
@@ -266,7 +265,7 @@ avg = pooling_layer(input=emb, pooling_type=AvgPooling())
 </html></center>
 <br>
 
-### 卷积模型(Convolution)
+### 卷积模型
 卷积网络是一种特殊的从词向量表示到句子表示的方法， 也就是将词向量模型额步
 骤3-2进行进一步演化， 变为3个新的子步骤。
 <center> ![](./NetConv.jpg) </center>
@@ -306,7 +305,7 @@ text_conv = sequence_conv_pool(input=emb,
 </table></center>
 <br>
 
-### 时序模型(Time Sequence)
+### 时序模型
 <center> ![](./NetRNN.jpg) </center>
 
 时序模型即为RNN模型, 包括简单的RNN模型、GRU模型、LSTM模型等。
@@ -348,7 +347,7 @@ lstm = simple_lstm(input=emb, size=lstm_size)
 </html>
 <br>
 
-## 优化算法(Optimization Algorithm)
+## 优化算法
 <a href = "../../../doc/ui/trainer_config_helpers_api.html#module-paddle.trainer_config_helpers.optimizers">优化算法</a>包括
 Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优化方法，加了L2正则和梯度截断。
 
@@ -360,7 +359,7 @@ settings(batch_size=128,
          gradient_clipping_threshold=25)
 ```
 
-## 训练模型(Training Model)
+## 训练模型
 在完成了数据和网络结构搭建之后， 我们进入到训练部分。
 <center> ![](./PipelineTrain.jpg) </center>
 
@@ -376,7 +375,7 @@ paddle train \
 ```
 这里没有介绍多机分布式训练，可以参考<a href = "../../cluster/index.html">分布式训练</a>的demo学习如何进行多机训练。
 
-## 预测(Prediction)
+## 预测
 可以使用训练好的模型评估带有label的验证集，也可以预测没有label的测试集。
 <center> ![](./PipelineTest.jpg) </center>
 
@@ -431,7 +430,7 @@ else:
     outputs(cls)
 ```
 
-## 总体效果总结(Summary)
+## 总体效果总结
 这些流程中的数据下载、网络配置、训练脚本在`/demo/quick_start`目录，我们在此总
 结上述网络结构在Amazon-Elec测试集(25k)上的效果:
 
@@ -480,8 +479,8 @@ else:
 </center>
 <br>
 
-## 附录(Appendix)
-### 命令行参数(Command Line Argument)
+## 附录
+### 命令行参数
 
 * \--config：网络配置
 * \--save_dir：模型存储路径
@@ -494,7 +493,7 @@ else:
 可以通过show_parameter_stats_period设置打印参数信息等。
 其他参数请参考<a href = "../../ui/index.html#command-line-argument">令行参数文档</a>。
 
-### 输出日志(Log)
+### 输出日志
 
 ```
 TrainerInternal.cpp:160]  Batch=20 samples=2560 AvgCost=0.628761 CurrentCost=0.628761 Eval: classification_error_evaluator=0.304297  CurrentEval: classification_error_evaluator=0.304297
