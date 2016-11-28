@@ -109,8 +109,8 @@
   - Load parameter from this pass to test.
   - type: int32 (default: -1).
 
-* `--test_period_while_training`
-  - Run test every test_period_while_training batches while doing training. If not 0, test test_batches_while_training batches, if 0, test nothing.
+* `--test_period`
+   - if equal 0, do test on all test data at the end of each pass while if equal non-zero, do test on all test data once each test_period batches passed while training is going on.
   - type: int32 (default: 0).
 
 * `--test_wait`
@@ -120,14 +120,6 @@
 * `--model_list`
   - File that saves the model list when testing. It was set automatically when using cluster submitting environment after setting model_path.
   - type: string (default: "", null).
-
-* `--test_batches_while_training`
-  - Test test_batches_while_training batches if test_batches_while_training != 0 while doing training. If 0, test on all test data.
-  - type: bool (default: 1000).
-
-* `--test_batches_while_end`
-  - Test test_batches_while_end batches if test_batches_while_end != 0 at pass end. If 0, test on all test data.
-  - type: bool (default: 0).
 
 * `--predict_output_dir`
   - Directory that saves the layer output. It is configured in Outputs() in network config. Default, this argument is null, meaning save nothing. Specify this directory if you want to save feature map of some layers in testing mode. Note that, layer outputs are values after activation function.

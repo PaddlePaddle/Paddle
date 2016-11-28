@@ -38,17 +38,7 @@ struct TesterConfig {
   /**
    * indicate test period
    */
-  int testPeriodWhileTraining;
-
-  /**
-   * indicate how many batches are used for testing under training
-   */
-  bool testBatchesWhileTraining;
-
-  /**
-   * indicate how many batches are used for testing at pass end
-   */
-  bool testBatchesWhileEnd;
+  int testPeriod;
 
   /**
    * indicate whether to save previous batch state

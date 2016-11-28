@@ -42,24 +42,13 @@ limitations under the License. */
 P_DEFINE_string(config, "", "Trainer config file");
 
 P_DEFINE_int32(test_period, 0,
-               "This option was deprecated, use test_period_while_training "
-               " instead. ");
-P_DEFINE_int32(test_period_while_training, 0,
-               "Run test every test_period_while_training batches."
-               " If not 0, test test_batches_while_training batches."
-               " If 0, test nothing.");
-P_DEFINE_int32(test_batches_while_training, 1000,
-               "test test_batches_while_training batches if "
-               "test_batches_while_training != 0."
-               " If 0, test on all test data");
-P_DEFINE_int32(test_batches_while_end, 0,
-               "test test_batches_while_end batches at pass end."
-               " Always run test at pass end."
-               " If not 0, test test_batches_while_end batches."
-               " If 0, test on all test data.");
+               "if equal 0, do test on all test data at the end of "
+               "each pass while if equal non-zero, do test on all test "
+               "data once each test_period batches passed while "
+               "training is going on");
 P_DEFINE_bool(test_all_data_in_one_period, false,
-               "This option was deprecated, use test_batches_while_training "
-               "and test_batches_while_end instead");
+               "This option was deprecated, since we will always do "
+               "test on all test set ");
 
 P_DEFINE_bool(local, true, "Train in local mode or not");
 
@@ -467,9 +456,9 @@ void Trainer::trainOneDataBatch(DataBatch& dataBatch) {
     FOR_TIMING(globalStat.reset());
   }
 
-  if (testDataProvider_ && FLAGS_test_period_while_training > 0 &&
-      trainPassContext_.batchId % FLAGS_test_period_while_training == 0) {
-    tester_->testOnePeriod(false);
+  if (testDataProvider_ && FLAGS_test_period > 0 &&
+      trainPassContext_.batchId % FLAGS_test_period == 0) {
+    tester_->testOnePeriod();
   }
 
   if (FLAGS_saving_period_by_batches > 0 &&
@@ -478,7 +467,7 @@ void Trainer::trainOneDataBatch(DataBatch& dataBatch) {
       0 == FLAGS_trainer_id) {
     trainerInternal_.getParameterUpdater()->catchUpWith();
     if (testDataProvider_) {
-      tester_->testOnePeriod(false);
+      tester_->testOnePeriod();
     }
     paramUtil_->saveParametersOnePass(
       trainPassContext_.passId, trainPassContext_.passInnerId);
@@ -636,17 +625,18 @@ std::unique_ptr<TesterConfig> Trainer::createTesterConfig() {
   TesterConfig* conf = new TesterConfig;
   if (FLAGS_test_period) {
     LOG(WARNING)
-      << "--test_period was deprecated, use --test_period_while_training"
-      << "--test_batches_while_training --test_batches_while_end instead.";
+      << "The meaning of --test_period is changed: "
+      << "if equal 0, do test on all test data at the end of "
+      << "each pass while if equal non-zero, do test on all test "
+      << "data once each test_period batches passed while "
+      << "training is going on";
   }
   if (FLAGS_test_all_data_in_one_period) {
     LOG(WARNING)
-      << "--test_all_data_in_one_period was deprecated, use"
-      << " --test_batches_while_training and --test_batches_while_end instead";
+      << "--test_all_data_in_one_period was deprecated, since "
+      << "we will always do test on all test set ";
   }
-  conf->testPeriodWhileTraining = FLAGS_test_period_while_training;
-  conf->testBatchesWhileTraining = FLAGS_test_batches_while_training;
-  conf->testBatchesWhileEnd = FLAGS_test_batches_while_end;
+  conf->testPeriod = FLAGS_test_period;
   conf->prevBatchState = FLAGS_prev_batch_state;
   conf->logPeriod = FLAGS_log_period;
   conf->loadsaveParametersInPserver = FLAGS_loadsave_parameters_in_pserver;
