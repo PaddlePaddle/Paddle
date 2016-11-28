@@ -78,10 +78,10 @@ message ConvConfig {
   required uint32 stride_y = 12;
 
   // if not set, use output_x
-  optional uint32 output_y = 13 [default = 0];
+  optional uint32 output_y = 13;
 
   // if not set, use img_size
-  optional uint32 img_size_y = 14 [default = 0];
+  optional uint32 img_size_y = 14;
 }
 
 message PoolConfig {
@@ -161,10 +161,10 @@ message NormConfig {
   optional bool blocked = 8;
 
   // if not set, use output_x
-  optional uint32 output_y = 9 [default = 0];
+  optional uint32 output_y = 9;
 
   // if not set, use img_size
-  optional uint32 img_size_y = 10 [default = 0];
+  optional uint32 img_size_y = 10;
 }
 
 message BlockExpandConfig {
