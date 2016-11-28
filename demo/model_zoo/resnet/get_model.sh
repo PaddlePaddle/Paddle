@@ -24,9 +24,7 @@ echo "Downloading ResNet models..."
 
 for file in resnet_50.tar.gz resnet_101.tar.gz resnet_152.tar.gz mean_meta_224.tar.gz 
 do 
-  # following is the google drive address
-  # you can also directly download from https://pan.baidu.com/s/1o8q577s
-  wget https://www.googledrive.com/host/0B7Q8d52jqeI9ejh6Q1RpMTFQT1k/imagenet/$file --no-check-certificate
+  wget http://paddlepaddle.bj.bcebos.com/model_zoo/imagenet/$file
   tar -xvf $file 
   rm $file
 done

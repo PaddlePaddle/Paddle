@@ -16,7 +16,8 @@ __all__ = [
     "TanhActivation", "SigmoidActivation", "SoftmaxActivation",
     "IdentityActivation", "LinearActivation", 'SequenceSoftmaxActivation',
     'ExpActivation', "ReluActivation", "BReluActivation", "SoftReluActivation",
-    "STanhActivation", "AbsActivation", "SquareActivation", "BaseActivation"
+    "STanhActivation", "AbsActivation", "SquareActivation", "BaseActivation",
+    "LogActivation"
 ]
 
 

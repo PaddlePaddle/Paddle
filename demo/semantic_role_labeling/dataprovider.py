@@ -25,12 +25,13 @@ def hook(settings, word_dict, label_dict, predicate_dict, **kwargs):
     #all inputs are integral and sequential type
     settings.slots = [
         integer_value_sequence(len(word_dict)),
+        integer_value_sequence(len(word_dict)),
+        integer_value_sequence(len(word_dict)),
+        integer_value_sequence(len(word_dict)),
+        integer_value_sequence(len(word_dict)),
+        integer_value_sequence(len(word_dict)), 
         integer_value_sequence(len(predicate_dict)),
-        integer_value_sequence(len(word_dict)),
-        integer_value_sequence(len(word_dict)),
-        integer_value_sequence(len(word_dict)),
-        integer_value_sequence(len(word_dict)),
-        integer_value_sequence(len(word_dict)), integer_value_sequence(2),
+        integer_value_sequence(2),
         integer_value_sequence(len(label_dict))
     ]
 
@@ -63,5 +64,5 @@ def process(settings, file_name):
 
             label_list = label.split()
             label_slot = [settings.label_dict.get(w) for w in label_list]
-            yield word_slot, predicate_slot, ctx_n2_slot, ctx_n1_slot, \
-                  ctx_0_slot, ctx_p1_slot, ctx_p2_slot, mark_slot, label_slot
+            yield word_slot, ctx_n2_slot, ctx_n1_slot, \
+                  ctx_0_slot, ctx_p1_slot, ctx_p2_slot, predicate_slot, mark_slot, label_slot

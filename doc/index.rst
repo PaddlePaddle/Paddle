@@ -8,3 +8,4 @@ PaddlePaddle Documentation
   user_guide.rst
   dev/index.rst
   algorithm/index.rst
+  optimization/index.rst

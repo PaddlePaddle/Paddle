@@ -59,12 +59,11 @@ To build your text classification system, your code will need to perform five st
 ## Preprocess data into standardized format
 In this example, you are going to use [Amazon electronic product review dataset](http://jmcauley.ucsd.edu/data/amazon/) to build a bunch of deep neural network models for text classification. Each text in this dataset is a product review. This dataset has two categories: “positive” and “negative”. Positive means the reviewer likes the product, while negative means the reviewer does not like the product.
 
-`demo/quick_start` in the [source code](https://github.com/baidu/Paddle) provides scripts for downloading data and preprocessing data as shown below. The data process takes several minutes (about 3 minutes in our machine).
+`demo/quick_start` in the [source code](https://github.com/PaddlePaddle/Paddle) provides script for downloading the preprocessed data as shown below. (If you want to process the raw data, you can use the script `demo/quick_start/data/proc_from_raw_data/get_data.sh`).
 
 ```bash
 cd demo/quick_start
 ./data/get_data.sh
-./preprocess.sh
 ```
 
 ## Transfer Data to Model
@@ -477,7 +476,7 @@ The scripts of data downloading, network configurations, and training scrips are
 <td class="left">Word embedding</td>
 <td class="left"> 15MB </td>
 <td class="left"> 8.484%</td>
-<td class="left">trainer_config.bow.py</td>
+<td class="left">trainer_config.emb.py</td>
 </tr>
 
 <tr>
