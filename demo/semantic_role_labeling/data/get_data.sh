@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 set -e
-#wget http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz
+wget http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz
 wget http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/verbDict.txt
 wget http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/targetDict.txt 
 wget http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/wordDict.txt 
