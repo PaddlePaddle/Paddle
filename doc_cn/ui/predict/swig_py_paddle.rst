@@ -1,8 +1,8 @@
 基于Python的预测
 ================
 
-Python预测接口
---------------
+预测流程
+--------
 
 PaddlePaddle使用swig对常用的预测接口进行了封装，通过编译会生成py_paddle软件包，安装该软件包就可以在python环境下实现模型预测。可以使用python的 ``help()`` 函数查询软件包相关API说明。
 
@@ -20,8 +20,8 @@ PaddlePaddle使用swig对常用的预测接口进行了封装，通过编译会�
   通过调用 ``forwardTest()`` 传入预测数据，直接返回计算结果。
 
 
-基于Python的预测Demo
---------------------
+预测Demo
+--------
 
 如下是一段使用mnist model来实现手写识别的预测代码。完整的代码见 ``src_root/doc/ui/predict/predict_sample.py`` 。mnist model可以通过 ``src_root\demo\mnist`` 目录下的demo训练出来。
 
