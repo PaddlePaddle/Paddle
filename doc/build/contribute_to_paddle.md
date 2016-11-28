@@ -98,7 +98,7 @@ git push -u origin MY_COOL_STUFF_BRANCH  # create remote branch MY_COOL_STUFF_BR
 Go to the page for your fork on GitHub, select your development branch,
 and click the **pull request button**.
 
-## Update your pull request with the lastest version
+## Update your pull request with the latest version
 
 During the code review, your pull request may become stale because new commits in
 baidu/Paddle. GitHub allows autmotic update if there is no conflict. You can do this
@@ -107,10 +107,10 @@ of conflict, you need to do the update manually. You need to do the following on
 your local repository:
 ```shell
 git checkout MY_COOL_STUFF_BRANCH
-git pull upstream develop
+git pull --rebase upstream develop
 # You may need to resolve the conflict according to the git prompt.
 # Make and test your code.
-git push origin MY_COOL_STUFF_BRANCH
+git push -f origin MY_COOL_STUFF_BRANCH
 ```
 Now your Pull Request is updated with the latest version.
 
