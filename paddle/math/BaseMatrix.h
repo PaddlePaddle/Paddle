@@ -458,6 +458,10 @@ public:
   /**
    * @code
    * swap(this, b)
+   * example: swap two Matrices
+   * MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
+   * MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
+   * cpuA->deepSwap(*cpuB);
    * @endcode
    */
   void deepSwap(BaseMatrixT& b);
