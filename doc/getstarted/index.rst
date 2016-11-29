@@ -1,4 +1,4 @@
-Introduction
+GET STARTED
 ============
 
 ..  toctree::

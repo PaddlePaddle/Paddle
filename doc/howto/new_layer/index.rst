@@ -1,6 +1,6 @@
-==================
-Writing New Layers
-==================
+=======================
+How to Write New Layers
+=======================
 
 This tutorial will guide you to write customized layers in PaddlePaddle. We will utilize fully connected layer as an example to guide you through the following steps for writing a new layer.
 

@@ -1,12 +1,29 @@
-How to
+HOW TO
 =======
+
+Usage
+-------
 
 ..  toctree::
   :maxdepth: 1
 
-  cmd_argument/index.md
+  cmd_parameter/index.md
+  deep_model/index.rst
   cluster/cluster_train.md
-  algorithm/index.rst
-  optimization/index.rst
-  dev/index.rst
+
+Development
+------------
+
+..  toctree::
+  :maxdepth: 1
+
+  new_layer/index.rst
   contribute_to_paddle.md
+
+Optimization
+-------------
+
+..  toctree::
+  :maxdepth: 1
+
+  optimization/index.rst

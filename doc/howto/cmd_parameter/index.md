@@ -1,5 +1,5 @@
-# Command Line Argument
+# How to Set Command-line Parameters
 
 * [Use Case](use_case.md)
-* [Argument Outline](argument_outline.md)
+* [Arguments](arguments.md)
 * [Detailed Descriptions](detail_introduction.md)

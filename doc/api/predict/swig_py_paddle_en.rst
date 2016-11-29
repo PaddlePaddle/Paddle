@@ -1,5 +1,5 @@
-Python Prediction API
-=====================
+Python Prediction
+==================
 
 PaddlePaddle offers a set of clean prediction interfaces for python with the help of
 SWIG. The main steps of predict values in python are:

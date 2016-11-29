@@ -1,5 +1,5 @@
-DataProvider Introduction
-=========================
+Introduction
+==============
 DataProvider is a module that loads training or testing data into cpu or gpu
 memory for the following triaining or testing process.
 

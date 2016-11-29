@@ -1,5 +1,5 @@
-Performance Tuning
-==================
+How to Tune GPU Performance
+===========================
 
 .. toctree::
   :maxdepth: 3
