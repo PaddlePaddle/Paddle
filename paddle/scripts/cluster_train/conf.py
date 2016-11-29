@@ -13,17 +13,14 @@
 # limitations under the License.
 
 HOSTS = [
-        "root@192.168.100.17",
-        "root@192.168.100.18",
-        ]
-
+    "root@192.168.100.17",
+    "root@192.168.100.18",
+]
 '''
 workspace configuration
 '''
 #root dir for workspace, can be set as any director with real user account
 ROOT_DIR = "/home/paddle"
-
-
 '''
 network configuration
 '''
@@ -37,4 +34,4 @@ PADDLE_PORTS_NUM = 2
 PADDLE_PORTS_NUM_FOR_SPARSE = 2
 
 #environments setting for all processes in cluster job
-LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib64"
+LD_LIBRARY_PATH = "/usr/local/cuda/lib64:/usr/lib64"

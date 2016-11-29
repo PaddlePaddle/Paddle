@@ -38,29 +38,47 @@ inline void hl_expand_feature2col(
     real* dataCol) {}
 
 inline void hl_maxpool_forward(
-    int frameCnt, const real* inputData, int channels,
-    int height, int width, int pooledH, int pooledW,
-    int sizeX, int stride, int start, real* tgtData) {}
+    const int frameCnt, const real* inputData,
+    const int channels,
+    const int height, const int width,
+    const int pooledH, const int pooledW,
+    const int sizeX, const int sizeY,
+    const int strideH, const int strideW,
+    const int paddingH, const int paddingW,
+    real* tgtData, const int tgtStride) {}
 
 inline void hl_maxpool_backward(
-    int frameCnt, const real* inputData,
+    const int frameCnt, const real* inputData,
     const real* outData, const real* outGrad,
-    int channels, int height, int width,
-    int pooledH, int pooledW, int sizeX,
-    int stride, int start, real* targetGrad,
-    real scaleA, real scaleB) {}
+    const int channels, const int height,
+    const int width,
+    const int pooledH, const int pooledW,
+    const int sizeX, const int sizeY,
+    const int strideH, const int strideW,
+    const int paddingH, const int paddingW,
+    real scaleA, real scaleB,
+    real* targetGrad, const int outStride) {}
 
 inline void hl_avgpool_forward(
-    int frameCnt, const real* inputData, int channels,
-    int height, int width, int pooledH, int pooledW,
-    int sizeX, int stride, int start, real* tgtData) {}
+    const int frameCnt, const real* inputData,
+    const int channels,
+    const int height, const int width,
+    const int pooledH, const int pooledW,
+    const int sizeX, const int sizeY,
+    const int strideH, const int strideW,
+    const int paddingH, const int paddingW,
+    real* tgtData, const int tgtStride) {}
 
 inline void hl_avgpool_backward(
-    int frameCnt, const real* outGrad,
-    int channels, int height, int width,
-    int pooledH, int pooledW, int sizeX,
-    int stride, int start, real* backGrad,
-    real scaleA, real scaleB) {}
+    const int frameCnt, const real* outGrad,
+    const int channels, const int height,
+    const int width,
+    const int pooledH, const int pooledW,
+    const int sizeX, const int sizeY,
+    const int strideH, const int strideW,
+    int paddingH, int paddingW,
+    real scaleA, real scaleB,
+    real* backGrad, const int outStride) {}
 
 inline void hl_CMRNorm_forward(
     size_t frameCnt, const real* in, real* scale, real* out,
@@ -72,5 +90,41 @@ inline void hl_CMRNorm_backward(
     const real* outV, const real* outDiff, real *inDiff,
     size_t channels, size_t height, size_t width, size_t sizeX,
     real alpha, real beta) {}
+
+inline void hl_bilinear_forward(const real* inData,
+                                const size_t inImgH,
+                                const size_t inImgW,
+                                const size_t inputH,
+                                const size_t inputW,
+                                real* outData,
+                                const size_t outImgH,
+                                const size_t outImgW,
+                                const size_t outputH,
+                                const size_t outputW,
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {}
+
+inline void hl_bilinear_backward(real* inGrad,
+                                const size_t inImgH,
+                                const size_t inImgW,
+                                const size_t inputH,
+                                const size_t inputW,
+                                const real* outGrad,
+                                const size_t outImgH,
+                                const size_t outImgW,
+                                const size_t outputH,
+                                const size_t outputW,
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {}
+
+inline void hl_maxout_forward(
+    const real* inData, real* outData, int* idData,
+    size_t batchSize, size_t size, size_t featLen, size_t group) {}
+
+inline void hl_maxout_backward(
+    real* inGrad, const real* outGrad, const int* idData,
+    size_t batchSize, size_t size, size_t featLen, size_t group) {}
 
 #endif  // HL_CNN_STUB_H_

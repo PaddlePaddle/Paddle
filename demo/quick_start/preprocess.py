@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 1. (remove HTML before or not)tokensizing
 2. pos sample : rating score 5; neg sample: rating score 1-2.
@@ -35,7 +34,8 @@ import multiprocessing
 
 batch_size = 5000
 word_count = {}
-num_tokenize = max(1, multiprocessing.cpu_count() - 2)  # parse + tokenize + save
+num_tokenize = max(1,
+                   multiprocessing.cpu_count() - 2)  # parse + tokenize + save
 max_queue_size = 8
 parse_queue = Queue(maxsize=max_queue_size + num_tokenize)
 tokenize_queue = Queue(maxsize=max_queue_size + num_tokenize)

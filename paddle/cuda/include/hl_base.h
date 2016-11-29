@@ -185,7 +185,7 @@ typedef struct {
     size_t                  nnz;
 } _hl_sparse_matrix_s, *hl_sparse_matrix_s;
 
-#ifndef HPPL_TYPE_DOUBLE
+#ifndef PADDLE_TYPE_DOUBLE
 /**
  * HPPL data type: real (float or double)
  *
@@ -208,6 +208,15 @@ typedef struct {
 #define HL_FLOAT_MAX        1.7976931348623157e+308
 #define HL_FLOAT_MIN        2.2250738585072014e-308
 #endif
+
+
+/**
+ * The maximum input value for exp, used to avoid overflow problem.
+ *
+ * Currently only used for tanh function.
+ */
+#define EXP_MAX_INPUT       40.0
+
 
 /**
  * @brief DIVUP(x, y) is similar to ceil(x / y).
@@ -245,4 +254,3 @@ extern __thread cudaStream_t default_stream;
 #endif  /* __NVCC__ */
 
 #endif  /* HL_BASE_H_ */
-

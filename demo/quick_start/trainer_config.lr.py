@@ -16,7 +16,7 @@
 
 from paddle.trainer_config_helpers import *
 
-dict_file = "./data/dict.txt"
+dict_file = get_config_arg('dict_file', str, "./data/dict.txt")
 word_dict = dict()
 with open(dict_file, 'r') as f:
     for i, line in enumerate(f):
@@ -32,11 +32,12 @@ process = 'process' if not is_predict else 'process_predict'
 # We need to use different process for training and prediction.
 # For training, the input data includes both word IDs and labels.
 # For prediction, the input data only includs word Ids.
-define_py_data_sources2(train_list=trn,
-                        test_list=tst,
-                        module="dataprovider_bow",
-                        obj=process,
-                        args={"dictionary": word_dict})
+define_py_data_sources2(
+    train_list=trn,
+    test_list=tst,
+    module="dataprovider_bow",
+    obj=process,
+    args={"dictionary": word_dict})
 
 batch_size = 128 if not is_predict else 1
 settings(
@@ -44,8 +45,7 @@ settings(
     learning_rate=2e-3,
     learning_method=AdamOptimizer(),
     regularization=L2Regularization(8e-4),
-    gradient_clipping_threshold=25
-)
+    gradient_clipping_threshold=25)
 
 # Define the data for text features. The size of the data layer is the number
 # of words in the dictionary.
@@ -63,7 +63,6 @@ if not is_predict:
     label = data_layer(name="label", size=2)
 
     # Define cross-entropy classification loss and error.
-    classification_cost(input=output, label=label)
     cls = classification_cost(input=output, label=label)
     outputs(cls)
 else:

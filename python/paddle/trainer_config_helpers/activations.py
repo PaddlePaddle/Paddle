@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["TanhActivation", "SigmoidActivation",
-           "SoftmaxActivation", "IdentityActivation", "LinearActivation",
-           'SequenceSoftmaxActivation', 'ExpActivation',
-           "ReluActivation", "BReluActivation", "SoftReluActivation",
-           "STanhActivation",
-           "AbsActivation", "SquareActivation",
-           "BaseActivation"]
+__all__ = [
+    "TanhActivation", "SigmoidActivation", "SoftmaxActivation",
+    "IdentityActivation", "LinearActivation", 'SequenceSoftmaxActivation',
+    'ExpActivation', "ReluActivation", "BReluActivation", "SoftReluActivation",
+    "STanhActivation", "AbsActivation", "SquareActivation", "BaseActivation"
+]
 
 
 class BaseActivation(object):
     """
-    A mark for activation class. 
+    A mark for activation class.
     Each activation inherit BaseActivation, which has two parameters.
-     
+
     :param name: activation name in paddle config.
     :type name: basestring
     :param support_hppl: True if supported by hppl. HPPL is a library used by paddle
@@ -51,7 +50,8 @@ class TanhActivation(BaseActivation):
        f(z)=tanh(z)=\\frac{e^z-e^{-z}}{e^z+e^{-z}}
     """
 
-    def __init__(self): BaseActivation.__init__(self, 'tanh', True)
+    def __init__(self):
+        BaseActivation.__init__(self, 'tanh', True)
 
 
 class SigmoidActivation(BaseActivation):
@@ -63,7 +63,8 @@ class SigmoidActivation(BaseActivation):
        f(z) = \\frac{1}{1+exp(-z)}
     """
 
-    def __init__(self): BaseActivation.__init__(self, 'sigmoid', True)
+    def __init__(self):
+        BaseActivation.__init__(self, 'sigmoid', True)
 
 
 class SoftmaxActivation(BaseActivation):
@@ -104,7 +105,8 @@ class IdentityActivation(BaseActivation):
     Just do nothing for output both forward/backward.
     """
 
-    def __init__(self): BaseActivation.__init__(self, '', False)
+    def __init__(self):
+        BaseActivation.__init__(self, '', False)
 
 
 LinearActivation = IdentityActivation
@@ -124,7 +126,8 @@ class ReluActivation(BaseActivation):
        0  &\\quad\\mathrm{otherwize}
     """
 
-    def __init__(self): BaseActivation.__init__(self, 'relu', True)
+    def __init__(self):
+        BaseActivation.__init__(self, 'relu', True)
 
 
 class BReluActivation(BaseActivation):
@@ -141,7 +144,8 @@ class BReluActivation(BaseActivation):
        0  &\\quad \\mathrm{otherwise}
     """
 
-    def __init__(self): BaseActivation.__init__(self, 'brelu', False)
+    def __init__(self):
+        BaseActivation.__init__(self, 'brelu', False)
 
 
 class SoftReluActivation(BaseActivation):
@@ -149,7 +153,9 @@ class SoftReluActivation(BaseActivation):
     SoftRelu Activation.
     """
 
-    def __init__(self): BaseActivation.__init__(self, 'softrelu', False)
+    def __init__(self):
+        BaseActivation.__init__(self, 'softrelu', False)
+
 
 class STanhActivation(BaseActivation):
     """
@@ -160,7 +166,8 @@ class STanhActivation(BaseActivation):
        f(z) = 1.7159 * tanh(2/3*z)
     """
 
-    def __init__(self): BaseActivation.__init__(self, 'stanh', False)
+    def __init__(self):
+        BaseActivation.__init__(self, 'stanh', False)
 
 
 class AbsActivation(BaseActivation):
@@ -178,7 +185,8 @@ class AbsActivation(BaseActivation):
        0 &\\quad if \\quad z = 0
     """
 
-    def __init__(self): BaseActivation.__init__(self, 'abs', False)
+    def __init__(self):
+        BaseActivation.__init__(self, 'abs', False)
 
 
 class SquareActivation(BaseActivation):
@@ -189,13 +197,29 @@ class SquareActivation(BaseActivation):
        f(z) = z^2.
     """
 
-    def __init__(self): BaseActivation.__init__(self, 'square', False)
+    def __init__(self):
+        BaseActivation.__init__(self, 'square', False)
+
 
 class ExpActivation(BaseActivation):
     """
     Exponential Activation.
-    
+
     .. math::
        f(z) = e^z.
     """
-    def __init__(self): BaseActivation.__init__(self, 'exponential', False)
+
+    def __init__(self):
+        BaseActivation.__init__(self, 'exponential', False)
+
+
+class LogActivation(BaseActivation):
+    """
+    Logarithm Activation.
+
+    .. math::
+       f(z) = log(z)
+    """
+
+    def __init__(self):
+        BaseActivation.__init__(self, 'log', False)

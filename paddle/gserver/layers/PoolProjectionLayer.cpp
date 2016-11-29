@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 #include "PoolProjectionLayer.h"
 
 namespace paddle {
+
 
 size_t PoolProjectionLayer::getSize() {
   CHECK_EQ(inputLayers_.size(), 1UL);
@@ -25,79 +25,36 @@ size_t PoolProjectionLayer::getSize() {
   imgSizeH_ = inputLayers_[0]->getOutput().getFrameHeight();
   imgSizeW_ = inputLayers_[0]->getOutput().getFrameWidth();
   if (imgSizeH_ == 0) {
-    imgSizeH_ = imgSize_;
+    imgSizeH_ = imgSizeY_;
   }
   if (imgSizeW_ == 0) {
     imgSizeW_ = imgSize_;
   }
-  outputH_ = 1 + (imgSizeH_ - start_ - sizeX_ + stride_ - 1) / stride_;
-  outputW_ = 1 + (imgSizeW_ - start_ - sizeX_ + stride_ - 1) / stride_;
+
+  outputH_ = outputSize(imgSizeH_, sizeY_, confPaddingY_, strideY_,
+                        /* caffeMode */ false);
+  outputW_ = outputSize(imgSizeW_, sizeX_, confPadding_, stride_,
+                        /* caffeMode */ false);
+
   layerSize = outputH_ * outputW_ * channels_;
 
-  getOutput().setFrameHeight(outputH_);
-  getOutput().setFrameWidth(outputW_);
   return layerSize;
 }
 
-void MaxPoolProjectionLayer::forward(PassType passType) {
+void PoolProjectionLayer::forward(PassType passType) {
   Layer::forward(passType);
-
-  /* malloc memory for the output_ if necessary */
-  /* note: one sample correspond to one ROW */
-  MatrixPtr input = getInputValue(0);
-  int batchSize = input->getHeight();
+  const Argument& in = getInput(0);
+  int batchSize = in.value->getHeight();
   int size = getSize();
   resetOutput(batchSize, size);
-
-  MatrixPtr outV = getOutputValue();
-
-  outV->maxPoolForward(*input, imgSizeH_, imgSizeW_, channels_, sizeX_, start_,
-                       stride_, outputH_, outputW_);
+  poolProjection_->forward(&in, &output_, passType);
 }
 
-void MaxPoolProjectionLayer::backward(const UpdateCallback& callback) {
+void PoolProjectionLayer::backward(const UpdateCallback& callback) {
   (void)callback;
-
   if (NULL == getInputGrad(0)) {
     return;
   }
-
-  /* Do derivation */
-  MatrixPtr outGrad = getOutputGrad();
-  MatrixPtr inputV = getInputValue(0);
-  MatrixPtr outV = getOutputValue();
-  MatrixPtr inputGrad = getInputGrad(0);
-
-  inputGrad->maxPoolBackward(*inputV, imgSizeH_, imgSizeW_, *outGrad, *outV,
-                             sizeX_, start_, stride_, outputH_, outputW_, 1, 1);
-}
-
-void AvgPoolProjectionLayer::forward(PassType passType) {
-  Layer::forward(passType);
-
-  /* malloc memory for the output_ if necessary */
-  /* note: one sample correspond to one ROW */
-  MatrixPtr input = getInputValue(0);
-  int batchSize = input->getHeight();
-  int size = getSize();
-  resetOutput(batchSize, size);
-
-  MatrixPtr outV = getOutputValue();
-
-  outV->avgPoolForward(*input, imgSizeH_, imgSizeW_, channels_, sizeX_, start_,
-                       stride_, outputH_, outputW_);
-}
-
-void AvgPoolProjectionLayer::backward(const UpdateCallback& callback) {
-  (void)callback;
-
-  if (NULL == getInputGrad(0)) {
-    return;
-  }
-  /* Do derivation */
-  MatrixPtr outputGrad = getOutputGrad();
-  MatrixPtr inputGrad = getInputGrad(0);
-  inputGrad->avgPoolBackward(*outputGrad, imgSizeH_, imgSizeW_, sizeX_, start_,
-                             stride_, outputH_, outputW_, 1, 1);
+  poolProjection_->backward(callback);
 }
 }  // namespace paddle

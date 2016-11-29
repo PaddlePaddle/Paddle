@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 
 """
@@ -20,33 +19,37 @@ from activations import LinearActivation, ReluActivation, SoftmaxActivation, \
     IdentityActivation, TanhActivation, SequenceSoftmaxActivation
 from attrs import ExtraAttr
 from default_decorators import wrap_name_default, wrap_act_default, \
-    wrap_param_default
+    wrap_param_default, wrap_bias_attr_default, wrap_param_attr_default
 from layers import *  # There are too many layers used in network, so import *
 from poolings import MaxPooling, SumPooling
 from paddle.trainer.config_parser import *
 
-__all__ = ['sequence_conv_pool', 'simple_lstm', "simple_img_conv_pool",
-           "img_conv_bn_pool", 'dropout_layer', 'lstmemory_group',
-           'lstmemory_unit', 'small_vgg', 'img_conv_group', 'vgg_16_network',
-           'gru_unit', 'gru_group', 'simple_gru', 'simple_attention',
-           'text_conv_pool',
-           'bidirectional_lstm', 'outputs']
-
+__all__ = [
+    'sequence_conv_pool', 'simple_lstm', "simple_img_conv_pool",
+    "img_conv_bn_pool", 'dropout_layer', 'lstmemory_group', 'lstmemory_unit',
+    'small_vgg', 'img_conv_group', 'vgg_16_network', 'gru_unit', 'gru_group',
+    'simple_gru', 'simple_attention', 'simple_gru2', 'bidirectional_gru',
+    'text_conv_pool', 'bidirectional_lstm', 'inputs', 'outputs'
+]
 
 ######################################################
 #                     Text CNN                       #
 ######################################################
 
+
 @wrap_name_default("sequence_conv_pooling")
 def sequence_conv_pool(input,
-                       context_len, hidden_size,
+                       context_len,
+                       hidden_size,
                        name=None,
                        context_start=None,
-                       pool_type=None, context_proj_layer_name=None,
+                       pool_type=None,
+                       context_proj_layer_name=None,
                        context_proj_param_attr=False,
                        fc_layer_name=None,
                        fc_param_attr=None,
-                       fc_bias_attr=None, fc_act=None,
+                       fc_bias_attr=None,
+                       fc_act=None,
                        pool_bias_attr=None,
                        fc_attr=None,
                        context_attr=None,
@@ -101,40 +104,62 @@ def sequence_conv_pool(input,
     context_proj_layer_name = "%s_conv_proj" % name \
         if context_proj_layer_name is None else context_proj_layer_name
 
-    with mixed_layer(name=context_proj_layer_name,
-                     size=input.size * context_len,
-                     act=LinearActivation(),
-                     layer_attr=context_attr) as m:
-        m += context_projection(input, context_len=context_len,
-                                context_start=context_start,
-                                padding_attr=context_proj_param_attr)
+    with mixed_layer(
+            name=context_proj_layer_name,
+            size=input.size * context_len,
+            act=LinearActivation(),
+            layer_attr=context_attr) as m:
+        m += context_projection(
+            input,
+            context_len=context_len,
+            context_start=context_start,
+            padding_attr=context_proj_param_attr)
 
     fc_layer_name = "%s_conv_fc" % name \
         if fc_layer_name is None else fc_layer_name
-    fl = fc_layer(name=fc_layer_name, input=m, size=hidden_size,
-                  act=fc_act, layer_attr=fc_attr,
-                  param_attr=fc_param_attr, bias_attr=fc_bias_attr)
+    fl = fc_layer(
+        name=fc_layer_name,
+        input=m,
+        size=hidden_size,
+        act=fc_act,
+        layer_attr=fc_attr,
+        param_attr=fc_param_attr,
+        bias_attr=fc_bias_attr)
 
-    return pooling_layer(name=name, input=fl,
-                         pooling_type=pool_type,
-                         bias_attr=pool_bias_attr,
-                         layer_attr=pool_attr)
+    return pooling_layer(
+        name=name,
+        input=fl,
+        pooling_type=pool_type,
+        bias_attr=pool_bias_attr,
+        layer_attr=pool_attr)
 
 
 text_conv_pool = sequence_conv_pool
-
 
 ############################################################################
 #                       Images                                             #
 ############################################################################
 
+
 @wrap_name_default("conv_pool")
-def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
-                         pool_type=None, act=None, groups=1, conv_stride=1,
-                         conv_padding=0, bias_attr=None, num_channel=None,
-                         param_attr=None, shared_bias=True,
-                         conv_layer_attr=None, pool_stride=1, pool_start=None,
-                         pool_padding=0, pool_layer_attr=None):
+def simple_img_conv_pool(input,
+                         filter_size,
+                         num_filters,
+                         pool_size,
+                         name=None,
+                         pool_type=None,
+                         act=None,
+                         groups=1,
+                         conv_stride=1,
+                         conv_padding=0,
+                         bias_attr=None,
+                         num_channel=None,
+                         param_attr=None,
+                         shared_bias=True,
+                         conv_layer_attr=None,
+                         pool_stride=1,
+                         pool_padding=0,
+                         pool_layer_attr=None):
     """
     Simple image convolution and pooling group.
 
@@ -170,40 +195,61 @@ def simple_img_conv_pool(input, filter_size, num_filters, pool_size, name=None,
     :type shared_bias: bool
     :param conv_layer_attr: see img_conv_layer for details
     :type conv_layer_attr: ExtraLayerAttribute
-    :param pool_stride: see img_conv_layer for details
+    :param pool_stride: see img_pool_layer for details
     :type pool_stride: int
-    :param pool_start: see img_conv_layer for details
-    :type pool_start: int
-    :param pool_padding: see img_conv_layer for details
+    :param pool_padding: see img_pool_layer for details
     :type pool_padding: int
-    :param pool_layer_attr: see img_conv_layer for details
+    :param pool_layer_attr: see img_pool_layer for details
     :type pool_layer_attr: ExtraLayerAttribute
     :return: Layer's output
     :rtype: LayerOutput
     """
-    _conv_ = img_conv_layer(name="%s_conv" % name, input=input,
-                            filter_size=filter_size,
-                            num_filters=num_filters, num_channels=num_channel,
-                            act=act, groups=groups,
-                            stride=conv_stride,
-                            padding=conv_padding, bias_attr=bias_attr,
-                            param_attr=param_attr, shared_biases=shared_bias,
-                            layer_attr=conv_layer_attr)
-    return img_pool_layer(name="%s_pool" % name, input=_conv_,
-                          pool_size=pool_size,
-                          pool_type=pool_type, stride=pool_stride,
-                          start=pool_start, padding=pool_padding,
-                          layer_attr=pool_layer_attr)
+    _conv_ = img_conv_layer(
+        name="%s_conv" % name,
+        input=input,
+        filter_size=filter_size,
+        num_filters=num_filters,
+        num_channels=num_channel,
+        act=act,
+        groups=groups,
+        stride=conv_stride,
+        padding=conv_padding,
+        bias_attr=bias_attr,
+        param_attr=param_attr,
+        shared_biases=shared_bias,
+        layer_attr=conv_layer_attr)
+    return img_pool_layer(
+        name="%s_pool" % name,
+        input=_conv_,
+        pool_size=pool_size,
+        pool_type=pool_type,
+        stride=pool_stride,
+        padding=pool_padding,
+        layer_attr=pool_layer_attr)
 
 
 @wrap_name_default("conv_bn_pool")
-def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
-                     pool_type=None, act=None, groups=1, conv_stride=1,
-                     conv_padding=0, conv_bias_attr=None, num_channel=None,
-                     conv_param_attr=None, shared_bias=True,
-                     conv_layer_attr=None, bn_param_attr=None,
-                     bn_bias_attr=None, bn_layer_attr=None, pool_stride=1,
-                     pool_start=None, pool_padding=0, pool_layer_attr=None):
+def img_conv_bn_pool(input,
+                     filter_size,
+                     num_filters,
+                     pool_size,
+                     name=None,
+                     pool_type=None,
+                     act=None,
+                     groups=1,
+                     conv_stride=1,
+                     conv_padding=0,
+                     conv_bias_attr=None,
+                     num_channel=None,
+                     conv_param_attr=None,
+                     shared_bias=True,
+                     conv_layer_attr=None,
+                     bn_param_attr=None,
+                     bn_bias_attr=None,
+                     bn_layer_attr=None,
+                     pool_stride=1,
+                     pool_padding=0,
+                     pool_layer_attr=None):
     """
     Convolution, batch normalization, pooling group.
 
@@ -243,8 +289,6 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
     :param bn_layer_attr: ParameterAttribute.
     :param pool_stride: see img_pool_layer's document.
     :type pool_stride: int
-    :param pool_start: see img_pool_layer's document.
-    :type pool_start: int
     :param pool_padding: see img_pool_layer's document.
     :type pool_padding: int
     :param pool_layer_attr: see img_pool_layer's document.
@@ -252,31 +296,42 @@ def img_conv_bn_pool(input, filter_size, num_filters, pool_size, name=None,
     :return: Layer groups output
     :rtype: LayerOutput
     """
-    __conv__ = img_conv_layer(name="%s_conv" % name,
-                              input=input, filter_size=filter_size,
-                              num_filters=num_filters, num_channels=num_channel,
-                              act=LinearActivation(), groups=groups,
-                              stride=conv_stride, padding=conv_padding,
-                              bias_attr=conv_bias_attr,
-                              param_attr=conv_param_attr,
-                              shared_biases=shared_bias,
-                              layer_attr=conv_layer_attr)
-    __bn__ = batch_norm_layer(name="%s_bn" % name,
-                              input=__conv__, act=act,
-                              bias_attr=bn_bias_attr, param_attr=bn_param_attr,
-                              layer_attr=bn_layer_attr)
-    return img_pool_layer(name="%s_pool" % name,
-                          input=__bn__, pool_type=pool_type,
-                          pool_size=pool_size, stride=pool_stride,
-                          start=pool_start, padding=pool_padding,
-                          layer_attr=pool_layer_attr)
+    __conv__ = img_conv_layer(
+        name="%s_conv" % name,
+        input=input,
+        filter_size=filter_size,
+        num_filters=num_filters,
+        num_channels=num_channel,
+        act=LinearActivation(),
+        groups=groups,
+        stride=conv_stride,
+        padding=conv_padding,
+        bias_attr=conv_bias_attr,
+        param_attr=conv_param_attr,
+        shared_biases=shared_bias,
+        layer_attr=conv_layer_attr)
+    __bn__ = batch_norm_layer(
+        name="%s_bn" % name,
+        input=__conv__,
+        act=act,
+        bias_attr=bn_bias_attr,
+        param_attr=bn_param_attr,
+        layer_attr=bn_layer_attr)
+    return img_pool_layer(
+        name="%s_pool" % name,
+        input=__bn__,
+        pool_type=pool_type,
+        pool_size=pool_size,
+        stride=pool_stride,
+        padding=pool_padding,
+        layer_attr=pool_layer_attr)
 
 
-@wrap_act_default(param_names=['conv_act'],
-                  act=ReluActivation())
-@wrap_param_default(param_names=['pool_type'],
-                    default_factory=lambda _: MaxPooling())
-def img_conv_group(input, conv_num_filter,
+@wrap_act_default(param_names=['conv_act'], act=ReluActivation())
+@wrap_param_default(
+    param_names=['pool_type'], default_factory=lambda _: MaxPooling())
+def img_conv_group(input,
+                   conv_num_filter,
                    pool_size,
                    num_channels=None,
                    conv_padding=1,
@@ -337,10 +392,12 @@ def img_conv_group(input, conv_num_filter,
         else:
             extra_kwargs['act'] = conv_act[i]
 
-        tmp = img_conv_layer(input=tmp, padding=conv_padding[i],
-                             filter_size=conv_filter_size[i],
-                             num_filters=conv_num_filter[i],
-                             **extra_kwargs)
+        tmp = img_conv_layer(
+            input=tmp,
+            padding=conv_padding[i],
+            filter_size=conv_filter_size[i],
+            num_filters=conv_num_filter[i],
+            **extra_kwargs)
 
         # logger.debug("tmp.num_filters = %d" % tmp.num_filters)
 
@@ -349,34 +406,41 @@ def img_conv_group(input, conv_num_filter,
             if dropout == 0 or abs(dropout) < 1e-5:  # dropout not set
                 tmp = batch_norm_layer(input=tmp, act=conv_act[i])
             else:
-                tmp = batch_norm_layer(input=tmp, act=conv_act[i],
-                                       layer_attr=ExtraAttr(drop_rate=dropout))
+                tmp = batch_norm_layer(
+                    input=tmp,
+                    act=conv_act[i],
+                    layer_attr=ExtraAttr(drop_rate=dropout))
 
-    return img_pool_layer(input=tmp, stride=pool_stride, pool_size=pool_size,
-                          pool_type=pool_type)
+    return img_pool_layer(
+        input=tmp, stride=pool_stride, pool_size=pool_size, pool_type=pool_type)
 
 
 def small_vgg(input_image, num_channels, num_classes):
     def __vgg__(ipt, num_filter, times, dropouts, num_channels_=None):
-        return img_conv_group(input=ipt, num_channels=num_channels_,
-                              pool_size=2,
-                              pool_stride=2,
-                              conv_num_filter=[num_filter] * times,
-                              conv_filter_size=3,
-                              conv_act=ReluActivation(),
-                              conv_with_batchnorm=True,
-                              conv_batchnorm_drop_rate=dropouts,
-                              pool_type=MaxPooling())
+        return img_conv_group(
+            input=ipt,
+            num_channels=num_channels_,
+            pool_size=2,
+            pool_stride=2,
+            conv_num_filter=[num_filter] * times,
+            conv_filter_size=3,
+            conv_act=ReluActivation(),
+            conv_with_batchnorm=True,
+            conv_batchnorm_drop_rate=dropouts,
+            pool_type=MaxPooling())
 
     tmp = __vgg__(input_image, 64, 2, [0.3, 0], num_channels)
     tmp = __vgg__(tmp, 128, 2, [0.4, 0])
     tmp = __vgg__(tmp, 256, 3, [0.4, 0.4, 0])
     tmp = __vgg__(tmp, 512, 3, [0.4, 0.4, 0])
-    tmp = img_pool_layer(input = tmp, stride = 2,
-                         pool_size = 2, pool_type = MaxPooling())
+    tmp = img_pool_layer(
+        input=tmp, stride=2, pool_size=2, pool_type=MaxPooling())
     tmp = dropout_layer(input=tmp, dropout_rate=0.5)
-    tmp = fc_layer(input=tmp, size=512, layer_attr=ExtraAttr(drop_rate=0.5),
-                   act=LinearActivation())
+    tmp = fc_layer(
+        input=tmp,
+        size=512,
+        layer_attr=ExtraAttr(drop_rate=0.5),
+        act=LinearActivation())
     tmp = batch_norm_layer(input=tmp, act=ReluActivation())
     return fc_layer(input=tmp, size=num_classes, act=SoftmaxActivation())
 
@@ -393,37 +457,67 @@ def vgg_16_network(input_image, num_channels, num_classes=1000):
     :return:
     """
 
-    tmp = img_conv_group(input=input_image, num_channels=num_channels,
-                         conv_padding=1, conv_num_filter=[64, 64],
-                         conv_filter_size=3,
-                         conv_act=ReluActivation(), pool_size=2,
-                         pool_stride=2,
-                         pool_type=MaxPooling())
+    tmp = img_conv_group(
+        input=input_image,
+        num_channels=num_channels,
+        conv_padding=1,
+        conv_num_filter=[64, 64],
+        conv_filter_size=3,
+        conv_act=ReluActivation(),
+        pool_size=2,
+        pool_stride=2,
+        pool_type=MaxPooling())
 
-    tmp = img_conv_group(input=tmp, conv_num_filter=[128, 128], conv_padding=1,
-                         conv_filter_size=3, conv_act=ReluActivation(),
-                         pool_stride=2, pool_type=MaxPooling(),
-                         pool_size=2)
+    tmp = img_conv_group(
+        input=tmp,
+        conv_num_filter=[128, 128],
+        conv_padding=1,
+        conv_filter_size=3,
+        conv_act=ReluActivation(),
+        pool_stride=2,
+        pool_type=MaxPooling(),
+        pool_size=2)
 
-    tmp = img_conv_group(input=tmp, conv_num_filter=[256, 256, 256],
-                         conv_padding=1,
-                         conv_filter_size=3, conv_act=ReluActivation(),
-                         pool_stride=2, pool_type=MaxPooling(), pool_size=2)
+    tmp = img_conv_group(
+        input=tmp,
+        conv_num_filter=[256, 256, 256],
+        conv_padding=1,
+        conv_filter_size=3,
+        conv_act=ReluActivation(),
+        pool_stride=2,
+        pool_type=MaxPooling(),
+        pool_size=2)
 
-    tmp = img_conv_group(input=tmp, conv_num_filter=[512, 512, 512],
-                         conv_padding=1,
-                         conv_filter_size=3, conv_act=ReluActivation(),
-                         pool_stride=2, pool_type=MaxPooling(), pool_size=2)
-    tmp = img_conv_group(input=tmp, conv_num_filter=[512, 512, 512],
-                         conv_padding=1,
-                         conv_filter_size=3, conv_act=ReluActivation(),
-                         pool_stride=2, pool_type=MaxPooling(), pool_size=2)
+    tmp = img_conv_group(
+        input=tmp,
+        conv_num_filter=[512, 512, 512],
+        conv_padding=1,
+        conv_filter_size=3,
+        conv_act=ReluActivation(),
+        pool_stride=2,
+        pool_type=MaxPooling(),
+        pool_size=2)
+    tmp = img_conv_group(
+        input=tmp,
+        conv_num_filter=[512, 512, 512],
+        conv_padding=1,
+        conv_filter_size=3,
+        conv_act=ReluActivation(),
+        pool_stride=2,
+        pool_type=MaxPooling(),
+        pool_size=2)
 
-    tmp = fc_layer(input=tmp, size=4096, act=ReluActivation(),
-                   layer_attr=ExtraAttr(drop_rate=0.5))
+    tmp = fc_layer(
+        input=tmp,
+        size=4096,
+        act=ReluActivation(),
+        layer_attr=ExtraAttr(drop_rate=0.5))
 
-    tmp = fc_layer(input=tmp, size=4096, act=ReluActivation(),
-                   layer_attr=ExtraAttr(drop_rate=0.5))
+    tmp = fc_layer(
+        input=tmp,
+        size=4096,
+        act=ReluActivation(),
+        layer_attr=ExtraAttr(drop_rate=0.5))
 
     return fc_layer(input=tmp, size=num_classes, act=SoftmaxActivation())
 
@@ -432,10 +526,19 @@ def vgg_16_network(input_image, num_channels, num_classes=1000):
 #                       Recurrent                                          #
 ############################################################################
 
+
 @wrap_name_default("lstm")
-def simple_lstm(input, size, name=None, reverse=False, mat_param_attr=None,
-                bias_param_attr=None, inner_param_attr=None, act=None,
-                gate_act=None, state_act=None, mixed_layer_attr=None,
+def simple_lstm(input,
+                size,
+                name=None,
+                reverse=False,
+                mat_param_attr=None,
+                bias_param_attr=None,
+                inner_param_attr=None,
+                act=None,
+                gate_act=None,
+                state_act=None,
+                mixed_layer_attr=None,
                 lstm_cell_attr=None):
     """
     Simple LSTM Cell.
@@ -489,23 +592,38 @@ def simple_lstm(input, size, name=None, reverse=False, mat_param_attr=None,
     :rtype: LayerOutput
     """
     fc_name = 'lstm_transform_%s' % name
-    with mixed_layer(name=fc_name, size=size * 4,
-                     act=IdentityActivation(),
-                     layer_attr=mixed_layer_attr, bias_attr=False) as m:
+    with mixed_layer(
+            name=fc_name,
+            size=size * 4,
+            act=IdentityActivation(),
+            layer_attr=mixed_layer_attr,
+            bias_attr=False) as m:
         m += full_matrix_projection(input, param_attr=mat_param_attr)
 
-    return lstmemory(name=name, input=m, reverse=reverse,
-                     bias_attr=bias_param_attr,
-                     param_attr=inner_param_attr, act=act,
-                     gate_act=gate_act, state_act=state_act,
-                     layer_attr=lstm_cell_attr)
+    return lstmemory(
+        name=name,
+        input=m,
+        reverse=reverse,
+        bias_attr=bias_param_attr,
+        param_attr=inner_param_attr,
+        act=act,
+        gate_act=gate_act,
+        state_act=state_act,
+        layer_attr=lstm_cell_attr)
 
 
 @wrap_name_default('lstm_unit')
-def lstmemory_unit(input, name=None, size=None, param_attr=None,
-                   act=None, gate_act=None, state_act=None,
-                   mixed_bias_attr=None, lstm_bias_attr=None,
-                   mixed_layer_attr=None,lstm_layer_attr=None,
+def lstmemory_unit(input,
+                   name=None,
+                   size=None,
+                   param_attr=None,
+                   act=None,
+                   gate_act=None,
+                   state_act=None,
+                   mixed_bias_attr=None,
+                   lstm_bias_attr=None,
+                   mixed_layer_attr=None,
+                   lstm_layer_attr=None,
                    get_output_layer_attr=None):
     """
     Define calculations that a LSTM unit performs in a single time step.
@@ -555,7 +673,7 @@ def lstmemory_unit(input, name=None, size=None, param_attr=None,
     :type gate_act: BaseActivation
     :param state_act: lstm state activiation type.
     :type state_act: BaseActivation
-    :param mixed_bias_attr: bias parameter attribute of mixed layer. 
+    :param mixed_bias_attr: bias parameter attribute of mixed layer.
                             False means no bias, None means default bias.
     :type mixed_bias_attr: ParameterAttribute|False
     :param lstm_bias_attr: bias parameter attribute of lstm layer.
@@ -576,10 +694,12 @@ def lstmemory_unit(input, name=None, size=None, param_attr=None,
     out_mem = memory(name=name, size=size)
     state_mem = memory(name="%s_state" % name, size=size)
 
-    with mixed_layer(name="%s_input_recurrent" % name,
-                     size=size * 4, bias_attr=mixed_bias_attr,
-                     layer_attr=mixed_layer_attr,
-                     act=IdentityActivation()) as m:
+    with mixed_layer(
+            name="%s_input_recurrent" % name,
+            size=size * 4,
+            bias_attr=mixed_bias_attr,
+            layer_attr=mixed_layer_attr,
+            act=IdentityActivation()) as m:
         m += identity_projection(input=input)
         m += full_matrix_projection(input=out_mem, param_attr=param_attr)
 
@@ -592,22 +712,29 @@ def lstmemory_unit(input, name=None, size=None, param_attr=None,
         act=act,
         gate_act=gate_act,
         state_act=state_act,
-        layer_attr=lstm_layer_attr
-    )
-    get_output_layer(name='%s_state' % name,
-                     input=lstm_out,
-                     arg_name='state',
-                     layer_attr=get_output_layer_attr)
+        layer_attr=lstm_layer_attr)
+    get_output_layer(
+        name='%s_state' % name,
+        input=lstm_out,
+        arg_name='state',
+        layer_attr=get_output_layer_attr)
 
     return lstm_out
 
 
 @wrap_name_default('lstm_group')
-def lstmemory_group(input, size=None, name=None,
-                    reverse=False, param_attr=None,
-                    act=None, gate_act=None, state_act=None,
-                    mixed_bias_attr=None, lstm_bias_attr=None,
-                    mixed_layer_attr=None, lstm_layer_attr=None,
+def lstmemory_group(input,
+                    size=None,
+                    name=None,
+                    reverse=False,
+                    param_attr=None,
+                    act=None,
+                    gate_act=None,
+                    state_act=None,
+                    mixed_bias_attr=None,
+                    lstm_bias_attr=None,
+                    mixed_layer_attr=None,
+                    lstm_layer_attr=None,
                     get_output_layer_attr=None):
     """
     lstm_group is a recurrent layer group version Long Short Term Memory. It
@@ -669,20 +796,25 @@ def lstmemory_group(input, size=None, name=None,
     """
 
     def __lstm_step__(ipt):
-        return lstmemory_unit(input=ipt, name=name,
-                              size=size, mixed_bias_attr=mixed_bias_attr,
-                              mixed_layer_attr=mixed_layer_attr,
-                              param_attr=param_attr,
-                              lstm_bias_attr=lstm_bias_attr,
-                              act=act, gate_act=gate_act,
-                              state_act=state_act,
-                              lstm_layer_attr=lstm_layer_attr,
-                              get_output_layer_attr=get_output_layer_attr)
+        return lstmemory_unit(
+            input=ipt,
+            name=name,
+            size=size,
+            mixed_bias_attr=mixed_bias_attr,
+            mixed_layer_attr=mixed_layer_attr,
+            param_attr=param_attr,
+            lstm_bias_attr=lstm_bias_attr,
+            act=act,
+            gate_act=gate_act,
+            state_act=state_act,
+            lstm_layer_attr=lstm_layer_attr,
+            get_output_layer_attr=get_output_layer_attr)
 
-    return recurrent_group(name='%s_recurrent_group' % name,
-                           step=__lstm_step__,
-                           reverse=reverse,
-                           input=input)
+    return recurrent_group(
+        name='%s_recurrent_group' % name,
+        step=__lstm_step__,
+        reverse=reverse,
+        input=input)
 
 
 @wrap_name_default('gru_unit')
@@ -732,8 +864,7 @@ def gru_unit(input,
         bias_attr=gru_bias_attr,
         act=act,
         gate_act=gate_act,
-        layer_attr=gru_layer_attr
-    )
+        layer_attr=gru_layer_attr)
     return gru_out
 
 
@@ -743,9 +874,9 @@ def gru_group(input,
               name=None,
               reverse=False,
               gru_bias_attr=None,
-              act=None, gate_act=None,
+              act=None,
+              gate_act=None,
               gru_layer_attr=None):
-
     """
     gru_group is a recurrent layer group version Gated Recurrent Unit. It
     does exactly the same calculation as the grumemory layer does. A promising
@@ -793,13 +924,13 @@ def gru_group(input,
             gru_bias_attr=gru_bias_attr,
             act=act,
             gate_act=gate_act,
-            gru_layer_attr=gru_layer_attr
-        )
+            gru_layer_attr=gru_layer_attr)
 
-    return recurrent_group(name='%s_recurrent_group' % name,
-                           step=__gru_step__,
-                           reverse=reverse,
-                           input=input)
+    return recurrent_group(
+        name='%s_recurrent_group' % name,
+        step=__gru_step__,
+        reverse=reverse,
+        input=input)
 
 
 @wrap_name_default('simple_gru')
@@ -813,25 +944,39 @@ def simple_gru(input,
                gru_bias_attr=None,
                act=None,
                gate_act=None,
-               gru_layer_attr=None
-               ):
+               gru_layer_attr=None):
     """
-    simple_gru is also a recurrent layer group version Gated Recurrent Unit as
-    gru_group. The difference only lies in implemention details.
+    You maybe see gru_step_layer, grumemory in layers.py, gru_unit, gru_group,
+    simple_gru in network.py. The reason why there are so many interfaces is
+    that we have two ways to implement recurrent neural network. One way is to
+    use one complete layer to implement rnn (including simple rnn, gru and lstm)
+    with multiple time steps, such as recurrent_layer, lstmemory, grumemory. But,
+    the multiplication operation :math:`W x_t` is not computed in these layers.
+    See details in their interfaces in layers.py. 
+    The other implementation is to use an recurrent group which can ensemble a
+    series of layers to compute rnn step by step. This way is flexible for
+    attenion mechanism or other complex connections.
+
+    - gru_step_layer: only compute rnn by one step. It needs an memory as input
+      and can be used in recurrent group.
+    - gru_unit: a wrapper of gru_step_layer with memory. 
+    - gru_group: a GRU cell implemented by a combination of multiple layers in
+      recurrent group.
+      But :math:`W x_t` is not done in group.  
+    - gru_memory: a GRU cell implemented by one layer, which does same calculation
+      with gru_group and is faster than gru_group. 
+    - simple_gru: a complete GRU implementation inlcuding :math:`W x_t` and 
+      gru_group. :math:`W` contains :math:`W_r`, :math:`W_z` and :math:`W`, see
+      formula in grumemory. 
+
     The computational speed is that, grumemory is relatively better than
     gru_group, and gru_group is relatively better than simple_gru.
-
-    simple_gru does exactly the same calculation as the grumemory layer does.
-    Please see grumemory in layers.py for more detail about the maths.
 
     The example usage is:
 
     ..  code-block:: python
 
-        gru = gur_group(input=[layer1],
-                        size=256,
-                        act=TanhActivation(),
-                        gate_act=SigmoidActivation())
+        gru = simple_gru(input=[layer1], size=256)
 
     :param input: input layer name.
     :type input: LayerOutput
@@ -852,36 +997,196 @@ def simple_gru(input,
     :return: the gru group.
     :rtype: LayerOutput
     """
-    with mixed_layer(name='%s_transform' % name,
-                     size=size * 3,
-                     bias_attr=mixed_bias_param_attr,
-                     layer_attr=mixed_layer_attr) as m:
+    with mixed_layer(
+            name='%s_transform' % name,
+            size=size * 3,
+            bias_attr=mixed_bias_param_attr,
+            layer_attr=mixed_layer_attr) as m:
         m += full_matrix_projection(input=input, param_attr=mixed_param_attr)
 
-    return gru_group(name=name,
-                     size=size,
-                     input=m,
-                     reverse=reverse,
-                     gru_bias_attr=gru_bias_attr,
-                     act=act,
-                     gate_act=gate_act,
-                     gru_layer_attr=gru_layer_attr)
+    return gru_group(
+        name=name,
+        size=size,
+        input=m,
+        reverse=reverse,
+        gru_bias_attr=gru_bias_attr,
+        act=act,
+        gate_act=gate_act,
+        gru_layer_attr=gru_layer_attr)
+
+
+@wrap_name_default('simple_gru2')
+def simple_gru2(input,
+                size,
+                name=None,
+                reverse=False,
+                mixed_param_attr=None,
+                mixed_bias_attr=None,
+                gru_param_attr=None,
+                gru_bias_attr=None,
+                act=None,
+                gate_act=None,
+                mixed_layer_attr=None,
+                gru_cell_attr=None):
+    """
+    simple_gru2 is the same with simple_gru, but using grumemory instead
+    Please see grumemory in layers.py for more detail about the maths.
+    simple_gru2 is faster than simple_gru.
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        gru = simple_gru2(input=[layer1], size=256)
+
+    :param input: input layer name.
+    :type input: LayerOutput
+    :param name: name of the gru group.
+    :type name: basestring
+    :param size: hidden size of the gru.
+    :type size: int
+    :param reverse: whether to process the input data in a reverse order
+    :type reverse: bool
+    :param act: type of the activiation
+    :type act: BaseActivation
+    :param gate_act: type of the gate activiation
+    :type gate_act: BaseActivation
+    :param gru_bias_attr: bias. False means no bias, None means default bias.
+    :type gru_bias_attr: ParameterAttribute|False
+    :param gru_layer_attr: Extra parameter attribute of the gru layer.
+    :type gru_layer_attr: ParameterAttribute|False
+    :return: the gru group.
+    :rtype: LayerOutput
+    """
+    with mixed_layer(
+            name='%s_transform' % name,
+            size=size * 3,
+            bias_attr=mixed_bias_attr,
+            layer_attr=mixed_layer_attr) as m:
+        m += full_matrix_projection(input=input, param_attr=mixed_param_attr)
+
+    return grumemory(
+        name=name,
+        size=size,
+        input=m,
+        reverse=reverse,
+        bias_attr=gru_bias_attr,
+        param_attr=gru_param_attr,
+        act=act,
+        gate_act=gate_act,
+        layer_attr=gru_cell_attr)
+
+
+@wrap_name_default("bidirectional_gru")
+def bidirectional_gru(input,
+                      size,
+                      name=None,
+                      return_seq=False,
+                      fwd_mixed_param_attr=None,
+                      fwd_mixed_bias_attr=None,
+                      fwd_gru_param_attr=None,
+                      fwd_gru_bias_attr=None,
+                      fwd_act=None,
+                      fwd_gate_act=None,
+                      fwd_mixed_layer_attr=None,
+                      fwd_gru_cell_attr=None,
+                      bwd_mixed_param_attr=None,
+                      bwd_mixed_bias_attr=None,
+                      bwd_gru_param_attr=None,
+                      bwd_gru_bias_attr=None,
+                      bwd_act=None,
+                      bwd_gate_act=None,
+                      bwd_mixed_layer_attr=None,
+                      bwd_gru_cell_attr=None,
+                      last_seq_attr=None,
+                      first_seq_attr=None,
+                      concat_attr=None,
+                      concat_act=None):
+    """
+    A bidirectional_gru is a recurrent unit that iterates over the input
+    sequence both in forward and bardward orders, and then concatenate two
+    outputs to form a final output. However, concatenation of two outputs
+    is not the only way to form the final output, you can also, for example,
+    just add them together.
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        bi_gru = bidirectional_gru(input=[input1], size=512)
+
+    :param name: bidirectional gru layer name.
+    :type name: basestring
+    :param input: input layer.
+    :type input: LayerOutput
+    :param size: gru layer size.
+    :type size: int
+    :param return_seq: If set False, outputs of the last time step are
+                       concatenated and returned.
+                       If set True, the entire output sequences that are
+                       processed in forward and backward directions are
+                       concatenated and returned.
+    :type return_seq: bool
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    args = locals()
+
+    fw = simple_gru2(
+        name='%s_fw' % name,
+        input=input,
+        size=size,
+        **dict((k[len('fwd_'):], v) for k, v in args.iteritems()
+               if k.startswith('fwd_')))
+
+    bw = simple_gru2(
+        name="%s_bw" % name,
+        input=input,
+        size=size,
+        reverse=True,
+        **dict((k[len('bwd_'):], v) for k, v in args.iteritems()
+               if k.startswith('bwd_')))
+
+    if return_seq:
+        return concat_layer(
+            name=name, input=[fw, bw], layer_attr=concat_attr, act=concat_act)
+    else:
+        fw_seq = last_seq(
+            name="%s_fw_last" % name, input=fw, layer_attr=last_seq_attr)
+        bw_seq = first_seq(
+            name="%s_bw_last" % name, input=bw, layer_attr=first_seq_attr)
+        return concat_layer(
+            name=name,
+            input=[fw_seq, bw_seq],
+            layer_attr=concat_attr,
+            act=concat_act)
 
 
 @wrap_name_default("bidirectional_lstm")
-def bidirectional_lstm(input, size, name=None, return_seq=False,
-                       fwd_mat_param_attr=None, fwd_bias_param_attr=None,
-                       fwd_inner_param_attr=None, fwd_act=None,
-                       fwd_gate_act=None, fwd_state_act=None,
-                       fwd_mixed_layer_attr=None, fwd_lstm_cell_attr=None,
-
-                       bwd_mat_param_attr=None, bwd_bias_param_attr=None,
-                       bwd_inner_param_attr=None, bwd_act=None,
-                       bwd_gate_act=None, bwd_state_act=None,
-                       bwd_mixed_layer_attr=None, bwd_lstm_cell_attr=None,
-
-                       last_seq_attr=None, first_seq_attr=None,
-                       concat_attr=None, concat_act=None):
+def bidirectional_lstm(input,
+                       size,
+                       name=None,
+                       return_seq=False,
+                       fwd_mat_param_attr=None,
+                       fwd_bias_param_attr=None,
+                       fwd_inner_param_attr=None,
+                       fwd_act=None,
+                       fwd_gate_act=None,
+                       fwd_state_act=None,
+                       fwd_mixed_layer_attr=None,
+                       fwd_lstm_cell_attr=None,
+                       bwd_mat_param_attr=None,
+                       bwd_bias_param_attr=None,
+                       bwd_inner_param_attr=None,
+                       bwd_act=None,
+                       bwd_gate_act=None,
+                       bwd_state_act=None,
+                       bwd_mixed_layer_attr=None,
+                       bwd_lstm_cell_attr=None,
+                       last_seq_attr=None,
+                       first_seq_attr=None,
+                       concat_attr=None,
+                       concat_act=None):
     """
     A bidirectional_lstm is a recurrent unit that iterates over the input
     sequence both in forward and bardward orders, and then concatenate two
@@ -898,7 +1203,7 @@ def bidirectional_lstm(input, size, name=None, return_seq=False,
 
     ..  code-block:: python
 
-        lstm_step = bidirectional_lstm(input=[input1], size=512)
+        bi_lstm = bidirectional_lstm(input=[input1], size=512)
 
     :param name: bidirectional lstm layer name.
     :type name: basestring
@@ -912,30 +1217,39 @@ def bidirectional_lstm(input, size, name=None, return_seq=False,
                        processed in forward and backward directions are
                        concatenated and returned.
     :type return_seq: bool
-    :return: lstm layer name.
+    :return: LayerOutput object accroding to the return_seq.
     :rtype: LayerOutput
     """
     args = locals()
 
-    fw = simple_lstm(name='%s_fw' % name, input=input, size=size,
-                     **dict((k[len('fwd_'):], v) for k, v in args.iteritems()
-                        if k.startswith('fwd_')))
+    fw = simple_lstm(
+        name='%s_fw' % name,
+        input=input,
+        size=size,
+        **dict((k[len('fwd_'):], v) for k, v in args.iteritems()
+               if k.startswith('fwd_')))
 
-    bw = simple_lstm(name="%s_bw" % name, input=input, size=size,
-                     reverse=True,
-                     **dict((k[len('bwd_'):], v) for k, v in args.iteritems()
-                        if k.startswith('bwd_')))
+    bw = simple_lstm(
+        name="%s_bw" % name,
+        input=input,
+        size=size,
+        reverse=True,
+        **dict((k[len('bwd_'):], v) for k, v in args.iteritems()
+               if k.startswith('bwd_')))
 
     if return_seq:
-        return concat_layer(name=name, input=[fw, bw], layer_attr=concat_attr,
-                            act=concat_act)
+        return concat_layer(
+            name=name, input=[fw, bw], layer_attr=concat_attr, act=concat_act)
     else:
-        fw_seq = last_seq(name="%s_fw_last" % name, input=fw,
-                          layer_attr=last_seq_attr)
-        bw_seq = first_seq(name="%s_bw_last" % name, input=bw,
-                           layer_attr=first_seq_attr)
-        return concat_layer(name=name, input=[fw_seq, bw_seq],
-                            layer_attr=concat_attr, act=concat_act)
+        fw_seq = last_seq(
+            name="%s_fw_last" % name, input=fw, layer_attr=last_seq_attr)
+        bw_seq = first_seq(
+            name="%s_bw_last" % name, input=bw, layer_attr=first_seq_attr)
+        return concat_layer(
+            name=name,
+            input=[fw_seq, bw_seq],
+            layer_attr=concat_attr,
+            act=concat_act)
 
 
 @wrap_name_default()
@@ -1006,36 +1320,40 @@ def simple_attention(encoded_sequence,
     proj_size = encoded_proj.size
 
     with mixed_layer(size=proj_size, name="%s_transform" % name) as m:
-        m += full_matrix_projection(decoder_state,
-                                    param_attr=transform_param_attr)
+        m += full_matrix_projection(
+            decoder_state, param_attr=transform_param_attr)
 
-    expanded = expand_layer(input=m, expand_as=encoded_sequence,
-                            name='%s_expand' % name)
+    expanded = expand_layer(
+        input=m, expand_as=encoded_sequence, name='%s_expand' % name)
 
-    with mixed_layer(size=proj_size, act=weight_act,
-                     name="%s_combine" % name) as m:
+    with mixed_layer(
+            size=proj_size, act=weight_act, name="%s_combine" % name) as m:
         m += identity_projection(expanded)
         m += identity_projection(encoded_proj)
 
     # sequence softmax is used to normalize similarities between decoder state
     # and encoder outputs into a distribution
-    attention_weight = fc_layer(input=m,
-                                size=1,
-                                act=SequenceSoftmaxActivation(),
-                                param_attr=softmax_param_attr,
-                                name="%s_softmax" % name,
-                                bias_attr=False)
+    attention_weight = fc_layer(
+        input=m,
+        size=1,
+        act=SequenceSoftmaxActivation(),
+        param_attr=softmax_param_attr,
+        name="%s_softmax" % name,
+        bias_attr=False)
 
-    scaled = scaling_layer(weight=attention_weight, input=encoded_sequence,
-                           name='%s_scaling' % name)
+    scaled = scaling_layer(
+        weight=attention_weight,
+        input=encoded_sequence,
+        name='%s_scaling' % name)
 
-    return pooling_layer(input=scaled, pooling_type=SumPooling(),
-                         name="%s_pooling" % name)
+    return pooling_layer(
+        input=scaled, pooling_type=SumPooling(), name="%s_pooling" % name)
 
 
 ############################################################################
 #                         Miscs                                            #
 ############################################################################
+
 
 @wrap_name_default("dropout")
 def dropout_layer(input, dropout_rate, name=None):
@@ -1047,26 +1365,44 @@ def dropout_layer(input, dropout_rate, name=None):
     :param dropout_rate:
     :return:
     """
-    return addto_layer(name=name, input=input, act=LinearActivation(),
-                       bias_attr=False,
-                       layer_attr=ExtraAttr(drop_rate=dropout_rate))
+    return addto_layer(
+        name=name,
+        input=input,
+        act=LinearActivation(),
+        bias_attr=False,
+        layer_attr=ExtraAttr(drop_rate=dropout_rate))
+
+
+def inputs(layers, *args):
+    """
+    Declare the inputs of network. The order of input should be as same as
+    the data provider's return order.
+
+    :param layers: Input Layers.
+    :type layers: list|tuple|LayerOutput.
+    :return:
+    """
+
+    if isinstance(layers, LayerOutput) or isinstance(layers, basestring):
+        layers = [layers]
+    if len(args) != 0:
+        layers.extend(args)
+
+    Inputs(*[l.name for l in layers])
 
 
 def outputs(layers, *args):
     """
-    Declare the end of network. Currently it will only calculate the
-    input/output order of network. It will calculate the predict network or
-    train network's output automatically.
+    Declare the outputs of network. If user have not defined the inputs of
+    network, this method will calculate the input order by dfs travel.
 
-
-    :param layers:
+    :param layers: Output layers.
     :type layers: list|tuple|LayerOutput
     :return:
     """
 
     def __dfs_travel__(layer,
                        predicate=lambda x: x.layer_type == LayerType.DATA):
-
         """
         DFS LRV Travel for output layer.
 
@@ -1093,6 +1429,11 @@ def outputs(layers, *args):
         layers.extend(args)
 
     assert len(layers) > 0
+
+    if HasInputsSet():  # input already set
+        Outputs(*[l.name for l in layers])
+        return  # just return outputs.
+
     if len(layers) != 1:
         logger.warning("`outputs` routine try to calculate network's"
                        " inputs and outputs order. It might not work well."
@@ -1102,8 +1443,9 @@ def outputs(layers, *args):
     for each_layer in layers:
         assert isinstance(each_layer, LayerOutput)
         inputs.extend(__dfs_travel__(each_layer))
-        outputs_.extend(__dfs_travel__(
-            each_layer, lambda x: x.layer_type == LayerType.COST))
+        outputs_.extend(
+            __dfs_travel__(each_layer,
+                           lambda x: x.layer_type == LayerType.COST))
 
     # Currently, we got each leaf node's inputs order, output order.
     # We merge them together.
@@ -1121,16 +1463,13 @@ def outputs(layers, *args):
         if each_output.name not in final_outputs:
             final_outputs.append(each_output.name)
 
-    logger.info(
-        "".join(["The input order is [", ", ".join(final_inputs), "]"])
-    )
+    logger.info("".join(["The input order is [", ", ".join(final_inputs), "]"]))
 
     if len(final_outputs) == 0:
         final_outputs = map(lambda x: x.name, layers)
 
-    logger.info(
-        "".join(["The output order is [", ", ".join(final_outputs), "]"
-                 ]))
+    logger.info("".join(
+        ["The output order is [", ", ".join(final_outputs), "]"]))
 
     Inputs(*final_inputs)
     Outputs(*final_outputs)

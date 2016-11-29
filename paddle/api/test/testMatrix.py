@@ -69,7 +69,8 @@ class TestMatrix(unittest.TestCase):
     def test_numpy(self):
         numpy_mat = np.matrix([[1, 2], [3, 4], [5, 6]], dtype="float32")
         m = swig_paddle.Matrix.createCpuDenseFromNumpy(numpy_mat)
-        self.assertEqual((int(m.getHeight()), int(m.getWidth())), numpy_mat.shape)
+        self.assertEqual((int(m.getHeight()), int(m.getWidth())),
+                         numpy_mat.shape)
 
         # the numpy matrix and paddle matrix shared the same memory.
         numpy_mat[0, 1] = 342.23

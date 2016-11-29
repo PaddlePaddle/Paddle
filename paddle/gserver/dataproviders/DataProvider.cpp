@@ -57,7 +57,8 @@ void BufferBatch::clone(DataBatch* srcBatch, bool useGpu) {
   }
 }
 
-DoubleBuffer::DoubleBuffer(DataProvider* dataPool, bool useGpu,
+DoubleBuffer::DoubleBuffer(DataProvider *dataPool,
+                           bool useGpu,
                            int64_t batchSize) {
   batchSize_ = batchSize;
   dataPool_ = dataPool;
@@ -110,6 +111,9 @@ void DoubleBuffer::removeOneBatch(DataBatch* dataBatch) {
 }
 
 void DoubleBuffer::insertOneBatch(DataBatch* batch) {
+  while (!bufferQueue_->waitNotEmptyFor(2 /* seconds */)) {  // time out
+    if (stopping_) return;
+  }
   BufferBatch* bufBatch = bufferQueue_->dequeue();
   // clone and copy the data from an Threadlocal Variable
   bufBatch->clone(batch, useGpu_);
@@ -127,9 +131,10 @@ void DoubleBuffer::asyncLoadBatch() {
     taskReadySem_.wait();
     if (stopping_) break;
 
-    while (batchSize_ == 0) {
+    while (batchSize_ == 0 && !stopping_) {
       usleep(5);
     }
+    if (stopping_) break;
 
     do {
       DataBatch newBatch;
@@ -138,7 +143,7 @@ void DoubleBuffer::asyncLoadBatch() {
         actualSize = dataPool_->getNextBatchInternal(batchSize_, &newBatch);
       }
       insertOneBatch(&newBatch);
-    } while (actualSize > 0);
+    } while (actualSize > 0 && !stopping_);
   }
 }
 

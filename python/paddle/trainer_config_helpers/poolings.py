@@ -11,22 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 """
 
 __all__ = [
-    "BasePoolingType",
-    "MaxPooling",
-    "AvgPooling",
-    "SumPooling",
-    "SquareRootNPooling"
+    "BasePoolingType", "MaxPooling", "AvgPooling", "CudnnMaxPooling",
+    "CudnnAvgPooling", "SumPooling", "SquareRootNPooling"
 ]
 
 
 class BasePoolingType(object):
     """
-    Base Pooling Type. 
+    Base Pooling Type.
     Note these pooling types are used for sequence input, not for images.
     Each PoolingType contains one parameter:
 
@@ -34,6 +30,7 @@ class BasePoolingType(object):
     :type name: basestring
 
     """
+
     def __init__(self, name):
         self.name = name
 
@@ -52,10 +49,31 @@ class MaxPooling(BasePoolingType):
                              value. None means use default value in proto.
     :type output_max_index: bool|None
     """
+
     def __init__(self, output_max_index=None):
         BasePoolingType.__init__(self, "max")
         self.output_max_index = output_max_index
-        
+
+
+class CudnnMaxPooling(BasePoolingType):
+    """
+    Cudnn max pooling only support GPU. Return the maxinum value in the
+    pooling window.
+    """
+
+    def __init__(self):
+        BasePoolingType.__init__(self, "cudnn-max-pool")
+
+
+class CudnnAvgPooling(BasePoolingType):
+    """
+    Cudnn average pooling only support GPU. Return the average value in the
+    pooling window.
+    """
+
+    def __init__(self):
+        BasePoolingType.__init__(self, "cudnn-avg-pool")
+
 
 class AvgPooling(BasePoolingType):
     """
@@ -86,7 +104,9 @@ class SumPooling(AvgPooling):
 
         sum(samples\\_of\\_a\\_sequence)
     """
-    def __init__(self): AvgPooling.__init__(self, AvgPooling.STRATEGY_SUM)
+
+    def __init__(self):
+        AvgPooling.__init__(self, AvgPooling.STRATEGY_SUM)
 
 
 class SquareRootNPooling(AvgPooling):
@@ -99,4 +119,6 @@ class SquareRootNPooling(AvgPooling):
 
         sum(samples\\_of\\_a\\_sequence)/sqrt(sample\\_num)
     """
-    def __init__(self): AvgPooling.__init__(self, AvgPooling.STRATEGY_SQROOTN)
+
+    def __init__(self):
+        AvgPooling.__init__(self, AvgPooling.STRATEGY_SQROOTN)

@@ -33,16 +33,19 @@ def test_init_hooker(setting, value, **kwargs):
     setting.value = value
 
 
-@provider(input_types=[dense_vector(20, seq_type=SequenceType.NO_SEQUENCE)],
-          init_hook=test_init_hooker)
+@provider(
+    input_types=[dense_vector(
+        20, seq_type=SequenceType.NO_SEQUENCE)],
+    init_hook=test_init_hooker)
 def test_init_hook(setting, filename):
     for i in xrange(200):
         yield setting.value
 
 
-@provider(
-    input_types=[
-        sparse_binary_vector(30000, seq_type=SequenceType.NO_SEQUENCE)])
+@provider(input_types=[
+    sparse_binary_vector(
+        30000, seq_type=SequenceType.NO_SEQUENCE)
+])
 def test_sparse_non_value_no_seq(setting, filename):
     for i in xrange(200):
         yield [(i + 1) * (j + 1) for j in xrange(10)]
@@ -77,28 +80,28 @@ def test_min_pool_size(setting, filename):
         yield random.randint(0, 100 - 1)
 
 
-@provider(input_types=[index_slot(100, seq_type=SequenceType.SEQUENCE)],
-          can_over_batch_size=False,
-          calc_batch_size=lambda x: len(x[0]))
+@provider(
+    input_types=[index_slot(
+        100, seq_type=SequenceType.SEQUENCE)],
+    can_over_batch_size=False,
+    calc_batch_size=lambda x: len(x[0]))
 def test_can_over_batch_size(setting, filename):
     for _ in xrange(1 << 10):
         seq_len = random.randint(0, 99)
         yield [random.randint(0, 100 - 1) for _ in xrange(seq_len)]
 
 
-@provider(input_types=[index_slot(10), index_slot(10)])
+@provider(input_types={'input1': index_slot(10), 'input2': index_slot(10)})
 def test_input_order(setting, filename):
     for _ in xrange(1000):
-        yield {
-            'input1': 0,
-            'input2': 1
-        }
+        yield {'input1': 0, 'input2': 1}
 
 
-@provider(input_types=[index_slot(10)],
-          check=True,
-          check_fail_continue=True,
-          should_shuffle="123")  # also test should shuffle
+@provider(
+    input_types=[index_slot(10)],
+    check=True,
+    check_fail_continue=True,
+    should_shuffle="123")  # also test should shuffle
 def test_check(settings, filename):
     yield_good_value = False
 
@@ -108,4 +111,3 @@ def test_check(settings, filename):
             if i < 10:
                 yield_good_value = True
             yield i
-

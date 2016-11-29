@@ -14,26 +14,84 @@
 
 from paddle.trainer.PyDataProvider2 import *
 
+# Note that each config should has an independent provider
+# in current design of PyDataProvider2.
+#######################################################
 data = [
     [[[1, 3, 2], [4, 5, 2]], 0],
     [[[0, 2], [2, 5], [0, 1, 2]], 1],
 ]
 
 
-@provider(input_types=[integer_value_sub_sequence(10),
-                       integer_value(2)],
-          should_shuffle=False)
+# Used for sequence_nest_rnn.conf
+@provider(
+    input_types=[integer_value_sub_sequence(10), integer_value(3)],
+    should_shuffle=False)
 def process_subseq(settings, file_name):
     for d in data:
         yield d
 
 
-@provider(input_types=[integer_value_sequence(10),
-                       integer_value(2)],
-          should_shuffle=False)
+# Used for sequence_rnn.conf
+@provider(
+    input_types=[integer_value_sequence(10), integer_value(3)],
+    should_shuffle=False)
 def process_seq(settings, file_name):
     for d in data:
         seq = []
         for subseq in d[0]:
             seq += subseq
         yield seq, d[1]
+
+
+# Used for sequence_nest_rnn_multi_input.conf
+@provider(
+    input_types=[integer_value_sub_sequence(10), integer_value(3)],
+    should_shuffle=False)
+def process_subseq2(settings, file_name):
+    for d in data:
+        yield d
+
+
+# Used for sequence_rnn_multi_input.conf
+@provider(
+    input_types=[integer_value_sequence(10), integer_value(3)],
+    should_shuffle=False)
+def process_seq2(settings, file_name):
+    for d in data:
+        seq = []
+        for subseq in d[0]:
+            seq += subseq
+        yield seq, d[1]
+
+
+###########################################################
+data2 = [
+    [[[1, 2], [4, 5, 2]], [[5, 4, 1], [3, 1]], 0],
+    [[[0, 2], [2, 5], [0, 1, 2]], [[1, 5], [4], [2, 3, 6, 1]], 1],
+]
+
+
+# Used for sequence_nest_rnn_multi_unequalength_inputs.conf
+@provider(
+    input_types=[
+        integer_value_sub_sequence(10), integer_value_sub_sequence(10),
+        integer_value(2)
+    ],
+    should_shuffle=False)
+def process_unequalength_subseq(settings, file_name):
+    for d in data2:
+        yield d
+
+
+# Used for sequence_rnn_multi_unequalength_inputs.conf
+@provider(
+    input_types=[
+        integer_value_sequence(10), integer_value_sequence(10), integer_value(2)
+    ],
+    should_shuffle=False)
+def process_unequalength_seq(settings, file_name):
+    for d in data2:
+        words1 = reduce(lambda x, y: x + y, d[0])
+        words2 = reduce(lambda x, y: x + y, d[1])
+        yield words1, words2, d[2]

@@ -127,6 +127,36 @@ extern void hl_matrix_cross_entropy_bp(real* grad_d,
                                        int dimN);
 
 /**
+ * @brief  Matrix multi-binary label cross entropy
+ *
+ * @param[in]   output    input matrix (M x N).
+ * @param[out]  entropy   output matrix (M x 1).
+ * @param[in]   mat       input sparse matrix.
+ * @param[in]   dimM      matrix height.
+ * @param[in]   dimN      matrix width.
+ */
+extern void hl_matrix_multi_binary_cross_entropy(real* output,
+                                                 real* entropy,
+                                                 hl_sparse_matrix_s mat,
+                                                 int dimM,
+                                                 int dimN);
+
+/**
+ * @brief  Matrix multi-binary label cross entropy backprop
+ *
+ * @param[in]   output    input matrix (M x N).
+ * @param[out]  grad      output matrix (M x N).
+ * @param[in]   mat       input sparse matrix.
+ * @param[in]   dimM      matrix height.
+ * @param[in]   dimN      matrix width.
+ */
+extern void hl_matrix_multi_binary_cross_entropy_bp(real* output,
+                                                    real* grad,
+                                                    hl_sparse_matrix_s mat,
+                                                    int dimM,
+                                                    int dimN);
+
+/**
  * @brief  Matrix zero memory.
  *
  * @param[in,out]  data   input data.
@@ -228,5 +258,41 @@ extern void hl_cossim_derivative(real* grad,
                                  int input1_height,
                                  int input2_height,
                                  real scale);
+
+/**
+ * @brief   Matrix addition: A_d[i][j] += scale * B_d[j/channel].
+ *
+ * @param[in]   A_d     input matrix (M x N).
+ * @param[in]   B_d     input matrix (1 x channel).
+ * @param[in]   channel width of B.
+ * @param[in]   dimM    height of A.
+ * @param[in]   dimN    width of A.
+ * @param[in]   scale   scalar used for addition.
+ *
+ */
+extern void hl_matrix_add_shared_bias(real* A_d,
+                                      real* B_d,
+                                      const int channel,
+                                      const int dimM,
+                                      const int dimN,
+                                      real scale);
+
+/**
+ * @brief   Matrix addition: A_d[i][j] += scale * B_d[j/channel].
+ *
+ * @param[in]   B_d     input matrix (1 x channel).
+ * @param[in]   A_d     input matrix (M x N).
+ * @param[in]   channel width of B.
+ * @param[in]   dimM    height of A.
+ * @param[in]   dimN    width of A.
+ * @param[in]   scale   scalar used for addition.
+ *
+ */
+extern void hl_matrix_collect_shared_bias(real* B_d,
+                                          real* A_d,
+                                          const int channel,
+                                          const int dimM,
+                                          const int dimN,
+                                          real scale);
 
 #endif /* HL_MATRIX_H_ */

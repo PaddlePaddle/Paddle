@@ -117,7 +117,7 @@ TEST(PyDataProvider2, index_no_seq) {
 }
 
 TEST(PyDataProvider2, init_hook) {
-  paddle::PyObjectPtr pickle(PyImport_ImportModule("pickle"));
+  paddle::PyObjectPtr pickle = paddle::py::import("pickle");
   paddle::PyObjectPtr globals(
       PyModule_GetDict(PyImport_AddModule("__main__")));
   PyDict_SetItemString(globals.get(), "pickle", pickle.get());
@@ -351,6 +351,23 @@ TEST(PyDataProvider2, test_check) {
       }
     }
   }
+}
+
+TEST(PyDataProvider2, multiThread) {
+  paddle::DataConfig config;
+  config.set_type("py2");
+  config.set_files(FLAGS_train_list.c_str());
+  config.set_load_data_module("test_PyDataProvider2");
+  config.set_load_data_object("test_dense_no_seq");
+  config.set_async_load_data(true);
+
+  std::unique_ptr<paddle::DataProvider> provider(
+      paddle::DataProvider::create(config, false));
+  provider->reset();
+  paddle::DataBatch batch;
+  provider->getNextBatch(100, &batch);
+  provider->reset();
+  provider.reset();
 }
 
 int main(int argc, char** argv) {

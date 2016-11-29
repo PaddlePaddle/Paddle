@@ -57,6 +57,18 @@ inline void hl_matrix_cross_entropy_bp(real* grad_d,
                                        int dimM,
                                        int dimN) {}
 
+inline void hl_matrix_multi_binary_cross_entropy(real* output,
+                                                 real* entropy,
+                                                 hl_sparse_matrix_s mat,
+                                                 int dimM,
+                                                 int dimN) {}
+
+inline void hl_matrix_multi_binary_cross_entropy_bp(real* output,
+                                                    real* grad,
+                                                    hl_sparse_matrix_s mat,
+                                                    int dimM,
+                                                    int dimN) {}
+
 inline void hl_matrix_zero_mem(real* data, int num) {}
 
 inline void hl_param_relu_forward(real* output,
@@ -101,4 +113,17 @@ inline void hl_cossim_derivative(real* grad,
                                  int input2_height,
                                  real scale) {}
 
+inline void hl_matrix_add_shared_bias(real* A_d,
+                                      real* B_d,
+                                      const int channel,
+                                      const int dimM,
+                                      const int dimN,
+                                      real scale) {}
+
+inline void hl_matrix_collect_shared_bias(real* B_d,
+                                          real* A_d,
+                                          const int channel,
+                                          const int dimM,
+                                          const int dimN,
+                                          real scale) {}
 #endif  // HL_MATRIX_STUB_H_

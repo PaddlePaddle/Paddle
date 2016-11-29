@@ -13,20 +13,23 @@
 # limitations under the License.
 
 import functools
+import inspect
 from .attrs import ParamAttr
 from .activations import TanhActivation
 from paddle.trainer.config_parser import *
 
-__all__ = ['wrap_name_default', 'wrap_param_attr_default',
-           'wrap_bias_attr_default', 'wrap_act_default',
-           'wrap_param_default']
+__all__ = [
+    'wrap_name_default', 'wrap_param_attr_default', 'wrap_bias_attr_default',
+    'wrap_act_default', 'wrap_param_default'
+]
 
 
 def __default_not_set_callback__(kwargs, name):
     return name not in kwargs or kwargs[name] is None
 
 
-def wrap_param_default(param_names=None, default_factory=None,
+def wrap_param_default(param_names=None,
+                       default_factory=None,
                        not_set_callback=__default_not_set_callback__):
     assert param_names is not None
     assert isinstance(param_names, list) or isinstance(param_names, tuple)
@@ -37,8 +40,13 @@ def wrap_param_default(param_names=None, default_factory=None,
         @functools.wraps(func)
         def __wrapper__(*args, **kwargs):
             if len(args) != 0:
-                logger.warning("please use keyword arguments in paddle config.")
-
+                argspec = inspect.getargspec(func)
+                num_positional = len(argspec.args)
+                if argspec.defaults:
+                    num_positional -= len(argspec.defaults)
+                if not argspec.varargs and len(args) > num_positional:
+                    logger.fatal(
+                        "Must use keyword arguments for non-positional args")
             for name in param_names:
                 if not_set_callback(kwargs, name):  # Not set
                     kwargs[name] = default_factory(func)
@@ -107,13 +115,13 @@ def wrap_param_attr_default(param_names=None, default_factory=None):
     return wrap_param_default(param_names, default_factory)
 
 
-def wrap_bias_attr_default(param_names=None, default_factory=None,
+def wrap_bias_attr_default(param_names=None,
+                           default_factory=None,
                            has_bias=True):
     if param_names is None:
         param_names = ['bias_attr']
     if default_factory is None:
-        default_factory = lambda _: ParamAttr(initial_std=0.,
-                                              initial_mean=0.)
+        default_factory = lambda _: ParamAttr(initial_std=0., initial_mean=0.)
 
     def __bias_attr_not_set__(kwargs, name):
         if has_bias:

@@ -20,13 +20,22 @@
 
 set -e
 
+export LC_ALL=C
+UNAME_STR=`uname`
+
+if [[ ${UNAME_STR} == 'Linux' ]]; then
+  SHUF_PROG='shuf'
+else
+  SHUF_PROG='gshuf'
+fi
+
 mkdir -p data/tmp
 python preprocess.py -i data/reviews_Electronics_5.json.gz
 # uniq and shuffle
 cd data/tmp
 echo 'uniq and shuffle...'
-cat pos_*|sort|uniq|shuf> pos.shuffed
-cat neg_*|sort|uniq|shuf> neg.shuffed
+cat pos_*|sort|uniq|${SHUF_PROG}> pos.shuffed
+cat neg_*|sort|uniq|${SHUF_PROG}> neg.shuffed
 
 min_len=`sed -n '$=' neg.shuffed`
 test_num=$((min_len/10))
@@ -40,8 +49,8 @@ head -n$train_num neg.shuffed >train.neg
 tail -n$test_num pos.shuffed >test.pos
 tail -n$test_num neg.shuffed >test.neg
 
-cat train.pos train.neg|shuf>../train.txt
-cat test.pos test.neg|shuf>../test.txt
+cat train.pos train.neg | ${SHUF_PROG} >../train.txt
+cat test.pos test.neg | ${SHUF_PROG} >../test.txt
 
 cd -
 echo 'data/train.txt' > data/train.list

@@ -13,19 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Matrix.h"
+#include "MathFunctions.h"
 #include "SparseMatrix.h"
 #include "SparseRowMatrix.h"
-#include "MathFunctions.h"
 
-#include <cmath>
 #include <float.h>
 #include <algorithm>
+#include <cmath>
 
-#include "paddle/utils/Logging.h"
 #include <string.h>
+#include "hl_cnn.h"
 #include "hl_gpu.h"
 #include "hl_table_apply.h"
 #include "hl_top_k.h"
+#include "paddle/utils/Logging.h"
 
 #include "paddle/utils/ThreadLocal.h"
 
@@ -42,9 +43,9 @@ inline real _safelog(real a) { return a > 0.0f ? std::log(a) : -40.0f; }
 Matrix::Matrix(MemoryHandlePtr memHandle, size_t height, size_t width,
                bool trans, bool use_gpu)
     : BaseMatrix(
-        height, width,
-        memHandle ? (reinterpret_cast<real*>(memHandle->getBuf())) : nullptr,
-        trans, use_gpu) {
+          height, width,
+          memHandle ? (reinterpret_cast<real*>(memHandle->getBuf())) : nullptr,
+          trans, use_gpu) {
   elementCnt_ = width * height;
   memoryHandle_ = memHandle;
 }
@@ -95,7 +96,7 @@ MatrixPtr Matrix::create(MemoryHandlePtr memHandle, size_t height, size_t width,
   if (auto gpuHandle = std::dynamic_pointer_cast<GpuMemoryHandle>(memHandle)) {
     return std::make_shared<GpuMatrix>(gpuHandle, height, width, trans);
   } else if (auto cpuHandle =
-             std::dynamic_pointer_cast<CpuMemoryHandle>(memHandle)) {
+                 std::dynamic_pointer_cast<CpuMemoryHandle>(memHandle)) {
     return std::make_shared<CpuMatrix>(cpuHandle, height, width, trans);
   } else {
     LOG(FATAL) << "Wrong";
@@ -187,6 +188,15 @@ MatrixPtr Matrix::subMatrix(size_t startRow, size_t endRow, size_t startCol,
                         trans_, useGpu_);
 }
 
+void Matrix::setDiag(real value) {
+  CHECK(data_ != NULL);
+  CHECK_EQ(height_, width_);
+
+  zeroMem();
+  BaseMatrix diag(height_, 1, stride_ + 1, data_, false, useGpu_);
+  diag.assign(value);
+}
+
 GpuMatrix::GpuMatrix(size_t height, size_t width, bool trans)
     : Matrix(std::make_shared<GpuMemoryHandle>(height * width * sizeof(real)),
              height, width, trans, true) {}
@@ -202,6 +212,7 @@ void GpuMatrix::resetOne() {
   CHECK(data_ != NULL);
   one();
 }
+
 void GpuMatrix::resize(size_t newHeight, size_t newWidth) {
   size_t newSize = newHeight * newWidth;
   if (NULL == memoryHandle_.get() ||
@@ -231,7 +242,7 @@ real GpuMatrix::getSum() {
 void GpuMatrix::accumulateColSum(Matrix& src) {
   CHECK_EQ(getWidth(), src.getWidth());
   CHECK_EQ(getHeight(), (size_t)1);
-  sumCols(src, 1.0);
+  sumCols(src, 1.0, 1.0);
 }
 
 real GpuMatrix::getAbsSum() {
@@ -282,13 +293,13 @@ void GpuMatrix::copyFrom(const IVector& src) {
   copyFrom(matrix);
 }
 
-void GpuMatrix::copyByRowIndex(Matrix& b, IVector& rowIndex) {
+void GpuMatrix::copyByRowIndex(Matrix& b, const IVector& rowIndex) {
   size_t height = getHeight();
   size_t width = getWidth();
   CHECK_EQ(b.getWidth(), width);
   real* dst = getData();
   real* src = b.getData();
-  int* index = rowIndex.getData();
+  const int* index = rowIndex.getData();
   hl_sequence2batch_copy(dst, src, index, width, height, true);
 }
 
@@ -335,24 +346,65 @@ void GpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   hl_matrix_transpose(data, dataTrans, height_, width_, lda, ldc);
 }
 
+
+MatrixPtr GpuMatrix::getInverse() {
+  MatrixPtr matInv;
+  inverse(matInv, true);
+  return matInv;
+}
+
+void GpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+  CHECK_EQ(height_, width_);
+
+  if (memAlloc) {
+    matInv = std::make_shared<GpuMatrix>(height_, width_);
+  } else {
+    CHECK(matInv != NULL);
+  }
+
+  real* data = getData();
+  real* dataInv = matInv->getData();
+  int lda = getStride();
+  int ldc = matInv->getStride();
+
+  hl_matrix_inverse(data, dataInv, height_, lda, ldc);
+}
+
 void GpuMatrix::addBias(Matrix& b, real scale) {
   CHECK(b.getHeight() == 1) << "the Bias should be a vector";
   BaseMatrix::addBias(b, scale);
 }
 
+void GpuMatrix::addSharedBias(Matrix& b, real scale) {
+  CHECK(b.getHeight() == 1) << "the Bias should be a vector";
+  CHECK_LE(b.getWidth(), getWidth());
+  CHECK_EQ(getWidth() % b.getWidth(), 0UL);
+  hl_matrix_add_shared_bias(getData(), b.getData(), b.getWidth(),
+                            getHeight(), getWidth(), scale);
+}
+
+
 void GpuMatrix::collectBias(Matrix& a, real scale) {
   CHECK_EQ(getHeight(), (size_t)1);
   CHECK_EQ(width_, a.getWidth());
-  GpuSparseMatrix* sMatPtr  = dynamic_cast<GpuSparseMatrix*>(&a);
+  GpuSparseMatrix* sMatPtr = dynamic_cast<GpuSparseMatrix*>(&a);
   if (!sMatPtr) {
-    sumCols(a, scale);
+    sumCols(a, /* scaleSum= */scale, /* scaleDest= */1);
   } else {
     real* data = getData();
     hl_sparse_matrix_s A_d = sMatPtr->sMatrix_.get();
-    hl_sparse_matrix_column_sum(data, A_d, sMatPtr->getHeight(),
-                                width_, scale);
+    hl_sparse_matrix_column_sum(data, A_d, sMatPtr->getHeight(), width_, scale);
   }
 }
+
+
+void GpuMatrix::collectSharedBias(Matrix& a, real scale) {
+  CHECK_EQ(getHeight(), (size_t)1);
+  CHECK_EQ(a.getWidth() % getWidth(), 0UL);
+  hl_matrix_collect_shared_bias(getData(), a.getData(), getWidth(),
+                                a.getHeight(), a.getWidth(), scale);
+}
+
 
 void GpuMatrix::sequenceAvgForward(Matrix& a,
                                    const IVector& startsPos,
@@ -401,8 +453,8 @@ void GpuMatrix::mul(const GpuMatrix& a, const GpuMatrix& b, real scaleAB,
   hl_trans_op_t transa = !a.isTransposed() ? HPPL_OP_N : HPPL_OP_T;
   hl_trans_op_t transb = !b.isTransposed() ? HPPL_OP_N : HPPL_OP_T;
 
-  hl_matrix_mul(A_d, transa, B_d, transb, C_d, dimM, dimN, dimK,
-                scaleAB, scaleT, lda, ldb, ldc);
+  hl_matrix_mul(A_d, transa, B_d, transb, C_d, dimM, dimN, dimK, scaleAB,
+                scaleT, lda, ldb, ldc);
 }
 
 void GpuMatrix::mul(const GpuSparseMatrix& a, const GpuMatrix& b, real scaleAB,
@@ -423,8 +475,8 @@ void GpuMatrix::mul(const GpuSparseMatrix& a, const GpuMatrix& b, real scaleAB,
   hl_sparse_matrix_s A_d = a.sMatrix_.get();
   real* B_d = b.data_;
   real* C_d = data_;
-  hl_matrix_csr_mul_dense(A_d, transA, B_d, HPPL_OP_N, C_d, height_,
-                          width_, b.height_, scaleAB, scaleT);
+  hl_matrix_csr_mul_dense(A_d, transA, B_d, HPPL_OP_N, C_d, height_, width_,
+                          b.height_, scaleAB, scaleT);
 }
 
 void GpuMatrix::mul(const GpuMatrix& a, const GpuSparseMatrix& b, real scaleAB,
@@ -445,11 +497,11 @@ void GpuMatrix::mul(const GpuMatrix& a, const GpuSparseMatrix& b, real scaleAB,
         << "Matrix dimensions are not equal";
   }
   if (b.format_ == SPARSE_CSC) {
-    hl_matrix_dense_mul_csc(A_d, HPPL_OP_N, B_d, transB, C_d, height_,
-                            width_, a.width_, scaleAB, scaleT);
+    hl_matrix_dense_mul_csc(A_d, HPPL_OP_N, B_d, transB, C_d, height_, width_,
+                            a.width_, scaleAB, scaleT);
   } else {
-    hl_matrix_dense_mul_csr(A_d, HPPL_OP_N, B_d, transB, C_d, height_,
-                            width_, a.width_, scaleAB, scaleT);
+    hl_matrix_dense_mul_csr(A_d, HPPL_OP_N, B_d, transB, C_d, height_, width_,
+                            a.width_, scaleAB, scaleT);
   }
 }
 
@@ -511,8 +563,8 @@ void GpuMatrix::selectRows(Matrix& table, IVector& ids) {
   size_t tableSize = table.getHeight();
   int* index = ids.getData();
 
-  hl_matrix_select_rows(a, stride_, table.getData(), table.stride_,
-                        index, numSamples, tableSize, dim);
+  hl_matrix_select_rows(a, stride_, table.getData(), table.stride_, index,
+                        numSamples, tableSize, dim);
 #endif
 }
 
@@ -529,15 +581,15 @@ void GpuMatrix::addToRows(Matrix& table, IVector& ids) {
   size_t tableSize = table.getHeight();
   int* index = ids.getData();
 
-  hl_matrix_add_to_rows(table.getData(), table.stride_, a, stride_,
-                        index, numSamples, tableSize, dim);
+  hl_matrix_add_to_rows(table.getData(), table.stride_, a, stride_, index,
+                        numSamples, tableSize, dim);
 #endif
 }
 
 void GpuMatrix::colMerge(Matrix& src) {
   CHECK(src.height_ == height_);
   if (!trans_ && !src.trans_) {
-    sumRows(src);
+    sumRows(src, /* scaleSum= */1, /* scaleDest= */0);
   } else {
     LOG(FATAL) << "Is not supported";
   }
@@ -547,7 +599,7 @@ void GpuMatrix::rowSum(Matrix& sum) {
   CHECK_EQ(sum.getHeight(), getHeight());
   CHECK_EQ(sum.getWidth(), (size_t)1);
 
-  sum.sumRows(*this);
+  sum.sumRows(*this, /* scaleSum= */1, /* scaleDest= */0);
 }
 
 void GpuMatrix::rowMax(Matrix& max) {
@@ -565,13 +617,8 @@ void GpuMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
   CHECK_EQ(maxIds.getSize(), numSamples * beam);
   CHECK_EQ(maxVal.getHeight(), numSamples);
 
-  hl_matrix_top_k(maxVal.getData(),
-                  maxVal.getStride(),
-                  maxIds.getData(),
-                  this->getData(),
-                  this->getStride(),
-                  this->getWidth(),
-                  beam,
+  hl_matrix_top_k(maxVal.getData(), maxVal.getStride(), maxIds.getData(),
+                  this->getData(), this->getStride(), this->getWidth(), beam,
                   numSamples);
 #endif
 }
@@ -581,6 +628,42 @@ void GpuMatrix::colMax(Matrix& max) {
   CHECK_EQ(max.getHeight(), (size_t)1);
 
   max.maxCols(*this);
+}
+
+void GpuMatrix::colMax(IVector& maxIds, Matrix& maxVal) {
+  LOG(FATAL) << "Is not supported";
+}
+
+void GpuMatrix::maxoutForward(Matrix& a, IVector& id, size_t channels,
+                              size_t groups) {
+  CHECK(dynamic_cast<GpuMatrix*>(&a));
+  CHECK(dynamic_cast<GpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = getWidth();
+  size_t batchSize = getHeight();
+  const real* input = a.getData();
+  real* output = getData();
+  int* idForGpu = id.getData();
+
+  hl_maxout_forward(input, output, idForGpu, batchSize, size, size / channels,
+                    groups);
+}
+
+void GpuMatrix::maxoutBackward(Matrix& a, IVector& id, size_t channels,
+                               size_t groups) {
+  CHECK(dynamic_cast<GpuMatrix*>(&a));
+  CHECK(dynamic_cast<GpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = a.getWidth();
+  size_t batchSize = getHeight();
+  real* input = getData();
+  const real* output = a.getData();
+  const int* idForGpu = id.getData();
+
+  hl_maxout_backward(input, output, idForGpu, batchSize, size, size / channels,
+                     groups);
 }
 
 /*calulate the error of classification */
@@ -596,8 +679,8 @@ void GpuMatrix::classificationError(MatrixPtr output, IVectorPtr label) {
   real* recResult_d = data_;
   int* label_d = label_ptr->getData();
 
-  hl_matrix_classification_error(output_d, label_d, recResult_d,
-                                 height_, output_ptr->width_);
+  hl_matrix_classification_error(output_d, label_d, recResult_d, height_,
+                                 output_ptr->width_);
 }
 
 /* copy -log(output[i * width + label]) to this->data[i] */
@@ -666,8 +749,7 @@ void GpuMatrix::sequenceSoftmax(Matrix& output, const IVector& index) {
   real* outputData = output.getData();
   auto starts = index.getData();
   int numSequences = index.getSize() - 1;
-  hl_sequence_softmax_forward(inputData, outputData,
-                              starts, numSequences);
+  hl_sequence_softmax_forward(inputData, outputData, starts, numSequences);
 }
 
 void GpuMatrix::softmaxDerivative(Matrix& output, Matrix& sftmaxSum) {
@@ -681,8 +763,7 @@ void GpuMatrix::softmaxDerivative(Matrix& output, Matrix& sftmaxSum) {
   real* output_d = output.data_;
   real* sftmaxSum_d = sftmaxSum.data_;
   real* grad_d = data_;
-  hl_matrix_softmax_derivative(grad_d, output_d, sftmaxSum_d, height_,
-                               width_);
+  hl_matrix_softmax_derivative(grad_d, output_d, sftmaxSum_d, height_, width_);
 }
 
 void GpuMatrix::softmaxBackward(Matrix& outputV) {
@@ -709,7 +790,8 @@ void GpuMatrix::sumOfSquares(Matrix& output, Matrix& label) {
     LOG(FATAL) << "not supported: GpuSparseMatrix as label";
   }
 
-  BaseMatrix::sumOfSquares(output, label);
+  BaseMatrix::sumOfSquaredDiffs(output, label,
+                                /* scaleSum= */1, /* scaleDest= */1);
 }
 
 void GpuMatrix::sumOfSquaresBp(Matrix& outputV, Matrix& label) {
@@ -733,7 +815,7 @@ void GpuMatrix::scaledTanh(Matrix& output, real p1, real p2) {
 }
 void GpuMatrix::cosSim(Matrix& output1, Matrix& output2, real scale) {
   CHECK(output1.useGpu_ == true && output2.useGpu_ == true)
-  << "Matrix type are not equal";
+      << "Matrix type are not equal";
   size_t numSamples = getHeight();
   size_t dim = output1.getWidth();
   CHECK_EQ(getWidth(), 1UL);
@@ -742,15 +824,15 @@ void GpuMatrix::cosSim(Matrix& output1, Matrix& output2, real scale) {
   real* out = getData();
   real* x = output1.getData();
   real* y = output2.getData();
-  hl_cossim(out, x, y,
-      dim, output1.getHeight(), output2.getHeight(), scale);
+  hl_cossim(out, x, y, dim, output1.getHeight(), output2.getHeight(), scale);
 }
 void GpuMatrix::cosSimDerivative(Matrix& output, Matrix& prevOut1,
                                  Matrix& prevOut2, Matrix& prevGrad1,
                                  Matrix& prevGrad2, real scale) {
   CHECK(output.useGpu_ == true && prevOut1.useGpu_ == true &&
         prevOut2.useGpu_ == true && prevGrad1.useGpu_ == true &&
-        prevGrad2.useGpu_ == true) << "Matrix type are not equal";
+        prevGrad2.useGpu_ == true)
+      << "Matrix type are not equal";
   CHECK_EQ(getWidth(), 1UL);
   CHECK_EQ(output.getWidth(), 1UL);
 
@@ -770,9 +852,8 @@ void GpuMatrix::cosSimDerivative(Matrix& output, Matrix& prevOut1,
   real* prevOutY = prevOut2.getData();
   real* prevGradX = prevGrad1.getData();
   real* prevGradY = prevGrad2.getData();
-  hl_cossim_derivative(grad, out, prevOutX, prevOutY,
-      prevGradX, prevGradY, dim,
-      prevOut1.getHeight(), prevOut2.getHeight(), scale);
+  hl_cossim_derivative(grad, out, prevOutX, prevOutY, prevGradX, prevGradY, dim,
+                       prevOut1.getHeight(), prevOut2.getHeight(), scale);
 }
 
 void GpuMatrix::randomizeUniform() {
@@ -823,8 +904,8 @@ void GpuMatrix::check(std::ostream& os, Matrix& refMat, bool printDiff) {
 
 void GpuMatrix::convExpand(Matrix& feature, int feaImgHeight, int feaImgWidth,
                            int channels, int blockH, int blockW, int strideH,
-                           int strideW, int paddingH, int paddingW,
-                           int outputH, int outputW) {
+                           int strideW, int paddingH, int paddingW, int outputH,
+                           int outputW) {
   CHECK(feature.useGpu_ == true) << "Matrix type are not equal";
 
   CHECK_EQ(size_t(feaImgHeight * feaImgWidth * channels),
@@ -834,17 +915,16 @@ void GpuMatrix::convExpand(Matrix& feature, int feaImgHeight, int feaImgWidth,
   size_t elemCnt = outputH * outputW * blockH * blockW * channels;
   CHECK_EQ(elemCnt, height_ * width_) << "Matrix dimensions are not equal";
 
-  hl_expand_feature2col(feature.getData(), channels, feaImgHeight,
-                        feaImgWidth, blockH, blockW, strideH, strideW,
-                        paddingH, paddingW, outputH, outputW,
-                        getData());
+  hl_expand_feature2col(feature.getData(), channels, feaImgHeight, feaImgWidth,
+                        blockH, blockW, strideH, strideW, paddingH, paddingW,
+                        outputH, outputW, getData());
 }
 
 void GpuMatrix::convShrink(Matrix& expandFeat, int thisImgHeight,
                            int thisImgWidth, int channels, int blockH,
                            int blockW, int strideH, int strideW, int paddingH,
-                           int paddingW, int outputH, int outputW,
-                           real alpha, real beta) {
+                           int paddingW, int outputH, int outputW, real alpha,
+                           real beta) {
   CHECK(expandFeat.useGpu_ == true) << "Matrix type are not equal";
   CHECK_EQ(size_t(thisImgHeight * thisImgWidth * channels),
            getHeight() * getWidth())
@@ -853,16 +933,17 @@ void GpuMatrix::convShrink(Matrix& expandFeat, int thisImgHeight,
   size_t elemCnt = outputH * outputW * blockW * blockH * channels;
   CHECK(elemCnt == expandFeat.getHeight() * expandFeat.getWidth())
       << "Matrix dimensions are not equal";
-  hl_shrink_col2feature(
-      expandFeat.getData(), channels, thisImgHeight, thisImgWidth, blockH,
-      blockW, strideH, strideW, paddingH, paddingW, outputH, outputW,
-      getData(), alpha, beta);
+  hl_shrink_col2feature(expandFeat.getData(), channels, thisImgHeight,
+                        thisImgWidth, blockH, blockW, strideH, strideW,
+                        paddingH, paddingW, outputH, outputW, getData(), alpha,
+                        beta);
 }
 
 void GpuMatrix::maxPoolForward(Matrix& inputMat, size_t imgSizeH,
                                size_t imgSizeW, size_t channels, size_t sizeX,
-                               int start, size_t stride, size_t outputH,
-                               size_t outputW) {
+                               size_t sizeY, size_t strideH, size_t strideW,
+                               size_t outputH, size_t outputW, size_t paddingH,
+                               size_t paddingW) {
   CHECK(inputMat.useGpu_ == true) << "Matrix type are not equal";
 
   real* inputData = inputMat.getData();
@@ -873,15 +954,17 @@ void GpuMatrix::maxPoolForward(Matrix& inputMat, size_t imgSizeH,
   CHECK(height_ == inputMat.getHeight());
   CHECK(width_ == outputH * outputW * channels);
 
-  hl_maxpool_forward(frameNum, inputData, channels, height, width,
-                     outputH, outputW, sizeX, stride, start, data_);
+  hl_maxpool_forward(frameNum, inputData, channels, height, width, outputH,
+                     outputW, sizeX, sizeY, strideH, strideW, paddingH,
+                     paddingW, data_, getStride());
 }
 
 void GpuMatrix::maxPoolBackward(Matrix& inputMat, size_t imgSizeH,
                                 size_t imgSizeW, Matrix& outGrad, Matrix& outV,
-                                size_t sizeX, int start, size_t stride,
-                                size_t outputH, size_t outputW,
-                                real scaleTargets, real scaleOutput) {
+                                size_t sizeX, size_t sizeY, size_t strideH,
+                                size_t strideW, size_t outputH, size_t outputW,
+                                real scaleTargets, real scaleOutput,
+                                size_t paddingH, size_t paddingW) {
   CHECK(inputMat.useGpu_ == true && outGrad.useGpu_ == true &&
         outV.useGpu_ == true)
       << "Matrix type are not equal";
@@ -899,15 +982,17 @@ void GpuMatrix::maxPoolBackward(Matrix& inputMat, size_t imgSizeH,
   CHECK(outGrad.getHeight() == outV.getHeight() &&
         outGrad.getWidth() == outV.getWidth());
 
-  hl_maxpool_backward(frameNum, inputData, outData, outDiff, channels,
-                      height, width, outputH, outputW, sizeX, stride,
-                      start, data_, scaleTargets, scaleOutput);
+  hl_maxpool_backward(frameNum, inputData, outData, outDiff, channels, height,
+                      width, outputH, outputW, sizeX, sizeY, strideH, strideW,
+                      paddingH, paddingW, scaleTargets, scaleOutput, data_,
+                      outGrad.getStride());
 }
 
 void GpuMatrix::avgPoolForward(Matrix& inputMat, size_t imgSizeH,
                                size_t imgSizeW, size_t channels, size_t sizeX,
-                               int start, size_t stride, size_t outputH,
-                               size_t outputW) {
+                               size_t sizeY, size_t strideH, size_t strideW,
+                               size_t outputH, size_t outputW, size_t paddingH,
+                               size_t paddingW) {
   CHECK(inputMat.useGpu_ == true) << "Matrix type are not equal";
 
   real* inputData = inputMat.getData();
@@ -918,14 +1003,17 @@ void GpuMatrix::avgPoolForward(Matrix& inputMat, size_t imgSizeH,
   CHECK(height_ == inputMat.getHeight());
   CHECK(width_ == outputH * outputW * channels);
 
-  hl_avgpool_forward(frameNum, inputData, channels, height, width,
-                     outputH, outputW, sizeX, stride, start, data_);
+  hl_avgpool_forward(frameNum, inputData, channels, height, width, outputH,
+                     outputW, sizeX, sizeY, strideH, strideW, paddingH,
+                     paddingW, data_, getStride());
 }
 
 void GpuMatrix::avgPoolBackward(Matrix& outGrad, size_t imgSizeH,
-                                size_t imgSizeW, size_t sizeX, int start,
-                                size_t stride, size_t outputH, size_t outputW,
-                                real scaleTargets, real scaleOutput) {
+                                size_t imgSizeW, size_t sizeX, size_t sizeY,
+                                size_t strideH, size_t strideW, size_t outputH,
+                                size_t outputW, real scaleTargets,
+                                real scaleOutput, size_t paddingH,
+                                size_t paddingW) {
   CHECK(outGrad.useGpu_ == true) << "Matrix type are not equal";
 
   real* outDiff = outGrad.getData();
@@ -937,9 +1025,10 @@ void GpuMatrix::avgPoolBackward(Matrix& outGrad, size_t imgSizeH,
   CHECK(height_ == outGrad.getHeight());
   CHECK(outGrad.getWidth() == outputH * outputW * channels);
 
-  hl_avgpool_backward(frameNum, outDiff, channels, height, width,
-                      outputH, outputW, sizeX, stride, start, data_,
-                      scaleTargets, scaleOutput);
+  hl_avgpool_backward(frameNum, outDiff, channels, height, width, outputH,
+                      outputW, sizeX, sizeY, strideH, strideW, paddingH,
+                      paddingW, scaleTargets, scaleOutput, data_,
+                      outGrad.getStride());
 }
 
 void GpuMatrix::crossMapNormalFwd(Matrix& input, size_t imgSizeH,
@@ -954,8 +1043,8 @@ void GpuMatrix::crossMapNormalFwd(Matrix& input, size_t imgSizeH,
   CHECK(denoms.getHeight() == input.getHeight() &&
         denoms.getWidth() == input.getWidth() && input.getHeight() == height_ &&
         input.getWidth() == width_);
-  hl_CMRNorm_forward(num, input.getData(), denoms.getData(), data_,
-                     channels, height, width, sizeX, scale, -pow);
+  hl_CMRNorm_forward(num, input.getData(), denoms.getData(), data_, channels,
+                     height, width, sizeX, scale, -pow);
 }
 
 void GpuMatrix::crossMapNormalBwd(Matrix& localGrad, Matrix& denoms,
@@ -975,13 +1064,11 @@ void GpuMatrix::crossMapNormalBwd(Matrix& localGrad, Matrix& denoms,
         denoms.getWidth() == localGrad.getWidth());
 
   hl_CMRNorm_backward(num, preOutV.getData(), denoms.getData(),
-                      localOutV.getData(), localGrad.getData(), data_,
-                      channels, height, width, sizeX, -pow,
-                      2.0f * pow * scale);
+                      localOutV.getData(), localGrad.getData(), data_, channels,
+                      height, width, sizeX, -pow, 2.0f * pow * scale);
 }
 
-void GpuMatrix::maxSequenceForward(Matrix& input,
-                                   const IVector& sequence,
+void GpuMatrix::maxSequenceForward(Matrix& input, const IVector& sequence,
                                    IVector& index) {
   CHECK(dynamic_cast<GpuMatrix*>(&input));
   CHECK(dynamic_cast<const GpuIVector*>(&sequence));
@@ -998,12 +1085,11 @@ void GpuMatrix::maxSequenceForward(Matrix& input,
   CHECK_EQ(numSequences, sequence.getSize() - 1);
   CHECK_EQ(numSequences * dim, index.getSize());
 
-  hl_max_sequence_forward(inputData, starts, outData, maxIndex,
-                                    numSequences, dim);
+  hl_max_sequence_forward(inputData, starts, outData, maxIndex, numSequences,
+                          dim);
 }
 
-void GpuMatrix::maxSequenceBackward(Matrix& outputGrad,
-                                    const IVector& sequence,
+void GpuMatrix::maxSequenceBackward(Matrix& outputGrad, const IVector& sequence,
                                     IVector& index) {
   CHECK(dynamic_cast<GpuMatrix*>(&outputGrad));
   CHECK(dynamic_cast<const GpuIVector*>(&sequence));
@@ -1060,9 +1146,8 @@ void GpuMatrix::contextProjectionBackwardData(MatrixPtr inputGrad,
   real* inGrad = inputGrad->getData();
   const int* starts = sequence.getData();
 
-  hl_context_projection_backward_data(outGrad, starts, inGrad,
-                                      numSequences, inputDim,
-                                      contextLength, contextStart);
+  hl_context_projection_backward_data(outGrad, starts, inGrad, numSequences,
+                                      inputDim, contextLength, contextStart);
 }
 
 void GpuMatrix::contextProjectionBackwardWeight(MatrixPtr weightGrad,
@@ -1082,9 +1167,9 @@ void GpuMatrix::contextProjectionBackwardWeight(MatrixPtr weightGrad,
   real* wtGrad = weightGrad->getData();
   const int* starts = sequence.getData();
 
-  hl_context_projection_backward_weight(
-      outGrad, starts, wtGrad, numSequences, weightDim, totalPad, contextLength,
-      contextStart, beginPad);
+  hl_context_projection_backward_weight(outGrad, starts, wtGrad, numSequences,
+                                        weightDim, totalPad, contextLength,
+                                        contextStart, beginPad);
 }
 
 void GpuMatrix::paramReluForward(Matrix& data, Matrix& W) {
@@ -1096,8 +1181,7 @@ void GpuMatrix::paramReluForward(Matrix& data, Matrix& W) {
   size_t numSamples = data.getHeight();
   size_t partial_sum = numElements / (W.getHeight() * W.getWidth());
   real* output = getData();
-  hl_param_relu_forward(output, input, w, numElements, numSamples,
-      partial_sum);
+  hl_param_relu_forward(output, input, w, numElements, numSamples, partial_sum);
 }
 
 void GpuMatrix::paramReluBackwardW(Matrix& oGrad, Matrix& data) {
@@ -1109,8 +1193,8 @@ void GpuMatrix::paramReluBackwardW(Matrix& oGrad, Matrix& data) {
   size_t numElements = data.getWidth();
   size_t numSamples = data.getHeight();
   size_t partial_sum = numElements / (this->getHeight() * this->getWidth());
-  hl_param_relu_backward_w(wgrad, ograd, input,
-      numElements, numSamples, partial_sum);
+  hl_param_relu_backward_w(wgrad, ograd, input, numElements, numSamples,
+                           partial_sum);
 }
 
 void GpuMatrix::paramReluBackwardDiff(Matrix& oGrad, Matrix& data, Matrix& W) {
@@ -1121,12 +1205,104 @@ void GpuMatrix::paramReluBackwardDiff(Matrix& oGrad, Matrix& data, Matrix& W) {
   size_t numElements = data.getWidth();
   size_t numSamples = data.getHeight();
   size_t partial_sum = numElements / (W.getHeight() * W.getWidth());
-  hl_param_relu_backward_diff(ograd, input, w, diff,
-      numElements, numSamples, partial_sum);
+  hl_param_relu_backward_diff(ograd, input, w, diff, numElements, numSamples,
+                              partial_sum);
 }
 
 void GpuMatrix::addColumnVector(const Matrix& b) {
   BaseMatrix::addColVector(const_cast<Matrix&>(b));
+}
+
+void GpuMatrix::bilinearForward(const Matrix& in,
+                                const size_t inImgH,
+                                const size_t inImgW,
+                                const size_t outImgH,
+                                const size_t outImgW,
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {
+  CHECK(dynamic_cast<const GpuMatrix*>(&in));
+
+  const size_t outputW = getWidth();
+  const size_t outputH = getHeight();
+  const size_t inputW = in.getWidth();
+  const size_t inputH = in.getHeight();
+
+  real* outData = getData();
+  const real* inData  = in.getData();
+
+  if (inImgH == outImgW && inImgW == outImgW) {
+    this->copyFrom(in);
+  } else {
+    hl_bilinear_forward(
+      inData, inImgH, inImgW, inputH, inputW, outData,
+      outImgH, outImgW, outputH, outputW, numChannels,
+      ratioH, ratioW);
+  }
+}
+
+void GpuMatrix::bilinearBackward(const Matrix& out,
+                                 const size_t outImgH,
+                                 const size_t outImgW,
+                                 const size_t inImgH,
+                                 const size_t inImgW,
+                                 const size_t numChannels,
+                                 const real ratioH,
+                                 const real ratioW) {
+  CHECK(dynamic_cast<const GpuMatrix*>(&out));
+
+  const size_t inputW = getWidth();
+  const size_t inputH = getHeight();
+  const size_t outputW = out.getWidth();
+  const size_t outputH = out.getHeight();
+
+  real* inGrad = getData();
+  const real* outGrad = out.getData();
+
+  if (outImgH == inImgH && outImgW == inImgW) {
+    this->add(const_cast<Matrix&>(out));
+  } else {
+    hl_bilinear_backward(
+      inGrad, inImgH, inImgW, inputH, inputW, outGrad,
+      outImgH, outImgW, outputH, outputW, numChannels,
+      ratioH, ratioW);
+  }
+}
+
+void GpuMatrix::multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label) {
+    GpuMatrix* outputPtr = dynamic_cast<GpuMatrix*>(&output);
+    auto labelPtr = dynamic_cast<GpuSparseMatrix*>(&label);
+
+    CHECK(outputPtr && labelPtr) << "Invalid argument pointer";
+    CHECK(labelPtr->format_ == SPARSE_CSR) << "Matrix format not supported";
+    CHECK(height_ == outputPtr->height_ && width_ == 1
+          && outputPtr->width_ == labelPtr->getWidth()
+          && outputPtr->height_ == labelPtr->getHeight())
+            << "Matrix dimensions are not equal";
+
+    real* output_d = outputPtr->data_;
+    real* entropy_d = data_;
+    hl_sparse_matrix_s mat_d = labelPtr->sMatrix_.get();
+    hl_matrix_multi_binary_cross_entropy(
+        output_d, entropy_d, mat_d, height_, outputPtr->width_);
+}
+
+void GpuMatrix::multiBinaryLabelCrossEntropyBp(Matrix &output, Matrix &label) {
+    GpuMatrix* outputPtr = dynamic_cast<GpuMatrix*>(&output);
+    auto labelPtr = dynamic_cast<GpuSparseMatrix*>(&label);
+
+    CHECK(outputPtr && labelPtr) << "Invalid argument pointer";
+    CHECK(labelPtr->format_ == SPARSE_CSR) << "Matrix format not supported";
+    CHECK(height_ == outputPtr->height_ && width_ == outputPtr->width_
+          && outputPtr->width_ == labelPtr->getWidth()
+          && outputPtr->height_ == labelPtr->getHeight())
+            << "Matrix dimensions are not equal";
+
+    real* output_d = outputPtr->data_;
+    real* grad_d = data_;
+    hl_sparse_matrix_s mat_d = labelPtr->sMatrix_.get();
+    hl_matrix_multi_binary_cross_entropy_bp(
+        output_d, grad_d, mat_d, height_, width_);
 }
 
 /**
@@ -1263,11 +1439,11 @@ void CpuMatrix::copyFrom(const IVector& src) {
   }
 }
 
-void CpuMatrix::copyByRowIndex(Matrix& b, IVector& rowIndex) {
+void CpuMatrix::copyByRowIndex(Matrix& b, const IVector& rowIndex) {
   size_t height = getHeight();
   size_t width = getWidth();
   CHECK_EQ(b.getWidth(), width);
-  int* index = rowIndex.getData();
+  const int* index = rowIndex.getData();
   for (size_t i = 0; i < height; i++) {
     CHECK_LT(static_cast<size_t>(index[i]), b.getHeight());
     real* src = b.getData() + index[i] * width;
@@ -1326,7 +1502,7 @@ void CpuMatrix::accumulateColSum(Matrix& src) {
   CHECK_EQ(getWidth(), src.getWidth());
   CHECK_EQ(getHeight(), (size_t)1);
 
-  sumCols(src, 1.0);
+  sumCols(src, /* scaleSum= */1, /* scaleDest= */1);
 }
 
 real CpuMatrix::getAbsSum() {
@@ -1369,10 +1545,51 @@ void CpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   }
 }
 
+
+MatrixPtr CpuMatrix::getInverse() {
+  MatrixPtr matInv;
+  inverse(matInv, true);
+  return matInv;
+}
+
+void CpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+  CHECK_EQ(height_, width_);
+
+  if (memAlloc) {
+    matInv = std::make_shared<CpuMatrix>(height_, width_);
+  } else {
+    CHECK(matInv != NULL);
+  }
+
+  CHECK_EQ(height_, matInv->getHeight());
+  CHECK_EQ(width_, matInv->getWidth());
+  matInv->copyFrom(*this);
+
+  real* data = getData();
+  real* dataInv = matInv->getData();
+  int ldc = matInv->getStride();
+
+  if (height_ == 1) {
+    CHECK_NE(*data, 0);
+    *dataInv = 1.0 / (*data);
+    return;
+  }
+
+  /* Compute the LU decomposition of the matrix */
+  std::vector<int> ipiv(height_);
+  CBLAS_ORDER order = (matInv->isTransposed() ? CblasColMajor : CblasRowMajor);
+  int info = getrf<real>(order, height_, height_, dataInv, ldc, ipiv.data());
+  CHECK_EQ(info, 0);
+
+  /* Compute the inverse of the matrix given its LU decompsotion */
+  info = getri<real>(order, height_, dataInv, ldc, ipiv.data());
+  CHECK_EQ(info, 0);
+}
+
 void CpuMatrix::convExpand(Matrix& feature, int feaImgHeight, int feaImgWidth,
                            int channels, int blockH, int blockW, int strideH,
-                           int strideW, int paddingH, int paddingW,
-                           int outputH, int outputW) {
+                           int strideW, int paddingH, int paddingW, int outputH,
+                           int outputW) {
   CHECK(feature.useGpu_ == false) << "Matrix type are not equal";
 
   CHECK_EQ(size_t(feaImgHeight * feaImgWidth * channels),
@@ -1412,8 +1629,8 @@ void CpuMatrix::convExpand(Matrix& feature, int feaImgHeight, int feaImgWidth,
 void CpuMatrix::convShrink(Matrix& expandFeat, int thisImgHeight,
                            int thisImgWidth, int channels, int blockH,
                            int blockW, int strideH, int strideW, int paddingH,
-                           int paddingW, int outputH, int outputW,
-                           real alpha, real beta) {
+                           int paddingW, int outputH, int outputW, real alpha,
+                           real beta) {
   CHECK(expandFeat.useGpu_ == false) << "Matrix type are not equal";
   CHECK_EQ(size_t(thisImgHeight * thisImgWidth * channels),
            getHeight() * getWidth())
@@ -1451,31 +1668,42 @@ void CpuMatrix::convShrink(Matrix& expandFeat, int thisImgHeight,
 
 void CpuMatrix::maxPoolForward(Matrix& inputMat, size_t imgSizeH,
                                size_t imgSizeW, size_t channels, size_t sizeX,
-                               int start, size_t stride, size_t outputH,
-                               size_t outputW) {
+                               size_t sizeY, size_t strideH, size_t strideW,
+                               size_t outputH, size_t outputW, size_t paddingH,
+                               size_t paddingW) {
   real* inputData = inputMat.getData();
   real* outData = data_;
   size_t num = inputMat.getHeight();
   size_t inWidth = imgSizeW;
   size_t inHeight = imgSizeH;
   CHECK(inHeight * inWidth == inputMat.getWidth() / channels);
+  CHECK_EQ(num, this->getHeight());
+  CHECK_EQ(channels * outputH * outputW, this->getWidth());
+  size_t outStride = getStride();
 
   /* initialize the data_ */
-  for (size_t i = 0; i < height_ * width_; i++) {
-    data_[i] = -FLT_MAX;
+  for (size_t i = 0; i < height_; i++) {
+    for (size_t j = 0; j < width_; j++) {
+      outData[i * outStride + j] = -(real)FLT_MAX;
+    }
   }
 
   /* pool max one by one */
-  for (size_t n = 0; n < num; ++n) {         // frame by frame
+  for (size_t n = 0; n < num; ++n) {  // frame by frame
+    if (!isContiguous()) {
+      outData = data_ + n * outStride;
+    }
     for (size_t c = 0; c < channels; ++c) {  // channel by channel
       for (size_t ph = 0; ph < outputH; ++ph) {
         for (size_t pw = 0; pw < outputW; ++pw) {
-          size_t hstart = ph * stride + start;
-          size_t wstart = pw * stride + start;
-          size_t hend = std::min(hstart + sizeX, inHeight);
-          size_t wend = std::min(wstart + sizeX, inWidth);
-          for (size_t h = hstart; h < hend; ++h) {
-            for (size_t w = wstart; w < wend; ++w) {
+          int hstart = ph * strideH - paddingH;
+          int wstart = pw * strideW - paddingW;
+          int hend = std::min(hstart + sizeY, inHeight);
+          int wend = std::min(wstart + sizeX, inWidth);
+          hstart = std::max(hstart, 0);
+          wstart = std::max(wstart, 0);
+          for (int h = hstart; h < hend; ++h) {
+            for (int w = wstart; w < wend; ++w) {
               outData[ph * outputW + pw] = std::max(outData[ph * outputW + pw],
                                                     inputData[h * inWidth + w]);
             }
@@ -1491,9 +1719,10 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat, size_t imgSizeH,
 
 void CpuMatrix::maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
                                 Matrix& outGrad, Matrix& outV, size_t sizeX,
-                                int start, size_t stride, size_t outputH,
-                                size_t outputW, real scaleTargets,
-                                real scaleOutput) {
+                                size_t sizeY, size_t strideH, size_t strideW,
+                                size_t outputH, size_t outputW,
+                                real scaleTargets, real scaleOutput,
+                                size_t paddingH, size_t paddingW) {
   size_t num = image.getHeight();
   size_t channels = size_t(width_ / imgSizeH / imgSizeW);
   CHECK(image.getWidth() == imgSizeH * imgSizeW * channels);
@@ -1505,36 +1734,49 @@ void CpuMatrix::maxPoolBackward(Matrix& image, size_t imgSizeH, size_t imgSizeW,
   real* inData = image.getData();
   real* otData = outV.getData();
   real* otGrad = outGrad.getData();
+
+  size_t outStride = outV.getStride();
+  real* origOutData = otData;
+  real* origOutGrad = otGrad;
+
   for (size_t n = 0; n < num; ++n) {
+    if (!outV.isContiguous()) {
+      otData = origOutData + n * outStride;
+      otGrad = origOutGrad + n * outStride;
+    }
     for (size_t c = 0; c < channels; ++c) {
       for (size_t ph = 0; ph < outputH; ++ph) {
         for (size_t pw = 0; pw < outputW; ++pw) {
-          size_t hstart = ph * stride + start;
-          size_t wstart = pw * stride + start;
-          size_t hend = std::min(hstart + sizeX, imgSizeH);
-          size_t wend = std::min(wstart + sizeX, imgSizeW);
-          for (size_t h = hstart; h < hend; ++h) {
-            for (size_t w = wstart; w < wend; ++w) {
+          int hstart = ph * strideH - paddingH;
+          int wstart = pw * strideW - paddingW;
+          int hend = std::min(hstart + sizeY, imgSizeH);
+          int wend = std::min(wstart + sizeX, imgSizeW);
+          hstart = std::max(hstart, 0);
+          wstart = std::max(wstart, 0);
+          for (int h = hstart; h < hend; ++h) {
+            for (int w = wstart; w < wend; ++w) {
               tgtGrad[h * imgSizeW + w] =
                   scaleTargets * tgtGrad[h * imgSizeW + w] +
                   scaleOutput * otGrad[ph * outputW + pw] *
-                      (inData[h * imgSizeW + w] == otData[ph * outputH + pw]);
+                      (inData[h * imgSizeW + w] == otData[ph * outputW + pw]);
             }
           }
         }
       }
       // offset
       inData += imgSizeH * imgSizeW;
-      otData += outputH * outputW;
       tgtGrad += imgSizeH * imgSizeW;
+      otData += outputH * outputW;
       otGrad += outputH * outputW;
     }
   }
 }
 
 void CpuMatrix::avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                               size_t channels, size_t sizeX, int start,
-                               size_t stride, size_t outputH, size_t outputW) {
+                               size_t channels, size_t sizeX, size_t sizeY,
+                               size_t strideH, size_t strideW, size_t outputH,
+                               size_t outputW, size_t paddingH,
+                               size_t paddingW) {
   // The main loop
   size_t num = input.getHeight();
   size_t inHeight = imgSizeH;
@@ -1545,20 +1787,30 @@ void CpuMatrix::avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
   real* inData = input.getData();
 
   for (size_t n = 0; n < num; ++n) {
+    if (!isContiguous()) {
+      tgtData = data_ + n * getStride();
+    }
     for (size_t c = 0; c < channels; ++c) {
       for (size_t ph = 0; ph < outputH; ++ph) {
         for (size_t pw = 0; pw < outputW; ++pw) {
-          size_t hstart = ph * stride + start;
-          size_t wstart = pw * stride + start;
-          size_t hend = std::min(hstart + sizeX, inHeight);
-          size_t wend = std::min(wstart + sizeX, inWidth);
+          int hstart = ph * strideH - paddingH;
+          int wstart = pw * strideW - paddingW;
+          int hend = std::min(hstart + sizeY, inHeight + paddingH);
+          int wend = std::min(wstart + sizeX, inWidth + paddingW);
+          int poolSize = (hend - hstart) * (wend - wstart);
+          hstart = std::max(hstart, 0);
+          wstart = std::max(wstart, 0);
+          hend = std::min(hend, static_cast<int>(inHeight));
+          wend = std::min(wend, static_cast<int>(inWidth));
+
+          CHECK(poolSize);
           tgtData[ph * outputW + pw] = 0;  // clear
-          for (size_t h = hstart; h < hend; ++h) {
-            for (size_t w = wstart; w < wend; ++w) {
+          for (int h = hstart; h < hend; ++h) {
+            for (int w = wstart; w < wend; ++w) {
               tgtData[ph * outputW + pw] += inData[h * inWidth + w];
             }
           }
-          tgtData[ph * outputW + pw] /= (hend - hstart) * (wend - wstart);
+          tgtData[ph * outputW + pw] /= poolSize;
         }
       }
       // compute offset
@@ -1569,9 +1821,10 @@ void CpuMatrix::avgPoolForward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
 }
 
 void CpuMatrix::avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
-                                size_t sizeX, int start, size_t stride,
-                                size_t outputH, size_t outputW,
-                                real scaleTargets, real scaleOutput) {
+                                size_t sizeX, size_t sizeY, size_t strideH,
+                                size_t strideW, size_t outputH, size_t outputW,
+                                real scaleTargets, real scaleOutput,
+                                size_t paddingH, size_t paddingW) {
   size_t num = input.getHeight();
   size_t channels = input.getWidth() / outputH / outputW;
   CHECK(imgSizeH * imgSizeW * channels == getWidth());
@@ -1579,17 +1832,26 @@ void CpuMatrix::avgPoolBackward(Matrix& input, size_t imgSizeH, size_t imgSizeW,
   real* outData = getData();
 
   for (size_t n = 0; n < num; ++n) {
+    if (!input.isContiguous()) {
+      inData = input.getData() + n * input.getStride();
+    }
     for (size_t c = 0; c < channels; ++c) {
       for (size_t ph = 0; ph < outputH; ++ph) {
         for (size_t pw = 0; pw < outputW; ++pw) {
-          size_t hstart = ph * stride + start;
-          size_t wstart = pw * stride + start;
-          size_t hend = std::min(hstart + sizeX, imgSizeH);
-          size_t wend = std::min(wstart + sizeX, imgSizeW);
-          size_t poolsize = (hend - hstart) * (wend - wstart);
-          for (size_t h = hstart; h < hend; ++h) {
-            for (size_t w = wstart; w < wend; ++w) {
-              outData[h * imgSizeW + w] += inData[ph * outputW + pw] / poolsize;
+          int hstart = ph * strideH - paddingH;
+          int wstart = pw * strideW - paddingW;
+          int hend = std::min(hstart + sizeY, imgSizeH + paddingH);
+          int wend = std::min(wstart + sizeX, imgSizeW + paddingW);
+          int poolSize = (hend - hstart) * (wend - wstart);
+          hstart = std::max(hstart, 0);
+          wstart = std::max(wstart, 0);
+          hend = std::min(hend, static_cast<int>(imgSizeH));
+          wend = std::min(wend, static_cast<int>(imgSizeW));
+          CHECK(poolSize);
+
+          for (int h = hstart; h < hend; ++h) {
+            for (int w = wstart; w < wend; ++w) {
+              outData[h * imgSizeW + w] += inData[ph * outputW + pw] / poolSize;
             }
           }
         }
@@ -1675,8 +1937,7 @@ void CpuMatrix::crossMapNormalBwd(Matrix& localGrad, Matrix& denoms,
  * Output: output size is the number of input sequences (NOT input instances).
  * output[i] is set to max_{for each instance in this sequence}{input[i]}
  */
-void CpuMatrix::maxSequenceForward(Matrix& input,
-                                   const IVector& sequence,
+void CpuMatrix::maxSequenceForward(Matrix& input, const IVector& sequence,
                                    IVector& index) {
   CHECK(dynamic_cast<CpuMatrix*>(&input));
   CHECK(dynamic_cast<const CpuIVector*>(&sequence));
@@ -1717,8 +1978,7 @@ void CpuMatrix::maxSequenceForward(Matrix& input,
   }
 }
 
-void CpuMatrix::maxSequenceBackward(Matrix& outputGrad,
-                                    const IVector& sequence,
+void CpuMatrix::maxSequenceBackward(Matrix& outputGrad, const IVector& sequence,
                                     IVector& index) {
   CHECK(dynamic_cast<CpuMatrix*>(&outputGrad));
   CHECK(dynamic_cast<const CpuIVector*>(&sequence));
@@ -1906,12 +2166,30 @@ void CpuMatrix::addBias(Matrix& b, real scale) {
   }
 }
 
+void CpuMatrix::addSharedBias(Matrix& b, real scale) {
+  CHECK_EQ(b.getHeight(), (size_t)1);
+  real* aData = getData();
+  real* bData = b.getData();
+  size_t numSamples = getHeight();
+  size_t channel = b.getWidth();
+  CHECK_EQ(getWidth() % channel, 0UL);
+  size_t dim = getWidth() / channel;
+
+  for (size_t i = 0; i < numSamples; i++) {
+    for (size_t c = 0; c < channel; c++) {
+      for (size_t j = 0; j < dim; j++) {
+        aData[i * getStride() + c * dim + j] += scale * bData[c];
+      }
+    }
+  }
+}
+
 void CpuMatrix::collectBias(Matrix& a, real scale) {
   CHECK_EQ(getHeight(), (size_t)1);
   CHECK_EQ(width_, a.getWidth());
   CpuSparseMatrix* aptr = dynamic_cast<CpuSparseMatrix*>(&a);
   if (!aptr) {
-    sumCols(a, scale);
+    sumCols(a, /* scaleSum= */scale, /* scaleDest= */1);
   } else {
     size_t nnz = aptr->getElementCnt();
     int* cols = aptr->getCols();
@@ -1919,6 +2197,23 @@ void CpuMatrix::collectBias(Matrix& a, real scale) {
     real* B = getData();
     for (size_t i = 0; i < nnz; i++) {
       B[cols[i]] += scale * A[i];
+    }
+  }
+}
+
+void CpuMatrix::collectSharedBias(Matrix& a, real scale) {
+  CHECK_EQ(getHeight(), (size_t)1);
+  real* B = getData();
+  real* A = a.getData();
+  size_t numSamples = a.getHeight();
+  size_t channel = getWidth();
+  CHECK_EQ(a.getWidth() % channel, 0UL);
+  size_t dim = a.getWidth() / channel;
+  for (size_t i = 0; i < numSamples; i++) {
+    for (size_t c = 0; c < channel; c++) {
+      for (size_t j = 0; j < dim; j++) {
+        B[c] += scale * A[i * channel * dim + c * dim + j];
+      }
     }
   }
 }
@@ -1933,7 +2228,7 @@ void CpuMatrix::sequenceAvgForward(Matrix& a,
   real* dst = getData();
   real* src = a.getData();
   const int* starts = startsPos.getData();
-  MatrixPtr outMtx = Matrix::create(1, 1, false, false);
+  MatrixPtr outMtx = Matrix::create(nullptr, 1, width, false, false);
   MatrixPtr dataMtx = Matrix::create(nullptr, 1, width, false, false);
   for (size_t i = 0; i < height; i++) {
     int sequenceLength = starts[i + 1] - starts[i];
@@ -1945,13 +2240,15 @@ void CpuMatrix::sequenceAvgForward(Matrix& a,
     dataMtx->setData(src + starts[i] * width, sequenceLength, width);
     if (mode == 0) {
       // plain average
-      outMtx->sumCols(*dataMtx, (real)1 / (real)sequenceLength);
+      outMtx->sumCols(*dataMtx, (real)1 / (real)sequenceLength,
+                      /* scaleDest= */1);
     } else if (mode == 1) {
       // sum instead of average
-      outMtx->sumCols(*dataMtx, (real)1);
+      outMtx->sumCols(*dataMtx,  /* scaleSum= */1, /* scaleDest= */1);
     } else if (mode == 2) {
       // divide by square root of sequenceLength
-      outMtx->sumCols(*dataMtx, (real)1 / std::sqrt(sequenceLength));
+      outMtx->sumCols(*dataMtx, (real)1 / std::sqrt(sequenceLength),
+                      /* scaleDest= */1);
     } else {
       LOG(FATAL) << "should not reach here";
     }
@@ -2515,7 +2812,7 @@ void SharedCpuMatrix::mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB,
       blockSeq.push_back(k);
     }
     std::shuffle(blockSeq.begin(), blockSeq.end(),
-        ThreadLocalRandomEngine::get());
+                 ThreadLocalRandomEngine::get());
   }
   std::vector<int>& localBufRows = *localBufRows_;
   int* cols = a->getCols();
@@ -2638,7 +2935,7 @@ void CpuMatrix::rowSum(Matrix& sum) {
   CHECK_EQ(sum.getHeight(), getHeight());
   CHECK_EQ(sum.getWidth(), (size_t)1);
 
-  sum.sumRows(*this);
+  sum.sumRows(*this, /* scaleSum= */1, /* scaleDest= */0);
 }
 
 void CpuMatrix::rowMaxId(IVector& maxIds) {
@@ -2705,6 +3002,95 @@ void CpuMatrix::colMax(Matrix& max) {
   CHECK_EQ(max.getWidth(), getWidth());
   CHECK_EQ(max.getHeight(), (size_t)1);
   max.maxCols(*this);
+}
+
+void CpuMatrix::colMax(IVector& maxIds, Matrix& maxVal) {
+  CHECK(isContiguous());
+  CHECK(!maxIds.useGpu() && !maxVal.useGpu()) << "Matrix type are not equal";
+  size_t numSamples = getWidth();
+  size_t beam = maxVal.getHeight();
+  CHECK_EQ(maxIds.getSize(), numSamples * beam);
+  CHECK_EQ(maxVal.getWidth(), numSamples);
+
+  real* a = getData();
+  int* s = maxIds.getData();
+  real* t = maxVal.getData();
+  size_t dim = getHeight();
+  for (size_t i = 0; i < numSamples; i++) {
+    std::vector<std::pair<real, size_t>> vec;
+    for (size_t j = 0; j < dim; j++) {
+      vec.push_back(std::pair<real, size_t>(a[i + j * numSamples], j));
+    }
+
+    std::partial_sort(
+        vec.begin(), vec.begin() + beam, vec.end(),
+        [](const std::pair<real, size_t>& l, const std::pair<real, size_t>& r) {
+          return l.first > r.first;
+        });
+    for (size_t j = 0; j < beam; j++) {
+      t[i + j * numSamples] = vec[j].first;
+      s[i + j * numSamples] = vec[j].second;
+    }
+  }
+}
+
+void CpuMatrix::maxoutForward(Matrix& a, IVector& id, size_t channels,
+                              size_t groups) {
+  CHECK(dynamic_cast<CpuMatrix*>(&a));
+  CHECK(dynamic_cast<CpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = getWidth();
+  size_t batchSize = getHeight();
+  size_t featLen = size / channels;
+  const real* input = a.getData();
+  int* idForCpu = id.getData();
+
+  MatrixPtr maxInMat, maxOutMat;
+  Matrix::resizeOrCreate(maxInMat, groups, size, false, false);
+  Matrix::resizeOrCreate(maxOutMat, 1, size, false, false);
+
+  for (size_t batch_idx = 0; batch_idx < batchSize; ++batch_idx) {
+    size_t newIndex = batch_idx * size;
+    IVectorPtr tmpId = IVector::create(idForCpu + newIndex, size, false);
+
+    for (size_t i = 0; i < channels; ++i) {
+      size_t newFeatLen = i * featLen;
+      for (size_t j = 0; j < groups; ++j) {
+        maxInMat->subMatrix(j, j + 1, newFeatLen, newFeatLen + featLen)
+            ->copyFrom(input + (newIndex + newFeatLen) * groups + j * featLen,
+                       featLen);
+      }
+    }
+    maxInMat->colMax(*tmpId, *maxOutMat);
+    this->subRowMatrix(batch_idx, batch_idx + 1)->copyFrom(*maxOutMat);
+  }
+}
+
+void CpuMatrix::maxoutBackward(Matrix& a, IVector& id, size_t channels,
+                               size_t groups) {
+  CHECK(dynamic_cast<CpuMatrix*>(&a));
+  CHECK(dynamic_cast<CpuIVector*>(&id));
+  CHECK_EQ(a.getHeight(), getHeight());
+
+  size_t size = a.getWidth();
+  size_t batchSize = getHeight();
+  size_t featLen = size / channels;
+  size_t newFeatLen = groups * featLen;
+  real* inputG = getData();
+  const real* outG = a.getData();
+  int* idForCpu = id.getData();
+
+  for (size_t batch_idx = 0; batch_idx < batchSize; ++batch_idx) {
+    size_t newIndex = batch_idx * size;
+    int* idData = idForCpu + newIndex;
+
+    for (size_t i = 0; i < size; ++i) {
+      int gradIdx =
+          idData[i] * featLen + (i / featLen) * newFeatLen + i % featLen;
+      (inputG + newIndex * groups)[gradIdx] += (outG + newIndex)[i];
+    }
+  }
 }
 
 void CpuMatrix::rowNormalizeL1(Matrix& out) {
@@ -2916,9 +3302,9 @@ void CpuMatrix::sequenceSoftmax(Matrix& output, const IVector& index) {
   CHECK(isContiguous());
 
   MatrixPtr inTmp = Matrix::create(nullptr, /* height= */ 1, 1,
-                                 /* trans= */ false, false);
+                                   /* trans= */ false, false);
   MatrixPtr outTmp = Matrix::create(nullptr, /* height= */ 1, 1,
-                                 /* trans= */ false, false);
+                                    /* trans= */ false, false);
   size_t numSequences = index.getSize() - 1;
   auto starts = index.getData();
   for (size_t i = 0; i < numSequences; ++i) {
@@ -3102,7 +3488,8 @@ void CpuMatrix::sumOfSquares(Matrix& output, Matrix& label) {
     }
   }
 
-  BaseMatrix::sumOfSquares(output, label);
+  BaseMatrix::sumOfSquaredDiffs(output, label,
+                                /* scaleSum= */1, /* scaleDest= */1);
 }
 
 /* calculate the error of outputV according to label */
@@ -3188,9 +3575,7 @@ void CpuMatrix::tanh(Matrix& output) {
   size_t dim = getWidth();
   CHECK_EQ(output.getHeight(), numSamples);
   CHECK_EQ(output.getWidth(), dim);
-  errno = 0;
   vTanh(numSamples * dim, getData(), output.getData());
-  CHECK_EQ(errno, 0) << "vTanh error";
 }
 
 void CpuMatrix::tanhDerivative(Matrix& output) {
@@ -3212,10 +3597,8 @@ void CpuMatrix::softrelu(Matrix& output) {
       out[j] = x;
     }
   }
-  errno = 0;
   vExp(numSamples * dim, output.getData(), output.getData());
   vLog1p(numSamples * dim, output.getData(), output.getData());
-  CHECK_EQ(errno, 0) << "vExp+vLog1p error";
 }
 
 void CpuMatrix::softreluDerivative(Matrix& output) {
@@ -3230,9 +3613,7 @@ void CpuMatrix::softreluDerivative(Matrix& output) {
   MatrixPtr tmpMat = Matrix::create(numSamples, dim);
   real* tmp = tmpMat->getData();
 
-  errno = 0;
   vExp(size, output.getData(), tmpMat->getData());
-  CHECK_EQ(errno, 0) << "vExp error";
 
   for (size_t i = 0; i < size; ++i) {
     grad[i] *= (1.0 - 1.0 / tmp[i]);
@@ -3255,10 +3636,7 @@ void CpuMatrix::scaledTanh(Matrix& output, real p1, real p2) {
     out[i] = p2 * in[i];
   }
 
-  // out = tanh(out)
-  errno = 0;
   vTanh(numSamples * dim, out, out);
-  CHECK_EQ(errno, 0) << "vTanh error";
 
   // out = p1 * out
   for (size_t i = 0; i < numSamples * dim; ++i) {
@@ -3554,6 +3932,112 @@ void CpuMatrix::classificationErrorMulti(Matrix& output, Matrix& label,
       }
     }
     result[i] = sum / dim;
+  }
+}
+
+void CpuMatrix::bilinearForward(const Matrix& in,
+                                const size_t inImgH,
+                                const size_t inImgW,
+                                const size_t outImgH,
+                                const size_t outImgW,
+                                const size_t numChannels,
+                                const real ratioH,
+                                const real ratioW) {
+  CHECK(dynamic_cast<const CpuMatrix*>(&in));
+
+  size_t outputW = getWidth();
+  size_t batchSize = getHeight();
+  size_t inputW = in.getWidth();
+  size_t inputH = in.getHeight();
+  size_t inPosOffset = inImgH * inImgW;
+  size_t outPosOffset = outImgH * outImgW;
+  (void)(inputH);
+
+  real* outData = getData();
+  const real* inData  = in.getData();
+
+  if (inImgH == outImgH && inImgW == outImgW) {
+    this->copyFrom(in);
+  } else {
+    for (size_t k = 0; k < batchSize; ++k) {   // loop for batches
+      for (size_t i = 0; i < outImgH; ++i) {  // loop for images
+        size_t h = ratioH * i;
+        size_t hid = (h < inImgH - 1) ? 1 : 0;
+        real h1lambda = ratioH * i - h;
+        real h2lambda = 1 - h1lambda;
+
+        for (size_t j = 0; j < outImgW; ++j) {
+          size_t w = ratioW * j;
+          size_t wid = (w < inImgW - 1) ? 1 : 0;
+          real w1lambda = ratioW * j - w;
+          real w2lambda = 1 - w1lambda;
+          // calculate four position for bilinear interpolation
+          const real* inPos = &inData[k * inputW + h * inImgW + w];
+          real* outPos = &outData[k * outputW + i * outImgW + j];
+          for (size_t c = 0; c < numChannels; ++c) {  // loop for channels
+            // bilinear interpolation
+            outPos[0] =
+              h2lambda * (w2lambda * inPos[0] + w1lambda * inPos[wid]) +
+              h1lambda * (w2lambda * inPos[hid * inImgW] +
+              w1lambda * inPos[hid * inImgW + wid]);
+            inPos += inPosOffset;
+            outPos += outPosOffset;
+          }
+        }
+      }
+    }
+  }
+}
+
+void CpuMatrix::bilinearBackward(const Matrix& out,
+                                 const size_t outImgH,
+                                 const size_t outImgW,
+                                 const size_t inImgH,
+                                 const size_t inImgW,
+                                 const size_t numChannels,
+                                 const real ratioH,
+                                 const real ratioW) {
+  CHECK(dynamic_cast<const CpuMatrix*>(&out));
+
+  size_t inputW = getWidth();
+  size_t inputH = getHeight();
+  size_t outputW = out.getWidth();
+  size_t batchSize = out.getHeight();
+  size_t inPosOffset = inImgH * inImgW;
+  size_t outPosOffset = outImgH * outImgW;
+  (void)(inputH);
+
+  real* inGrad = getData();
+  const real* outGrad = out.getData();
+
+  if (inImgH == outImgH && inImgW == outImgW) {
+    this->add(const_cast<Matrix&>(out));
+  } else {
+    for (size_t k = 0; k < batchSize; ++k) {   // loop for batches
+      for (size_t i = 0; i < outImgH; ++i) {  // loop for images
+        size_t h = ratioH * i;
+        size_t hid = (h < inImgH - 1) ? 1 : 0;
+        real h1lambda = ratioH * i - h;
+        real h2lambda = 1 - h1lambda;
+        for (size_t j = 0; j < outImgW; ++j) {
+          size_t w = ratioW * j;
+          size_t wid = (w < inImgW - 1) ? 1 : 0;
+          real w1lambda = ratioW * j - w;
+          real w2lambda = 1 - w1lambda;
+
+          real* inPos = &inGrad[k * inputW + h * inImgW + w];
+          const real* outPos = &outGrad[k * outputW + i * outImgW + j];
+          for (size_t c = 0; c < numChannels; ++c) {  // loop for channels
+            inPos[0] += h2lambda * w2lambda * outPos[0];
+            inPos[wid] += h2lambda * w1lambda * outPos[0];
+            inPos[hid * inImgW] += h1lambda * w2lambda * outPos[0];
+            inPos[hid * inImgW + wid] += h1lambda * w1lambda * outPos[0];
+            inPos += inPosOffset;
+            outPos += outPosOffset;
+          }
+        }
+      }
+    }
   }
 }
 

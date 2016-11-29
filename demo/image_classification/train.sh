@@ -24,7 +24,7 @@ paddle train \
 --test_all_data_in_one_period=1 \
 --use_gpu=1 \
 --trainer_count=1 \
---num_passes=200 \
+--num_passes=300 \
 --save_dir=$output \
 2>&1 | tee $log
 

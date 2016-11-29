@@ -20,8 +20,9 @@ from paddle.trainer.PyDataProvider2 import *
 
 def hook(settings, dict_file, **kwargs):
     settings.word_dict = dict_file
-    settings.input_types = [integer_value_sequence(len(settings.word_dict)),
-                            integer_value_sequence(3)]
+    settings.input_types = [
+        integer_value_sequence(len(settings.word_dict)), integer_value(3)
+    ]
     settings.logger.info('dict len : %d' % (len(settings.word_dict)))
 
 
@@ -32,16 +33,19 @@ def process(settings, file_name):
             label, comment = line.strip().split('\t')
             label = int(''.join(label.split()))
             words = comment.split()
-            word_slot = [settings.word_dict[w] for w in words if
-                         w in settings.word_dict]
-            yield word_slot, [label]
+            word_slot = [
+                settings.word_dict[w] for w in words if w in settings.word_dict
+            ]
+            yield word_slot, label
 
 
 ## for hierarchical sequence network
 def hook2(settings, dict_file, **kwargs):
     settings.word_dict = dict_file
-    settings.input_types = [integer_value_sub_sequence(len(settings.word_dict)),
-                            integer_value_sub_sequence(3)]
+    settings.input_types = [
+        integer_value_sub_sequence(len(settings.word_dict)),
+        integer_value_sequence(3)
+    ]
     settings.logger.info('dict len : %d' % (len(settings.word_dict)))
 
 
@@ -55,9 +59,11 @@ def process2(settings, file_name):
                 label, comment = line.strip().split('\t')
                 label = int(''.join(label.split()))
                 words = comment.split()
-                word_slot = [settings.word_dict[w] for w in words if
-                             w in settings.word_dict]
-                label_list.append([label])
+                word_slot = [
+                    settings.word_dict[w] for w in words
+                    if w in settings.word_dict
+                ]
+                label_list.append(label)
                 word_slot_list.append(word_slot)
             else:
                 yield word_slot_list, label_list
