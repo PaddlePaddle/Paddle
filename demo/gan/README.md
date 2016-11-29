@@ -10,3 +10,4 @@ Then you can run the command below. The flag -d specifies the training data (cif
 $python gan_trainer.py -d cifar --useGpu 1
 
 The generated images will be stored in ./cifar_samples/
+The corresponding models will be stored in ./cifar_params/

@@ -38,7 +38,7 @@ sample_dim = 2
 settings(
     batch_size=128,
     learning_rate=1e-4,
-    learning_method=AdamOptimizer(beta1=0.7)
+    learning_method=AdamOptimizer(beta1=0.5)
 )
 
 def discriminator(sample):
