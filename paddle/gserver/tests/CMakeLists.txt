@@ -62,6 +62,13 @@ add_unittest(test_RecurrentLayer
     test_RecurrentLayer.cpp
     TestUtil.cpp)
 
+############### test_WarpCTCLayer #######################
+if(NOT WITH_DOUBLE)
+    add_unittest(test_WarpCTCLayer
+        test_WarpCTCLayer.cpp
+        TestUtil.cpp)
+endif()
+
 ############### test_RecurrentGradientMachine ###############
 # TODO(yuyang18): There is some bug in test_RecurrentGradientMachine
 # I will fix it.

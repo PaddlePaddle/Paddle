@@ -414,6 +414,8 @@ sinclude(`ModelConfigLayer.proto.m4')
   // to string and reinterpreted in the user's own layer implementation.  
   optional string user_arg = 49;
 
+  // For WarpCTCLayer
+  optional uint32 blank = 50 [default = 0];
 }
 
 message EvaluatorConfig {

@@ -94,6 +94,11 @@ endif()
 if(NOT WITH_GPU)
     add_definitions(-DPADDLE_ONLY_CPU)
     add_definitions(-DHPPL_STUB_FUNC)
+
+    if(WITH_DSO)
+        add_definitions(-DPADDLE_USE_DSO)
+    endif(WITH_DSO)
+
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
     if(${CUDA_VERSION_MAJOR} GREATER 6)

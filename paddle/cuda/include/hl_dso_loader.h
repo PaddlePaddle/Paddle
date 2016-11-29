@@ -18,10 +18,6 @@ limitations under the License. */
 #include <dlfcn.h>
 #include <string>
 #include <memory>
-#include <cuda_runtime.h>
-#include <cublas_v2.h>
-#include <curand.h>
-#include <cudnn.h>
 #include "hl_base.h"
 
 /**
@@ -55,5 +51,13 @@ void GetCudartDsoHandle(void** dso_handle);
  *
  */
 void GetCurandDsoHandle(void** dso_handle);
+
+/**
+ * @brief    load the DSO of warp-ctc
+ *
+ * @param    **dso_handle   dso handler
+ *
+ */
+void GetWarpctcDsoHandle(void** dso_handle);
 
 #endif  // HL_DSO_LOADER_H_
