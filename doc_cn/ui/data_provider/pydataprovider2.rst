@@ -1,14 +1,14 @@
 PyDataProvider2的使用
 =====================
 
-PyDataProvider2是PaddlePaddle使用Python提供数据的接口。该接口使用多线程读取数据，并提供了简单的Cache功能；同时可以使用户只关注如何从文件中读取每一条数据，而不用关心数据如何传输，如何存储等等。
+PyDataProvider2是PaddlePaddle使用Python提供数据的推荐接口。该接口使用多线程读取数据，并提供了简单的Cache功能；同时可以使用户只关注如何从文件中读取每一条数据，而不用关心数据如何传输，如何存储等等。
 
 ..  contents::
 
 MNIST的使用场景
 ---------------
 
-我们以MNIST手写识别为例，来说明如何使用最简单的PyDataProvider2。
+我们以MNIST手写识别为例，来说明PyDataProvider2的简单使用场景。
 
 样例数据
 ++++++++
@@ -17,7 +17,7 @@ MNIST是一个包含有70,000张灰度图片的数字分类数据集。样例数
 
 ..  literalinclude:: mnist_train.txt
 
-其中每行数据代表一张图片，行内使用 ``;`` 分成两部分。第一部分是图片的标签，为0-9中的一个数字；第二部分是28*28的图片像素灰度值。 对应的 ``train.list`` 为：
+其中每行数据代表一张图片，行内使用 ``;`` 分成两部分。第一部分是图片的标签，为0-9中的一个数字；第二部分是28*28的图片像素灰度值。 对应的 ``train.list`` 即为这个数据文件的名字：
 
 ..  literalinclude:: train.list
 
@@ -40,7 +40,8 @@ dataprovider的使用
   - 该函数的功能是：打开文本文件，读取每一行，将行中的数据转换成与input_types一致的格式，然后返回给PaddlePaddle进程。注意，
     
     - 返回的顺序需要和input_types中定义的顺序一致。
-    - 返回时，必须使用关键词 ``yield`` 。一次yield调用，即返回一条完整的样本。如果想为一个数据文件返回多条样本，只需要在函数中调用多次yield即可（本例中使用for循环进行多次调用）。
+    - 返回时，必须使用Python关键词 ``yield`` ，相关概念是 ``generator`` 。
+    - 一次yield调用，返回一条完整的样本。如果想为一个数据文件返回多条样本，只需要在函数中调用多次yield即可（本例中使用for循环进行多次调用）。
   
   - 该函数具有两个参数：
   
@@ -55,7 +56,20 @@ dataprovider的使用
 ..  literalinclude:: mnist_config.py
      :lines: 1-7
 
-训练数据是 ``train.list`` ，测试数据没有，调用的PyDataProvider2是 ``mnist_provider`` 模块中的 ``process`` 函数。
+训练数据是 ``train.list`` ，没有测试数据，调用的PyDataProvider2是 ``mnist_provider`` 模块中的 ``process`` 函数。
+
+小结
++++++
+
+至此，简单的PyDataProvider2样例就说明完毕了。对用户来说，仅需要知道如何从 **一个文件** 中读取 **一条样本** ，就可以将数据传送给PaddlePaddle了。而PaddlePaddle则会帮用户做以下工作：
+
+* 将数据组合成Batch进行训练
+* 对训练数据进行Shuffle
+* 多线程的数据读取
+* 缓存训练数据到内存(可选)
+* CPU->GPU双缓存
+
+是不是很简单呢？
 
 时序模型的使用场景
 ------------------
@@ -88,19 +102,6 @@ dataprovider的使用
 
 ..  literalinclude:: sentimental_config.py
      :emphasize-lines: 12-14
-
-小结
------
-
-至此，两个PyDataProvider2的样例就说明完毕了。对用户来说，仅需要知道如何从 **一个文件** 中读取 **一条样本** ，就可以将数据传送给PaddlePaddle了。而PaddlePaddle则会帮用户做以下工作：
-
-* 将数据组合成Batch进行训练
-* 对训练数据进行Shuffle
-* 多线程的数据读取
-* 缓存训练数据到内存(可选)
-* CPU->GPU双缓存
-
-是不是很简单呢？
 
 参考(Reference)
 ---------------
@@ -166,6 +167,8 @@ init_hook可以传入一个函数。该函数在初始化的时候会被调用�
 * 其他参数使用 ``kwargs`` （key word arguments）传入，包括以下两种：
     * PaddlePaddle定义的参数: 1）is_train：bool型参数，表示用于训练或预测；2）file_list：所有文件列表。
     * 用户定义的参数：使用args在网络配置中设置。
+
+注意：PaddlePaddle保留添加参数的权力，因此init_hook尽量使用 ``**kwargs`` 来接受不使用的函数以保证兼容性。
 
 cache
 +++++
