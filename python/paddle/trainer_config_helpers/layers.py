@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import functools
 import collections
 
 from paddle.trainer.config_parser import *
@@ -22,6 +20,9 @@ from .evaluators import *
 from .poolings import MaxPooling, AvgPooling, BasePoolingType
 from .attrs import *
 from .default_decorators import *
+from paddle.trainer.PyDataProvider2 import *
+
+import input_check_decorators as check
 
 try:
     import cPickle as pickle
@@ -238,7 +239,8 @@ class LayerOutput(object):
                  img_norm_type=None,
                  size=None,
                  outputs=None,
-                 reverse=None):
+                 reverse=None,
+                 input_type=None):
         assert isinstance(name, basestring)
         assert isinstance(layer_type, basestring)
         assert size is not None
@@ -256,6 +258,7 @@ class LayerOutput(object):
             outputs = ['default']
         self.outputs = outputs
         self.reverse = reverse
+        self.input_type = input_type
 
     def __repr__(self):
         """
@@ -763,7 +766,7 @@ def mixed_layer(size=0,
 
 
 @layer_support()
-def data_layer(name, size, layer_attr=None):
+def data_layer(name, size=None, input_type=None, layer_attr=None):
     """
     Define DataLayer For NeuralNetwork.
 
@@ -772,24 +775,33 @@ def data_layer(name, size, layer_attr=None):
     ..  code-block:: python
 
         data = data_layer(name="input",
-                          size=1000)
+                          input_type=dense_vector(1000))
 
     :param name: Name of this data layer.
     :type name: basestring
     :param size: Size of this data layer.
     :type size: int
+    :param input_type: The input type for data layer. Used for input check
+    :type input_type: InputType
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
+    if size is None:
+        assert input_type is not None, "Size is not set. You must set one of size or input_type."
+
+    if input_type is not None:
+        assert isinstance(input_type, InputType)
+        size = input_type.dim  # overwrite size.
+
     Layer(
         type=LayerType.DATA,
         name=name,
         size=size,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
-    return LayerOutput(name, LayerType.DATA, size=size)
+    return LayerOutput(name, LayerType.DATA, size=size, input_type=input_type)
 
 
 @wrap_name_default("embedding")
@@ -823,6 +835,12 @@ def embedding_layer(input, size, name=None, param_attr=None, layer_attr=None):
     return mix
 
 
+@check.input_mapping(
+    check.AcceptInput(
+        data_type=DataType.Dense, seq_type=SequenceType.all()),
+    check.SameOutputDim(),
+    check.SameSeqType(),
+    check.OutputType(data_type=DataType.Dense))
 @wrap_name_default()
 @wrap_param_attr_default()
 @wrap_bias_attr_default()

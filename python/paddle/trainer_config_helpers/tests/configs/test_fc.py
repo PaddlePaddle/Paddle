@@ -1,8 +1,9 @@
 from paddle.trainer_config_helpers import *
+from paddle.trainer.PyDataProvider2 import *
 
 settings(batch_size=1000, learning_rate=1e-5)
 
-din = data_layer(name='data', size=100)
+din = data_layer(name='data', input_type=dense_vector(100))
 
 trans = trans_layer(input=din)
 
