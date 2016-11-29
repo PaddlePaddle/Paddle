@@ -4,14 +4,14 @@
 单双层RNN API对比介绍
 #####################
 
-这篇教程主要介绍了\ :ref:`glossary_双层RNN`\ 的API接口。本文中的以PaddlePaddle的\ :ref:`glossary_双层RNN`\ 单元测试为示例，用多对效果完全相同的、分别使用单、双层RNN作为网络配置的模型，来讲解如何使用\ :ref:`glossary_双层RNN`\ 。本文中所有的例子，都只是介绍\ :ref:`glossary_双层RNN`\ 的API接口，并不是使用\ :ref:`glossary_双层RNN`\ 解决实际的问题。如果想要了解\ :ref:`glossary_双层RNN`\ 在具体问题中的使用，请参考\ :ref:`algo_hrnn_demo`\ 。文章中示例所使用的单元测试文件是\ `test_RecurrentGradientMachine.cpp <https://github.com/reyoung/Paddle/blob/develop/paddle/gserver/tests/test_RecurrentGradientMachine.cpp>`_\ 。
+这篇教程主要介绍了\ :ref:`glossary_双层RNN`\ 的API接口。本文以PaddlePaddle的\ :ref:`glossary_双层RNN`\ 单元测试为示例，用多对效果完全相同的、分别使用单双层RNN作为网络配置的模型，来讲解如何使用\ :ref:`glossary_双层RNN`\ 。本文中所有的例子，都只是介绍\ :ref:`glossary_双层RNN`\ 的API接口，并不是使用\ :ref:`glossary_双层RNN`\ 解决实际的问题。如果想要了解\ :ref:`glossary_双层RNN`\ 在具体问题中的使用，请参考\ :ref:`algo_hrnn_demo`\ 。本文中示例所使用的单元测试文件是\ `test_RecurrentGradientMachine.cpp <https://github.com/reyoung/Paddle/blob/develop/paddle/gserver/tests/test_RecurrentGradientMachine.cpp>`_\ 。
 
 示例1：双层RNN，子序列间无Memory
 ================================
 
 在\ :ref:`glossary_双层RNN`\ 中的经典情况是将内层的每一个\ :ref:`glossary_sequence`\ 数据，分别进行序列操作。并且内层的序列操作之间是独立没有依赖的，即不需要使用\ :ref:`glossary_Memory`\ 的。
 
-在本问题中，单层\ :ref:`glossary_RNN`\ 和\ :ref:`glossary_双层RNN`\ 的网络配置，都是将每一句分好词后的句子，使用LSTM作为encoder，压缩成一个向量。区别是\ :ref:`glossary_RNN`\ 使用两层序列模型，将多句话看成一个整体，同时使用encoder压缩，二者语意上完全一致。这组语意相同的示例配置如下
+在本示例中，单层\ :ref:`glossary_RNN`\ 和\ :ref:`glossary_双层RNN`\ 的网络配置，都是将每一句分好词后的句子，使用LSTM作为encoder，压缩成一个向量。区别是\ :ref:`glossary_RNN`\ 使用两层序列模型，将多句话看成一个整体，同时使用encoder压缩，二者语意上完全一致。这组语意相同的示例配置如下
 
 * 单层\ :ref:`glossary_RNN`\: `sequence_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_layer_group.conf>`_
 * :ref:`glossary_双层RNN`\: `sequence_nest_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_nest_layer_group.conf>`_
@@ -22,7 +22,7 @@
 
 首先，本示例中使用的原始数据如下\:
 
-- 本里中的原始数据一共有10个样本。每个样本由两部分组成，一个label（此处都为2）和一个已经分词后的句子。这个数据也被单层\ :ref:`glossary_RNN`\ 网络直接使用。
+- 本例中的原始数据一共有10个样本。每个样本由两部分组成，一个label（此处都为2）和一个已经分词后的句子。这个数据也被单层\ :ref:`glossary_RNN`\ 网络直接使用。
 
 ..  literalinclude:: ../../../paddle/gserver/tests/Sequence/tour_train_wdseg
     :language: text

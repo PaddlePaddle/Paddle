@@ -64,8 +64,8 @@ def outer_step(x1, x2):
         last = last_seq(name="outer_rnn_state_%d" % i, input=encoder)
         return encoder, last
 
-    _, sentence_last_state1 = inner_step(ipt=x1)
-    encoder2, _ = inner_step(ipt=x2)
+    encoder1, sentence_last_state1 = inner_step(ipt=x1)
+    encoder2, sentence_last_state2 = inner_step(ipt=x2)
 
     encoder1_expand = expand_layer(
         input=sentence_last_state1, expand_as=encoder2)
