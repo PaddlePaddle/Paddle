@@ -11,20 +11,22 @@
     data_provider/dataprovider.rst
     data_provider/pydataprovider2.rst
 
-命令行参数
-==========
+命令及命令行参数
+================
 
 ..  toctree::
+    :maxdepth: 1
 
     cmd/index.rst
 
+* `参数用例 <../../doc/ui/cmd_argument/use_case.html>`_
 * `参数分类 <../../doc/ui/cmd_argument/argument_outline.html>`_
 * `参数描述 <../../doc/ui/cmd_argument/detail_introduction.html>`_
-* `参数用例 <../../doc/ui/cmd_argument/use_case.html>`_
 
 预测
 =======
 
 ..  toctree::
+    :maxdepth: 1
 
     predict/swig_py_paddle.rst

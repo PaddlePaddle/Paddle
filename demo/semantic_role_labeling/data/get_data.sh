@@ -14,10 +14,10 @@
 # limitations under the License.
 set -e
 wget http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz
-wget https://www.googledrive.com/host/0B7Q8d52jqeI9ejh6Q1RpMTFQT1k/semantic_role_labeling/verbDict.txt --no-check-certificate
-wget https://www.googledrive.com/host/0B7Q8d52jqeI9ejh6Q1RpMTFQT1k/semantic_role_labeling/targetDict.txt --no-check-certificate
-wget https://www.googledrive.com/host/0B7Q8d52jqeI9ejh6Q1RpMTFQT1k/semantic_role_labeling/wordDict.txt --no-check-certificate
-wget https://www.googledrive.com/host/0B7Q8d52jqeI9ejh6Q1RpMTFQT1k/semantic_role_labeling/emb --no-check-certificate
+wget http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/verbDict.txt
+wget http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/targetDict.txt 
+wget http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/wordDict.txt 
+wget http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/emb
 tar -xzvf conll05st-tests.tar.gz
 rm conll05st-tests.tar.gz
 cp ./conll05st-release/test.wsj/words/test.wsj.words.gz  .

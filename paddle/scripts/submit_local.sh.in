@@ -29,6 +29,7 @@ function version(){
 }
 
 function ver2num() {
+  set -e
   # convert version to number.
   if [ -z "$1" ]; then # empty argument
     printf "%03d%03d%03d%03d%03d" 0
@@ -41,6 +42,7 @@ function ver2num() {
       printf "%03d%03d%03d%03d%03d" $VERN
     fi
   fi
+  set +e
 }
 
 PADDLE_CONF_HOME="$HOME/.config/paddle"
