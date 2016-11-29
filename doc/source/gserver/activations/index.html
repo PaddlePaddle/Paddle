@@ -90,12 +90,12 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle18ActivationFunctionD0Ev">
-<span id="paddle::ActivationFunction::~ActivationFunction"></span>virtual <span class="target" id="paddleclasspaddle_1_1ActivationFunction_1a97992626b45a327e1d9f405b51d11deb"></span><code class="descname">~ActivationFunction</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ActivationFunctionD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ActivationFunction::~ActivationFunction"></span><span class="target" id="paddleclasspaddle_1_1ActivationFunction_1a97992626b45a327e1d9f405b51d11deb"></span><em class="property">virtual</em> <code class="descname">~ActivationFunction</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ActivationFunctionD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle18ActivationFunction7forwardER8Argument">
-<span id="paddle::ActivationFunction::forward__ArgumentR"></span>virtual <span class="target" id="paddleclasspaddle_1_1ActivationFunction_1a3d2d82f5548cff294b93d37f08559fe4"></span>void <code class="descname">forward</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>act</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle18ActivationFunction7forwardER8Argument" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ActivationFunction::forward__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1ActivationFunction_1a3d2d82f5548cff294b93d37f08559fe4"></span><em class="property">virtual</em> void <code class="descname">forward</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>act</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle18ActivationFunction7forwardER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Foward propagation. </p>
 <p>act.value &lt;- f(act.value), where f is the activation function. Suppose that before calling <a class="reference internal" href="#paddleclasspaddle_1_1ActivationFunction_1a3d2d82f5548cff294b93d37f08559fe4"><span class="std std-ref">forward()</span></a>, act.value is x and after <a class="reference internal" href="#paddleclasspaddle_1_1ActivationFunction_1a3d2d82f5548cff294b93d37f08559fe4"><span class="std std-ref">forward()</span></a> is called, act.value is y, then y = f(x).</p>
 <p>Usually, act is <a class="reference internal" href="../layers/layer.html#paddleclasspaddle_1_1Layer_1a955c467f7d96f46d8e2ea0e995137097"><span class="std std-ref">Layer::output_</span></a> </p>
@@ -103,7 +103,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle18ActivationFunction8backwardER8Argument">
-<span id="paddle::ActivationFunction::backward__ArgumentR"></span>virtual <span class="target" id="paddleclasspaddle_1_1ActivationFunction_1aa567f66ac2dea1f209b6de8134634c4a"></span>void <code class="descname">backward</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>act</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle18ActivationFunction8backwardER8Argument" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ActivationFunction::backward__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1ActivationFunction_1aa567f66ac2dea1f209b6de8134634c4a"></span><em class="property">virtual</em> void <code class="descname">backward</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>act</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle18ActivationFunction8backwardER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Backward propagaion. </p>
 <p>x and y are defined in the above comment for <a class="reference internal" href="#paddleclasspaddle_1_1ActivationFunction_1a3d2d82f5548cff294b93d37f08559fe4"><span class="std std-ref">forward()</span></a>.<ul class="simple">
 <li>Before calling <a class="reference internal" href="#paddleclasspaddle_1_1ActivationFunction_1aa567f66ac2dea1f209b6de8134634c4a"><span class="std std-ref">backward()</span></a>, act.grad = dE / dy, where E is the error/cost</li>
@@ -113,8 +113,8 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle18ActivationFunction7getNameEv">
-<span id="paddle::ActivationFunction::getName"></span>virtual <span class="target" id="paddleclasspaddle_1_1ActivationFunction_1aea8876019ab52ac0329d5f856ea1458c"></span><em class="property">const</em> std::string &amp;<code class="descname">getName</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N6paddle18ActivationFunction7getNameEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle18ActivationFunction7getNameEv">
+<span id="paddle::ActivationFunction::getNameC"></span><span class="target" id="paddleclasspaddle_1_1ActivationFunction_1aea8876019ab52ac0329d5f856ea1458c"></span><em class="property">virtual</em> <em class="property">const</em> std::string &amp;<code class="descname">getName</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em> = 0<a class="headerlink" href="#_CPPv2NK6paddle18ActivationFunction7getNameEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -123,6 +123,11 @@ var _hmt = _hmt || [];
 <dl class="function">
 <dt id="_CPPv2N6paddle18ActivationFunction6createERKNSt6stringE">
 <span id="paddle::ActivationFunction::create__ssCR"></span><span class="target" id="paddleclasspaddle_1_1ActivationFunction_1ace0afca87b53041d4e2e603a536bc230"></span><a class="reference internal" href="#_CPPv2N6paddle18ActivationFunctionE" title="paddle::ActivationFunction">ActivationFunction</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>type</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ActivationFunction6createERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle18ActivationFunction21getAllRegisteredTypesEv">
+<span id="paddle::ActivationFunction::getAllRegisteredTypes"></span><span class="target" id="paddleclasspaddle_1_1ActivationFunction_1af651fa503dc54ab52d807803ac00f78b"></span>std::vector&lt;std::string&gt; <code class="descname">getAllRegisteredTypes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18ActivationFunction21getAllRegisteredTypesEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -184,7 +189,7 @@ var _hmt = _hmt || [];
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

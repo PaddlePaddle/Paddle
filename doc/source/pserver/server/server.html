@@ -138,17 +138,15 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle11ProtoServer13handleRequestENSt10unique_ptrI9MsgReaderEE16ResponseCallback">
-<span id="paddle::ProtoServer::handleRequest__std::unique_ptr:MsgReader:.ResponseCallback"></span>virtual <span class="target" id="paddleclasspaddle_1_1ProtoServer_1aa901a381983e487700e61f7558e7a338"></span>void <code class="descname">handleRequest</code><span class="sig-paren">(</span>std::unique_ptr&lt;<a class="reference internal" href="../network/network.html#_CPPv2N6paddle9MsgReaderE" title="paddle::MsgReader">MsgReader</a>&gt; <em>msgReader</em>, ResponseCallback <em>callback</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle11ProtoServer13handleRequestENSt10unique_ptrI9MsgReaderEE16ResponseCallback" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ProtoServer::handleRequest__std::unique_ptr:MsgReader:.ResponseCallback"></span><span class="target" id="paddleclasspaddle_1_1ProtoServer_1aa901a381983e487700e61f7558e7a338"></span>void <code class="descname">handleRequest</code><span class="sig-paren">(</span>std::unique_ptr&lt;<a class="reference internal" href="../network/network.html#_CPPv2N6paddle9MsgReaderE" title="paddle::MsgReader">MsgReader</a>&gt; <em>msgReader</em>, ResponseCallback <em>callback</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle11ProtoServer13handleRequestENSt10unique_ptrI9MsgReaderEE16ResponseCallback" title="Permalink to this definition">¶</a></dt>
 <dd><p>handle rpc request </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>it lookups rpc function mapping table to find function pointer, then call this function with further reading data from connection </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">msgReader</span></code> - <p>Message reader for reading data from connection </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">callback</span></code> - <p>equal to channel-&gt;writeMessage</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">msgReader</span></code>: Message reader for reading data from connection </li>
+<li><code class="docutils literal"><span class="pre">callback</span></code>: equal to channel-&gt;writeMessage</li>
 </ul>
 </dd>
 </dl>
@@ -161,11 +159,9 @@ var _hmt = _hmt || [];
 <dd><p>register one RPC function in function mapping </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">funcName</span></code> - <p>function name string </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">func</span></code> - <p>rpc function wrapped with reading and writing data </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">funcName</span></code>: function name string </li>
+<li><code class="docutils literal"><span class="pre">func</span></code>: rpc function wrapped with reading and writing data </li>
 </ul>
 </dd>
 </dl>
@@ -647,8 +643,8 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle16ParameterServer218getParameterConfigE7int64_t">
-<span id="paddle::ParameterServer2::getParameterConfig__int64_t"></span><span class="target" id="paddleclasspaddle_1_1ParameterServer2_1ae3737f0c6bddf5adb62b4d28d8cc75d0"></span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<code class="descname">getParameterConfig</code><span class="sig-paren">(</span>int64_t <em>blockId</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle16ParameterServer218getParameterConfigE7int64_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle16ParameterServer218getParameterConfigE7int64_t">
+<span id="paddle::ParameterServer2::getParameterConfig__int64_tC"></span><span class="target" id="paddleclasspaddle_1_1ParameterServer2_1ae3737f0c6bddf5adb62b4d28d8cc75d0"></span><em class="property">const</em> <a class="reference internal" href="../../api/api.html#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<code class="descname">getParameterConfig</code><span class="sig-paren">(</span>int64_t <em>blockId</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle16ParameterServer218getParameterConfigE7int64_t" title="Permalink to this definition">¶</a></dt>
 <dd><p>it implictly check blockOffsetMap_ while retrieving blockId </p>
 </dd></dl>
 
@@ -667,8 +663,8 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle16ParameterServer214getBlockOffsetERK14ParameterBlock">
-<span id="paddle::ParameterServer2::getBlockOffset__ParameterBlockCR"></span><span class="target" id="paddleclasspaddle_1_1ParameterServer2_1a50b16fa121fb8348b97a8e690a1c717a"></span>int64_t <code class="descname">getBlockOffset</code><span class="sig-paren">(</span><em class="property">const</em> ParameterBlock &amp;<em>block</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle16ParameterServer214getBlockOffsetERK14ParameterBlock" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle16ParameterServer214getBlockOffsetERK14ParameterBlock">
+<span id="paddle::ParameterServer2::getBlockOffset__ParameterBlockCRC"></span><span class="target" id="paddleclasspaddle_1_1ParameterServer2_1a50b16fa121fb8348b97a8e690a1c717a"></span>int64_t <code class="descname">getBlockOffset</code><span class="sig-paren">(</span><em class="property">const</em> ParameterBlock &amp;<em>block</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle16ParameterServer214getBlockOffsetERK14ParameterBlock" title="Permalink to this definition">¶</a></dt>
 <dd><p>get block offset </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -678,8 +674,8 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle16ParameterServer210getBlockIdERK14ParameterBlock">
-<span id="paddle::ParameterServer2::getBlockId__ParameterBlockCR"></span><span class="target" id="paddleclasspaddle_1_1ParameterServer2_1a2290005b7f6efd92272ec70c242fdd92"></span>int64_t <code class="descname">getBlockId</code><span class="sig-paren">(</span><em class="property">const</em> ParameterBlock &amp;<em>block</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle16ParameterServer210getBlockIdERK14ParameterBlock" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle16ParameterServer210getBlockIdERK14ParameterBlock">
+<span id="paddle::ParameterServer2::getBlockId__ParameterBlockCRC"></span><span class="target" id="paddleclasspaddle_1_1ParameterServer2_1a2290005b7f6efd92272ec70c242fdd92"></span>int64_t <code class="descname">getBlockId</code><span class="sig-paren">(</span><em class="property">const</em> ParameterBlock &amp;<em>block</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle16ParameterServer210getBlockIdERK14ParameterBlock" title="Permalink to this definition">¶</a></dt>
 <dd><p>return -1 if block cannot be found </p>
 </dd></dl>
 
@@ -983,8 +979,8 @@ var _hmt = _hmt || [];
 <dd><div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
-<dt id="_CPPv2N6paddle16ParameterServer212BlockKeyHashclERK8BlockKey">
-<span id="paddle::ParameterServer2::BlockKeyHash::call-operator__BlockKeyCR"></span><span class="target" id="paddlestructpaddle_1_1ParameterServer2_1_1BlockKeyHash_1ad34cc1aebdc5cf4d2e06349d3f995785"></span>size_t <code class="descname">operator()</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle16ParameterServer28BlockKeyE" title="paddle::ParameterServer2::BlockKey">BlockKey</a> &amp;<em>key</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle16ParameterServer212BlockKeyHashclERK8BlockKey" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle16ParameterServer212BlockKeyHashclERK8BlockKey">
+<span id="paddle::ParameterServer2::BlockKeyHash::call-operator__BlockKeyCRC"></span><span class="target" id="paddlestructpaddle_1_1ParameterServer2_1_1BlockKeyHash_1ad34cc1aebdc5cf4d2e06349d3f995785"></span>size_t <code class="descname">operator()</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv2N6paddle16ParameterServer28BlockKeyE" title="paddle::ParameterServer2::BlockKey">BlockKey</a> &amp;<em>key</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle16ParameterServer212BlockKeyHashclERK8BlockKey" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1016,11 +1012,9 @@ var _hmt = _hmt || [];
 <dd><p>The <a class="reference internal" href="#paddleclasspaddle_1_1ParameterServer2_1_1ReadWriteBuffer"><span class="std std-ref">ReadWriteBuffer</span></a> is based on std::vector, but aligned for avx/sse compute. And add some helper method to allocate memory aligned blocks.</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">T</span></code> - <p>type of element. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">AlignBytes</span></code> - <p>the memory aligned bytes for allocated blocks. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">T</span></code>: type of element. </li>
+<li><code class="docutils literal"><span class="pre">AlignBytes</span></code>: the memory aligned bytes for allocated blocks. </li>
 </ul>
 </dd>
 </dl>
@@ -1034,11 +1028,9 @@ var _hmt = _hmt || [];
 <dd><p>Resize <a class="reference internal" href="#paddlestructpaddle_1_1ParameterServer2_1_1Buffer"><span class="std std-ref">Buffer</span></a>, with block count that will be allocated. Each block will be memory aligned in AlignBytes. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>The element count in all blocks. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alignBlockCount</span></code> - <p>The block count that will be allocated. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: The element count in all blocks. </li>
+<li><code class="docutils literal"><span class="pre">alignBlockCount</span></code>: The block count that will be allocated. </li>
 </ul>
 </dd>
 </dl>
@@ -1059,9 +1051,8 @@ var _hmt = _hmt || [];
 <dt><strong>Return</strong></dt>
 <dd>Aligned block address. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">blockSize</span></code> - <p>is the element count in each block. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">blockSize</span></code>: is the element count in each block. </li>
 </ul>
 </dd>
 </dl>
@@ -1153,7 +1144,7 @@ var _hmt = _hmt || [];
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

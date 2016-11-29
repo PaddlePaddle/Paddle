@@ -84,9 +84,8 @@ var _hmt = _hmt || [];
 <dd><p>load the DSO of CUBLAS </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">**dso_handle</span></code> - <p>dso handler </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">**dso_handle</span></code>: dso handler </li>
 </ul>
 </dd>
 </dl>
@@ -99,9 +98,8 @@ var _hmt = _hmt || [];
 <dd><p>load the DSO of CUDNN </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">**dso_handle</span></code> - <p>dso handler </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">**dso_handle</span></code>: dso handler </li>
 </ul>
 </dd>
 </dl>
@@ -114,9 +112,8 @@ var _hmt = _hmt || [];
 <dd><p>load the DSO of CUDA Run Time </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">**dso_handle</span></code> - <p>dso handler </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">**dso_handle</span></code>: dso handler </li>
 </ul>
 </dd>
 </dl>
@@ -129,9 +126,8 @@ var _hmt = _hmt || [];
 <dd><p>load the DSO of CURAND </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">**dso_handle</span></code> - <p>dso handler </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">**dso_handle</span></code>: dso handler </li>
 </ul>
 </dd>
 </dl>
@@ -180,11 +176,9 @@ var _hmt = _hmt || [];
 <p>create cuda stream and cuda event, allocate gpu memory and host page-lock memory for threads.</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">device</span></code> - <p>device number. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">device_res</span></code> - <p>device properties. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device</span></code>: device number. </li>
+<li><code class="docutils literal"><span class="pre">device_res</span></code>: device properties. </li>
 </ul>
 </dd>
 </dl>
@@ -198,9 +192,8 @@ var _hmt = _hmt || [];
 <p>create cuda stream, initialize cublas, curand and cudnn.</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">device_prop</span></code> - <p>device properties. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device_prop</span></code>: device properties. </li>
 </ul>
 </dd>
 </dl>
@@ -214,9 +207,8 @@ var _hmt = _hmt || [];
 <dd><p>hppl event. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">cuda</span></code> - <p>event. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">cuda</span></code>: event. </li>
 </ul>
 </dd>
 </dl>
@@ -237,17 +229,12 @@ var _hmt = _hmt || [];
 <dd><p>global device resources. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">*stream</span></code> - <p>device global stream. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">handle</span></code> - <p>devcie cublas handle. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">gen</span></code> - <p>device curand generator. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">cudnn_handle</span></code> - <p>cudnn handle. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*gen_mutex</span></code> - <p>gen lock. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">*stream</span></code>: device global stream. </li>
+<li><code class="docutils literal"><span class="pre">handle</span></code>: devcie cublas handle. </li>
+<li><code class="docutils literal"><span class="pre">gen</span></code>: device curand generator. </li>
+<li><code class="docutils literal"><span class="pre">cudnn_handle</span></code>: cudnn handle. </li>
+<li><code class="docutils literal"><span class="pre">*gen_mutex</span></code>: gen lock. </li>
 </ul>
 </dd>
 </dl>
@@ -390,11 +377,9 @@ var _hmt = _hmt || [];
 <dd><p>HPPL start(Initialize the specific GPU). </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">device</span></code> - <p>device id(0, 1......). if device is NULL, will start all GPU. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">number</span></code> - <p>number of devices. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device</span></code>: device id(0, 1......). if device is NULL, will start all GPU. </li>
+<li><code class="docutils literal"><span class="pre">number</span></code>: number of devices. </li>
 </ul>
 </dd>
 </dl>
@@ -409,11 +394,9 @@ var _hmt = _hmt || [];
 <dt><strong>Return</strong></dt>
 <dd>Returns true if device is capable of directly accessing memory from peerDevice and false otherwise. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">device</span></code> - <p>Device from which allocations on peerDevice are to be directly accessed. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">peerDevice</span></code> - <p>Device on which the allocations to be directly accessed by device reside.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device</span></code>: Device from which allocations on peerDevice are to be directly accessed. </li>
+<li><code class="docutils literal"><span class="pre">peerDevice</span></code>: Device on which the allocations to be directly accessed by device reside.</li>
 </ul>
 </dd>
 </dl>
@@ -426,9 +409,8 @@ var _hmt = _hmt || [];
 <dd><p>Enables direct access to memory allocations on a peer device. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">peerDevice</span></code> - <p>Peer device to enable direct access to from the current device </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">peerDevice</span></code>: Peer device to enable direct access to from the current device </li>
 </ul>
 </dd>
 </dl>
@@ -441,9 +423,8 @@ var _hmt = _hmt || [];
 <dd><p>Init a work thread. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">device</span></code> - <p>device id. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device</span></code>: device id. </li>
 </ul>
 </dd>
 </dl>
@@ -464,9 +445,8 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd>This setting is only valid for the current worker thread. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">flag</span></code> - <p>true(default), set synchronous flag. false, set asynchronous flag.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">flag</span></code>: true(default), set synchronous flag. false, set asynchronous flag.</li>
 </ul>
 </dd>
 </dl>
@@ -496,9 +476,8 @@ var _hmt = _hmt || [];
 <dd><p>Set device to be used. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">device</span></code> - <p>device id. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">device</span></code>: device id. </li>
 </ul>
 </dd>
 </dl>
@@ -524,9 +503,8 @@ var _hmt = _hmt || [];
 <dt><strong>Return</strong></dt>
 <dd>dest_d pointer to device memory. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size in bytes to copy.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy.</li>
 </ul>
 </dd>
 </dl>
@@ -539,9 +517,8 @@ var _hmt = _hmt || [];
 <dd><p>Free device memory. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dest_d</span></code> - <p>pointer to device memory. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_d</span></code>: pointer to device memory. </li>
 </ul>
 </dd>
 </dl>
@@ -556,9 +533,8 @@ var _hmt = _hmt || [];
 <dt><strong>Return</strong></dt>
 <dd>dest_h pointer to host memory. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size in bytes to copy.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy.</li>
 </ul>
 </dd>
 </dl>
@@ -571,9 +547,8 @@ var _hmt = _hmt || [];
 <dd><p>Free host page-lock memory. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dest_h</span></code> - <p>pointer to host memory. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_h</span></code>: pointer to host memory. </li>
 </ul>
 </dd>
 </dl>
@@ -586,13 +561,10 @@ var _hmt = _hmt || [];
 <dd><p>Copy data. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>dst memory address(host or device). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">src</span></code> - <p>src memory address(host or device). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size in bytes to copy. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dst</span></code>: dst memory address(host or device). </li>
+<li><code class="docutils literal"><span class="pre">src</span></code>: src memory address(host or device). </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy. </li>
 </ul>
 </dd>
 </dl>
@@ -605,13 +577,10 @@ var _hmt = _hmt || [];
 <dd><p>Set device memory to a value. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dest_d</span></code> - <p>pointer to device memory. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">value</span></code> - <p>value to set for each byte of specified memory. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size in bytes to set. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_d</span></code>: pointer to device memory. </li>
+<li><code class="docutils literal"><span class="pre">value</span></code>: value to set for each byte of specified memory. </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to set. </li>
 </ul>
 </dd>
 </dl>
@@ -624,13 +593,10 @@ var _hmt = _hmt || [];
 <dd><p>Copy host memory to device memory. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dest_d</span></code> - <p>dst memory address. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">src_h</span></code> - <p>src memory address. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size in bytes to copy. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_d</span></code>: dst memory address. </li>
+<li><code class="docutils literal"><span class="pre">src_h</span></code>: src memory address. </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy. </li>
 </ul>
 </dd>
 </dl>
@@ -643,13 +609,10 @@ var _hmt = _hmt || [];
 <dd><p>Copy device memory to host memory. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dest_h</span></code> - <p>dst memory address. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">src_d</span></code> - <p>src memory address. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size in bytes to copy. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_h</span></code>: dst memory address. </li>
+<li><code class="docutils literal"><span class="pre">src_d</span></code>: src memory address. </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy. </li>
 </ul>
 </dd>
 </dl>
@@ -662,13 +625,10 @@ var _hmt = _hmt || [];
 <dd><p>Copy device memory to device memory. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dest_d</span></code> - <p>dst memory address. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">src_d</span></code> - <p>src memory address. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size in bytes to copy. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_d</span></code>: dst memory address. </li>
+<li><code class="docutils literal"><span class="pre">src_d</span></code>: src memory address. </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy. </li>
 </ul>
 </dd>
 </dl>
@@ -681,11 +641,9 @@ var _hmt = _hmt || [];
 <dd><p>Generate uniformly distributed floats (0, 1.0]. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dest_d</span></code> - <p>pointer to device memory to store results. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">num</span></code> - <p>number of floats to generate. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dest_d</span></code>: pointer to device memory to store results. </li>
+<li><code class="docutils literal"><span class="pre">num</span></code>: number of floats to generate. </li>
 </ul>
 </dd>
 </dl>
@@ -698,9 +656,8 @@ var _hmt = _hmt || [];
 <dd><p>Set the seed value of the random number generator. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">seed</span></code> - <p>seed value. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">seed</span></code>: seed value. </li>
 </ul>
 </dd>
 </dl>
@@ -713,15 +670,11 @@ var _hmt = _hmt || [];
 <dd><p>Copy data. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>dst memory address(host or device). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">src</span></code> - <p>src memory address(host or device). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size in bytes to copy. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>stream id. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dst</span></code>: dst memory address(host or device). </li>
+<li><code class="docutils literal"><span class="pre">src</span></code>: src memory address(host or device). </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size in bytes to copy. </li>
+<li><code class="docutils literal"><span class="pre">stream</span></code>: stream id. </li>
 </ul>
 </dd>
 </dl>
@@ -734,9 +687,8 @@ var _hmt = _hmt || [];
 <dd><p>Waits for stream tasks to complete. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>stream id. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">stream</span></code>: stream id. </li>
 </ul>
 </dd>
 </dl>
@@ -749,9 +701,8 @@ var _hmt = _hmt || [];
 <dd><p>Creates an event object. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">event</span></code> - <p>New event. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">event</span></code>: New event. </li>
 </ul>
 </dd>
 </dl>
@@ -764,9 +715,8 @@ var _hmt = _hmt || [];
 <dd><p>Destroys an event object. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">event</span></code> - <p>Event to destroy. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">event</span></code>: Event to destroy. </li>
 </ul>
 </dd>
 </dl>
@@ -781,11 +731,9 @@ var _hmt = _hmt || [];
 <dt><strong>Return</strong></dt>
 <dd>time Time between start and end in ms. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">start</span></code> - <p>Starting event. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">end</span></code> - <p>Ending event.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">start</span></code>: Starting event. </li>
+<li><code class="docutils literal"><span class="pre">end</span></code>: Ending event.</li>
 </ul>
 </dd>
 </dl>
@@ -798,11 +746,9 @@ var _hmt = _hmt || [];
 <dd><p>Records an event. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>Stream in which to insert event. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">event</span></code> - <p>Event waiting to be recorded as completed. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">stream</span></code>: Stream in which to insert event. </li>
+<li><code class="docutils literal"><span class="pre">event</span></code>: Event waiting to be recorded as completed. </li>
 </ul>
 </dd>
 </dl>
@@ -815,11 +761,9 @@ var _hmt = _hmt || [];
 <dd><p>Make a compute stream wait on an event. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>Stream in which to insert event. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">event</span></code> - <p>Event to wait on. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">stream</span></code>: Stream in which to insert event. </li>
+<li><code class="docutils literal"><span class="pre">event</span></code>: Event to wait on. </li>
 </ul>
 </dd>
 </dl>
@@ -832,9 +776,8 @@ var _hmt = _hmt || [];
 <dd><p>Wait for an event to complete. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">event</span></code> - <p>event to wait for. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">event</span></code>: event to wait for. </li>
 </ul>
 </dd>
 </dl>
@@ -866,9 +809,8 @@ var _hmt = _hmt || [];
 <dt><strong>See</strong></dt>
 <dd>hl_get_device_last_error() </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">err</span></code> - <p>error number.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">err</span></code>: error number.</li>
 </ul>
 </dd>
 </dl>
@@ -896,9 +838,8 @@ var _hmt = _hmt || [];
 <dt><strong>Return</strong></dt>
 <dd>true cuda event is ready. false cuda event is not ready. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">event</span></code> - <p>cuda event to query.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">event</span></code>: cuda event to query.</li>
 </ul>
 </dd>
 </dl>
@@ -926,19 +867,13 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> transpose: C_d = T(A_d) </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output matrix (N x M). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>the first dimension of A_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldc</span></code> - <p>the first dimension of C_d. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (dimM x dimN). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output matrix (dimN x dimM). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: the first dimension of A_d. </li>
+<li><code class="docutils literal"><span class="pre">ldc</span></code>: the first dimension of C_d. </li>
 </ul>
 </dd>
 </dl>
@@ -951,38 +886,30 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 <dl class="function">
+<dt id="_CPPv217hl_matrix_inverseP4realP4realiii">
+<span id="hl_matrix_inverse__realP.realP.i.i.i"></span><span class="target" id="paddlehl__cuda__cublas_8h_1a9dfbccb4e8766d12fcdc7589b9c9e17d"></span>void <code class="descname">hl_matrix_inverse</code><span class="sig-paren">(</span>real *<em>A_d</em>, real *<em>C_d</em>, int <em>dimN</em>, int <em>lda</em>, int <em>ldc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv217hl_matrix_inverseP4realP4realiii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
 <dt id="_CPPv213hl_matrix_mulP4real13hl_trans_op_tP4real13hl_trans_op_tP4realiii4real4realiii">
 <span id="hl_matrix_mul__realP.hl_trans_op_t.realP.hl_trans_op_t.realP.i.i.i.real.real.i.i.i"></span><span class="target" id="paddlehl__cuda__cublas_8h_1af5cd7ac9a866d67dbe135a79c1e5e05c"></span>void <code class="descname">hl_matrix_mul</code><span class="sig-paren">(</span>real *<em>A_d</em>, <a class="reference internal" href="../utils/utils.html#_CPPv213hl_trans_op_t" title="hl_trans_op_t">hl_trans_op_t</a> <em>transa</em>, real *<em>B_d</em>, <a class="reference internal" href="../utils/utils.html#_CPPv213hl_trans_op_t" title="hl_trans_op_t">hl_trans_op_t</a> <em>transb</em>, real *<em>C_d</em>, int <em>dimM</em>, int <em>dimN</em>, int <em>dimK</em>, real <em>alpha</em>, real <em>beta</em>, int <em>lda</em>, int <em>ldb</em>, int <em>ldc</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv213hl_matrix_mulP4real13hl_trans_op_tP4real13hl_trans_op_tP4realiii4real4realiii" title="Permalink to this definition">¶</a></dt>
 <dd><p>C_d = alpha*(op(A_d) * op(B_d)) + beta*C_d. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transa</span></code> - <p>operation op(A) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>input. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transb</span></code> - <p>operation op(B) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height of op(A) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width of op(B) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimK</span></code> - <p>width of op(A) &amp; height of op(B) </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scalar used for multiplication. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scalar used for multiplication. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>the first dimension of A_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldb</span></code> - <p>the first dimension of B_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldc</span></code> - <p>the first dimension of C_d. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input. </li>
+<li><code class="docutils literal"><span class="pre">transa</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: input. </li>
+<li><code class="docutils literal"><span class="pre">transb</span></code>: operation op(B) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height of op(A) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width of op(B) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimK</span></code>: width of op(A) &amp; height of op(B) </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: the first dimension of A_d. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: the first dimension of B_d. </li>
+<li><code class="docutils literal"><span class="pre">ldc</span></code>: the first dimension of C_d. </li>
 </ul>
 </dd>
 </dl>
@@ -995,27 +922,17 @@ var _hmt = _hmt || [];
 <dd><p>C_d = alpha*(op(A_d) * op(B_d)) + beta*C_d. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transa</span></code> - <p>operation op(A) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>input. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transb</span></code> - <p>operation op(B) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height of op(A) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width of op(B) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimK</span></code> - <p>width of op(A) &amp; height of op(B) </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scalar used for multiplication. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scalar used for multiplication. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input. </li>
+<li><code class="docutils literal"><span class="pre">transa</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: input. </li>
+<li><code class="docutils literal"><span class="pre">transb</span></code>: operation op(B) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height of op(A) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width of op(B) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimK</span></code>: width of op(A) &amp; height of op(B) </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. </li>
 </ul>
 </dd>
 </dl>
@@ -1028,29 +945,18 @@ var _hmt = _hmt || [];
 <dd><p>This function performs the matrix-vector multiplication. C_d = alpha*op(A_d)*B_d + beta*C_d. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">trans</span></code> - <p>operation op(A) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>vector with dimN(dimM) elements if trans==HPPL_OP_N(HPPL_OP_T). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>vector with dimM(dimN) elements if trans==HPPL_OP_N(HPPL_OP_T). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>number of rows of matrix A_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>number of columns of matrix A_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scalar used for multiplication. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scalar used for multiplication. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>the first dimension of A_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">incb</span></code> - <p>increase B_d size for compaction. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">incc</span></code> - <p>increase C_d size for compaction. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">trans</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: vector with dimN(dimM) elements if trans==HPPL_OP_N(HPPL_OP_T). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: vector with dimM(dimN) elements if trans==HPPL_OP_N(HPPL_OP_T). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: number of rows of matrix A_d. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: number of columns of matrix A_d. </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: the first dimension of A_d. </li>
+<li><code class="docutils literal"><span class="pre">incb</span></code>: increase B_d size for compaction. </li>
+<li><code class="docutils literal"><span class="pre">incc</span></code>: increase C_d size for compaction. </li>
 </ul>
 </dd>
 </dl>
@@ -1063,23 +969,15 @@ var _hmt = _hmt || [];
 <dd><p>This function performs the matrix-vector multiplication. C_d = alpha*op(A_d)*B_d + beta*C_d. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">trans</span></code> - <p>operation op(A) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>vector with dimN(dimM) elements if trans==HPPL_OP_N(HPPL_OP_T). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>vector with dimM(dimN) elements if trans==HPPL_OP_N(HPPL_OP_T). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>number of rows of matrix A_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>number of columns of matrix A_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scalar used for multiplication. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scalar used for multiplication. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">trans</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: vector with dimN(dimM) elements if trans==HPPL_OP_N(HPPL_OP_T). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: vector with dimM(dimN) elements if trans==HPPL_OP_N(HPPL_OP_T). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: number of rows of matrix A_d. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: number of columns of matrix A_d. </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. </li>
 </ul>
 </dd>
 </dl>
@@ -1160,9 +1058,8 @@ var _hmt = _hmt || [];
 <dd><p>create image descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">image_desc</span></code> - <p>image descriptor. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">image_desc</span></code>: image descriptor. </li>
 </ul>
 </dd>
 </dl>
@@ -1175,17 +1072,12 @@ var _hmt = _hmt || [];
 <dd><p>reshape image descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">image_desc</span></code> - <p>image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">batch_size</span></code> - <p>input batch size. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">feature_maps</span></code> - <p>image feature maps. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>image height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>image width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">image_desc</span></code>: image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">batch_size</span></code>: input batch size. </li>
+<li><code class="docutils literal"><span class="pre">feature_maps</span></code>: image feature maps. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: image height. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: image width. </li>
 </ul>
 </dd>
 </dl>
@@ -1198,25 +1090,16 @@ var _hmt = _hmt || [];
 <dd><p>reshape image descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">image_desc</span></code> - <p>image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">batch_size</span></code> - <p>input batch size. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">feature_maps</span></code> - <p>image feature maps. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>image height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>image width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">nStride</span></code> - <p>stride between two consecutive images. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">cStride</span></code> - <p>stride between two consecutive feature maps. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">hStride</span></code> - <p>stride between two consecutive rows. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">wStride</span></code> - <p>stride between two consecutive columns. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">image_desc</span></code>: image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">batch_size</span></code>: input batch size. </li>
+<li><code class="docutils literal"><span class="pre">feature_maps</span></code>: image feature maps. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: image height. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: image width. </li>
+<li><code class="docutils literal"><span class="pre">nStride</span></code>: stride between two consecutive images. </li>
+<li><code class="docutils literal"><span class="pre">cStride</span></code>: stride between two consecutive feature maps. </li>
+<li><code class="docutils literal"><span class="pre">hStride</span></code>: stride between two consecutive rows. </li>
+<li><code class="docutils literal"><span class="pre">wStride</span></code>: stride between two consecutive columns. </li>
 </ul>
 </dd>
 </dl>
@@ -1229,9 +1112,8 @@ var _hmt = _hmt || [];
 <dd><p>destroy image descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">image_desc</span></code> - <p>hppl image descriptor. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">image_desc</span></code>: hppl image descriptor. </li>
 </ul>
 </dd>
 </dl>
@@ -1244,23 +1126,15 @@ var _hmt = _hmt || [];
 <dd><p>create pooling descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">pooling_desc</span></code> - <p>pooling descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">mode</span></code> - <p>pooling mode. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>height of the pooling window. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>width of the pooling window. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">height_padding</span></code> - <p>padding height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width_padding</span></code> - <p>padding width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stride_height</span></code> - <p>pooling vertical stride. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stride_width</span></code> - <p>pooling horizontal stride. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">pooling_desc</span></code>: pooling descriptor. </li>
+<li><code class="docutils literal"><span class="pre">mode</span></code>: pooling mode. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: height of the pooling window. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: width of the pooling window. </li>
+<li><code class="docutils literal"><span class="pre">height_padding</span></code>: padding height. </li>
+<li><code class="docutils literal"><span class="pre">width_padding</span></code>: padding width. </li>
+<li><code class="docutils literal"><span class="pre">stride_height</span></code>: pooling vertical stride. </li>
+<li><code class="docutils literal"><span class="pre">stride_width</span></code>: pooling horizontal stride. </li>
 </ul>
 </dd>
 </dl>
@@ -1273,9 +1147,8 @@ var _hmt = _hmt || [];
 <dd><p>destroy pooling descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">pooling_desc</span></code> - <p>hppl pooling descriptor. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">pooling_desc</span></code>: hppl pooling descriptor. </li>
 </ul>
 </dd>
 </dl>
@@ -1288,17 +1161,12 @@ var _hmt = _hmt || [];
 <dd><p>pooling forward(calculate output image). </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input_image</span></code> - <p>input image data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_image</span></code> - <p>output image data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">pooling</span></code> - <p>pooling descriptor. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_image</span></code>: input image data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_image</span></code>: output image data. </li>
+<li><code class="docutils literal"><span class="pre">pooling</span></code>: pooling descriptor. </li>
 </ul>
 </dd>
 </dl>
@@ -1311,21 +1179,14 @@ var _hmt = _hmt || [];
 <dd><p>pooling backward(calculate input image gradient). </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input_image</span></code> - <p>input image data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input_image_grad</span></code> - <p>input image gradient data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_image</span></code> - <p>output image data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_image_grad</span></code> - <p>output image gradient data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">pooling</span></code> - <p>pooling descriptor. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_image</span></code>: input image data. </li>
+<li><code class="docutils literal"><span class="pre">input_image_grad</span></code>: input image gradient data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_image</span></code>: output image data. </li>
+<li><code class="docutils literal"><span class="pre">output_image_grad</span></code>: output image gradient data. </li>
+<li><code class="docutils literal"><span class="pre">pooling</span></code>: pooling descriptor. </li>
 </ul>
 </dd>
 </dl>
@@ -1338,17 +1199,12 @@ var _hmt = _hmt || [];
 <dd><p>create filter descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">filter</span></code> - <p>filter descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input_feature_maps</span></code> - <p>input image feature maps. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_feature_maps</span></code> - <p>output image feature maps. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>filter height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>filter width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_feature_maps</span></code>: input image feature maps. </li>
+<li><code class="docutils literal"><span class="pre">output_feature_maps</span></code>: output image feature maps. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: filter height. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: filter width. </li>
 </ul>
 </dd>
 </dl>
@@ -1361,27 +1217,17 @@ var _hmt = _hmt || [];
 <dd><p>convolution workspace configuration </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>image descriptor </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>image descriptor </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">filter</span></code> - <p>filter descriptor </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">conv</span></code> - <p>convolution descriptor </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">convFwdAlgo</span></code> - <p>forward algorithm </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">fwdLimitBytes</span></code> - <p>forward workspace size </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">convBwdDataAlgo</span></code> - <p>backward data algorithm </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">bwdDataLimitBytes</span></code> - <p>backward data workspace size </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">convBwdFilterAlgo</span></code> - <p>backward filter algorithm </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">bwdFilterLimitBytes</span></code> - <p>backward filter workspace size </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: image descriptor </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: image descriptor </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor </li>
+<li><code class="docutils literal"><span class="pre">conv</span></code>: convolution descriptor </li>
+<li><code class="docutils literal"><span class="pre">convFwdAlgo</span></code>: forward algorithm </li>
+<li><code class="docutils literal"><span class="pre">fwdLimitBytes</span></code>: forward workspace size </li>
+<li><code class="docutils literal"><span class="pre">convBwdDataAlgo</span></code>: backward data algorithm </li>
+<li><code class="docutils literal"><span class="pre">bwdDataLimitBytes</span></code>: backward data workspace size </li>
+<li><code class="docutils literal"><span class="pre">convBwdFilterAlgo</span></code>: backward filter algorithm </li>
+<li><code class="docutils literal"><span class="pre">bwdFilterLimitBytes</span></code>: backward filter workspace size </li>
 </ul>
 </dd>
 </dl>
@@ -1394,9 +1240,8 @@ var _hmt = _hmt || [];
 <dd><p>destroy filter descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">filter</span></code> - <p>hppl filter descriptor. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">filter</span></code>: hppl filter descriptor. </li>
 </ul>
 </dd>
 </dl>
@@ -1409,21 +1254,14 @@ var _hmt = _hmt || [];
 <dd><p>create convolution descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">conv</span></code> - <p>conv descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">image</span></code> - <p>input image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">filter</span></code> - <p>filter descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">padding_height</span></code> - <p>padding height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">padding_width</span></code> - <p>padding width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stride_height</span></code> - <p>stride height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stride_width</span></code> - <p>stride width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">conv</span></code>: conv descriptor. </li>
+<li><code class="docutils literal"><span class="pre">image</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">padding_height</span></code>: padding height. </li>
+<li><code class="docutils literal"><span class="pre">padding_width</span></code>: padding width. </li>
+<li><code class="docutils literal"><span class="pre">stride_height</span></code>: stride height. </li>
+<li><code class="docutils literal"><span class="pre">stride_width</span></code>: stride width. </li>
 </ul>
 </dd>
 </dl>
@@ -1436,21 +1274,14 @@ var _hmt = _hmt || [];
 <dd><p>reset convolution descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">conv</span></code> - <p>conv descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">image</span></code> - <p>input image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">filter</span></code> - <p>filter descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">padding_height</span></code> - <p>padding height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">padding_width</span></code> - <p>padding width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stride_height</span></code> - <p>stride height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stride_width</span></code> - <p>stride width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">conv</span></code>: conv descriptor. </li>
+<li><code class="docutils literal"><span class="pre">image</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">padding_height</span></code>: padding height. </li>
+<li><code class="docutils literal"><span class="pre">padding_width</span></code>: padding width. </li>
+<li><code class="docutils literal"><span class="pre">stride_height</span></code>: stride height. </li>
+<li><code class="docutils literal"><span class="pre">stride_width</span></code>: stride width. </li>
 </ul>
 </dd>
 </dl>
@@ -1463,9 +1294,8 @@ var _hmt = _hmt || [];
 <dd><p>destroy convolution descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">conv</span></code> - <p>hppl convolution descriptor. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">conv</span></code>: hppl convolution descriptor. </li>
 </ul>
 </dd>
 </dl>
@@ -1478,27 +1308,17 @@ var _hmt = _hmt || [];
 <dd><p>convolution forward(calculate output image). </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input_data</span></code> - <p>input image data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_data</span></code> - <p>output image data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">filter</span></code> - <p>filter descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">filter_data</span></code> - <p>filter data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">conv</span></code> - <p>convolution descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">gpuWorkSpace</span></code> - <p>limited gpu workspace. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sizeInBytes</span></code> - <p>gpu workspace size (bytes). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">convFwdAlgo</span></code> - <p>forward algorithm. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_data</span></code>: input image data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_data</span></code>: output image data. </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">filter_data</span></code>: filter data. </li>
+<li><code class="docutils literal"><span class="pre">conv</span></code>: convolution descriptor. </li>
+<li><code class="docutils literal"><span class="pre">gpuWorkSpace</span></code>: limited gpu workspace. </li>
+<li><code class="docutils literal"><span class="pre">sizeInBytes</span></code>: gpu workspace size (bytes). </li>
+<li><code class="docutils literal"><span class="pre">convFwdAlgo</span></code>: forward algorithm. </li>
 </ul>
 </dd>
 </dl>
@@ -1511,15 +1331,11 @@ var _hmt = _hmt || [];
 <dd><p>convolution forward add bias(calculate output add bias). </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">bias</span></code> - <p>bias descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">bias_data</span></code> - <p>bias data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_data</span></code> - <p>output image data. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">bias</span></code>: bias descriptor. </li>
+<li><code class="docutils literal"><span class="pre">bias_data</span></code>: bias data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_data</span></code>: output image data. </li>
 </ul>
 </dd>
 </dl>
@@ -1532,27 +1348,17 @@ var _hmt = _hmt || [];
 <dd><p>convolution backward filter(calculate filter grad data). </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input_data</span></code> - <p>input image data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_grad_data</span></code> - <p>output image grad data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">filter</span></code> - <p>filter descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">filter_grad_data</span></code> - <p>filter grad data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">conv</span></code> - <p>convolution descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">gpuWorkSpace</span></code> - <p>limited gpu workspace. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sizeInBytes</span></code> - <p>gpu workspace size (bytes). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">convBwdFilterAlgo</span></code> - <p>backward filter algorithm. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_data</span></code>: input image data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_grad_data</span></code>: output image grad data. </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">filter_grad_data</span></code>: filter grad data. </li>
+<li><code class="docutils literal"><span class="pre">conv</span></code>: convolution descriptor. </li>
+<li><code class="docutils literal"><span class="pre">gpuWorkSpace</span></code>: limited gpu workspace. </li>
+<li><code class="docutils literal"><span class="pre">sizeInBytes</span></code>: gpu workspace size (bytes). </li>
+<li><code class="docutils literal"><span class="pre">convBwdFilterAlgo</span></code>: backward filter algorithm. </li>
 </ul>
 </dd>
 </dl>
@@ -1565,27 +1371,17 @@ var _hmt = _hmt || [];
 <dd><p>convolution backward data(calculate input image grad data). </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input_data_grad</span></code> - <p>input image grad data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_grad_data</span></code> - <p>output image grad data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">filter</span></code> - <p>filter descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">filter_data</span></code> - <p>filter data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">conv</span></code> - <p>convolution descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">gpuWorkSpace</span></code> - <p>limited gpu workspace. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sizeInBytes</span></code> - <p>gpu workspace size (bytes). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">convBwdDataAlgo</span></code> - <p>backward data algorithm. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">input_data_grad</span></code>: input image grad data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_grad_data</span></code>: output image grad data. </li>
+<li><code class="docutils literal"><span class="pre">filter</span></code>: filter descriptor. </li>
+<li><code class="docutils literal"><span class="pre">filter_data</span></code>: filter data. </li>
+<li><code class="docutils literal"><span class="pre">conv</span></code>: convolution descriptor. </li>
+<li><code class="docutils literal"><span class="pre">gpuWorkSpace</span></code>: limited gpu workspace. </li>
+<li><code class="docutils literal"><span class="pre">sizeInBytes</span></code>: gpu workspace size (bytes). </li>
+<li><code class="docutils literal"><span class="pre">convBwdDataAlgo</span></code>: backward data algorithm. </li>
 </ul>
 </dd>
 </dl>
@@ -1598,15 +1394,11 @@ var _hmt = _hmt || [];
 <dd><p>convolution backward bias(calculate bias grad data). </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">bias</span></code> - <p>bias descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">bias_grad_data</span></code> - <p>bias grad data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_grad_data</span></code> - <p>output image grad data. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">bias</span></code>: bias descriptor. </li>
+<li><code class="docutils literal"><span class="pre">bias_grad_data</span></code>: bias grad data. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">output_grad_data</span></code>: output image grad data. </li>
 </ul>
 </dd>
 </dl>
@@ -1619,15 +1411,11 @@ var _hmt = _hmt || [];
 <dd><p>softmax forward. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: input value. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output value. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -1640,15 +1428,11 @@ var _hmt = _hmt || [];
 <dd><p>softmax backward. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">output_value</span></code> - <p>output value data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_grad</span></code> - <p>output grad data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">output_value</span></code>: output value data. </li>
+<li><code class="docutils literal"><span class="pre">output_grad</span></code>: output grad data. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -1661,36 +1445,23 @@ var _hmt = _hmt || [];
 <dd><p>cudnn batch norm forward. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">inputDesc</span></code> - <p>input tensor descriptor desc. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">outputDesc</span></code> - <p>output tensor descriptor desc. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">bnParamDesc</span></code> - <p>tensor descriptor desc. bnScale, bnBias, running mean/var, save_mean/var. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">scale</span></code> - <p>batch normalization scale parameter (in original paper scale is referred to as gamma). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">bias</span></code> - <p>batch normalization bias parameter (in original paper scale is referred to as beta). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">factor</span></code> - <p>Factor used in the moving average computation. runningMean = newMean * factor<ul class="simple">
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">inputDesc</span></code>: input tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">input</span></code>: input data. </li>
+<li><code class="docutils literal"><span class="pre">outputDesc</span></code>: output tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output data. </li>
+<li><code class="docutils literal"><span class="pre">bnParamDesc</span></code>: tensor descriptor desc. bnScale, bnBias, running mean/var, save_mean/var. </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: batch normalization scale parameter (in original paper scale is referred to as gamma). </li>
+<li><code class="docutils literal"><span class="pre">bias</span></code>: batch normalization bias parameter (in original paper scale is referred to as beta). </li>
+<li><code class="docutils literal"><span class="pre">factor</span></code>: Factor used in the moving average computation. runningMean = newMean * factor<ul>
 <li>runningMean * (1 - factor) </li>
 </ul>
-</p>
 </li>
-<li><code class="first docutils literal"><span class="pre">runningMean</span></code> - <p>running mean. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">runningInvVar</span></code> - <p>running variance. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">epsilon</span></code> - <p>Epsilon value used in the batch normalization formula. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">savedMean</span></code> - <p>optional cache to save intermediate results. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">savedVar</span></code> - <p>optional cache to save intermediate results. </p>
-</li>
+<li><code class="docutils literal"><span class="pre">runningMean</span></code>: running mean. </li>
+<li><code class="docutils literal"><span class="pre">runningInvVar</span></code>: running variance. </li>
+<li><code class="docutils literal"><span class="pre">epsilon</span></code>: Epsilon value used in the batch normalization formula. </li>
+<li><code class="docutils literal"><span class="pre">savedMean</span></code>: optional cache to save intermediate results. </li>
+<li><code class="docutils literal"><span class="pre">savedVar</span></code>: optional cache to save intermediate results. </li>
 </ul>
 </dd>
 </dl>
@@ -1703,27 +1474,17 @@ var _hmt = _hmt || [];
 <dd><p>cudnn batch norm forward. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">inputDesc</span></code> - <p>input tensor descriptor desc. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">outputDesc</span></code> - <p>output tensor descriptor desc. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">bnParamDesc</span></code> - <p>tensor descriptor desc. bnScale, bnBias, running mean/var, save_mean/var. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">scale</span></code> - <p>batch normalization scale parameter (in original paper scale is referred to as gamma). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">bias</span></code> - <p>batch normalization bias parameter (in original paper scale is referred to as beta). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">estimatedMean</span></code> - <p></p>
-</li>
-<li><code class="first docutils literal"><span class="pre">estimatedVar</span></code> - <p>It is suggested that resultRunningMean, resultRunningVariance from the cudnnBatchNormalizationForwardTraining call accumulated during the training phase are passed as inputs here. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">epsilon</span></code> - <p>Epsilon value used in the batch normalization formula. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">inputDesc</span></code>: input tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">input</span></code>: input data. </li>
+<li><code class="docutils literal"><span class="pre">outputDesc</span></code>: output tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output data. </li>
+<li><code class="docutils literal"><span class="pre">bnParamDesc</span></code>: tensor descriptor desc. bnScale, bnBias, running mean/var, save_mean/var. </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: batch normalization scale parameter (in original paper scale is referred to as gamma). </li>
+<li><code class="docutils literal"><span class="pre">bias</span></code>: batch normalization bias parameter (in original paper scale is referred to as beta). </li>
+<li><code class="docutils literal"><span class="pre">estimatedMean</span></code>: </li>
+<li><code class="docutils literal"><span class="pre">estimatedVar</span></code>: It is suggested that resultRunningMean, resultRunningVariance from the cudnnBatchNormalizationForwardTraining call accumulated during the training phase are passed as inputs here. </li>
+<li><code class="docutils literal"><span class="pre">epsilon</span></code>: Epsilon value used in the batch normalization formula. </li>
 </ul>
 </dd>
 </dl>
@@ -1736,33 +1497,20 @@ var _hmt = _hmt || [];
 <dd><p>cudnn batch norm forward. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">inputDesc</span></code> - <p>input tensor descriptor desc. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">outGradDesc</span></code> - <p>output tensor descriptor desc. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">outGrad</span></code> - <p>output data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">inGradDesc</span></code> - <p>input tensor descriptor desc. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">inGrad</span></code> - <p>input data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dBnParamDesc</span></code> - <p>tensor descriptor desc. bnScale, bnBias, running mean/var, save_mean/var. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">scale</span></code> - <p>batch normalization scale parameter (in original paper scale is referred to as gamma). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">scaleGrad</span></code> - <p>batch normalization scale parameter (in original paper scale is referred to as gamma) gradient. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">biasGrad</span></code> - <p>batch normalization bias parameter (in original paper scale is referred to as beta) gradient. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">epsilon</span></code> - <p>Epsilon value used in the batch normalization formula. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">savedMean</span></code> - <p>optional cache to save intermediate results. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">savedInvVar</span></code> - <p>optional cache to save intermediate results. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">inputDesc</span></code>: input tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">input</span></code>: input data. </li>
+<li><code class="docutils literal"><span class="pre">outGradDesc</span></code>: output tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">outGrad</span></code>: output data. </li>
+<li><code class="docutils literal"><span class="pre">inGradDesc</span></code>: input tensor descriptor desc. </li>
+<li><code class="docutils literal"><span class="pre">inGrad</span></code>: input data. </li>
+<li><code class="docutils literal"><span class="pre">dBnParamDesc</span></code>: tensor descriptor desc. bnScale, bnBias, running mean/var, save_mean/var. </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: batch normalization scale parameter (in original paper scale is referred to as gamma). </li>
+<li><code class="docutils literal"><span class="pre">scaleGrad</span></code>: batch normalization scale parameter (in original paper scale is referred to as gamma) gradient. </li>
+<li><code class="docutils literal"><span class="pre">biasGrad</span></code>: batch normalization bias parameter (in original paper scale is referred to as beta) gradient. </li>
+<li><code class="docutils literal"><span class="pre">epsilon</span></code>: Epsilon value used in the batch normalization formula. </li>
+<li><code class="docutils literal"><span class="pre">savedMean</span></code>: optional cache to save intermediate results. </li>
+<li><code class="docutils literal"><span class="pre">savedInvVar</span></code>: optional cache to save intermediate results. </li>
 </ul>
 </dd>
 </dl>
@@ -2077,7 +1825,7 @@ var _hmt = _hmt || [];
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

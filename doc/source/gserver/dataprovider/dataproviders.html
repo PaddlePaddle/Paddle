@@ -93,12 +93,12 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12DataProviderD0Ev">
-<span id="paddle::DataProvider::~DataProvider"></span>virtual <span class="target" id="paddleclasspaddle_1_1DataProvider_1ad2a097382fe910162dbc4a463c048ed3"></span><code class="descname">~DataProvider</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProviderD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DataProvider::~DataProvider"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ad2a097382fe910162dbc4a463c048ed3"></span><em class="property">virtual</em> <code class="descname">~DataProvider</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProviderD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle12DataProvider9getConfigEv">
-<span id="paddle::DataProvider::getConfig"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ad10ab1112a6af0e1f84c335c56df8252"></span><em class="property">const</em> DataConfig &amp;<code class="descname">getConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle12DataProvider9getConfigEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle12DataProvider9getConfigEv">
+<span id="paddle::DataProvider::getConfigC"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ad10ab1112a6af0e1f84c335c56df8252"></span><em class="property">const</em> DataConfig &amp;<code class="descname">getConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle12DataProvider9getConfigEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -114,11 +114,9 @@ var _hmt = _hmt || [];
 <dt><strong>Return</strong></dt>
 <dd>actual size of obtained training samples </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size of training samples to get </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">batch</span></code> - <p>a batch of training samples </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
 </ul>
 </dd>
 </dl>
@@ -127,13 +125,13 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12DataProvider7shuffleEv">
-<span id="paddle::DataProvider::shuffle"></span>virtual <span class="target" id="paddleclasspaddle_1_1DataProvider_1a7b05642e64f7ed4c15e7b82aa93ac38a"></span>void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12DataProvider7shuffleEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DataProvider::shuffle"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a7b05642e64f7ed4c15e7b82aa93ac38a"></span><em class="property">virtual</em> void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12DataProvider7shuffleEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Shuffle the data set. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12DataProvider5resetEv">
-<span id="paddle::DataProvider::reset"></span>virtual <span class="target" id="paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider5resetEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DataProvider::reset"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"></span><em class="property">virtual</em> void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider5resetEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>reset all the value of index </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -144,7 +142,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12DataProvider7getSizeEv">
-<span id="paddle::DataProvider::getSize"></span>virtual <span class="target" id="paddleclasspaddle_1_1DataProvider_1a383104e591e2f95f959bbf45c4d06b2e"></span>int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12DataProvider7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DataProvider::getSize"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a383104e591e2f95f959bbf45c4d06b2e"></span><em class="property">virtual</em> int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12DataProvider7getSizeEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the size of training samples. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
@@ -157,17 +155,15 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12DataProvider20getNextBatchInternalE7int64_tP9DataBatch">
-<span id="paddle::DataProvider::getNextBatchInternal__int64_t.DataBatchP"></span>virtual <span class="target" id="paddleclasspaddle_1_1DataProvider_1a1d3a1c543b75c35e2e290512ccd2700f"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12DataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DataProvider::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a1d3a1c543b75c35e2e290512ccd2700f"></span><em class="property">virtual</em> int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12DataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get next batch training samples internally. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>actual size of obtained training samples </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size of training samples to get </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">batch</span></code> - <p>a batch of training samples </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
 </ul>
 </dd>
 </dl>
@@ -184,7 +180,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12DataProvider6createERK10DataConfigb">
-<span id="paddle::DataProvider::create__DataConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1ad782dc59f7366c19ba4375101159ba95"></span><em class="property">static</em> <a class="reference internal" href="#_CPPv2N6paddle12DataProviderE" title="paddle::DataProvider">DataProvider</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, bool <em>useGpu</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider6createERK10DataConfigb" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DataProvider::create__DataConfigCR.b"></span><span class="target" id="paddleclasspaddle_1_1DataProvider_1a3eb1d0e7dcb32e4e9b1271c7d745706a"></span><em class="property">static</em> <a class="reference internal" href="#_CPPv2N6paddle12DataProviderE" title="paddle::DataProvider">DataProvider</a> *<code class="descname">create</code><span class="sig-paren">(</span><em class="property">const</em> DataConfig &amp;<em>config</em>, bool <em>useGpu</em> = FLAGS_use_gpu<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DataProvider6createERK10DataConfigb" title="Permalink to this definition">¶</a></dt>
 <dd><p>create only used for unittest. </p>
 </dd></dl>
 
@@ -206,11 +202,9 @@ var _hmt = _hmt || [];
 <dt><strong>Return</strong></dt>
 <dd>actual size of obtained training samples </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size of training samples to get </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">batch</span></code> - <p>a batch of training samples </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
 </ul>
 </dd>
 </dl>
@@ -281,7 +275,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17DataProviderGroup5resetEv">
-<span id="paddle::DataProviderGroup::reset"></span>virtual <span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1aabc5a09dd7b80a8616108fb2f2989c21"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup5resetEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DataProviderGroup::reset"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1aabc5a09dd7b80a8616108fb2f2989c21"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup5resetEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>reset all the value of index </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -292,13 +286,13 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17DataProviderGroup7shuffleEv">
-<span id="paddle::DataProviderGroup::shuffle"></span>virtual <span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1af5d1ad23716d3d4734917d28e7a93140"></span>void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup7shuffleEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DataProviderGroup::shuffle"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1af5d1ad23716d3d4734917d28e7a93140"></span><em class="property">virtual</em> void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup7shuffleEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Shuffle the data set. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17DataProviderGroup7getSizeEv">
-<span id="paddle::DataProviderGroup::getSize"></span>virtual <span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1a0e3e36653942aaf01670f37127b06a4f"></span>int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DataProviderGroup::getSize"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1a0e3e36653942aaf01670f37127b06a4f"></span><em class="property">virtual</em> int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup7getSizeEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the size of training samples. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
@@ -311,17 +305,15 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17DataProviderGroup20getNextBatchInternalE7int64_tP9DataBatch">
-<span id="paddle::DataProviderGroup::getNextBatchInternal__int64_t.DataBatchP"></span>virtual <span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1a1de57dd0c862ee3b9727afa905f56de8"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DataProviderGroup::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1DataProviderGroup_1a1de57dd0c862ee3b9727afa905f56de8"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17DataProviderGroup20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get next batch training samples internally. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>actual size of obtained training samples </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size of training samples to get </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">batch</span></code> - <p>a batch of training samples </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
 </ul>
 </dd>
 </dl>
@@ -388,7 +380,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17MultiDataProvider5resetEv">
-<span id="paddle::MultiDataProvider::reset"></span>virtual <span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1aa10250fd3fbeb5dadcb42c7c968b7fdf"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider5resetEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::MultiDataProvider::reset"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1aa10250fd3fbeb5dadcb42c7c968b7fdf"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider5resetEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>reset all the value of index </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -399,13 +391,13 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17MultiDataProvider7shuffleEv">
-<span id="paddle::MultiDataProvider::shuffle"></span>virtual <span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1ac323b8ff3a8e8c1234b42a20d1e05311"></span>void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider7shuffleEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::MultiDataProvider::shuffle"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1ac323b8ff3a8e8c1234b42a20d1e05311"></span>void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider7shuffleEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Shuffle the data set. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17MultiDataProvider7getSizeEv">
-<span id="paddle::MultiDataProvider::getSize"></span>virtual <span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a81a7c862be871db62ae94ab81012fc69"></span>int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::MultiDataProvider::getSize"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a81a7c862be871db62ae94ab81012fc69"></span><em class="property">virtual</em> int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider7getSizeEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the size of training samples. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
@@ -418,17 +410,15 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17MultiDataProvider20getNextBatchInternalE7int64_tP9DataBatch">
-<span id="paddle::MultiDataProvider::getNextBatchInternal__int64_t.DataBatchP"></span>virtual <span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a2d07eb0ce8a35f61e7784bbfc5033f83"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::MultiDataProvider::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a2d07eb0ce8a35f61e7784bbfc5033f83"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get next batch training samples internally. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>actual size of obtained training samples </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size of training samples to get </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">batch</span></code> - <p>a batch of training samples </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
 </ul>
 </dd>
 </dl>
@@ -436,8 +426,8 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle17MultiDataProvider10isTestModeEv">
-<span id="paddle::MultiDataProvider::isTestMode"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a9df5d1af13a8bb15ad3c7e469c3a2a31"></span>bool <code class="descname">isTestMode</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle17MultiDataProvider10isTestModeEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle17MultiDataProvider10isTestModeEv">
+<span id="paddle::MultiDataProvider::isTestModeC"></span><span class="target" id="paddleclasspaddle_1_1MultiDataProvider_1a9df5d1af13a8bb15ad3c7e469c3a2a31"></span>bool <code class="descname">isTestMode</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle17MultiDataProvider10isTestModeEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -475,9 +465,8 @@ var _hmt = _hmt || [];
 <span id="paddle::IFieldScanner::IFieldScanner__SlotHeaderP"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a852d54211b136d42eea1ec98235e6b38"></span><code class="descname">IFieldScanner</code><span class="sig-paren">(</span>SlotHeader *<em>headerPtr</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner13IFieldScannerEP10SlotHeader" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ctor. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">headerPtr</span></code> - <p>slot header that scanner belong to. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">headerPtr</span></code>: slot header that scanner belong to. </li>
 </ul>
 </dd>
 </dl>
@@ -486,18 +475,18 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle13IFieldScannerD0Ev">
-<span id="paddle::IFieldScanner::~IFieldScanner"></span>virtual <span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a2694874652e8c7e8702794cc85ea0d2c"></span><code class="descname">~IFieldScanner</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScannerD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IFieldScanner::~IFieldScanner"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a2694874652e8c7e8702794cc85ea0d2c"></span><em class="property">virtual</em> <code class="descname">~IFieldScanner</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScannerD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle13IFieldScanner12startPrepareER8Argument">
-<span id="paddle::IFieldScanner::startPrepare__ArgumentR"></span>virtual <span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a59f2d475c6b12f6824cdaa3453e1ac49"></span>void <code class="descname">startPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner12startPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IFieldScanner::startPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a59f2d475c6b12f6824cdaa3453e1ac49"></span><em class="property">virtual</em> void <code class="descname">startPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner12startPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Start prepare step. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle13IFieldScanner7prepareER8ArgumentP8PyObject">
-<span id="paddle::IFieldScanner::prepare__ArgumentR.PyObjectP"></span>virtual <span class="target" id="paddleclasspaddle_1_1IFieldScanner_1aec5e4919e2b2946094dc3f75a7d17f08"></span>void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IFieldScanner::prepare__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1aec5e4919e2b2946094dc3f75a7d17f08"></span><em class="property">virtual</em> void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Prepare step.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -508,19 +497,19 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle13IFieldScanner13finishPrepareER8Argument">
-<span id="paddle::IFieldScanner::finishPrepare__ArgumentR"></span>virtual <span class="target" id="paddleclasspaddle_1_1IFieldScanner_1ac648c8047ffd873ffbf5d889cf3565e5"></span>void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IFieldScanner::finishPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1ac648c8047ffd873ffbf5d889cf3565e5"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finish Prepare step. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle13IFieldScanner9startFillER8Argument">
-<span id="paddle::IFieldScanner::startFill__ArgumentR"></span>virtual <span class="target" id="paddleclasspaddle_1_1IFieldScanner_1ae0c654543ef8e863473afcbcf34a5a1f"></span>void <code class="descname">startFill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner9startFillER8Argument" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IFieldScanner::startFill__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1ae0c654543ef8e863473afcbcf34a5a1f"></span><em class="property">virtual</em> void <code class="descname">startFill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner9startFillER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Start fill step. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle13IFieldScanner4fillER8ArgumentP8PyObject">
-<span id="paddle::IFieldScanner::fill__ArgumentR.PyObjectP"></span>virtual <span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a46f052af1bcb4ade0f8caa752efb4202"></span>void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IFieldScanner::fill__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a46f052af1bcb4ade0f8caa752efb4202"></span><em class="property">virtual</em> void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fill step.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -531,7 +520,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle13IFieldScanner10finishFillER8Argument">
-<span id="paddle::IFieldScanner::finishFill__ArgumentR"></span>virtual <span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a511c98382488cb8fc0b6fb10632f6d5c"></span>void <code class="descname">finishFill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner10finishFillER8Argument" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IFieldScanner::finishFill__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1IFieldScanner_1a511c98382488cb8fc0b6fb10632f6d5c"></span><em class="property">virtual</em> void <code class="descname">finishFill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle13IFieldScanner10finishFillER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finish fill step. </p>
 </dd></dl>
 
@@ -577,14 +566,12 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12DenseScanner7prepareER8ArgumentP8PyObject">
-<span id="paddle::DenseScanner::prepare__ArgumentR.PyObjectP"></span>virtual <span class="target" id="paddleclasspaddle_1_1DenseScanner_1a06f5357ef4905bac34c23049767930c9"></span>void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DenseScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DenseScanner::prepare__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1DenseScanner_1a06f5357ef4905bac34c23049767930c9"></span><em class="property">virtual</em> void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DenseScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Prepare. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">argument</span></code> - <p>target argument </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">obj</span></code> - <p>each timestep of a sample. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">argument</span></code>: target argument </li>
+<li><code class="docutils literal"><span class="pre">obj</span></code>: each timestep of a sample. </li>
 </ul>
 </dd>
 </dl>
@@ -593,20 +580,18 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12DenseScanner13finishPrepareER8Argument">
-<span id="paddle::DenseScanner::finishPrepare__ArgumentR"></span>virtual <span class="target" id="paddleclasspaddle_1_1DenseScanner_1a1ef079c5bd06c0d6cb1168a677c74a89"></span>void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DenseScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DenseScanner::finishPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1DenseScanner_1a1ef079c5bd06c0d6cb1168a677c74a89"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DenseScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finish Prepare step. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12DenseScanner4fillER8ArgumentP8PyObject">
-<span id="paddle::DenseScanner::fill__ArgumentR.PyObjectP"></span>virtual <span class="target" id="paddleclasspaddle_1_1DenseScanner_1ac0475d4c0541363c0d9429ea6d0da79b"></span>void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DenseScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::DenseScanner::fill__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1DenseScanner_1ac0475d4c0541363c0d9429ea6d0da79b"></span><em class="property">virtual</em> void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12DenseScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fill argument from obj. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">argument</span></code> - <p></p>
-</li>
-<li><code class="first docutils literal"><span class="pre">obj</span></code> - <p></p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">argument</span></code>: </li>
+<li><code class="docutils literal"><span class="pre">obj</span></code>: </li>
 </ul>
 </dd>
 </dl>
@@ -633,7 +618,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12IndexScanner7prepareER8ArgumentP8PyObject">
-<span id="paddle::IndexScanner::prepare__ArgumentR.PyObjectP"></span>virtual <span class="target" id="paddleclasspaddle_1_1IndexScanner_1af16d91e8a204fc660a9cbe45eec5310f"></span>void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12IndexScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IndexScanner::prepare__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1IndexScanner_1af16d91e8a204fc660a9cbe45eec5310f"></span><em class="property">virtual</em> void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12IndexScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Prepare memory space.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -644,13 +629,13 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12IndexScanner13finishPrepareER8Argument">
-<span id="paddle::IndexScanner::finishPrepare__ArgumentR"></span>virtual <span class="target" id="paddleclasspaddle_1_1IndexScanner_1ae5f5314bd4dc869a8ba4dd33b3b57d43"></span>void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12IndexScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IndexScanner::finishPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1IndexScanner_1ae5f5314bd4dc869a8ba4dd33b3b57d43"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12IndexScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finish Prepare step. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12IndexScanner4fillER8ArgumentP8PyObject">
-<span id="paddle::IndexScanner::fill__ArgumentR.PyObjectP"></span>virtual <span class="target" id="paddleclasspaddle_1_1IndexScanner_1afa4763633db79aa535970cb60ed2c4a1"></span>void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12IndexScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IndexScanner::fill__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1IndexScanner_1afa4763633db79aa535970cb60ed2c4a1"></span><em class="property">virtual</em> void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12IndexScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fill one index to argument. </p>
 </dd></dl>
 
@@ -674,7 +659,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle21SparseNonValueScanner7prepareER8ArgumentP8PyObject">
-<span id="paddle::SparseNonValueScanner::prepare__ArgumentR.PyObjectP"></span>virtual <span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1a3e7f7690a43bba59b8ef795754664f8b"></span>void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SparseNonValueScanner::prepare__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1a3e7f7690a43bba59b8ef795754664f8b"></span><em class="property">virtual</em> void <code class="descname">prepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner7prepareER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Prepare memory space <dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>obj is a timestep of one sample. </dd>
@@ -684,19 +669,19 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle21SparseNonValueScanner13finishPrepareER8Argument">
-<span id="paddle::SparseNonValueScanner::finishPrepare__ArgumentR"></span>virtual <span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1a6bb2ee71907ea1bd6aa1317a0a516325"></span>void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SparseNonValueScanner::finishPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1a6bb2ee71907ea1bd6aa1317a0a516325"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finish Prepare step. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle21SparseNonValueScanner9startFillER8Argument">
-<span id="paddle::SparseNonValueScanner::startFill__ArgumentR"></span>virtual <span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1aaec784422b1358600198ab0a2b387e94"></span>void <code class="descname">startFill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner9startFillER8Argument" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SparseNonValueScanner::startFill__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1aaec784422b1358600198ab0a2b387e94"></span><em class="property">virtual</em> void <code class="descname">startFill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner9startFillER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Start fill step. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle21SparseNonValueScanner4fillER8ArgumentP8PyObject">
-<span id="paddle::SparseNonValueScanner::fill__ArgumentR.PyObjectP"></span>virtual <span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1acef6e5425aa9c4b1865cca005df2a25e"></span>void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SparseNonValueScanner::fill__ArgumentR.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1acef6e5425aa9c4b1865cca005df2a25e"></span><em class="property">virtual</em> void <code class="descname">fill</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner4fillER8ArgumentP8PyObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fill one sparse vector to argument. <dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>obj is a timestep of one sample. </dd>
@@ -709,16 +694,13 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle21SparseNonValueScanner7setDataEPiP4realP8PyObject">
-<span id="paddle::SparseNonValueScanner::setData__iP.realP.PyObjectP"></span>virtual <span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1a849d280e40e9f3ba9947e799c389fafd"></span>void <code class="descname">setData</code><span class="sig-paren">(</span>int *<em>col</em>, real *<em>dat</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner7setDataEPiP4realP8PyObject" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SparseNonValueScanner::setData__iP.realP.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1SparseNonValueScanner_1a849d280e40e9f3ba9947e799c389fafd"></span><em class="property">virtual</em> void <code class="descname">setData</code><span class="sig-paren">(</span>int *<em>col</em>, real *<em>dat</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle21SparseNonValueScanner7setDataEPiP4realP8PyObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set a single sparse index and value. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">col</span></code> - <p>sparse index </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dat</span></code> - <p>sparse value </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">obj</span></code> - <p>Python Object. For sparse_non_value is a PyInt or PyLong. For sparse_value is a Tuple (int, float). </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">col</span></code>: sparse index </li>
+<li><code class="docutils literal"><span class="pre">dat</span></code>: sparse value </li>
+<li><code class="docutils literal"><span class="pre">obj</span></code>: Python Object. For sparse_non_value is a PyInt or PyLong. For sparse_value is a Tuple (int, float). </li>
 </ul>
 </dd>
 </dl>
@@ -757,7 +739,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle18SparseValueScanner13finishPrepareER8Argument">
-<span id="paddle::SparseValueScanner::finishPrepare__ArgumentR"></span>virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1aa24ba4b1484c3db126155e3f6f83134f"></span>void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SparseValueScanner::finishPrepare__ArgumentR"></span><span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1aa24ba4b1484c3db126155e3f6f83134f"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finish Prepare step. </p>
 </dd></dl>
 
@@ -766,16 +748,13 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle18SparseValueScanner7setDataEPiP4realP8PyObject">
-<span id="paddle::SparseValueScanner::setData__iP.realP.PyObjectP"></span>virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce575283c13b11a44f7236507e68b01"></span>void <code class="descname">setData</code><span class="sig-paren">(</span>int *<em>col</em>, real *<em>dat</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner7setDataEPiP4realP8PyObject" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SparseValueScanner::setData__iP.realP.PyObjectP"></span><span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce575283c13b11a44f7236507e68b01"></span><em class="property">virtual</em> void <code class="descname">setData</code><span class="sig-paren">(</span>int *<em>col</em>, real *<em>dat</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner7setDataEPiP4realP8PyObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set a single sparse index and value. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">col</span></code> - <p>sparse index </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dat</span></code> - <p>sparse value </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">obj</span></code> - <p>Python Object. For sparse_non_value is a PyInt or PyLong. For sparse_value is a Tuple (int, float). </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">col</span></code>: sparse index </li>
+<li><code class="docutils literal"><span class="pre">dat</span></code>: sparse value </li>
+<li><code class="docutils literal"><span class="pre">obj</span></code>: Python Object. For sparse_non_value is a PyInt or PyLong. For sparse_value is a Tuple (int, float). </li>
 </ul>
 </dd>
 </dl>
@@ -801,7 +780,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle18SparseValueScanner13finishPrepareER8Argument">
-virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1aa24ba4b1484c3db126155e3f6f83134f"></span>void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1aa24ba4b1484c3db126155e3f6f83134f"></span><em class="property">virtual</em> void <code class="descname">finishPrepare</code><span class="sig-paren">(</span><a class="reference internal" href="../../parameter/parameter/parameter.html#_CPPv2N6paddle8ArgumentE" title="paddle::Argument">Argument</a> &amp;<em>argument</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner13finishPrepareER8Argument" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finish Prepare step. </p>
 </dd></dl>
 
@@ -810,16 +789,13 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1aa24ba
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle18SparseValueScanner7setDataEPiP4realP8PyObject">
-virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce575283c13b11a44f7236507e68b01"></span>void <code class="descname">setData</code><span class="sig-paren">(</span>int *<em>col</em>, real *<em>dat</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner7setDataEPiP4realP8PyObject" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce575283c13b11a44f7236507e68b01"></span><em class="property">virtual</em> void <code class="descname">setData</code><span class="sig-paren">(</span>int *<em>col</em>, real *<em>dat</em>, PyObject *<em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle18SparseValueScanner7setDataEPiP4realP8PyObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set a single sparse index and value. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">col</span></code> - <p>sparse index </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dat</span></code> - <p>sparse value </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">obj</span></code> - <p>Python Object. For sparse_non_value is a PyInt or PyLong. For sparse_value is a Tuple (int, float). </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">col</span></code>: sparse index </li>
+<li><code class="docutils literal"><span class="pre">dat</span></code>: sparse value </li>
+<li><code class="docutils literal"><span class="pre">obj</span></code>: Python Object. For sparse_non_value is a PyInt or PyLong. For sparse_value is a Tuple (int, float). </li>
 </ul>
 </dd>
 </dl>
@@ -841,12 +817,12 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle20IPyDataProviderCacheD0Ev">
-<span id="paddle::IPyDataProviderCache::~IPyDataProviderCache"></span>virtual <span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1a986e919051b2c173be86b9240c417311"></span><code class="descname">~IPyDataProviderCache</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCacheD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IPyDataProviderCache::~IPyDataProviderCache"></span><span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1a986e919051b2c173be86b9240c417311"></span><em class="property">virtual</em> <code class="descname">~IPyDataProviderCache</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCacheD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20IPyDataProviderCache5resetEv">
-<span id="paddle::IPyDataProviderCache::reset"></span>virtual <span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1acb82068255c8feecd946722b1e087fd1"></span>bool <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCache5resetEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IPyDataProviderCache::reset"></span><span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1acb82068255c8feecd946722b1e087fd1"></span><em class="property">virtual</em> bool <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCache5resetEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>invoke when <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"><span class="std std-ref">DataProvider::reset()</span></a> <dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>true if read data from python. </dd>
@@ -856,14 +832,13 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20IPyDataProviderCache4dropEPNSt5dequeI11PyObjectPtrEE">
-<span id="paddle::IPyDataProviderCache::drop__std::deque:PyObjectPtr:P"></span>virtual <span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1a7dbdb55a79bd8aa1bff28a4b1e36d81c"></span>void <code class="descname">drop</code><span class="sig-paren">(</span>std::deque&lt;PyObjectPtr&gt; *<em>data</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCache4dropEPNSt5dequeI11PyObjectPtrEE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IPyDataProviderCache::drop__std::deque:PyObjectPtr:P"></span><span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1a7dbdb55a79bd8aa1bff28a4b1e36d81c"></span><em class="property">virtual</em> void <code class="descname">drop</code><span class="sig-paren">(</span>std::deque&lt;PyObjectPtr&gt; *<em>data</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCache4dropEPNSt5dequeI11PyObjectPtrEE" title="Permalink to this definition">¶</a></dt>
 <dd><p>invoke when these data are used by <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider"><span class="std std-ref">DataProvider</span></a>, and need to clear. <dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>The implemented class must clear these data array. Or if you want to delete the PyObjectPtr later, you should make sure the paddle process only have one active thread calling python code (use PyGuard otherwise). </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">data</span></code> - <p>used data.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">data</span></code>: used data.</li>
 </ul>
 </dd>
 </dl>
@@ -872,7 +847,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20IPyDataProviderCache4loadEv">
-<span id="paddle::IPyDataProviderCache::load"></span>virtual <span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1a59ccf101c184477ff77ea0f618eeffc8"></span>std::deque&lt;PyObjectPtr&gt; *<code class="descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCache4loadEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::IPyDataProviderCache::load"></span><span class="target" id="paddleclasspaddle_1_1IPyDataProviderCache_1a59ccf101c184477ff77ea0f618eeffc8"></span><em class="property">virtual</em> std::deque&lt;PyObjectPtr&gt; *<code class="descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle20IPyDataProviderCache4loadEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return whole data in cache. </p>
 </dd></dl>
 
@@ -900,7 +875,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15NoCacheStrategy5resetEv">
-<span id="paddle::NoCacheStrategy::reset"></span>virtual <span class="target" id="paddleclasspaddle_1_1NoCacheStrategy_1a6df4eaccffeb0e7e69f68afb98300fc0"></span>bool <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15NoCacheStrategy5resetEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::NoCacheStrategy::reset"></span><span class="target" id="paddleclasspaddle_1_1NoCacheStrategy_1a6df4eaccffeb0e7e69f68afb98300fc0"></span><em class="property">virtual</em> bool <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15NoCacheStrategy5resetEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>invoke when <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"><span class="std std-ref">DataProvider::reset()</span></a> <dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>true if read data from python. </dd>
@@ -910,14 +885,13 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle15NoCacheStrategy4dropEPNSt5dequeI11PyObjectPtrEE">
-<span id="paddle::NoCacheStrategy::drop__std::deque:PyObjectPtr:P"></span>virtual <span class="target" id="paddleclasspaddle_1_1NoCacheStrategy_1a9333fe134249c2ac567df6044d6367de"></span>void <code class="descname">drop</code><span class="sig-paren">(</span>std::deque&lt;PyObjectPtr&gt; *<em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15NoCacheStrategy4dropEPNSt5dequeI11PyObjectPtrEE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::NoCacheStrategy::drop__std::deque:PyObjectPtr:P"></span><span class="target" id="paddleclasspaddle_1_1NoCacheStrategy_1a9333fe134249c2ac567df6044d6367de"></span><em class="property">virtual</em> void <code class="descname">drop</code><span class="sig-paren">(</span>std::deque&lt;PyObjectPtr&gt; *<em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15NoCacheStrategy4dropEPNSt5dequeI11PyObjectPtrEE" title="Permalink to this definition">¶</a></dt>
 <dd><p>invoke when these data are used by <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider"><span class="std std-ref">DataProvider</span></a>, and need to clear. <dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>The implemented class must clear these data array. Or if you want to delete the PyObjectPtr later, you should make sure the paddle process only have one active thread calling python code (use PyGuard otherwise). </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">data</span></code> - <p>used data.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">data</span></code>: used data.</li>
 </ul>
 </dd>
 </dl>
@@ -926,7 +900,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle15NoCacheStrategy4loadEv">
-<span id="paddle::NoCacheStrategy::load"></span>virtual <span class="target" id="paddleclasspaddle_1_1NoCacheStrategy_1afb54b93574a3f43104d8e55d2d8c259b"></span>std::deque&lt;PyObjectPtr&gt; *<code class="descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15NoCacheStrategy4loadEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::NoCacheStrategy::load"></span><span class="target" id="paddleclasspaddle_1_1NoCacheStrategy_1afb54b93574a3f43104d8e55d2d8c259b"></span><em class="property">virtual</em> std::deque&lt;PyObjectPtr&gt; *<code class="descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15NoCacheStrategy4loadEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return whole data in cache. </p>
 </dd></dl>
 
@@ -951,7 +925,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20CacheOnePassInMemory5resetEv">
-<span id="paddle::CacheOnePassInMemory::reset"></span>virtual <span class="target" id="paddleclasspaddle_1_1CacheOnePassInMemory_1ac2faf131badc1a5e238f5c591abee499"></span>bool <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20CacheOnePassInMemory5resetEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::CacheOnePassInMemory::reset"></span><span class="target" id="paddleclasspaddle_1_1CacheOnePassInMemory_1ac2faf131badc1a5e238f5c591abee499"></span><em class="property">virtual</em> bool <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20CacheOnePassInMemory5resetEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>invoke when <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider_1a0c1ec00a365e8cd12ad170ac00879890"><span class="std std-ref">DataProvider::reset()</span></a> <dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>true if read data from python. </dd>
@@ -961,14 +935,13 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20CacheOnePassInMemory4dropEPNSt5dequeI11PyObjectPtrEE">
-<span id="paddle::CacheOnePassInMemory::drop__std::deque:PyObjectPtr:P"></span>virtual <span class="target" id="paddleclasspaddle_1_1CacheOnePassInMemory_1ae535ea1707a787e4888cb4c908f82705"></span>void <code class="descname">drop</code><span class="sig-paren">(</span>std::deque&lt;PyObjectPtr&gt; *<em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20CacheOnePassInMemory4dropEPNSt5dequeI11PyObjectPtrEE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::CacheOnePassInMemory::drop__std::deque:PyObjectPtr:P"></span><span class="target" id="paddleclasspaddle_1_1CacheOnePassInMemory_1ae535ea1707a787e4888cb4c908f82705"></span><em class="property">virtual</em> void <code class="descname">drop</code><span class="sig-paren">(</span>std::deque&lt;PyObjectPtr&gt; *<em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20CacheOnePassInMemory4dropEPNSt5dequeI11PyObjectPtrEE" title="Permalink to this definition">¶</a></dt>
 <dd><p>invoke when these data are used by <a class="reference internal" href="#paddleclasspaddle_1_1DataProvider"><span class="std std-ref">DataProvider</span></a>, and need to clear. <dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>The implemented class must clear these data array. Or if you want to delete the PyObjectPtr later, you should make sure the paddle process only have one active thread calling python code (use PyGuard otherwise). </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">data</span></code> - <p>used data.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">data</span></code>: used data.</li>
 </ul>
 </dd>
 </dl>
@@ -977,7 +950,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle20CacheOnePassInMemory4loadEv">
-<span id="paddle::CacheOnePassInMemory::load"></span>virtual <span class="target" id="paddleclasspaddle_1_1CacheOnePassInMemory_1a95549d6eef3022fe85cac854d3caff74"></span>std::deque&lt;PyObjectPtr&gt; *<code class="descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20CacheOnePassInMemory4loadEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::CacheOnePassInMemory::load"></span><span class="target" id="paddleclasspaddle_1_1CacheOnePassInMemory_1a95549d6eef3022fe85cac854d3caff74"></span><em class="property">virtual</em> std::deque&lt;PyObjectPtr&gt; *<code class="descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle20CacheOnePassInMemory4loadEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return whole data in cache. </p>
 </dd></dl>
 
@@ -1004,7 +977,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle15PyDataProvider2D0Ev">
-<span id="paddle::PyDataProvider2::~PyDataProvider2"></span>virtual <span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a3f265566b0f6bb653a2d37ddbb8beb11"></span><code class="descname">~PyDataProvider2</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider2D0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::PyDataProvider2::~PyDataProvider2"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a3f265566b0f6bb653a2d37ddbb8beb11"></span><em class="property">virtual</em> <code class="descname">~PyDataProvider2</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider2D0Ev" title="Permalink to this definition">¶</a></dt>
 <dd><p>Dtor <dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>will stop loading thread when destructing </dd>
@@ -1014,25 +987,25 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle15PyDataProvider25resetEv">
-<span id="paddle::PyDataProvider2::reset"></span>virtual <span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a905324717b124964912952f267dba44b"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider25resetEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::PyDataProvider2::reset"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a905324717b124964912952f267dba44b"></span><em class="property">virtual</em> void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider25resetEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resetting the PyDataProvider. May start reading thread here. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle15PyDataProvider27shuffleEv">
-<span id="paddle::PyDataProvider2::shuffle"></span>virtual <span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a94938d24c413541633a31f2f95ce9503"></span>void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider27shuffleEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::PyDataProvider2::shuffle"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a94938d24c413541633a31f2f95ce9503"></span>void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider27shuffleEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Shuffle. Do nothing because PyDataProvider do shuffle implicitly by random select data from datapool. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle15PyDataProvider27getSizeEv">
-<span id="paddle::PyDataProvider2::getSize"></span>virtual <span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1af10be764838042265b1b57d6d23683ec"></span>int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider27getSizeEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::PyDataProvider2::getSize"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1af10be764838042265b1b57d6d23683ec"></span>int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider27getSizeEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Not limited size. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle15PyDataProvider220getNextBatchInternalE7int64_tP9DataBatch">
-<span id="paddle::PyDataProvider2::getNextBatchInternal__int64_t.DataBatchP"></span>virtual <span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a208602779d17708e5134f1120f3f0b6e"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size_</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider220getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::PyDataProvider2::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1PyDataProvider2_1a208602779d17708e5134f1120f3f0b6e"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size_</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle15PyDataProvider220getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Loading a batch of data. </p>
 </dd></dl>
 
@@ -1072,7 +1045,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17ProtoDataProvider5resetEv">
-<span id="paddle::ProtoDataProvider::reset"></span>virtual <span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a4c31d54b6f4ec7e6e11a8824650ec34f"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider5resetEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ProtoDataProvider::reset"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a4c31d54b6f4ec7e6e11a8824650ec34f"></span>void <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider5resetEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>reset all the value of index </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -1083,7 +1056,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17ProtoDataProvider7getSizeEv">
-<span id="paddle::ProtoDataProvider::getSize"></span>virtual <span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a2937d941318f1692cd9aed6cafcaf13e"></span>int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ProtoDataProvider::getSize"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a2937d941318f1692cd9aed6cafcaf13e"></span><em class="property">virtual</em> int64_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider7getSizeEv" title="Permalink to this definition">¶</a></dt>
 <dd><p><dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd>this size includes the sequences which are skipped because they are longer than the batch size. </dd>
@@ -1093,7 +1066,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17ProtoDataProvider7shuffleEv">
-<span id="paddle::ProtoDataProvider::shuffle"></span>virtual <span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a5651ad4073486a86f798c54432c852b5"></span>void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider7shuffleEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ProtoDataProvider::shuffle"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a5651ad4073486a86f798c54432c852b5"></span>void <code class="descname">shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider7shuffleEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Shuffle the data set. </p>
 </dd></dl>
 
@@ -1104,17 +1077,15 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17ProtoDataProvider20getNextBatchInternalE7int64_tP9DataBatch">
-<span id="paddle::ProtoDataProvider::getNextBatchInternal__int64_t.DataBatchP"></span>virtual <span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a5562b11758a3c2479101b314097c2e67"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ProtoDataProvider::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a5562b11758a3c2479101b314097c2e67"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get next batch training samples internally. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>actual size of obtained training samples </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size of training samples to get </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">batch</span></code> - <p>a batch of training samples </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
 </ul>
 </dd>
 </dl>
@@ -1130,9 +1101,8 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 <dd><p>load protobuf data from a list of file </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">fileName</span></code> - <p>file name of a file which contains a list of file names </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">fileName</span></code>: file name of a file which contains a list of file names </li>
 </ul>
 </dd>
 </dl>
@@ -1145,9 +1115,8 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 <dd><p>load protobuf data from file </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">fileName</span></code> - <p>data file name </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">fileName</span></code>: data file name </li>
 </ul>
 </dd>
 </dl>
@@ -1160,9 +1129,8 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 <dd><p>check data header of each data sample </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">header</span></code> - <p>data header read from protobuf data </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">header</span></code>: data header read from protobuf data </li>
 </ul>
 </dd>
 </dl>
@@ -1175,9 +1143,8 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 <dd><p>fill protobuf data into slot_, slot_ is a vector of <a class="reference internal" href="#paddlestructpaddle_1_1ProtoDataProvider_1_1ProtoSlot"><span class="std std-ref">ProtoSlot</span></a> in memory. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">sample</span></code> - <p>data sample read from protobuf data </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">sample</span></code>: data sample read from protobuf data </li>
 </ul>
 </dd>
 </dl>
@@ -1185,8 +1152,8 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle17ProtoDataProvider7iidDataEv">
-<span id="paddle::ProtoDataProvider::iidData"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a331829ff4263fea18ac791113085e814"></span>bool <code class="descname">iidData</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle17ProtoDataProvider7iidDataEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle17ProtoDataProvider7iidDataEv">
+<span id="paddle::ProtoDataProvider::iidDataC"></span><span class="target" id="paddleclasspaddle_1_1ProtoDataProvider_1a331829ff4263fea18ac791113085e814"></span>bool <code class="descname">iidData</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle17ProtoDataProvider7iidDataEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>return true if each sample is one sequence, i.e., independent of other samples. </p>
 </dd></dl>
 
@@ -1392,17 +1359,15 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
 
 <dl class="function">
 <dt id="_CPPv2N6paddle25ProtoSequenceDataProvider20getNextBatchInternalE7int64_tP9DataBatch">
-<span id="paddle::ProtoSequenceDataProvider::getNextBatchInternal__int64_t.DataBatchP"></span>virtual <span class="target" id="paddleclasspaddle_1_1ProtoSequenceDataProvider_1a153ae716b4d8fec75cde272f76a18b2b"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ProtoSequenceDataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ProtoSequenceDataProvider::getNextBatchInternal__int64_t.DataBatchP"></span><span class="target" id="paddleclasspaddle_1_1ProtoSequenceDataProvider_1a153ae716b4d8fec75cde272f76a18b2b"></span>int64_t <code class="descname">getNextBatchInternal</code><span class="sig-paren">(</span>int64_t <em>size</em>, DataBatch *<em>batch</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle25ProtoSequenceDataProvider20getNextBatchInternalE7int64_tP9DataBatch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get next batch training samples internally. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>actual size of obtained training samples </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size of training samples to get </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">batch</span></code> - <p>a batch of training samples </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of training samples to get </li>
+<li><code class="docutils literal"><span class="pre">batch</span></code>: a batch of training samples </li>
 </ul>
 </dd>
 </dl>
@@ -1498,7 +1463,7 @@ virtual <span class="target" id="paddleclasspaddle_1_1SparseValueScanner_1a7ce57
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

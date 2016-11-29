@@ -99,7 +99,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle10BaseClientD0Ev">
-<span id="paddle::BaseClient::~BaseClient"></span>virtual <span class="target" id="paddleclasspaddle_1_1BaseClient_1acf1d1d25aae1ae307041231976d12389"></span><code class="descname">~BaseClient</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClientD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::BaseClient::~BaseClient"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1acf1d1d25aae1ae307041231976d12389"></span><code class="descname">~BaseClient</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClientD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -134,7 +134,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle10BaseClient13getTransDtypeERKNSt9type_infoE">
-<span id="paddle::BaseClient::getTransDtype__std::type_infoCR"></span>virtual <span class="target" id="paddleclasspaddle_1_1BaseClient_1a88e3d7de52a2ea0e2590fef6d6ba1d02"></span>TransDataType <code class="descname">getTransDtype</code><span class="sig-paren">(</span><em class="property">const</em> std::type_info &amp;<em>info</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient13getTransDtypeERKNSt9type_infoE" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::BaseClient::getTransDtype__std::type_infoCR"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a88e3d7de52a2ea0e2590fef6d6ba1d02"></span><em class="property">virtual</em> TransDataType <code class="descname">getTransDtype</code><span class="sig-paren">(</span><em class="property">const</em> std::type_info &amp;<em>info</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle10BaseClient13getTransDtypeERKNSt9type_infoE" title="Permalink to this definition">¶</a></dt>
 <dd><p>return trans data type according to the input type </p>
 </dd></dl>
 
@@ -233,7 +233,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle10BaseClient4sendEi">
-<span id="paddle::BaseClient::send__i"></span>virtual <span class="target" id="paddleclasspaddle_1_1BaseClient_1abbeef20f1b3c476a7a448ffde75f11ce"></span>void <code class="descname">send</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle10BaseClient4sendEi" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::BaseClient::send__i"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1abbeef20f1b3c476a7a448ffde75f11ce"></span><em class="property">virtual</em> void <code class="descname">send</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle10BaseClient4sendEi" title="Permalink to this definition">¶</a></dt>
 <dd><p>use multithread to separately send data </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -244,7 +244,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle10BaseClient4recvEi">
-<span id="paddle::BaseClient::recv__i"></span>virtual <span class="target" id="paddleclasspaddle_1_1BaseClient_1a6809adbdf1b8468d0fa80235ae53fd5b"></span>void <code class="descname">recv</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle10BaseClient4recvEi" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::BaseClient::recv__i"></span><span class="target" id="paddleclasspaddle_1_1BaseClient_1a6809adbdf1b8468d0fa80235ae53fd5b"></span><em class="property">virtual</em> void <code class="descname">recv</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle10BaseClient4recvEi" title="Permalink to this definition">¶</a></dt>
 <dd><p>use multithread to separately receive data </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -381,13 +381,10 @@ var _hmt = _hmt || [];
 <span id="paddle::ParameterClient2::ParameterClient2__b.i.i"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1ac5eaab7b0dc05b3f46937509127c0bef"></span><code class="descname">ParameterClient2</code><span class="sig-paren">(</span>bool <em>separate</em> = false, int <em>port</em> = FLAGS_port, int <em>numPorts</em> = FLAGS_ports_num<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient216ParameterClient2Ebii" title="Permalink to this definition">¶</a></dt>
 <dd><p>Constructor. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">separate</span></code> - <p>True if sending and recieving activities are separated into 2 threads, otherwise false. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">port</span></code> - <p>Port number that parameter client runs on. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">numPorts</span></code> - <p>Number of ports parameter clients occupies, numPorts * pserver number is the total number of connections the parameter client maintains. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">separate</span></code>: True if sending and recieving activities are separated into 2 threads, otherwise false. </li>
+<li><code class="docutils literal"><span class="pre">port</span></code>: Port number that parameter client runs on. </li>
+<li><code class="docutils literal"><span class="pre">numPorts</span></code>: Number of ports parameter clients occupies, numPorts * pserver number is the total number of connections the parameter client maintains. </li>
 </ul>
 </dd>
 </dl>
@@ -412,23 +409,15 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd>Only parameterType will be sent. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">updateMode</span></code> - <p>Indicates how parameters should be updated on the server side. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">parameterType</span></code> - <p>Type of parameter that will be sent. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">segments</span></code> - <p>Segments in the parameter that will be sent. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">numSamples</span></code> - <p>Number of samples this update is based on. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">cost</span></code> - <p>Cost of the batch, will be used to calculate global object value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sendBackParameter</span></code> - <p>True if the updated parameters should be sent back, otherwise false. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sendBackParameterType</span></code> - <p>Send back parameter type on pserver, PARAMETER_VALUE by default </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">recvParameterType</span></code> - <p>pserver[sendBackParameterType] will be copy to client[recvParameterType] </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">updateMode</span></code>: Indicates how parameters should be updated on the server side. </li>
+<li><code class="docutils literal"><span class="pre">parameterType</span></code>: Type of parameter that will be sent. </li>
+<li><code class="docutils literal"><span class="pre">segments</span></code>: Segments in the parameter that will be sent. </li>
+<li><code class="docutils literal"><span class="pre">numSamples</span></code>: Number of samples this update is based on. </li>
+<li><code class="docutils literal"><span class="pre">cost</span></code>: Cost of the batch, will be used to calculate global object value. </li>
+<li><code class="docutils literal"><span class="pre">sendBackParameter</span></code>: True if the updated parameters should be sent back, otherwise false. </li>
+<li><code class="docutils literal"><span class="pre">sendBackParameterType</span></code>: Send back parameter type on pserver, PARAMETER_VALUE by default </li>
+<li><code class="docutils literal"><span class="pre">recvParameterType</span></code>: pserver[sendBackParameterType] will be copy to client[recvParameterType] </li>
 </ul>
 </dd>
 </dl>
@@ -449,21 +438,14 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd>This function is non-blocking. This means that parameter should not change between this call and recvParameter() </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">updateMode</span></code> - <p>Indicates how parameters should be updated on the server side. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">parameterType</span></code> - <p>Type of parameter that will be sent. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">segments</span></code> - <p>Segments in the parameter that will be sent. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">numSamples</span></code> - <p>Number of samples this update is based on. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">cost</span></code> - <p>Cost of the batch, will be used to calculate global object value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sendBackParameter</span></code> - <p>True if the updated parameters should be sent back, otherwise false. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">batchStatus</span></code> - <p>Status of the batch. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">updateMode</span></code>: Indicates how parameters should be updated on the server side. </li>
+<li><code class="docutils literal"><span class="pre">parameterType</span></code>: Type of parameter that will be sent. </li>
+<li><code class="docutils literal"><span class="pre">segments</span></code>: Segments in the parameter that will be sent. </li>
+<li><code class="docutils literal"><span class="pre">numSamples</span></code>: Number of samples this update is based on. </li>
+<li><code class="docutils literal"><span class="pre">cost</span></code>: Cost of the batch, will be used to calculate global object value. </li>
+<li><code class="docutils literal"><span class="pre">sendBackParameter</span></code>: True if the updated parameters should be sent back, otherwise false. </li>
+<li><code class="docutils literal"><span class="pre">batchStatus</span></code>: Status of the batch. </li>
 </ul>
 </dd>
 </dl>
@@ -555,15 +537,11 @@ var _hmt = _hmt || [];
 <dd><p>Execute the prepared operations on pservers, fetch the results and aggregate results from different pservers. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">ops</span></code> - <p>Prepared operations that will be executed on pservers. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">waitForGradient</span></code> - <p>If true, wait for gradient to be ready before starting the operations. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sendBackParameter</span></code> - <p>If true, send back the parameter to clients after the operations are finished. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">If</span></code> - <p>true, and if all clients call waitPassFinish, signal all clients finish the pass. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">ops</span></code>: Prepared operations that will be executed on pservers. </li>
+<li><code class="docutils literal"><span class="pre">waitForGradient</span></code>: If true, wait for gradient to be ready before starting the operations. </li>
+<li><code class="docutils literal"><span class="pre">sendBackParameter</span></code>: If true, send back the parameter to clients after the operations are finished. </li>
+<li><code class="docutils literal"><span class="pre">If</span></code>: true, and if all clients call waitPassFinish, signal all clients finish the pass. </li>
 </ul>
 </dd>
 </dl>
@@ -682,9 +660,8 @@ var _hmt = _hmt || [];
 <dd><p>Tell pservers to load value vector from file.</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dirName</span></code> - <p>The directory that contains the value vector file. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dirName</span></code>: The directory that contains the value vector file. </li>
 </ul>
 </dd>
 </dl>
@@ -790,13 +767,13 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle16ParameterClient24sendEi">
-<span id="paddle::ParameterClient2::send__i"></span>virtual <span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a64a680ad57446fda41c9a70361890361"></span>void <code class="descname">send</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient24sendEi" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ParameterClient2::send__i"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a64a680ad57446fda41c9a70361890361"></span>void <code class="descname">send</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient24sendEi" title="Permalink to this definition">¶</a></dt>
 <dd><p>sending thread routine for asynchronously send data </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle16ParameterClient24recvEi">
-<span id="paddle::ParameterClient2::recv__i"></span>virtual <span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a39acb396e99a330bfc2a5e546ffeee9e"></span>void <code class="descname">recv</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient24recvEi" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ParameterClient2::recv__i"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2_1a39acb396e99a330bfc2a5e546ffeee9e"></span>void <code class="descname">recv</code><span class="sig-paren">(</span>int <em>threadId</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient24recvEi" title="Permalink to this definition">¶</a></dt>
 <dd><p>receiving thread routing for asynchronously receive data </p>
 </dd></dl>
 
@@ -877,7 +854,7 @@ var _hmt = _hmt || [];
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Base &#8212; PaddlePaddle  documentation</title>
+    <title>Layers &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -29,9 +29,9 @@
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
-    <link rel="up" title="Layers" href="layers_index.html" />
-    <link rel="next" title="Activations" href="activations_index.html" />
-    <link rel="prev" title="Layers" href="layers_index.html" /> 
+    <link rel="up" title="Model Config Interface" href="index.html" />
+    <link rel="next" title="Activations" href="activations.html" />
+    <link rel="prev" title="DataSources" href="data_sources.html" /> 
 <script>
 var _hmt = _hmt || [];
 (function() {
@@ -54,15 +54,13 @@ var _hmt = _hmt || [];
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="activations_index.html" title="Activations"
+          <a href="activations.html" title="Activations"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="layers_index.html" title="Layers"
+          <a href="data_sources.html" title="DataSources"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="layers_index.html" accesskey="U">Layers</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Model Config Interface</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -71,10 +69,12 @@ var _hmt = _hmt || [];
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="base">
-<h1>Base<a class="headerlink" href="#base" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="layers">
+<h1>Layers<a class="headerlink" href="#layers" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="base">
+<h2>Base<a class="headerlink" href="#base" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="layertype">
-<h2>LayerType<a class="headerlink" href="#layertype" title="Permalink to this headline">¶</a></h2>
+<h3>LayerType<a class="headerlink" href="#layertype" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">LayerType</code></dt>
@@ -102,7 +102,7 @@ strings.</td>
 
 </div>
 <div class="section" id="layeroutput">
-<h2>LayerOutput<a class="headerlink" href="#layeroutput" title="Permalink to this headline">¶</a></h2>
+<h3>LayerOutput<a class="headerlink" href="#layeroutput" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">LayerOutput</code><span class="sig-paren">(</span><em>name</em>, <em>layer_type</em>, <em>parents=None</em>, <em>activation=None</em>, <em>num_filters=None</em>, <em>img_norm_type=None</em>, <em>size=None</em>, <em>outputs=None</em>, <em>reverse=None</em><span class="sig-paren">)</span></dt>
@@ -129,7 +129,7 @@ reasons.</p>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer output name.</li>
 <li><strong>layer_type</strong> (<em>basestring</em>) &#8211; Current Layer Type. One of LayerType enumeration.</li>
 <li><strong>activation</strong> (<em>BaseActivation.</em>) &#8211; Layer Activation.</li>
-<li><strong>parents</strong> (<em>list|tuple|collection.Sequence</em>) &#8211; Layer&#8217;s parents.</li>
+<li><strong>parents</strong> (<em>list|tuple|collections.Sequence</em>) &#8211; Layer&#8217;s parents.</li>
 </ul>
 </td>
 </tr>
@@ -140,9 +140,9 @@ reasons.</p>
 </div>
 </div>
 <div class="section" id="data-layer">
-<h1>Data layer<a class="headerlink" href="#data-layer" title="Permalink to this headline">¶</a></h1>
+<h2>Data layer<a class="headerlink" href="#data-layer" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="id1">
-<h2>data_layer<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<h3>data_layer<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">data_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -176,9 +176,9 @@ reasons.</p>
 </div>
 </div>
 <div class="section" id="fully-connected-layers">
-<h1>Fully Connected Layers<a class="headerlink" href="#fully-connected-layers" title="Permalink to this headline">¶</a></h1>
+<h2>Fully Connected Layers<a class="headerlink" href="#fully-connected-layers" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="fc-layer">
-<h2>fc_layer<a class="headerlink" href="#fc-layer" title="Permalink to this headline">¶</a></h2>
+<h3>fc_layer<a class="headerlink" href="#fc-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">fc_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -224,7 +224,7 @@ default Bias.</li>
 
 </div>
 <div class="section" id="selective-fc-layer">
-<h2>selective_fc_layer<a class="headerlink" href="#selective-fc-layer" title="Permalink to this headline">¶</a></h2>
+<h3>selective_fc_layer<a class="headerlink" href="#selective-fc-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">selective_fc_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -268,12 +268,12 @@ default Bias.</li>
 </div>
 </div>
 <div class="section" id="conv-layers">
-<h1>Conv Layers<a class="headerlink" href="#conv-layers" title="Permalink to this headline">¶</a></h1>
+<h2>Conv Layers<a class="headerlink" href="#conv-layers" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="conv-operator">
-<h2>conv_operator<a class="headerlink" href="#conv-operator" title="Permalink to this headline">¶</a></h2>
+<h3>conv_operator<a class="headerlink" href="#conv-operator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
-<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_operator</code><span class="sig-paren">(</span><em>img</em>, <em>filter</em>, <em>filter_size</em>, <em>num_filters</em>, <em>num_channel=None</em>, <em>stride=1</em>, <em>padding=0</em>, <em>filter_size_y=None</em>, <em>stride_y=None</em>, <em>padding_y=None</em><span class="sig-paren">)</span></dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_operator</code><span class="sig-paren">(</span><em>img</em>, <em>filter</em>, <em>filter_size</em>, <em>num_filters</em>, <em>num_channels=None</em>, <em>stride=1</em>, <em>padding=0</em>, <em>filter_size_y=None</em>, <em>stride_y=None</em>, <em>padding_y=None</em><span class="sig-paren">)</span></dt>
 <dd><p>Different from img_conv_layer, conv_op is an Operator, which can be used
 in mixed_layer. And conv_op takes two inputs to perform convolution.
 The first input is the image and the second is filter kernel. It only
@@ -298,7 +298,7 @@ support GPU mode.</p>
 PaddlePaddle now supports rectangular filters,
 the filter&#8217;s shape can be (filter_size, filter_size_y).</li>
 <li><strong>num_filters</strong> (<em>int</em>) &#8211; channel of output data.</li>
-<li><strong>num_channel</strong> (<em>int</em>) &#8211; channel of input data.</li>
+<li><strong>num_channels</strong> (<em>int</em>) &#8211; channel of input data.</li>
 <li><strong>stride</strong> (<em>int</em>) &#8211; The x dimension of the stride.</li>
 <li><strong>stride_y</strong> (<em>int</em>) &#8211; The y dimension of the stride.</li>
 <li><strong>padding</strong> (<em>int</em>) &#8211; The x dimension of padding.</li>
@@ -317,8 +317,57 @@ the filter&#8217;s shape can be (filter_size, filter_size_y).</li>
 </dd></dl>
 
 </div>
+<div class="section" id="conv-projection">
+<h3>conv_projection<a class="headerlink" href="#conv-projection" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>ConvProjection with a layer as input.
+It performs element-wise multiplication with weight.</p>
+<p>Different from img_conv_layer and conv_op, conv_projection is an Projection,
+which can be used in mixed_layer and conat_layer. It use cudnn to implement
+conv and only support GPU mode.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">proj</span> <span class="o">=</span> <span class="n">conv_projection</span><span class="p">(</span><span class="n">img</span><span class="o">=</span><span class="n">input1</span><span class="p">,</span>
+                       <span class="n">filter_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                       <span class="n">num_filters</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+                       <span class="n">num_channels</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; input layer</li>
+<li><strong>filter_size</strong> (<em>int</em>) &#8211; The x dimension of a filter kernel.</li>
+<li><strong>filter_size_y</strong> (<em>int</em>) &#8211; The y dimension of a filter kernel. Since
+PaddlePaddle now supports rectangular filters,
+the filter&#8217;s shape can be (filter_size, filter_size_y).</li>
+<li><strong>num_filters</strong> (<em>int</em>) &#8211; channel of output data.</li>
+<li><strong>num_channels</strong> (<em>int</em>) &#8211; channel of input data.</li>
+<li><strong>stride</strong> (<em>int</em>) &#8211; The x dimension of the stride.</li>
+<li><strong>stride_y</strong> (<em>int</em>) &#8211; The y dimension of the stride.</li>
+<li><strong>padding</strong> (<em>int</em>) &#8211; The x dimension of padding.</li>
+<li><strong>padding_y</strong> (<em>int</em>) &#8211; The y dimension of padding.</li>
+<li><strong>groups</strong> (<em>int</em>) &#8211; The group number.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Convolution param attribute. None means default attribute</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A DotMulProjection Object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DotMulProjection</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 <div class="section" id="conv-shift-layer">
-<h2>conv_shift_layer<a class="headerlink" href="#conv-shift-layer" title="Permalink to this headline">¶</a></h2>
+<h3>conv_shift_layer<a class="headerlink" href="#conv-shift-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">conv_shift_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -355,6 +404,7 @@ the right size (which is the end of array) to the left.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
 <li><strong>a</strong> (<em>LayerOutput</em>) &#8211; Input layer a.</li>
 <li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input layer b</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; layer&#8217;s extra attribute.</li>
 </ul>
 </td>
 </tr>
@@ -370,14 +420,20 @@ the right size (which is the end of array) to the left.</li>
 
 </div>
 <div class="section" id="img-conv-layer">
-<h2>img_conv_layer<a class="headerlink" href="#img-conv-layer" title="Permalink to this headline">¶</a></h2>
+<h3>img_conv_layer<a class="headerlink" href="#img-conv-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">img_conv_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Convolution layer for image. Paddle only support square input currently and
 thus input image&#8217;s width equals height.</p>
 <p>The details of convolution layer, please refer UFLDL&#8217;s <a class="reference external" href="http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/">convolution</a> .</p>
-<p>The num_channel means input image&#8217;s channel number. It may be 1 or 3 when
+<p>Convolution Transpose (deconv) layer for image. Paddle only support square
+input currently and thus input image&#8217;s width equals height.</p>
+<p>The details of convolution transpose layer,
+please refer to the following explanation and references therein
+&lt;<a class="reference external" href="http://datascience.stackexchange.com/questions/6107/">http://datascience.stackexchange.com/questions/6107/</a>
+what-are-deconvolutional-layers/&gt;`_ .
+The num_channel means input image&#8217;s channel number. It may be 1 or 3 when
 input is raw pixels of image(mono or RGB), or it may be the previous layer&#8217;s
 num_filters * num_group.</p>
 <p>There are several group of filter in PaddlePaddle implementation.
@@ -414,6 +470,7 @@ automatically from previous output.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Convolution param attribute. None means default attribute</li>
 <li><strong>shared_biases</strong> (<em>bool</em>) &#8211; Is biases will be shared between filters or not.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Layer Extra Attribute.</li>
+<li><strong>trans</strong> (<em>bool</em>) &#8211; true if it is a convTransLayer, false if it is a convLayer</li>
 </ul>
 </td>
 </tr>
@@ -429,7 +486,7 @@ automatically from previous output.</li>
 
 </div>
 <div class="section" id="context-projection">
-<h2>context_projection<a class="headerlink" href="#context-projection" title="Permalink to this headline">¶</a></h2>
+<h3>context_projection<a class="headerlink" href="#context-projection" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">context_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -470,9 +527,9 @@ parameter attribute is set by this parameter.</li>
 </div>
 </div>
 <div class="section" id="image-pooling-layer">
-<h1>Image Pooling Layer<a class="headerlink" href="#image-pooling-layer" title="Permalink to this headline">¶</a></h1>
+<h2>Image Pooling Layer<a class="headerlink" href="#image-pooling-layer" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="img-pool-layer">
-<h2>img_pool_layer<a class="headerlink" href="#img-pool-layer" title="Permalink to this headline">¶</a></h2>
+<h3>img_pool_layer<a class="headerlink" href="#img-pool-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">img_pool_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -483,15 +540,112 @@ parameter attribute is set by this parameter.</li>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>padding</strong> (<em>int</em>) &#8211; pooling padding</li>
+<li><strong>padding</strong> (<em>int</em>) &#8211; pooling padding width.</li>
+<li><strong>padding_y</strong> (<em>int|None</em>) &#8211; pooling padding height. It&#8217;s equal to padding by default.</li>
 <li><strong>name</strong> (<em>basestring.</em>) &#8211; name of pooling layer</li>
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; layer&#8217;s input</li>
-<li><strong>pool_size</strong> (<em>int</em>) &#8211; pooling size</li>
+<li><strong>pool_size</strong> (<em>int</em>) &#8211; pooling window width</li>
+<li><strong>pool_size_y</strong> (<em>int|None</em>) &#8211; pooling window height. It&#8217;s eaqual to pool_size by default.</li>
 <li><strong>num_channels</strong> (<em>int</em>) &#8211; number of input channel.</li>
-<li><strong>pool_type</strong> (<em>BasePoolingType</em>) &#8211; pooling type. MaxPooling or AveragePooling. Default is
+<li><strong>pool_type</strong> (<em>BasePoolingType</em>) &#8211; pooling type. MaxPooling or AvgPooling. Default is
 MaxPooling.</li>
-<li><strong>stride</strong> (<em>int</em>) &#8211; stride of pooling.</li>
-<li><strong>start</strong> (<em>int</em>) &#8211; start position of pooling operation.</li>
+<li><strong>stride</strong> (<em>int</em>) &#8211; stride width of pooling.</li>
+<li><strong>stride_y</strong> (<em>int|None</em>) &#8211; stride height of pooling. It is equal to stride by default.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
+<li><strong>img_width</strong> (<em>int|None</em>) &#8211; the width of input feature map. If it is None, the input feature
+map should be square.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="spp-layer">
+<h3>spp_layer<a class="headerlink" href="#spp-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">spp_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition.
+The details please refer to
+<a class="reference external" href="https://arxiv.org/abs/1406.4729">Kaiming He&#8217;s paper</a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name.</li>
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; layer&#8217;s input.</li>
+<li><strong>num_channels</strong> (<em>int</em>) &#8211; number of input channel.</li>
+<li><strong>pool_type</strong> &#8211; Pooling type. MaxPooling or AveragePooling. Default is MaxPooling.</li>
+<li><strong>pyramid_height</strong> (<em>int</em>) &#8211; pyramid height.</li>
+<li><strong>img_width</strong> (<em>int|None</em>) &#8211; the width of input feature map. If it is None, the input feature
+map should be square.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="maxout-layer">
+<h3>maxout_layer<a class="headerlink" href="#maxout-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">maxout_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><dl class="docutils">
+<dt>A layer to do max out on conv layer output.</dt>
+<dd><ul class="first last simple">
+<li>Input: output of a conv layer.</li>
+<li>Output: feature map size same as input. Channel is (input channel) / groups.</li>
+</ul>
+</dd>
+</dl>
+<p>So groups should be larger than 1, and the num of channels should be able
+to devided by groups.</p>
+<dl class="docutils">
+<dt>Please refer to Paper:</dt>
+<dd><ul class="first last simple">
+<li>Maxout Networks: <a class="reference external" href="http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf">http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf</a></li>
+<li>Multi-digit Number Recognition from Street View         Imagery using Deep Convolutional Neural Networks:         <a class="reference external" href="https://arxiv.org/pdf/1312.6082v4.pdf">https://arxiv.org/pdf/1312.6082v4.pdf</a></li>
+</ul>
+</dd>
+</dl>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">maxout</span> <span class="o">=</span> <span class="n">maxout_layer</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span>
+                      <span class="n">num_channels</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+                      <span class="n">groups</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
+<li><strong>num_channels</strong> (<em>int|None</em>) &#8211; The channel number of input layer. If None will be set
+automatically from previous output.</li>
+<li><strong>groups</strong> (<em>int</em>) &#8211; The group number of input layer.</li>
+<li><strong>size_x</strong> (<em>int|None</em>) &#8211; conv output width. If None will be set
+automatically from previous output.</li>
+<li><strong>size_y</strong> (<em>int|None</em>) &#8211; conv output height. If None will be set
+automatically from previous output.</li>
+<li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layer, which can not specify.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
 </ul>
 </td>
@@ -509,9 +663,9 @@ MaxPooling.</li>
 </div>
 </div>
 <div class="section" id="norm-layer">
-<h1>Norm Layer<a class="headerlink" href="#norm-layer" title="Permalink to this headline">¶</a></h1>
+<h2>Norm Layer<a class="headerlink" href="#norm-layer" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="img-cmrnorm-layer">
-<h2>img_cmrnorm_layer<a class="headerlink" href="#img-cmrnorm-layer" title="Permalink to this headline">¶</a></h2>
+<h3>img_cmrnorm_layer<a class="headerlink" href="#img-cmrnorm-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">img_cmrnorm_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -546,7 +700,7 @@ num_channels is None, it will be set automatically.</li>
 
 </div>
 <div class="section" id="batch-norm-layer">
-<h2>batch_norm_layer<a class="headerlink" href="#batch-norm-layer" title="Permalink to this headline">¶</a></h2>
+<h3>batch_norm_layer<a class="headerlink" href="#batch-norm-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">batch_norm_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -614,7 +768,7 @@ computation, referred to as facotr,
 
 </div>
 <div class="section" id="sum-to-one-norm-layer">
-<h2>sum_to_one_norm_layer<a class="headerlink" href="#sum-to-one-norm-layer" title="Permalink to this headline">¶</a></h2>
+<h3>sum_to_one_norm_layer<a class="headerlink" href="#sum-to-one-norm-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">sum_to_one_norm_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -652,9 +806,9 @@ and <span class="math">\(out\)</span> is a (batchSize x dataDim) output vector.<
 </div>
 </div>
 <div class="section" id="recurrent-layers">
-<h1>Recurrent Layers<a class="headerlink" href="#recurrent-layers" title="Permalink to this headline">¶</a></h1>
+<h2>Recurrent Layers<a class="headerlink" href="#recurrent-layers" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="recurrent-layer">
-<h2>recurrent_layer<a class="headerlink" href="#recurrent-layer" title="Permalink to this headline">¶</a></h2>
+<h3>recurrent_layer<a class="headerlink" href="#recurrent-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">recurrent_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -694,7 +848,7 @@ out_{i} = act(in_{i} + out_{i+1} * W) \ \ \text{for} \ start &lt;= i &lt; end\en
 
 </div>
 <div class="section" id="lstmemory">
-<h2>lstmemory<a class="headerlink" href="#lstmemory" title="Permalink to this headline">¶</a></h2>
+<h3>lstmemory<a class="headerlink" href="#lstmemory" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">lstmemory</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -743,7 +897,7 @@ bias.</li>
 
 </div>
 <div class="section" id="lstm-step-layer">
-<h2>lstm_step_layer<a class="headerlink" href="#lstm-step-layer" title="Permalink to this headline">¶</a></h2>
+<h3>lstm_step_layer<a class="headerlink" href="#lstm-step-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">lstm_step_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -793,7 +947,7 @@ be sigmoid only.</li>
 
 </div>
 <div class="section" id="grumemory">
-<h2>grumemory<a class="headerlink" href="#grumemory" title="Permalink to this headline">¶</a></h2>
+<h3>grumemory<a class="headerlink" href="#grumemory" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">grumemory</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -862,7 +1016,7 @@ will get a warning.</li>
 
 </div>
 <div class="section" id="gru-step-layer">
-<h2>gru_step_layer<a class="headerlink" href="#gru-step-layer" title="Permalink to this headline">¶</a></h2>
+<h3>gru_step_layer<a class="headerlink" href="#gru-step-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">gru_step_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -895,9 +1049,52 @@ will get a warning.</li>
 </div>
 </div>
 <div class="section" id="recurrent-layer-group">
-<h1>Recurrent Layer Group<a class="headerlink" href="#recurrent-layer-group" title="Permalink to this headline">¶</a></h1>
+<h2>Recurrent Layer Group<a class="headerlink" href="#recurrent-layer-group" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="memory">
+<h3>memory<a class="headerlink" href="#memory" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">memory</code><span class="sig-paren">(</span><em>name</em>, <em>size</em>, <em>is_seq=False</em>, <em>boot_layer=None</em>, <em>boot_bias=None</em>, <em>boot_bias_active_type=None</em>, <em>boot_with_const_id=None</em><span class="sig-paren">)</span></dt>
+<dd><p>The memory layers is a layer cross each time step. Reference this output
+as previous time step layer <code class="code docutils literal"><span class="pre">name</span></code> &#8216;s output.</p>
+<p>The default memory is zero in first time step, previous time step&#8217;s
+output in the rest time steps.</p>
+<p>If boot_bias, the first time step value is this bias and
+with activation.</p>
+<p>If boot_with_const_id, then the first time stop is a IndexSlot, the
+Arguments.ids()[0] is this <code class="code docutils literal"><span class="pre">cost_id</span></code>.</p>
+<p>If boot_layer is not null, the memory is just the boot_layer&#8217;s output.
+Set <code class="code docutils literal"><span class="pre">is_seq</span></code> is true boot layer is sequence.</p>
+<p>The same name layer in recurrent group will set memory on each time
+step.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; memory&#8217;s name.</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; size of memory.</li>
+<li><strong>is_seq</strong> (<em>bool</em>) &#8211; is sequence for boot_layer</li>
+<li><strong>boot_layer</strong> (<em>LayerOutput|None</em>) &#8211; boot layer of memory.</li>
+<li><strong>boot_bias</strong> (<em>ParameterAttribute|None</em>) &#8211; boot layer&#8217;s bias</li>
+<li><strong>boot_bias_active_type</strong> (<em>BaseActivation</em>) &#8211; boot layer&#8217;s active type.</li>
+<li><strong>boot_with_const_id</strong> (<em>int</em>) &#8211; boot layer&#8217;s id.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object which is a memory.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 <div class="section" id="recurrent-group">
-<h2>recurrent_group<a class="headerlink" href="#recurrent-group" title="Permalink to this headline">¶</a></h2>
+<h3>recurrent_group<a class="headerlink" href="#recurrent-group" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">recurrent_group</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -945,6 +1142,13 @@ through time. It&#8217;s a mechanism to access layer outside step function.</p>
 </li>
 <li><strong>reverse</strong> (<em>bool</em>) &#8211; If reverse is set true, the recurrent unit will process the
 input sequence in a reverse order.</li>
+<li><strong>targetInlink</strong> (<em>LayerOutput|SubsequenceInput</em>) &#8211; <p>the input layer which share info with layer group&#8217;s output</p>
+<p>Param input specifies multiple input layers. For
+SubsequenceInput inputs, config should assign one input
+layer that share info(the number of sentences and the number
+of words in each sentence) with all layer group&#8217;s outputs.
+targetInlink should be one of the layer group&#8217;s input.</p>
+</li>
 </ul>
 </td>
 </tr>
@@ -960,7 +1164,7 @@ input sequence in a reverse order.</li>
 
 </div>
 <div class="section" id="beam-search">
-<h2>beam_search<a class="headerlink" href="#beam-search" title="Permalink to this headline">¶</a></h2>
+<h3>beam_search<a class="headerlink" href="#beam-search" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">beam_search</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1034,7 +1238,7 @@ beam size.</li>
 
 </div>
 <div class="section" id="get-output-layer">
-<h2>get_output_layer<a class="headerlink" href="#get-output-layer" title="Permalink to this headline">¶</a></h2>
+<h3>get_output_layer<a class="headerlink" href="#get-output-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">get_output_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1068,9 +1272,9 @@ multiple outputs.</li>
 </div>
 </div>
 <div class="section" id="mixed-layer">
-<h1>Mixed Layer<a class="headerlink" href="#mixed-layer" title="Permalink to this headline">¶</a></h1>
+<h2>Mixed Layer<a class="headerlink" href="#mixed-layer" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="id2">
-<h2>mixed_layer<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<h3>mixed_layer<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">mixed_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1122,7 +1326,7 @@ default Bias.</li>
 
 </div>
 <div class="section" id="embedding-layer">
-<h2>embedding_layer<a class="headerlink" href="#embedding-layer" title="Permalink to this headline">¶</a></h2>
+<h3>embedding_layer<a class="headerlink" href="#embedding-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">embedding_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1152,8 +1356,42 @@ for details.</li>
 </dd></dl>
 
 </div>
+<div class="section" id="scaling-projection">
+<h3>scaling_projection<a class="headerlink" href="#scaling-projection" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">scaling_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>scaling_projection multiplies the input with a scalar parameter and add to
+the output.</p>
+<div class="math">
+\[out += w * in\]</div>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">proj</span> <span class="o">=</span> <span class="n">scaling_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input Layer.</li>
+<li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter config, None if use default.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A ScalingProjection object</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">ScalingProjection</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 <div class="section" id="dotmul-projection">
-<h2>dotmul_projection<a class="headerlink" href="#dotmul-projection" title="Permalink to this headline">¶</a></h2>
+<h3>dotmul_projection<a class="headerlink" href="#dotmul-projection" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">dotmul_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1188,7 +1426,7 @@ It performs element-wise multiplication with weight.</p>
 
 </div>
 <div class="section" id="dotmul-operator">
-<h2>dotmul_operator<a class="headerlink" href="#dotmul-operator" title="Permalink to this headline">¶</a></h2>
+<h3>dotmul_operator<a class="headerlink" href="#dotmul-operator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">dotmul_operator</code><span class="sig-paren">(</span><em>a=None</em>, <em>b=None</em>, <em>scale=1</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1224,7 +1462,7 @@ scale is a config scalar, its default value is one.</p>
 
 </div>
 <div class="section" id="full-matrix-projection">
-<h2>full_matrix_projection<a class="headerlink" href="#full-matrix-projection" title="Permalink to this headline">¶</a></h2>
+<h3>full_matrix_projection<a class="headerlink" href="#full-matrix-projection" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">full_matrix_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1270,7 +1508,7 @@ scale is a config scalar, its default value is one.</p>
 
 </div>
 <div class="section" id="identity-projection">
-<h2>identity_projection<a class="headerlink" href="#identity-projection" title="Permalink to this headline">¶</a></h2>
+<h3>identity_projection<a class="headerlink" href="#identity-projection" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">identity_projection</code><span class="sig-paren">(</span><em>input</em>, <em>offset=None</em><span class="sig-paren">)</span></dt>
@@ -1304,7 +1542,7 @@ It select dimesions [offset, offset+layer_size) from input:</p>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A IdentityProjection or IdentityOffsetProjection Object</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A IdentityProjection or IdentityOffsetProjection object</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">IdentityProjection or IdentityOffsetProjection</p>
@@ -1316,7 +1554,7 @@ It select dimesions [offset, offset+layer_size) from input:</p>
 
 </div>
 <div class="section" id="table-projection">
-<h2>table_projection<a class="headerlink" href="#table-projection" title="Permalink to this headline">¶</a></h2>
+<h3>table_projection<a class="headerlink" href="#table-projection" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">table_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1365,7 +1603,7 @@ and <span class="math">\(i\)</span> is row_id.</p>
 
 </div>
 <div class="section" id="trans-full-matrix-projection">
-<h2>trans_full_matrix_projection<a class="headerlink" href="#trans-full-matrix-projection" title="Permalink to this headline">¶</a></h2>
+<h3>trans_full_matrix_projection<a class="headerlink" href="#trans-full-matrix-projection" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">trans_full_matrix_projection</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1407,9 +1645,9 @@ The simply usage is:</p>
 </div>
 </div>
 <div class="section" id="aggregate-layers">
-<h1>Aggregate Layers<a class="headerlink" href="#aggregate-layers" title="Permalink to this headline">¶</a></h1>
+<h2>Aggregate Layers<a class="headerlink" href="#aggregate-layers" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="pooling-layer">
-<h2>pooling_layer<a class="headerlink" href="#pooling-layer" title="Permalink to this headline">¶</a></h2>
+<h3>pooling_layer<a class="headerlink" href="#pooling-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">pooling_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1448,7 +1686,7 @@ SumPooling, SquareRootNPooling.</li>
 
 </div>
 <div class="section" id="last-seq">
-<h2>last_seq<a class="headerlink" href="#last-seq" title="Permalink to this headline">¶</a></h2>
+<h3>last_seq<a class="headerlink" href="#last-seq" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">last_seq</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1477,7 +1715,7 @@ SumPooling, SquareRootNPooling.</li>
 
 </div>
 <div class="section" id="first-seq">
-<h2>first_seq<a class="headerlink" href="#first-seq" title="Permalink to this headline">¶</a></h2>
+<h3>first_seq<a class="headerlink" href="#first-seq" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">first_seq</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1506,19 +1744,23 @@ SumPooling, SquareRootNPooling.</li>
 
 </div>
 <div class="section" id="concat-layer">
-<h2>concat_layer<a class="headerlink" href="#concat-layer" title="Permalink to this headline">¶</a></h2>
+<h3>concat_layer<a class="headerlink" href="#concat-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">concat_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Concat all input vector into one huge vector.
 Inputs can be list of LayerOutput or list of projection.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">concat</span> <span class="o">=</span> <span class="n">concat_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">,</span> <span class="n">layer2</span><span class="p">])</span>
+</pre></div>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
-<li><strong>input</strong> (<em>list|tuple|collection.Sequence</em>) &#8211; input layers or projections</li>
+<li><strong>input</strong> (<em>list|tuple|collections.Sequence</em>) &#8211; input layers or projections</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type.</li>
 <li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
@@ -1537,16 +1779,16 @@ Inputs can be list of LayerOutput or list of projection.</p>
 </div>
 </div>
 <div class="section" id="reshaping-layers">
-<h1>Reshaping Layers<a class="headerlink" href="#reshaping-layers" title="Permalink to this headline">¶</a></h1>
+<h2>Reshaping Layers<a class="headerlink" href="#reshaping-layers" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="block-expand-layer">
-<h2>block_expand_layer<a class="headerlink" href="#block-expand-layer" title="Permalink to this headline">¶</a></h2>
+<h3>block_expand_layer<a class="headerlink" href="#block-expand-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">block_expand_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><dl class="docutils">
 <dt>Expand feature map to minibatch matrix.</dt>
 <dd><ul class="first last simple">
-<li>matrix width is: block_y * block_x * channel</li>
+<li>matrix width is: block_y * block_x * num_channels</li>
 <li>matirx height is: outputH * outputW</li>
 </ul>
 </dd>
@@ -1556,11 +1798,11 @@ Inputs can be list of LayerOutput or list of projection.</p>
 <p>The expand method is the same with ExpandConvLayer, but saved the transposed
 value. After expanding, output.sequenceStartPositions will store timeline.
 The number of time steps are outputH * outputW and the dimension of each
-time step is block_y * block_x * channel. This layer can be used after
+time step is block_y * block_x * num_channels. This layer can be used after
 convolution neural network, and before recurrent neural network.</p>
 <p>The simple usage is:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">block_expand</span> <span class="o">=</span> <span class="n">block_expand_layer</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span>
-                                  <span class="n">channel</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+                                  <span class="n">num_channels</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
                                   <span class="n">stride_x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                                   <span class="n">stride_y</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                                   <span class="n">block_x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
@@ -1573,7 +1815,7 @@ convolution neural network, and before recurrent neural network.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
-<li><strong>channel</strong> (<em>int</em>) &#8211; The channel number of input layer.</li>
+<li><strong>num_channels</strong> (<em>int|None</em>) &#8211; The channel number of input layer.</li>
 <li><strong>block_x</strong> (<em>int</em>) &#8211; The width of sub block.</li>
 <li><strong>block_y</strong> (<em>int</em>) &#8211; The width of sub block.</li>
 <li><strong>stride_x</strong> (<em>int</em>) &#8211; The stride size in horizontal direction.</li>
@@ -1581,6 +1823,7 @@ convolution neural network, and before recurrent neural network.</p>
 <li><strong>padding_x</strong> (<em>int</em>) &#8211; The padding size in horizontal direction.</li>
 <li><strong>padding_y</strong> (<em>int</em>) &#8211; The padding size in vertical direction.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layer, which can not specify.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -1596,7 +1839,7 @@ convolution neural network, and before recurrent neural network.</p>
 
 </div>
 <div class="section" id="expand-layer">
-<h2>expand_layer<a class="headerlink" href="#expand-layer" title="Permalink to this headline">¶</a></h2>
+<h3>expand_layer<a class="headerlink" href="#expand-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">expand_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1634,11 +1877,47 @@ bias.</li>
 </dd></dl>
 
 </div>
+<div class="section" id="repeat-layer">
+<h3>repeat_layer<a class="headerlink" href="#repeat-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">repeat_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A layer for repeating the input for num_repeats times. This is equivalent
+to apply concat_layer() with num_repeats same input.</p>
+<div class="math">
+\[y  = [x, x, \cdots, x]\]</div>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">expand</span> <span class="o">=</span> <span class="n">repeat_layer</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput</em>) &#8211; Input layer</li>
+<li><strong>num_repeats</strong> (<em>int</em>) &#8211; Repeat the input so many times</li>
+<li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; extra layer attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 </div>
 <div class="section" id="math-layers">
-<h1>Math Layers<a class="headerlink" href="#math-layers" title="Permalink to this headline">¶</a></h1>
+<h2>Math Layers<a class="headerlink" href="#math-layers" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="addto-layer">
-<h2>addto_layer<a class="headerlink" href="#addto-layer" title="Permalink to this headline">¶</a></h2>
+<h3>addto_layer<a class="headerlink" href="#addto-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">addto_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1690,7 +1969,7 @@ bias.</li>
 
 </div>
 <div class="section" id="linear-comb-layer">
-<h2>linear_comb_layer<a class="headerlink" href="#linear-comb-layer" title="Permalink to this headline">¶</a></h2>
+<h3>linear_comb_layer<a class="headerlink" href="#linear-comb-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">linear_comb_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1739,6 +2018,7 @@ processed in one batch.</p>
 <li><strong>vectors</strong> (<em>LayerOutput</em>) &#8211; The vector layer.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; the dimension of this layer.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -1754,7 +2034,7 @@ processed in one batch.</p>
 
 </div>
 <div class="section" id="interpolation-layer">
-<h2>interpolation_layer<a class="headerlink" href="#interpolation-layer" title="Permalink to this headline">¶</a></h2>
+<h3>interpolation_layer<a class="headerlink" href="#interpolation-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">interpolation_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1792,8 +2072,43 @@ which is used in NEURAL TURING MACHINE.</p>
 </dd></dl>
 
 </div>
+<div class="section" id="bilinear-interp-layer">
+<h3>bilinear_interp_layer<a class="headerlink" href="#bilinear-interp-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">bilinear_interp_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>This layer is to implement bilinear interpolation on conv layer output.</p>
+<p>Please refer to Wikipedia: <a class="reference external" href="https://en.wikipedia.org/wiki/Bilinear_interpolation">https://en.wikipedia.org/wiki/Bilinear_interpolation</a></p>
+<p>The simple usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">bilinear</span> <span class="o">=</span> <span class="n">bilinear_interp_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">out_size_x</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">out_size_y</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; A input layer.</li>
+<li><strong>out_size_x</strong> (<em>int|None</em>) &#8211; bilinear interpolation output width.</li>
+<li><strong>out_size_y</strong> (<em>int|None</em>) &#8211; bilinear interpolation output height.</li>
+<li><strong>name</strong> (<em>None|basestring</em>) &#8211; The layer&#8217;s name, which cna not be specified.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 <div class="section" id="power-layer">
-<h2>power_layer<a class="headerlink" href="#power-layer" title="Permalink to this headline">¶</a></h2>
+<h3>power_layer<a class="headerlink" href="#power-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">power_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1831,7 +2146,7 @@ and <span class="math">\(y\)</span> is a output vector.</p>
 
 </div>
 <div class="section" id="scaling-layer">
-<h2>scaling_layer<a class="headerlink" href="#scaling-layer" title="Permalink to this headline">¶</a></h2>
+<h3>scaling_layer<a class="headerlink" href="#scaling-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">scaling_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1870,7 +2185,7 @@ processed in one batch.</p>
 
 </div>
 <div class="section" id="slope-intercept-layer">
-<h2>slope_intercept_layer<a class="headerlink" href="#slope-intercept-layer" title="Permalink to this headline">¶</a></h2>
+<h3>slope_intercept_layer<a class="headerlink" href="#slope-intercept-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">slope_intercept_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1891,6 +2206,7 @@ element-wise. There is no activation and weight.</p>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
 <li><strong>slope</strong> (<em>float.</em>) &#8211; the scale factor.</li>
 <li><strong>intercept</strong> (<em>float.</em>) &#8211; the offset.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -1906,7 +2222,7 @@ element-wise. There is no activation and weight.</p>
 
 </div>
 <div class="section" id="tensor-layer">
-<h2>tensor_layer<a class="headerlink" href="#tensor-layer" title="Permalink to this headline">¶</a></h2>
+<h3>tensor_layer<a class="headerlink" href="#tensor-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">tensor_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1959,7 +2275,7 @@ default Bias.</li>
 
 </div>
 <div class="section" id="cos-sim">
-<h2>cos_sim<a class="headerlink" href="#cos-sim" title="Permalink to this headline">¶</a></h2>
+<h3>cos_sim<a class="headerlink" href="#cos-sim" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">cos_sim</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -1998,7 +2314,7 @@ processed in one batch.</p>
 
 </div>
 <div class="section" id="trans-layer">
-<h2>trans_layer<a class="headerlink" href="#trans-layer" title="Permalink to this headline">¶</a></h2>
+<h3>trans_layer<a class="headerlink" href="#trans-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">trans_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -2034,9 +2350,9 @@ processed in one batch.</p>
 </div>
 </div>
 <div class="section" id="sampling-layers">
-<h1>Sampling Layers<a class="headerlink" href="#sampling-layers" title="Permalink to this headline">¶</a></h1>
+<h2>Sampling Layers<a class="headerlink" href="#sampling-layers" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="maxid-layer">
-<h2>maxid_layer<a class="headerlink" href="#maxid-layer" title="Permalink to this headline">¶</a></h2>
+<h3>maxid_layer<a class="headerlink" href="#maxid-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">maxid_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -2069,7 +2385,7 @@ The result is stored in output.ids.</p>
 
 </div>
 <div class="section" id="sampling-id-layer">
-<h2>sampling_id_layer<a class="headerlink" href="#sampling-id-layer" title="Permalink to this headline">¶</a></h2>
+<h3>sampling_id_layer<a class="headerlink" href="#sampling-id-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">sampling_id_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -2086,6 +2402,7 @@ Sampling one id for one sample.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput</em>) &#8211; The input layer.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; The Layer Name.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -2102,14 +2419,15 @@ Sampling one id for one sample.</p>
 </div>
 </div>
 <div class="section" id="cost-layers">
-<h1>Cost Layers<a class="headerlink" href="#cost-layers" title="Permalink to this headline">¶</a></h1>
+<h2>Cost Layers<a class="headerlink" href="#cost-layers" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="cross-entropy">
-<h2>cross_entropy<a class="headerlink" href="#cross-entropy" title="Permalink to this headline">¶</a></h2>
+<h3>cross_entropy<a class="headerlink" href="#cross-entropy" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">cross_entropy</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>A loss layer for multi class entropy.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">cross_entropy</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">cross_entropy</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">,</span>
+                     <span class="n">label</span><span class="o">=</span><span class="n">label_layer</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2119,9 +2437,9 @@ Sampling one id for one sample.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
 <li><strong>label</strong> &#8211; The input label.</li>
-<li><strong>type</strong> (<em>basestring.</em>) &#8211; The type of cost.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2137,12 +2455,13 @@ Sampling one id for one sample.</p>
 
 </div>
 <div class="section" id="cross-entropy-with-selfnorm">
-<h2>cross_entropy_with_selfnorm<a class="headerlink" href="#cross-entropy-with-selfnorm" title="Permalink to this headline">¶</a></h2>
+<h3>cross_entropy_with_selfnorm<a class="headerlink" href="#cross-entropy-with-selfnorm" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">cross_entropy_with_selfnorm</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>A loss layer for multi class entropy with selfnorm.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">cross_entropy_with_selfnorm</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">cross_entropy_with_selfnorm</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">,</span>
+                                   <span class="n">label</span><span class="o">=</span><span class="n">label_layer</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2152,10 +2471,10 @@ Sampling one id for one sample.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
 <li><strong>label</strong> &#8211; The input label.</li>
-<li><strong>type</strong> (<em>basestring.</em>) &#8211; The type of cost.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
 <li><strong>softmax_selfnorm_alpha</strong> (<em>float.</em>) &#8211; The scale factor affects the cost.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2171,12 +2490,13 @@ Sampling one id for one sample.</p>
 
 </div>
 <div class="section" id="multi-binary-label-cross-entropy">
-<h2>multi_binary_label_cross_entropy<a class="headerlink" href="#multi-binary-label-cross-entropy" title="Permalink to this headline">¶</a></h2>
+<h3>multi_binary_label_cross_entropy<a class="headerlink" href="#multi-binary-label-cross-entropy" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">multi_binary_label_cross_entropy</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>A loss layer for multi binary label cross entropy.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">multi_binary_label_cross_entropy</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">multi_binary_label_cross_entropy</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">,</span>
+                                        <span class="n">label</span><span class="o">=</span><span class="n">label_layer</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2189,6 +2509,7 @@ Sampling one id for one sample.</p>
 <li><strong>type</strong> (<em>basestring</em>) &#8211; The type of cost.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2204,12 +2525,13 @@ Sampling one id for one sample.</p>
 
 </div>
 <div class="section" id="huber-cost">
-<h2>huber_cost<a class="headerlink" href="#huber-cost" title="Permalink to this headline">¶</a></h2>
+<h3>huber_cost<a class="headerlink" href="#huber-cost" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">huber_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>A loss layer for huber loss.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">huber_cost</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">huber_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">,</span>
+                  <span class="n">label</span><span class="o">=</span><span class="n">label_layer</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2221,6 +2543,7 @@ Sampling one id for one sample.</p>
 <li><strong>label</strong> &#8211; The input label.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2236,7 +2559,7 @@ Sampling one id for one sample.</p>
 
 </div>
 <div class="section" id="lambda-cost">
-<h2>lambda_cost<a class="headerlink" href="#lambda-cost" title="Permalink to this headline">¶</a></h2>
+<h3>lambda_cost<a class="headerlink" href="#lambda-cost" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">lambda_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -2266,6 +2589,7 @@ equal to NDCG_num. And if max_sort_size is greater
 than the size of a list, the algorithm will sort the
 entire list of get gradient.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2281,7 +2605,7 @@ entire list of get gradient.</li>
 
 </div>
 <div class="section" id="rank-cost">
-<h2>rank_cost<a class="headerlink" href="#rank-cost" title="Permalink to this headline">¶</a></h2>
+<h3>rank_cost<a class="headerlink" href="#rank-cost" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">rank_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -2320,6 +2644,7 @@ Their dimension is one.</li>
 It is an optional argument.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2335,7 +2660,7 @@ It is an optional argument.</li>
 
 </div>
 <div class="section" id="crf-layer">
-<h2>crf_layer<a class="headerlink" href="#crf-layer" title="Permalink to this headline">¶</a></h2>
+<h3>crf_layer<a class="headerlink" href="#crf-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">crf_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -2359,6 +2684,7 @@ field model.</p>
 optional argument.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter attribute. None means default attribute</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -2374,7 +2700,7 @@ optional argument.</li>
 
 </div>
 <div class="section" id="crf-decoding-layer">
-<h2>crf_decoding_layer<a class="headerlink" href="#crf-decoding-layer" title="Permalink to this headline">¶</a></h2>
+<h3>crf_decoding_layer<a class="headerlink" href="#crf-decoding-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">crf_decoding_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -2393,6 +2719,7 @@ decoding or 0 for correct decoding.</p>
 <li><strong>label</strong> (<em>LayerOutput or None</em>) &#8211; None or ground-truth label.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Parameter attribute. None means default attribute</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -2408,7 +2735,7 @@ decoding or 0 for correct decoding.</p>
 
 </div>
 <div class="section" id="ctc-layer">
-<h2>ctc_layer<a class="headerlink" href="#ctc-layer" title="Permalink to this headline">¶</a></h2>
+<h3>ctc_layer<a class="headerlink" href="#ctc-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">ctc_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -2443,6 +2770,7 @@ should also be num_classes + 1.</p>
 <li><strong>size</strong> (<em>int</em>) &#8211; category numbers + 1.</li>
 <li><strong>name</strong> (<em>basestring|None</em>) &#8211; The name of this layer</li>
 <li><strong>norm_by_times</strong> (<em>bool</em>) &#8211; Whether to normalization by times. False by default.</li>
+<li><strong>layer_attr</strong> (<em>ExtraLayerAttribute|None</em>) &#8211; Extra Layer config.</li>
 </ul>
 </td>
 </tr>
@@ -2457,8 +2785,51 @@ should also be num_classes + 1.</p>
 </dd></dl>
 
 </div>
+<div class="section" id="nce-layer">
+<h3>nce_layer<a class="headerlink" href="#nce-layer" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">nce_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>Noise-contrastive estimation.
+Implements the method in the following paper:
+A fast and simple algorithm for training neural probabilistic language models.</p>
+<p>The example usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">nce_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">layer1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">layer2</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">layer3</span><span class="p">,</span>
+                 <span class="n">num_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">neg_distribution</span><span class="o">=</span><span class="p">[</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.3</span><span class="p">,</span><span class="mf">0.6</span><span class="p">])</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
+<li><strong>input</strong> (<em>LayerOutput|list|tuple|collections.Sequence</em>) &#8211; input layers. It could be a LayerOutput of list/tuple of LayerOutput.</li>
+<li><strong>label</strong> (<em>LayerOutput</em>) &#8211; label layer</li>
+<li><strong>weight</strong> (<em>LayerOutput</em>) &#8211; weight layer, can be None(default)</li>
+<li><strong>num_classes</strong> (<em>int</em>) &#8211; number of classes.</li>
+<li><strong>num_neg_samples</strong> (<em>int</em>) &#8211; number of negative samples. Default is 10.</li>
+<li><strong>neg_distribution</strong> (<em>list|tuple|collections.Sequence|None</em>) &#8211; The distribution for generating the random negative labels.
+A uniform distribution will be used if not provided.
+If not None, its length must be equal to num_classes.</li>
+<li><strong>bias_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Bias parameter attribute. True if no bias.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">layer name.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 <div class="section" id="hsigmoid">
-<h2>hsigmoid<a class="headerlink" href="#hsigmoid" title="Permalink to this headline">¶</a></h2>
+<h3>hsigmoid<a class="headerlink" href="#hsigmoid" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">hsigmoid</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -2499,11 +2870,42 @@ False means no bias.</li>
 </dd></dl>
 
 </div>
+<div class="section" id="sum-cost">
+<h3>sum_cost<a class="headerlink" href="#sum-cost" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt>
+<code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">sum_cost</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
+<dd><p>A loss layer which calculate the sum of the input as loss</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cost</span> <span class="o">=</span> <span class="n">sum_cost</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">input_layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
+<li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 </div>
 <div class="section" id="check-layer">
-<h1>Check Layer<a class="headerlink" href="#check-layer" title="Permalink to this headline">¶</a></h1>
+<h2>Check Layer<a class="headerlink" href="#check-layer" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="eos-layer">
-<h2>eos_layer<a class="headerlink" href="#eos-layer" title="Permalink to this headline">¶</a></h2>
+<h3>eos_layer<a class="headerlink" href="#eos-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">eos_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -2539,6 +2941,7 @@ It is used by recurrent layer group.</p>
 
 </div>
 </div>
+</div>
 
 
           </div>
@@ -2548,7 +2951,8 @@ It is used by recurrent layer group.</p>
         <div class="sphinxsidebarwrapper">
   <h3><a href="../../../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Base</a><ul>
+<li><a class="reference internal" href="#">Layers</a><ul>
+<li><a class="reference internal" href="#base">Base</a><ul>
 <li><a class="reference internal" href="#layertype">LayerType</a></li>
 <li><a class="reference internal" href="#layeroutput">LayerOutput</a></li>
 </ul>
@@ -2564,6 +2968,7 @@ It is used by recurrent layer group.</p>
 </li>
 <li><a class="reference internal" href="#conv-layers">Conv Layers</a><ul>
 <li><a class="reference internal" href="#conv-operator">conv_operator</a></li>
+<li><a class="reference internal" href="#conv-projection">conv_projection</a></li>
 <li><a class="reference internal" href="#conv-shift-layer">conv_shift_layer</a></li>
 <li><a class="reference internal" href="#img-conv-layer">img_conv_layer</a></li>
 <li><a class="reference internal" href="#context-projection">context_projection</a></li>
@@ -2571,6 +2976,8 @@ It is used by recurrent layer group.</p>
 </li>
 <li><a class="reference internal" href="#image-pooling-layer">Image Pooling Layer</a><ul>
 <li><a class="reference internal" href="#img-pool-layer">img_pool_layer</a></li>
+<li><a class="reference internal" href="#spp-layer">spp_layer</a></li>
+<li><a class="reference internal" href="#maxout-layer">maxout_layer</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#norm-layer">Norm Layer</a><ul>
@@ -2588,6 +2995,7 @@ It is used by recurrent layer group.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#recurrent-layer-group">Recurrent Layer Group</a><ul>
+<li><a class="reference internal" href="#memory">memory</a></li>
 <li><a class="reference internal" href="#recurrent-group">recurrent_group</a></li>
 <li><a class="reference internal" href="#beam-search">beam_search</a></li>
 <li><a class="reference internal" href="#get-output-layer">get_output_layer</a></li>
@@ -2596,6 +3004,7 @@ It is used by recurrent layer group.</p>
 <li><a class="reference internal" href="#mixed-layer">Mixed Layer</a><ul>
 <li><a class="reference internal" href="#id2">mixed_layer</a></li>
 <li><a class="reference internal" href="#embedding-layer">embedding_layer</a></li>
+<li><a class="reference internal" href="#scaling-projection">scaling_projection</a></li>
 <li><a class="reference internal" href="#dotmul-projection">dotmul_projection</a></li>
 <li><a class="reference internal" href="#dotmul-operator">dotmul_operator</a></li>
 <li><a class="reference internal" href="#full-matrix-projection">full_matrix_projection</a></li>
@@ -2614,12 +3023,14 @@ It is used by recurrent layer group.</p>
 <li><a class="reference internal" href="#reshaping-layers">Reshaping Layers</a><ul>
 <li><a class="reference internal" href="#block-expand-layer">block_expand_layer</a></li>
 <li><a class="reference internal" href="#expand-layer">expand_layer</a></li>
+<li><a class="reference internal" href="#repeat-layer">repeat_layer</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#math-layers">Math Layers</a><ul>
 <li><a class="reference internal" href="#addto-layer">addto_layer</a></li>
 <li><a class="reference internal" href="#linear-comb-layer">linear_comb_layer</a></li>
 <li><a class="reference internal" href="#interpolation-layer">interpolation_layer</a></li>
+<li><a class="reference internal" href="#bilinear-interp-layer">bilinear_interp_layer</a></li>
 <li><a class="reference internal" href="#power-layer">power_layer</a></li>
 <li><a class="reference internal" href="#scaling-layer">scaling_layer</a></li>
 <li><a class="reference internal" href="#slope-intercept-layer">slope_intercept_layer</a></li>
@@ -2643,7 +3054,9 @@ It is used by recurrent layer group.</p>
 <li><a class="reference internal" href="#crf-layer">crf_layer</a></li>
 <li><a class="reference internal" href="#crf-decoding-layer">crf_decoding_layer</a></li>
 <li><a class="reference internal" href="#ctc-layer">ctc_layer</a></li>
+<li><a class="reference internal" href="#nce-layer">nce_layer</a></li>
 <li><a class="reference internal" href="#hsigmoid">hsigmoid</a></li>
+<li><a class="reference internal" href="#sum-cost">sum_cost</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#check-layer">Check Layer</a><ul>
@@ -2651,12 +3064,14 @@ It is used by recurrent layer group.</p>
 </ul>
 </li>
 </ul>
+</li>
+</ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="layers_index.html"
-                        title="previous chapter">Layers</a></p>
+  <p class="topless"><a href="data_sources.html"
+                        title="previous chapter">DataSources</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="activations_index.html"
+  <p class="topless"><a href="activations.html"
                         title="next chapter">Activations</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
@@ -2689,20 +3104,18 @@ It is used by recurrent layer group.</p>
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="activations_index.html" title="Activations"
+          <a href="activations.html" title="Activations"
              >next</a> |</li>
         <li class="right" >
-          <a href="layers_index.html" title="Layers"
+          <a href="data_sources.html" title="DataSources"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="layers_index.html" >Layers</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" >Model Config Interface</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

@@ -30,7 +30,7 @@
     <link rel="search" title="Search" href="../search.html" />
     <link rel="top" title="PaddlePaddle  documentation" href="../index.html" />
     <link rel="up" title="Build And Install PaddlePaddle" href="index.html" />
-    <link rel="next" title="Docker installation guide" href="docker_install.html" />
+    <link rel="next" title="User Interface" href="../ui/index.html" />
     <link rel="prev" title="Installing from Sources" href="build_from_source.html" /> 
 <script>
 var _hmt = _hmt || [];
@@ -54,7 +54,7 @@ var _hmt = _hmt || [];
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="docker_install.html" title="Docker installation guide"
+          <a href="../ui/index.html" title="User Interface"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="build_from_source.html" title="Installing from Sources"
@@ -76,7 +76,7 @@ workflow to merge your code.</p>
 <div class="section" id="code-requirements">
 <span id="code-requirements"></span><h2>Code Requirements<a class="headerlink" href="#code-requirements" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Your code mush be fully documented by
+<li>Your code must be fully documented by
 <a class="reference external" href="http://www.stack.nl/~dimitri/doxygen/">doxygen</a> style.</li>
 <li>Make sure the compiler option WITH_STYLE_CHECK is on and the compiler
 passes the code style check.</li>
@@ -92,14 +92,24 @@ It&#8217;s just that simple.</p>
 </div>
 <div class="section" id="clone">
 <span id="clone"></span><h2>Clone<a class="headerlink" href="#clone" title="Permalink to this headline">¶</a></h2>
+<p>Paddle is currently using <a class="reference external" href="http://nvie.com/posts/a-successful-git-branching-model/">git-flow branching model</a>.
+The <strong>develop</strong> is the main branch, and other user&#8217;s branches are feature branches.</p>
 <p>Once you&#8217;ve created a fork, you can use your favorite git client to clone your
 repo or just head straight to the command line:</p>
 <div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># Clone your fork to your local machine</span>
-git clone https://github.com/USERNAME/Paddle.git
+git clone --branch develop https://github.com/USERNAME/Paddle.git
+</pre></div>
+</div>
+<p>If your repository doesn&#8217;t contain <strong>develop</strong> branch, just create it by your own.</p>
+<div class="highlight-shell"><div class="highlight"><pre><span></span>git clone https://github.com/USERNAME/Paddle.git Paddle
+<span class="nb">cd</span> Paddle
+git checkout -b develop  <span class="c1"># create develop branch.</span>
+git remote add upstream https://github.com/baidu/Paddle.git  <span class="c1"># add upstream to baidu/Paddle</span>
+git pull upstream develop  <span class="c1"># update to upstream</span>
 </pre></div>
 </div>
 <p>Then you can start to develop by making a local developement branch</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout -b MY_COOL_STUFF_BRANCH origin/master
+<div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout -b MY_COOL_STUFF_BRANCH
 </pre></div>
 </div>
 </div>
@@ -110,7 +120,7 @@ git clone https://github.com/USERNAME/Paddle.git
 git status
 <span class="c1"># add modified files</span>
 git add xx
-git commit -m <span class="s2">&quot;commit info&quot;</span>
+env <span class="nv">EDITOR</span><span class="o">=</span>vim git commit  <span class="c1"># You can write your comments by vim/nano/emacs.</span>
 </pre></div>
 </div>
 <p>The first line of commit infomation is the title. The second and later lines
@@ -129,7 +139,7 @@ git remote -v
 </pre></div>
 </div>
 <p>Update your fork with the latest upstream changes:</p>
-<div class="highlight-shell"><div class="highlight"><pre><span></span>git pull --rebase upstream HEAD
+<div class="highlight-shell"><div class="highlight"><pre><span></span>git pull --rebase upstream develop
 </pre></div>
 </div>
 <p>If there are no unique commits locally, git will simply perform a fast-forward.
@@ -140,7 +150,7 @@ probably shouldn&#8217;t be), you may have to deal with conflicts.</p>
 <div class="section" id="push-to-github">
 <span id="push-to-github"></span><h2>Push to GitHub<a class="headerlink" href="#push-to-github" title="Permalink to this headline">¶</a></h2>
 <div class="highlight-shell"><div class="highlight"><pre><span></span><span class="c1"># push to your repository in Github</span>
-git push origin HEAD
+git push -u origin MY_COOL_STUFF_BRANCH  <span class="c1"># create remote branch MY_COOL_STUFF_BRANCH to origin.</span>
 </pre></div>
 </div>
 </div>
@@ -157,13 +167,26 @@ by clicking the &#8220;Update Branch&#8221; button in your pull request page. Ho
 of conflict, you need to do the update manually. You need to do the following on
 your local repository:</p>
 <div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout MY_COOL_STUFF_BRANCH
-git pull --rebase upstream HEAD
+git pull upstream develop
 <span class="c1"># You may need to resolve the conflict according to the git prompt.</span>
 <span class="c1"># Make and test your code.</span>
-git push -f origin HEAD
+git push origin MY_COOL_STUFF_BRANCH
 </pre></div>
 </div>
 <p>Now your Pull Request is updated with the latest version.</p>
+</div>
+<div class="section" id="revise-your-pull-request">
+<span id="revise-your-pull-request"></span><h2>Revise your pull request<a class="headerlink" href="#revise-your-pull-request" title="Permalink to this headline">¶</a></h2>
+<p>When you revise your pull request according to reviewer&#8217;s comments, please use &#8216;git commit&#8217; instead of &#8216;git commit &#8211;amend&#8217; to commit your changes so that the reviewers can see the difference between the new pull requrest and the old pull request.</p>
+<p>The possible commands are</p>
+<div class="highlight-shell"><div class="highlight"><pre><span></span>git checkout MY_COOL_STUFF_BRANCH
+git pull upstream develop   <span class="c1"># update local to newest code base.</span>
+<span class="c1"># May be some conflicts will occured.</span>
+<span class="c1"># And develop your cool stuff</span>
+env <span class="nv">EDITOR</span><span class="o">=</span>vim git commit  <span class="c1"># add your revise log</span>
+git push origin MY_COOL_STUFF_BRANCH
+</pre></div>
+</div>
 </div>
 </div>
 
@@ -184,6 +207,7 @@ git push -f origin HEAD
 <li><a class="reference internal" href="#push-to-github">Push to GitHub</a></li>
 <li><a class="reference internal" href="#pull-request">Pull Request</a></li>
 <li><a class="reference internal" href="#update-your-pull-request-with-the-lastest-version">Update your pull request with the lastest version</a></li>
+<li><a class="reference internal" href="#revise-your-pull-request">Revise your pull request</a></li>
 </ul>
 </li>
 </ul>
@@ -192,8 +216,8 @@ git push -f origin HEAD
   <p class="topless"><a href="build_from_source.html"
                         title="previous chapter">Installing from Sources</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="docker_install.html"
-                        title="next chapter">Docker installation guide</a></p>
+  <p class="topless"><a href="../ui/index.html"
+                        title="next chapter">User Interface</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -225,7 +249,7 @@ git push -f origin HEAD
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="docker_install.html" title="Docker installation guide"
+          <a href="../ui/index.html" title="User Interface"
              >next</a> |</li>
         <li class="right" >
           <a href="build_from_source.html" title="Installing from Sources"
@@ -236,7 +260,7 @@ git push -f origin HEAD
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

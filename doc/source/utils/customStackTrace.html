@@ -79,7 +79,7 @@ var _hmt = _hmt || [];
 <dt id="_CPPv2N6paddle16CustomStackTraceE">
 <span id="paddle::CustomStackTrace"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CustomStackTrace</code><a class="headerlink" href="#_CPPv2N6paddle16CustomStackTraceE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A ThreadLocal stack for tracing train/test process. (More details of ThreadLocal can be find in the comments of ThreadLocal class.)</p>
-<p>For example.  <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span><span class="p">::</span><span class="n">CustomStackTrace</span><span class="o">&lt;</span><span class="n">std</span><span class="p">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">stack</span><span class="p">;</span>
+<p>For example. <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span><span class="p">::</span><span class="n">CustomStackTrace</span><span class="o">&lt;</span><span class="n">std</span><span class="p">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">stack</span><span class="p">;</span>
 <span class="k">for</span> <span class="p">(</span><span class="n">auto</span><span class="o">&amp;</span> <span class="n">layer</span> <span class="p">:</span> <span class="n">layers</span><span class="p">){</span>
   <span class="n">stack</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">layer</span><span class="o">-&gt;</span><span class="n">getName</span><span class="p">());</span>
   <span class="n">layer</span><span class="o">-&gt;</span><span class="n">forward</span><span class="p">();</span>
@@ -94,7 +94,7 @@ var _hmt = _hmt || [];
 <span class="p">}</span>
 </pre></div>
 </div>
-</p>
+ </p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
@@ -120,8 +120,8 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle16CustomStackTrace5emptyEv">
-<span id="paddle::CustomStackTrace::empty"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1a7ca345481c51b1d161d17e96dd781fe6"></span>bool <code class="descname">empty</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle16CustomStackTrace5emptyEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle16CustomStackTrace5emptyEv">
+<span id="paddle::CustomStackTrace::emptyC"></span><span class="target" id="paddleclasspaddle_1_1CustomStackTrace_1a7ca345481c51b1d161d17e96dd781fe6"></span>bool <code class="descname">empty</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle16CustomStackTrace5emptyEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>return true if all thread&#8217;s stack is empty. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
@@ -210,7 +210,7 @@ var _hmt = _hmt || [];
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

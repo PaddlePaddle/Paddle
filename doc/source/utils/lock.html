@@ -88,7 +88,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle6ThreadD0Ev">
-<span id="paddle::Thread::~Thread"></span>virtual <span class="target" id="paddleclasspaddle_1_1Thread_1ab28c412e43f004090028b655be596138"></span><code class="descname">~Thread</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6ThreadD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::Thread::~Thread"></span><span class="target" id="paddleclasspaddle_1_1Thread_1ab28c412e43f004090028b655be596138"></span><em class="property">virtual</em> <code class="descname">~Thread</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle6ThreadD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -111,7 +111,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle6Thread3runEv">
-<span id="paddle::Thread::run"></span>virtual <span class="target" id="paddleclasspaddle_1_1Thread_1ad05b338f3732cfd1969a0c9e74f74f90"></span>void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle6Thread3runEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::Thread::run"></span><span class="target" id="paddleclasspaddle_1_1Thread_1ad05b338f3732cfd1969a0c9e74f74f90"></span><em class="property">virtual</em> void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle6Thread3runEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Define what to be done on this thread through override this function. </p>
 </dd></dl>
 
@@ -180,7 +180,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle12ThreadWorker3runEv">
-<span id="paddle::ThreadWorker::run"></span>virtual <span class="target" id="paddleclasspaddle_1_1ThreadWorker_1aafdd0cb888f80d8c5382222012b0149b"></span>void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12ThreadWorker3runEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::ThreadWorker::run"></span><span class="target" id="paddleclasspaddle_1_1ThreadWorker_1aafdd0cb888f80d8c5382222012b0149b"></span><em class="property">virtual</em> void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12ThreadWorker3runEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute jobs in the job queue sequentianlly,. </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -246,11 +246,9 @@ var _hmt = _hmt || [];
 <dd><p>Construct Fucntion. Create numWorkers of threads in the pool. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">numWorkers</span></code> - <p>Number of the workers in the pool. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">checkOwner</span></code> - <p>Default true. If checkOwner is true, this sync thread pool should be used by it&#8217;s owner thread. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">numWorkers</span></code>: Number of the workers in the pool. </li>
+<li><code class="docutils literal"><span class="pre">checkOwner</span></code>: Default true. If checkOwner is true, this sync thread pool should be used by it&#8217;s owner thread. </li>
 </ul>
 </dd>
 </dl>
@@ -276,11 +274,9 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd>For the ownerFunc, tid=<a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool_1a137196ab4b87c59ba001b127ca197ed3"><span class="std std-ref">getNumThreads()</span></a>. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">jobFunc</span></code> - <p>The function to be executed. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ownerFunc</span></code> - <p>Owner thread can do something in owerFunc when job executing. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">jobFunc</span></code>: The function to be executed. </li>
+<li><code class="docutils literal"><span class="pre">ownerFunc</span></code>: Owner thread can do something in owerFunc when job executing. </li>
 </ul>
 </dd>
 </dl>
@@ -295,9 +291,8 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd>Assume that JobFunc will execute numThread + 1 times, with tid ranging [0,numThread]. The thread whose tid is numThread is the owner thread. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">jobFunc</span></code> - <p>The job to be executed. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">jobFunc</span></code>: The job to be executed. </li>
 </ul>
 </dd>
 </dl>
@@ -313,11 +308,9 @@ var _hmt = _hmt || [];
 <dd><p>Execute a job if has pool, else use caller thread as a worker. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">pool</span></code> - <p>The pool to execute the job. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">jobFunc</span></code> - <p>The job to be excuted. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">pool</span></code>: The pool to execute the job. </li>
+<li><code class="docutils literal"><span class="pre">jobFunc</span></code>: The job to be excuted. </li>
 </ul>
 </dd>
 </dl>
@@ -428,11 +421,9 @@ var _hmt = _hmt || [];
 <dd><p>Construct Function. Initialize the multithread worker. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">workerNum</span></code> - <p>Number of the workers. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">queueCapacity</span></code> - <p>Capapcity of the result queue. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">workerNum</span></code>: Number of the workers. </li>
+<li><code class="docutils literal"><span class="pre">queueCapacity</span></code>: Capapcity of the result queue. </li>
 </ul>
 </dd>
 </dl>
@@ -441,7 +432,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle17MultiThreadWorkerD0Ev">
-<span id="paddle::MultiThreadWorker::~MultiThreadWorker"></span>virtual <span class="target" id="paddleclasspaddle_1_1MultiThreadWorker_1a29bd361e9d069fa37aeb4ae7f9350262"></span><code class="descname">~MultiThreadWorker</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiThreadWorkerD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::MultiThreadWorker::~MultiThreadWorker"></span><span class="target" id="paddleclasspaddle_1_1MultiThreadWorker_1a29bd361e9d069fa37aeb4ae7f9350262"></span><em class="property">virtual</em> <code class="descname">~MultiThreadWorker</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiThreadWorkerD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd><p>Destruct Function. Force stop the workers even though there are remaining jobs in the job queue. </p>
 </dd></dl>
 
@@ -516,7 +507,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle17MultiThreadWorker3runEv">
-<span id="paddle::MultiThreadWorker::run"></span>virtual <span class="target" id="paddleclasspaddle_1_1MultiThreadWorker_1a7b28e78982e1329dcd7d472e0806e245"></span>void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiThreadWorker3runEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::MultiThreadWorker::run"></span><span class="target" id="paddleclasspaddle_1_1MultiThreadWorker_1a7b28e78982e1329dcd7d472e0806e245"></span><em class="property">virtual</em> void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle17MultiThreadWorker3runEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Do the jobs in the job queue sequentianlly and enqueue the result into the result queue. </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -594,9 +585,8 @@ var _hmt = _hmt || [];
 <dd><p>Construct Function. Install all the workers. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">threadNum</span></code> - <p>Number of the threads, must greater than 1. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">threadNum</span></code>: Number of the threads, must greater than 1. </li>
 </ul>
 </dd>
 </dl>
@@ -637,17 +627,14 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd><em>results</em> may need to be carefully cleared before <em><a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a4848df09be835a672e9351ef5a544c81"><span class="std std-ref">addBatchJobs()</span></a></em>. </dd>
 <dt><strong>Template Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">F</span></code> - <p>should have a return value.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">F</span></code>: should have a return value.</li>
 </ul>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">jobs</span></code> - <p>a vector of executable objection. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">results</span></code> - <p>a vector to store the results.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">jobs</span></code>: a vector of executable objection. </li>
+<li><code class="docutils literal"><span class="pre">results</span></code>: a vector to store the results.</li>
 </ul>
 </dd>
 </dl>
@@ -662,15 +649,13 @@ var _hmt = _hmt || [];
 <dd><p>Add a batch of jobs reguardless of its result. </p>
 <p><dl class="docutils">
 <dt><strong>Template Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">F</span></code> - <p>don&#8217;t need to have a return value. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">F</span></code>: don&#8217;t need to have a return value. </li>
 </ul>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">jobs</span></code> - <p>a vector of executable objection. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">jobs</span></code>: a vector of executable objection. </li>
 </ul>
 </dd>
 </dl>
@@ -767,7 +752,7 @@ var _hmt = _hmt || [];
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

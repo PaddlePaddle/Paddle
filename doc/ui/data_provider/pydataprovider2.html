@@ -30,7 +30,7 @@
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
     <link rel="up" title="DataProvider Introduction" href="index.html" />
-    <link rel="next" title="Model Config Interface" href="../api/trainer_config_helpers/index.html" />
+    <link rel="next" title="Use Case" href="../cmd_argument/use_case.html" />
     <link rel="prev" title="DataProvider Introduction" href="index.html" /> 
 <script>
 var _hmt = _hmt || [];
@@ -54,7 +54,7 @@ var _hmt = _hmt || [];
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../api/trainer_config_helpers/index.html" title="Model Config Interface"
+          <a href="../cmd_argument/use_case.html" title="Use Case"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="index.html" title="DataProvider Introduction"
@@ -104,10 +104,7 @@ label of an image. The second part contains 28x28 pixel float values.</p>
 
 
 <span class="c1"># Define a py data provider</span>
-<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span>
-    <span class="n">dense_vector</span><span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">),</span>
-    <span class="n">integer_value</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-<span class="p">])</span>
+<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span><span class="n">dense_vector</span><span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">),</span> <span class="n">integer_value</span><span class="p">(</span><span class="mi">10</span><span class="p">)])</span>
 <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>  <span class="c1"># settings is not used currently.</span>
     <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>  <span class="c1"># open one of training file</span>
 
@@ -158,10 +155,11 @@ sample by using keywords <code class="code docutils literal"><span class="pre">y
 you can take this as an example.</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="k">import</span> <span class="o">*</span>
 
-<span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="o">=</span><span class="s1">&#39;train.list&#39;</span><span class="p">,</span>
-                        <span class="n">test_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                        <span class="n">module</span><span class="o">=</span><span class="s1">&#39;mnist_provider&#39;</span><span class="p">,</span>
-                        <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">)</span>
+<span class="n">define_py_data_sources2</span><span class="p">(</span>
+    <span class="n">train_list</span><span class="o">=</span><span class="s1">&#39;train.list&#39;</span><span class="p">,</span>
+    <span class="n">test_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">module</span><span class="o">=</span><span class="s1">&#39;mnist_provider&#39;</span><span class="p">,</span>
+    <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">)</span>
 <span class="n">img</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;pixel&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">784</span><span class="p">)</span>
 <span class="n">label</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 </pre></div>
@@ -194,15 +192,13 @@ the <code class="code docutils literal"><span class="pre">dataprovider</span></c
 21
 22
 23
-24
-25</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="k">import</span> <span class="o">*</span>
+24</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer.PyDataProvider2</span> <span class="k">import</span> <span class="o">*</span>
 
 
 <span class="c1"># Define a py data provider</span>
-<span class="nd">@provider</span><span class="p">(</span><span class="n">input_types</span><span class="o">=</span><span class="p">[</span>
-    <span class="n">dense_vector</span><span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">),</span>
-    <span class="n">integer_value</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-<span class="p">])</span>
+<span class="nd">@provider</span><span class="p">(</span>
+    <span class="n">input_types</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;pixel&#39;</span><span class="p">:</span> <span class="n">dense_vector</span><span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">),</span>
+                 <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="n">integer_value</span><span class="p">(</span><span class="mi">10</span><span class="p">)})</span>
 <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>  <span class="c1"># settings is not used currently.</span>
     <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>  <span class="c1"># open one of training file</span>
 
@@ -217,7 +213,7 @@ the <code class="code docutils literal"><span class="pre">dataprovider</span></c
             <span class="n">pixels_float</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">each_pixel_str</span><span class="p">))</span>
 
         <span class="c1"># give data to paddle.</span>
-        <span class="k">yield</span> <span class="p">{</span> <span class="s2">&quot;pixel&quot;</span><span class="p">:</span> <span class="n">pixels_float</span><span class="p">,</span> <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="p">}</span>
+        <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;pixel&quot;</span><span class="p">:</span> <span class="n">pixels_float</span><span class="p">,</span> <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)}</span>
 
     <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># close file</span>
 </pre></div>
@@ -271,7 +267,8 @@ negative sentiment (marked by 0 and 1 respectively).</p>
         <span class="c1"># The text is a sequence of integer values, and each value is a word id.</span>
         <span class="c1"># The whole sequence is the sentences that we want to predict its</span>
         <span class="c1"># sentimental.</span>
-        <span class="n">integer_value</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dictionary</span><span class="p">),</span> <span class="n">seq_type</span><span class="o">=</span><span class="n">SequenceType</span><span class="p">),</span>  <span class="c1"># text input</span>
+        <span class="n">integer_value</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">dictionary</span><span class="p">),</span> <span class="n">seq_type</span><span class="o">=</span><span class="n">SequenceType</span><span class="p">),</span>  <span class="c1"># text input</span>
 
         <span class="c1"># label positive/negative</span>
         <span class="n">integer_value</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
@@ -324,12 +321,15 @@ into trainer configuration file.</p>
 <span class="n">dictionary</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
 <span class="o">...</span>  <span class="c1">#  read dictionary from outside</span>
 
-<span class="n">define_py_data_sources2</span><span class="p">(</span><span class="n">train_list</span><span class="o">=</span><span class="s1">&#39;train.list&#39;</span><span class="p">,</span> <span class="n">test_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                        <span class="n">module</span><span class="o">=</span><span class="s1">&#39;sentimental_provider&#39;</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">,</span>
-                        <span class="c1"># above codes same as mnist sample.</span>
-                        <span class="n">args</span><span class="o">=</span><span class="p">{</span>  <span class="c1"># pass to provider.</span>
-                            <span class="s1">&#39;dictionary&#39;</span><span class="p">:</span> <span class="n">dictionary</span>
-                        <span class="p">})</span>
+<span class="n">define_py_data_sources2</span><span class="p">(</span>
+    <span class="n">train_list</span><span class="o">=</span><span class="s1">&#39;train.list&#39;</span><span class="p">,</span>
+    <span class="n">test_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">module</span><span class="o">=</span><span class="s1">&#39;sentimental_provider&#39;</span><span class="p">,</span>
+    <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">,</span>
+    <span class="c1"># above codes same as mnist sample.</span>
+    <span class="n">args</span><span class="o">=</span><span class="p">{</span>  <span class="c1"># pass to provider.</span>
+        <span class="s1">&#39;dictionary&#39;</span><span class="p">:</span> <span class="n">dictionary</span>
+    <span class="p">})</span>
 </pre></div>
 </div>
 <p>The definition is basically same as MNIST example, except:
@@ -355,7 +355,7 @@ Please refer to the following section reference for details.</p>
 <h3>&#64;provider<a class="headerlink" href="#provider" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt id="paddle.trainer.PyDataProvider2.provider">
-<code class="descclassname">paddle.trainer.PyDataProvider2.</code><code class="descname">provider</code><span class="sig-paren">(</span><em>input_types=None</em>, <em>should_shuffle=None</em>, <em>pool_size=-1</em>, <em>min_pool_size=-1</em>, <em>can_over_batch_size=True</em>, <em>calc_batch_size=None</em>, <em>cache=0</em>, <em>check=False</em>, <em>check_fail_continue=False</em>, <em>use_dynamic_order=True</em>, <em>init_hook=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer.PyDataProvider2.provider" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">paddle.trainer.PyDataProvider2.</code><code class="descname">provider</code><span class="sig-paren">(</span><em>input_types=None</em>, <em>should_shuffle=None</em>, <em>pool_size=-1</em>, <em>min_pool_size=-1</em>, <em>can_over_batch_size=True</em>, <em>calc_batch_size=None</em>, <em>cache=0</em>, <em>check=False</em>, <em>check_fail_continue=False</em>, <em>init_hook=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.trainer.PyDataProvider2.provider" title="Permalink to this definition">¶</a></dt>
 <dd><p>Provider decorator. Use it to make a function into PyDataProvider2 object.
 In this function, user only need to get each sample for some train/test
 file.</p>
@@ -373,8 +373,13 @@ file.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>input_types</strong> (<em>list|tuple</em>) &#8211; Specify the input types, can also be set in init_hook.
-It is a list of InputType object. For example, input_types=                         [dense_vector(9), integer_value(2)].</li>
+<li><strong>input_types</strong> (<em>list|tuple|dict</em>) &#8211; Specify the input types, can also be set in init_hook.
+It could be a list of InputType object. For example,
+input_types=[dense_vector(9), integer_value(2)]. Or user
+can set a dict of InputType object, which key is
+data_layer&#8217;s name. For example, input_types=                        {&#8216;img&#8217;: img_features, &#8216;label&#8217;: label}. when using dict of
+InputType, user could yield a dict of feature values, which
+key is also data_layer&#8217;s name.</li>
 <li><strong>should_shuffle</strong> (<em>bool</em>) &#8211; True if data should shuffle. Pass None means shuffle
 when is training and not to shuffle when is testing.</li>
 <li><strong>pool_size</strong> (<em>int</em>) &#8211; Max number of sample in data pool.</li>
@@ -409,10 +414,6 @@ for debug. Default is disabled.</li>
 <li><strong>check_fail_continue</strong> (<em>bool</em>) &#8211; Continue train or not when check failed. Just
 drop the wrong format data when it is True. Has
 no effect when check set to False.</li>
-<li><strong>use_dynamic_order</strong> (<em>bool</em>) &#8211; Allow provider to yield a dictionary object, whose
-key is a input data layer name, and value is the
-feature value. The tuples are still allowed when
-use_dynmaic_order is True.</li>
 </ul>
 </td>
 </tr>
@@ -548,8 +549,8 @@ memory.</li>
   <p class="topless"><a href="index.html"
                         title="previous chapter">DataProvider Introduction</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="../api/trainer_config_helpers/index.html"
-                        title="next chapter">Model Config Interface</a></p>
+  <p class="topless"><a href="../cmd_argument/use_case.html"
+                        title="next chapter">Use Case</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -581,7 +582,7 @@ memory.</li>
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../api/trainer_config_helpers/index.html" title="Model Config Interface"
+          <a href="../cmd_argument/use_case.html" title="Use Case"
              >next</a> |</li>
         <li class="right" >
           <a href="index.html" title="DataProvider Introduction"
@@ -593,7 +594,7 @@ memory.</li>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

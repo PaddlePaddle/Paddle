@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>BaseActivation &#8212; PaddlePaddle  documentation</title>
+    <title>Activations &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -29,9 +29,9 @@
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
-    <link rel="up" title="Activations" href="activations_index.html" />
-    <link rel="next" title="Poolings" href="poolings_index.html" />
-    <link rel="prev" title="Activations" href="activations_index.html" /> 
+    <link rel="up" title="Model Config Interface" href="index.html" />
+    <link rel="next" title="Poolings" href="poolings.html" />
+    <link rel="prev" title="Layers" href="layers.html" /> 
 <script>
 var _hmt = _hmt || [];
 (function() {
@@ -54,15 +54,13 @@ var _hmt = _hmt || [];
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="poolings_index.html" title="Poolings"
+          <a href="poolings.html" title="Poolings"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="activations_index.html" title="Activations"
+          <a href="layers.html" title="Layers"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="activations_index.html" accesskey="U">Activations</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Model Config Interface</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -71,8 +69,10 @@ var _hmt = _hmt || [];
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="baseactivation">
-<h1>BaseActivation<a class="headerlink" href="#baseactivation" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="activations">
+<h1>Activations<a class="headerlink" href="#activations" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="baseactivation">
+<h2>BaseActivation<a class="headerlink" href="#baseactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">BaseActivation</code><span class="sig-paren">(</span><em>name</em>, <em>support_hppl</em><span class="sig-paren">)</span></dt>
@@ -96,7 +96,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="absactivation">
-<h1>AbsActivation<a class="headerlink" href="#absactivation" title="Permalink to this headline">¶</a></h1>
+<h2>AbsActivation<a class="headerlink" href="#absactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">AbsActivation</code></dt>
@@ -111,7 +111,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="expactivation">
-<h1>ExpActivation<a class="headerlink" href="#expactivation" title="Permalink to this headline">¶</a></h1>
+<h2>ExpActivation<a class="headerlink" href="#expactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">ExpActivation</code></dt>
@@ -122,7 +122,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="identityactivation">
-<h1>IdentityActivation<a class="headerlink" href="#identityactivation" title="Permalink to this headline">¶</a></h1>
+<h2>IdentityActivation<a class="headerlink" href="#identityactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">IdentityActivation</code></dt>
@@ -132,7 +132,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="linearactivation">
-<h1>LinearActivation<a class="headerlink" href="#linearactivation" title="Permalink to this headline">¶</a></h1>
+<h2>LinearActivation<a class="headerlink" href="#linearactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="attribute">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">LinearActivation</code></dt>
@@ -140,8 +140,19 @@ supported by hppl.</li>
 </dd></dl>
 
 </div>
+<div class="section" id="logactivation">
+<h2>LogActivation<a class="headerlink" href="#logactivation" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">LogActivation</code></dt>
+<dd><p>Logarithm Activation.</p>
+<div class="math">
+\[f(z) = log(z)\]</div>
+</dd></dl>
+
+</div>
 <div class="section" id="squareactivation">
-<h1>SquareActivation<a class="headerlink" href="#squareactivation" title="Permalink to this headline">¶</a></h1>
+<h2>SquareActivation<a class="headerlink" href="#squareactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">SquareActivation</code></dt>
@@ -152,7 +163,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="sigmoidactivation">
-<h1>SigmoidActivation<a class="headerlink" href="#sigmoidactivation" title="Permalink to this headline">¶</a></h1>
+<h2>SigmoidActivation<a class="headerlink" href="#sigmoidactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">SigmoidActivation</code></dt>
@@ -163,7 +174,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="softmaxactivation">
-<h1>SoftmaxActivation<a class="headerlink" href="#softmaxactivation" title="Permalink to this headline">¶</a></h1>
+<h2>SoftmaxActivation<a class="headerlink" href="#softmaxactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">SoftmaxActivation</code></dt>
@@ -174,7 +185,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="sequencesoftmaxactivation">
-<h1>SequenceSoftmaxActivation<a class="headerlink" href="#sequencesoftmaxactivation" title="Permalink to this headline">¶</a></h1>
+<h2>SequenceSoftmaxActivation<a class="headerlink" href="#sequencesoftmaxactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">SequenceSoftmaxActivation</code></dt>
@@ -189,7 +200,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="reluactivation">
-<h1>ReluActivation<a class="headerlink" href="#reluactivation" title="Permalink to this headline">¶</a></h1>
+<h2>ReluActivation<a class="headerlink" href="#reluactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">ReluActivation</code></dt>
@@ -203,7 +214,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="breluactivation">
-<h1>BReluActivation<a class="headerlink" href="#breluactivation" title="Permalink to this headline">¶</a></h1>
+<h2>BReluActivation<a class="headerlink" href="#breluactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">BReluActivation</code></dt>
@@ -217,7 +228,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="softreluactivation">
-<h1>SoftReluActivation<a class="headerlink" href="#softreluactivation" title="Permalink to this headline">¶</a></h1>
+<h2>SoftReluActivation<a class="headerlink" href="#softreluactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">SoftReluActivation</code></dt>
@@ -226,7 +237,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="tanhactivation">
-<h1>TanhActivation<a class="headerlink" href="#tanhactivation" title="Permalink to this headline">¶</a></h1>
+<h2>TanhActivation<a class="headerlink" href="#tanhactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">TanhActivation</code></dt>
@@ -237,7 +248,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="stanhactivation">
-<h1>STanhActivation<a class="headerlink" href="#stanhactivation" title="Permalink to this headline">¶</a></h1>
+<h2>STanhActivation<a class="headerlink" href="#stanhactivation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.activations.</code><code class="descname">STanhActivation</code></dt>
@@ -246,6 +257,7 @@ supported by hppl.</li>
 \[f(z) = 1.7159 * tanh(2/3*z)\]</div>
 </dd></dl>
 
+</div>
 </div>
 
 
@@ -256,11 +268,13 @@ supported by hppl.</li>
         <div class="sphinxsidebarwrapper">
   <h3><a href="../../../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">BaseActivation</a></li>
+<li><a class="reference internal" href="#">Activations</a><ul>
+<li><a class="reference internal" href="#baseactivation">BaseActivation</a></li>
 <li><a class="reference internal" href="#absactivation">AbsActivation</a></li>
 <li><a class="reference internal" href="#expactivation">ExpActivation</a></li>
 <li><a class="reference internal" href="#identityactivation">IdentityActivation</a></li>
 <li><a class="reference internal" href="#linearactivation">LinearActivation</a></li>
+<li><a class="reference internal" href="#logactivation">LogActivation</a></li>
 <li><a class="reference internal" href="#squareactivation">SquareActivation</a></li>
 <li><a class="reference internal" href="#sigmoidactivation">SigmoidActivation</a></li>
 <li><a class="reference internal" href="#softmaxactivation">SoftmaxActivation</a></li>
@@ -271,12 +285,14 @@ supported by hppl.</li>
 <li><a class="reference internal" href="#tanhactivation">TanhActivation</a></li>
 <li><a class="reference internal" href="#stanhactivation">STanhActivation</a></li>
 </ul>
+</li>
+</ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="activations_index.html"
-                        title="previous chapter">Activations</a></p>
+  <p class="topless"><a href="layers.html"
+                        title="previous chapter">Layers</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="poolings_index.html"
+  <p class="topless"><a href="poolings.html"
                         title="next chapter">Poolings</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
@@ -309,20 +325,18 @@ supported by hppl.</li>
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="poolings_index.html" title="Poolings"
+          <a href="poolings.html" title="Poolings"
              >next</a> |</li>
         <li class="right" >
-          <a href="activations_index.html" title="Activations"
+          <a href="layers.html" title="Layers"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="activations_index.html" >Activations</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" >Model Config Interface</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

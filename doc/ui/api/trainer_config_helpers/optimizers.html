@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>BaseSGDOptimizer &#8212; PaddlePaddle  documentation</title>
+    <title>Optimizers &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -29,9 +29,9 @@
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
-    <link rel="up" title="Optimizers" href="optimizers_index.html" />
+    <link rel="up" title="Model Config Interface" href="index.html" />
     <link rel="next" title="DataSources" href="data_sources.html" />
-    <link rel="prev" title="Optimizers" href="optimizers_index.html" /> 
+    <link rel="prev" title="Model Config Interface" href="index.html" /> 
 <script>
 var _hmt = _hmt || [];
 (function() {
@@ -57,12 +57,10 @@ var _hmt = _hmt || [];
           <a href="data_sources.html" title="DataSources"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="optimizers_index.html" title="Optimizers"
+          <a href="index.html" title="Model Config Interface"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="optimizers_index.html" accesskey="U">Optimizers</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Model Config Interface</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -71,8 +69,10 @@ var _hmt = _hmt || [];
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="basesgdoptimizer">
-<h1>BaseSGDOptimizer<a class="headerlink" href="#basesgdoptimizer" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="optimizers">
+<h1>Optimizers<a class="headerlink" href="#optimizers" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="basesgdoptimizer">
+<h2>BaseSGDOptimizer<a class="headerlink" href="#basesgdoptimizer" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">BaseSGDOptimizer</code></dt>
@@ -97,7 +97,7 @@ be learned. The i is the i-th observation in (trainning) data.</p>
 
 </div>
 <div class="section" id="momentumoptimizer">
-<h1>MomentumOptimizer<a class="headerlink" href="#momentumoptimizer" title="Permalink to this headline">¶</a></h1>
+<h2>MomentumOptimizer<a class="headerlink" href="#momentumoptimizer" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">MomentumOptimizer</code><span class="sig-paren">(</span><em>momentum=None</em>, <em>sparse=False</em><span class="sig-paren">)</span></dt>
@@ -123,7 +123,7 @@ v_t &amp;= v_{t-1} + \tau_{t-1} \alpha_t \gamma_t g_t \\
 
 </div>
 <div class="section" id="adamoptimizer">
-<h1>AdamOptimizer<a class="headerlink" href="#adamoptimizer" title="Permalink to this headline">¶</a></h1>
+<h2>AdamOptimizer<a class="headerlink" href="#adamoptimizer" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdamOptimizer</code><span class="sig-paren">(</span><em>beta1=0.9</em>, <em>beta2=0.999</em>, <em>epsilon=1e-08</em><span class="sig-paren">)</span></dt>
@@ -151,7 +151,7 @@ divided by zero.</li>
 
 </div>
 <div class="section" id="adamaxoptimizer">
-<h1>AdamaxOptimizer<a class="headerlink" href="#adamaxoptimizer" title="Permalink to this headline">¶</a></h1>
+<h2>AdamaxOptimizer<a class="headerlink" href="#adamaxoptimizer" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdamaxOptimizer</code><span class="sig-paren">(</span><em>beta1</em>, <em>beta2</em><span class="sig-paren">)</span></dt>
@@ -177,7 +177,7 @@ w_t &amp; = w_{t-1} - (\eta/(1-\beta_1^t))*m_t/u_t\end{split}\]</div>
 
 </div>
 <div class="section" id="adagradoptimizer">
-<h1>AdaGradOptimizer<a class="headerlink" href="#adagradoptimizer" title="Permalink to this headline">¶</a></h1>
+<h2>AdaGradOptimizer<a class="headerlink" href="#adagradoptimizer" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdaGradOptimizer</code></dt>
@@ -191,7 +191,7 @@ w &amp; = w - \eta diag(G)^{-\frac{1}{2}} \circ g\end{split}\]</div>
 
 </div>
 <div class="section" id="decayedadagradoptimizer">
-<h1>DecayedAdaGradOptimizer<a class="headerlink" href="#decayedadagradoptimizer" title="Permalink to this headline">¶</a></h1>
+<h2>DecayedAdaGradOptimizer<a class="headerlink" href="#decayedadagradoptimizer" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">DecayedAdaGradOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span></dt>
@@ -216,7 +216,7 @@ learning\_rate &amp;= 1/sqrt( ( E(g_t^2) + \epsilon )\end{split}\]</div>
 
 </div>
 <div class="section" id="adadeltaoptimizer">
-<h1>AdaDeltaOptimizer<a class="headerlink" href="#adadeltaoptimizer" title="Permalink to this headline">¶</a></h1>
+<h2>AdaDeltaOptimizer<a class="headerlink" href="#adadeltaoptimizer" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">AdaDeltaOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span></dt>
@@ -243,7 +243,7 @@ E(dx_t^2) &amp;= \rho * E(dx_{t-1}^2) + (1-\rho) * (-g*learning\_rate)^2\end{spl
 
 </div>
 <div class="section" id="rmspropoptimizer">
-<h1>RMSPropOptimizer<a class="headerlink" href="#rmspropoptimizer" title="Permalink to this headline">¶</a></h1>
+<h2>RMSPropOptimizer<a class="headerlink" href="#rmspropoptimizer" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">RMSPropOptimizer</code><span class="sig-paren">(</span><em>rho=0.95</em>, <em>epsilon=1e-06</em><span class="sig-paren">)</span></dt>
@@ -269,7 +269,7 @@ w &amp; = w - \frac{\eta} {\sqrt{v(w,t) + \epsilon}} \nabla Q_{i}(w)\end{split}\
 
 </div>
 <div class="section" id="settings">
-<h1>settings<a class="headerlink" href="#settings" title="Permalink to this headline">¶</a></h1>
+<h2>settings<a class="headerlink" href="#settings" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.optimizers.</code><code class="descname">settings</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -307,6 +307,7 @@ clipped.</li>
 </dd></dl>
 
 </div>
+</div>
 
 
           </div>
@@ -316,7 +317,8 @@ clipped.</li>
         <div class="sphinxsidebarwrapper">
   <h3><a href="../../../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">BaseSGDOptimizer</a></li>
+<li><a class="reference internal" href="#">Optimizers</a><ul>
+<li><a class="reference internal" href="#basesgdoptimizer">BaseSGDOptimizer</a></li>
 <li><a class="reference internal" href="#momentumoptimizer">MomentumOptimizer</a></li>
 <li><a class="reference internal" href="#adamoptimizer">AdamOptimizer</a></li>
 <li><a class="reference internal" href="#adamaxoptimizer">AdamaxOptimizer</a></li>
@@ -326,10 +328,12 @@ clipped.</li>
 <li><a class="reference internal" href="#rmspropoptimizer">RMSPropOptimizer</a></li>
 <li><a class="reference internal" href="#settings">settings</a></li>
 </ul>
+</li>
+</ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="optimizers_index.html"
-                        title="previous chapter">Optimizers</a></p>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Model Config Interface</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="data_sources.html"
                         title="next chapter">DataSources</a></p>
@@ -367,17 +371,15 @@ clipped.</li>
           <a href="data_sources.html" title="DataSources"
              >next</a> |</li>
         <li class="right" >
-          <a href="optimizers_index.html" title="Optimizers"
+          <a href="index.html" title="Model Config Interface"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="optimizers_index.html" >Optimizers</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" >Model Config Interface</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

@@ -30,7 +30,7 @@
     <link rel="search" title="Search" href="../search.html" />
     <link rel="top" title="PaddlePaddle  documentation" href="../index.html" />
     <link rel="up" title="Build And Install PaddlePaddle" href="index.html" />
-    <link rel="next" title="User Interface" href="../ui/index.html" />
+    <link rel="next" title="Installing from Sources" href="build_from_source.html" />
     <link rel="prev" title="Docker installation guide" href="docker_install.html" /> 
 <script>
 var _hmt = _hmt || [];
@@ -54,7 +54,7 @@ var _hmt = _hmt || [];
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../ui/index.html" title="User Interface"
+          <a href="build_from_source.html" title="Installing from Sources"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="docker_install.html" title="Docker installation guide"
@@ -70,21 +70,20 @@ var _hmt = _hmt || [];
           <div class="body" role="main">
             
   <div class="section" id="debian-package-installation-guide">
-<span id="debian-package-installation-guide"></span><h1>Debian Package installation guide<a class="headerlink" href="#debian-package-installation-guide" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="debian-package-installation">
-<span id="debian-package-installation"></span><h2>Debian Package installation<a class="headerlink" href="#debian-package-installation" title="Permalink to this headline">¶</a></h2>
-<p>Currently , PaddlePaddle only provides ubuntu14.04 debian packages.
-There are two versions package, including CPU and GPU. The download address is:</p>
-<p>https://github.com/baidu/Paddle/releases/tag/V0.8.0b0</p>
-<p>After downloading PaddlePaddle deb packages, you can run:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>dpkg -i paddle-0.8.0b-cpu.deb
+<h1>Debian Package installation guide<a class="headerlink" href="#debian-package-installation-guide" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle supports <code class="code docutils literal"><span class="pre">deb</span></code> pacakge. The installation of this <code class="code docutils literal"><span class="pre">deb</span></code> package is tested in ubuntu 14.04, but it should be support other debian based linux, too.</p>
+<p>There are four versions of debian package, <code class="code docutils literal"><span class="pre">cpu</span></code>, <code class="code docutils literal"><span class="pre">gpu</span></code>, <code class="code docutils literal"><span class="pre">cpu-noavx</span></code>, <code class="code docutils literal"><span class="pre">gpu-noavx</span></code>. And <code class="code docutils literal"><span class="pre">noavx</span></code> version is used to support CPU which does not contain <code class="code docutils literal"><span class="pre">AVX</span></code> instructions. The download url of <code class="code docutils literal"><span class="pre">deb</span></code> package is : <a class="reference external" href="https://github.com/baidu/Paddle/releases/">https://github.com/baidu/Paddle/releases/</a></p>
+<p>After downloading PaddlePaddle deb packages, you can use <code class="code docutils literal"><span class="pre">gdebi</span></code> install.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>gdebi paddle-*.deb
+</pre></div>
+</div>
+<p>If <code class="code docutils literal"><span class="pre">gdebi</span></code> is not installed, you can use <code class="code docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">gdebi</span></code> to install it.</p>
+<p>Or you can use following commands to install PaddlePaddle.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>dpkg -i paddle-*.deb
 apt-get install -f
 </pre></div>
 </div>
-<p>And if you use GPU version deb package, you need to install CUDA toolkit and cuDNN, and set related environment variables(such as LD_LIBRARY_PATH) first. It is normal when <code class="docutils literal"><span class="pre">dpkg</span> <span class="pre">-i</span></code> get errors. <code class="docutils literal"><span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">-f</span></code> will continue install paddle, and install dependences.</p>
-<p><strong>Note</strong></p>
-<p>PaddlePaddle package only supports x86 CPU with AVX instructions. If not, you have to download and build from source code.</p>
-</div>
+<p>And if you use GPU version deb package, you need to install CUDA toolkit and cuDNN, and set related environment variables(such as LD_LIBRARY_PATH) first. It is normal when <cite>dpkg -i</cite> get errors. <cite>apt-get install -f</cite> will continue install paddle, and install dependences.</p>
 </div>
 
 
@@ -93,20 +92,12 @@ apt-get install -f
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-  <h3><a href="../index.html">Table Of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">Debian Package installation guide</a><ul>
-<li><a class="reference internal" href="#debian-package-installation">Debian Package installation</a></li>
-</ul>
-</li>
-</ul>
-
   <h4>Previous topic</h4>
   <p class="topless"><a href="docker_install.html"
                         title="previous chapter">Docker installation guide</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="../ui/index.html"
-                        title="next chapter">User Interface</a></p>
+  <p class="topless"><a href="build_from_source.html"
+                        title="next chapter">Installing from Sources</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -138,7 +129,7 @@ apt-get install -f
           <a href="../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../ui/index.html" title="User Interface"
+          <a href="build_from_source.html" title="Installing from Sources"
              >next</a> |</li>
         <li class="right" >
           <a href="docker_install.html" title="Docker installation guide"
@@ -149,7 +140,7 @@ apt-get install -f
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

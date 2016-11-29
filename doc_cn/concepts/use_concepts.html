@@ -1,0 +1,394 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>PaddlePaddle 基本使用概念 &#8212; PaddlePaddle  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="PaddlePaddle  documentation" href="../index.html" /> 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="paddlepaddle">
+<h1><a class="toc-backref" href="#id8">PaddlePaddle 基本使用概念</a><a class="headerlink" href="#paddlepaddle" title="Permalink to this headline">¶</a></h1>
+<p>PaddlePaddle是一个神经网络学习框架。其单机进程为 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code>。 单机的所有设备使用，均在单机进程内调度完成。 而多机辅助进程 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code> 负责联合多个单机进程进行通信，进而充分利用集群的计算资源。 PaddlePaddle同时以 <code class="code docutils literal"><span class="pre">swig</span> <span class="pre">api</span></code> 的形式，提供训练结果模型预测的方法和自定义训练流程。</p>
+<p>下面我们会分别介绍主要进程 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code> 中的一些概念。这些概念会对如何使用PaddlePaddle有一定的帮助。 了解这些概念的前提是，读者已经了解 <a class="reference external" href="nn.html">基本的神经网络/机器学习原理和概念</a> 。同时，如果想要了解PaddlePaddle实现中的一些概念，请参考 <a class="reference external" href="program_concepts.html">PaddlePaddle 编程中的基本概念</a> 。</p>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#paddlepaddle" id="id8">PaddlePaddle 基本使用概念</a><ul>
+<li><a class="reference internal" href="#id3" id="id9">PaddlePaddle 的进程模型</a></li>
+<li><a class="reference internal" href="#dataprovider" id="id10">DataProvider</a></li>
+<li><a class="reference internal" href="#id4" id="id11">训练文件</a><ul>
+<li><a class="reference internal" href="#trainer-config-helpers" id="id12">trainer_config_helpers</a></li>
+<li><a class="reference internal" href="#data-sources" id="id13">data_sources</a></li>
+<li><a class="reference internal" href="#settings" id="id14">settings</a></li>
+<li><a class="reference internal" href="#id5" id="id15">网络配置</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#layerprojectionoperator" id="id16">Layer、Projection、Operator</a></li>
+<li><a class="reference internal" href="#gpucpu" id="id17">如何利用单机的所有GPU或所有CPU核心</a></li>
+<li><a class="reference internal" href="#id6" id="id18">如何利用多台机器的计算资源训练神经网络</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="id3">
+<h2><a class="toc-backref" href="#id9">PaddlePaddle 的进程模型</a><a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>PaddlePaddle进程内嵌了一个 <code class="code docutils literal"><span class="pre">python</span></code> 解释器。 这个 <code class="code docutils literal"><span class="pre">python</span></code> 解释器负责解析用户定义的神经网络配置，和解析用户数据，并将用户数据传入给 PaddlePaddle。</p>
+<img src="../_images/graphviz-a2a7362b3804656dc6f7e7856cb0039a319cc366.png" alt="digraph pp_process {
+        rankdir=LR;
+        config_file [label=&quot;用户神经网络配置&quot;];
+        subgraph cluster_pp {
+                style=filled;
+                color=lightgrey;
+                node [style=filled, color=white, shape=box];
+                label = &quot;PaddlePaddle C++&quot;;
+                py [label=&quot;Python解释器&quot;];
+        }
+        data_provider [label=&quot;用户数据解析&quot;];
+        config_file -&gt; py;
+        py -&gt; data_provider [dir=&quot;back&quot;];
+}" />
+<p>所以，PaddlePaddle单机训练进程，<code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code> , 对于用户的主要接口语言为 python。 主要需要用户配置的两个文件为 <code class="code docutils literal"><span class="pre">DataProvider</span></code> 和训练文件 <code class="code docutils literal"><span class="pre">TrainerConfig</span></code> 。</p>
+</div>
+<div class="section" id="dataprovider">
+<h2><a class="toc-backref" href="#id10">DataProvider</a><a class="headerlink" href="#dataprovider" title="Permalink to this headline">¶</a></h2>
+<p>DataProvider是 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code> 的数据提供器。 它负责将用户的原始数据转换成 PaddlePaddle 可以识别的数据类型。每当 PaddlePaddle 需要新的数据训练时，都会调用 DataProvider 返回数据。 当所有数据读取完一轮后，DataProvider 便返回空数据通知 PaddlePaddle。PaddlePaddle负责在下一轮训练开始前，将DataProvider重置。</p>
+<p>需要注意的是，DataProvider在PaddlePaddle中是被训练逻辑调用的关系， 而不是新的数据驱动训练。并且所有的 <code class="code docutils literal"><span class="pre">shuffle</span></code> , 和一些随机化的噪声添加，都应该在 DataProvider 阶段完成。</p>
+<p>为了方便用户使用自己的数据格式， PaddlePaddle 提供了 <a class="reference external" href="../ui/data_provider/pydataprovider2.html">PyDataProvider</a> 来处理数据。 并且在这个Provider中，PaddlePaddle的 C++ 部分接管了如何shuffle，处理 batch，GPU/CPU通信，双缓冲，异步读取等问题。 用户可以参考 <a class="reference external" href="../ui/data_provider/pydataprovider2.html">PyDataProvider</a> 的相关文档，继续深入了解 DataProvider 的使用。</p>
+</div>
+<div class="section" id="id4">
+<h2><a class="toc-backref" href="#id11">训练文件</a><a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<p>训练文件是PaddlePaddle中配置神经网络结构、学习优化算法、数据传入方式的地方。 训练文件是一个python文件，使用命令行参数 <code class="code docutils literal"><span class="pre">--config</span></code> 传给 paddle 的主程序。 例如:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train --config<span class="o">=</span>trainer_config.py
+</pre></div>
+</div>
+<p>一个典型简单的训练文件可能为</p>
+<div class="highlight-default"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">paddle.trainer_config_helpers</span> <span class="k">import</span> <span class="o">*</span>
+
+<span class="n">define_py_data_sources2</span><span class="p">(</span>
+    <span class="n">train_list</span><span class="o">=</span><span class="s1">&#39;train.list&#39;</span><span class="p">,</span>
+    <span class="n">test_list</span><span class="o">=</span><span class="s1">&#39;test.list&#39;</span><span class="p">,</span>
+    <span class="n">module</span><span class="o">=</span><span class="s1">&#39;provider&#39;</span><span class="p">,</span>
+    <span class="n">obj</span><span class="o">=</span><span class="s1">&#39;process&#39;</span><span class="p">)</span>
+<span class="n">settings</span><span class="p">(</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">learning_method</span><span class="o">=</span><span class="n">AdamOptimizer</span><span class="p">(),</span>
+    <span class="n">regularization</span><span class="o">=</span><span class="n">L2Regularization</span><span class="p">(</span><span class="mf">0.5</span><span class="p">))</span>
+
+<span class="n">img</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;pixel&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">)</span>
+
+<span class="n">hidden1</span> <span class="o">=</span> <span class="n">simple_img_conv_pool</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">img</span><span class="p">,</span> <span class="n">filter_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">num_filters</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">pool_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">num_channel</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">hidden2</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span>
+    <span class="nb">input</span><span class="o">=</span><span class="n">hidden1</span><span class="p">,</span>
+    <span class="n">size</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
+    <span class="n">layer_attr</span><span class="o">=</span><span class="n">ExtraAttr</span><span class="p">(</span><span class="n">drop_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">))</span>
+<span class="n">predict</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">hidden2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">SoftmaxActivation</span><span class="p">())</span>
+
+<span class="n">outputs</span><span class="p">(</span>
+    <span class="n">classification_cost</span><span class="p">(</span>
+        <span class="nb">input</span><span class="o">=</span><span class="n">predict</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">data_layer</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">)))</span>
+</pre></div>
+</td></tr></table></div>
+<p>下面我们详细的介绍一下训练文件中各个模块的概念。</p>
+<div class="section" id="trainer-config-helpers">
+<h3><a class="toc-backref" href="#id12">trainer_config_helpers</a><a class="headerlink" href="#trainer-config-helpers" title="Permalink to this headline">¶</a></h3>
+<p>PaddlePaddle的配置文件与PaddlePaddle C++端通信的最基础协议是 <code class="code docutils literal"><span class="pre">protobuf</span></code> 。而为了避免用户直接写比较难写的 protobuf string，我们书写了一个helpers来生成这个protobuf包。所以在文件的开始，import这些helpers函数。</p>
+<p>需要注意的是，这个 <code class="code docutils literal"><span class="pre">paddle.trainer_config_helpers</span></code> 包是标准的python包，这意味着用户可以选择自己喜欢的 <code class="code docutils literal"><span class="pre">ide</span></code> 或者编辑器来编写Paddle的配置文件，这个python包注释文档比较完善，并且考虑了IDE的代码提示与类型注释。</p>
+</div>
+<div class="section" id="data-sources">
+<h3><a class="toc-backref" href="#id13">data_sources</a><a class="headerlink" href="#data-sources" title="Permalink to this headline">¶</a></h3>
+<p>data_sources是配置神经网络的数据源。这里使用的函数是 <code class="code docutils literal"><span class="pre">define_py_data_sources2</span></code> ，这个函数是定义了使用 <a class="reference external" href="../ui/data_provider/pydataprovider2.html">PyDataProvider</a> 作为数据源。 而后缀 <code class="code docutils literal"><span class="pre">2</span></code> 是Paddle历史遗留问题，因为Paddle之前使用的 PyDataProvider 性能较差，所以完全重构了一个新的 <a class="reference external" href="../ui/data_provider/pydataprovider2.html">PyDataProvider</a> 。</p>
+<p>data_sources里面的 train_list 和 test_list 指定的是训练文件列表和测试文件列表。 如果传入一个字符串的话，是指一个训练列表文件。这个训练列表文件中包含的是每一个训练或者测试文件的路径。如果传入一个list的话，则会默认生成一个 list 文件，再传入给 train.list 或者 test.list 。</p>
+<p>而 <code class="code docutils literal"><span class="pre">module</span></code> 和 <code class="code docutils literal"><span class="pre">obj</span></code> 指定了 DataProvider 的模块名和函数名。</p>
+<p>更具体的使用，请参考 <a class="reference external" href="../ui/data_provider/pydataprovider2.html">PyDataProvider</a> 。</p>
+</div>
+<div class="section" id="settings">
+<h3><a class="toc-backref" href="#id14">settings</a><a class="headerlink" href="#settings" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference external" href="../../doc/ui/api/trainer_config_helpers/optimizers.html#settings">settings</a> 是神经网络训练算法相关的设置项。包括学习率，batch_size，优化算法，正则方法等等。具体的使用方法请参考 <a class="reference external" href="../../doc/ui/api/trainer_config_helpers/optimizers.html#settings">settings</a> 文档。</p>
+</div>
+<div class="section" id="id5">
+<h3><a class="toc-backref" href="#id15">网络配置</a><a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p>上述网络配置中余下的部分均是神经网络配置。第一行是定义一个名字叫 &#8220;pixel&#8221; 的 <code class="code docutils literal"><span class="pre">data_layer</span></code> 。每一个layer返回的都是一个 <code class="code docutils literal"><span class="pre">LayerOutput</span></code> 对象。 这里第一层的输出对象是 <code class="code docutils literal"><span class="pre">img</span></code> 。然后这个对象传输给了另一个 layer 函数，
+<code class="code docutils literal"><span class="pre">simple_img_conv_pool</span></code> 。<code class="code docutils literal"><span class="pre">simple_img_conv_pool</span></code> 是一个组合层，
+包括了图像的卷积 (convolution) 和池化(pooling)，
+并继续接了一个全连接层( <code class="code docutils literal"><span class="pre">fc_layer</span></code> )，然后再接了一个Softmax的全连接层。</p>
+<p>最终，网络配置输出了 <code class="code docutils literal"><span class="pre">classification_cost</span></code> 。标记网络输出的函数为
+<code class="code docutils literal"><span class="pre">outputs</span></code> 。网络的输出是神经网络的优化目标，神经网络训练的时候，实际上就是
+要最小化这个输出。</p>
+<p>在神经网络进行预测的时候，实际上网络的输出也是通过 <code class="code docutils literal"><span class="pre">outputs</span></code> 标记。</p>
+</div>
+</div>
+<div class="section" id="layerprojectionoperator">
+<h2><a class="toc-backref" href="#id16">Layer、Projection、Operator</a><a class="headerlink" href="#layerprojectionoperator" title="Permalink to this headline">¶</a></h2>
+<p>PaddlePaddle的网络基本上是基于Layer来配置的。所谓的Layer即是神经网络的某一层，
+而神经网络的某一层，一般是封装了许多复杂操作的操作集合。比如最简单的
+<code class="code docutils literal"><span class="pre">fc_layer</span></code> ，也包括矩阵乘法，多输入的求和，和activation。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">fc_layer</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>而对于更灵活配置需求，可能这样基于Layer的配置是不灵活的。于是 PaddlePaddle 提供
+了基于 Projection 或者 Operator 的配置。使用Projection和Operator需要与
+<code class="code docutils literal"><span class="pre">mixed_layer</span></code> 配合使用。 <code class="code docutils literal"><span class="pre">mixed_layer</span></code> 是将layer中的元素累加求和，
+并且做一个 <code class="code docutils literal"><span class="pre">activation</span></code> ， 而这个layer具体如何计算，是交由内部的Projection
+和 Operator 定义。Projection是指含有可学习参数的操作，而Operator不含有可学习的
+参数，输入全是其他Layer的输出。</p>
+<p>例如，和 <code class="code docutils literal"><span class="pre">fc_layer</span></code> 同样功能的 <code class="code docutils literal"><span class="pre">mixed_layer</span></code> 。</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">mixed_layer</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">+=</span> <span class="n">full_matrix_projection</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>PaddlePaddle可以使用的mixed layer 配置出非常复杂的网络，甚至可以直接配置一个完整的LSTM。
+用户可以参考 <a class="reference external" href="../../doc/ui/api/trainer_config_helpers/layers.html#mixed-layer">mixed_layer</a> 的相关文档进行配置。</p>
+</div>
+<div class="section" id="gpucpu">
+<h2><a class="toc-backref" href="#id17">如何利用单机的所有GPU或所有CPU核心</a><a class="headerlink" href="#gpucpu" title="Permalink to this headline">¶</a></h2>
+<p>PaddlePaddle的单机进程 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code> 可以充分利用一台计算机上所有的GPU资
+源或者CPU。</p>
+<p>如果要使用机器上多块GPU，使用如下命令即可:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train --use_gpu<span class="o">=</span><span class="nb">true</span> --trainer_count<span class="o">=</span><span class="m">4</span>  <span class="c1"># use 4 gpu card, 0, 1, 2, 3</span>
+</pre></div>
+</div>
+<p>如果要使用机器上多块CPU, 使用如下命令即可:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train --trainer_config<span class="o">=</span><span class="m">4</span>  <span class="c1"># use 4 cpu cores.</span>
+</pre></div>
+</div>
+<p>对于其他设置GPU的选择情况，例如选择第0、2号GPU显卡，则可以使用 <code class="code docutils literal"><span class="pre">CUDA_VISIBLE_DEVICES</span></code> 环境变量来选择部分的显卡。 具体可以参考连接`masking-gpus`_ 。 可以使用的命令为</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>env <span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span>0,2 paddle train --use_gpu<span class="o">=</span><span class="nb">true</span> --trainer_config<span class="o">=</span>2
+</pre></div>
+</div>
+</div>
+<div class="section" id="id6">
+<h2><a class="toc-backref" href="#id18">如何利用多台机器的计算资源训练神经网络</a><a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h2>
+<p>PaddlePaddle多机使用的经典方法是通过 <code class="code docutils literal"><span class="pre">Parameter</span> <span class="pre">Server</span></code> 来对多机的 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code> 进行同步。 而多机训练神经网络，首先要讲数据切分到不同的机器上。 切分数据文件的方式在PaddlePaddle的开源实现中并没有提供工具包。 但是切分数据并不是一件非常复杂的事情，也不是神经网络实现的重点。</p>
+<p>多机训练过程中，经典的拓扑结构如下:</p>
+<img src="../_images/graphviz-e02b084d1b1b525450b262148a6b8c5f2a2c3c68.png" alt="graph pp_topology {
+	rankdir=BT;
+	subgraph cluster_node0 {
+		style=filled;
+		color=lightgrey;
+		node [style=filled, color=white, shape=box];
+		label = &quot;机器0&quot;
+
+		pserver0 [label=&quot;Parameter \n Server 0&quot;]
+		trainer0 [label=&quot;Trainer 0&quot;]
+	}
+	subgraph cluster_node1 {
+		style=filled;
+		color=lightgrey;
+		node [style=filled, color=white, shape=box];
+		label = &quot;机器1&quot;
+
+		pserver1 [label=&quot;Parameter \n Server 1&quot;]
+		trainer1 [label=&quot;Trainer 1&quot;]
+	}
+
+	subgraph cluster_node2 {
+		style=filled;
+		color=lightgrey;
+		node [style=filled, color=white, shape=box];
+		label = &quot;机器2&quot;
+
+		pserver2 [label=&quot;Parameter \n Server 2&quot;]
+		trainer2 [label=&quot;Trainer 2&quot;]
+	}
+
+	subgraph cluster_node3 {
+		style=filled;
+		color=lightgrey;
+		node [style=filled, color=white, shape=box];
+		label = &quot;机器3&quot;
+
+		pserver3 [label=&quot;Parameter \n Server 3&quot;]
+		trainer3 [label=&quot;Trainer 3&quot;]
+	}
+
+	data [label=&quot;数据&quot;, shape=hexagon]
+
+	trainer0 -- pserver0
+	trainer0 -- pserver1
+	trainer0 -- pserver2
+	trainer0 -- pserver3
+
+	trainer1 -- pserver0
+	trainer1 -- pserver1
+	trainer1 -- pserver2
+	trainer1 -- pserver3
+
+	trainer2 -- pserver0
+	trainer2 -- pserver1
+	trainer2 -- pserver2
+	trainer2 -- pserver3
+
+	trainer3 -- pserver0
+	trainer3 -- pserver1
+	trainer3 -- pserver2
+	trainer3 -- pserver3
+
+	data -- trainer0
+	data -- trainer1
+	data -- trainer2
+	data -- trainer3
+}" />
+<p>图中每个灰色方块是一台机器，在每个机器中，先去启动一个 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code> 进程，并确定整体的端口号。可能的参数是:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle pserver --port<span class="o">=</span><span class="m">5000</span> --num_gradient_servers<span class="o">=</span><span class="m">4</span> --nics<span class="o">=</span><span class="s1">&#39;eth0&#39;</span>
+</pre></div>
+</div>
+<p>这里说明系统的 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code> 的起始端口是 <code class="code docutils literal"><span class="pre">5000</span></code> ，并且有四个训练进程(<code class="code docutils literal"><span class="pre">gradient_servers</span></code>，Paddle同时将 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">train</span></code> 进程称作 <code class="code docutils literal"><span class="pre">GradientServer</span></code> 。因为其为负责提供Gradient的进程)。 而对于训练进程的话，则需要在 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code> 启动之后，再在各个节点上运行如下命令:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>paddle train --port<span class="o">=</span><span class="m">5000</span> --pservers<span class="o">=</span>192.168.100.101,192.168.100.102,192.168.100.103,192.168.100.104 --config<span class="o">=</span>...
+</pre></div>
+</div>
+<p>对于简单的多机协同使用上述方式即可。同时，pserver/train 通常在高级情况下，还有两个参数需要设置，他们是</p>
+<ul class="simple">
+<li>&#8211;ports_num: 一个 pserver进程共绑定多少个端口用来做稠密更新。默认是1</li>
+<li>&#8211;ports_num_for_sparse: 一个pserver进程共绑定多少端口用来做稀疏更新，默认是0</li>
+</ul>
+<p>使用手工指定端口数量，是因为Paddle的网络通信中，使用了 <code class="code docutils literal"><span class="pre">int32</span></code> 作为消息长度，比较容易在大模型下溢出。所以，在 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code> 进程中可以启动多个子线程去接受 trainer 的数据，这样单个子线程的长度就不会溢出了。但是这个值不可以调的过大，因为增加这个值，还是对性能，尤其是内存占用有一定的开销的，另外稀疏更新的端口如果太大的话，很容易某一个参数服务器没有分配到任何参数。</p>
+<p>详细的说明可以参考，使用 <a class="reference external" href="../cluster/index.html">集群训练Paddle</a> 。</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">PaddlePaddle 基本使用概念</a><ul>
+<li><a class="reference internal" href="#id3">PaddlePaddle 的进程模型</a></li>
+<li><a class="reference internal" href="#dataprovider">DataProvider</a></li>
+<li><a class="reference internal" href="#id4">训练文件</a><ul>
+<li><a class="reference internal" href="#trainer-config-helpers">trainer_config_helpers</a></li>
+<li><a class="reference internal" href="#data-sources">data_sources</a></li>
+<li><a class="reference internal" href="#settings">settings</a></li>
+<li><a class="reference internal" href="#id5">网络配置</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#layerprojectionoperator">Layer、Projection、Operator</a></li>
+<li><a class="reference internal" href="#gpucpu">如何利用单机的所有GPU或所有CPU核心</a></li>
+<li><a class="reference internal" href="#id6">如何利用多台机器的计算资源训练神经网络</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/concepts/use_concepts.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../index.html">PaddlePaddle  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, PaddlePaddle developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
+    </div>
+  </body>
+</html>

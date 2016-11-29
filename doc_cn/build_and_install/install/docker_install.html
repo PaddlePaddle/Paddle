@@ -69,19 +69,64 @@ var _hmt = _hmt || [];
 </ul>
 <div class="section" id="id1">
 <h2>PaddlePaddle提供的Docker镜像版本<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>我们提供了6个Docker image:</p>
+<p>我们提供了12个 <a class="reference external" href="https://hub.docker.com/r/paddledev/paddle/tags/">Docker image</a> ，他们的image name都是 <code class="code docutils literal"><span class="pre">paddle-dev/paddle</span></code> ，tag分别为</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="21%" />
+<col width="22%" />
+<col width="29%" />
+<col width="28%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">&nbsp;</th>
+<th class="head">normal</th>
+<th class="head">devel</th>
+<th class="head">demo</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>CPU</td>
+<td>cpu-latest</td>
+<td>cpu-devel-latest</td>
+<td>cpu-demo-latest</td>
+</tr>
+<tr class="row-odd"><td>GPU</td>
+<td>gpu-latest</td>
+<td>gpu-devel-latest</td>
+<td>gpu-demo-latest</td>
+</tr>
+<tr class="row-even"><td>CPU WITHOUT AVX</td>
+<td>cpu-noavx-latest</td>
+<td>cpu-noavx-devel-latest</td>
+<td>cpu-noavx-demo-latest</td>
+</tr>
+<tr class="row-odd"><td>GPU WITHOUT AVX</td>
+<td>gpu-noavx-latest</td>
+<td>gpu-noavx-devel-latest</td>
+<td>gpu-noavx-demo-latest</td>
+</tr>
+</tbody>
+</table>
+<p>其中，横向包括三个版本，normal，devel和demo。</p>
 <ul class="simple">
-<li>paddledev/paddle:cpu-latest: PaddlePaddle的CPU二进制</li>
-<li>paddledev/paddle:gpu-latest： PaddlePaddle的GPU二进制</li>
-<li>paddledev/paddle:cpu-devel-latest: PaddlePaddle的CPU二进制,同时包含CPU开发环境和源码</li>
-<li>paddledev/paddle:gpu-devel-latest: PaddlePaddle的GPU二进制,同时包含GPU开发环境和源码</li>
-<li>paddledev/paddle:cpu-demo-latest: PaddlePaddle的CPU二进制,同时包含CPU开发环境、源码和运行demo的必要依赖</li>
-<li>paddledev/paddle:gpu-demo-latest: PaddlePaddle的GPU二进制,同时包含GPU开发环境、源码和运行demo的必要依赖</li>
+<li>Normal: 正常的Docker image，只包括paddle的二进制</li>
+<li>Devel: 包括Paddle的二进制、编译环境和源代码</li>
+<li>Demo: 包括Paddle运行demo所需要的依赖</li>
 </ul>
-<p>同时，不同的稳定版本，会将latest替换成稳定版本的版本号。</p>
+<p>纵向包括四个版本，他们是。</p>
+<ul class="simple">
+<li>CPU: CPU版本。需要支持AVX指令集的CPU</li>
+<li>GPU: GPU版本。需要支持AVX指令集的CPU</li>
+<li>CPU WITHOUT AVX: CPU版本，不支持AVX指令集的CPU也可以运行</li>
+<li>GPU WITHOUT AVX: GPU版本，不需要AVX指令集的CPU也可以运行。</li>
+</ul>
+<p>用户可以选择对应版本的docker image。使用如下脚本可以确定本机的CPU知否支持 <code class="code docutils literal"><span class="pre">AVX</span></code> 指令集:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="k">if</span> cat /proc/cpuinfo <span class="p">|</span> grep -q avx <span class="p">;</span> <span class="k">then</span> <span class="nb">echo</span> <span class="s2">&quot;Support AVX&quot;</span><span class="p">;</span> <span class="k">else</span> <span class="nb">echo</span> <span class="s2">&quot;Not support AVX&quot;</span><span class="p">;</span> <span class="k">fi</span>
+</pre></div>
+</div>
+<p>如果输出 <code class="code docutils literal"><span class="pre">Support</span> <span class="pre">AVX</span></code>，则可以选择上表中的AVX版本PaddlePaddle。否则需要选择非AVX的PaddlePaddle。选择普通CPU版本的devel版本的image，则可以使用 <code class="code docutils literal"><span class="pre">paddle-dev/paddle:cpu-devel-latest</span></code> 来引用这个image。</p>
 <p>PaddlePaddle提供的镜像并不包含任何命令运行，想要运行PaddlePaddle，您需要进入镜像运行PaddlePaddle
-程序或者自定义一个含有启动脚本的image。具体请参考注意事项中的
-<cite>使用ssh访问PaddlePaddle镜像</cite></p>
+程序或者自定义一个含有启动脚本的image。具体请参考注意事项中的 <code class="code docutils literal"><span class="pre">使用ssh访问PaddlePaddle镜像</span></code></p>
 </div>
 <div class="section" id="docker">
 <h2>下载和运行Docker镜像<a class="headerlink" href="#docker" title="Permalink to this headline">¶</a></h2>
@@ -93,14 +138,14 @@ mac osx或者是windows机器，请参考
 <a class="reference external" href="https://docs.docker.com/engine/installation/windows/">windows 的安装文档</a> 。</p>
 <p>您可以使用 <code class="code docutils literal"><span class="pre">docker</span> <span class="pre">pull</span></code> 命令预先下载镜像，也可以直接执行
 <code class="code docutils literal"><span class="pre">docker</span> <span class="pre">run</span></code> 命令运行镜像。执行方法如下:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>$ docker run -it paddledev/paddlepaddle:latest-cpu
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ docker run -it paddledev/paddlepaddle:cpu-latest
 </pre></div>
 </div>
 <p>即可启动和进入PaddlePaddle的container。如果运行GPU版本的PaddlePaddle，则需要先将
 cuda相关的Driver和设备映射进container中，脚本类似于</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>$ <span class="nb">export</span> <span class="nv">CUDA_SO</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libcuda* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2"> </span><span class="k">$(</span><span class="se">\l</span>s /usr/lib64/libnvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;-v {}:{}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
 $ <span class="nb">export</span> <span class="nv">DEVICES</span><span class="o">=</span><span class="k">$(</span><span class="se">\l</span>s /dev/nvidia* <span class="p">|</span> xargs -I<span class="o">{}</span> <span class="nb">echo</span> <span class="s1">&#39;--device {}:{}&#39;</span><span class="k">)</span>
-$ docker run -it paddledev/paddlepaddle:latest-gpu
+$ docker run <span class="si">${</span><span class="nv">CUDA_SO</span><span class="si">}</span> <span class="si">${</span><span class="nv">DEVICES</span><span class="si">}</span> -it paddledev/paddlepaddle:latest-gpu
 </pre></div>
 </div>
 <p>进入Docker container后，运行 <code class="code docutils literal"><span class="pre">paddle</span> <span class="pre">version</span></code> 即可打印出PaddlePaddle的版本和构建
@@ -226,7 +271,7 @@ root，密码也是root。命令为:</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

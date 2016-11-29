@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>NLP &#8212; PaddlePaddle  documentation</title>
+    <title>Networks &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -29,9 +29,9 @@
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
-    <link rel="up" title="Networks" href="networks_index.html" />
-    <link rel="next" title="Evaluators" href="evaluators_index.html" />
-    <link rel="prev" title="Networks" href="networks_index.html" /> 
+    <link rel="up" title="Model Config Interface" href="index.html" />
+    <link rel="next" title="Evaluators" href="evaluators.html" />
+    <link rel="prev" title="Poolings" href="poolings.html" /> 
 <script>
 var _hmt = _hmt || [];
 (function() {
@@ -54,15 +54,13 @@ var _hmt = _hmt || [];
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="evaluators_index.html" title="Evaluators"
+          <a href="evaluators.html" title="Evaluators"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="networks_index.html" title="Networks"
+          <a href="poolings.html" title="Poolings"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="networks_index.html" accesskey="U">Networks</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Model Config Interface</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -71,10 +69,13 @@ var _hmt = _hmt || [];
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="nlp">
-<h1>NLP<a class="headerlink" href="#nlp" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="networks">
+<h1>Networks<a class="headerlink" href="#networks" title="Permalink to this headline">¶</a></h1>
+<p>The networks module contains pieces of neural network that combine multiple layers.</p>
+<div class="section" id="nlp">
+<h2>NLP<a class="headerlink" href="#nlp" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="sequence-conv-pool">
-<h2>sequence_conv_pool<a class="headerlink" href="#sequence-conv-pool" title="Permalink to this headline">¶</a></h2>
+<h3>sequence_conv_pool<a class="headerlink" href="#sequence-conv-pool" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">sequence_conv_pool</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -122,7 +123,7 @@ False if no bias.</li>
 
 </div>
 <div class="section" id="text-conv-pool">
-<h2>text_conv_pool<a class="headerlink" href="#text-conv-pool" title="Permalink to this headline">¶</a></h2>
+<h3>text_conv_pool<a class="headerlink" href="#text-conv-pool" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">text_conv_pool</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -171,9 +172,9 @@ False if no bias.</li>
 </div>
 </div>
 <div class="section" id="images">
-<h1>Images<a class="headerlink" href="#images" title="Permalink to this headline">¶</a></h1>
+<h2>Images<a class="headerlink" href="#images" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="img-conv-bn-pool">
-<h2>img_conv_bn_pool<a class="headerlink" href="#img-conv-bn-pool" title="Permalink to this headline">¶</a></h2>
+<h3>img_conv_bn_pool<a class="headerlink" href="#img-conv-bn-pool" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">img_conv_bn_pool</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -202,7 +203,6 @@ False if no bias.</li>
 <li><strong>bn_bias_attr</strong> &#8211; see batch_norm_layer&#8217;s document.</li>
 <li><strong>bn_layer_attr</strong> &#8211; ParameterAttribute.</li>
 <li><strong>pool_stride</strong> (<em>int</em>) &#8211; see img_pool_layer&#8217;s document.</li>
-<li><strong>pool_start</strong> (<em>int</em>) &#8211; see img_pool_layer&#8217;s document.</li>
 <li><strong>pool_padding</strong> (<em>int</em>) &#8211; see img_pool_layer&#8217;s document.</li>
 <li><strong>pool_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_pool_layer&#8217;s document.</li>
 </ul>
@@ -220,7 +220,7 @@ False if no bias.</li>
 
 </div>
 <div class="section" id="img-conv-group">
-<h2>img_conv_group<a class="headerlink" href="#img-conv-group" title="Permalink to this headline">¶</a></h2>
+<h3>img_conv_group<a class="headerlink" href="#img-conv-group" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">img_conv_group</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -254,7 +254,7 @@ False if no bias.</li>
 
 </div>
 <div class="section" id="simple-img-conv-pool">
-<h2>simple_img_conv_pool<a class="headerlink" href="#simple-img-conv-pool" title="Permalink to this headline">¶</a></h2>
+<h3>simple_img_conv_pool<a class="headerlink" href="#simple-img-conv-pool" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">simple_img_conv_pool</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -280,10 +280,9 @@ False if no bias.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; see img_conv_layer for details</li>
 <li><strong>shared_bias</strong> (<em>bool</em>) &#8211; see img_conv_layer for details</li>
 <li><strong>conv_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_conv_layer for details</li>
-<li><strong>pool_stride</strong> (<em>int</em>) &#8211; see img_conv_layer for details</li>
-<li><strong>pool_start</strong> (<em>int</em>) &#8211; see img_conv_layer for details</li>
-<li><strong>pool_padding</strong> (<em>int</em>) &#8211; see img_conv_layer for details</li>
-<li><strong>pool_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_conv_layer for details</li>
+<li><strong>pool_stride</strong> (<em>int</em>) &#8211; see img_pool_layer for details</li>
+<li><strong>pool_padding</strong> (<em>int</em>) &#8211; see img_pool_layer for details</li>
+<li><strong>pool_layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; see img_pool_layer for details</li>
 </ul>
 </td>
 </tr>
@@ -299,7 +298,7 @@ False if no bias.</li>
 
 </div>
 <div class="section" id="vgg-16-network">
-<h2>vgg_16_network<a class="headerlink" href="#vgg-16-network" title="Permalink to this headline">¶</a></h2>
+<h3>vgg_16_network<a class="headerlink" href="#vgg-16-network" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">vgg_16_network</code><span class="sig-paren">(</span><em>input_image</em>, <em>num_channels</em>, <em>num_classes=1000</em><span class="sig-paren">)</span></dt>
@@ -325,11 +324,11 @@ False if no bias.</li>
 </div>
 </div>
 <div class="section" id="recurrent">
-<h1>Recurrent<a class="headerlink" href="#recurrent" title="Permalink to this headline">¶</a></h1>
+<h2>Recurrent<a class="headerlink" href="#recurrent" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="lstm">
-<h2>LSTM<a class="headerlink" href="#lstm" title="Permalink to this headline">¶</a></h2>
+<h3>LSTM<a class="headerlink" href="#lstm" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="lstmemory-unit">
-<h3>lstmemory_unit<a class="headerlink" href="#lstmemory-unit" title="Permalink to this headline">¶</a></h3>
+<h4>lstmemory_unit<a class="headerlink" href="#lstmemory-unit" title="Permalink to this headline">¶</a></h4>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">lstmemory_unit</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -385,7 +384,7 @@ False means no bias, None means default bias.</li>
 
 </div>
 <div class="section" id="lstmemory-group">
-<h3>lstmemory_group<a class="headerlink" href="#lstmemory-group" title="Permalink to this headline">¶</a></h3>
+<h4>lstmemory_group<a class="headerlink" href="#lstmemory-group" title="Permalink to this headline">¶</a></h4>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">lstmemory_group</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -446,7 +445,7 @@ False means no bias, None means default bias.</li>
 
 </div>
 <div class="section" id="simple-lstm">
-<h3>simple_lstm<a class="headerlink" href="#simple-lstm" title="Permalink to this headline">¶</a></h3>
+<h4>simple_lstm<a class="headerlink" href="#simple-lstm" title="Permalink to this headline">¶</a></h4>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">simple_lstm</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -490,7 +489,7 @@ means default bias.</li>
 
 </div>
 <div class="section" id="bidirectional-lstm">
-<h3>bidirectional_lstm<a class="headerlink" href="#bidirectional-lstm" title="Permalink to this headline">¶</a></h3>
+<h4>bidirectional_lstm<a class="headerlink" href="#bidirectional-lstm" title="Permalink to this headline">¶</a></h4>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">bidirectional_lstm</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -504,7 +503,7 @@ and Translate</strong> for more details about the bidirectional lstm.
 The link goes as follows:
 .. _Link: <a class="reference external" href="https://arxiv.org/pdf/1409.0473v3.pdf">https://arxiv.org/pdf/1409.0473v3.pdf</a></p>
 <p>The example usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">lstm_step</span> <span class="o">=</span> <span class="n">bidirectional_lstm</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">input1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">bi_lstm</span> <span class="o">=</span> <span class="n">bidirectional_lstm</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">input1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -523,7 +522,7 @@ concatenated and returned.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">lstm layer name.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">LayerOutput object accroding to the return_seq.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">LayerOutput</p>
@@ -536,9 +535,9 @@ concatenated and returned.</li>
 </div>
 </div>
 <div class="section" id="gru">
-<h2>GRU<a class="headerlink" href="#gru" title="Permalink to this headline">¶</a></h2>
+<h3>GRU<a class="headerlink" href="#gru" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="gru-unit">
-<h3>gru_unit<a class="headerlink" href="#gru-unit" title="Permalink to this headline">¶</a></h3>
+<h4>gru_unit<a class="headerlink" href="#gru-unit" title="Permalink to this headline">¶</a></h4>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">gru_unit</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -574,7 +573,7 @@ mechanism.</p>
 
 </div>
 <div class="section" id="gru-group">
-<h3>gru_group<a class="headerlink" href="#gru-group" title="Permalink to this headline">¶</a></h3>
+<h4>gru_group<a class="headerlink" href="#gru-group" title="Permalink to this headline">¶</a></h4>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">gru_group</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -620,21 +619,37 @@ to use the grumemory, which is relatively faster.</p>
 
 </div>
 <div class="section" id="simple-gru">
-<h3>simple_gru<a class="headerlink" href="#simple-gru" title="Permalink to this headline">¶</a></h3>
+<h4>simple_gru<a class="headerlink" href="#simple-gru" title="Permalink to this headline">¶</a></h4>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">simple_gru</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
-<dd><p>simple_gru is also a recurrent layer group version Gated Recurrent Unit as
-gru_group. The difference only lies in implemention details.
-The computational speed is that, grumemory is relatively better than
+<dd><p>You maybe see gru_step_layer, grumemory in layers.py, gru_unit, gru_group,
+simple_gru in network.py. The reason why there are so many interfaces is
+that we have two ways to implement recurrent neural network. One way is to
+use one complete layer to implement rnn (including simple rnn, gru and lstm)
+with multiple time steps, such as recurrent_layer, lstmemory, grumemory. But,
+the multiplication operation <span class="math">\(W x_t\)</span> is not computed in these layers.
+See details in their interfaces in layers.py.
+The other implementation is to use an recurrent group which can ensemble a
+series of layers to compute rnn step by step. This way is flexible for
+attenion mechanism or other complex connections.</p>
+<ul class="simple">
+<li>gru_step_layer: only compute rnn by one step. It needs an memory as input
+and can be used in recurrent group.</li>
+<li>gru_unit: a wrapper of gru_step_layer with memory.</li>
+<li>gru_group: a GRU cell implemented by a combination of multiple layers in
+recurrent group.
+But <span class="math">\(W x_t\)</span> is not done in group.</li>
+<li>gru_memory: a GRU cell implemented by one layer, which does same calculation
+with gru_group and is faster than gru_group.</li>
+<li>simple_gru: a complete GRU implementation inlcuding <span class="math">\(W x_t\)</span> and
+gru_group. <span class="math">\(W\)</span> contains <span class="math">\(W_r\)</span>, <span class="math">\(W_z\)</span> and <span class="math">\(W\)</span>, see
+formula in grumemory.</li>
+</ul>
+<p>The computational speed is that, grumemory is relatively better than
 gru_group, and gru_group is relatively better than simple_gru.</p>
-<p>simple_gru does exactly the same calculation as the grumemory layer does.
-Please see grumemory in layers.py for more detail about the maths.</p>
 <p>The example usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">gru</span> <span class="o">=</span> <span class="n">gur_group</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">],</span>
-                <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
-                <span class="n">act</span><span class="o">=</span><span class="n">TanhActivation</span><span class="p">(),</span>
-                <span class="n">gate_act</span><span class="o">=</span><span class="n">SigmoidActivation</span><span class="p">())</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">gru</span> <span class="o">=</span> <span class="n">simple_gru</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="p">[</span><span class="n">layer1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -666,7 +681,7 @@ Please see grumemory in layers.py for more detail about the maths.</p>
 </div>
 </div>
 <div class="section" id="simple-attention">
-<h2>simple_attention<a class="headerlink" href="#simple-attention" title="Permalink to this headline">¶</a></h2>
+<h3>simple_attention<a class="headerlink" href="#simple-attention" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">simple_attention</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -720,9 +735,9 @@ compute attention weight.</li>
 </div>
 </div>
 <div class="section" id="miscs">
-<h1>Miscs<a class="headerlink" href="#miscs" title="Permalink to this headline">¶</a></h1>
+<h2>Miscs<a class="headerlink" href="#miscs" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="dropout-layer">
-<h2>dropout_layer<a class="headerlink" href="#dropout-layer" title="Permalink to this headline">¶</a></h2>
+<h3>dropout_layer<a class="headerlink" href="#dropout-layer" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">dropout_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -747,18 +762,17 @@ compute attention weight.</li>
 
 </div>
 <div class="section" id="outputs">
-<h2>outputs<a class="headerlink" href="#outputs" title="Permalink to this headline">¶</a></h2>
+<h3>outputs<a class="headerlink" href="#outputs" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.networks.</code><code class="descname">outputs</code><span class="sig-paren">(</span><em>layers</em>, <em>*args</em><span class="sig-paren">)</span></dt>
-<dd><p>Declare the end of network. Currently it will only calculate the
-input/output order of network. It will calculate the predict network or
-train network&#8217;s output automatically.</p>
+<dd><p>Declare the outputs of network. If user have not defined the inputs of
+network, this method will calculate the input order by dfs travel.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>layers</strong> (<em>list|tuple|LayerOutput</em>) &#8211; </td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>layers</strong> (<em>list|tuple|LayerOutput</em>) &#8211; Output layers.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
 </tr>
@@ -766,6 +780,7 @@ train network&#8217;s output automatically.</p>
 </table>
 </dd></dl>
 
+</div>
 </div>
 </div>
 
@@ -777,7 +792,8 @@ train network&#8217;s output automatically.</p>
         <div class="sphinxsidebarwrapper">
   <h3><a href="../../../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">NLP</a><ul>
+<li><a class="reference internal" href="#">Networks</a><ul>
+<li><a class="reference internal" href="#nlp">NLP</a><ul>
 <li><a class="reference internal" href="#sequence-conv-pool">sequence_conv_pool</a></li>
 <li><a class="reference internal" href="#text-conv-pool">text_conv_pool</a></li>
 </ul>
@@ -812,12 +828,14 @@ train network&#8217;s output automatically.</p>
 </ul>
 </li>
 </ul>
+</li>
+</ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="networks_index.html"
-                        title="previous chapter">Networks</a></p>
+  <p class="topless"><a href="poolings.html"
+                        title="previous chapter">Poolings</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="evaluators_index.html"
+  <p class="topless"><a href="evaluators.html"
                         title="next chapter">Evaluators</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
@@ -850,20 +868,18 @@ train network&#8217;s output automatically.</p>
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="evaluators_index.html" title="Evaluators"
+          <a href="evaluators.html" title="Evaluators"
              >next</a> |</li>
         <li class="right" >
-          <a href="networks_index.html" title="Networks"
+          <a href="poolings.html" title="Poolings"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="networks_index.html" >Networks</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" >Model Config Interface</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Quick Start Tutorial &#8212; PaddlePaddle  documentation</title>
+    <title>Quick Start &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -30,7 +30,7 @@
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
     <link rel="next" title="Build And Install PaddlePaddle" href="../../build/index.html" />
-    <link rel="prev" title="PaddlePaddle Documentation" href="../../index.html" /> 
+    <link rel="prev" title="Introduction" href="../../introduction/index.html" /> 
 <script>
 var _hmt = _hmt || [];
 (function() {
@@ -56,7 +56,7 @@ var _hmt = _hmt || [];
           <a href="../../build/index.html" title="Build And Install PaddlePaddle"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="../../index.html" title="PaddlePaddle Documentation"
+          <a href="../../introduction/index.html" title="Introduction"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
       </ul>
@@ -67,8 +67,8 @@ var _hmt = _hmt || [];
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="quick-start-tutorial">
-<span id="quick-start-tutorial"></span><h1>Quick Start Tutorial<a class="headerlink" href="#quick-start-tutorial" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="quick-start">
+<span id="quick-start"></span><h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
 <p>This tutorial will teach the basics of deep learning (DL), including how to implement many different models in PaddlePaddle. You will learn how to:</p>
 <ul class="simple">
 <li>Prepare data into the standardized format that PaddlePaddle accepts.</li>
@@ -205,7 +205,7 @@ var _hmt = _hmt || [];
 <p>You need to add a data provider definition <code class="docutils literal"><span class="pre">define_py_data_sources2</span></code> in our network configuration. This definition specifies:</p>
 <ul class="simple">
 <li>The path of the training and testing data (<code class="docutils literal"><span class="pre">data/train.list</span></code>, <code class="docutils literal"><span class="pre">data/test.list</span></code>).</li>
-<li>The location of the data provider file (<code class="docutils literal"><span class="pre">dataprovider_pow</span></code>).</li>
+<li>The location of the data provider file (<code class="docutils literal"><span class="pre">dataprovider_bow</span></code>).</li>
 <li>The function to call to get data. (<code class="docutils literal"><span class="pre">process</span></code>).</li>
 <li>Additional arguments or data. Here it passes the path of word dictionary.</li>
 </ul>
@@ -502,7 +502,7 @@ mv rank-00000 result.txt
 <td class="left">Word embedding</td>
 <td class="left"> 15MB </td>
 <td class="left"> 8.484%</td>
-<td class="left">trainer_config.bow.py</td>
+<td class="left">trainer_config.emb.py</td>
 </tr><tr>
 <td class="left">Convolution model</td>
 <td class="left"> 16MB </td>
@@ -575,7 +575,7 @@ mv rank-00000 result.txt
         <div class="sphinxsidebarwrapper">
   <h3><a href="../../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Quick Start Tutorial</a><ul>
+<li><a class="reference internal" href="#">Quick Start</a><ul>
 <li><a class="reference internal" href="#install">Install</a></li>
 <li><a class="reference internal" href="#overview">Overview</a></li>
 <li><a class="reference internal" href="#preprocess-data-into-standardized-format">Preprocess data into standardized format</a></li>
@@ -605,8 +605,8 @@ mv rank-00000 result.txt
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="../../index.html"
-                        title="previous chapter">PaddlePaddle Documentation</a></p>
+  <p class="topless"><a href="../../introduction/index.html"
+                        title="previous chapter">Introduction</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="../../build/index.html"
                         title="next chapter">Build And Install PaddlePaddle</a></p>
@@ -644,14 +644,14 @@ mv rank-00000 result.txt
           <a href="../../build/index.html" title="Build And Install PaddlePaddle"
              >next</a> |</li>
         <li class="right" >
-          <a href="../../index.html" title="PaddlePaddle Documentation"
+          <a href="../../introduction/index.html" title="Introduction"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../index.html">PaddlePaddle  documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

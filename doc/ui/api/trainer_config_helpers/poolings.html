@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>BasePoolingType &#8212; PaddlePaddle  documentation</title>
+    <title>Poolings &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -29,9 +29,9 @@
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
-    <link rel="up" title="Poolings" href="poolings_index.html" />
-    <link rel="next" title="Networks" href="networks_index.html" />
-    <link rel="prev" title="Poolings" href="poolings_index.html" /> 
+    <link rel="up" title="Model Config Interface" href="index.html" />
+    <link rel="next" title="Networks" href="networks.html" />
+    <link rel="prev" title="Activations" href="activations.html" /> 
 <script>
 var _hmt = _hmt || [];
 (function() {
@@ -54,15 +54,13 @@ var _hmt = _hmt || [];
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="networks_index.html" title="Networks"
+          <a href="networks.html" title="Networks"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="poolings_index.html" title="Poolings"
+          <a href="activations.html" title="Activations"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="poolings_index.html" accesskey="U">Poolings</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Model Config Interface</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -71,8 +69,10 @@ var _hmt = _hmt || [];
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="basepoolingtype">
-<h1>BasePoolingType<a class="headerlink" href="#basepoolingtype" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="poolings">
+<h1>Poolings<a class="headerlink" href="#poolings" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="basepoolingtype">
+<h2>BasePoolingType<a class="headerlink" href="#basepoolingtype" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">BasePoolingType</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span></dt>
@@ -91,7 +91,7 @@ Each PoolingType contains one parameter:</p>
 
 </div>
 <div class="section" id="avgpooling">
-<h1>AvgPooling<a class="headerlink" href="#avgpooling" title="Permalink to this headline">¶</a></h1>
+<h2>AvgPooling<a class="headerlink" href="#avgpooling" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">AvgPooling</code><span class="sig-paren">(</span><em>strategy='average'</em><span class="sig-paren">)</span></dt>
@@ -103,7 +103,7 @@ Each PoolingType contains one parameter:</p>
 
 </div>
 <div class="section" id="maxpooling">
-<h1>MaxPooling<a class="headerlink" href="#maxpooling" title="Permalink to this headline">¶</a></h1>
+<h2>MaxPooling<a class="headerlink" href="#maxpooling" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">MaxPooling</code><span class="sig-paren">(</span><em>output_max_index=None</em><span class="sig-paren">)</span></dt>
@@ -124,7 +124,7 @@ value. None means use default value in proto.</td>
 
 </div>
 <div class="section" id="sumpooling">
-<h1>SumPooling<a class="headerlink" href="#sumpooling" title="Permalink to this headline">¶</a></h1>
+<h2>SumPooling<a class="headerlink" href="#sumpooling" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SumPooling</code></dt>
@@ -136,7 +136,7 @@ value. None means use default value in proto.</td>
 
 </div>
 <div class="section" id="squarerootnpooling">
-<h1>SquareRootNPooling<a class="headerlink" href="#squarerootnpooling" title="Permalink to this headline">¶</a></h1>
+<h2>SquareRootNPooling<a class="headerlink" href="#squarerootnpooling" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt>
 <em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SquareRootNPooling</code></dt>
@@ -147,6 +147,7 @@ value. None means use default value in proto.</td>
 </dd></dl>
 
 </div>
+</div>
 
 
           </div>
@@ -156,18 +157,21 @@ value. None means use default value in proto.</td>
         <div class="sphinxsidebarwrapper">
   <h3><a href="../../../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">BasePoolingType</a></li>
+<li><a class="reference internal" href="#">Poolings</a><ul>
+<li><a class="reference internal" href="#basepoolingtype">BasePoolingType</a></li>
 <li><a class="reference internal" href="#avgpooling">AvgPooling</a></li>
 <li><a class="reference internal" href="#maxpooling">MaxPooling</a></li>
 <li><a class="reference internal" href="#sumpooling">SumPooling</a></li>
 <li><a class="reference internal" href="#squarerootnpooling">SquareRootNPooling</a></li>
 </ul>
+</li>
+</ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="poolings_index.html"
-                        title="previous chapter">Poolings</a></p>
+  <p class="topless"><a href="activations.html"
+                        title="previous chapter">Activations</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="networks_index.html"
+  <p class="topless"><a href="networks.html"
                         title="next chapter">Networks</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
@@ -200,20 +204,18 @@ value. None means use default value in proto.</td>
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="networks_index.html" title="Networks"
+          <a href="networks.html" title="Networks"
              >next</a> |</li>
         <li class="right" >
-          <a href="poolings_index.html" title="Poolings"
+          <a href="activations.html" title="Activations"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="poolings_index.html" >Poolings</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" >Model Config Interface</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

@@ -84,21 +84,14 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> addition: C_d[i] = alpha * A_d[i] + beta * B_d[i]. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scalar used for addition. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scalar used for addition. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for addition. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for addition. </li>
 </ul>
 </dd>
 </dl>
@@ -111,15 +104,11 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> Softmax. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input maxtrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input maxtrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -132,17 +121,12 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> softmax derivative. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">grad_d</span></code> - <p>intput matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_d</span></code> - <p>output matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sftmaxSum_d</span></code> - <p>softmax sum (M * 1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">grad_d</span></code>: intput matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">output_d</span></code>: output matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">sftmaxSum_d</span></code>: softmax sum (M * 1). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -155,15 +139,11 @@ var _hmt = _hmt || [];
 <dd><p>Sequence softmax. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input vector. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output vector. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">index</span></code> - <p>start positions of sequence. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">numSequence</span></code> - <p>sequence number. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input vector. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output vector. </li>
+<li><code class="docutils literal"><span class="pre">index</span></code>: start positions of sequence. </li>
+<li><code class="docutils literal"><span class="pre">numSequence</span></code>: sequence number. </li>
 </ul>
 </dd>
 </dl>
@@ -176,17 +156,12 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> classification error. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>input vector (M x 1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output vector (M x 1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: input vector (M x 1). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output vector (M x 1). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -199,17 +174,12 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> cross entropy. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output matrix (M X 1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">label_d</span></code> - <p>input matrix (M x 1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output matrix (M X 1). </li>
+<li><code class="docutils literal"><span class="pre">label_d</span></code>: input matrix (M x 1). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -222,17 +192,48 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> cross entropy back propagation. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">grad_d</span></code> - <p>output matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">label_d</span></code> - <p>input vector (M x 1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">grad_d</span></code>: output matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">output_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">label_d</span></code>: input vector (M x 1). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv236hl_matrix_multi_binary_cross_entropyP4realP4real18hl_sparse_matrix_sii">
+<span id="hl_matrix_multi_binary_cross_entropy__realP.realP.hl_sparse_matrix_s.i.i"></span><span class="target" id="paddlehl__matrix_8h_1a7ffe6e6313b0e5b4ac0f36d6218932a8"></span>void <code class="descname">hl_matrix_multi_binary_cross_entropy</code><span class="sig-paren">(</span>real *<em>output</em>, real *<em>entropy</em>, <a class="reference internal" href="../utils/utils.html#_CPPv218hl_sparse_matrix_s" title="hl_sparse_matrix_s">hl_sparse_matrix_s</a> <em>mat</em>, int <em>dimM</em>, int <em>dimN</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv236hl_matrix_multi_binary_cross_entropyP4realP4real18hl_sparse_matrix_sii" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> multi-binary label cross entropy. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">output</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">entropy</span></code>: output matrix (M x 1). </li>
+<li><code class="docutils literal"><span class="pre">mat</span></code>: input sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv239hl_matrix_multi_binary_cross_entropy_bpP4realP4real18hl_sparse_matrix_sii">
+<span id="hl_matrix_multi_binary_cross_entropy_bp__realP.realP.hl_sparse_matrix_s.i.i"></span><span class="target" id="paddlehl__matrix_8h_1affcd0e96a22a9368991dedd37d79f2c8"></span>void <code class="descname">hl_matrix_multi_binary_cross_entropy_bp</code><span class="sig-paren">(</span>real *<em>output</em>, real *<em>grad</em>, <a class="reference internal" href="../utils/utils.html#_CPPv218hl_sparse_matrix_s" title="hl_sparse_matrix_s">hl_sparse_matrix_s</a> <em>mat</em>, int <em>dimM</em>, int <em>dimN</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv239hl_matrix_multi_binary_cross_entropy_bpP4realP4real18hl_sparse_matrix_sii" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> multi-binary label cross entropy backprop. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">output</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">grad</span></code>: output matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">mat</span></code>: input sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -245,11 +246,9 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> zero memory. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">data</span></code> - <p>input data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">num</span></code> - <p>length of data. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">data</span></code>: input data. </li>
+<li><code class="docutils literal"><span class="pre">num</span></code>: length of data. </li>
 </ul>
 </dd>
 </dl>
@@ -262,19 +261,13 @@ var _hmt = _hmt || [];
 <dd><p>parameter relu forward </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output data </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input data </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">w</span></code> - <p>parameter data </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>matrix width </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>matrix height </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">partial_sum</span></code> - <p></p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">output</span></code>: output data </li>
+<li><code class="docutils literal"><span class="pre">input</span></code>: input data </li>
+<li><code class="docutils literal"><span class="pre">w</span></code>: parameter data </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: matrix width </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: matrix height </li>
+<li><code class="docutils literal"><span class="pre">partial_sum</span></code>: </li>
 </ul>
 </dd>
 </dl>
@@ -287,19 +280,13 @@ var _hmt = _hmt || [];
 <dd><p>parameter relu backward w </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">grad_w</span></code> - <p>w grad </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">grad_o</span></code> - <p>output grad </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input data </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>matrix width </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>matrix height </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">partial_sum</span></code> - <p></p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">grad_w</span></code>: w grad </li>
+<li><code class="docutils literal"><span class="pre">grad_o</span></code>: output grad </li>
+<li><code class="docutils literal"><span class="pre">input</span></code>: input data </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: matrix width </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: matrix height </li>
+<li><code class="docutils literal"><span class="pre">partial_sum</span></code>: </li>
 </ul>
 </dd>
 </dl>
@@ -312,21 +299,14 @@ var _hmt = _hmt || [];
 <dd><p>parameter relu backward diff </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">grad_o</span></code> - <p>output grad </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input data </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">w</span></code> - <p>parameter </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">diff</span></code> - <p>diff </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>matrix width </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>matrix height </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">partial_sum</span></code> - <p></p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">grad_o</span></code>: output grad </li>
+<li><code class="docutils literal"><span class="pre">input</span></code>: input data </li>
+<li><code class="docutils literal"><span class="pre">w</span></code>: parameter </li>
+<li><code class="docutils literal"><span class="pre">diff</span></code>: diff </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: matrix width </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: matrix height </li>
+<li><code class="docutils literal"><span class="pre">partial_sum</span></code>: </li>
 </ul>
 </dd>
 </dl>
@@ -339,21 +319,14 @@ var _hmt = _hmt || [];
 <dd><p>cos sim forward </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output data </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input1</span></code> - <p>input1 data(matrix) </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input2</span></code> - <p>input2 data(matrix or vector) </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>matrix width </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input1_height</span></code> - <p>input1_height </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input2_height</span></code> - <p>input2_height </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">scale</span></code> - <p>scale factor </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">output</span></code>: output data </li>
+<li><code class="docutils literal"><span class="pre">input1</span></code>: input1 data(matrix) </li>
+<li><code class="docutils literal"><span class="pre">input2</span></code>: input2 data(matrix or vector) </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: matrix width </li>
+<li><code class="docutils literal"><span class="pre">input1_height</span></code>: input1_height </li>
+<li><code class="docutils literal"><span class="pre">input2_height</span></code>: input2_height </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: scale factor </li>
 </ul>
 </dd>
 </dl>
@@ -366,27 +339,55 @@ var _hmt = _hmt || [];
 <dd><p>cos sim derivate </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">grad</span></code> - <p>output grad </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output data </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">prevOutX</span></code> - <p>input1 data </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">prevOutY</span></code> - <p>input2 data </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">prevGradX</span></code> - <p>input1 grad </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">prevGradY</span></code> - <p>input2 grad </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>matrix width </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input1_height</span></code> - <p>input1 height </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input2_height</span></code> - <p>input2 height </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">scale</span></code> - <p>scale factor </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">grad</span></code>: output grad </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: output data </li>
+<li><code class="docutils literal"><span class="pre">prevOutX</span></code>: input1 data </li>
+<li><code class="docutils literal"><span class="pre">prevOutY</span></code>: input2 data </li>
+<li><code class="docutils literal"><span class="pre">prevGradX</span></code>: input1 grad </li>
+<li><code class="docutils literal"><span class="pre">prevGradY</span></code>: input2 grad </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: matrix width </li>
+<li><code class="docutils literal"><span class="pre">input1_height</span></code>: input1 height </li>
+<li><code class="docutils literal"><span class="pre">input2_height</span></code>: input2 height </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: scale factor </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv225hl_matrix_add_shared_biasP4realP4realKiKiKi4real">
+<span id="hl_matrix_add_shared_bias__realP.realP.iC.iC.iC.real"></span><span class="target" id="paddlehl__matrix_8h_1a3697ab4cbde222a0a4bcddd4f80eb758"></span>void <code class="descname">hl_matrix_add_shared_bias</code><span class="sig-paren">(</span>real *<em>A_d</em>, real *<em>B_d</em>, <em class="property">const</em> int <em>channel</em>, <em class="property">const</em> int <em>dimM</em>, <em class="property">const</em> int <em>dimN</em>, real <em>scale</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv225hl_matrix_add_shared_biasP4realP4realKiKiKi4real" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> addition: A_d[i][j] += scale * B_d[j/channel]. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: input matrix (1 x channel). </li>
+<li><code class="docutils literal"><span class="pre">channel</span></code>: width of B. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: height of A. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: width of A. </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: scalar used for addition. </li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv229hl_matrix_collect_shared_biasP4realP4realKiKiKi4real">
+<span id="hl_matrix_collect_shared_bias__realP.realP.iC.iC.iC.real"></span><span class="target" id="paddlehl__matrix_8h_1ac6de2fdf1034265b8cb464c83931faf1"></span>void <code class="descname">hl_matrix_collect_shared_bias</code><span class="sig-paren">(</span>real *<em>B_d</em>, real *<em>A_d</em>, <em class="property">const</em> int <em>channel</em>, <em class="property">const</em> int <em>dimM</em>, <em class="property">const</em> int <em>dimN</em>, real <em>scale</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv229hl_matrix_collect_shared_biasP4realP4realKiKiKi4real" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> addition: A_d[i][j] += scale * B_d[j/channel]. </p>
+<p><dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: input matrix (1 x channel). </li>
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">channel</span></code>: width of B. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: height of A. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: width of A. </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: scalar used for addition. </li>
 </ul>
 </dd>
 </dl>
@@ -443,12 +444,12 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassBaseOp_1adbfbb3003cd1fcd9a07eefbb4548bab9"></span><code class="descname">INLINE vecType BaseOp::vecOp(const vecType a)</code> const</dt>
+<span class="target" id="paddleclassBaseOp_1adbfbb3003cd1fcd9a07eefbb4548bab9"></span><code class="descname">INLINE vecType BaseOp::vecOp(const vecType a) const</code></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassBaseOp_1ab0fde1eb4cb0abaea32a2b509ef7e81e"></span><code class="descname">INLINE vecType BaseOp::vecOp(const vecType a, const vecType b)</code> const</dt>
+<span class="target" id="paddleclassBaseOp_1ab0fde1eb4cb0abaea32a2b509ef7e81e"></span><code class="descname">INLINE vecType BaseOp::vecOp(const vecType a, const vecType b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -478,7 +479,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassaggregate_1_1sum_1a5d3a33ea74be2e5d4202ff40b36285cd"></span><code class="descname">INLINE real aggregate::sum::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassaggregate_1_1sum_1a5d3a33ea74be2e5d4202ff40b36285cd"></span><code class="descname">INLINE real aggregate::sum::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -497,7 +498,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassaggregate_1_1max_1a235d15ae12ba7acdbf70c8a694c7177f"></span><code class="descname">INLINE real aggregate::max::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassaggregate_1_1max_1a235d15ae12ba7acdbf70c8a694c7177f"></span><code class="descname">INLINE real aggregate::max::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -516,7 +517,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassaggregate_1_1min_1a6c34bce3a2f92949caa5ed9842d20dc0"></span><code class="descname">INLINE real aggregate::min::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassaggregate_1_1min_1a6c34bce3a2f92949caa5ed9842d20dc0"></span><code class="descname">INLINE real aggregate::min::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -538,7 +539,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassbase_1_1binary_1_1add_1afb93c269ec13b649a031b59c02fbc87d"></span><code class="descname">INLINE real base::binary::add::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassbase_1_1binary_1_1add_1afb93c269ec13b649a031b59c02fbc87d"></span><code class="descname">INLINE real base::binary::add::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -557,7 +558,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassbase_1_1binary_1_1add2_1a79d0bab49889882de19039c9bc63831f"></span><code class="descname">INLINE real base::binary::add2::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassbase_1_1binary_1_1add2_1a79d0bab49889882de19039c9bc63831f"></span><code class="descname">INLINE real base::binary::add2::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -584,7 +585,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassbase_1_1binary_1_1sub_1aaa82db196fcf891fcce0256921e71fe7"></span><code class="descname">INLINE real base::binary::sub::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassbase_1_1binary_1_1sub_1aaa82db196fcf891fcce0256921e71fe7"></span><code class="descname">INLINE real base::binary::sub::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -598,7 +599,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassbase_1_1binary_1_1mul_1ae7b8048342c0ed7bf7d741f1b5407b90"></span><code class="descname">INLINE real base::binary::mul::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassbase_1_1binary_1_1mul_1ae7b8048342c0ed7bf7d741f1b5407b90"></span><code class="descname">INLINE real base::binary::mul::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -612,7 +613,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassbase_1_1binary_1_1div_1a488a162fa6a360d8eb8b751bbaeb8118"></span><code class="descname">INLINE real base::binary::div::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassbase_1_1binary_1_1div_1a488a162fa6a360d8eb8b751bbaeb8118"></span><code class="descname">INLINE real base::binary::div::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -626,7 +627,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassbase_1_1binary_1_1squaredDiff_1a16dffb559330b1a33a3ae8146af5f335"></span><code class="descname">INLINE real base::binary::squaredDiff::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassbase_1_1binary_1_1squaredDiff_1a16dffb559330b1a33a3ae8146af5f335"></span><code class="descname">INLINE real base::binary::squaredDiff::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -640,7 +641,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassbase_1_1binary_1_1first_1a3071437ca14452cf99e37fb87ce82573"></span><code class="descname">INLINE real base::binary::first::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassbase_1_1binary_1_1first_1a3071437ca14452cf99e37fb87ce82573"></span><code class="descname">INLINE real base::binary::first::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -654,7 +655,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassbase_1_1binary_1_1second_1a4584cd58b199b2d0f6500ef21af20d8e"></span><code class="descname">INLINE real base::binary::second::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassbase_1_1binary_1_1second_1a4584cd58b199b2d0f6500ef21af20d8e"></span><code class="descname">INLINE real base::binary::second::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -673,7 +674,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassbase_1_1binary_1_1classificationError_1a1455395fd5051187047c3efae4542f77"></span><code class="descname">INLINE real base::binary::classificationError::operator()(const real a, const real b)</code> const</dt>
+<span class="target" id="paddleclassbase_1_1binary_1_1classificationError_1a1455395fd5051187047c3efae4542f77"></span><code class="descname">INLINE real base::binary::classificationError::operator()(const real a, const real b) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -700,7 +701,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt>
-<span class="target" id="paddleclassbase_1_1unary_1_1identity_1a12efff20f534c8ee3cbd963daf6ba912"></span><code class="descname">INLINE real base::unary::identity::operator()(const real a)</code> const</dt>
+<span class="target" id="paddleclassbase_1_1unary_1_1identity_1a12efff20f534c8ee3cbd963daf6ba912"></span><code class="descname">INLINE real base::unary::identity::operator()(const real a) const</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -733,17 +734,12 @@ var _hmt = _hmt || [];
 <p>
 CPU element wise unary operator. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>unary op. see namespace unary </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">A_h</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of A.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">op</span></code>: unary op. see namespace unary </li>
+<li><code class="docutils literal"><span class="pre">A_h</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of A.</li>
 </ul>
 </dd>
 </dl>
@@ -764,21 +760,14 @@ CPU element wise unary operator. <dl class="docutils">
 <p>
 CPU element wise binary operator. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>binary op. see namespace binary. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">A_h</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_h</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldb</span></code> - <p>leading dimension of B.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">op</span></code>: binary op. see namespace binary. </li>
+<li><code class="docutils literal"><span class="pre">A_h</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">B_h</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of A. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: leading dimension of B.</li>
 </ul>
 </dd>
 </dl>
@@ -799,25 +788,16 @@ CPU element wise binary operator. <dl class="docutils">
 <p>
 CPU element wise ternary operator. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>ternary op. see namespace ternary. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">A_h</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_h</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_h</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldb</span></code> - <p>leading dimension of B. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldc</span></code> - <p>leading dimension of C.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">op</span></code>: ternary op. see namespace ternary. </li>
+<li><code class="docutils literal"><span class="pre">A_h</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">B_h</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">C_h</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of A. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: leading dimension of B. </li>
+<li><code class="docutils literal"><span class="pre">ldc</span></code>: leading dimension of C.</li>
 </ul>
 </dd>
 </dl>
@@ -833,29 +813,18 @@ CPU element wise ternary operator. <dl class="docutils">
 <p>
 CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i &lt; dimM &amp; for 0 &lt;= j &lt; dimN. <dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>quaternary op. see namespace ternary. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">A_h</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_h</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_h</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">D_h</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldb</span></code> - <p>leading dimension of B. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldc</span></code> - <p>leading dimension of C. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldd</span></code> - <p>leading dimension of D.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">op</span></code>: quaternary op. see namespace ternary. </li>
+<li><code class="docutils literal"><span class="pre">A_h</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">B_h</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">C_h</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">D_h</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of A. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: leading dimension of B. </li>
+<li><code class="docutils literal"><span class="pre">ldc</span></code>: leading dimension of C. </li>
+<li><code class="docutils literal"><span class="pre">ldd</span></code>: leading dimension of D.</li>
 </ul>
 </dd>
 </dl>
@@ -870,17 +839,12 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>GPU element wise unary operator. element wise op(a) for 0 &lt;= i &lt; dimM &amp; for 0 &lt;= j &lt; dimN. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>unary op. see namespace unary. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of A. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">op</span></code>: unary op. see namespace unary. </li>
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of A. </li>
 </ul>
 </dd>
 </dl>
@@ -900,21 +864,14 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p>if (BAsRowVector == 1 &amp;&amp; BAsColVector == 1) op(A[i * lda + j], B[0])</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>binary op. see namespace binary. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldb</span></code> - <p>leading dimension of B. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">op</span></code>: binary op. see namespace binary. </li>
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of A. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: leading dimension of B. </li>
 </ul>
 </dd>
 </dl>
@@ -934,25 +891,16 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p>if (CAsRowVector == 1 &amp;&amp; CAsColVector == 1) op(A[i*lda + j], B[i*ldb + j], C[0])</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>ternary op. see namespace ternary. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldb</span></code> - <p>leading dimension of B. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldc</span></code> - <p>leading dimension of C. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">op</span></code>: ternary op. see namespace ternary. </li>
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of A. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: leading dimension of B. </li>
+<li><code class="docutils literal"><span class="pre">ldc</span></code>: leading dimension of C. </li>
 </ul>
 </dd>
 </dl>
@@ -967,29 +915,18 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>GPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i &lt; dimM &amp; for 0 &lt;= j &lt; dimN. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>quaternary op. see namespace ternary. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">D_d</span></code> - <p>matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldb</span></code> - <p>leading dimension of B. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldc</span></code> - <p>leading dimension of C. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldd</span></code> - <p>leading dimension of D. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">op</span></code>: quaternary op. see namespace ternary. </li>
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">D_d</span></code>: matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of A. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: leading dimension of B. </li>
+<li><code class="docutils literal"><span class="pre">ldc</span></code>: leading dimension of C. </li>
+<li><code class="docutils literal"><span class="pre">ldd</span></code>: leading dimension of D. </li>
 </ul>
 </dd>
 </dl>
@@ -1012,27 +949,17 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>CPU matrix row operator. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">agg</span></code> - <p>aggregate operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>destination matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ld</span></code> - <p>leading dimension of dst matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*A</span></code> - <p>matrix A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of matrix A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*B</span></code> - <p>matrix B. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldb</span></code> - <p>leading dimension of matrix B. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">agg</span></code>: aggregate operator expression. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">dst</span></code>: destination matrix. </li>
+<li><code class="docutils literal"><span class="pre">ld</span></code>: leading dimension of dst matrix. </li>
+<li><code class="docutils literal"><span class="pre">*A</span></code>: matrix A. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of matrix A. </li>
+<li><code class="docutils literal"><span class="pre">*B</span></code>: matrix B. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: leading dimension of matrix B. </li>
 </ul>
 </dd>
 </dl>
@@ -1047,23 +974,15 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>CPU matrix column operator. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">agg</span></code> - <p>aggregate operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sv</span></code> - <p>assignment operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>destination matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*A</span></code> - <p>matrix A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of matrix A. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">agg</span></code>: aggregate operator expression. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression. </li>
+<li><code class="docutils literal"><span class="pre">sv</span></code>: assignment operator expression. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">dst</span></code>: destination matrix. </li>
+<li><code class="docutils literal"><span class="pre">*A</span></code>: matrix A. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of matrix A. </li>
 </ul>
 </dd>
 </dl>
@@ -1078,27 +997,17 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>CPU matrix column operator. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">agg</span></code> - <p>aggregate operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sv</span></code> - <p>assignment operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>destination matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*A</span></code> - <p>matrix A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of matrix A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*B</span></code> - <p>matrix B. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldb</span></code> - <p>leading dimension of matrix B. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">agg</span></code>: aggregate operator expression. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression. </li>
+<li><code class="docutils literal"><span class="pre">sv</span></code>: assignment operator expression. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">dst</span></code>: destination matrix. </li>
+<li><code class="docutils literal"><span class="pre">*A</span></code>: matrix A. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of matrix A. </li>
+<li><code class="docutils literal"><span class="pre">*B</span></code>: matrix B. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: leading dimension of matrix B. </li>
 </ul>
 </dd>
 </dl>
@@ -1113,25 +1022,16 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>GPU matrix row operator. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">agg</span></code> - <p>aggregate operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sv</span></code> - <p>assignment operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>destination matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ld</span></code> - <p>leading dimension of dst. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*A</span></code> - <p>matrix A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of matrix A. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">agg</span></code>: aggregate operator expression. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression. </li>
+<li><code class="docutils literal"><span class="pre">sv</span></code>: assignment operator expression. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">dst</span></code>: destination matrix. </li>
+<li><code class="docutils literal"><span class="pre">ld</span></code>: leading dimension of dst. </li>
+<li><code class="docutils literal"><span class="pre">*A</span></code>: matrix A. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of matrix A. </li>
 </ul>
 </dd>
 </dl>
@@ -1146,27 +1046,17 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>GPU matrix row operator. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">agg</span></code> - <p>aggregate operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>destination matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ld</span></code> - <p>leading dimension of dst matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*A</span></code> - <p>matrix A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of matrix A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*B</span></code> - <p>matrix B. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldb</span></code> - <p>leading dimension of matrix B. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">agg</span></code>: aggregate operator expression. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">dst</span></code>: destination matrix. </li>
+<li><code class="docutils literal"><span class="pre">ld</span></code>: leading dimension of dst matrix. </li>
+<li><code class="docutils literal"><span class="pre">*A</span></code>: matrix A. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of matrix A. </li>
+<li><code class="docutils literal"><span class="pre">*B</span></code>: matrix B. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: leading dimension of matrix B. </li>
 </ul>
 </dd>
 </dl>
@@ -1181,23 +1071,15 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>GPU matrix column operator. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">agg</span></code> - <p>aggregate operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sv</span></code> - <p>assignment operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>destination matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*A</span></code> - <p>matrix A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of matrix A. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">agg</span></code>: aggregate operator expression. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression. </li>
+<li><code class="docutils literal"><span class="pre">sv</span></code>: assignment operator expression. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">dst</span></code>: destination matrix. </li>
+<li><code class="docutils literal"><span class="pre">*A</span></code>: matrix A. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of matrix A. </li>
 </ul>
 </dd>
 </dl>
@@ -1212,27 +1094,17 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>GPU matrix column operator. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">agg</span></code> - <p>aggregate operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sv</span></code> - <p>assignment operator expression. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>destination matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*A</span></code> - <p>matrix A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lda</span></code> - <p>leading dimension of matrix A. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*B</span></code> - <p>matrix B. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldb</span></code> - <p>leading dimension of matrix B. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">agg</span></code>: aggregate operator expression. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression. </li>
+<li><code class="docutils literal"><span class="pre">sv</span></code>: assignment operator expression. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
+<li><code class="docutils literal"><span class="pre">dst</span></code>: destination matrix. </li>
+<li><code class="docutils literal"><span class="pre">*A</span></code>: matrix A. </li>
+<li><code class="docutils literal"><span class="pre">lda</span></code>: leading dimension of matrix A. </li>
+<li><code class="docutils literal"><span class="pre">*B</span></code>: matrix B. </li>
+<li><code class="docutils literal"><span class="pre">ldb</span></code>: leading dimension of matrix B. </li>
 </ul>
 </dd>
 </dl>
@@ -1288,11 +1160,9 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p class="last">hl_cpu_apply_unary_op </p>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">name</span></code> - <p>operator name. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">name</span></code>: operator name. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression.</li>
 </ul>
 </dd>
 </dl>
@@ -1311,13 +1181,10 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p class="last">hl_cpu_apply_unary_op </p>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">name</span></code> - <p>operator name. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">PARA_MACRO</span></code> - <p>parameter macro. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">name</span></code>: operator name. </li>
+<li><code class="docutils literal"><span class="pre">PARA_MACRO</span></code>: parameter macro. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression.</li>
 </ul>
 </dd>
 </dl>
@@ -1336,11 +1203,9 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p class="last">hl_cpu_apply_unary_op </p>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">name</span></code> - <p>operator name. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">name</span></code>: operator name. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression.</li>
 </ul>
 </dd>
 </dl>
@@ -1359,13 +1224,10 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p class="last">hl_cpu_apply_binary_op </p>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">name</span></code> - <p>operator name. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">PARA_MACRO</span></code> - <p>parameter macro. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">name</span></code>: operator name. </li>
+<li><code class="docutils literal"><span class="pre">PARA_MACRO</span></code>: parameter macro. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression.</li>
 </ul>
 </dd>
 </dl>
@@ -1384,11 +1246,9 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p class="last">hl_cpu_apply_ternary_op </p>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">name</span></code> - <p>operator name. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">name</span></code>: operator name. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression.</li>
 </ul>
 </dd>
 </dl>
@@ -1407,13 +1267,10 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p class="last">hl_cpu_apply_ternary_op </p>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">name</span></code> - <p>operator name. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">PARA_MACRO</span></code> - <p>parameter macro. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">name</span></code>: operator name. </li>
+<li><code class="docutils literal"><span class="pre">PARA_MACRO</span></code>: parameter macro. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression.</li>
 </ul>
 </dd>
 </dl>
@@ -1432,11 +1289,9 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p class="last">hl_cpu_apply_quaternary_op </p>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">name</span></code> - <p>operator name. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">name</span></code>: operator name. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression.</li>
 </ul>
 </dd>
 </dl>
@@ -1455,13 +1310,10 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p class="last">hl_cpu_apply_quaternary_op </p>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">name</span></code> - <p>operator name. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">PARA_MACRO</span></code> - <p>parameter macro. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">op</span></code> - <p>operator expression.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">name</span></code>: operator name. </li>
+<li><code class="docutils literal"><span class="pre">PARA_MACRO</span></code>: parameter macro. </li>
+<li><code class="docutils literal"><span class="pre">op</span></code>: operator expression.</li>
 </ul>
 </dd>
 </dl>
@@ -1617,17 +1469,12 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Note</strong></dt>
 <dd>Both the inpt and output are arranged in batch-first order. Each batch has height * width data, which are arranged in height-first (or row-first) manner. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>height * width elements in batch. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>height * width elements in batch. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">width</span></code> - <p>width of batch data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">height</span></code> - <p>height of batch data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">batchSize</span></code> - <p>batch size</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">input</span></code>: height * width elements in batch. </li>
+<li><code class="docutils literal"><span class="pre">output</span></code>: height * width elements in batch. </li>
+<li><code class="docutils literal"><span class="pre">width</span></code>: width of batch data. </li>
+<li><code class="docutils literal"><span class="pre">height</span></code>: height of batch data. </li>
+<li><code class="docutils literal"><span class="pre">batchSize</span></code>: batch size</li>
 </ul>
 </dd>
 </dl>
@@ -1649,19 +1496,13 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Malloc a sparse matrix. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">format</span></code> - <p>format. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">value_type</span></code> - <p>valueType. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">nnz</span></code> - <p>number of none zero element. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">format</span></code>: format. </li>
+<li><code class="docutils literal"><span class="pre">value_type</span></code>: valueType. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: width. </li>
+<li><code class="docutils literal"><span class="pre">nnz</span></code>: number of none zero element. </li>
 </ul>
 </dd>
 </dl>
@@ -1674,9 +1515,8 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Free a sparse matrix. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>GPU sparse matrix. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: GPU sparse matrix. </li>
 </ul>
 </dd>
 </dl>
@@ -1691,23 +1531,15 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Note</strong></dt>
 <dd>Destruct api is hl_destruct_sparse_matrix. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dest_d</span></code> - <p>gpu memory. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">size</span></code> - <p>size of dest_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">format</span></code> - <p>format. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">value_type</span></code> - <p>valueType. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">nnz</span></code> - <p>number of none zero element.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">dest_d</span></code>: gpu memory. </li>
+<li><code class="docutils literal"><span class="pre">size</span></code>: size of dest_d. </li>
+<li><code class="docutils literal"><span class="pre">format</span></code>: format. </li>
+<li><code class="docutils literal"><span class="pre">value_type</span></code>: valueType. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: width. </li>
+<li><code class="docutils literal"><span class="pre">nnz</span></code>: number of none zero element.</li>
 </ul>
 </dd>
 </dl>
@@ -1725,25 +1557,16 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Note</strong></dt>
 <dd>The corresponding destructor interface is hl_destruct_sparse_matrix. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">value_d</span></code> - <p>value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">rows_d</span></code> - <p>row. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">cols_d</span></code> - <p>col. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">format</span></code> - <p>format. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">value_type</span></code> - <p>valueType. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">nnz</span></code> - <p>number of none zero element.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">value_d</span></code>: value. </li>
+<li><code class="docutils literal"><span class="pre">rows_d</span></code>: row. </li>
+<li><code class="docutils literal"><span class="pre">cols_d</span></code>: col. </li>
+<li><code class="docutils literal"><span class="pre">format</span></code>: format. </li>
+<li><code class="docutils literal"><span class="pre">value_type</span></code>: valueType. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: width. </li>
+<li><code class="docutils literal"><span class="pre">nnz</span></code>: number of none zero element.</li>
 </ul>
 </dd>
 </dl>
@@ -1756,9 +1579,8 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Destruct sparse matrix. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>sparse matrix. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: sparse matrix. </li>
 </ul>
 </dd>
 </dl>
@@ -1782,17 +1604,12 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">csr_matrix</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csr_val</span></code> - <p>point to csr value array(nnz). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csr_row</span></code> - <p>point to csr row indices array(dimM+1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csr_col</span></code> - <p>point to csr col indices array(nnz). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>hl_stream_t type. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">csr_matrix</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">csr_val</span></code>: point to csr value array(nnz). </li>
+<li><code class="docutils literal"><span class="pre">csr_row</span></code>: point to csr row indices array(dimM+1). </li>
+<li><code class="docutils literal"><span class="pre">csr_col</span></code>: point to csr col indices array(nnz). </li>
+<li><code class="docutils literal"><span class="pre">stream</span></code>: hl_stream_t type. </li>
 </ul>
 </dd>
 </dl>
@@ -1816,17 +1633,12 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">csc_matrix</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csc_val</span></code> - <p>point to csc value array(nnz). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csc_row</span></code> - <p>point to csc row indices array(nnz). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csc_col</span></code> - <p>point to csc col indices array(dimN+1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>hl_stream_t type. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">csc_matrix</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">csc_val</span></code>: point to csc value array(nnz). </li>
+<li><code class="docutils literal"><span class="pre">csc_row</span></code>: point to csc row indices array(nnz). </li>
+<li><code class="docutils literal"><span class="pre">csc_col</span></code>: point to csc col indices array(dimN+1). </li>
+<li><code class="docutils literal"><span class="pre">stream</span></code>: hl_stream_t type. </li>
 </ul>
 </dd>
 </dl>
@@ -1844,13 +1656,10 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 </ol>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">src</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>hl_stream_t type.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dst</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">src</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">stream</span></code>: hl_stream_t type.</li>
 </ul>
 </dd>
 </dl>
@@ -1863,15 +1672,11 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>csr matrix to dense matrix. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>csr matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: csr matrix. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: width. </li>
 </ul>
 </dd>
 </dl>
@@ -1884,15 +1689,11 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>csc matrix to dense matrix. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>csc matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: csc matrix. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: width. </li>
 </ul>
 </dd>
 </dl>
@@ -1907,27 +1708,17 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Note</strong></dt>
 <dd>transb is not support HPPL_OP_T. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>csr sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transa</span></code> - <p>operation op(A) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transb</span></code> - <p>operation op(B) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height of op(A) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width of op(B) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimK</span></code> - <p>width of op(A) &amp; height of op(B) </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scalar used for multiplication. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scalar used for multiplication.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: csr sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">transa</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">transb</span></code>: operation op(B) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height of op(A) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width of op(B) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimK</span></code>: width of op(A) &amp; height of op(B) </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. If beta is zero, C does not have to be a valid input.</li>
 </ul>
 </dd>
 </dl>
@@ -1942,27 +1733,17 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Note</strong></dt>
 <dd>transb is not support HPPL_OP_T. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transa</span></code> - <p>operation op(A) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transb</span></code> - <p>operation op(B) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height of op(A) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width of op(B) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimK</span></code> - <p>width of op(A) &amp; height of op(B) </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scalar used for multiplication. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scalar used for multiplication.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">transa</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">transb</span></code>: operation op(B) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height of op(A) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width of op(B) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimK</span></code>: width of op(A) &amp; height of op(B) </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. If beta is zero, C does not have to be a valid input.</li>
 </ul>
 </dd>
 </dl>
@@ -1977,27 +1758,17 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Note</strong></dt>
 <dd>transa is not support HPPL_OP_T. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transa</span></code> - <p>operation op(A) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>csc sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transb</span></code> - <p>operation op(B) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height of op(A) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width of op(B) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimK</span></code> - <p>width of op(A) &amp; height of op(B) </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scalar used for multiplication. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scalar used for multiplication.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">transa</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: csc sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">transb</span></code>: operation op(B) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height of op(A) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width of op(B) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimK</span></code>: width of op(A) &amp; height of op(B) </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. If beta is zero, C does not have to be a valid input.</li>
 </ul>
 </dd>
 </dl>
@@ -2012,27 +1783,17 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Note</strong></dt>
 <dd>transb is not support HPPL_OP_T. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transa</span></code> - <p>operation op(A) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transb</span></code> - <p>operation op(B) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height of op(A) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width of op(B) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimK</span></code> - <p>width of op(A) &amp; height of op(B) </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scalar used for multiplication. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scalar used for multiplication.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">transa</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">transb</span></code>: operation op(B) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height of op(A) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width of op(B) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimK</span></code>: width of op(A) &amp; height of op(B) </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication.</li>
 </ul>
 </dd>
 </dl>
@@ -2047,27 +1808,17 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Note</strong></dt>
 <dd>transa is not support HPPL_OP_T. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transa</span></code> - <p>operation op(A) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">transb</span></code> - <p>operation op(B) that is non-or transpose. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height of op(A) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width of op(B) &amp; C </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimK</span></code> - <p>width of op(A) &amp; height of op(B) </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scalar used for multiplication. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scalar used for multiplication.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">transa</span></code>: operation op(A) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">transb</span></code>: operation op(B) that is non-or transpose. </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height of op(A) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width of op(B) &amp; C </li>
+<li><code class="docutils literal"><span class="pre">dimK</span></code>: width of op(A) &amp; height of op(B) </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scalar used for multiplication. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scalar used for multiplication. If beta is zero, C does not have to be a valid input.</li>
 </ul>
 </dd>
 </dl>
@@ -2088,23 +1839,15 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p>b. The interface is asynchronous copy. To ensure that the data is copied please call the synchronous interface;</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">csc_val</span></code> - <p>point to csc value array(nnz). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">val_size</span></code> - <p>csc value size. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csc_row</span></code> - <p>point to csc row indices array(nnz). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">row_size</span></code> - <p>csc row size. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csc_col</span></code> - <p>point to csc col indices array(dimN + 1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">col_size</span></code> - <p>csc column size. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csc_matrix</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>hl_stream_t type. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">csc_val</span></code>: point to csc value array(nnz). </li>
+<li><code class="docutils literal"><span class="pre">val_size</span></code>: csc value size. </li>
+<li><code class="docutils literal"><span class="pre">csc_row</span></code>: point to csc row indices array(nnz). </li>
+<li><code class="docutils literal"><span class="pre">row_size</span></code>: csc row size. </li>
+<li><code class="docutils literal"><span class="pre">csc_col</span></code>: point to csc col indices array(dimN + 1). </li>
+<li><code class="docutils literal"><span class="pre">col_size</span></code>: csc column size. </li>
+<li><code class="docutils literal"><span class="pre">csc_matrix</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">stream</span></code>: hl_stream_t type. </li>
 </ul>
 </dd>
 </dl>
@@ -2125,23 +1868,15 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <p>b. The interface is asynchronous copy. To ensure that the data is copied please call the synchronous interface;</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">csr_val</span></code> - <p>point to csr value array(nnz). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">val_size</span></code> - <p>csr value size. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csr_row</span></code> - <p>point to csr row indices array(nnz). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">row_size</span></code> - <p>csr row size. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csr_col</span></code> - <p>point to csr col indices array(dimN + 1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">col_size</span></code> - <p>csr column size. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">csr_matrix</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>hl_stream_t type. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">csr_val</span></code>: point to csr value array(nnz). </li>
+<li><code class="docutils literal"><span class="pre">val_size</span></code>: csr value size. </li>
+<li><code class="docutils literal"><span class="pre">csr_row</span></code>: point to csr row indices array(nnz). </li>
+<li><code class="docutils literal"><span class="pre">row_size</span></code>: csr row size. </li>
+<li><code class="docutils literal"><span class="pre">csr_col</span></code>: point to csr col indices array(dimN + 1). </li>
+<li><code class="docutils literal"><span class="pre">col_size</span></code>: csr column size. </li>
+<li><code class="docutils literal"><span class="pre">csr_matrix</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">stream</span></code>: hl_stream_t type. </li>
 </ul>
 </dd>
 </dl>
@@ -2154,17 +1889,12 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>A_d[j] += B_d[i,j] for i in range(height) </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>vector, size = width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">scale</span></code> - <p>scale of B_d </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: vector, size = width. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: width. </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: scale of B_d </li>
 </ul>
 </dd>
 </dl>
@@ -2183,13 +1913,10 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>A_d[i,j] += B_d[j]. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>sprare matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>vector, size = A_d.width. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">scale</span></code> - <p>scale of B_d. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: sprare matrix. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: vector, size = A_d.width. </li>
+<li><code class="docutils literal"><span class="pre">scale</span></code>: scale of B_d. </li>
 </ul>
 </dd>
 </dl>
@@ -2208,19 +1935,13 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>sparseMatrix = alpha * denseMatrix + beta *sparseMatrix A_d[i,j] = alpha * B_d[i,j] + beta * A_d[i,j] Only add value of same (row, col) index in dense matrix and do not use others values whoes postions are not in sparse matirx. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>sprare matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">B_d</span></code> - <p>dense matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>height of B_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>width of B_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">alpha</span></code> - <p>scale of B_d. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beta</span></code> - <p>scale of A_d. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: sprare matrix. </li>
+<li><code class="docutils literal"><span class="pre">B_d</span></code>: dense matrix. </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: height of B_d. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: width of B_d. </li>
+<li><code class="docutils literal"><span class="pre">alpha</span></code>: scale of B_d. </li>
+<li><code class="docutils literal"><span class="pre">beta</span></code>: scale of A_d. </li>
 </ul>
 </dd>
 </dl>
@@ -2241,9 +1962,8 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Return</strong></dt>
 <dd>return rows pointer, which is gpu address </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">sMat</span></code> - <p>sparse matrix</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">sMat</span></code>: sparse matrix</li>
 </ul>
 </dd>
 </dl>
@@ -2258,9 +1978,8 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Return</strong></dt>
 <dd>return cols pointer, which is gpu address </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">sMat</span></code> - <p>sparse matrix</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">sMat</span></code>: sparse matrix</li>
 </ul>
 </dd>
 </dl>
@@ -2275,9 +1994,8 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Return</strong></dt>
 <dd>return value pointer, which is gpu address </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">sMat</span></code> - <p>sparse matrix</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">sMat</span></code>: sparse matrix</li>
 </ul>
 </dd>
 </dl>
@@ -2325,19 +2043,13 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>sparse matrix csr format. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">*csr_val</span></code> - <p>nonzero values of matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*csr_row</span></code> - <p>row indices. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*csr_col</span></code> - <p>column indices. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">nnz_s</span></code> - <p>sizeof of csr_val &amp; csr_col. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">row_s</span></code> - <p>sizeof of csr_row. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sparsity</span></code> - <p>sparsity pattern. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">*csr_val</span></code>: nonzero values of matrix. </li>
+<li><code class="docutils literal"><span class="pre">*csr_row</span></code>: row indices. </li>
+<li><code class="docutils literal"><span class="pre">*csr_col</span></code>: column indices. </li>
+<li><code class="docutils literal"><span class="pre">nnz_s</span></code>: sizeof of csr_val &amp; csr_col. </li>
+<li><code class="docutils literal"><span class="pre">row_s</span></code>: sizeof of csr_row. </li>
+<li><code class="docutils literal"><span class="pre">sparsity</span></code>: sparsity pattern. </li>
 </ul>
 </dd>
 </dl>
@@ -2383,19 +2095,13 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>sparse matrix csc format. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">*csc_val</span></code> - <p>nonzero values of matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*csc_row</span></code> - <p>row indices. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*csc_col</span></code> - <p>column indices. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">nnz_s</span></code> - <p>sizeof of csc_val &amp; csc_row. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">col_s</span></code> - <p>sizeof of csc_col. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sparsity</span></code> - <p>sparsity pattern. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">*csc_val</span></code>: nonzero values of matrix. </li>
+<li><code class="docutils literal"><span class="pre">*csc_row</span></code>: row indices. </li>
+<li><code class="docutils literal"><span class="pre">*csc_col</span></code>: column indices. </li>
+<li><code class="docutils literal"><span class="pre">nnz_s</span></code>: sizeof of csc_val &amp; csc_row. </li>
+<li><code class="docutils literal"><span class="pre">col_s</span></code>: sizeof of csc_col. </li>
+<li><code class="docutils literal"><span class="pre">sparsity</span></code>: sparsity pattern. </li>
 </ul>
 </dd>
 </dl>
@@ -2449,15 +2155,11 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Calculate the sum of each row of the matrix A_d. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output matrix (M x 1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output matrix (M x 1). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -2470,15 +2172,11 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Calculate the maximum value of each row of the matrix A_d. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output matrix (M x 1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output matrix (M x 1). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -2491,15 +2189,11 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Calculate the minimum value of each row of the matrix A_d. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output matrix (M x 1). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output matrix (M x 1). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -2512,15 +2206,11 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Calculate the sum of each column of the matrix A_d. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output <a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> (1 x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output <a class="reference internal" href="../../api/api.html#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> (1 x N). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -2533,15 +2223,11 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Calculate the maximum value of each column of the matrix A_d. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output matrix (1 x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output matrix (1 x N). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -2554,15 +2240,11 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Calculate the minimum value of each column of the matrix A_d. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input matrix (M x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_d</span></code> - <p>output matrix (1 x N). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>matrix height. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimN</span></code> - <p>matrix width. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input matrix (M x N). </li>
+<li><code class="docutils literal"><span class="pre">C_d</span></code>: output matrix (1 x N). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: matrix height. </li>
+<li><code class="docutils literal"><span class="pre">dimN</span></code>: matrix width. </li>
 </ul>
 </dd>
 </dl>
@@ -2575,13 +2257,10 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>C_h = sum(A_d[i]). </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input(m). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_h</span></code> - <p>output(host memory). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>size of vector. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input(m). </li>
+<li><code class="docutils literal"><span class="pre">C_h</span></code>: output(host memory). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: size of vector. </li>
 </ul>
 </dd>
 </dl>
@@ -2594,13 +2273,10 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>C_h = sum(abs(A_d[i])). </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">A_d</span></code> - <p>input(m). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">C_h</span></code> - <p>output(host memory). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dimM</span></code> - <p>size of vector. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">A_d</span></code>: input(m). </li>
+<li><code class="docutils literal"><span class="pre">C_h</span></code>: output(host memory). </li>
+<li><code class="docutils literal"><span class="pre">dimM</span></code>: size of vector. </li>
 </ul>
 </dd>
 </dl>
@@ -2619,23 +2295,15 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Get row from table. output[i] += table[ids[i]] if ids[i] == -1, it will be ignored. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">output</span></code> - <p>output matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldo</span></code> - <p>leading dimension of output. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">table</span></code> - <p>table matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldt</span></code> - <p>leading dimension of table. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ids</span></code> - <p>ids vector. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">numSamples</span></code> - <p>height of output. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">tableSize</span></code> - <p>height of table. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dim</span></code> - <p>width of table. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">output</span></code>: output matrix. </li>
+<li><code class="docutils literal"><span class="pre">ldo</span></code>: leading dimension of output. </li>
+<li><code class="docutils literal"><span class="pre">table</span></code>: table matrix. </li>
+<li><code class="docutils literal"><span class="pre">ldt</span></code>: leading dimension of table. </li>
+<li><code class="docutils literal"><span class="pre">ids</span></code>: ids vector. </li>
+<li><code class="docutils literal"><span class="pre">numSamples</span></code>: height of output. </li>
+<li><code class="docutils literal"><span class="pre">tableSize</span></code>: height of table. </li>
+<li><code class="docutils literal"><span class="pre">dim</span></code>: width of table. </li>
 </ul>
 </dd>
 </dl>
@@ -2648,23 +2316,15 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Add row to table. table[ids[i]] += output[i] if ids[i] == -1, it will be ignored. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">table</span></code> - <p>table matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldt</span></code> - <p>leading dimension of table. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">input</span></code> - <p>input matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldi</span></code> - <p>leading dimension of input. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ids</span></code> - <p>ids vector. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">numSamples</span></code> - <p>height of input. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">tableSize</span></code> - <p>height of table. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dim</span></code> - <p>width of table. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">table</span></code>: table matrix. </li>
+<li><code class="docutils literal"><span class="pre">ldt</span></code>: leading dimension of table. </li>
+<li><code class="docutils literal"><span class="pre">input</span></code>: input matrix. </li>
+<li><code class="docutils literal"><span class="pre">ldi</span></code>: leading dimension of input. </li>
+<li><code class="docutils literal"><span class="pre">ids</span></code>: ids vector. </li>
+<li><code class="docutils literal"><span class="pre">numSamples</span></code>: height of input. </li>
+<li><code class="docutils literal"><span class="pre">tableSize</span></code>: height of table. </li>
+<li><code class="docutils literal"><span class="pre">dim</span></code>: width of table. </li>
 </ul>
 </dd>
 </dl>
@@ -2679,19 +2339,13 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>Select element from vector. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">dst</span></code> - <p>output vector. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sized</span></code> - <p>size of dst. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">src</span></code> - <p>input vector. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sizes</span></code> - <p>size of src. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ids</span></code> - <p>index vector. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">sizei</span></code> - <p>size of ids. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">dst</span></code>: output vector. </li>
+<li><code class="docutils literal"><span class="pre">sized</span></code>: size of dst. </li>
+<li><code class="docutils literal"><span class="pre">src</span></code>: input vector. </li>
+<li><code class="docutils literal"><span class="pre">sizes</span></code>: size of src. </li>
+<li><code class="docutils literal"><span class="pre">ids</span></code>: index vector. </li>
+<li><code class="docutils literal"><span class="pre">sizei</span></code>: size of ids. </li>
 </ul>
 </dd>
 </dl>
@@ -2710,23 +2364,15 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dd><p>find top k element. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">topVal</span></code> - <p>top k element. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldv</span></code> - <p>leading dimension of topVal. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">topIds</span></code> - <p>top k index. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">src</span></code> - <p>input value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">lds</span></code> - <p>leading dimension of src. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dim</span></code> - <p>width of input value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beamSize</span></code> - <p>beam size. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">numSamples</span></code> - <p>height of input value. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">topVal</span></code>: top k element. </li>
+<li><code class="docutils literal"><span class="pre">ldv</span></code>: leading dimension of topVal. </li>
+<li><code class="docutils literal"><span class="pre">topIds</span></code>: top k index. </li>
+<li><code class="docutils literal"><span class="pre">src</span></code>: input value. </li>
+<li><code class="docutils literal"><span class="pre">lds</span></code>: leading dimension of src. </li>
+<li><code class="docutils literal"><span class="pre">dim</span></code>: width of input value. </li>
+<li><code class="docutils literal"><span class="pre">beamSize</span></code>: beam size. </li>
+<li><code class="docutils literal"><span class="pre">numSamples</span></code>: height of input value. </li>
 </ul>
 </dd>
 </dl>
@@ -2741,19 +2387,13 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
 <dt><strong>Note</strong></dt>
 <dd>Only support HL_SPARSE_CSR format. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">topVal</span></code> - <p>top k element. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ldv</span></code> - <p>leading dimension of topVal. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">topIds</span></code> - <p>top k index. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">src</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">beamSize</span></code> - <p>beam size. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">numSamples</span></code> - <p>height of input value.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">topVal</span></code>: top k element. </li>
+<li><code class="docutils literal"><span class="pre">ldv</span></code>: leading dimension of topVal. </li>
+<li><code class="docutils literal"><span class="pre">topIds</span></code>: top k index. </li>
+<li><code class="docutils literal"><span class="pre">src</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">beamSize</span></code>: beam size. </li>
+<li><code class="docutils literal"><span class="pre">numSamples</span></code>: height of input value.</li>
 </ul>
 </dd>
 </dl>
@@ -2848,7 +2488,7 @@ CPU element wise quaternary operator. element wise op(a, b, c, d) for 0 &lt;= i 
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

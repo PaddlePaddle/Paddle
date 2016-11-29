@@ -103,13 +103,10 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd>start one socket server which hosts parameter server process. rdmaCpu is passed to rdma deamon for better performance, and start tcp socket instead of rdma socket if rdmaCpu is equal to -1. Each trainer process starts one connection to one socket server, and use ports_num to build more connections to harness fat communication channel if necessary. each connection is controlled by single thread with blocking read and write. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">addr</span></code> - <p>sock bind address </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">port</span></code> - <p>sock bind port </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">rdmaCpu</span></code> - <p>rdma sock bind cpu core</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">addr</span></code>: sock bind address </li>
+<li><code class="docutils literal"><span class="pre">port</span></code>: sock bind port </li>
+<li><code class="docutils literal"><span class="pre">rdmaCpu</span></code>: rdma sock bind cpu core</li>
 </ul>
 </dd>
 </dl>
@@ -123,7 +120,7 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12SocketServer3runEv">
-<span id="paddle::SocketServer::run"></span>virtual <span class="target" id="paddleclasspaddle_1_1SocketServer_1a3f9fa3100ae9b74df24277ba813c82a5"></span>void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketServer3runEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SocketServer::run"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a3f9fa3100ae9b74df24277ba813c82a5"></span>void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketServer3runEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>start a socket server </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -137,7 +134,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle12SocketServer13handleRequestENSt10unique_ptrI9MsgReaderEE16ResponseCallback">
-<span id="paddle::SocketServer::handleRequest__std::unique_ptr:MsgReader:.ResponseCallback"></span>virtual <span class="target" id="paddleclasspaddle_1_1SocketServer_1a09530527313cf73033dc5f285fbb6179"></span>void <code class="descname">handleRequest</code><span class="sig-paren">(</span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle9MsgReaderE" title="paddle::MsgReader">MsgReader</a>&gt; <em>msgReader</em>, <a class="reference internal" href="#_CPPv2N6paddle12SocketServer16ResponseCallbackE" title="paddle::SocketServer::ResponseCallback">ResponseCallback</a> <em>callback</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12SocketServer13handleRequestENSt10unique_ptrI9MsgReaderEE16ResponseCallback" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SocketServer::handleRequest__std::unique_ptr:MsgReader:.ResponseCallback"></span><span class="target" id="paddleclasspaddle_1_1SocketServer_1a09530527313cf73033dc5f285fbb6179"></span><em class="property">virtual</em> void <code class="descname">handleRequest</code><span class="sig-paren">(</span>std::unique_ptr&lt;<a class="reference internal" href="#_CPPv2N6paddle9MsgReaderE" title="paddle::MsgReader">MsgReader</a>&gt; <em>msgReader</em>, <a class="reference internal" href="#_CPPv2N6paddle12SocketServer16ResponseCallbackE" title="paddle::SocketServer::ResponseCallback">ResponseCallback</a> <em>callback</em><span class="sig-paren">)</span> = 0<a class="headerlink" href="#_CPPv2N6paddle12SocketServer13handleRequestENSt10unique_ptrI9MsgReaderEE16ResponseCallback" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -261,12 +258,12 @@ var _hmt = _hmt || [];
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12SocketWorkerD0Ev">
-<span id="paddle::SocketWorker::~SocketWorker"></span>virtual <span class="target" id="paddleclasspaddle_1_1SocketWorker_1ae39a37b2018b921e30cbc7bc919e8f8a"></span><code class="descname">~SocketWorker</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketWorkerD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SocketWorker::~SocketWorker"></span><span class="target" id="paddleclasspaddle_1_1SocketWorker_1ae39a37b2018b921e30cbc7bc919e8f8a"></span><em class="property">virtual</em> <code class="descname">~SocketWorker</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketWorkerD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N6paddle12SocketWorker3runEv">
-<span id="paddle::SocketWorker::run"></span>virtual <span class="target" id="paddleclasspaddle_1_1SocketWorker_1a380d9acd081babcaabc35594f95f0b94"></span>void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketWorker3runEv" title="Permalink to this definition">¶</a></dt>
+<span id="paddle::SocketWorker::run"></span><span class="target" id="paddleclasspaddle_1_1SocketWorker_1a380d9acd081babcaabc35594f95f0b94"></span>void <code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle12SocketWorker3runEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>worker thread main context </p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -319,13 +316,10 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd>responsible for building one connection to specified pserver port </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">serverAddr</span></code> - <p>pserver ip address </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">serverPort</span></code> - <p>pserver port </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">ChannelType</span></code> - <p>F_TCP or F_RDMA</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">serverAddr</span></code>: pserver ip address </li>
+<li><code class="docutils literal"><span class="pre">serverPort</span></code>: pserver port </li>
+<li><code class="docutils literal"><span class="pre">ChannelType</span></code>: F_TCP or F_RDMA</li>
 </ul>
 </dd>
 </dl>
@@ -366,11 +360,9 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd>each object contains one channel which accept byte stream for rdma, low level sock also provide byte stream api. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">serverAddr</span></code> - <p>rdma server ip </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">serverPort</span></code> - <p>rdma server port</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">serverAddr</span></code>: rdma server ip </li>
+<li><code class="docutils literal"><span class="pre">serverPort</span></code>: rdma server port</li>
 </ul>
 </dd>
 </dl>
@@ -385,11 +377,9 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd>each object contains one channel which accept byte stream </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">serverAddr</span></code> - <p>tcp server ip </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">serverPort</span></code> - <p>tcp server port</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">serverAddr</span></code>: tcp server ip </li>
+<li><code class="docutils literal"><span class="pre">serverPort</span></code>: tcp server port</li>
 </ul>
 </dd>
 </dl>
@@ -424,8 +414,8 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle13SocketChannel11getPeerNameEv">
-<span id="paddle::SocketChannel::getPeerName"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1ad5c59c9f88d9a94f61e4a15401ddd525"></span><em class="property">const</em> std::string &amp;<code class="descname">getPeerName</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle13SocketChannel11getPeerNameEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle13SocketChannel11getPeerNameEv">
+<span id="paddle::SocketChannel::getPeerNameC"></span><span class="target" id="paddleclasspaddle_1_1SocketChannel_1ad5c59c9f88d9a94f61e4a15401ddd525"></span><em class="property">const</em> std::string &amp;<code class="descname">getPeerName</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle13SocketChannel11getPeerNameEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -560,26 +550,26 @@ rdma::readv and rdma::writev can take advantage of RDMA blocking offload transfe
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle9MsgReader12getNumBlocksEv">
-<span id="paddle::MsgReader::getNumBlocks"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1ab34a0898615917940cbb09897586604d"></span>size_t <code class="descname">getNumBlocks</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle9MsgReader12getNumBlocksEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle9MsgReader12getNumBlocksEv">
+<span id="paddle::MsgReader::getNumBlocksC"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1ab34a0898615917940cbb09897586604d"></span>size_t <code class="descname">getNumBlocks</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9MsgReader12getNumBlocksEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>number of remaining parts </p>
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle9MsgReader18getNextBlockLengthEv">
-<span id="paddle::MsgReader::getNextBlockLength"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a0f4502133e2c0120e130986bf7bfc6fb"></span>size_t <code class="descname">getNextBlockLength</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle9MsgReader18getNextBlockLengthEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle9MsgReader18getNextBlockLengthEv">
+<span id="paddle::MsgReader::getNextBlockLengthC"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a0f4502133e2c0120e130986bf7bfc6fb"></span>size_t <code class="descname">getNextBlockLength</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9MsgReader18getNextBlockLengthEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>lenght of next block </p>
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle9MsgReader14getTotalLengthEv">
-<span id="paddle::MsgReader::getTotalLength"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a430cdc68dfe4b8e52e52593e754ce595"></span>size_t <code class="descname">getTotalLength</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle9MsgReader14getTotalLengthEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle9MsgReader14getTotalLengthEv">
+<span id="paddle::MsgReader::getTotalLengthC"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a430cdc68dfe4b8e52e52593e754ce595"></span>size_t <code class="descname">getTotalLength</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9MsgReader14getTotalLengthEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>get the total length of all the remaining blocks </p>
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle9MsgReader14getBlockLengthE6size_t">
-<span id="paddle::MsgReader::getBlockLength__s"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a7f968e5ca780459def979eb5c26c09e2"></span>size_t <code class="descname">getBlockLength</code><span class="sig-paren">(</span>size_t <em>i</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle9MsgReader14getBlockLengthE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle9MsgReader14getBlockLengthE6size_t">
+<span id="paddle::MsgReader::getBlockLength__sC"></span><span class="target" id="paddleclasspaddle_1_1MsgReader_1a7f968e5ca780459def979eb5c26c09e2"></span>size_t <code class="descname">getBlockLength</code><span class="sig-paren">(</span>size_t <em>i</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle9MsgReader14getBlockLengthE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the length for block currentBlockIndex + i. </p>
 </dd></dl>
 
@@ -685,7 +675,7 @@ rdma::readv and rdma::writev can take advantage of RDMA blocking offload transfe
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

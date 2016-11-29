@@ -96,6 +96,13 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="macro">
+<dt id="c.EXP_MAX_INPUT">
+<span class="target" id="paddlehl__base_8h_1acdfa5ecb592af041069633c09a119caa"></span><code class="descname">EXP_MAX_INPUT</code><a class="headerlink" href="#c.EXP_MAX_INPUT" title="Permalink to this definition">¶</a></dt>
+<dd><p>The maximum input value for exp, used to avoid overflow problem.</p>
+<p>Currently only used for tanh function. </p>
+</dd></dl>
+
+<dl class="macro">
 <dt id="c.DIVUP">
 <span class="target" id="paddlehl__base_8h_1ae637c5ecf04d7a87be9ce233d85abae0"></span><code class="descname">DIVUP</code><span class="sig-paren">(</span>x, y<span class="sig-paren">)</span><a class="headerlink" href="#c.DIVUP" title="Permalink to this definition">¶</a></dt>
 <dd><p>DIVUP(x, y) is similar to ceil(x / y). </p>
@@ -289,17 +296,12 @@ var _hmt = _hmt || [];
 <dd><em>#include &lt;hl_base.h&gt;</em><p>Lstm value. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">gateValue</span></code> - <p>input value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">prevStateValue</span></code> - <p>previous state value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stateValue</span></code> - <p>state value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stateActiveValue</span></code> - <p>state active value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">outputValue</span></code> - <p>output value. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">gateValue</span></code>: input value. </li>
+<li><code class="docutils literal"><span class="pre">prevStateValue</span></code>: previous state value. </li>
+<li><code class="docutils literal"><span class="pre">stateValue</span></code>: state value. </li>
+<li><code class="docutils literal"><span class="pre">stateActiveValue</span></code>: state active value. </li>
+<li><code class="docutils literal"><span class="pre">outputValue</span></code>: output value. </li>
 </ul>
 </dd>
 </dl>
@@ -355,17 +357,12 @@ var _hmt = _hmt || [];
 <dd><em>#include &lt;hl_base.h&gt;</em><p>Lstm gradient. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">gateGrad</span></code> - <p>input gradient. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">prevStateGrad</span></code> - <p>previous state gradient. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stateGrad</span></code> - <p>state gradient. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stateActiveGrad</span></code> - <p>state active gradient. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">outputGrad</span></code> - <p>output gradient. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">gateGrad</span></code>: input gradient. </li>
+<li><code class="docutils literal"><span class="pre">prevStateGrad</span></code>: previous state gradient. </li>
+<li><code class="docutils literal"><span class="pre">stateGrad</span></code>: state gradient. </li>
+<li><code class="docutils literal"><span class="pre">stateActiveGrad</span></code>: state active gradient. </li>
+<li><code class="docutils literal"><span class="pre">outputGrad</span></code>: output gradient. </li>
 </ul>
 </dd>
 </dl>
@@ -421,19 +418,13 @@ var _hmt = _hmt || [];
 <dd><em>#include &lt;hl_base.h&gt;</em><p>Gru value. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">gateWeight</span></code> - <p>gate weight (updateGate + resetGate). </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stateWeight</span></code> - <p>frame state weight. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">gateValue</span></code> - <p>gate value results. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">resetOutputValue</span></code> - <p>resetOutput value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">outputValue</span></code> - <p>output value. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">prevOutValue</span></code> - <p>previous output value. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">gateWeight</span></code>: gate weight (updateGate + resetGate). </li>
+<li><code class="docutils literal"><span class="pre">stateWeight</span></code>: frame state weight. </li>
+<li><code class="docutils literal"><span class="pre">gateValue</span></code>: gate value results. </li>
+<li><code class="docutils literal"><span class="pre">resetOutputValue</span></code>: resetOutput value. </li>
+<li><code class="docutils literal"><span class="pre">outputValue</span></code>: output value. </li>
+<li><code class="docutils literal"><span class="pre">prevOutValue</span></code>: previous output value. </li>
 </ul>
 </dd>
 </dl>
@@ -479,19 +470,13 @@ var _hmt = _hmt || [];
 <dd><em>#include &lt;hl_base.h&gt;</em><p>Gru gradient. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">gateWeightGrad</span></code> - <p>gate weight gradient. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stateWeightGrad</span></code> - <p>frame state weight gradient. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">gateGrad</span></code> - <p>gate gradient results. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">resetOutputGrad</span></code> - <p>resetOutput gradient. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">outputGrad</span></code> - <p>output gradient. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">prevOutGrad</span></code> - <p>previous output gradient. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">gateWeightGrad</span></code>: gate weight gradient. </li>
+<li><code class="docutils literal"><span class="pre">stateWeightGrad</span></code>: frame state weight gradient. </li>
+<li><code class="docutils literal"><span class="pre">gateGrad</span></code>: gate gradient results. </li>
+<li><code class="docutils literal"><span class="pre">resetOutputGrad</span></code>: resetOutput gradient. </li>
+<li><code class="docutils literal"><span class="pre">outputGrad</span></code>: output gradient. </li>
+<li><code class="docutils literal"><span class="pre">prevOutGrad</span></code>: previous output gradient. </li>
 </ul>
 </dd>
 </dl>
@@ -537,19 +522,13 @@ var _hmt = _hmt || [];
 <dd><em>#include &lt;hl_base.h&gt;</em><p>HPPL sparse matrix. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">matrix</span></code> - <p>sparse matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">format</span></code> - <p>matrix format. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">type</span></code> - <p>the type of matrix values. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">rows</span></code> - <p>matrix rows. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">cols</span></code> - <p>matrix columns. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">nnz</span></code> - <p>nonzero values of sparse matrix. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">matrix</span></code>: sparse matrix. </li>
+<li><code class="docutils literal"><span class="pre">format</span></code>: matrix format. </li>
+<li><code class="docutils literal"><span class="pre">type</span></code>: the type of matrix values. </li>
+<li><code class="docutils literal"><span class="pre">rows</span></code>: matrix rows. </li>
+<li><code class="docutils literal"><span class="pre">cols</span></code>: matrix columns. </li>
+<li><code class="docutils literal"><span class="pre">nnz</span></code>: nonzero values of sparse matrix. </li>
 </ul>
 </dd>
 </dl>
@@ -641,11 +620,9 @@ var _hmt = _hmt || [];
 <dd><p>Initialize cudnn. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">cudnn_handle</span></code> - <p>Cudnn handle. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>Cudnn stream. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">cudnn_handle</span></code>: Cudnn handle. </li>
+<li><code class="docutils literal"><span class="pre">stream</span></code>: Cudnn stream. </li>
 </ul>
 </dd>
 </dl>
@@ -658,11 +635,9 @@ var _hmt = _hmt || [];
 <dd><p>Initialize cublas. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">cublas_handle</span></code> - <p>Cublas handle. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">stream</span></code> - <p>Cuda stream. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">cublas_handle</span></code>: Cublas handle. </li>
+<li><code class="docutils literal"><span class="pre">stream</span></code>: Cuda stream. </li>
 </ul>
 </dd>
 </dl>
@@ -675,9 +650,8 @@ var _hmt = _hmt || [];
 <dd><p>Initialize cudnn tensor descriptor. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">cudnn_desc</span></code> - <p>Cudnn tensor descriptor. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">cudnn_desc</span></code>: Cudnn tensor descriptor. </li>
 </ul>
 </dd>
 </dl>
@@ -700,31 +674,19 @@ var _hmt = _hmt || [];
 <dd><p>Thread resource structure. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">stream[HPPL_STREAM_END]</span></code> - <p>Stream for thread. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">handle</span></code> - <p>Cublas Handle. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">gen</span></code> - <p>Curand Generator. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">cudnn_handle</span></code> - <p>Cudnn handle. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">cudnn_desc</span></code> - <p>Cudnn image descriptor. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*gen_mutex</span></code> - <p>Gen lock. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*gpu_mem</span></code> - <p>HPPL GPU Memory. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">*cpu_mem</span></code> - <p>HPPL CPU Memory. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">event</span></code> - <p>gpu_mem event. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">device</span></code> - <p>Thread device context. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">major</span></code> - <p>Compute capability. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">is_init</span></code> - <p>Thread init or not. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">stream[HPPL_STREAM_END]</span></code>: Stream for thread. </li>
+<li><code class="docutils literal"><span class="pre">handle</span></code>: Cublas Handle. </li>
+<li><code class="docutils literal"><span class="pre">gen</span></code>: Curand Generator. </li>
+<li><code class="docutils literal"><span class="pre">cudnn_handle</span></code>: Cudnn handle. </li>
+<li><code class="docutils literal"><span class="pre">cudnn_desc</span></code>: Cudnn image descriptor. </li>
+<li><code class="docutils literal"><span class="pre">*gen_mutex</span></code>: Gen lock. </li>
+<li><code class="docutils literal"><span class="pre">*gpu_mem</span></code>: HPPL GPU Memory. </li>
+<li><code class="docutils literal"><span class="pre">*cpu_mem</span></code>: HPPL CPU Memory. </li>
+<li><code class="docutils literal"><span class="pre">event</span></code>: gpu_mem event. </li>
+<li><code class="docutils literal"><span class="pre">device</span></code>: Thread device context. </li>
+<li><code class="docutils literal"><span class="pre">major</span></code>: Compute capability. </li>
+<li><code class="docutils literal"><span class="pre">is_init</span></code>: Thread init or not. </li>
 </ul>
 </dd>
 </dl>
@@ -872,7 +834,7 @@ var _hmt = _hmt || [];
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

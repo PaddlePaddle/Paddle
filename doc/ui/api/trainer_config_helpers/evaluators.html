@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Base &#8212; PaddlePaddle  documentation</title>
+    <title>Evaluators &#8212; PaddlePaddle  documentation</title>
     
     <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -29,9 +29,9 @@
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
     <link rel="top" title="PaddlePaddle  documentation" href="../../../index.html" />
-    <link rel="up" title="Evaluators" href="evaluators_index.html" />
+    <link rel="up" title="Model Config Interface" href="index.html" />
     <link rel="next" title="Parameter and Extra Layer Attribute" href="attrs.html" />
-    <link rel="prev" title="Evaluators" href="evaluators_index.html" /> 
+    <link rel="prev" title="Networks" href="networks.html" /> 
 <script>
 var _hmt = _hmt || [];
 (function() {
@@ -57,12 +57,10 @@ var _hmt = _hmt || [];
           <a href="attrs.html" title="Parameter and Extra Layer Attribute"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="evaluators_index.html" title="Evaluators"
+          <a href="networks.html" title="Networks"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="evaluators_index.html" accesskey="U">Evaluators</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Model Config Interface</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -71,8 +69,10 @@ var _hmt = _hmt || [];
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="base">
-<h1>Base<a class="headerlink" href="#base" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="evaluators">
+<h1>Evaluators<a class="headerlink" href="#evaluators" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="base">
+<h2>Base<a class="headerlink" href="#base" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">evaluator_base</code><span class="sig-paren">(</span><em>input</em>, <em>type</em>, <em>label=None</em>, <em>weight=None</em>, <em>name=None</em>, <em>chunk_scheme=None</em>, <em>num_chunk_types=None</em>, <em>classification_threshold=None</em>, <em>positive_label=None</em>, <em>dict_file=None</em>, <em>result_file=None</em>, <em>num_results=None</em>, <em>delimited=None</em><span class="sig-paren">)</span></dt>
@@ -111,9 +111,9 @@ Each evaluator may calculate differently to use this weight.</li>
 
 </div>
 <div class="section" id="classification">
-<h1>Classification<a class="headerlink" href="#classification" title="Permalink to this headline">¶</a></h1>
+<h2>Classification<a class="headerlink" href="#classification" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="classification-error-evaluator">
-<h2>classification_error_evaluator<a class="headerlink" href="#classification-error-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>classification_error_evaluator<a class="headerlink" href="#classification-error-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">classification_error_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -151,7 +151,7 @@ important this sample is.</li>
 
 </div>
 <div class="section" id="auc-evaluator">
-<h2>auc_evaluator<a class="headerlink" href="#auc-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>auc_evaluator<a class="headerlink" href="#auc-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">auc_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -179,7 +179,7 @@ important this sample is.</li>
 
 </div>
 <div class="section" id="ctc-error-evaluator">
-<h2>ctc_error_evaluator<a class="headerlink" href="#ctc-error-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>ctc_error_evaluator<a class="headerlink" href="#ctc-error-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">ctc_error_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -206,7 +206,7 @@ label for ctc_layer</li>
 
 </div>
 <div class="section" id="chunk-evaluator">
-<h2>chunk_evaluator<a class="headerlink" href="#chunk-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>chunk_evaluator<a class="headerlink" href="#chunk-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">chunk_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -255,7 +255,7 @@ contain this chunk_scheme.</li>
 
 </div>
 <div class="section" id="precision-recall-evaluator">
-<h2>precision_recall_evaluator<a class="headerlink" href="#precision-recall-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>precision_recall_evaluator<a class="headerlink" href="#precision-recall-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">precision_recall_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -292,9 +292,9 @@ F1-score of this label.</li>
 </div>
 </div>
 <div class="section" id="rank">
-<h1>Rank<a class="headerlink" href="#rank" title="Permalink to this headline">¶</a></h1>
+<h2>Rank<a class="headerlink" href="#rank" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="pnpair-evaluator">
-<h2>pnpair_evaluator<a class="headerlink" href="#pnpair-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>pnpair_evaluator<a class="headerlink" href="#pnpair-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">pnpair_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -325,9 +325,9 @@ learning to rank. This evaluator must contain at least three layers.</p>
 </div>
 </div>
 <div class="section" id="utils">
-<h1>Utils<a class="headerlink" href="#utils" title="Permalink to this headline">¶</a></h1>
+<h2>Utils<a class="headerlink" href="#utils" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="sum-evaluator">
-<h2>sum_evaluator<a class="headerlink" href="#sum-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>sum_evaluator<a class="headerlink" href="#sum-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">sum_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -354,7 +354,7 @@ learning to rank. This evaluator must contain at least three layers.</p>
 
 </div>
 <div class="section" id="column-sum-evaluator">
-<h2>column_sum_evaluator<a class="headerlink" href="#column-sum-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>column_sum_evaluator<a class="headerlink" href="#column-sum-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">column_sum_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -380,9 +380,9 @@ learning to rank. This evaluator must contain at least three layers.</p>
 </div>
 </div>
 <div class="section" id="print">
-<h1>Print<a class="headerlink" href="#print" title="Permalink to this headline">¶</a></h1>
+<h2>Print<a class="headerlink" href="#print" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="classification-error-printer-evaluator">
-<h2>classification_error_printer_evaluator<a class="headerlink" href="#classification-error-printer-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>classification_error_printer_evaluator<a class="headerlink" href="#classification-error-printer-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">classification_error_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -408,7 +408,7 @@ learning to rank. This evaluator must contain at least three layers.</p>
 
 </div>
 <div class="section" id="gradient-printer-evaluator">
-<h2>gradient_printer_evaluator<a class="headerlink" href="#gradient-printer-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>gradient_printer_evaluator<a class="headerlink" href="#gradient-printer-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">gradient_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -434,7 +434,7 @@ one or more input layers.</p>
 
 </div>
 <div class="section" id="maxid-printer-evaluator">
-<h2>maxid_printer_evaluator<a class="headerlink" href="#maxid-printer-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>maxid_printer_evaluator<a class="headerlink" href="#maxid-printer-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">maxid_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -463,7 +463,7 @@ It is 1 by default.</li>
 
 </div>
 <div class="section" id="maxframe-printer-evaluator">
-<h2>maxframe_printer_evaluator<a class="headerlink" href="#maxframe-printer-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>maxframe_printer_evaluator<a class="headerlink" href="#maxframe-printer-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">maxframe_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -495,7 +495,7 @@ It contains one or more input layers.</p>
 
 </div>
 <div class="section" id="seqtext-printer-evaluator">
-<h2>seqtext_printer_evaluator<a class="headerlink" href="#seqtext-printer-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>seqtext_printer_evaluator<a class="headerlink" href="#seqtext-printer-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">seqtext_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -569,7 +569,7 @@ Default is True. No space is added if set to False.</li>
 
 </div>
 <div class="section" id="value-printer-evaluator">
-<h2>value_printer_evaluator<a class="headerlink" href="#value-printer-evaluator" title="Permalink to this headline">¶</a></h2>
+<h3>value_printer_evaluator<a class="headerlink" href="#value-printer-evaluator" title="Permalink to this headline">¶</a></h3>
 <dl class="function">
 <dt>
 <code class="descclassname">paddle.trainer_config_helpers.evaluators.</code><code class="descname">value_printer_evaluator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
@@ -595,6 +595,7 @@ one or more input layers.</p>
 
 </div>
 </div>
+</div>
 
 
           </div>
@@ -604,7 +605,8 @@ one or more input layers.</p>
         <div class="sphinxsidebarwrapper">
   <h3><a href="../../../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Base</a></li>
+<li><a class="reference internal" href="#">Evaluators</a><ul>
+<li><a class="reference internal" href="#base">Base</a></li>
 <li><a class="reference internal" href="#classification">Classification</a><ul>
 <li><a class="reference internal" href="#classification-error-evaluator">classification_error_evaluator</a></li>
 <li><a class="reference internal" href="#auc-evaluator">auc_evaluator</a></li>
@@ -632,10 +634,12 @@ one or more input layers.</p>
 </ul>
 </li>
 </ul>
+</li>
+</ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="evaluators_index.html"
-                        title="previous chapter">Evaluators</a></p>
+  <p class="topless"><a href="networks.html"
+                        title="previous chapter">Networks</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="attrs.html"
                         title="next chapter">Parameter and Extra Layer Attribute</a></p>
@@ -673,17 +677,15 @@ one or more input layers.</p>
           <a href="attrs.html" title="Parameter and Extra Layer Attribute"
              >next</a> |</li>
         <li class="right" >
-          <a href="evaluators_index.html" title="Evaluators"
+          <a href="networks.html" title="Networks"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">PaddlePaddle  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="../../index.html" >User Interface</a> &#187;</li>
-          <li class="nav-item nav-item-2"><a href="index.html" >Model Config Interface</a> &#187;</li>
-          <li class="nav-item nav-item-3"><a href="evaluators_index.html" >Evaluators</a> &#187;</li> 
+          <li class="nav-item nav-item-1"><a href="index.html" >Model Config Interface</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

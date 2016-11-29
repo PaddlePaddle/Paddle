@@ -79,7 +79,7 @@ var _hmt = _hmt || [];
 <dt id="_CPPv2N6paddle5QueueE">
 <span id="paddle::Queue"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Queue</code><a class="headerlink" href="#_CPPv2N6paddle5QueueE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A thread-safe queue that automatically grows but never shrinks. Dequeue a empty queue will block current thread. Enqueue an element will wake up another thread that blocked by dequeue method.</p>
-<p>For example.  <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span><span class="p">::</span><span class="n">Queue</span><span class="o">&lt;</span><span class="nb">int</span><span class="o">&gt;</span> <span class="n">q</span><span class="p">;</span>
+<p>For example. <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">paddle</span><span class="p">::</span><span class="n">Queue</span><span class="o">&lt;</span><span class="nb">int</span><span class="o">&gt;</span> <span class="n">q</span><span class="p">;</span>
 <span class="n">END_OF_JOB</span><span class="o">=-</span><span class="mi">1</span>
 <span class="n">void</span> <span class="n">thread1</span><span class="p">()</span> <span class="p">{</span>
   <span class="k">while</span> <span class="p">(</span><span class="n">true</span><span class="p">)</span> <span class="p">{</span>
@@ -102,7 +102,7 @@ var _hmt = _hmt || [];
 <span class="p">}</span>
 </pre></div>
 </div>
-</p>
+ </p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
@@ -124,9 +124,8 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd>This method is thread-safe, and will wake up another blocked thread. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">el</span></code> - <p>The enqueue element. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">el</span></code>: The enqueue element. </li>
 </ul>
 </dd>
 </dl>
@@ -141,9 +140,8 @@ var _hmt = _hmt || [];
 <dt><strong>Note</strong></dt>
 <dd>This method is thread-safe, and will wake up another blocked thread. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">el</span></code> - <p>The enqueue element. rvalue reference . </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">el</span></code>: The enqueue element. rvalue reference . </li>
 </ul>
 </dd>
 </dl>
@@ -161,8 +159,8 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle5Queue4sizeEv">
-<span id="paddle::Queue::size"></span><span class="target" id="paddleclasspaddle_1_1Queue_1ad156d8247d2c476e1147fc63b9365220"></span>int <code class="descname">size</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle5Queue4sizeEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle5Queue4sizeEv">
+<span id="paddle::Queue::sizeC"></span><span class="target" id="paddleclasspaddle_1_1Queue_1ad156d8247d2c476e1147fc63b9365220"></span>int <code class="descname">size</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle5Queue4sizeEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return size of queue.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -172,8 +170,8 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6paddle5Queue5emptyEv">
-<span id="paddle::Queue::empty"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a3926bc21e5fd4e3a9361e05ce3c48b3e"></span>bool <code class="descname">empty</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6paddle5Queue5emptyEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6paddle5Queue5emptyEv">
+<span id="paddle::Queue::emptyC"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a3926bc21e5fd4e3a9361e05ce3c48b3e"></span>bool <code class="descname">empty</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6paddle5Queue5emptyEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>is empty or not. </p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
@@ -188,6 +186,22 @@ var _hmt = _hmt || [];
 <dt id="_CPPv2N6paddle5Queue9waitEmptyEv">
 <span id="paddle::Queue::waitEmpty"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a96aa776b63591273bf78308947d05467"></span>void <code class="descname">waitEmpty</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Queue9waitEmptyEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>wait util queue is empty </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N6paddle5Queue15waitNotEmptyForEi">
+<span id="paddle::Queue::waitNotEmptyFor__i"></span><span class="target" id="paddleclasspaddle_1_1Queue_1a2e21790ab2a03898307814c188ddcac1"></span>bool <code class="descname">waitNotEmptyFor</code><span class="sig-paren">(</span>int <em>seconds</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6paddle5Queue15waitNotEmptyForEi" title="Permalink to this definition">¶</a></dt>
+<dd><p>wait queue is not empty at most for some seconds. </p>
+<p><dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>true if queue is not empty. false if timeout. </dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">seconds</span></code>: wait time limit. </li>
+</ul>
+</dd>
+</dl>
+</p>
 </dd></dl>
 
 </div>
@@ -209,9 +223,8 @@ var _hmt = _hmt || [];
 <dd><p>Construct Function. </p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">capacity</span></code> - <p>the max numer of elements the queue can have. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">capacity</span></code>: the max numer of elements the queue can have. </li>
 </ul>
 </dd>
 </dl>
@@ -228,9 +241,8 @@ var _hmt = _hmt || [];
 <p class="last">If it&#8217;s <a class="reference internal" href="#paddleclasspaddle_1_1BlockingQueue_1a896e557a322cd5583491e2a603f462f9"><span class="std std-ref">size()</span></a> &gt;= capacity before enqueue, this method will block and wait until <a class="reference internal" href="#paddleclasspaddle_1_1BlockingQueue_1a896e557a322cd5583491e2a603f462f9"><span class="std std-ref">size()</span></a> &lt; capacity. </p>
 </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">x</span></code> - <p>The enqueue element, pass by reference . </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">x</span></code>: The enqueue element, pass by reference . </li>
 </ul>
 </dd>
 </dl>
@@ -342,7 +354,7 @@ var _hmt = _hmt || [];
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>

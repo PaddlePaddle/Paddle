@@ -136,13 +136,13 @@ var _hmt = _hmt || [];
 <dt id="_CPPv210initPaddleiPPc">
 <span id="initPaddle__i.cPP"></span><span class="target" id="paddlePaddleAPI_8h_1ac7f8b1e113d71dfa88d5133285ed3de9"></span>void <code class="descname">initPaddle</code><span class="sig-paren">(</span>int <em>argc</em>, char **<em>argv</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv210initPaddleiPPc" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize paddle. </p>
-<p>In python, this method should be invoked as  <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<p>In python, this method should be invoked as <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">paddle</span>
 <span class="n">paddle</span><span class="o">.</span><span class="n">initPaddle</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span>
 <span class="ow">or</span> <span class="n">you</span> <span class="n">can</span> <span class="n">change</span> <span class="n">arguments</span> <span class="k">as</span> <span class="nb">any</span> <span class="nb">list</span> <span class="n">of</span> <span class="nb">str</span><span class="o">.</span>
 </pre></div>
 </div>
-</p>
+ </p>
 </dd></dl>
 
 <dl class="function">
@@ -287,7 +287,7 @@ var _hmt = _hmt || [];
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6MatrixD0Ev">
-<span id="Matrix::~Matrix"></span>virtual <span class="target" id="paddleclassMatrix_1a9b1c3627f573d78a2f08623fdfef990f"></span><code class="descname">~Matrix</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6MatrixD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="Matrix::~Matrix"></span><span class="target" id="paddleclassMatrix_1a9b1c3627f573d78a2f08623fdfef990f"></span><code class="descname">~Matrix</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6MatrixD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -295,12 +295,12 @@ var _hmt = _hmt || [];
 <span id="Matrix::toNumpyMatInplace__floatPP.iP.iP"></span><span class="target" id="paddleclassMatrix_1ab0508be720fe746db39144e20b61183d"></span>void <code class="descname">toNumpyMatInplace</code><span class="sig-paren">(</span>float **<em>view_data</em>, int *<em>dim1</em>, int *<em>dim2</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N6Matrix17toNumpyMatInplaceEPPfPiPi" title="Permalink to this definition">¶</a></dt>
 <dd><p>Cast to numpy matrix.</p>
 <p>
-Example:  <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">paddle</span>
+Example: <div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">paddle</span>
 <span class="n">m</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">Matrix</span><span class="o">.</span><span class="n">createZero</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
 <span class="n">numpy_mat</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">toNumpyMat</span><span class="p">()</span>
 </pre></div>
 </div>
-<dl class="docutils">
+ <dl class="docutils">
 <dt><strong>Note</strong></dt>
 <dd><p class="first">This method take no parameter in python. </p>
 <p>This method in python will return a numpy matrix, not void. </p>
@@ -323,44 +323,44 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Matrix8isSparseEv">
-<span id="Matrix::isSparse"></span><span class="target" id="paddleclassMatrix_1a7f9692852624f9c90af72cc5cf69b125"></span>bool <code class="descname">isSparse</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Matrix8isSparseEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Matrix8isSparseEv">
+<span id="Matrix::isSparseC"></span><span class="target" id="paddleclassMatrix_1a7f9692852624f9c90af72cc5cf69b125"></span>bool <code class="descname">isSparse</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Matrix8isSparseEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>return true if this matrix is sparse. </p>
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Matrix18getSparseValueTypeEv">
-<span id="Matrix::getSparseValueType"></span><span class="target" id="paddleclassMatrix_1a4f354b0b61332a319b2971e96a511b92"></span><a class="reference internal" href="#_CPPv215SparseValueType" title="SparseValueType">SparseValueType</a> <code class="descname">getSparseValueType</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Matrix18getSparseValueTypeEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Matrix18getSparseValueTypeEv">
+<span id="Matrix::getSparseValueTypeC"></span><span class="target" id="paddleclassMatrix_1a4f354b0b61332a319b2971e96a511b92"></span><a class="reference internal" href="#_CPPv215SparseValueType" title="SparseValueType">SparseValueType</a> <code class="descname">getSparseValueType</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Matrix18getSparseValueTypeEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Matrix15getSparseFormatEv">
-<span id="Matrix::getSparseFormat"></span><span class="target" id="paddleclassMatrix_1a7879a0440a018f477a6525291dd93d01"></span><a class="reference internal" href="#_CPPv216SparseFormatType" title="SparseFormatType">SparseFormatType</a> <code class="descname">getSparseFormat</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Matrix15getSparseFormatEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Matrix15getSparseFormatEv">
+<span id="Matrix::getSparseFormatC"></span><span class="target" id="paddleclassMatrix_1a7879a0440a018f477a6525291dd93d01"></span><a class="reference internal" href="#_CPPv216SparseFormatType" title="SparseFormatType">SparseFormatType</a> <code class="descname">getSparseFormat</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Matrix15getSparseFormatEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Matrix16getSparseRowColsE6size_t">
-<span id="Matrix::getSparseRowCols__s"></span><span class="target" id="paddleclassMatrix_1ab18c99db6c43233223b6a939bbfc084d"></span><a class="reference internal" href="#_CPPv28IntArray" title="IntArray">IntArray</a> <code class="descname">getSparseRowCols</code><span class="sig-paren">(</span>size_t <em>i</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Matrix16getSparseRowColsE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Matrix16getSparseRowColsE6size_t">
+<span id="Matrix::getSparseRowCols__sC"></span><span class="target" id="paddleclassMatrix_1ab18c99db6c43233223b6a939bbfc084d"></span><a class="reference internal" href="#_CPPv28IntArray" title="IntArray">IntArray</a> <code class="descname">getSparseRowCols</code><span class="sig-paren">(</span>size_t <em>i</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Matrix16getSparseRowColsE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Matrix19getSparseRowColsValE6size_t">
-<span id="Matrix::getSparseRowColsVal__s"></span><span class="target" id="paddleclassMatrix_1af67456ef494936ae15d2f7815fe05cab"></span><a class="reference internal" href="#_CPPv217IntWithFloatArray" title="IntWithFloatArray">IntWithFloatArray</a> <code class="descname">getSparseRowColsVal</code><span class="sig-paren">(</span>size_t <em>i</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Matrix19getSparseRowColsValE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Matrix19getSparseRowColsValE6size_t">
+<span id="Matrix::getSparseRowColsVal__sC"></span><span class="target" id="paddleclassMatrix_1af67456ef494936ae15d2f7815fe05cab"></span><a class="reference internal" href="#_CPPv217IntWithFloatArray" title="IntWithFloatArray">IntWithFloatArray</a> <code class="descname">getSparseRowColsVal</code><span class="sig-paren">(</span>size_t <em>i</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Matrix19getSparseRowColsValE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Matrix9getHeightEv">
-<span id="Matrix::getHeight"></span><span class="target" id="paddleclassMatrix_1a660b355a32fc0f6a3805509c640042b9"></span>size_t <code class="descname">getHeight</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Matrix9getHeightEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Matrix9getHeightEv">
+<span id="Matrix::getHeightC"></span><span class="target" id="paddleclassMatrix_1a660b355a32fc0f6a3805509c640042b9"></span>size_t <code class="descname">getHeight</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Matrix9getHeightEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Matrix8getWidthEv">
-<span id="Matrix::getWidth"></span><span class="target" id="paddleclassMatrix_1a0f7f53e3d6894dc72f931779f20a54a7"></span>size_t <code class="descname">getWidth</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Matrix8getWidthEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Matrix8getWidthEv">
+<span id="Matrix::getWidthC"></span><span class="target" id="paddleclassMatrix_1a0f7f53e3d6894dc72f931779f20a54a7"></span>size_t <code class="descname">getWidth</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Matrix8getWidthEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Matrix3getE6size_t6size_t">
-<span id="Matrix::get__s.s"></span><span class="target" id="paddleclassMatrix_1a33a23d5e81143847edbced9375b4b25f"></span>float <code class="descname">get</code><span class="sig-paren">(</span>size_t <em>x</em>, size_t <em>y</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Matrix3getE6size_t6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Matrix3getE6size_t6size_t">
+<span id="Matrix::get__s.sC"></span><span class="target" id="paddleclassMatrix_1a33a23d5e81143847edbced9375b4b25f"></span>float <code class="descname">get</code><span class="sig-paren">(</span>size_t <em>x</em>, size_t <em>y</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Matrix3getE6size_t6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -369,8 +369,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Matrix7getDataEv">
-<span id="Matrix::getData"></span><span class="target" id="paddleclassMatrix_1a8ed4c472b21254c9c96a2f353b701e89"></span><a class="reference internal" href="#_CPPv210FloatArray" title="FloatArray">FloatArray</a> <code class="descname">getData</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Matrix7getDataEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Matrix7getDataEv">
+<span id="Matrix::getDataC"></span><span class="target" id="paddleclassMatrix_1a8ed4c472b21254c9c96a2f353b701e89"></span><a class="reference internal" href="#_CPPv210FloatArray" title="FloatArray">FloatArray</a> <code class="descname">getData</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Matrix7getDataEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>return type is list of float </p>
 </dd></dl>
 
@@ -382,8 +382,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Matrix5isGpuEv">
-<span id="Matrix::isGpu"></span><span class="target" id="paddleclassMatrix_1a9f9e590bd3bf74639e040793b097aa42"></span>bool <code class="descname">isGpu</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Matrix5isGpuEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Matrix5isGpuEv">
+<span id="Matrix::isGpuC"></span><span class="target" id="paddleclassMatrix_1a9f9e590bd3bf74639e040793b097aa42"></span>bool <code class="descname">isGpu</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Matrix5isGpuEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -404,9 +404,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dt><strong>Note</strong></dt>
 <dd>the default sparse type is SPARSE_CSR. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">nnz</span></code> - <p>Number of non zero values.</p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">nnz</span></code>: Number of non zero values.</li>
 </ul>
 </dd>
 </dl>
@@ -421,9 +420,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dt><strong>Note</strong></dt>
 <dd>the value will be copy into a new matrix. </dd>
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">data</span></code> - <p>list of float should be passed in python. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">data</span></code>: list of float should be passed in python. </li>
 </ul>
 </dd>
 </dl>
@@ -436,15 +434,11 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd><p>Create Cpu Dense <a class="reference internal" href="#paddleclassMatrix"><span class="std std-ref">Matrix</span></a> from numpy matrix, dtype=float32</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">data</span></code> - <p>a numpy matrix. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dim1</span></code> - <p>dimension of data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">dim2</span></code> - <p>dimension of data. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">copy</span></code> - <p>true if copy into a new matrix, false will create matrix inplace. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">data</span></code>: a numpy matrix. </li>
+<li><code class="docutils literal"><span class="pre">dim1</span></code>: dimension of data. </li>
+<li><code class="docutils literal"><span class="pre">dim2</span></code>: dimension of data. </li>
+<li><code class="docutils literal"><span class="pre">copy</span></code>: true if copy into a new matrix, false will create matrix inplace. </li>
 </ul>
 </dd>
 </dl>
@@ -471,8 +465,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Matrix12getSharedPtrEv">
-<span id="Matrix::getSharedPtr"></span><span class="target" id="paddleclassMatrix_1a09e3b9de889fc418ce03f2e3d1a99736"></span>void *<code class="descname">getSharedPtr</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Matrix12getSharedPtrEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Matrix12getSharedPtrEv">
+<span id="Matrix::getSharedPtrC"></span><span class="target" id="paddleclassMatrix_1a09e3b9de889fc418ce03f2e3d1a99736"></span>void *<code class="descname">getSharedPtr</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Matrix12getSharedPtrEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -541,8 +535,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Vector3getEK6size_t">
-<span id="Vector::get__sC"></span><span class="target" id="paddleclassVector_1ac062b1253e347d41b4e50cd44b19f5f1"></span>float <code class="descname">get</code><span class="sig-paren">(</span><em class="property">const</em> size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Vector3getEK6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Vector3getEK6size_t">
+<span id="Vector::get__sCC"></span><span class="target" id="paddleclassVector_1ac062b1253e347d41b4e50cd44b19f5f1"></span>float <code class="descname">get</code><span class="sig-paren">(</span><em class="property">const</em> size_t <em>idx</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Vector3getEK6size_t" title="Permalink to this definition">¶</a></dt>
 <dd><p><strong>getitem</strong> in python </p>
 </dd></dl>
 
@@ -553,14 +547,14 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Vector5isGpuEv">
-<span id="Vector::isGpu"></span><span class="target" id="paddleclassVector_1a35b1d06b71ac70dcf7f52c6f4043e755"></span>bool <code class="descname">isGpu</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Vector5isGpuEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Vector5isGpuEv">
+<span id="Vector::isGpuC"></span><span class="target" id="paddleclassVector_1a35b1d06b71ac70dcf7f52c6f4043e755"></span>bool <code class="descname">isGpu</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Vector5isGpuEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return is GPU vector or not. </p>
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N6Vector7getSizeEv">
-<span id="Vector::getSize"></span><span class="target" id="paddleclassVector_1ae363669d5221a8c1e28aa9fa6bc74684"></span>size_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N6Vector7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK6Vector7getSizeEv">
+<span id="Vector::getSizeC"></span><span class="target" id="paddleclassVector_1ae363669d5221a8c1e28aa9fa6bc74684"></span>size_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK6Vector7getSizeEv" title="Permalink to this definition">¶</a></dt>
 <dd><p><strong>len</strong> in python </p>
 </dd></dl>
 
@@ -673,12 +667,12 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 
 <dl class="function">
 <dt id="_CPPv2N7IVectorD0Ev">
-<span id="IVector::~IVector"></span>virtual <span class="target" id="paddleclassIVector_1aece3c396f1997e7a504ad87a062d1eb2"></span><code class="descname">~IVector</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVectorD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="IVector::~IVector"></span><span class="target" id="paddleclassIVector_1aece3c396f1997e7a504ad87a062d1eb2"></span><code class="descname">~IVector</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7IVectorD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N7IVector7getDataEv">
-<span id="IVector::getData"></span><span class="target" id="paddleclassIVector_1ac732ba17418878efe5f0be6d04f4b246"></span><a class="reference internal" href="#_CPPv28IntArray" title="IntArray">IntArray</a> <code class="descname">getData</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N7IVector7getDataEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK7IVector7getDataEv">
+<span id="IVector::getDataC"></span><span class="target" id="paddleclassIVector_1ac732ba17418878efe5f0be6d04f4b246"></span><a class="reference internal" href="#_CPPv28IntArray" title="IntArray">IntArray</a> <code class="descname">getData</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK7IVector7getDataEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a list of int, the memory is alloced and copied. </p>
 </dd></dl>
 
@@ -689,13 +683,13 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N7IVectorixEK6size_t">
-<span class="target" id="paddleclassIVector_1a21a07a945227d53ff5a120bab2a3ba9c"></span><em class="property">const</em> int &amp;<code class="descname">operator[]</code><span class="sig-paren">(</span><em class="property">const</em> size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N7IVectorixEK6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK7IVectorixEK6size_t">
+<span id="IVector::subscript-operator__sCC"></span><span class="target" id="paddleclassIVector_1a21a07a945227d53ff5a120bab2a3ba9c"></span><em class="property">const</em> int &amp;<code class="descname">operator[]</code><span class="sig-paren">(</span><em class="property">const</em> size_t <em>idx</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK7IVectorixEK6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N7IVector3getEK6size_t">
-<span id="IVector::get__sC"></span><span class="target" id="paddleclassIVector_1a1c2684e184d4829535a4bd186c232e85"></span>int <code class="descname">get</code><span class="sig-paren">(</span><em class="property">const</em> size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N7IVector3getEK6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK7IVector3getEK6size_t">
+<span id="IVector::get__sCC"></span><span class="target" id="paddleclassIVector_1a1c2684e184d4829535a4bd186c232e85"></span>int <code class="descname">get</code><span class="sig-paren">(</span><em class="property">const</em> size_t <em>idx</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK7IVector3getEK6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -704,14 +698,14 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N7IVector5isGpuEv">
-<span id="IVector::isGpu"></span><span class="target" id="paddleclassIVector_1aa94dd76f9b13cc9a650a5088d7a8e8d7"></span>bool <code class="descname">isGpu</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N7IVector5isGpuEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK7IVector5isGpuEv">
+<span id="IVector::isGpuC"></span><span class="target" id="paddleclassIVector_1aa94dd76f9b13cc9a650a5088d7a8e8d7"></span>bool <code class="descname">isGpu</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK7IVector5isGpuEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return true if it is gpu vector. </p>
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N7IVector7getSizeEv">
-<span id="IVector::getSize"></span><span class="target" id="paddleclassIVector_1abd32489eee893fbb4293a6704875e033"></span>size_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N7IVector7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK7IVector7getSizeEv">
+<span id="IVector::getSizeC"></span><span class="target" id="paddleclassIVector_1abd32489eee893fbb4293a6704875e033"></span>size_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK7IVector7getSizeEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>This method will map to python <strong>len</strong>();. </p>
 </dd></dl>
 
@@ -757,8 +751,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N7IVector12getSharedPtrEv">
-<span id="IVector::getSharedPtr"></span><span class="target" id="paddleclassIVector_1a2a04cf29831f581c9e349925d8637c6d"></span>void *<code class="descname">getSharedPtr</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N7IVector12getSharedPtrEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK7IVector12getSharedPtrEv">
+<span id="IVector::getSharedPtrC"></span><span class="target" id="paddleclassIVector_1a2a04cf29831f581c9e349925d8637c6d"></span>void *<code class="descname">getSharedPtr</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK7IVector12getSharedPtrEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -801,51 +795,51 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 
 <dl class="function">
 <dt id="_CPPv2N9ArgumentsD0Ev">
-<span id="Arguments::~Arguments"></span>virtual <span class="target" id="paddleclassArguments_1a97b9ddc9cc652310880db4d6f1f175f2"></span><code class="descname">~Arguments</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9ArgumentsD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="Arguments::~Arguments"></span><span class="target" id="paddleclassArguments_1a97b9ddc9cc652310880db4d6f1f175f2"></span><code class="descname">~Arguments</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9ArgumentsD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N9Arguments10getSlotNumEv">
-<span id="Arguments::getSlotNum"></span><span class="target" id="paddleclassArguments_1aafc86a96884d8314e33980cdd3a0085f"></span>size_t <code class="descname">getSlotNum</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Arguments10getSlotNumEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK9Arguments10getSlotNumEv">
+<span id="Arguments::getSlotNumC"></span><span class="target" id="paddleclassArguments_1aafc86a96884d8314e33980cdd3a0085f"></span>size_t <code class="descname">getSlotNum</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Arguments10getSlotNumEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the slot number that aguments contains.</p>
 <p>It is actually the vector&#8217;s size </p>
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N9Arguments12getSlotValueE6size_t">
-<span id="Arguments::getSlotValue__s"></span><span class="target" id="paddleclassArguments_1aadcfc5dd6bbdd89af60a62190796ea1e"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">getSlotValue</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Arguments12getSlotValueE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK9Arguments12getSlotValueE6size_t">
+<span id="Arguments::getSlotValue__sC"></span><span class="target" id="paddleclassArguments_1aadcfc5dd6bbdd89af60a62190796ea1e"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">getSlotValue</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Arguments12getSlotValueE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd><p>The get functions of <a class="reference internal" href="#paddleclassArguments"><span class="std std-ref">Arguments</span></a></p>
 <p>the param idx is the slot id </p>
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N9Arguments10getSlotIdsE6size_t">
-<span id="Arguments::getSlotIds__s"></span><span class="target" id="paddleclassArguments_1a09713c30f9140b4de333e584d106386d"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">getSlotIds</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Arguments10getSlotIdsE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK9Arguments10getSlotIdsE6size_t">
+<span id="Arguments::getSlotIds__sC"></span><span class="target" id="paddleclassArguments_1a09713c30f9140b4de333e584d106386d"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">getSlotIds</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Arguments10getSlotIdsE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N9Arguments9getSlotInE6size_t">
-<span id="Arguments::getSlotIn__s"></span><span class="target" id="paddleclassArguments_1a10206391655a3055865953e413f5ab47"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">getSlotIn</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Arguments9getSlotInE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK9Arguments9getSlotInE6size_t">
+<span id="Arguments::getSlotIn__sC"></span><span class="target" id="paddleclassArguments_1a10206391655a3055865953e413f5ab47"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">getSlotIn</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Arguments9getSlotInE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N9Arguments29getSlotSequenceStartPositionsE6size_t">
-<span id="Arguments::getSlotSequenceStartPositions__s"></span><span class="target" id="paddleclassArguments_1a0120f50da051ea694c30124e04291708"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">getSlotSequenceStartPositions</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Arguments29getSlotSequenceStartPositionsE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK9Arguments29getSlotSequenceStartPositionsE6size_t">
+<span id="Arguments::getSlotSequenceStartPositions__sC"></span><span class="target" id="paddleclassArguments_1a0120f50da051ea694c30124e04291708"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">getSlotSequenceStartPositions</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Arguments29getSlotSequenceStartPositionsE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N9Arguments32getSlotSubSequenceStartPositionsE6size_t">
-<span id="Arguments::getSlotSubSequenceStartPositions__s"></span><span class="target" id="paddleclassArguments_1abcfd9e6be5443622262f5dfd830333d8"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">getSlotSubSequenceStartPositions</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Arguments32getSlotSubSequenceStartPositionsE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK9Arguments32getSlotSubSequenceStartPositionsE6size_t">
+<span id="Arguments::getSlotSubSequenceStartPositions__sC"></span><span class="target" id="paddleclassArguments_1abcfd9e6be5443622262f5dfd830333d8"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">getSlotSubSequenceStartPositions</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Arguments32getSlotSubSequenceStartPositionsE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N9Arguments18getSlotSequenceDimE6size_t">
-<span id="Arguments::getSlotSequenceDim__s"></span><span class="target" id="paddleclassArguments_1ab8f696bfc0db59e07ca4c08aad3b323a"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">getSlotSequenceDim</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Arguments18getSlotSequenceDimE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK9Arguments18getSlotSequenceDimE6size_t">
+<span id="Arguments::getSlotSequenceDim__sC"></span><span class="target" id="paddleclassArguments_1ab8f696bfc0db59e07ca4c08aad3b323a"></span><a class="reference internal" href="#_CPPv27IVector" title="IVector">IVector</a> *<code class="descname">getSlotSequenceDim</code><span class="sig-paren">(</span>size_t <em>idx</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Arguments18getSlotSequenceDimE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N9Arguments12getBatchSizeE6size_t">
-<span id="Arguments::getBatchSize__s"></span><span class="target" id="paddleclassArguments_1af7cc8fb15e0069611755a7272340c786"></span>int64_t <code class="descname">getBatchSize</code><span class="sig-paren">(</span>size_t <em>idx</em> = 0<span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Arguments12getBatchSizeE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK9Arguments12getBatchSizeE6size_t">
+<span id="Arguments::getBatchSize__sC"></span><span class="target" id="paddleclassArguments_1af7cc8fb15e0069611755a7272340c786"></span>int64_t <code class="descname">getBatchSize</code><span class="sig-paren">(</span>size_t <em>idx</em> = 0<span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Arguments12getBatchSizeE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -903,8 +897,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N9Arguments23getInternalArgumentsPtrEv">
-<span id="Arguments::getInternalArgumentsPtr"></span><span class="target" id="paddleclassArguments_1a9658e7a00a7cf5ef141dacddd6231a86"></span>void *<code class="descname">getInternalArgumentsPtr</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Arguments23getInternalArgumentsPtrEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK9Arguments23getInternalArgumentsPtrEv">
+<span id="Arguments::getInternalArgumentsPtrC"></span><span class="target" id="paddleclassArguments_1a9658e7a00a7cf5ef141dacddd6231a86"></span>void *<code class="descname">getInternalArgumentsPtr</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Arguments23getInternalArgumentsPtrEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -955,8 +949,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N15ParameterConfig13toProtoStringEv">
-<span id="ParameterConfig::toProtoString"></span><span class="target" id="paddleclassParameterConfig_1a3d1a44420a6f5cf021b7cb287379653e"></span>std::string <code class="descname">toProtoString</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N15ParameterConfig13toProtoStringEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK15ParameterConfig13toProtoStringEv">
+<span id="ParameterConfig::toProtoStringC"></span><span class="target" id="paddleclassParameterConfig_1a3d1a44420a6f5cf021b7cb287379653e"></span>std::string <code class="descname">toProtoString</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK15ParameterConfig13toProtoStringEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>return proto buf string. </p>
 </dd></dl>
 
@@ -1058,11 +1052,6 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <span id="OptimizationConfig::OptimizationConfig"></span><span class="target" id="paddleclassOptimizationConfig_1a00d95b6c7befb4a2d9d815a48011938b"></span><code class="descname">OptimizationConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N18OptimizationConfig18OptimizationConfigEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="function">
-<dt id="_CPPv2N18OptimizationConfig9getRawPtrEv">
-<span id="OptimizationConfig::getRawPtr"></span><span class="target" id="paddleclassOptimizationConfig_1a9c81b7190ed7219cde5dc0913bdf5514"></span>void *<code class="descname">getRawPtr</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N18OptimizationConfig9getRawPtrEv" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
 </div>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Private Members</p>
@@ -1084,6 +1073,11 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <span class="target" id="paddleclassOptimizationConfig_1ad416ce94f4310e1521ecfcfe6398f63c"></span><em class="property">friend </em><code class="descname">ParameterOptimizer</code></dt>
 <dd></dd></dl>
 
+<dl class="function">
+<dt>
+<span class="target" id="paddleclassOptimizationConfig_1ad38c9566742be31ca860cf8b5d6ae11f"></span><em class="property">friend </em><code class="descname">Trainer</code></dt>
+<dd></dd></dl>
+
 </div>
 </dd></dl>
 
@@ -1094,12 +1088,12 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N9ParameterD0Ev">
-<span id="Parameter::~Parameter"></span>virtual <span class="target" id="paddleclassParameter_1a6e2ade42a712f1d3675653329266e42d"></span><code class="descname">~Parameter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9ParameterD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="Parameter::~Parameter"></span><span class="target" id="paddleclassParameter_1a6e2ade42a712f1d3675653329266e42d"></span><code class="descname">~Parameter</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N9ParameterD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N9Parameter7getNameEv">
-<span id="Parameter::getName"></span><span class="target" id="paddleclassParameter_1aaeb9606a194fcbed299c7a20eff96c17"></span>std::string <code class="descname">getName</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Parameter7getNameEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK9Parameter7getNameEv">
+<span id="Parameter::getNameC"></span><span class="target" id="paddleclassParameter_1aaeb9606a194fcbed299c7a20eff96c17"></span>std::string <code class="descname">getName</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Parameter7getNameEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>get parameter name </p>
 </dd></dl>
 
@@ -1110,8 +1104,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N9Parameter5getIDEv">
-<span id="Parameter::getID"></span><span class="target" id="paddleclassParameter_1a0350f59ffc36e9d958c962907824b148"></span>size_t <code class="descname">getID</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N9Parameter5getIDEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK9Parameter5getIDEv">
+<span id="Parameter::getIDC"></span><span class="target" id="paddleclassParameter_1a0350f59ffc36e9d958c962907824b148"></span>size_t <code class="descname">getID</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK9Parameter5getIDEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>get id </p>
 </dd></dl>
 
@@ -1179,7 +1173,7 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N11ModelConfigD0Ev">
-<span id="ModelConfig::~ModelConfig"></span>virtual <span class="target" id="paddleclassModelConfig_1ac16a0a33aba4a9a068010ae7ae685e55"></span><code class="descname">~ModelConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N11ModelConfigD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="ModelConfig::~ModelConfig"></span><span class="target" id="paddleclassModelConfig_1ac16a0a33aba4a9a068010ae7ae685e55"></span><code class="descname">~ModelConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N11ModelConfigD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1193,11 +1187,6 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dl class="function">
 <dt id="_CPPv2N11ModelConfig23DISABLE_COPY_AND_ASSIGNE11ModelConfig">
 <span id="ModelConfig::DISABLE_COPY_AND_ASSIGN__ModelConfig"></span><span class="target" id="paddleclassModelConfig_1a3509bd28ab5633ad2d182d588c4f707c"></span><code class="descname">DISABLE_COPY_AND_ASSIGN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N11ModelConfig23DISABLE_COPY_AND_ASSIGNE11ModelConfig" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="_CPPv2N11ModelConfig20getPaddleModelConfigEv">
-<span id="ModelConfig::getPaddleModelConfig"></span><span class="target" id="paddleclassModelConfig_1a8bd3fd1e7275d3db7f1ea00a715287b9"></span>void *<code class="descname">getPaddleModelConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N11ModelConfig20getPaddleModelConfigEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1238,17 +1227,17 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N13TrainerConfigD0Ev">
-<span id="TrainerConfig::~TrainerConfig"></span>virtual <span class="target" id="paddleclassTrainerConfig_1a26c778f1056b7dedae28bdd03aa2915a"></span><code class="descname">~TrainerConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N13TrainerConfigD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="TrainerConfig::~TrainerConfig"></span><span class="target" id="paddleclassTrainerConfig_1a26c778f1056b7dedae28bdd03aa2915a"></span><code class="descname">~TrainerConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N13TrainerConfigD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N13TrainerConfig14getModelConfigEv">
-<span id="TrainerConfig::getModelConfig"></span><span class="target" id="paddleclassTrainerConfig_1af32fc14ad603f47d37b117da60cf264e"></span><a class="reference internal" href="#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> *<code class="descname">getModelConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N13TrainerConfig14getModelConfigEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK13TrainerConfig14getModelConfigEv">
+<span id="TrainerConfig::getModelConfigC"></span><span class="target" id="paddleclassTrainerConfig_1af32fc14ad603f47d37b117da60cf264e"></span><a class="reference internal" href="#_CPPv211ModelConfig" title="ModelConfig">ModelConfig</a> *<code class="descname">getModelConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK13TrainerConfig14getModelConfigEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N13TrainerConfig21getOptimizationConfigEv">
-<span id="TrainerConfig::getOptimizationConfig"></span><span class="target" id="paddleclassTrainerConfig_1a6a710e7afdfe912bb3cb5252ad2fa350"></span><a class="reference internal" href="#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> *<code class="descname">getOptimizationConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N13TrainerConfig21getOptimizationConfigEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK13TrainerConfig21getOptimizationConfigEv">
+<span id="TrainerConfig::getOptimizationConfigC"></span><span class="target" id="paddleclassTrainerConfig_1a6a710e7afdfe912bb3cb5252ad2fa350"></span><a class="reference internal" href="#_CPPv218OptimizationConfig" title="OptimizationConfig">OptimizationConfig</a> *<code class="descname">getOptimizationConfig</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK13TrainerConfig21getOptimizationConfigEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1257,6 +1246,11 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dl class="function">
 <dt id="_CPPv2N13TrainerConfig27createFromTrainerConfigFileERKNSt6stringE">
 <span id="TrainerConfig::createFromTrainerConfigFile__ssCR"></span><span class="target" id="paddleclassTrainerConfig_1af86151255ec8119eef3d280da7c727c7"></span><a class="reference internal" href="#_CPPv213TrainerConfig" title="TrainerConfig">TrainerConfig</a> *<code class="descname">createFromTrainerConfigFile</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>configPath</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N13TrainerConfig27createFromTrainerConfigFileERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N13TrainerConfig21createFromProtoStringERKNSt6stringE">
+<span id="TrainerConfig::createFromProtoString__ssCR"></span><span class="target" id="paddleclassTrainerConfig_1a4f878a84bd430867522655819f122a68"></span><a class="reference internal" href="#_CPPv213TrainerConfig" title="TrainerConfig">TrainerConfig</a> *<code class="descname">createFromProtoString</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>str</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N13TrainerConfig21createFromProtoStringERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1281,6 +1275,14 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd></dd></dl>
 
 </div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Friends</p>
+<dl class="function">
+<dt>
+<span class="target" id="paddleclassTrainerConfig_1ad38c9566742be31ca860cf8b5d6ae11f"></span><em class="property">friend </em><code class="descname">Trainer</code></dt>
+<dd></dd></dl>
+
+</div>
 </dd></dl>
 
 <dl class="class">
@@ -1288,7 +1290,7 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <span id="UpdateCallback"></span><span class="target" id="paddleclassUpdateCallback"></span><em class="property">class </em><code class="descname">UpdateCallback</code><a class="headerlink" href="#_CPPv214UpdateCallback" title="Permalink to this definition">¶</a></dt>
 <dd><em>#include &lt;PaddleAPI.h&gt;</em><p>The callback in backword.</p>
 <p>You can inherit this class in python.</p>
-<p> <div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">UpdateCallbackInPython</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">UpdateCallback</span><span class="p">):</span>
+<p><div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">UpdateCallbackInPython</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">UpdateCallback</span><span class="p">):</span>
   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="n">paddle</span><span class="o">.</span><span class="n">UpdateCallback</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
@@ -1296,17 +1298,17 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">paddle</span><span class="o">.</span><span class="n">Parameter</span><span class="p">)</span>
 </pre></div>
 </div>
-</p>
+ </p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N14UpdateCallbackD0Ev">
-<span id="UpdateCallback::~UpdateCallback"></span>virtual <span class="target" id="paddleclassUpdateCallback_1ae8b9922ced234f41e188467e1e10747c"></span><code class="descname">~UpdateCallback</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N14UpdateCallbackD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="UpdateCallback::~UpdateCallback"></span><span class="target" id="paddleclassUpdateCallback_1ae8b9922ced234f41e188467e1e10747c"></span><code class="descname">~UpdateCallback</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N14UpdateCallbackD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N14UpdateCallback5applyEP9Parameter">
-<span id="UpdateCallback::apply__ParameterP"></span>virtual <span class="target" id="paddleclassUpdateCallback_1a5c51ebbbf4d5f743b730de54ae44211f"></span>void <code class="descname">apply</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv29Parameter" title="Parameter">Parameter</a> *<em>p</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N14UpdateCallback5applyEP9Parameter" title="Permalink to this definition">¶</a></dt>
+<span id="UpdateCallback::apply__ParameterP"></span><span class="target" id="paddleclassUpdateCallback_1a5c51ebbbf4d5f743b730de54ae44211f"></span>void <code class="descname">apply</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv29Parameter" title="Parameter">Parameter</a> *<em>p</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N14UpdateCallback5applyEP9Parameter" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1400,13 +1402,13 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N18ParameterOptimizer17getParameterTypesEv">
-<span id="ParameterOptimizer::getParameterTypes"></span><span class="target" id="paddleclassParameterOptimizer_1a59837463b036ae7b83d6c4501c35584c"></span>std::vector&lt;int&gt; <code class="descname">getParameterTypes</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N18ParameterOptimizer17getParameterTypesEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK18ParameterOptimizer17getParameterTypesEv">
+<span id="ParameterOptimizer::getParameterTypesC"></span><span class="target" id="paddleclassParameterOptimizer_1a59837463b036ae7b83d6c4501c35584c"></span>std::vector&lt;int&gt; <code class="descname">getParameterTypes</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK18ParameterOptimizer17getParameterTypesEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N18ParameterOptimizer20needSpecialTraversalERK15ParameterConfig">
-<span id="ParameterOptimizer::needSpecialTraversal__ParameterConfigCR"></span><span class="target" id="paddleclassParameterOptimizer_1a2321ecfc7f5d604c3f59daf61dff22dc"></span><a class="reference internal" href="#_CPPv225ParameterTraverseCallback" title="ParameterTraverseCallback">ParameterTraverseCallback</a> *<code class="descname">needSpecialTraversal</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N18ParameterOptimizer20needSpecialTraversalERK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK18ParameterOptimizer20needSpecialTraversalERK15ParameterConfig">
+<span id="ParameterOptimizer::needSpecialTraversal__ParameterConfigCRC"></span><span class="target" id="paddleclassParameterOptimizer_1a2321ecfc7f5d604c3f59daf61dff22dc"></span><a class="reference internal" href="#_CPPv225ParameterTraverseCallback" title="ParameterTraverseCallback">ParameterTraverseCallback</a> *<code class="descname">needSpecialTraversal</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv215ParameterConfig" title="ParameterConfig">ParameterConfig</a> &amp;<em>config</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK18ParameterOptimizer20needSpecialTraversalERK15ParameterConfig" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1448,7 +1450,7 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N15GradientMachineD0Ev">
-<span id="GradientMachine::~GradientMachine"></span>virtual <span class="target" id="paddleclassGradientMachine_1a55f3ccf05fa39966897655fb25fdfaae"></span><code class="descname">~GradientMachine</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachineD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="GradientMachine::~GradientMachine"></span><span class="target" id="paddleclassGradientMachine_1a55f3ccf05fa39966897655fb25fdfaae"></span><code class="descname">~GradientMachine</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachineD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1487,8 +1489,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N15GradientMachine16getParameterSizeEv">
-<span id="GradientMachine::getParameterSize"></span><span class="target" id="paddleclassGradientMachine_1a2681bb26ebfe6f9212834c868e519a67"></span>size_t <code class="descname">getParameterSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N15GradientMachine16getParameterSizeEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK15GradientMachine16getParameterSizeEv">
+<span id="GradientMachine::getParameterSizeC"></span><span class="target" id="paddleclassGradientMachine_1a2681bb26ebfe6f9212834c868e519a67"></span>size_t <code class="descname">getParameterSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK15GradientMachine16getParameterSizeEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1502,8 +1504,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N15GradientMachine14getLayerOutputERKNSt6stringE">
-<span id="GradientMachine::getLayerOutput__ssCR"></span><span class="target" id="paddleclassGradientMachine_1aeb5ae6d93bd7d894d545508c5430c3d8"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">getLayerOutput</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>layerName</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N15GradientMachine14getLayerOutputERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK15GradientMachine14getLayerOutputERKNSt6stringE">
+<span id="GradientMachine::getLayerOutput__ssCRC"></span><span class="target" id="paddleclassGradientMachine_1aeb5ae6d93bd7d894d545508c5430c3d8"></span><a class="reference internal" href="#_CPPv26Matrix" title="Matrix">Matrix</a> *<code class="descname">getLayerOutput</code><span class="sig-paren">(</span><em class="property">const</em> std::string &amp;<em>layerName</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK15GradientMachine14getLayerOutputERKNSt6stringE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1559,8 +1561,8 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Private Static Functions</p>
 <dl class="function">
-<dt id="_CPPv2N15GradientMachine24createFromPaddleModelPtrEPv26GradientMatchineCreateModeRKNSt6vectorIiEE">
-<span id="GradientMachine::createFromPaddleModelPtr__voidP.GradientMatchineCreateMode.std::vector:i:CR"></span><span class="target" id="paddleclassGradientMachine_1a23ea09b4a0679e02b6fd8130c00dd5c4"></span><a class="reference internal" href="#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a> *<code class="descname">createFromPaddleModelPtr</code><span class="sig-paren">(</span>void *<em>confPtr</em>, <a class="reference internal" href="#_CPPv226GradientMatchineCreateMode" title="GradientMatchineCreateMode">GradientMatchineCreateMode</a> <em>mode</em>, <em class="property">const</em> std::vector&lt;int&gt; &amp;<em>types</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine24createFromPaddleModelPtrEPv26GradientMatchineCreateModeRKNSt6vectorIiEE" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2N15GradientMachine24createFromPaddleModelPtrEPKv26GradientMatchineCreateModeRKNSt6vectorIiEE">
+<span id="GradientMachine::createFromPaddleModelPtr__voidCP.GradientMatchineCreateMode.std::vector:i:CR"></span><span class="target" id="paddleclassGradientMachine_1a8019b6c8ad220a68d32c134a47b64cae"></span><a class="reference internal" href="#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a> *<code class="descname">createFromPaddleModelPtr</code><span class="sig-paren">(</span><em class="property">const</em> void *<em>confPtr</em>, <a class="reference internal" href="#_CPPv226GradientMatchineCreateMode" title="GradientMatchineCreateMode">GradientMatchineCreateMode</a> <em>mode</em>, <em class="property">const</em> std::vector&lt;int&gt; &amp;<em>types</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N15GradientMachine24createFromPaddleModelPtrEPKv26GradientMatchineCreateModeRKNSt6vectorIiEE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1569,6 +1571,14 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dl class="member">
 <dt id="_CPPv2N15GradientMachine17defaultParamTypesE">
 <span id="GradientMachine::defaultParamTypes__std::vector:i:"></span><span class="target" id="paddleclassGradientMachine_1ac6ca193c6e3fc90ce0e555d1e4d39642"></span>std::vector&lt;int&gt; <code class="descname">defaultParamTypes</code><a class="headerlink" href="#_CPPv2N15GradientMachine17defaultParamTypesE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef container">
+<p class="breathe-sectiondef-title rubric">Friends</p>
+<dl class="function">
+<dt>
+<span class="target" id="paddleclassGradientMachine_1ad38c9566742be31ca860cf8b5d6ae11f"></span><em class="property">friend </em><code class="descname">Trainer</code></dt>
 <dd></dd></dl>
 
 </div>
@@ -1581,71 +1591,72 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N7TrainerD0Ev">
-<span id="Trainer::~Trainer"></span>virtual <span class="target" id="paddleclassTrainer_1aa3d993d1eb090f4111e12a710fe9d3f6"></span><code class="descname">~Trainer</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7TrainerD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="Trainer::~Trainer"></span><span class="target" id="paddleclassTrainer_1aa3d993d1eb090f4111e12a710fe9d3f6"></span><code class="descname">~Trainer</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7TrainerD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N7Trainer10startTrainEv">
 <span id="Trainer::startTrain"></span><span class="target" id="paddleclassTrainer_1a5c7b360b7ac4b1d772f6da94db5e2b78"></span>void <code class="descname">startTrain</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer10startTrainEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Start Train. </p>
+<dd><p>Start training. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N7Trainer11finishTrainEv">
 <span id="Trainer::finishTrain"></span><span class="target" id="paddleclassTrainer_1ab7a1ab3cd10ab8ce0f56b63fd0b0eb72"></span>void <code class="descname">finishTrain</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer11finishTrainEv" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Finish training. </p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N7Trainer14startTrainPassEv">
 <span id="Trainer::startTrainPass"></span><span class="target" id="paddleclassTrainer_1a11140ee62a182e59b5f8fe7d61c0208f"></span>void <code class="descname">startTrainPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer14startTrainPassEv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Start Pass. </p>
+<dd><p>Start a pass. </p>
 </dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N7Trainer15finishTrainPassEv">
 <span id="Trainer::finishTrainPass"></span><span class="target" id="paddleclassTrainer_1af604ac8201215ca12cf8658faa4cc28e"></span>void <code class="descname">finishTrainPass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer15finishTrainPassEv" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="_CPPv2N7Trainer12setBatchSizeE6size_t">
-<span id="Trainer::setBatchSize__s"></span><span class="target" id="paddleclassTrainer_1a0bdabc538e836d332eb0de4c8ceee1ef"></span>void <code class="descname">setBatchSize</code><span class="sig-paren">(</span>size_t <em>batchSize</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer12setBatchSizeE6size_t" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Finish a pass. </p>
+</dd></dl>
 
 <dl class="function">
 <dt id="_CPPv2N7Trainer13trainOneBatchE6size_t">
-<span id="Trainer::trainOneBatch__s"></span><span class="target" id="paddleclassTrainer_1a245e90062c3e28be2d312df795cb5e63"></span>bool <code class="descname">trainOneBatch</code><span class="sig-paren">(</span>size_t <em>batchSize</em> = -1UL<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer13trainOneBatchE6size_t" title="Permalink to this definition">¶</a></dt>
+<span id="Trainer::trainOneBatch__s"></span><span class="target" id="paddleclassTrainer_1ae0b80ec29762173436cc4eaaf03b1b2f"></span>bool <code class="descname">trainOneBatch</code><span class="sig-paren">(</span>size_t <em>batchSize</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer13trainOneBatchE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd><p>Train one batch,</p>
 <p><dl class="docutils">
 <dt><strong>Return</strong></dt>
 <dd>true if all batch finished. </dd>
-<dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">batchSize</span></code> - <p>-1 wiil use command line or batch size set before, otherwise use this batchSize for train.</p>
-</li>
-</ul>
-</dd>
 </dl>
 </p>
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N7Trainer16prepareBatchDataE6size_t">
-<span id="Trainer::prepareBatchData__s"></span><span class="target" id="paddleclassTrainer_1ac42d01d4df0e300293dc84f4452fcd3a"></span>bool <code class="descname">prepareBatchData</code><span class="sig-paren">(</span>size_t <em>batchSize</em> = -1UL<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer16prepareBatchDataE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2N7Trainer17trainOneDataBatchE6size_tRK9Arguments">
+<span id="Trainer::trainOneDataBatch__s.ArgumentsCR"></span><span class="target" id="paddleclassTrainer_1a16b41a2003f1abff2246a165b15b2096"></span>void <code class="descname">trainOneDataBatch</code><span class="sig-paren">(</span>size_t <em>batchSize</em>, <em class="property">const</em> <a class="reference internal" href="#_CPPv29Arguments" title="Arguments">Arguments</a> &amp;<em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer17trainOneDataBatchE6size_tRK9Arguments" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N7Trainer19finishTrainOneBatchEv">
-<span id="Trainer::finishTrainOneBatch"></span><span class="target" id="paddleclassTrainer_1a8f751f8346a64251e9dfbfe31b4392a7"></span>void <code class="descname">finishTrainOneBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer19finishTrainOneBatchEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2N7Trainer15startTestPeriodEv">
+<span id="Trainer::startTestPeriod"></span><span class="target" id="paddleclassTrainer_1a002cc420aecf53f2ba3fca2c18734f23"></span>void <code class="descname">startTestPeriod</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer15startTestPeriodEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N7Trainer15forwardOneBatchEv">
-<span id="Trainer::forwardOneBatch"></span><span class="target" id="paddleclassTrainer_1a65e901d74a07e1fd3750ac0713107e3a"></span>void <code class="descname">forwardOneBatch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer15forwardOneBatchEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2N7Trainer16testOneDataBatchE6size_tRK9Arguments">
+<span id="Trainer::testOneDataBatch__s.ArgumentsCR"></span><span class="target" id="paddleclassTrainer_1ad55cb28f89227bdea7ef384a2ca4d98d"></span>void <code class="descname">testOneDataBatch</code><span class="sig-paren">(</span>size_t <em>batchSize</em>, <em class="property">const</em> <a class="reference internal" href="#_CPPv29Arguments" title="Arguments">Arguments</a> &amp;<em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer16testOneDataBatchE6size_tRK9Arguments" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N7Trainer16getNetworkOutputEv">
-<span id="Trainer::getNetworkOutput"></span><span class="target" id="paddleclassTrainer_1aba07f58ef492392b3690fe19069ba5d0"></span><a class="reference internal" href="#_CPPv29Arguments" title="Arguments">Arguments</a> *<code class="descname">getNetworkOutput</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer16getNetworkOutputEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2N7Trainer16finishTestPeriodEv">
+<span id="Trainer::finishTestPeriod"></span><span class="target" id="paddleclassTrainer_1a70105c76712d5fbb5619cbd00a3e55f2"></span>void <code class="descname">finishTestPeriod</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer16finishTestPeriodEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N7Trainer15forwardOneBatchE6size_t">
+<span id="Trainer::forwardOneBatch__s"></span><span class="target" id="paddleclassTrainer_1a89f6b707ffb2a181804ab8a9b2f2cd4b"></span>void <code class="descname">forwardOneBatch</code><span class="sig-paren">(</span>size_t <em>batchSize</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer15forwardOneBatchE6size_t" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N7Trainer16getForwardOutputEv">
+<span id="Trainer::getForwardOutput"></span><span class="target" id="paddleclassTrainer_1ab8d2fb3a8e09e2434557e79ae88947e4"></span><a class="reference internal" href="#_CPPv29Arguments" title="Arguments">Arguments</a> *<code class="descname">getForwardOutput</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer16getForwardOutputEv" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1662,12 +1673,22 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dd><p>Create A <a class="reference internal" href="#paddleclassTrainer"><span class="std std-ref">Trainer</span></a> By <a class="reference internal" href="#paddleclassTrainerConfig"><span class="std std-ref">TrainerConfig</span></a>. using paddle command line. </p>
 </dd></dl>
 
+<dl class="function">
+<dt id="_CPPv2N7Trainer6createEP13TrainerConfigP15GradientMachine">
+<span id="Trainer::create__TrainerConfigP.GradientMachineP"></span><span class="target" id="paddleclassTrainer_1ac2d4da403f1222c5e060b33733a7ebe9"></span><a class="reference internal" href="#_CPPv27Trainer" title="Trainer">Trainer</a> *<code class="descname">create</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv213TrainerConfig" title="TrainerConfig">TrainerConfig</a> *<em>optConfig</em>, <a class="reference internal" href="#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a> *<em>gm</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer6createEP13TrainerConfigP15GradientMachine" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </div>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Private Functions</p>
 <dl class="function">
 <dt id="_CPPv2N7Trainer7TrainerEv">
 <span id="Trainer::Trainer"></span><span class="target" id="paddleclassTrainer_1a62bab4c92f18610f095e5692ba098efe"></span><code class="descname">Trainer</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer7TrainerEv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv2N7Trainer7TrainerEP13TrainerConfigP15GradientMachine">
+<span id="Trainer::Trainer__TrainerConfigP.GradientMachineP"></span><span class="target" id="paddleclassTrainer_1a89501c2aeae2ccc11f8c1f8bc6cb7982"></span><code class="descname">Trainer</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv213TrainerConfig" title="TrainerConfig">TrainerConfig</a> *<em>optConfig</em>, <a class="reference internal" href="#_CPPv215GradientMachine" title="GradientMachine">GradientMachine</a> *<em>gm</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N7Trainer7TrainerEP13TrainerConfigP15GradientMachine" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -1689,32 +1710,30 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <dl class="class">
 <dt id="_CPPv216ISequenceResults">
 <span id="ISequenceResults"></span><span class="target" id="paddleclassISequenceResults"></span><em class="property">class </em><code class="descname">ISequenceResults</code><a class="headerlink" href="#_CPPv216ISequenceResults" title="Permalink to this definition">¶</a></dt>
-<dd><em>#include &lt;PaddleAPI.h&gt;</em><p>The N-Best results generated from one input sequence. </p>
+<dd><em>#include &lt;PaddleAPI.h&gt;</em><p>the N-Best results generated from one input sequence. </p>
 <p>Subclassed by PathSequenceResults</p>
 <div class="breathe-sectiondef container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N16ISequenceResultsD0Ev">
-<span id="ISequenceResults::~ISequenceResults"></span>virtual <span class="target" id="paddleclassISequenceResults_1a7aae3c79aac8960e8a19ca0b10c21b3f"></span><code class="descname">~ISequenceResults</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N16ISequenceResultsD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="ISequenceResults::~ISequenceResults"></span><span class="target" id="paddleclassISequenceResults_1a7aae3c79aac8960e8a19ca0b10c21b3f"></span><code class="descname">~ISequenceResults</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N16ISequenceResultsD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N16ISequenceResults7getSizeEv">
-<span id="ISequenceResults::getSize"></span>virtual <span class="target" id="paddleclassISequenceResults_1a9919a8675c89efa544d9275d3d436a16"></span>size_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults7getSizeEv" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK16ISequenceResults7getSizeEv">
+<span id="ISequenceResults::getSizeC"></span><span class="target" id="paddleclassISequenceResults_1a9919a8675c89efa544d9275d3d436a16"></span><em class="property">virtual</em> size_t <code class="descname">getSize</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em> = 0<a class="headerlink" href="#_CPPv2NK16ISequenceResults7getSizeEv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of result. </p>
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N16ISequenceResults11getSentenceE6size_tb">
-<span id="ISequenceResults::getSentence__s.b"></span>virtual <span class="target" id="paddleclassISequenceResults_1a9b54de2900aa94d68202787b2227341c"></span>std::string <code class="descname">getSentence</code><span class="sig-paren">(</span>size_t <em>id</em>, bool <em>split</em> = false<span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults11getSentenceE6size_tb" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK16ISequenceResults11getSentenceE6size_tb">
+<span id="ISequenceResults::getSentence__s.bC"></span><span class="target" id="paddleclassISequenceResults_1a9b54de2900aa94d68202787b2227341c"></span><em class="property">virtual</em> std::string <code class="descname">getSentence</code><span class="sig-paren">(</span>size_t <em>id</em>, bool <em>split</em> = false<span class="sig-paren">)</span> <em class="property">const</em> = 0<a class="headerlink" href="#_CPPv2NK16ISequenceResults11getSentenceE6size_tb" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get sentence from dictionary.</p>
 <p><dl class="docutils">
 <dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last">
-<li><code class="first docutils literal"><span class="pre">id</span></code> - <p>the index of result. </p>
-</li>
-<li><code class="first docutils literal"><span class="pre">split</span></code> - <p>if true, the return sentence will be splited with &#8216; &#8216; by each word. Default is false. </p>
-</li>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal"><span class="pre">id</span></code>: the index of result. </li>
+<li><code class="docutils literal"><span class="pre">split</span></code>: if true, the return sentence will be splited with &#8216; &#8216; by each word. Default is false. </li>
 </ul>
 </dd>
 </dl>
@@ -1722,13 +1741,13 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N16ISequenceResults11getSequenceE6size_t">
-<span id="ISequenceResults::getSequence__s"></span>virtual <span class="target" id="paddleclassISequenceResults_1aa6b23f4cfb4133f8df2c689bab7ceac9"></span>std::vector&lt;int&gt; <code class="descname">getSequence</code><span class="sig-paren">(</span>size_t <em>id</em><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults11getSequenceE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK16ISequenceResults11getSequenceE6size_t">
+<span id="ISequenceResults::getSequence__sC"></span><span class="target" id="paddleclassISequenceResults_1aa6b23f4cfb4133f8df2c689bab7ceac9"></span><em class="property">virtual</em> std::vector&lt;int&gt; <code class="descname">getSequence</code><span class="sig-paren">(</span>size_t <em>id</em><span class="sig-paren">)</span> <em class="property">const</em> = 0<a class="headerlink" href="#_CPPv2NK16ISequenceResults11getSequenceE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N16ISequenceResults8getScoreE6size_t">
-<span id="ISequenceResults::getScore__s"></span>virtual <span class="target" id="paddleclassISequenceResults_1a9adebfbe9db63aaabba10f7448fdab49"></span>float <code class="descname">getScore</code><span class="sig-paren">(</span>size_t <em>id</em><span class="sig-paren">)</span> const = 0<a class="headerlink" href="#_CPPv2N16ISequenceResults8getScoreE6size_t" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK16ISequenceResults8getScoreE6size_t">
+<span id="ISequenceResults::getScore__sC"></span><span class="target" id="paddleclassISequenceResults_1a9adebfbe9db63aaabba10f7448fdab49"></span><em class="property">virtual</em> float <code class="descname">getScore</code><span class="sig-paren">(</span>size_t <em>id</em><span class="sig-paren">)</span> <em class="property">const</em> = 0<a class="headerlink" href="#_CPPv2NK16ISequenceResults8getScoreE6size_t" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -1741,12 +1760,12 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N17SequenceGeneratorD0Ev">
-<span id="SequenceGenerator::~SequenceGenerator"></span>virtual <span class="target" id="paddleclassSequenceGenerator_1a73b695e0f3353100e6476dbac4ab39a4"></span><code class="descname">~SequenceGenerator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N17SequenceGeneratorD0Ev" title="Permalink to this definition">¶</a></dt>
+<span id="SequenceGenerator::~SequenceGenerator"></span><span class="target" id="paddleclassSequenceGenerator_1a73b695e0f3353100e6476dbac4ab39a4"></span><code class="descname">~SequenceGenerator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv2N17SequenceGeneratorD0Ev" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="_CPPv2N17SequenceGenerator16generateSequenceERK9Arguments">
-<span id="SequenceGenerator::generateSequence__ArgumentsCR"></span><span class="target" id="paddleclassSequenceGenerator_1a94cb6e3283fd11a890e68b8a025b53b7"></span><a class="reference internal" href="#_CPPv216ISequenceResults" title="ISequenceResults">ISequenceResults</a> *<code class="descname">generateSequence</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv29Arguments" title="Arguments">Arguments</a> &amp;<em>inArgs</em><span class="sig-paren">)</span> const<a class="headerlink" href="#_CPPv2N17SequenceGenerator16generateSequenceERK9Arguments" title="Permalink to this definition">¶</a></dt>
+<dt id="_CPPv2NK17SequenceGenerator16generateSequenceERK9Arguments">
+<span id="SequenceGenerator::generateSequence__ArgumentsCRC"></span><span class="target" id="paddleclassSequenceGenerator_1a94cb6e3283fd11a890e68b8a025b53b7"></span><a class="reference internal" href="#_CPPv216ISequenceResults" title="ISequenceResults">ISequenceResults</a> *<code class="descname">generateSequence</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv29Arguments" title="Arguments">Arguments</a> &amp;<em>inArgs</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv2NK17SequenceGenerator16generateSequenceERK9Arguments" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate Sequence by input.</p>
 <p><dl class="docutils">
 <dt><strong>Note</strong></dt>
@@ -1888,7 +1907,7 @@ Example:  <div class="highlight-default"><div class="highlight"><pre><span></spa
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, PaddlePaddle developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.
     </div>
   </body>
 </html>
