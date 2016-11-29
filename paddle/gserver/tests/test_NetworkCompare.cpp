@@ -255,6 +255,15 @@ TEST(Compare, img_conv) {
   compareNetwork(config_file_a, config_file_b);
   FLAGS_use_gpu = useGpu;
 }
+
+TEST(Compare, img_conv2) {
+  std::string config_file_a = "./gserver/tests/img_conv2_a.conf";
+  std::string config_file_b = "./gserver/tests/img_conv2_b.conf";
+  bool useGpu = FLAGS_use_gpu;
+  FLAGS_use_gpu = true;
+  compareNetwork(config_file_a, config_file_b);
+  FLAGS_use_gpu = useGpu;
+}
 #endif
 
 P_DEFINE_string(config_file_a, "", "config of one network to compare");

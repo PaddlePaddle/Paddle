@@ -38,7 +38,7 @@ P_DECLARE_bool(prev_batch_state);
 // matches the given result
 MatrixPtr doOneConvTest(size_t imgSize, size_t output_x, size_t stride,
                     size_t padding, size_t filter_size, size_t channel,
-                    size_t numfilters, MatrixPtr& inputData,
+                    size_t numfilters, size_t groups, MatrixPtr& inputData,
                     real* param, bool useGpu) {
   TestConfig config;
   config.biasSize = numfilters;
@@ -51,9 +51,11 @@ MatrixPtr doOneConvTest(size_t imgSize, size_t output_x, size_t stride,
   config.layerConfig.set_partial_sum(1);
   config.layerConfig.set_shared_biases(true);
 
+  size_t weightSize = channel* filter_size * filter_size *
+      config.layerConfig.num_filters() / groups;
   config.inputDefs.push_back({INPUT_DATA, "layer_0",
                               imgSize * imgSize * channel,
-      channel* filter_size * filter_size * config.layerConfig.num_filters()});
+                              weightSize});
   LayerInputConfig* input = config.layerConfig.add_inputs();
   ConvConfig* conv = input->mutable_conv_conf();
   conv->set_filter_size(filter_size);
@@ -63,8 +65,8 @@ MatrixPtr doOneConvTest(size_t imgSize, size_t output_x, size_t stride,
   conv->set_padding_y(padding);
   conv->set_stride(stride);
   conv->set_stride_y(stride);
-  conv->set_groups(1);
-  conv->set_filter_channels(channel);
+  conv->set_groups(groups);
+  conv->set_filter_channels(channel/groups);
   conv->set_img_size(imgSize);
   conv->set_output_x(output_x);
 
@@ -87,7 +89,7 @@ MatrixPtr doOneConvTest(size_t imgSize, size_t output_x, size_t stride,
   convLayer->getBiasParameter()->zeroMem();
   convLayer->getParameters()[0]->zeroMem();
   convLayer->getParameters()[0]->getBuf(PARAMETER_VALUE)->copyFrom(param,
-      channel* filter_size * filter_size * config.layerConfig.num_filters());
+      weightSize);
   convLayer->forward(PASS_GC);
 
   return convLayer->getOutputValue();
@@ -113,6 +115,7 @@ TEST(Layer, convParaUnified) {
                    /* filter_size */ 3,
                    /*channel*/ 1,
                    /*numfilters*/ 2,
+                   /*groups*/ 1,
                    input, param, false);
 
     resultGpu = doOneConvTest(/* imgSize */ 4,
@@ -122,6 +125,7 @@ TEST(Layer, convParaUnified) {
                        /* filter_size */ 3,
                        /*channel*/ 1,
                        /*numfilters*/ 2,
+                       /*groups*/ 1,
                        input, param, true);
     checkMatrixEqual(resultCpu, resultGpu);
 
@@ -145,6 +149,7 @@ TEST(Layer, convParaUnified) {
                    /* filter_size */ 2,
                    /*channel*/ 2,
                    /*numfilters*/ 2,
+                   /*groups*/ 1,
                    input, param2, false);
 
     resultGpu = doOneConvTest(/* imgSize */ 3,
@@ -154,7 +159,33 @@ TEST(Layer, convParaUnified) {
                        /* filter_size */ 2,
                        /*channel*/ 2,
                        /*numfilters*/ 2,
+                       /*groups*/ 1,
                        input, param2, true);
+    checkMatrixEqual(resultCpu, resultGpu);
+
+
+    float param3[] = {1, 2, 3, 4,
+                      4, 3, 2, 1};
+
+    resultCpu = doOneConvTest(/* imgSize */ 3,
+                   /* output_x */ 2,
+                   /* stride */ 1,
+                   /* padding */ 0,
+                   /* filter_size */ 2,
+                   /*channel*/ 2,
+                   /*numfilters*/ 2,
+                   /*groups*/ 2,
+                   input, param3, false);
+
+    resultGpu = doOneConvTest(/* imgSize */ 3,
+                       /* output_x */ 2,
+                       /* stride */ 1,
+                       /* padding */ 0,
+                       /* filter_size */ 2,
+                       /*channel*/ 2,
+                       /*numfilters*/ 2,
+                       /*groups*/ 2,
+                       input, param3, true);
     checkMatrixEqual(resultCpu, resultGpu);
   #endif
 }
