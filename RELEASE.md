@@ -2,14 +2,13 @@
 
 ## New Features:
 
-* Add some layers to Paddle
+* New Layers
   * bilinear interpolation layer.
   * spatial pyramid-pool layer.
   * de-convolution layer.
   * maxout layer.
 * Support rectangle padding, stride, window and input for Pooling Operation.
 * Add —job=time in trainer, which can be used to print time info without compiler option -WITH_TIMER=ON.
-* Support Mac OS X Sierra by source code.
 * Expose cost_weight/nce_layer in `trainer_config_helpers`
 * Add FAQ, concepts, h-rnn docs.
 * Add Bidi-LSTM and DB-LSTM to quick start demo @alvations
@@ -17,7 +16,7 @@
 
 ## Improvements
 
-* Add travis-ci for macos. Enable swig unittest in travis. Skip travis-ci when only docs are changed.
+* Add Travis-CI for Mac OS X. Enable swig unittest in Travis-CI. Skip Travis-CI when only docs are changed.
 * Add code coverage tools.
 * Refine convolution layer to speedup and reduce GPU memory.
 * Speed up PyDataProvider2
