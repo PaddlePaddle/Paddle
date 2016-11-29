@@ -19,25 +19,20 @@ limitations under the License. */
  */
 
 #include <gtest/gtest.h>
-#include "paddle/utils/Util.h"
-#include "paddle/math/BaseMatrix.h"
 #include "TestUtils.h"
 
 using namespace paddle;  // NOLINT
-using namespace std;     // NOLINT
 
-/**
- * Test member functions which prototype is
- * void (Matrix::*)(Matrix&).
- */
-TEST(BaseMatrix, real) {
-  typedef void (Matrix::*FunctionProto)(Matrix&);
-#define MATRIXCOMPARE(function) \
-  BaseMatrixCompare<0>(static_cast<FunctionProto>(&Matrix::function), true);
+TEST(Matrix, Matrix) {
+  BaseMatrixCompare<0>(&Matrix::softmax, true);
+  BaseMatrixCompare<0, 1>(&Matrix::sumOfSquaresBp);
+}
 
-  MATRIXCOMPARE(softmax);
+TEST(Matrix, Aggregate) {
+  BaseMatrixAsRowVector<0, 1>(
+      static_cast<void (Matrix::*)(Matrix&, real)>(&Matrix::collectBias));
 
-#undef MATRIXCOMPARE
+  BaseMatrixAsColVector<0, 1>(&Matrix::sumOfSquares);
 }
 
 int main(int argc, char** argv) {

@@ -110,4 +110,10 @@ void TensorCheck(AssertEq compare, real args1, real args2) {
                                          << ", args2 = " << args2;
 }
 
+template <typename AssertEq>
+void TensorCheck(AssertEq compare, size_t args1, size_t args2) {
+  EXPECT_EQ(args1, args2) << "[Test error] args1 = " << args1
+                          << ", args2 = " << args2;
+}
+
 }  // namespace autotest
