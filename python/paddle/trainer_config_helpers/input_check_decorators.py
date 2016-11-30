@@ -11,18 +11,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Input Check Decorators. The decorators and utilities related to check the
+layer inputs are legal.  The main API is check_input. Please reference
+documentation in check_input for detail usages.
+"""
 
 from paddle.trainer.PyDataProvider2 import InputType, SequenceType, DataType
 import functools
 import collections
 
 __all__ = [
-    "input_mapping", "AcceptInput", "SameSeqType", "SameOutputDim",
-    "OutputType", "InputSize", "SameOutputType"
+    "check_input", "AcceptInput", "SameSeqType", "SameOutputDim", "OutputType",
+    "InputSize", "SameOutputType"
 ]
 
 
-def base_input_mapping(callback):
+def base_check_input(callback):
+    """
+    A layer decorator.
+    Using the callback to set layer's output type. The callback method takes the
+    input types and this layer output as the parameter and returns this layer's
+    type. The callback type should be ([InputType], LayerOutput) => InputType.
+
+    :param callback: a function set current layer's type, with type
+                     ([InputType], LayerOutput) => InputType.
+    :type callback: callable
+    :return: wrapped method.
+    :rtype: callable
+    """
+
     def __impl__(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -144,7 +162,7 @@ class SameOutputType(object):
         return tp
 
 
-def input_mapping(*callbacks):
+def check_input(*callbacks):
     def callback_impl(parent_types, output):
         for each_parent_type in parent_types:
             if each_parent_type is None:
@@ -157,4 +175,4 @@ def input_mapping(*callbacks):
 
         return base(parent_types, output)
 
-    return base_input_mapping(callback_impl)
+    return base_check_input(callback_impl)

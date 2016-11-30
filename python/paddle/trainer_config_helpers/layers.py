@@ -836,7 +836,7 @@ def embedding_layer(input, size, name=None, param_attr=None, layer_attr=None):
     return mix
 
 
-@check.input_mapping(
+@check.check_input(
     check.AcceptInput(
         data_type=DataType.base_matrix(), seq_type=SequenceType.all()),
     check.SameOutputDim(),
@@ -1602,7 +1602,7 @@ def scaling_layer(input, weight, name=None, layer_attr=None):
     " same. The width of matrix always is feature dimension and the height" +
     " of matrix always is the batch size.  Please make sure what are you" +
     " doing when using this layer.")
-@check.input_mapping(
+@check.check_input(
     check.InputSize(1),
     check.AcceptInput(data_type=DataType.base_matrix()),
     check.SameOutputDim(),
@@ -3683,7 +3683,7 @@ def __selective_fc_accept_inputs__(input_types, output, next_callback):
     return next_callback(input_types, output)
 
 
-@check.input_mapping(
+@check.check_input(
     __selective_fc_accept_inputs__,
     check.SameSeqType(),
     check.SameOutputDim(),
