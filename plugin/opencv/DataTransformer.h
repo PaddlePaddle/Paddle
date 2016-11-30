@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <iostream>
 #include <fstream>
-// #define OPENCV_CAN_BREAK_BINARY_COMPATIBILITY
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <string>
@@ -22,7 +21,6 @@ limitations under the License. */
 
 #include "paddle/utils/Thread.h"
 
-using namespace std;
 using namespace cv;
 using namespace paddle;
 
@@ -113,7 +111,7 @@ private:
    */
   int Rand(int min, int max);
 
-  typedef pair<float*, int> DataType;
+  typedef std::pair<float*, int> DataType;
   typedef std::shared_ptr<DataType> DataTypePtr;
   std::vector<DataTypePtr> prefetch_;
   std::unique_ptr<SyncThreadPool> syncThreadPool_;

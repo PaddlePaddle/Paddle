@@ -50,7 +50,7 @@ DataTransformer::DataTransformer(int threadNum,
     prefetchFree_.enqueue(prefetch_[i]);
   }
 
-  numThreads_ = 12;
+  numThreads_ = threadNum;
   syncThreadPool_.reset(new SyncThreadPool(numThreads_, false));
 }
 
@@ -154,7 +154,7 @@ void DataTransformer::transform(Mat& cvImgOri, float* target) {
 
 void DataTransformer::start(vector<char*>& data, int* datalen, int* labels) {
   auto job = [&](int tid, int numThreads) {
-    for (int i = tid; i < data.size(); i += numThreads) {
+    for (size_t i = tid; i < data.size(); i += numThreads) {
       DataTypePtr ret = prefetchFree_.dequeue();
       char* buf = data[i];
       int size = datalen[i];

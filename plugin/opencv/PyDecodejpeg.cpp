@@ -19,13 +19,11 @@ limitations under the License. */
 #include <unistd.h>
 #include <glog/logging.h>
 #include <numpy/arrayobject.h>
-
 #include <boost/python.hpp>
 
 #include "DataTransformer.h"
 
 using namespace boost::python;
-using namespace std;
 
 /**
  * DecodeJpeg is an image processing API for interfacing Python and C++
@@ -37,7 +35,7 @@ using namespace std;
 class DecodeJpeg {
 public:
   /**
-   * The constructor will create and nitialize an object of DataTransformer.
+   * The constructor will create and initialize an object of DataTransformer.
    */
   DecodeJpeg(int threadNum,
              int capacity,
@@ -56,11 +54,11 @@ public:
         LOG(FATAL) << "Object is not a numpy array";
       }
       pyTypeCheck(meanValues);
-      int size = PyArray_SIZE(meanValues);
+      int size = PyArray_SIZE(reinterpret_cast<PyArrayObject*>(meanValues));
       isChannelMean = (size == channel) ? true : false;
       isEltMean = (size == channel * cropSizeH * cropSizeW) ? true : false;
       CHECK(isChannelMean != isEltMean);
-      mean = (float*)PyArray_DATA(meanValues);
+      mean = (float*)PyArray_DATA(reinterpret_cast<PyArrayObject*>(meanValues));
     }
     tfhandlerPtr_ = std::make_shared<DataTransformer>(threadNum,
                                                       capacity,
@@ -91,8 +89,9 @@ public:
       char* src = boost::python::extract<char*>(pysrc[t]);
       data.push_back(src);
     }
-    int* dlen = (int*)PyArray_DATA(pydlen);
-    int* dlabels = (int*)PyArray_DATA(pylabel);
+    int* dlen = (int*)PyArray_DATA(reinterpret_cast<PyArrayObject*>(pydlen));
+    int* dlabels =
+        (int*)PyArray_DATA(reinterpret_cast<PyArrayObject*>(pylabel));
     tfhandlerPtr_->start(data, dlen, dlabels);
   }
 
@@ -106,8 +105,8 @@ public:
     pyWritableCheck(pylab);
     pyContinuousCheck(pytrg);
     pyContinuousCheck(pylab);
-    float* data = (float*)PyArray_DATA(pytrg);
-    int* label = (int*)PyArray_DATA(pylab);
+    float* data = (float*)PyArray_DATA(reinterpret_cast<PyArrayObject*>(pytrg));
+    int* label = (int*)PyArray_DATA(reinterpret_cast<PyArrayObject*>(pylab));
     tfhandlerPtr_->obtain(data, label);
   }
 
@@ -121,8 +120,8 @@ private:
   /**
    * @brief Check whether the type of PyObject is valid or not.
    */
-  void pyTypeCheck(const PyObject* o) {
-    int typenum = PyArray_TYPE(o);
+  void pyTypeCheck(PyObject* o) {
+    int typenum = PyArray_TYPE(reinterpret_cast<PyArrayObject*>(o));
 
     // clang-format off
     int type =
@@ -143,13 +142,17 @@ private:
   /**
    * @brief Check whether the PyObject is writable or not.
    */
-  void pyWritableCheck(PyObject* o) { CHECK(PyArray_ISWRITEABLE(o)); }
+  void pyWritableCheck(PyObject* o) {
+    CHECK(PyArray_ISWRITEABLE(reinterpret_cast<PyArrayObject*>(o)));
+  }
 
   /**
    * @brief Check whether the PyObject is c-contiguous or not.
    */
-  void pyContinuousCheck(PyObject* o) { CHECK(PyArray_IS_C_CONTIGUOUS(o)); }
-};
+  void pyContinuousCheck(PyObject* o) {
+    CHECK(PyArray_IS_C_CONTIGUOUS(reinterpret_cast<PyArrayObject*>(o)));
+  }
+};  // DecodeJpeg
 
 /**
  * @brief Initialize the Python interpreter and numpy.

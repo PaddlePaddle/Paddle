@@ -32,8 +32,13 @@ list(APPEND DEJPEG_LINKER_LIBS ${Boost_LIBRARIES})
 file(GLOB DEJPEG_HEADER "${CMAKE_CURRENT_SOURCE_DIR}" "*.h")
 file(GLOB DEJPEG_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}" "*.cpp")
 
-set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -fPIC -Wno-unused-parameter")
+set(BUILD_PRIVATE_FLAGS
+    -Wno-all
+    -Wno-error
+    -Wno-non-virtual-dtor
+    -Wno-delete-non-virtual-dtor)
 
 add_library(DeJpeg SHARED ${DEJPEG_SOURCES})
+target_compile_options(DeJpeg BEFORE PRIVATE ${BUILD_PRIVATE_FLAGS})
 target_link_libraries(DeJpeg ${DEJPEG_LINKER_LIBS})
 set_target_properties(DeJpeg PROPERTIES PREFIX "")
