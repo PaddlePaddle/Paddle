@@ -61,7 +61,7 @@ All platforms use cuDNN-v5.1. We see that caffe is slower in this experiment, be
 
 **Notation**
 
-All the experiments in caffe use `caffe time` to execute, which does not include the time of parameter updating. While PaddlePaddle and TensorFlow contains this time. But, compared with the total time, the time of parameter updating is relatively little on single machine.
+All the single-GPU experiments in caffe use `caffe time` to calculate elapsed time, which does not include parameter updating time. However, both PaddlePaddle and TensorFlow experiments contain the parameter updating time. As compared with the total time, this part is relatively little on single machine, we can ignore it.
 
 In Tensorflow, they implement algorithm searching method instead of using the algorithm searching interface in cuDNN.
 
@@ -102,7 +102,7 @@ We use lstm network for text classfication to test benchmark.
 
 ### Dataset
 -  [IMDB](http://www.iro.umontreal.ca/~lisa/deep/data/imdb.pkl)
-- Sequence legth is 100. In fact, PaddlePaddle supports training with variable-length sequence, but TensorFlow needs to pad, we also pad sequence length to 100 in PaddlePaddle in order to compare.
+- Sequence length is 100. In fact, PaddlePaddle supports training with variable-length sequence, but TensorFlow needs to pad. Thus, we also pad sequence length to 100 in PaddlePaddle in order to compare.
 - Dictionary size=30000 
 - Peephole connection is used in `lstmemory` by default in PaddlePaddle. It is also configured in TensorFlow.
 
