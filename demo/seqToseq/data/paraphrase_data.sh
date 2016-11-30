@@ -16,9 +16,7 @@ set -e
 set -x
 
 # download the in-house paraphrase dataset
-# following is the google drive address
-# you can also directly download from https://pan.baidu.com/s/1o8q577s
-wget https://www.googledrive.com/host/0B7Q8d52jqeI9ejh6Q1RpMTFQT1k/embedding/paraphrase.tar.gz --no-check-certificate
+wget http://paddlepaddle.bj.bcebos.com/model_zoo/embedding/paraphrase.tar.gz
 
 # untar the dataset
 tar -zxvf paraphrase.tar.gz

@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+ifdef(`proto3', `syntax = "proto2";')
 
 import "ParameterConfig.proto";
 import "TrainerConfig.proto";
@@ -20,7 +21,6 @@ package paddle;
 /**
  * Various structs for communicating with parameter server
  */
-
 enum ParameterUpdateMode {
   // Set parameter
    PSERVER_UPDATE_MODE_SET_PARAM = 0;//use local param
