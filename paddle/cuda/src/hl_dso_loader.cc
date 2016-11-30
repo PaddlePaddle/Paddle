@@ -163,7 +163,7 @@ void GetCurandDsoHandle(void** dso_handle) {
 #endif
 }
 
-void GetWarpctcDsoHandle(void** dso_handle) {
+void GetWarpCTCDsoHandle(void** dso_handle) {
 #if defined(__APPLE__) || defined(__OSX__)
   GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib", dso_handle);
 #else

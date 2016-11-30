@@ -30,32 +30,32 @@ void* warpctc_dso_handle = nullptr;
  * the linked-libs of paddle or to LD_PRELOAD.
  */
 #ifdef PADDLE_USE_DSO
-#define DYNAMIC_LOAD_WARPCTC_WRAP(__name, __type)                      \
+#define DYNAMIC_LOAD_WARPCTC_WRAP(__name)                              \
   struct DynLoad__##__name {                                           \
     template <typename... Args>                                        \
-    __type operator()(Args... args) {                                  \
-      typedef __type (*warpctcFunc)(Args...);                          \
+    auto operator()(Args... args) -> decltype(__name(args...)) {       \
+      using warpctcFunc = decltype(__name(args...)) (*)(Args...);      \
       std::call_once(                                                  \
-          warpctc_dso_flag, GetWarpctcDsoHandle, &warpctc_dso_handle); \
+          warpctc_dso_flag, GetWarpCTCDsoHandle, &warpctc_dso_handle); \
       void* p_##_name = dlsym(warpctc_dso_handle, #__name);            \
       return reinterpret_cast<warpctcFunc>(p_##_name)(args...);        \
     }                                                                  \
   } __name;  // struct DynLoad__##__name
 #else
-#define DYNAMIC_LOAD_WARPCTC_WRAP(__name, __type) \
-  struct DynLoad__##__name {                      \
-    template <typename... Args>                   \
-    __type operator()(Args... args) {             \
-      return __name(args...);                     \
-    }                                             \
+#define DYNAMIC_LOAD_WARPCTC_WRAP(__name)                        \
+  struct DynLoad__##__name {                                     \
+    template <typename... Args>                                  \
+    auto operator()(Args... args) -> decltype(__name(args...)) { \
+      return __name(args...);                                    \
+    }                                                            \
   } __name;  // struct DynLoad__##__name
 #endif
 
 // include all needed warp-ctc functions
-DYNAMIC_LOAD_WARPCTC_WRAP(get_warpctc_version, int)
-DYNAMIC_LOAD_WARPCTC_WRAP(ctcGetStatusString, const char*)
-DYNAMIC_LOAD_WARPCTC_WRAP(compute_ctc_loss, hl_warpctc_status_t)
-DYNAMIC_LOAD_WARPCTC_WRAP(get_workspace_size, hl_warpctc_status_t)
+DYNAMIC_LOAD_WARPCTC_WRAP(get_warpctc_version)
+DYNAMIC_LOAD_WARPCTC_WRAP(ctcGetStatusString)
+DYNAMIC_LOAD_WARPCTC_WRAP(compute_ctc_loss)
+DYNAMIC_LOAD_WARPCTC_WRAP(get_workspace_size)
 
 #undef DYNAMIC_LOAD_WARPCTC_WRAP
 

@@ -58,6 +58,6 @@ void GetCurandDsoHandle(void** dso_handle);
  * @param    **dso_handle   dso handler
  *
  */
-void GetWarpctcDsoHandle(void** dso_handle);
+void GetWarpCTCDsoHandle(void** dso_handle);
 
 #endif  // HL_DSO_LOADER_H_

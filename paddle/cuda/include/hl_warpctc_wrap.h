@@ -16,7 +16,6 @@ limitations under the License. */
 #define HL_WARPCTC_WRAP_H_
 
 #include "hl_base.h"
-/// #include "hl_cuda.h"
 #include "warp-ctc/include/ctc.h"
 
 typedef ctcStatus_t hl_warpctc_status_t;

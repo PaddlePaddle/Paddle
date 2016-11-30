@@ -30,7 +30,7 @@ P_DECLARE_bool(use_gpu);
 const real* getData(const Matrix& matrix) {
   if (matrix.useGpu()) {
     MatrixPtr cpuMatrix = Matrix::create(
-        matrix.getWidth(), matrix.getHeight(), matrix.isTransposed(), false);
+        matrix.getHeight(), matrix.getWidth(), matrix.isTransposed(), false);
     cpuMatrix->copyFrom(matrix);
     return cpuMatrix->getData();
   } else {
@@ -200,41 +200,43 @@ LayerPtr createWarpCTCLayer(string name,
 TEST(Layer, WarpCTCLayer) {
   for (auto layerSize : {10, 64, 128}) {
     for (auto batchSize : {1, 10, 20, 64}) {
-      for (auto useGpu : {false, true}) {
+      for (auto normByTimes : {false, true}) {
+        for (auto useGpu : {false, true}) {
 #ifdef PADDLE_ONLY_CPU
-        if (useGpu) continue;
+          if (useGpu) continue;
 #endif
-        LOG(INFO) << " layerSize=" << layerSize << " batchSize=" << batchSize
-                  << " useGpu=" << useGpu;
+          LOG(INFO) << " layerSize=" << layerSize << " batchSize=" << batchSize
+                    << " normByTimes = " << normByTimes << " useGpu=" << useGpu;
 
-        FLAGS_use_gpu = useGpu;
+          FLAGS_use_gpu = useGpu;
 
-        Argument data0;
-        initArgument(batchSize, layerSize, useGpu, data0);
+          Argument data0;
+          initArgument(batchSize, layerSize, useGpu, data0);
 
-        Argument data1;
-        data1.resizeAndCopyFrom(data0);
+          Argument data1;
+          data1.resizeAndCopyFrom(data0);
 
-        LayerPtr dataLayer0 =
-            createDataLayer("data", batchSize, layerSize, useGpu, data0);
-        LayerPtr dataLayer1 =
-            createDataLayer("data", batchSize, layerSize, useGpu, data1);
+          LayerPtr dataLayer0 =
+              createDataLayer("data", batchSize, layerSize, useGpu, data0);
+          LayerPtr dataLayer1 =
+              createDataLayer("data", batchSize, layerSize, useGpu, data1);
 
-        LayerPtr labelLayer =
-            createLabelLayer("label", batchSize, layerSize, useGpu);
+          LayerPtr labelLayer =
+              createLabelLayer("label", batchSize, layerSize, useGpu);
 
-        LayerPtr warpctcLayer = createWarpCTCLayer(
-            "cost", layerSize, useGpu, false, dataLayer0, labelLayer);
-        LayerPtr ctcLayer = createCTCLayer(
-            "cost", layerSize, useGpu, false, dataLayer1, labelLayer);
+          LayerPtr warpctcLayer = createWarpCTCLayer(
+              "cost", layerSize, useGpu, normByTimes, dataLayer0, labelLayer);
+          LayerPtr ctcLayer = createCTCLayer(
+              "cost", layerSize, useGpu, normByTimes, dataLayer1, labelLayer);
 
-        /// Check loss
-        checkError(*(warpctcLayer->getOutput().value),
-                   *(ctcLayer->getOutput().value));
+          /// Check loss
+          checkError(*(warpctcLayer->getOutput().value),
+                     *(ctcLayer->getOutput().value));
 
-        /// Check gradients
-        checkError(*(dataLayer0->getOutput().grad),
-                   *(dataLayer1->getOutput().grad));
+          /// Check gradients
+          checkError(*(dataLayer0->getOutput().grad),
+                     *(dataLayer1->getOutput().grad));
+        }
       }
     }
   }

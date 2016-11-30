@@ -100,8 +100,8 @@ void WarpCTCLayer::forward(PassType passType) {
 
   /* labels always in CPU memory */
   Matrix::resizeOrCreate(cpuCosts_,
-                         /* width */ numSequences,
-                         /* height */ 1,
+                         /* height */ numSequences,
+                         /* width */ 1,
                          /* trans */ false,
                          /* useGpu */ false);
 
@@ -209,17 +209,11 @@ void WarpCTCLayer::batch2seqPadding(const MatrixPtr& seqValue,
       int sequenceStart = seqStartPositionsData[i];
       int sequenceLength =
           seqStartPositionsData[i + 1] - seqStartPositionsData[i];
+      real scale = normByTimes ? (1.0f / (real)sequenceLength) : 1.0f;
       for (int j = 0; j < sequenceLength; j++) {
-        if (normByTimes) {
-          for (size_t k = 0; k < numClasses_; k++) {
-            seqData[(sequenceStart + j) * numClasses_ + k] =
-                batchData[(j * numSequences + i) * numClasses_ + k] /
-                sequenceLength;
-          }
-        } else {
-          memcpy(seqData + (sequenceStart + j) * numClasses_,
-                 batchData + (j * numSequences + i) * numClasses_,
-                 numClasses_ * sizeof(real));
+        for (size_t k = 0; k < numClasses_; k++) {
+          seqData[(sequenceStart + j) * numClasses_ + k] =
+              batchData[(j * numSequences + i) * numClasses_ + k] * scale;
         }
       }
     }

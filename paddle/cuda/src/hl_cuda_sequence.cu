@@ -463,30 +463,18 @@ void KeSequence2BatchPadding(real* batch,
   int batchBaseIdx = (sequenceIdx * numSequences + batchIdx) * sequenceWidth;
   int sequenceBaseIdx = (sequenceStart + sequenceIdx) * sequenceWidth;
 
+  real scale = normByTimes ? (1.0f / (real)sequenceLength) : 1.0f;
+
   if (sequenceIdx < sequenceLength) {
     if (seq2batch) {
       /* sequence -> batch */
-      if (normByTimes) {
-        real scale = 1.0f / (real)sequenceLength;
-        for (int i = threadIdx.x; i < sequenceWidth; i += blockDim.x) {
-          batch[batchBaseIdx + i] = scale * sequence[sequenceBaseIdx + i];
-        }
-      } else {
-        for (int i = threadIdx.x; i < sequenceWidth; i += blockDim.x) {
-          batch[batchBaseIdx + i] = sequence[sequenceBaseIdx + i];
-        }
+      for (int i = threadIdx.x; i < sequenceWidth; i += blockDim.x) {
+        batch[batchBaseIdx + i] = scale * sequence[sequenceBaseIdx + i];
       }
     } else {
       /* batch -> sequence */
-      if (normByTimes) {
-        real scale = 1.0f / (real)sequenceLength;
-        for (int i = threadIdx.x; i < sequenceWidth; i += blockDim.x) {
-          sequence[sequenceBaseIdx + i] = scale * batch[batchBaseIdx + i];
-        }
-      } else {
-        for (int i = threadIdx.x; i < sequenceWidth; i += blockDim.x) {
-          sequence[sequenceBaseIdx + i] = batch[batchBaseIdx + i];
-        }
+      for (int i = threadIdx.x; i < sequenceWidth; i += blockDim.x) {
+        sequence[sequenceBaseIdx + i] = scale * batch[batchBaseIdx + i];
       }
     }
   } else if (sequenceIdx < maxSequenceLength) {
