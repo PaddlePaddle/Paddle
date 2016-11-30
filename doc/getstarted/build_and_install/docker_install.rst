@@ -56,25 +56,38 @@ The PaddlePaddle images don't contain any entry command. You need to write your 
 Download and Run Docker images
 ------------------------------
 
-You have to install Docker in your machine which has linux kernel version 3.10+ first. You can refer to the official guide https://docs.docker.com/engine/installation/ for further information.
+Currently, Docker is supported on macOS, Windows and Linux distributions. Please check out `Install Docker Engine <https://docs.docker.com/engine/installation/>`_ to find out much more details.
 
-You can use :code:`docker pull ` to download images first, or just launch a container with :code:`docker run` \:
+PaddlePaddle on CPU
+.....................
 
-..  code-block:: bash
+You can use :code:`docker pull ` to download images, or directly launch a container with :code:`docker run` \:
 
-    docker run -it paddledev/paddle:cpu-latest
+    ..  code-block:: bash
+
+        docker run -it paddledev/paddle:cpu-latest
+
+PaddlePaddle on GPU
+.....................
+
+To build GPU version, you will need the following installed:
+
+    ..  code-block:: bash
+
+        1. a CUDA-capable GPU
+        2. NVIDIA CUDA Toolkit (available at http://developer.nvidia.com/cuda-downloads)
 
 
-If you want to launch container with GPU support, you need to set some environment variables at the same time:
+Then, you will need to mount related CUDA driver and library into container.
 
-..  code-block:: bash
+    ..  code-block:: bash
 
-    export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
-    export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
+        export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
+        export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
+        docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
 
 
-Some notes for docker
+Some notes for Docker
 ---------------------
 
 Performance

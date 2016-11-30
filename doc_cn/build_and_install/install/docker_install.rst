@@ -60,21 +60,38 @@ mac osx或者是windows机器，请参考
 `mac osx的安装文档 <https://docs.docker.com/engine/installation/mac/>`_ 和
 `windows 的安装文档 <https://docs.docker.com/engine/installation/windows/>`_ 。
 
+
+启动CPU版Docker镜像
+...................
+
 您可以使用 :code:`docker pull` 命令预先下载镜像，也可以直接执行 
 :code:`docker run` 命令运行镜像。执行方法如下:
 
-..  code-block:: bash
+    ..  code-block:: bash
+        
+        $ docker run -it paddledev/paddlepaddle:cpu-latest
+
+即可启动和进入PaddlePaddle的container。
+
+启动GPU版Docker镜像
+...................
+
+首先, 请参考以下链接，在机器上安装CUDA Toolkit。
+
+    ..  code-block:: bash
     
-    $ docker run -it paddledev/paddle:cpu-latest
+        NVIDIA CUDA Toolkit (available at http://developer.nvidia.com/cuda-downloads)
 
-即可启动和进入PaddlePaddle的container。如果运行GPU版本的PaddlePaddle，则需要先将
-cuda相关的Driver和设备映射进container中，脚本类似于
+其次，需要将cuda相关的驱动和设备映射进container中，脚本类似于
 
-..  code-block:: bash
+    ..  code-block:: bash
 
-    $ export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
-    $ export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
+        $ export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
+        $ export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
+        $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddlepaddle:latest-gpu
+
+使用PaddlePaddle
+..................
 
 进入Docker container后，运行 :code:`paddle version` 即可打印出PaddlePaddle的版本和构建
 信息。安装完成的PaddlePaddle主体包括三个部分， :code:`paddle` 脚本， python的
