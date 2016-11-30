@@ -14,25 +14,295 @@ limitations under the License. */
 
 #ifndef PADDLE_ONLY_CPU
 /**
- * This test file compares the implementation of CPU and GPU function
- * in Matrix.cpp.
+ * This test file use AutoCompare to compares the implementation
+ * of CPU and GPU member function in Matrix.cpp.
+ *
+ * 1. Constructs an AutoCompare object, a AutoCompare object contains
+ *    a CpuMatrix and a GpuMatrix;
+ * 2. Initializes the required parameters for the member function.
+ *    Only need to initialize the CPU parameters.
+ * 3. Use the operator() template for testing. In the operator() will call back
+ *    member functions, and compare the results.
+ *
+ * use case:
+ *  AutoCompare test(...);
+ *  Init Argument arg1,arg2...
+ *  test(function, arg1, arg2....)
+ *
  */
 
 #include <gtest/gtest.h>
 #include "TestUtils.h"
 
-using namespace paddle;  // NOLINT
+using paddle::CpuMatrix;
+using paddle::SparseValueType;
+using paddle::SparseFormat;
+using paddle::NO_VALUE;
+using paddle::SPARSE_CSR;
+using paddle::initMain;
+using autotest::TensorCheckEqual;
+using autotest::TensorCheckErr;
+using autotest::AutoCompare;
 
-TEST(Matrix, Matrix) {
-  BaseMatrixCompare<0>(&Matrix::softmax, true);
-  BaseMatrixCompare<0, 1>(&Matrix::sumOfSquaresBp);
+void testBilinearFwdBwd(int numSamples,
+                        int imgSizeH,
+                        int imgSizeW,
+                        int channels) {
+  int inWidth = imgSizeH * imgSizeW * channels;
+  int outWidth = 2 * imgSizeH * 2 * imgSizeW * channels;
+  real ratioH = 0.5;
+  real ratioW = 0.5;
+
+  AutoCompare forward(numSamples, outWidth);
+  CpuMatrix arg1(numSamples, inWidth);
+  arg1.randomizeUniform();
+  forward(&Matrix::bilinearForward,
+          arg1,
+          imgSizeH,
+          imgSizeW,
+          2 * imgSizeH,
+          2 * imgSizeW,
+          channels,
+          ratioH,
+          ratioW);
+
+  AutoCompare backward(numSamples, inWidth);
+  CpuMatrix arg2(numSamples, outWidth);
+  arg2.randomizeUniform();
+  backward(&Matrix::bilinearBackward,
+           arg2,
+           2 * imgSizeH,
+           2 * imgSizeW,
+           imgSizeH,
+           imgSizeW,
+           channels,
+           ratioH,
+           ratioW);
 }
 
-TEST(Matrix, Aggregate) {
-  BaseMatrixAsRowVector<0, 1>(
-      static_cast<void (Matrix::*)(Matrix&, real)>(&Matrix::collectBias));
+TEST(Matrix, BilinearFwdBwd) {
+  for (auto numSamples : {5, 10}) {
+    for (auto channels : {8, 16}) {
+      for (auto imgSizeH : {14, 28}) {
+        for (auto imgSizeW : {16, 30}) {
+          VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
+                  << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW;
+          testBilinearFwdBwd(numSamples, imgSizeH, imgSizeW, channels);
+        }
+      }
+    }
+  }
+}
 
-  BaseMatrixAsColVector<0, 1>(&Matrix::sumOfSquares);
+void testMatrixAddBias(int height, int width, real scale) {
+  AutoCompare test(height, width);
+  CpuMatrix arg1(1, width);
+  arg1.randomizeUniform();
+  test(static_cast<void (Matrix::*)(Matrix&, real)>(&Matrix::addBias),
+       arg1,
+       scale);
+}
+
+void testMatrixAddDotMulMMV(int height, int width) {
+  AutoCompare test(height, width);
+  CpuMatrix arg1(height, width);
+  CpuMatrix arg2(1, width);
+  arg1.randomizeUniform();
+  arg2.randomizeUniform();
+  test(&BaseMatrix::addDotMulMMV, arg1, arg2);
+}
+
+TEST(Matrix, unary) {
+  for (auto height : {1, 3, 11, 73, 128, 200, 330}) {
+    for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
+      VLOG(3) << " height=" << height << " width=" << width;
+      testMatrixAddBias(height, width, 1.0);
+      testMatrixAddBias(height, width, 3.5);
+      testMatrixAddDotMulMMV(height, width);
+    }
+  }
+}
+
+void testMatrixAddAtOffset(int height, int width1, int width2, int offset) {
+  AutoCompare test(height, width2);
+  CpuMatrix arg1(height, width1);
+  arg1.randomizeUniform();
+  test(&Matrix::addAtOffset, arg1, offset);
+}
+
+void testMatrixAssignAtOffset(int height, int width1, int width2, int offset) {
+  AutoCompare test(height, width2);
+  CpuMatrix arg1(height, width1);
+  arg1.randomizeUniform();
+  test(&Matrix::assignAtOffset, arg1, offset);
+}
+
+TEST(Matrix, AtOffset) {
+  for (auto height : {1, 11, 73, 128, 200}) {
+    for (auto width1 : {1, 32, 100, 512, 1000}) {
+      for (auto width2 : {1, 32, 100, 512, 1000}) {
+        int columnOffset = 0;
+        int offset = std::abs(width1 - width2);
+        if (offset) {
+          columnOffset = std::rand() % offset;
+        }
+        VLOG(3) << " height=" << height << " width1=" << width1
+                << " width2=" << width2 << " columnOffset = " << columnOffset;
+        testMatrixAddAtOffset(height, width1, width2, columnOffset);
+        testMatrixAssignAtOffset(height, width1, width2, columnOffset);
+      }
+    }
+  }
+}
+
+void testMatrixSelectRows(int numSamples, int tableSize, int inputDim) {
+  AutoCompare test(numSamples, inputDim);
+  CpuMatrix arg1(tableSize, inputDim);
+  CpuIVector arg2(numSamples);
+  arg1.randomizeUniform();
+  arg2.rand(tableSize);
+  test(&Matrix::selectRows, arg1, arg2);
+}
+
+TEST(Matrix, tableProjection) {
+  for (auto numSamples : {10, 100, 1000, 10000, 80000}) {
+    for (auto tableSize : {10, 100}) {
+      for (auto inputDim : {20, 50}) {
+        VLOG(3) << " numSamples=" << numSamples << " tableSize=" << tableSize
+                << " inputDim=" << inputDim;
+        testMatrixSelectRows(numSamples, tableSize, inputDim);
+      }
+    }
+  }
+}
+
+void testMatrixCopyByRowIndex(int outHeight, int inHeight, int width) {
+  AutoCompare test(outHeight, width);
+  CpuMatrix arg1(inHeight, width);
+  CpuIVector arg2(outHeight);
+  arg1.randomizeUniform();
+  arg2.rand(inHeight);
+  test(&Matrix::copyByRowIndex, arg1, arg2);
+}
+
+TEST(Matrix, copyByRowIndex) {
+  for (auto outHeight : {31, 500, 1000}) {
+    for (auto inHeight : {17, 257, 500, 1200}) {
+      for (auto width : {512, 1024}) {
+        VLOG(3) << outHeight << " " << inHeight << " " << width;
+        testMatrixCopyByRowIndex(outHeight, inHeight, width);
+      }
+    }
+  }
+}
+
+void testCosSim(int heightX, int heightY, int width, real scale) {
+  AutoCompare test(heightX, 1);
+  CpuMatrix arg1(heightX, width);
+  CpuMatrix arg2(heightY, width);
+  arg1.randomizeUniform();
+  arg2.randomizeUniform();
+  arg2.add(-0.5);
+  test(&Matrix::cosSim, arg1, arg2, scale);
+}
+
+TEST(Matrix, cosSim) {
+  for (auto heightX : {10, 100, 1000}) {
+    for (auto heightY : {1, heightX}) {
+      for (auto width : {10, 100, 1000}) {
+        for (auto scale : {1.0, 2.0}) {
+          testCosSim(heightX, heightY, width, scale);
+        }
+      }
+    }
+  }
+}
+
+void testParamReluForward(int height, int width, int w_height, int w_width) {
+  AutoCompare test(height, width);
+  CpuMatrix arg1(height, width);
+  CpuMatrix arg2(w_height, w_width);
+  arg1.randomizeUniform();
+  arg2.randomizeUniform();
+  arg1.add(-0.5);
+  test(&Matrix::paramReluForward, arg1, arg2);
+}
+
+void testParamReluBackwardW(int height, int width, int w_height, int w_width) {
+  AutoCompare test(w_height, w_width);
+  CpuMatrix arg1(height, width);
+  CpuMatrix arg2(height, width);
+  arg1.randomizeUniform();
+  arg2.randomizeUniform();
+  arg2.add(-0.5);
+  test(&Matrix::paramReluBackwardW, arg1, arg2);
+}
+
+TEST(Matrix, paramRelu) {
+  for (auto height : {10, 100}) {
+    for (auto width : {10, 100}) {
+      for (auto w_height : {1, 2}) {
+        for (auto w_width : {1, 2}) {
+          testParamReluForward(height, width, w_height, w_width);
+          testParamReluBackwardW(height, width, w_height, w_width);
+        }
+      }
+    }
+  }
+}
+
+void testAddSharedBias(int numSamples, int dim, int channel) {
+  AutoCompare test(numSamples, dim);
+  CpuMatrix arg1(1, channel);
+  arg1.randomizeUniform();
+  test(&Matrix::addSharedBias, arg1, 1.0);
+}
+
+void testCollectSharedBias(int numSamples, int dim, int channel) {
+  AutoCompare test(1, channel);
+  CpuMatrix arg1(numSamples, dim);
+  arg1.randomizeUniform();
+  test(&Matrix::collectSharedBias, arg1, 1.0);
+}
+
+TEST(Matrix, sharedBias) {
+  for (auto numSamples : {1, 100, 520}) {
+    for (auto dim : {100 * 16, 100 * 32}) {
+      for (auto channel : {8, 16}) {
+        VLOG(3) << " numSamples=" << numSamples << " dim=" << dim
+                << " channel=" << channel;
+        testAddSharedBias(numSamples, dim, channel);
+        testCollectSharedBias(numSamples, dim, channel);
+      }
+    }
+  }
+}
+
+void testMultiBinaryLabelCrossEntropy(int numSamples, int dim) {
+  AutoCompare forward(numSamples, 1);
+  CpuMatrix arg1(numSamples, dim);
+  CpuSparseMatrix arg2(numSamples, dim, numSamples, NO_VALUE, SPARSE_CSR);
+
+  CpuMatrix output1(numSamples, dim);
+  output1.randomizeUniform();
+  output1.softmax(arg1);
+  for (int i = 0; i < numSamples; i++) {
+    const unsigned int id = std::rand() % dim;
+    arg2.setRow(i, 1, &id, nullptr);
+  }
+  forward(&Matrix::multiBinaryLabelCrossEntropy, arg1, arg2);
+
+  AutoCompare backward(numSamples, dim);
+  backward(&Matrix::multiBinaryLabelCrossEntropyBp, arg1, arg2);
+}
+
+TEST(Matrix, multiBinaryCrossEntropy) {
+  for (auto numSamples : {100, 1000, 10000}) {
+    for (auto dim : {100, 1000, 10000}) {
+      VLOG(3) << " numSamples=" << numSamples << " dim=" << dim;
+      testMultiBinaryLabelCrossEntropy(numSamples, dim);
+    }
+  }
 }
 
 int main(int argc, char** argv) {

@@ -14,21 +14,19 @@ limitations under the License. */
 
 /**
  * TestUtils.h is used to automatically compare CPU and GPU code is consistent.
- *
- * Auto compare BaseMatrix member function:
- * Use case:
- * a. void BaseMatrix::tanh(BaseMatrixT& b);
- *   Compare method: BaseMatrixCompare<0>(&BaseMatrix::tanh);
- *
- * b.
- *
+ * Refer test_Matrix.cpp and test_BaseMatrix.cpp for how to use autotest.
 */
 
 #include <gtest/gtest.h>
 #include "paddle/math/Matrix.h"
+#include "paddle/math/SparseMatrix.h"
 #include "TensorCheck.h"
 
-using namespace paddle;  // NOLINT
+using paddle::BaseMatrix;
+using paddle::CpuIVector;
+using paddle::GpuIVector;
+using paddle::CpuSparseMatrix;
+using paddle::GpuSparseMatrix;
 
 namespace autotest {
 
@@ -196,9 +194,7 @@ template <bool AsRowVector,
           typename R,
           typename... Args,
           typename AssertEq>
-void BaseMatrixCompare(R (C::*f)(Args...),
-                       AssertEq compare,
-                       bool checkArgs = false) {
+void BaseMatrixCompare(R (C::*f)(Args...), AssertEq compare) {
   for (auto height : {1, 11, 73, 128, 200, 330}) {
     for (auto width : {1, 3, 32, 100, 512, 1000}) {
       CpuMatrix obj1(AsRowVector ? 1 : height, AsColVector ? 1 : width);
@@ -227,17 +223,91 @@ void BaseMatrixCompare(R (C::*f)(Args...),
       call(obj2, f, std::get<I>(tuple2)...);
 
       TensorCheck(compare, obj1, obj2);
-      if (checkArgs) {
-        checkTuple(tuple1, tuple2, compare);
-      }
     }
   }
 }
 
+template <typename T>
+class ReturnType {
+public:
+  typedef T type;
+};
+
+template <>
+class ReturnType<CpuMatrix> {
+public:
+  typedef GpuMatrix type;
+};
+
+template <>
+class ReturnType<CpuIVector> {
+public:
+  typedef GpuIVector type;
+};
+
+template <>
+class ReturnType<CpuSparseMatrix> {
+public:
+  typedef GpuSparseMatrix type;
+};
+
+template <typename T>
+typename ReturnType<T>::type autoArgs(T v) {
+  return v;
+}
+
+template <>
+GpuMatrix autoArgs(CpuMatrix v) {
+  GpuMatrix a(v.getHeight(), v.getWidth());
+  a.copyFrom(v);
+  return a;
+}
+
+template <>
+GpuIVector autoArgs(CpuIVector v) {
+  GpuIVector a(v.getSize());
+  a.copyFrom(v);
+  return a;
+}
+
+template <>
+GpuSparseMatrix autoArgs(CpuSparseMatrix v) {
+  GpuSparseMatrix a(v.getHeight(),
+                    v.getWidth(),
+                    v.getElementCnt(),
+                    v.getValueType(),
+                    v.getFormat());
+
+  a.copyFrom(v, HPPL_STREAM_DEFAULT);
+  hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+  return a;
+}
+
+class AutoCompare {
+public:
+  AutoCompare(size_t height, size_t width)
+      : cpu(height, width), gpu(height, width) {
+    init(cpu);
+    copy(gpu, cpu);
+  }
+
+  template <typename C, typename R, typename... FArgs, typename... Args>
+  void operator()(R (C::*f)(FArgs...), Args&&... args) {
+    call(cpu, f, args...);
+    call(gpu, f, autoArgs(args)...);
+
+    TensorCheckErr(cpu, gpu);
+  }
+
+protected:
+  CpuMatrix cpu;
+  GpuMatrix gpu;
+};
+
 }  // namespace autotest
 
 template <std::size_t... I, typename C, typename R, typename... Args>
-void BaseMatrixCompare(R (C::*f)(Args...), bool checkArgs = false) {
+void BaseMatrixCompare(R (C::*f)(Args...)) {
   static_assert(sizeof...(I) == sizeof...(Args),
                 "size of parameter packs are not equal");
 
@@ -247,7 +317,7 @@ void BaseMatrixCompare(R (C::*f)(Args...), bool checkArgs = false) {
   autotest::AssertEqual compare(1e-10);
 #endif
 
-  autotest::BaseMatrixCompare<false, false, I...>(f, compare, checkArgs);
+  autotest::BaseMatrixCompare<false, false, I...>(f, compare);
 }
 
 template <std::size_t... I, typename C, typename R, typename... Args>

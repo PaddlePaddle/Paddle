@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cmath>
-#include <gtest/gtest.h>
 #include "paddle/math/Matrix.h"
 
-using namespace paddle;  // NOLINT
-using namespace std;     // NOLINT
+using paddle::Matrix;
+using paddle::CpuMatrix;
+using paddle::GpuMatrix;
+using paddle::VectorT;
+using paddle::CpuVectorT;
+using paddle::GpuVectorT;
 
 namespace autotest {
 
@@ -71,6 +74,53 @@ private:
   CpuMatrix arg_;
 };
 
+template <>
+class CopyToCpu<Matrix> {
+public:
+  explicit CopyToCpu(const Matrix& arg)
+      : arg_(arg.getHeight(), arg.getWidth()) {
+    arg_.copyFrom(arg);
+  }
+  CpuMatrix& copiedArg() { return arg_; }
+
+private:
+  CpuMatrix arg_;
+};
+
+template <typename T>
+class CopyToCpu<CpuVectorT<T>> {
+public:
+  explicit CopyToCpu(const CpuVectorT<T>& arg) : arg_(arg) {}
+  const CpuVectorT<T>& copiedArg() const { return arg_; }
+
+private:
+  const CpuVectorT<T>& arg_;
+};
+
+template <typename T>
+class CopyToCpu<GpuVectorT<T>> {
+public:
+  explicit CopyToCpu(const GpuVectorT<T>& arg) : arg_(arg.getSize()) {
+    arg_.copyFrom(arg);
+  }
+  CpuVectorT<T>& copiedArg() { return arg_; }
+
+private:
+  CpuVectorT<T> arg_;
+};
+
+template <typename T>
+class CopyToCpu<VectorT<T>> {
+public:
+  explicit CopyToCpu(const VectorT<T>& arg) : arg_(arg.getSize()) {
+    arg_.copyFrom(arg);
+  }
+  CpuVectorT<T>& copiedArg() { return arg_; }
+
+private:
+  CpuVectorT<T> arg_;
+};
+
 template <typename AssertEq>
 void TensorCheck(AssertEq compare,
                  const CpuMatrix& matrix1,
@@ -95,10 +145,30 @@ void TensorCheck(AssertEq compare,
   EXPECT_EQ(count, 0) << "There are " << count << " different element.";
 }
 
+template <typename AssertEq, class T>
+void TensorCheck(AssertEq compare,
+                 const CpuVectorT<T>& vector1,
+                 const CpuVectorT<T>& vector2) {
+  CHECK(vector1.getSize() == vector2.getSize());
+
+  const T* data1 = vector1.getData();
+  const T* data2 = vector2.getData();
+  size_t size = vector1.getSize();
+  int count = 0;
+  for (size_t i = 0; i < size; i++) {
+    real a = data1[i];
+    real b = data2[i];
+    if (!compare(a, b)) {
+      count++;
+    }
+  }
+  EXPECT_EQ(count, 0) << "There are " << count << " different element.";
+}
+
 template <typename AssertEq, typename Tensor1, typename Tensor2>
-extern void TensorCheck(AssertEq compare,
-                        const Tensor1& tensor1,
-                        const Tensor2& tensor2) {
+void TensorCheck(AssertEq compare,
+                 const Tensor1& tensor1,
+                 const Tensor2& tensor2) {
   TensorCheck(compare,
               CopyToCpu<Tensor1>(tensor1).copiedArg(),
               CopyToCpu<Tensor2>(tensor2).copiedArg());
@@ -114,6 +184,26 @@ template <typename AssertEq>
 void TensorCheck(AssertEq compare, size_t args1, size_t args2) {
   EXPECT_EQ(args1, args2) << "[Test error] args1 = " << args1
                           << ", args2 = " << args2;
+}
+
+template <typename Tensor1, typename Tensor2>
+void TensorCheckEqual(const Tensor1& tensor1, const Tensor2& tensor2) {
+  AssertEqual compare(0);
+  TensorCheck(compare,
+              CopyToCpu<Tensor1>(tensor1).copiedArg(),
+              CopyToCpu<Tensor2>(tensor2).copiedArg());
+}
+
+template <typename Tensor1, typename Tensor2>
+void TensorCheckErr(const Tensor1& tensor1, const Tensor2& tensor2) {
+#ifndef PADDLE_TYPE_DOUBLE
+  AssertEqual compare(1e-3);
+#else
+  AssertEqual compare(1e-10);
+#endif
+  TensorCheck(compare,
+              CopyToCpu<Tensor1>(tensor1).copiedArg(),
+              CopyToCpu<Tensor2>(tensor2).copiedArg());
 }
 
 }  // namespace autotest

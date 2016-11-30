@@ -15,7 +15,7 @@ limitations under the License. */
 #ifndef PADDLE_ONLY_CPU
 /**
  * This test file compares the implementation of CPU and GPU function
- * in BaseMatrix.cpp.
+ * in BaseMatrix.cpp or Matrix.cpp.
  */
 
 #include <gtest/gtest.h>
@@ -188,17 +188,22 @@ TEST(BaseMatrix, Other) {
   BaseMatrixCompare<0, 1, 2>(&BaseMatrix::rowScale);
   BaseMatrixCompare<0, 1, 2>(&BaseMatrix::rowDotMul);
   BaseMatrixCompare<0, 1, 2, 3>(&BaseMatrix::binaryClassificationError);
+
+  BaseMatrixCompare<0, 1>(&Matrix::sumOfSquaresBp);
 }
 
 TEST(BaseMatrix, Aggregate) {
   BaseMatrixAsColVector<0>(&BaseMatrix::maxRows);
   BaseMatrixAsColVector<0>(&BaseMatrix::minRows);
   BaseMatrixAsColVector<0, 1, 2>(&BaseMatrix::sumRows);
+  BaseMatrixAsColVector<0, 1>(&Matrix::sumOfSquares);
 
   BaseMatrixAsRowVector<0>(&BaseMatrix::maxCols);
   BaseMatrixAsRowVector<0>(&BaseMatrix::minCols);
   BaseMatrixAsRowVector<0, 1>(&BaseMatrix::addDotMulVMM);
   BaseMatrixAsRowVector<0, 1, 2>(&BaseMatrix::sumCols);
+  BaseMatrixAsRowVector<0, 1>(
+      static_cast<void (Matrix::*)(Matrix&, real)>(&Matrix::collectBias));
 }
 
 int main(int argc, char** argv) {
