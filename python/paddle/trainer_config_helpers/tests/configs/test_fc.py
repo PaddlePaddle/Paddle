@@ -9,7 +9,7 @@ trans = trans_layer(input=din)
 
 hidden = fc_layer(input=trans, size=100, bias_attr=False)
 
-mask = data_layer(name='mask', size=100)
+mask = data_layer(name='mask', input_type=sparse_binary_vector(100))
 
 hidden_sel = selective_fc_layer(
     input=din, select=mask, size=100, act=SigmoidActivation())

@@ -48,6 +48,10 @@ class DataType(object):
         return range(4)
 
     @staticmethod
+    def base_matrix():
+        return [DataType.Dense, DataType.SparseNonValue, DataType.SparseValue]
+
+    @staticmethod
     def is_valid(st):
         return isinstance(st, int) and st in DataType.all()
 

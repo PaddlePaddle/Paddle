@@ -17,7 +17,8 @@ import functools
 import collections
 
 __all__ = [
-    "input_mapping", "AcceptInput", "SameSeqType", "SameOutputDim", "OutputType"
+    "input_mapping", "AcceptInput", "SameSeqType", "SameOutputDim",
+    "OutputType", "InputSize", "SameOutputType"
 ]
 
 
@@ -36,6 +37,20 @@ def base_input_mapping(callback):
         return wrapper
 
     return __impl__
+
+
+class InputSize(object):
+    def __init__(self, input_size):
+        self.input_size = input_size
+        if not isinstance(input_size, collections.Sequence):
+            self.input_size = [self.input_size]
+
+        for each in self.input_size:
+            assert isinstance(each, int)
+
+    def __call__(self, parent_types, output, next_callback):
+        assert len(parent_types) in self.input_size
+        return next_callback(parent_types, output)
 
 
 class AcceptInput(object):
@@ -116,6 +131,19 @@ class OutputType(object):
         return tp
 
 
+class SameOutputType(object):
+    def __init__(self):
+        pass
+
+    def __call__(self, parent_types, output, next_callback):
+        data_types = [tp.type for tp in parent_types]
+        assert len(filter(lambda x: x != data_types[0], data_types)) == 0
+        data_type = data_types[0]
+        tp = next_callback(parent_types, output)
+        tp.type = data_type
+        return tp
+
+
 def input_mapping(*callbacks):
     def callback_impl(parent_types, output):
         for each_parent_type in parent_types:
@@ -124,7 +152,8 @@ def input_mapping(*callbacks):
         base = NewInputType()
 
         for callback in reversed(callbacks):
-            base = lambda ptypes, opts: callback(ptypes, opts, base)
+            base = functools.partial(callback, next_callback=base)
+            print base
 
         return base(parent_types, output)
 

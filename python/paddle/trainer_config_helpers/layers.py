@@ -23,6 +23,7 @@ from .default_decorators import *
 from paddle.trainer.PyDataProvider2 import *
 
 import input_check_decorators as check
+import utils
 
 try:
     import cPickle as pickle
@@ -837,7 +838,7 @@ def embedding_layer(input, size, name=None, param_attr=None, layer_attr=None):
 
 @check.input_mapping(
     check.AcceptInput(
-        data_type=DataType.Dense, seq_type=SequenceType.all()),
+        data_type=DataType.base_matrix(), seq_type=SequenceType.all()),
     check.SameOutputDim(),
     check.SameSeqType(),
     check.OutputType(data_type=DataType.Dense))
@@ -1595,6 +1596,18 @@ def scaling_layer(input, weight, name=None, layer_attr=None):
         name, LayerType.SCALING_LAYER, parents=[weight, input], size=input.size)
 
 
+@utils.deprecated_msg(
+    "trans_layer is very dangerous because the input  must be a square matrix" +
+    ", which means the height and the width of this input matrix must be" +
+    " same. The width of matrix always is feature dimension and the height" +
+    " of matrix always is the batch size.  Please make sure what are you" +
+    " doing when using this layer.")
+@check.input_mapping(
+    check.InputSize(1),
+    check.AcceptInput(data_type=DataType.base_matrix()),
+    check.SameOutputDim(),
+    check.SameSeqType(),
+    check.SameOutputType(), )
 @wrap_name_default()
 @layer_support()
 def trans_layer(input, name=None, layer_attr=None):
@@ -1974,8 +1987,8 @@ def img_pool_layer(input,
         pool_type.name = 'avg'
 
     type_name = pool_type.name + '-projection' \
-      if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
-      else pool_type.name
+        if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+        else pool_type.name
 
     pool_size_y = pool_size if pool_size_y is None else pool_size_y
     stride_y = stride if stride_y is None else stride_y
@@ -2905,8 +2918,8 @@ def recurrent_group(step,
 
     assert (targetInlink == None or targetInlink_in_inlinks())
     targetInlinkName = None if targetInlink == None \
-                            else targetInlink.name if isinstance(targetInlink, LayerOutput) \
-                                                   else targetInlink.input.name
+        else targetInlink.name if isinstance(targetInlink, LayerOutput) \
+        else targetInlink.input.name
 
     contains_sub_seq = [False]
 
@@ -3654,6 +3667,27 @@ def tensor_layer(a,
         name, LayerType.TENSOR_LAYER, parents=[a, b], activation=act, size=size)
 
 
+def __selective_fc_accept_inputs__(input_types, output, next_callback):
+    sel = input_types[-1]
+    inputs = input_types[:-1]
+
+    # each inputs of selective_fc, should be dense matrix.
+    for ipt in inputs:
+        assert isinstance(ipt, InputType)
+        assert ipt.type == DataType.Dense
+
+    # select mask should be sparse non value.
+    assert isinstance(sel, InputType)
+    assert sel.type == DataType.SparseNonValue
+
+    return next_callback(input_types, output)
+
+
+@check.input_mapping(
+    __selective_fc_accept_inputs__,
+    check.SameSeqType(),
+    check.SameOutputDim(),
+    check.OutputType(data_type=DataType.SparseValue))
 @wrap_name_default()
 @wrap_param_attr_default()
 @wrap_bias_attr_default()
@@ -3671,7 +3705,7 @@ def selective_fc_layer(input,
                        bias_attr=None,
                        layer_attr=None):
     """
-    Selectived fully connected layer. Different from fc_layer, the output
+    Selective fully connected layer. Different from fc_layer, the output
     of this layer maybe sparse. It requires an additional input to indicate
     several selected columns for output. If the selected columns is not
     specified, selective_fc_layer acts exactly like fc_layer.
