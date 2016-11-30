@@ -42,6 +42,8 @@ bool CRFLayer::init(const LayerMap& layerMap,
   CHECK_EQ(parameters_[0]->getSize(), numClasses_ * (numClasses_ + 2));
 
   parameter_ = parameters_[0];
+  weight_.reset(
+      new Weight(numClasses_ + 2, numClasses_, parameter_));
 
   // We don't need sequenceStartPositions because each sample of output_ is
   // for the cost of one sequence.
@@ -69,11 +71,7 @@ void CRFLayer::forward(PassType passType) {
 
   for (size_t i = 0; i < numSequences; ++i) {
     if (i >= crfs_.size()) {
-      crfs_.emplace_back(numClasses_,
-                         parameter_->getBuf(PARAMETER_VALUE)->getData(),
-                         parameter_->getBuf(PARAMETER_GRADIENT)
-                             ? parameter_->getBuf(PARAMETER_GRADIENT)->getData()
-                             : nullptr);
+      crfs_.emplace_back(numClasses_, weight_->getW()->getData());
     }
     output_.value->getData()[i] =
         crfs_[i].forward(output.value->getData() + numClasses_ * starts[i],
@@ -94,19 +92,20 @@ void CRFLayer::backward(const UpdateCallback& callback) {
   int numSequences = label.sequenceStartPositions->getSize() - 1;
 
   for (int i = 0; i < numSequences; ++i) {
+    bool needWGrad = weight_->getWGrad() ? true : false;
     crfs_[i].backward(output.value->getData() + numClasses_ * starts[i],
-                      output.grad->getData() + numClasses_ * starts[i],
                       label.ids->getData() + starts[i],
-                      starts[i + 1] - starts[i]);
-    if (weightLayer_) {
-      real weight = getInputValue(*weightLayer_)->getElement(i, 0);
-      MatrixPtr grad = output.grad->subRowMatrix(starts[i], starts[i + 1]);
-      grad->mulScalar(weight);
-    }
-  }
+                      starts[i + 1] - starts[i], needWGrad);
+    real instanceWeight = weightLayer_ ?
+      getInputValue(*weightLayer_)->getElement(i, 0) : real(1.0f);
+    instanceWeight *= coeff_;
 
-  if (coeff_ != real(1.0f)) {
-    output.grad->mulScalar(coeff_);
+    MatrixPtr grad = output.grad->subRowMatrix(starts[i], starts[i + 1]);
+    grad->add(*crfs_[i].getXGrad(), real(1.0f), instanceWeight);
+    if (needWGrad) {
+      weight_->getWGrad()->add(*crfs_[i].getWGrad(), real(1.0f),
+          instanceWeight);
+    }
   }
 
   parameter_->incUpdate(callback);

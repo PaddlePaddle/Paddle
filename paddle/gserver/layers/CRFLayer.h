@@ -38,6 +38,7 @@ protected:
   ParameterPtr parameter_;
   std::vector<LinearChainCRF> crfs_;
   LayerPtr weightLayer_;  // weight for each sequence
+  std::unique_ptr<Weight> weight_;  // parameters
   real coeff_;            // weight for the layer
 };
 

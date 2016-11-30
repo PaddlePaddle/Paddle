@@ -36,7 +36,7 @@ TEST(LinearChainCRF, decoding) {
   real* a = para.getData();
   real* b = para.getData() + numClasses;
   real* w = para.getData() + 2 * numClasses;
-  LinearChainCRF crf(4, para.getData(), nullptr);
+  LinearChainCRF crf(4, para.getData());
   for (int length : {1, 2, 3, 10}) {
     for (int tries = 0; tries < 10; ++tries) {
       CpuMatrix x(length, numClasses);
