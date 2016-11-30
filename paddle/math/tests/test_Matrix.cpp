@@ -14,7 +14,7 @@ limitations under the License. */
 
 #ifndef PADDLE_ONLY_CPU
 /**
- * This test file use AutoCompare to compares the implementation
+ * This test file use autotest::AutoCompare to compares the implementation
  * of CPU and GPU member function in Matrix.cpp.
  *
  * 1. Constructs an AutoCompare object, a AutoCompare object contains
@@ -28,20 +28,21 @@ limitations under the License. */
  *  AutoCompare test(...);
  *  Init Argument arg1,arg2...
  *  test(function, arg1, arg2....)
- *
  */
 
 #include <gtest/gtest.h>
 #include "TestUtils.h"
 
+using paddle::BaseMatrix;
+using paddle::Matrix;
 using paddle::CpuMatrix;
+using paddle::CpuIVector;
+using paddle::CpuSparseMatrix;
 using paddle::SparseValueType;
 using paddle::SparseFormat;
 using paddle::NO_VALUE;
 using paddle::SPARSE_CSR;
 using paddle::initMain;
-using autotest::TensorCheckEqual;
-using autotest::TensorCheckErr;
 using autotest::AutoCompare;
 
 void testBilinearFwdBwd(int numSamples,

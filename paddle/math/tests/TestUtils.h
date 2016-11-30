@@ -12,8 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
 /**
  * TestUtils.h is used to automatically compare CPU and GPU code is consistent.
+ * This file provides a class(AutoCompare) and a template
+ * function(BaseMatrixCompare) to simplify the comparison
+ * of CPU and GPU member functions.
  * Refer test_Matrix.cpp and test_BaseMatrix.cpp for how to use autotest.
 */
 
@@ -22,13 +27,13 @@ limitations under the License. */
 #include "paddle/math/SparseMatrix.h"
 #include "TensorCheck.h"
 
+namespace autotest {
+
 using paddle::BaseMatrix;
 using paddle::CpuIVector;
 using paddle::GpuIVector;
 using paddle::CpuSparseMatrix;
 using paddle::GpuSparseMatrix;
-
-namespace autotest {
 
 template <typename T1, typename T2>
 class ReplaceType {
@@ -66,7 +71,7 @@ T construct(int height, int width);
 
 template <>
 float construct(int height, int width) {
-  return 0.0;
+  return 0.5;
 }
 
 template <>
@@ -89,15 +94,7 @@ GpuMatrix construct(int height, int width) {
 
 // init a argument
 template <typename T>
-void init(T& v);
-
-template <>
-void init(float& v) {
-  v = 0.5;
-}
-
-template <>
-void init(size_t& v) {
+void init(T& v) {
   return;
 }
 
@@ -125,15 +122,7 @@ template <std::size_t I = 0, typename... Args>
 
 // copy a argument, copy src to dest
 template <typename T1, typename T2>
-void copy(T1& dest, T2& src);
-
-template <>
-void copy(float& dest, float& src) {
-  dest = src;
-}
-
-template <>
-void copy(size_t& dest, size_t& src) {
+void copy(T1& dest, T2& src) {
   dest = src;
 }
 
@@ -153,28 +142,6 @@ template <std::size_t I = 0, typename... Args1, typename... Args2>
                                               std::tuple<Args2...>& src) {
   copy(std::get<I>(dest), std::get<I>(src));
   copyTuple<I + 1>(dest, src);
-}
-
-// Compare output
-template <std::size_t I = 0,
-          typename... Args1,
-          typename... Args2,
-          typename AssertEq>
-inline typename std::enable_if<I == sizeof...(Args1), void>::type checkTuple(
-    std::tuple<Args1...>& args1,
-    std::tuple<Args2...>& args2,
-    AssertEq compare) {}
-
-template <std::size_t I = 0,
-          typename... Args1,
-          typename... Args2,
-          typename AssertEq>
-    inline typename std::enable_if <
-    I<sizeof...(Args1), void>::type checkTuple(std::tuple<Args1...>& args1,
-                                               std::tuple<Args2...>& args2,
-                                               AssertEq compare) {
-  TensorCheck(compare, std::get<I>(args1), std::get<I>(args2));
-  checkTuple<I + 1>(args1, args2, compare);
 }
 
 // call member function
@@ -227,6 +194,7 @@ void BaseMatrixCompare(R (C::*f)(Args...), AssertEq compare) {
   }
 }
 
+// AutoCompare
 template <typename T>
 class ReturnType {
 public:
@@ -252,32 +220,31 @@ public:
 };
 
 template <typename T>
-typename ReturnType<T>::type autoArgs(T v) {
+typename ReturnType<T>::type autoArgs(T& v) {
   return v;
 }
 
 template <>
-GpuMatrix autoArgs(CpuMatrix v) {
+GpuMatrix autoArgs(CpuMatrix& v) {
   GpuMatrix a(v.getHeight(), v.getWidth());
   a.copyFrom(v);
   return a;
 }
 
 template <>
-GpuIVector autoArgs(CpuIVector v) {
+GpuIVector autoArgs(CpuIVector& v) {
   GpuIVector a(v.getSize());
   a.copyFrom(v);
   return a;
 }
 
 template <>
-GpuSparseMatrix autoArgs(CpuSparseMatrix v) {
+GpuSparseMatrix autoArgs(CpuSparseMatrix& v) {
   GpuSparseMatrix a(v.getHeight(),
                     v.getWidth(),
                     v.getElementCnt(),
                     v.getValueType(),
                     v.getFormat());
-
   a.copyFrom(v, HPPL_STREAM_DEFAULT);
   hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   return a;

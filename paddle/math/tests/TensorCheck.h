@@ -12,8 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
+/**
+ * This file provides a TensorCheck template function, which can be used to
+ * compare CpuMatrix and GpuMatrix, CpuVector and GpuVector, and so on.
+ */
+
 #include <cmath>
 #include "paddle/math/Matrix.h"
+
+namespace autotest {
 
 using paddle::Matrix;
 using paddle::CpuMatrix;
@@ -21,8 +30,6 @@ using paddle::GpuMatrix;
 using paddle::VectorT;
 using paddle::CpuVectorT;
 using paddle::GpuVectorT;
-
-namespace autotest {
 
 class AssertEqual {
 public:
