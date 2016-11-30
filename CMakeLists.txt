@@ -43,6 +43,7 @@ option(WITH_SWIG_PY "Compile PaddlePaddle with py PaddlePaddle prediction api" $
 option(ON_TRAVIS "Running test on travis-ci or not." OFF)
 option(ON_COVERALLS "Generating code coverage data on coveralls or not." OFF)
 option(COVERALLS_UPLOAD "Uploading the generated coveralls json." ON)
+option(USE_OPENCV "Compile PaddlePaddle with opencv" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING 

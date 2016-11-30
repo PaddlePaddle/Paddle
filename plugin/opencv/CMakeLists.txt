@@ -42,3 +42,6 @@ add_library(DeJpeg SHARED ${DEJPEG_SOURCES})
 target_compile_options(DeJpeg BEFORE PRIVATE ${BUILD_PRIVATE_FLAGS})
 target_link_libraries(DeJpeg ${DEJPEG_LINKER_LIBS})
 set_target_properties(DeJpeg PROPERTIES PREFIX "")
+
+add_style_check_target(DeJpeg ${DEJPEG_SOURCES})
+add_style_check_target(DeJpeg ${DEJPEG_HEADER})

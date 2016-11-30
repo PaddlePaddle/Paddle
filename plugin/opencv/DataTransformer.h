@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef DATATRANSFORMER_H_
+#define DATATRANSFORMER_H_
+
 #include <iostream>
 #include <fstream>
 #include <opencv2/opencv.hpp>
@@ -20,9 +23,6 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/utils/Thread.h"
-
-using namespace cv;
-using namespace paddle;
 
 /**
  * This is an image processing module with OpenCV, such as
@@ -57,7 +57,7 @@ public:
    * @param data   Data containing the image string to be transformed.
    * @param label  The label of input image.
    */
-  void start(vector<char*>& data, int* datalen, int* labels);
+  void start(std::vector<char*>& data, int* datalen, int* labels);
 
   /**
    * @brief Applies the transformation on one image Mat.
@@ -65,7 +65,7 @@ public:
    * @param img    The input img to be transformed.
    * @param target target is used to save the transformed data.
    */
-  void transform(Mat& img, float* target);
+  void transform(cv::Mat& img, float* target);
 
   /**
    * @brief Decode the image string, then calls transform() function.
@@ -114,8 +114,9 @@ private:
   typedef std::pair<float*, int> DataType;
   typedef std::shared_ptr<DataType> DataTypePtr;
   std::vector<DataTypePtr> prefetch_;
-  std::unique_ptr<SyncThreadPool> syncThreadPool_;
-  BlockingQueue<DataTypePtr> prefetchFree_;
-  BlockingQueue<DataTypePtr> prefetchFull_;
-
+  std::unique_ptr<paddle::SyncThreadPool> syncThreadPool_;
+  paddle::BlockingQueue<DataTypePtr> prefetchFree_;
+  paddle::BlockingQueue<DataTypePtr> prefetchFull_;
 };  // class DataTransformer
+
+#endif  // DATATRANSFORMER_H_

@@ -51,7 +51,7 @@ DataTransformer::DataTransformer(int threadNum,
   }
 
   numThreads_ = threadNum;
-  syncThreadPool_.reset(new SyncThreadPool(numThreads_, false));
+  syncThreadPool_.reset(new paddle::SyncThreadPool(numThreads_, false));
 }
 
 void DataTransformer::loadMean(float* values) {
@@ -66,7 +66,7 @@ void DataTransformer::loadMean(float* values) {
 void DataTransformer::startFetching(const char* src,
                                     const int size,
                                     float* trg) {
-  vector<char> imbuf(src, src + size);
+  std::vector<char> imbuf(src, src + size);
   int cvFlag = (isColor_ ? CV_LOAD_IMAGE_COLOR : CV_LOAD_IMAGE_GRAYSCALE);
   cv::Mat im = cv::imdecode(cv::Mat(imbuf), cvFlag);
   if (!im.data) {
@@ -83,7 +83,7 @@ int DataTransformer::Rand(int min, int max) {
   return dist(rng);
 }
 
-void DataTransformer::transform(Mat& cvImgOri, float* target) {
+void DataTransformer::transform(cv::Mat& cvImgOri, float* target) {
   const int imgChannels = cvImgOri.channels();
   const int imgHeight = cvImgOri.rows;
   const int imgWidth = cvImgOri.cols;
@@ -152,7 +152,9 @@ void DataTransformer::transform(Mat& cvImgOri, float* target) {
   }  // target: BGR
 }
 
-void DataTransformer::start(vector<char*>& data, int* datalen, int* labels) {
+void DataTransformer::start(std::vector<char*>& data,
+                            int* datalen,
+                            int* labels) {
   auto job = [&](int tid, int numThreads) {
     for (size_t i = tid; i < data.size(); i += numThreads) {
       DataTypePtr ret = prefetchFree_.dequeue();

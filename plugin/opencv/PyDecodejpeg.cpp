@@ -23,8 +23,6 @@ limitations under the License. */
 
 #include "DataTransformer.h"
 
-using namespace boost::python;
-
 /**
  * DecodeJpeg is an image processing API for interfacing Python and C++
  * code DataTransformer, which used OpenCV and multi-threads to accelerate
@@ -83,7 +81,7 @@ public:
    *                 It's type is numpy.array with int32.
    */
   void start(boost::python::list& pysrc, PyObject* pydlen, PyObject* pylabel) {
-    vector<char*> data;
+    std::vector<char*> data;
     int num = len(pysrc);
     for (int t = 0; t < num; ++t) {
       char* src = boost::python::extract<char*>(pysrc[t]);
@@ -169,8 +167,9 @@ static void initPython() {
  */
 BOOST_PYTHON_MODULE(DeJpeg) {
   initPython();
-  class_<DecodeJpeg>("DecodeJpeg",
-                     init<int, int, bool, bool, int, int, int, PyObject*>())
+  boost::python::class_<DecodeJpeg>(
+      "DecodeJpeg",
+      boost::python::init<int, int, bool, bool, int, int, int, PyObject*>())
       .def("start", &DecodeJpeg::start)
       .def("get", &DecodeJpeg::get);
 };
