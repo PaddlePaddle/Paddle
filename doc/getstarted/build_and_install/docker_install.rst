@@ -102,7 +102,7 @@ Then you can build an image with Dockerfile and launch a container:
 ..  code-block:: bash
 
     # cd into Dockerfile directory
-    docker build . -t paddle_ssh
+    docker build -t paddle_ssh .
     # run container, and map host machine port 8022 to container port 22
     docker run -d -p 8022:22 --name paddle_ssh_machine paddle_ssh
 
