@@ -33,7 +33,7 @@ P_DECLARE_double(checkgrad_eps);
 P_DECLARE_bool(thread_local_rand_use_global_seed);
 P_DECLARE_bool(prev_batch_state);
 
-// Test that the convTrans forward is the same as conv backward
+// Test that the batchNormLayer can be followed by a ConvLayer
 TEST(Layer, batchNorm) {
     FLAGS_use_gpu = false;
     TestConfig configBN;
@@ -104,7 +104,6 @@ TEST(Layer, batchNorm) {
     LayerPtr convLayer;
     initTestLayer(config, &layerMap, &parameters2, &convLayer);
 
-    // Set convLayer outputGrad as convTransLayer input value
     bnLayer->forward(PASS_GC);
     convLayer->forward(PASS_GC);
 

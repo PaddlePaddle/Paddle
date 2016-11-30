@@ -31,8 +31,8 @@ def plot2DScatter(data, outputfile):
     '''
     x = data[:, 0]
     y = data[:, 1]
-    print "The mean vector is %s" % numpy.mean(data, 0)
-    print "The std vector is %s" % numpy.std(data, 0)
+    logger.info("The mean vector is %s" % numpy.mean(data, 0))
+    logger.info("The std vector is %s" % numpy.std(data, 0))
 
     heatmap, xedges, yedges = numpy.histogram2d(x, y, bins=50)
     extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
@@ -192,42 +192,42 @@ def get_layer_size(model_conf, layer_name):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dataSource", help="mnist or cifar or uniform")
-    parser.add_argument("--useGpu", default="1", 
+    parser.add_argument("-d", "--data_source", help="mnist or cifar or uniform")
+    parser.add_argument("--use_gpu", default="1", 
                         help="1 means use gpu for training")
-    parser.add_argument("--gpuId", default="0", 
+    parser.add_argument("--gpu_id", default="0", 
                         help="the gpu_id parameter")
     args = parser.parse_args()
-    dataSource = args.dataSource
-    useGpu = args.useGpu
-    assert dataSource in ["mnist", "cifar", "uniform"]
-    assert useGpu in ["0", "1"]
+    data_source = args.data_source
+    use_gpu = args.use_gpu
+    assert data_source in ["mnist", "cifar", "uniform"]
+    assert use_gpu in ["0", "1"]
 
-    if not os.path.exists("./%s_samples/" % dataSource):
-        os.makedirs("./%s_samples/" % dataSource)
+    if not os.path.exists("./%s_samples/" % data_source):
+        os.makedirs("./%s_samples/" % data_source)
 
-    if not os.path.exists("./%s_params/" % dataSource):
-        os.makedirs("./%s_params/" % dataSource)
+    if not os.path.exists("./%s_params/" % data_source):
+        os.makedirs("./%s_params/" % data_source)
         
-    api.initPaddle('--use_gpu=' + useGpu, '--dot_period=10', '--log_period=100', 
-                   '--gpu_id=' + args.gpuId, '--save_dir=' + "./%s_params/" % dataSource)
+    api.initPaddle('--use_gpu=' + use_gpu, '--dot_period=10', '--log_period=100', 
+                   '--gpu_id=' + args.gpu_id, '--save_dir=' + "./%s_params/" % data_source)
     
-    if dataSource == "uniform":
+    if data_source == "uniform":
         conf = "gan_conf.py"
         num_iter = 10000
     else:
         conf = "gan_conf_image.py"
         num_iter = 1000
         
-    gen_conf = parse_config(conf, "mode=generator_training,data=" + dataSource)
-    dis_conf = parse_config(conf, "mode=discriminator_training,data=" + dataSource)
-    generator_conf = parse_config(conf, "mode=generator,data=" + dataSource)
+    gen_conf = parse_config(conf, "mode=generator_training,data=" + data_source)
+    dis_conf = parse_config(conf, "mode=discriminator_training,data=" + data_source)
+    generator_conf = parse_config(conf, "mode=generator,data=" + data_source)
     batch_size = dis_conf.opt_config.batch_size
     noise_dim = get_layer_size(gen_conf.model_config, "noise")
     
-    if dataSource == "mnist":
+    if data_source == "mnist":
         data_np = load_mnist_data("./data/mnist_data/train-images-idx3-ubyte")
-    elif dataSource == "cifar":
+    elif data_source == "cifar":
         data_np = load_cifar_data("./data/cifar-10-batches-py/")
     else:
         data_np = load_uniform_data()
@@ -308,7 +308,9 @@ def main():
                 else:
                     curr_train = "gen"
                     curr_strike = 1
-                gen_trainer.trainOneDataBatch(batch_size, data_batch_gen)    
+                gen_trainer.trainOneDataBatch(batch_size, data_batch_gen)
+                # TODO: add API for paddle to allow true parameter sharing between different GradientMachines 
+                # so that we do not need to copy shared parameters. 
                 copy_shared_parameters(gen_training_machine, dis_training_machine)
                 copy_shared_parameters(gen_training_machine, generator_machine)
  
@@ -316,10 +318,10 @@ def main():
         gen_trainer.finishTrainPass()
         # At the end of each pass, save the generated samples/images
         fake_samples = get_fake_samples(generator_machine, batch_size, noise)
-        if dataSource == "uniform":
-            plot2DScatter(fake_samples, "./%s_samples/train_pass%s.png" % (dataSource, train_pass))
+        if data_source == "uniform":
+            plot2DScatter(fake_samples, "./%s_samples/train_pass%s.png" % (data_source, train_pass))
         else:
-            save_images(fake_samples, "./%s_samples/train_pass%s.png" % (dataSource, train_pass))
+            save_images(fake_samples, "./%s_samples/train_pass%s.png" % (data_source, train_pass))
     dis_trainer.finishTrain()
     gen_trainer.finishTrain()
 
