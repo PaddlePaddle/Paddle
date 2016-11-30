@@ -1931,10 +1931,9 @@ class MaxOutLayer(LayerBase):
         input_layer = self.get_input_layer(0)
         maxout_conf = self.config.inputs[0].maxout_conf
         parse_maxout(self.inputs[0].maxout, input_layer.name, maxout_conf)
-        self.set_layer_size(g_layer_map[input_layer.name].size /
-                            maxout_conf.groups)
-        self.set_layer_height_width(g_layer_map[input_layer.name].height,
-                                    g_layer_map[input_layer.name].width)
+        out_channels = maxout_conf.image_conf.channels / maxout_conf.groups
+        self.set_cnn_layer(name, g_layer_map[input_layer.name].height,
+                           g_layer_map[input_layer.name].width, out_channels)
 
 
 # key: cost type
