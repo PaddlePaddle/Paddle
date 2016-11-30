@@ -195,3 +195,7 @@ if(WITH_DOC)
     add_subdirectory(doc)
     add_subdirectory(doc_cn)
 endif()
+
+if(USE_OPENCV)
+    add_subdirectory(plugin/opencv)
+endif()
