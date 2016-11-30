@@ -22,8 +22,9 @@ import functools
 import collections
 
 __all__ = [
-    "check_input", "AcceptInput", "SameSeqType", "SameOutputDim", "OutputType",
-    "InputSize", "SameOutputType"
+    "check_input", "AcceptInput", "SameSeqType", "OutputSize", "OutputType",
+    "InputSize", "SameOutputType", "CompositeChecker",
+    "default_seq_type_and_size"
 ]
 
 
@@ -58,26 +59,54 @@ def base_check_input(callback):
 
 
 class InputSize(object):
-    def __init__(self, input_size):
-        self.input_size = input_size
-        if not isinstance(input_size, collections.Sequence):
-            self.input_size = [self.input_size]
+    """
+    Check the number of inputs in the current layer of the neural network equals
+    :code:`input_number` or within :code:`input_number`
 
-        for each in self.input_size:
+    :param input_number: the exact number, or list, of inputs in the current
+                         layer.
+    :type input_number: int|list|tuple
+    :rtype: callable
+    """
+
+    def __init__(self, input_number):
+        self.input_number = input_number
+        if not isinstance(input_number, collections.Sequence):
+            self.input_number = [self.input_number]
+        assert isinstance(self.input_number, collections.Sequence)
+
+        for each in self.input_number:
             assert isinstance(each, int)
 
     def __call__(self, parent_types, output, next_callback):
-        assert len(parent_types) in self.input_size
+        assert len(parent_types) in self.input_number
         return next_callback(parent_types, output)
 
 
 class AcceptInput(object):
+    """
+    Check the inputs of the current layer should be some data_type or seq_type.
+
+    :param idx: Check the input with index `idx`. If idx = -1, then check all
+                input with same constraints.
+    :type idx: int
+    :param data_type: It could be a list of data types or the exact data type
+                      that input should be. None will be accept any data type.
+    :type data_type: int|list
+    :param seq_type: It could be a list of sequence types or the exact sequence
+                     type that input should be. None will be accept any sequence
+                     type.
+    :type seq_type: int|list
+    :rtype: callable
+    """
+
     def __init__(self, idx=-1, data_type=None, seq_type=None):
         self.idx = idx
         self.data_type = data_type
         if self.data_type is not None:
             if not isinstance(self.data_type, collections.Sequence):
                 self.data_type = [self.data_type]
+            assert isinstance(self.data_type, collections.Sequence)
             for each_data_type in self.data_type:
                 assert DataType.is_valid(each_data_type)
 
@@ -104,15 +133,12 @@ class AcceptInput(object):
         return next_callback(parent_types, output)
 
 
-class NewInputType(object):
-    def __init__(self):
-        pass
-
-    def __call__(self, *args, **kwargs):
-        return InputType(0, 0, 0)
-
-
 class SameSeqType(object):
+    """
+    Set the output sequence type of current layer as same as the input sequence
+    type. The each input of current layer should have same sequence type.
+    """
+
     def __init__(self):
         pass
 
@@ -127,7 +153,11 @@ class SameSeqType(object):
         return tp
 
 
-class SameOutputDim(object):
+class OutputSize(object):
+    """
+    Set output size as the LayerOutput.size
+    """
+
     def __init__(self):
         pass
 
@@ -137,7 +167,26 @@ class SameOutputDim(object):
         return tp
 
 
+class CompositeChecker(object):
+    """
+    Composite several checker to one checker.
+    """
+
+    def __init__(self, *callbacks):
+        self.reversed_callbacks = reversed(callbacks)
+
+    def __call__(self, parent_types, output, next_callback):
+        for each in self.reversed_callbacks:
+            next_callback = functools.partial(each, next_callback=next_callback)
+
+        return next_callback(parent_types, output)
+
+
 class OutputType(object):
+    """
+    Set output data type as data_type.
+    """
+
     def __init__(self, data_type):
         self.data_type = data_type
         assert DataType.is_valid(self.data_type)
@@ -150,6 +199,10 @@ class OutputType(object):
 
 
 class SameOutputType(object):
+    """
+    Set output data type as the input data type.
+    """
+
     def __init__(self):
         pass
 
@@ -162,17 +215,47 @@ class SameOutputType(object):
         return tp
 
 
+def default_seq_type_and_size():
+    """
+    Set the output of the current layer use same sequence type as input, and set
+    the output size as same as LayerOutput.size.
+    """
+    return CompositeChecker(SameSeqType(), OutputSize())
+
+
+def basic_checker(*args, **kwargs):
+    """
+    The inner most callback in middleware chain. Just return a InputType.
+    """
+    return InputType(0, 0, 0)
+
+
 def check_input(*callbacks):
+    """
+    A layer decorator. Check inputs of this layer fit all callbacks.
+
+    If any input type of current layer is None, then this layer's output type is
+    None. Otherwise, invoke all callbacks one by one. The callbacks are
+    middleware composed in a chain. Every callback should be a method with type
+    (parent_types:[InputType], output:LayerOutput,
+    next_callback:([InputType], output)=>InputType)=>InputType, and the
+    next_callback should be invoked in every callback. The callback will return
+    the InputType which is modified by the next_callback return value. Every
+    callback could throw an AssertError when the input is not legal.
+
+    :param callbacks: middleware callbacks. with type
+                      ([InputType], LayerOutput, ([InputType],
+                          LayerOutput)=>InputType) => InputType.
+    :type callbacks: tuple of callable
+    :return: wrapped method
+    :rtype: callable
+    """
+
     def callback_impl(parent_types, output):
         for each_parent_type in parent_types:
             if each_parent_type is None:
                 return None
-        base = NewInputType()
-
-        for callback in reversed(callbacks):
-            base = functools.partial(callback, next_callback=base)
-            print base
-
-        return base(parent_types, output)
+        checker = CompositeChecker(*callbacks)
+        return checker(parent_types, output, basic_checker)
 
     return base_check_input(callback_impl)

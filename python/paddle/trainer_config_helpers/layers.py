@@ -837,11 +837,9 @@ def embedding_layer(input, size, name=None, param_attr=None, layer_attr=None):
 
 
 @check.check_input(
-    check.AcceptInput(
-        data_type=DataType.base_matrix(), seq_type=SequenceType.all()),
-    check.SameOutputDim(),
-    check.SameSeqType(),
-    check.OutputType(data_type=DataType.Dense))
+    check.AcceptInput(data_type=DataType.base_matrix()),
+    check.OutputType(data_type=DataType.Dense),
+    check.default_seq_type_and_size())
 @wrap_name_default()
 @wrap_param_attr_default()
 @wrap_bias_attr_default()
@@ -1605,9 +1603,8 @@ def scaling_layer(input, weight, name=None, layer_attr=None):
 @check.check_input(
     check.InputSize(1),
     check.AcceptInput(data_type=DataType.base_matrix()),
-    check.SameOutputDim(),
-    check.SameSeqType(),
-    check.SameOutputType(), )
+    check.SameOutputType(),
+    check.default_seq_type_and_size())
 @wrap_name_default()
 @layer_support()
 def trans_layer(input, name=None, layer_attr=None):
@@ -1987,7 +1984,8 @@ def img_pool_layer(input,
         pool_type.name = 'avg'
 
     type_name = pool_type.name + '-projection' \
-        if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+        if (
+        isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
         else pool_type.name
 
     pool_size_y = pool_size if pool_size_y is None else pool_size_y
@@ -3685,9 +3683,8 @@ def __selective_fc_accept_inputs__(input_types, output, next_callback):
 
 @check.check_input(
     __selective_fc_accept_inputs__,
-    check.SameSeqType(),
-    check.SameOutputDim(),
-    check.OutputType(data_type=DataType.SparseValue))
+    check.OutputType(data_type=DataType.SparseValue),
+    check.default_seq_type_and_size())
 @wrap_name_default()
 @wrap_param_attr_default()
 @wrap_bias_attr_default()
