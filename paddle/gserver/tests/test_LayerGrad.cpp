@@ -166,55 +166,7 @@ TEST(Projection, scaling) {
   }
 }
 
-#ifndef PADDLE_ONLY_CPU
-TEST(Projection, conv) {
-  const int NUM_FILTERS = 16;
-  const int FILTER_SIZE = 2;
-  const int FILTER_SIZE_Y = 3;
-  const int CHANNELS = 3;
-  const int IMAGE_SIZE = 16;
-
-  ProjectionConfig conf;
-  conf.set_type("conv");
-  conf.set_num_filters(NUM_FILTERS);
-
-  ConvConfig* conv = conf.mutable_conv_conf();
-  conv->set_filter_size(FILTER_SIZE);
-  conv->set_filter_size_y(FILTER_SIZE_Y);
-  conv->set_channels(CHANNELS);
-  conv->set_padding(0);
-  conv->set_padding_y(1);
-  conv->set_stride(2);
-  conv->set_stride_y(2);
-  conv->set_groups(1);
-  conv->set_filter_channels(conv->channels() / conv->groups());
-  conv->set_img_size(IMAGE_SIZE);
-  int output_x = outputSize(conv->img_size(),
-                            conv->filter_size(),
-                            conv->padding(),
-                            conv->stride(),
-                            /* caffeMode */ true);
-  int output_y = outputSize(conv->img_size(),
-                            conv->filter_size_y(),
-                            conv->padding_y(),
-                            conv->stride_y(),
-                            /* caffeMode */ true);
-  conv->set_output_x(output_x);
-  conf.set_input_size(IMAGE_SIZE * IMAGE_SIZE * CHANNELS);
-  conf.set_output_size(output_x * output_y * NUM_FILTERS);
-
-  testProjectionGrad(
-      conf,
-      INPUT_DATA,
-      /* parameterSize */ NUM_FILTERS * CHANNELS * FILTER_SIZE * FILTER_SIZE_Y,
-      /* batchSize */ 100,
-      true,
-      false,
-      NUM_FILTERS,
-      true);
-}
-
-TEST(Projection, conv2) {
+void testProjectionConv(size_t groups) {
   const int NUM_FILTERS = 18;
   const int FILTER_SIZE = 2;
   const int FILTER_SIZE_Y = 3;
@@ -233,7 +185,7 @@ TEST(Projection, conv2) {
   conv->set_padding_y(1);
   conv->set_stride(2);
   conv->set_stride_y(2);
-  conv->set_groups(3);
+  conv->set_groups(groups);
   conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(IMAGE_SIZE);
   int output_x = outputSize(conv->img_size(),
@@ -253,12 +205,19 @@ TEST(Projection, conv2) {
   testProjectionGrad(
       conf,
       INPUT_DATA,
-      /* parameterSize */ NUM_FILTERS * FILTER_SIZE * FILTER_SIZE_Y,
+      /* parameterSize */ NUM_FILTERS * CHANNELS * FILTER_SIZE * FILTER_SIZE_Y
+                          / groups,
       /* batchSize */ 100,
       true,
       false,
       NUM_FILTERS,
       true);
+}
+
+#ifndef PADDLE_ONLY_CPU
+TEST(Projection, conv) {
+  testProjectionConv(1);
+  testProjectionConv(3);
 }
 #endif
 
