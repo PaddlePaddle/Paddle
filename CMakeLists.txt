@@ -12,6 +12,17 @@ include(package)
 find_package(SWIG 2.0)
 find_package(CUDA QUIET)
 find_package(Protobuf REQUIRED)
+
+# Check protobuf library version.
+execute_process(COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --version
+	OUTPUT_VARIABLE PROTOBUF_VERSION)
+string(REPLACE "libprotoc " "" PROTOBUF_VERSION ${PROTOBUF_VERSION})
+
+set(PROTOBUF_3 OFF)
+if (${PROTOBUF_VERSION} VERSION_GREATER "3.0.0" OR ${PROTOBUF_VERSION} VERSION_EQUAL "3.0.0")
+    set(PROTOBUF_3 ON)
+endif()
+
 find_package(PythonLibs 2.7 REQUIRED)
 find_package(PythonInterp 2.7 REQUIRED)
 find_package(ZLIB REQUIRED)
