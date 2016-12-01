@@ -205,7 +205,7 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper>& config,
       (!IGradientMachineMode::dataMustInCpu(mode_, FLAGS_trainer_count));
 
   dataProvider_ = dataProvider;
-  if (!dataProvider_ && config_->hasDataConfig()) {
+  if (!dataProvider_ && config_->hasDataConfig() && !testing_) {
     dataProvider_.reset(DataProvider::create(*config_, *config_, gpuData));
   }
   if (!testDataProvider_) {
