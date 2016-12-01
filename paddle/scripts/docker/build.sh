@@ -21,7 +21,7 @@ if [ ${WITH_GPU} == 'ON' ]; then
 fi
 
 cd ~
-git clone https://github.com/baidu/Paddle.git paddle
+git clone https://github.com/PaddlePaddle/Paddle.git paddle
 cd paddle
 git checkout ${GIT_CHECKOUT}
 mkdir build

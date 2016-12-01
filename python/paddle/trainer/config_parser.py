@@ -698,7 +698,8 @@ class ConvProjection(Projection):
         ci = self.proj_conf.conv_conf.channels
         fh = self.proj_conf.conv_conf.filter_size
         fw = self.proj_conf.conv_conf.filter_size_y
-        return co * ci * fh * fw
+        gr = self.proj_conf.conv_conf.groups
+        return co * ci * fh * fw / gr
 
     def calc_bias_size(self):
         return self.proj_conf.num_filters
