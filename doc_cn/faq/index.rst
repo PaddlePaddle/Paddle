@@ -202,3 +202,15 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 解决办法是：
 
 * 卸载PaddlePaddle包 :code:`pip uninstall paddle`, 清理掉老旧的PaddlePaddle安装包，使得单元测试有一个干净的环境。如果PaddlePaddle包已经在python的site-packages里面，单元测试会引用site-packages里面的python包，而不是源码目录里 :code:`/python` 目录下的python包。同时，即便设置 :code:`PYTHONPATH` 到 :code:`/python` 也没用，因为python的搜索路径是优先已经安装的python包。
+
+9. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致
+----------------------------------------------------------
+
+这是目前CMake寻找Python的逻辑存在缺陷，如果系统安装了多个Python版本，CMake找到的Python库和Python解释器版本可能有不一致现象，导致编译PaddlePaddle失败。正确的解决方法是，
+用户强制指定特定的Python版本，具体操作如下：
+
+    ..  code-block:: bash
+        
+        cmake .. -DPYTHON_EXECUTABLE=<exc_path> -DPYTHON_LIBRARY=<lib_path>  -DPYTHON_INCLUDE_DIR=<inc_path>
+
+用户需要指定本机上Python的路径：``<exc_path>``, ``<lib_path>``, ``<inc_path>``
