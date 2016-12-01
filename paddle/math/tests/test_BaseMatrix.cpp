@@ -14,201 +14,237 @@ limitations under the License. */
 
 #ifndef PADDLE_ONLY_CPU
 /**
- * This test file compares the implementation of CPU and GPU function
- * in BaseMatrix.cpp or Matrix.cpp.
+ * This test file use autotest::AutoCompare and cmpWithoutArg to compares the
+ * implementation of CPU and GPU member function in
+ * BaseMatrix.cpp and Matrix.cpp.
  */
 
 #include <gtest/gtest.h>
-#include "paddle/utils/Util.h"
 #include "paddle/math/BaseMatrix.h"
 #include "TestUtils.h"
 
-using namespace paddle;  // NOLINT
+using paddle::BaseMatrix;
+using paddle::Matrix;
+using autotest::AutoCompare;
 
-/**
- * Test member functions which prototype is
- * void (BaseMatrix::*)().
- */
+// Test all void (BaseMatrix::*)() function
 TEST(BaseMatrix, void) {
-  typedef void (BaseMatrix::*FunctionProto)();
-#define BASEMATRIXCOMPARE(function) \
-  BaseMatrixCompare(static_cast<FunctionProto>(&BaseMatrix::function));
+  for (auto height : {1, 3, 11, 73, 128, 200, 330}) {
+    for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
+      auto compare = [height, width](void (BaseMatrix::*f)()) {
+        AutoCompare test(height, width, 1e-5);
+        test.cmpWithoutArg(f, height, width);
+      };
 
-  BASEMATRIXCOMPARE(neg);
-  BASEMATRIXCOMPARE(exp);
-  BASEMATRIXCOMPARE(log);
-  BASEMATRIXCOMPARE(sqrt);
-  BASEMATRIXCOMPARE(square);
-  BASEMATRIXCOMPARE(reciprocal);
-  BASEMATRIXCOMPARE(abs);
-  BASEMATRIXCOMPARE(sign);
-  BASEMATRIXCOMPARE(zero);
-  BASEMATRIXCOMPARE(one);
-
-#undef BASEMATRIXCOMPARE
+      compare(&BaseMatrix::neg);
+      compare(&BaseMatrix::exp);
+      compare(&BaseMatrix::log);
+      compare(&BaseMatrix::sqrt);
+      compare(&BaseMatrix::square);
+      compare(&BaseMatrix::reciprocal);
+      compare(&BaseMatrix::abs);
+      compare(&BaseMatrix::sign);
+      compare(&BaseMatrix::zero);
+      compare(&BaseMatrix::one);
+    }
+  }
 }
 
-/**
- * Test member functions which prototype is
- * void (BaseMatrix::*)(real).
- */
+// Test all void (BaseMatrix::*)(real) function
 TEST(BaseMatrix, real) {
-  typedef void (BaseMatrix::*FunctionProto)(real);
-#define BASEMATRIXCOMPARE(function) \
-  BaseMatrixCompare<0>(static_cast<FunctionProto>(&BaseMatrix::function));
+  for (auto height : {1, 3, 11, 73, 128, 200, 330}) {
+    for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
+      auto compare = [height, width](void (BaseMatrix::*f)(real)) {
+        AutoCompare test(height, width, 1e-5);
+        test.cmpWithoutArg<0>(f, height, width);
+      };
 
-  BASEMATRIXCOMPARE(pow);
-  BASEMATRIXCOMPARE(subScalar);
-  BASEMATRIXCOMPARE(mulScalar);
-  BASEMATRIXCOMPARE(divScalar);
-  BASEMATRIXCOMPARE(assign);
-  BASEMATRIXCOMPARE(add);
-  BASEMATRIXCOMPARE(biggerThanScalar);
-  BASEMATRIXCOMPARE(downClip);
-
-#undef BASEMATRIXCOMPARE
+      compare(&BaseMatrix::pow);
+      compare(&BaseMatrix::subScalar);
+      compare(&BaseMatrix::mulScalar);
+      compare(&BaseMatrix::divScalar);
+      compare(&BaseMatrix::assign);
+      compare(&BaseMatrix::add);
+      compare(&BaseMatrix::biggerThanScalar);
+      compare(&BaseMatrix::downClip);
+    }
+  }
 }
 
-/**
- * Test member functions which prototype is
- * void (BaseMatrix::*)(real, real).
- */
-TEST(BaseMatrix, real_real) {
-  typedef void (BaseMatrix::*FunctionProto)(real, real);
-#define BASEMATRIXCOMPARE(function) \
-  BaseMatrixCompare<0, 1>(static_cast<FunctionProto>(&BaseMatrix::function));
-
-  BASEMATRIXCOMPARE(add);
-  BASEMATRIXCOMPARE(clip);
-
-#undef BASEMATRIXCOMPARE
-}
-
-/**
- * Test member functions which prototype is
- * void (BaseMatrix::*)(BaseMatrix&).
- */
+// Test all void (BaseMatrix::*)(BaseMatrix&) function
 TEST(BaseMatrix, BaseMatrix) {
-  typedef void (BaseMatrix::*FunctionProto)(BaseMatrix&);
-#define BASEMATRIXCOMPARE(function) \
-  BaseMatrixCompare<0>(static_cast<FunctionProto>(&BaseMatrix::function));
+  for (auto height : {1, 3, 11, 73, 128, 200, 330}) {
+    for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
+      auto compare = [height, width](void (BaseMatrix::*f)(BaseMatrix&)) {
+        AutoCompare test(height, width, 1e-5);
+        test.cmpWithoutArg<0>(f, height, width);
+      };
 
-  BASEMATRIXCOMPARE(assign);
-  BASEMATRIXCOMPARE(add);
-  BASEMATRIXCOMPARE(relu);
-  BASEMATRIXCOMPARE(reluDerivative);
-  BASEMATRIXCOMPARE(softrelu);
-  BASEMATRIXCOMPARE(softreluDerivative);
-  BASEMATRIXCOMPARE(brelu);
-  BASEMATRIXCOMPARE(breluDerivative);
-  BASEMATRIXCOMPARE(square);
-  BASEMATRIXCOMPARE(squareDerivative);
-  BASEMATRIXCOMPARE(tanh);
-  BASEMATRIXCOMPARE(tanhDerivative);
-
-  BASEMATRIXCOMPARE(reciprocal);
-  BASEMATRIXCOMPARE(reciprocalDerivative);
-  BASEMATRIXCOMPARE(abs);
-  BASEMATRIXCOMPARE(absDerivative);
-  BASEMATRIXCOMPARE(sigmoid);
-  BASEMATRIXCOMPARE(sigmoidDerivative);
-  BASEMATRIXCOMPARE(expDerivative);
-  BASEMATRIXCOMPARE(sign);
-  BASEMATRIXCOMPARE(exp);
-  BASEMATRIXCOMPARE(log);
-  BASEMATRIXCOMPARE(sqrt);
-  BASEMATRIXCOMPARE(dotMul);
-  BASEMATRIXCOMPARE(dotMulSquare);
-  BASEMATRIXCOMPARE(dotSquareMul);
-
-  BASEMATRIXCOMPARE(addColVector);
-  BASEMATRIXCOMPARE(addRowVector);
-  BASEMATRIXCOMPARE(mulRowVector);
-  BASEMATRIXCOMPARE(divRowVector);
-  BASEMATRIXCOMPARE(addP2P);
-  BASEMATRIXCOMPARE(invSqrt);
-
-#undef BASEMATRIXCOMPARE
+      compare(&BaseMatrix::assign);
+      compare(&BaseMatrix::add);
+      compare(&BaseMatrix::relu);
+      compare(&BaseMatrix::reluDerivative);
+      compare(&BaseMatrix::softrelu);
+      compare(&BaseMatrix::softreluDerivative);
+      compare(&BaseMatrix::brelu);
+      compare(&BaseMatrix::breluDerivative);
+      compare(&BaseMatrix::square);
+      compare(&BaseMatrix::squareDerivative);
+      compare(&BaseMatrix::tanh);
+      compare(&BaseMatrix::tanhDerivative);
+      compare(&BaseMatrix::reciprocal);
+      compare(&BaseMatrix::reciprocalDerivative);
+      compare(&BaseMatrix::abs);
+      compare(&BaseMatrix::absDerivative);
+      compare(&BaseMatrix::sigmoid);
+      compare(&BaseMatrix::sigmoidDerivative);
+      compare(&BaseMatrix::expDerivative);
+      compare(&BaseMatrix::sign);
+      compare(&BaseMatrix::exp);
+      compare(&BaseMatrix::log);
+      compare(&BaseMatrix::sqrt);
+      compare(&BaseMatrix::dotMul);
+      compare(&BaseMatrix::dotMulSquare);
+      compare(&BaseMatrix::dotSquareMul);
+      compare(&BaseMatrix::addColVector);
+      compare(&BaseMatrix::addRowVector);
+      compare(&BaseMatrix::mulRowVector);
+      compare(&BaseMatrix::divRowVector);
+      compare(&BaseMatrix::addP2P);
+      compare(&BaseMatrix::invSqrt);
+    }
+  }
 }
 
-/**
- * Test member functions which prototype is
- * void (BaseMatrix::*)(BaseMatrix&, real).
- */
+// Test all void (BaseMatrix::*)(real, real) function
+TEST(BaseMatrix, real_real) {
+  for (auto height : {1, 3, 11, 73, 128, 200, 330}) {
+    for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
+      auto compare = [height, width](void (BaseMatrix::*f)(real, real)) {
+        AutoCompare test(height, width, 1e-5);
+        test.cmpWithoutArg<0, 1>(f, height, width);
+      };
+
+      compare(&BaseMatrix::add);
+      compare(&BaseMatrix::clip);
+    }
+  }
+}
+
+// Test all void (BaseMatrix::*)(BaseMatrix&, real) function
 TEST(BaseMatrix, BaseMatrix_real) {
-  typedef void (BaseMatrix::*FunctionProto)(BaseMatrix&, real);
-#define BASEMATRIXCOMPARE(function) \
-  BaseMatrixCompare<0, 1>(static_cast<FunctionProto>(&BaseMatrix::function));
+  for (auto height : {1, 3, 11, 73, 128, 200, 330}) {
+    for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
+      auto compare = [height, width](void (BaseMatrix::*f)(BaseMatrix&, real)) {
+        AutoCompare test(height, width, 1e-5);
+        test.cmpWithoutArg<0, 1>(f, height, width);
+      };
 
-  BASEMATRIXCOMPARE(addBias);
-  BASEMATRIXCOMPARE(add);
-  BASEMATRIXCOMPARE(sub);
-  BASEMATRIXCOMPARE(pow);
-  BASEMATRIXCOMPARE(addScalar);
-  BASEMATRIXCOMPARE(subScalar);
-  BASEMATRIXCOMPARE(mulScalar);
-  BASEMATRIXCOMPARE(divScalar);
-  BASEMATRIXCOMPARE(scalarDiv);
-  BASEMATRIXCOMPARE(addSquare);
-
-  BASEMATRIXCOMPARE(isEqualTo);
-
-#undef BASEMATRIXCOMPARE
+      compare(&BaseMatrix::addBias);
+      compare(&BaseMatrix::add);
+      compare(&BaseMatrix::sub);
+      compare(&BaseMatrix::pow);
+      compare(&BaseMatrix::addScalar);
+      compare(&BaseMatrix::subScalar);
+      compare(&BaseMatrix::mulScalar);
+      compare(&BaseMatrix::divScalar);
+      compare(&BaseMatrix::scalarDiv);
+      compare(&BaseMatrix::addSquare);
+      compare(&BaseMatrix::isEqualTo);
+    }
+  }
 }
 
-/**
- * Test member functions which prototype is
- * void (BaseMatrix::*)(BaseMatrix&, BaseMatrix&).
- */
+// Test all void (BaseMatrix::*)(BaseMatrix&, BaseMatrix&) function
 TEST(BaseMatrix, BaseMatrix_BaseMatrix) {
-  typedef void (BaseMatrix::*FunctionProto)(BaseMatrix&, BaseMatrix&);
-#define BASEMATRIXCOMPARE(function) \
-  BaseMatrixCompare<0, 1>(static_cast<FunctionProto>(&BaseMatrix::function));
+  for (auto height : {1, 3, 11, 73, 128, 200, 330}) {
+    for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
+      auto compare = [height,
+                      width](void (BaseMatrix::*f)(BaseMatrix&, BaseMatrix&)) {
+        AutoCompare test(height, width, 1e-5);
+        test.cmpWithoutArg<0, 1>(f, height, width);
+      };
 
-  BASEMATRIXCOMPARE(softCrossEntropy);
-  BASEMATRIXCOMPARE(softCrossEntropyBp);
-  BASEMATRIXCOMPARE(binaryLabelCrossEntropy);
-  BASEMATRIXCOMPARE(binaryLabelCrossEntropyBp);
-  BASEMATRIXCOMPARE(sub);
-  BASEMATRIXCOMPARE(add2);
-  BASEMATRIXCOMPARE(dotMul);
-  BASEMATRIXCOMPARE(dotDiv);
-  BASEMATRIXCOMPARE(logisticRegressionLoss);
-  BASEMATRIXCOMPARE(logisticRegressionLossBp);
-  BASEMATRIXCOMPARE(biggerThan);
-  BASEMATRIXCOMPARE(max);
-  BASEMATRIXCOMPARE(dotMulSquare);
-  BASEMATRIXCOMPARE(dotSquareSquare);
-
-#undef BASEMATRIXCOMPARE
+      compare(&BaseMatrix::softCrossEntropy);
+      compare(&BaseMatrix::softCrossEntropyBp);
+      compare(&BaseMatrix::binaryLabelCrossEntropy);
+      compare(&BaseMatrix::binaryLabelCrossEntropyBp);
+      compare(&BaseMatrix::sub);
+      compare(&BaseMatrix::add2);
+      compare(&BaseMatrix::dotMul);
+      compare(&BaseMatrix::dotDiv);
+      compare(&BaseMatrix::logisticRegressionLoss);
+      compare(&BaseMatrix::logisticRegressionLossBp);
+      compare(&BaseMatrix::biggerThan);
+      compare(&BaseMatrix::max);
+      compare(&BaseMatrix::dotMulSquare);
+      compare(&BaseMatrix::dotSquareSquare);
+    }
+  }
 }
 
-// member function without overloaded
+void TestEelementWise(size_t height, size_t width) {
+  AutoCompare rowScale(height, width);
+  rowScale.cmpWithoutArg<0, 1, 2>(&BaseMatrix::rowScale, height, width);
+
+  AutoCompare rowDotMul(height, width);
+  rowDotMul.cmpWithoutArg<0, 1, 2>(&BaseMatrix::rowDotMul, height, width);
+
+  AutoCompare binaryClassificationError(height, width);
+  binaryClassificationError.cmpWithoutArg<0, 1, 2, 3>(
+      &BaseMatrix::binaryClassificationError, height, width);
+
+  AutoCompare sumOfSquaresBp(height, width);
+  sumOfSquaresBp.cmpWithoutArg<0, 1>(&Matrix::sumOfSquaresBp, height, width);
+}
+
+void TestAggregateToRow(size_t height, size_t width) {
+  AutoCompare maxCols(1, width);
+  maxCols.cmpWithoutArg<0>(&BaseMatrix::maxCols, height, width);
+
+  AutoCompare minCols(1, width);
+  minCols.cmpWithoutArg<0>(&BaseMatrix::minCols, height, width);
+
+  AutoCompare addDotMulVMM(1, width);
+  addDotMulVMM.cmpWithoutArg<0, 1>(&BaseMatrix::addDotMulVMM, height, width);
+
+  AutoCompare sumCols(1, width);
+  sumCols.cmpWithoutArg<0, 1, 2>(&BaseMatrix::sumCols, height, width);
+
+  AutoCompare collectBias(1, width);
+  collectBias.cmpWithoutArg<0, 1>(
+      static_cast<void (Matrix::*)(Matrix&, real)>(&Matrix::collectBias),
+      height,
+      width);
+}
+
+void TestAggregateToCol(size_t height, size_t width) {
+  AutoCompare maxRows(height, 1);
+  maxRows.cmpWithoutArg<0>(&BaseMatrix::maxRows, height, width);
+
+  AutoCompare minRows(height, 1);
+  minRows.cmpWithoutArg<0>(&BaseMatrix::minRows, height, width);
+
+  AutoCompare sumRows(height, 1);
+  sumRows.cmpWithoutArg<0, 1, 2>(&BaseMatrix::sumRows, height, width);
+
+  AutoCompare sumOfSquares(height, 1);
+  sumOfSquares.cmpWithoutArg<0, 1>(&Matrix::sumOfSquares, height, width);
+}
+
 TEST(BaseMatrix, Other) {
-  BaseMatrixCompare<0, 1, 2>(&BaseMatrix::rowScale);
-  BaseMatrixCompare<0, 1, 2>(&BaseMatrix::rowDotMul);
-  BaseMatrixCompare<0, 1, 2, 3>(&BaseMatrix::binaryClassificationError);
-
-  BaseMatrixCompare<0, 1>(&Matrix::sumOfSquaresBp);
-}
-
-TEST(BaseMatrix, Aggregate) {
-  BaseMatrixAsColVector<0>(&BaseMatrix::maxRows);
-  BaseMatrixAsColVector<0>(&BaseMatrix::minRows);
-  BaseMatrixAsColVector<0, 1, 2>(&BaseMatrix::sumRows);
-  BaseMatrixAsColVector<0, 1>(&Matrix::sumOfSquares);
-
-  BaseMatrixAsRowVector<0>(&BaseMatrix::maxCols);
-  BaseMatrixAsRowVector<0>(&BaseMatrix::minCols);
-  BaseMatrixAsRowVector<0, 1>(&BaseMatrix::addDotMulVMM);
-  BaseMatrixAsRowVector<0, 1, 2>(&BaseMatrix::sumCols);
-  BaseMatrixAsRowVector<0, 1>(
-      static_cast<void (Matrix::*)(Matrix&, real)>(&Matrix::collectBias));
+  for (auto height : {1, 3, 11, 73, 128, 200, 330}) {
+    for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
+      TestEelementWise(height, width);
+      TestAggregateToRow(height, width);
+      TestAggregateToCol(height, width);
+    }
+  }
 }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  initMain(argc, argv);
+  paddle::initMain(argc, argv);
   return RUN_ALL_TESTS();
 }
 

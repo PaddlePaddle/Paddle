@@ -15,11 +15,28 @@ limitations under the License. */
 #pragma once
 
 /**
- * TestUtils.h is used to automatically compare CPU and GPU code is consistent.
- * This file provides a class(AutoCompare) and a template
- * function(BaseMatrixCompare) to simplify the comparison
+ * This file provides a AutoCompare calss to simplify the comparison
  * of CPU and GPU member functions.
- * Refer test_Matrix.cpp and test_BaseMatrix.cpp for how to use autotest.
+ *
+ * This takes two steps
+ * 1. Construct an AutoCompare object.
+ *    When constructing an AutoCompare object, you can set the err argument
+ * to specify the maximum error for CPU and GPU functions.
+ *
+ * 2. Use the template functions cmpWithArg or cmpWithoutArg.
+ * A. [cmpWithArg] Requires the caller construct the cpu arguments.
+ *
+ *  AutoCompare test;
+ *  Init Argument arg1,arg2...
+ *  test.cmpWithArg(function, arg1, arg2....)
+ *
+ * B. [cmpWithoutArg] The caller do not need construct arguments.
+ *    If matrix used in these functions arguments is the same size.
+ *    Such as the element wise function and the aggregate function
+ *    defined in the BaseMatrix.cpp.
+ *
+ *  AutoCompare test;
+ *  test.cmpWithoutArg<I...>(function, height, width)
 */
 
 #include <gtest/gtest.h>
@@ -30,6 +47,8 @@ limitations under the License. */
 namespace autotest {
 
 using paddle::BaseMatrix;
+using paddle::CpuMatrix;
+using paddle::GpuMatrix;
 using paddle::CpuIVector;
 using paddle::GpuIVector;
 using paddle::CpuSparseMatrix;
@@ -154,47 +173,6 @@ R call(C& obj, R (FC::*f)(FArgs...), Args&&... args) {
   return (obj.*f)(args...);
 }
 
-template <bool AsRowVector,
-          bool AsColVector,
-          std::size_t... I,
-          typename C,
-          typename R,
-          typename... Args,
-          typename AssertEq>
-void BaseMatrixCompare(R (C::*f)(Args...), AssertEq compare) {
-  for (auto height : {1, 11, 73, 128, 200, 330}) {
-    for (auto width : {1, 3, 32, 100, 512, 1000}) {
-      CpuMatrix obj1(AsRowVector ? 1 : height, AsColVector ? 1 : width);
-      GpuMatrix obj2(AsRowVector ? 1 : height, AsColVector ? 1 : width);
-      init(obj1);
-      copy(obj2, obj1);
-
-      auto tuple1 = std::make_tuple(
-          construct<typename ReplaceType<
-              typename std::decay<
-                  typename std::tuple_element<I,
-                                              std::tuple<Args...>>::type>::type,
-              CpuMatrix>::type>(height, width)...);
-
-      auto tuple2 = std::make_tuple(
-          construct<typename ReplaceType<
-              typename std::decay<
-                  typename std::tuple_element<I,
-                                              std::tuple<Args...>>::type>::type,
-              GpuMatrix>::type>(height, width)...);
-
-      initTuple(tuple1);
-      copyTuple(tuple2, tuple1);
-
-      call(obj1, f, std::get<I>(tuple1)...);
-      call(obj2, f, std::get<I>(tuple2)...);
-
-      TensorCheck(compare, obj1, obj2);
-    }
-  }
-}
-
-// AutoCompare
 template <typename T>
 class ReturnType {
 public:
@@ -252,64 +230,60 @@ GpuSparseMatrix autoArgs(CpuSparseMatrix& v) {
 
 class AutoCompare {
 public:
-  AutoCompare(size_t height, size_t width)
-      : cpu(height, width), gpu(height, width) {
+  /**
+   * err is the allowed calculation error.
+   * The smaller the value of err,
+   * the stricter the comparison is between CPU and GPU calculations.
+   */
+  AutoCompare(size_t height, size_t width, real err = 1e-3)
+      : cpu(height, width), gpu(height, width), compare(err) {
     init(cpu);
     copy(gpu, cpu);
   }
 
   template <typename C, typename R, typename... FArgs, typename... Args>
-  void operator()(R (C::*f)(FArgs...), Args&&... args) {
+  void cmpWithArg(R (C::*f)(FArgs...), Args&&... args) {
+    static_assert(sizeof...(FArgs) == sizeof...(Args),
+                  "size of parameter packs are not equal");
     call(cpu, f, args...);
     call(gpu, f, autoArgs(args)...);
 
-    TensorCheckErr(cpu, gpu);
+    TensorCheck(compare, cpu, gpu);
+  }
+
+  template <std::size_t... I, typename C, typename R, typename... Args>
+  void cmpWithoutArg(R (C::*f)(Args...), size_t height, size_t width) {
+    static_assert(sizeof...(I) == sizeof...(Args),
+                  "size of parameter packs are not equal");
+    (void)height;
+    (void)width;
+    auto tuple1 = std::make_tuple(
+        construct<typename ReplaceType<
+            typename std::decay<
+                typename std::tuple_element<I,
+                                            std::tuple<Args...>>::type>::type,
+            CpuMatrix>::type>(height, width)...);
+
+    auto tuple2 = std::make_tuple(
+        construct<typename ReplaceType<
+            typename std::decay<
+                typename std::tuple_element<I,
+                                            std::tuple<Args...>>::type>::type,
+            GpuMatrix>::type>(height, width)...);
+
+    initTuple(tuple1);
+    copyTuple(tuple2, tuple1);
+
+    call(cpu, f, std::get<I>(tuple1)...);
+    call(gpu, f, std::get<I>(tuple2)...);
+
+    TensorCheck(compare, cpu, gpu);
   }
 
 protected:
   CpuMatrix cpu;
   GpuMatrix gpu;
+  AssertEqual compare;
 };
 
 }  // namespace autotest
-
-template <std::size_t... I, typename C, typename R, typename... Args>
-void BaseMatrixCompare(R (C::*f)(Args...)) {
-  static_assert(sizeof...(I) == sizeof...(Args),
-                "size of parameter packs are not equal");
-
-#ifndef PADDLE_TYPE_DOUBLE
-  autotest::AssertEqual compare(1e-5);
-#else
-  autotest::AssertEqual compare(1e-10);
-#endif
-
-  autotest::BaseMatrixCompare<false, false, I...>(f, compare);
-}
-
-template <std::size_t... I, typename C, typename R, typename... Args>
-void BaseMatrixAsColVector(R (C::*f)(Args...)) {
-  static_assert(sizeof...(I) == sizeof...(Args),
-                "size of parameter packs are not equal");
-
-#ifndef PADDLE_TYPE_DOUBLE
-  autotest::AssertEqual compare(1e-3);
-#else
-  autotest::AssertEqual compare(1e-8);
-#endif
-
-  autotest::BaseMatrixCompare<false, true, I...>(f, compare);
-}
-
-template <std::size_t... I, typename C, typename R, typename... Args>
-void BaseMatrixAsRowVector(R (C::*f)(Args...)) {
-  static_assert(sizeof...(I) == sizeof...(Args),
-                "size of parameter packs are not equal");
-
-#ifndef PADDLE_TYPE_DOUBLE
-  autotest::AssertEqual compare(1e-3);
-#else
-  autotest::AssertEqual compare(1e-8);
-#endif
-  autotest::BaseMatrixCompare<true, false, I...>(f, compare);
-}

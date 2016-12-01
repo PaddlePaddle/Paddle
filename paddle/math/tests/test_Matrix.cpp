@@ -14,20 +14,8 @@ limitations under the License. */
 
 #ifndef PADDLE_ONLY_CPU
 /**
- * This test file use autotest::AutoCompare to compares the implementation
- * of CPU and GPU member function in Matrix.cpp.
- *
- * 1. Constructs an AutoCompare object, a AutoCompare object contains
- *    a CpuMatrix and a GpuMatrix;
- * 2. Initializes the required parameters for the member function.
- *    Only need to initialize the CPU parameters.
- * 3. Use the operator() template for testing. In the operator() will call back
- *    member functions, and compare the results.
- *
- * use case:
- *  AutoCompare test(...);
- *  Init Argument arg1,arg2...
- *  test(function, arg1, arg2....)
+ * This test file use autotest::AutoCompare and cmpWithArg to compares the
+ * implementation of CPU and GPU member function in Matrix.cpp.
  */
 
 #include <gtest/gtest.h>
@@ -38,11 +26,6 @@ using paddle::Matrix;
 using paddle::CpuMatrix;
 using paddle::CpuIVector;
 using paddle::CpuSparseMatrix;
-using paddle::SparseValueType;
-using paddle::SparseFormat;
-using paddle::NO_VALUE;
-using paddle::SPARSE_CSR;
-using paddle::initMain;
 using autotest::AutoCompare;
 
 void testBilinearFwdBwd(int numSamples,
@@ -57,28 +40,28 @@ void testBilinearFwdBwd(int numSamples,
   AutoCompare forward(numSamples, outWidth);
   CpuMatrix arg1(numSamples, inWidth);
   arg1.randomizeUniform();
-  forward(&Matrix::bilinearForward,
-          arg1,
-          imgSizeH,
-          imgSizeW,
-          2 * imgSizeH,
-          2 * imgSizeW,
-          channels,
-          ratioH,
-          ratioW);
+  forward.cmpWithArg(&Matrix::bilinearForward,
+                     arg1,
+                     imgSizeH,
+                     imgSizeW,
+                     2 * imgSizeH,
+                     2 * imgSizeW,
+                     channels,
+                     ratioH,
+                     ratioW);
 
   AutoCompare backward(numSamples, inWidth);
   CpuMatrix arg2(numSamples, outWidth);
   arg2.randomizeUniform();
-  backward(&Matrix::bilinearBackward,
-           arg2,
-           2 * imgSizeH,
-           2 * imgSizeW,
-           imgSizeH,
-           imgSizeW,
-           channels,
-           ratioH,
-           ratioW);
+  backward.cmpWithArg(&Matrix::bilinearBackward,
+                      arg2,
+                      2 * imgSizeH,
+                      2 * imgSizeW,
+                      imgSizeH,
+                      imgSizeW,
+                      channels,
+                      ratioH,
+                      ratioW);
 }
 
 TEST(Matrix, BilinearFwdBwd) {
@@ -99,9 +82,10 @@ void testMatrixAddBias(int height, int width, real scale) {
   AutoCompare test(height, width);
   CpuMatrix arg1(1, width);
   arg1.randomizeUniform();
-  test(static_cast<void (Matrix::*)(Matrix&, real)>(&Matrix::addBias),
-       arg1,
-       scale);
+  test.cmpWithArg(
+      static_cast<void (Matrix::*)(Matrix&, real)>(&Matrix::addBias),
+      arg1,
+      scale);
 }
 
 void testMatrixAddDotMulMMV(int height, int width) {
@@ -110,7 +94,7 @@ void testMatrixAddDotMulMMV(int height, int width) {
   CpuMatrix arg2(1, width);
   arg1.randomizeUniform();
   arg2.randomizeUniform();
-  test(&BaseMatrix::addDotMulMMV, arg1, arg2);
+  test.cmpWithArg(&BaseMatrix::addDotMulMMV, arg1, arg2);
 }
 
 TEST(Matrix, unary) {
@@ -128,14 +112,14 @@ void testMatrixAddAtOffset(int height, int width1, int width2, int offset) {
   AutoCompare test(height, width2);
   CpuMatrix arg1(height, width1);
   arg1.randomizeUniform();
-  test(&Matrix::addAtOffset, arg1, offset);
+  test.cmpWithArg(&Matrix::addAtOffset, arg1, offset);
 }
 
 void testMatrixAssignAtOffset(int height, int width1, int width2, int offset) {
   AutoCompare test(height, width2);
   CpuMatrix arg1(height, width1);
   arg1.randomizeUniform();
-  test(&Matrix::assignAtOffset, arg1, offset);
+  test.cmpWithArg(&Matrix::assignAtOffset, arg1, offset);
 }
 
 TEST(Matrix, AtOffset) {
@@ -162,7 +146,7 @@ void testMatrixSelectRows(int numSamples, int tableSize, int inputDim) {
   CpuIVector arg2(numSamples);
   arg1.randomizeUniform();
   arg2.rand(tableSize);
-  test(&Matrix::selectRows, arg1, arg2);
+  test.cmpWithArg(&Matrix::selectRows, arg1, arg2);
 }
 
 TEST(Matrix, tableProjection) {
@@ -183,7 +167,7 @@ void testMatrixCopyByRowIndex(int outHeight, int inHeight, int width) {
   CpuIVector arg2(outHeight);
   arg1.randomizeUniform();
   arg2.rand(inHeight);
-  test(&Matrix::copyByRowIndex, arg1, arg2);
+  test.cmpWithArg(&Matrix::copyByRowIndex, arg1, arg2);
 }
 
 TEST(Matrix, copyByRowIndex) {
@@ -204,7 +188,7 @@ void testCosSim(int heightX, int heightY, int width, real scale) {
   arg1.randomizeUniform();
   arg2.randomizeUniform();
   arg2.add(-0.5);
-  test(&Matrix::cosSim, arg1, arg2, scale);
+  test.cmpWithArg(&Matrix::cosSim, arg1, arg2, scale);
 }
 
 TEST(Matrix, cosSim) {
@@ -226,7 +210,7 @@ void testParamReluForward(int height, int width, int w_height, int w_width) {
   arg1.randomizeUniform();
   arg2.randomizeUniform();
   arg1.add(-0.5);
-  test(&Matrix::paramReluForward, arg1, arg2);
+  test.cmpWithArg(&Matrix::paramReluForward, arg1, arg2);
 }
 
 void testParamReluBackwardW(int height, int width, int w_height, int w_width) {
@@ -236,7 +220,7 @@ void testParamReluBackwardW(int height, int width, int w_height, int w_width) {
   arg1.randomizeUniform();
   arg2.randomizeUniform();
   arg2.add(-0.5);
-  test(&Matrix::paramReluBackwardW, arg1, arg2);
+  test.cmpWithArg(&Matrix::paramReluBackwardW, arg1, arg2);
 }
 
 TEST(Matrix, paramRelu) {
@@ -256,14 +240,14 @@ void testAddSharedBias(int numSamples, int dim, int channel) {
   AutoCompare test(numSamples, dim);
   CpuMatrix arg1(1, channel);
   arg1.randomizeUniform();
-  test(&Matrix::addSharedBias, arg1, 1.0);
+  test.cmpWithArg(&Matrix::addSharedBias, arg1, 1.0);
 }
 
 void testCollectSharedBias(int numSamples, int dim, int channel) {
   AutoCompare test(1, channel);
   CpuMatrix arg1(numSamples, dim);
   arg1.randomizeUniform();
-  test(&Matrix::collectSharedBias, arg1, 1.0);
+  test.cmpWithArg(&Matrix::collectSharedBias, arg1, 1.0);
 }
 
 TEST(Matrix, sharedBias) {
@@ -282,7 +266,8 @@ TEST(Matrix, sharedBias) {
 void testMultiBinaryLabelCrossEntropy(int numSamples, int dim) {
   AutoCompare forward(numSamples, 1);
   CpuMatrix arg1(numSamples, dim);
-  CpuSparseMatrix arg2(numSamples, dim, numSamples, NO_VALUE, SPARSE_CSR);
+  CpuSparseMatrix arg2(
+      numSamples, dim, numSamples, paddle::NO_VALUE, paddle::SPARSE_CSR);
 
   CpuMatrix output1(numSamples, dim);
   output1.randomizeUniform();
@@ -291,10 +276,10 @@ void testMultiBinaryLabelCrossEntropy(int numSamples, int dim) {
     const unsigned int id = std::rand() % dim;
     arg2.setRow(i, 1, &id, nullptr);
   }
-  forward(&Matrix::multiBinaryLabelCrossEntropy, arg1, arg2);
+  forward.cmpWithArg(&Matrix::multiBinaryLabelCrossEntropy, arg1, arg2);
 
   AutoCompare backward(numSamples, dim);
-  backward(&Matrix::multiBinaryLabelCrossEntropyBp, arg1, arg2);
+  backward.cmpWithArg(&Matrix::multiBinaryLabelCrossEntropyBp, arg1, arg2);
 }
 
 TEST(Matrix, multiBinaryCrossEntropy) {
@@ -308,7 +293,7 @@ TEST(Matrix, multiBinaryCrossEntropy) {
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  initMain(argc, argv);
+  paddle::initMain(argc, argv);
   return RUN_ALL_TESTS();
 }
 
