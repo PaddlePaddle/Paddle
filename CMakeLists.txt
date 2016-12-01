@@ -83,7 +83,7 @@ if(NOT ${GIT_RESULT})
   set(PADDLE_VERSION ${GIT_TAG_NAME})
 else()
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} log -1 --format=%H
+    COMMAND ${GIT_EXECUTABLE} log -1 --format=%h
     WORKING_DIRECTORY ${PROJ_ROOT}
     OUTPUT_VARIABLE GIT_SHA1
     RESULT_VARIABLE GIT_RESULT
