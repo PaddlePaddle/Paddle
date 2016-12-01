@@ -118,7 +118,7 @@ cuda相关的Driver和设备映射进container中，脚本类似于
 ..  code-block:: bash
 
     # cd到含有Dockerfile的路径中
-    $ docker build . -t paddle_ssh
+    $ docker build -t paddle_ssh .
     # 运行这个container，将宿主机的8022端口映射到container的22端口上
     $ docker run -d -p 8022:22  --name paddle_ssh_machine paddle_ssh
 
