@@ -194,4 +194,3 @@ namespace std {
 %ignore ParameterTraverseCallbackPrivate;
 %include "utils/GlobalConstants.h"
 %include "api/PaddleAPI.h"
-
