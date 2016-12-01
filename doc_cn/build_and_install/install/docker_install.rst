@@ -1,9 +1,7 @@
 安装PaddlePaddle的Docker镜像
 ============================
 
-PaddlePaddle提供了Docker的使用镜像。PaddlePaddle推荐使用Docker进行PaddlePaddle的部署和
-运行。Docker是一个基于容器的轻量级虚拟环境。具有和宿主机相近的运行效率，并提供
-了非常方便的二进制分发手段。
+PaddlePaddle项目提供官方 `Docker <https://www.docker.com/>`_ 镜像。Docker镜像是我们目前唯一官方支持的部署和运行方式。
 
 下述内容将分为如下几个类别描述。
 
@@ -41,7 +39,7 @@ PaddlePaddle提供的Docker镜像版本
 * CPU WITHOUT AVX: CPU版本，不支持AVX指令集的CPU也可以运行
 * GPU WITHOUT AVX: GPU版本，不需要AVX指令集的CPU也可以运行。
 
-用户可以选择对应版本的docker image。使用如下脚本可以确定本机的CPU知否支持 :code:`AVX` 指令集\:
+用户可以选择对应版本的docker image。使用如下脚本可以确定本机的CPU是否支持 :code:`AVX` 指令集\:
 
 ..  code-block:: bash
 
@@ -67,7 +65,7 @@ mac osx或者是windows机器，请参考
 
 ..  code-block:: bash
     
-    $ docker run -it paddledev/paddlepaddle:cpu-latest
+    $ docker run -it paddledev/paddle:cpu-latest
 
 即可启动和进入PaddlePaddle的container。如果运行GPU版本的PaddlePaddle，则需要先将
 cuda相关的Driver和设备映射进container中，脚本类似于
@@ -76,7 +74,7 @@ cuda相关的Driver和设备映射进container中，脚本类似于
 
     $ export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
     $ export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddlepaddle:latest-gpu
+    $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
 
 进入Docker container后，运行 :code:`paddle version` 即可打印出PaddlePaddle的版本和构建
 信息。安装完成的PaddlePaddle主体包括三个部分， :code:`paddle` 脚本， python的

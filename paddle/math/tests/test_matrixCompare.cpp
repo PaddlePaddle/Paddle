@@ -276,6 +276,24 @@ void testMatrixZeroAtOffset(int height, int width) {
   TensorCheckEqual(*cpuA, *cpuTest);
 }
 
+void testMatrixDeepSwap(int height, int width) {
+  MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
+  MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
+  MatrixPtr cpuCopyA = std::make_shared<CpuMatrix>(height, width);
+  MatrixPtr cpuCopyB = std::make_shared<CpuMatrix>(height, width);
+
+  cpuA->randomizeUniform();
+  cpuB->randomizeUniform();
+  cpuCopyA->copyFrom(*cpuA);
+  cpuCopyB->copyFrom(*cpuB);
+
+  // swap matrix cpuA and cpuB
+  cpuA->deepSwap(*cpuB);
+
+  MatrixCheckEqual(*cpuA, *cpuCopyB);
+  MatrixCheckEqual(*cpuB, *cpuCopyA);
+}
+
 void testMatrixTranspose(int height, int width) {
   MatrixPtr cpu = std::make_shared<CpuMatrix>(height, width);
   MatrixPtr gpu = std::make_shared<GpuMatrix>(height, width);
@@ -320,6 +338,7 @@ TEST(Matrix, unary) {
     for (auto width : {1, 3, 32, 100, 512, 1000, 3210}) {
       VLOG(3) << " height=" << height << " width=" << width;
 
+      testMatrixDeepSwap(height, width);
       testMatrixZeroAtOffset(height, width);
       testMatrixGetSum(height, width);
       testMatrixTranspose(height, width);

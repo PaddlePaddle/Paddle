@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 project(paddle CXX C)
 set(PADDLE_MAJOR_VERSION 0)
 set(PADDLE_MINOR_VERSION 9)
-set(PADDLE_PATCH_VERSION 0a0)
+set(PADDLE_PATCH_VERSION 0)
 set(PADDLE_VERSION ${PADDLE_MAJOR_VERSION}.${PADDLE_MINOR_VERSION}.${PADDLE_PATCH_VERSION})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
@@ -12,6 +12,17 @@ include(package)
 find_package(SWIG 2.0)
 find_package(CUDA QUIET)
 find_package(Protobuf REQUIRED)
+
+# Check protobuf library version.
+execute_process(COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --version
+	OUTPUT_VARIABLE PROTOBUF_VERSION)
+string(REPLACE "libprotoc " "" PROTOBUF_VERSION ${PROTOBUF_VERSION})
+
+set(PROTOBUF_3 OFF)
+if (${PROTOBUF_VERSION} VERSION_GREATER "3.0.0" OR ${PROTOBUF_VERSION} VERSION_EQUAL "3.0.0")
+    set(PROTOBUF_3 ON)
+endif()
+
 find_package(PythonLibs 2.7 REQUIRED)
 find_package(PythonInterp 2.7 REQUIRED)
 find_package(ZLIB REQUIRED)

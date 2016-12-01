@@ -129,6 +129,9 @@ class LayerType(object):
     HSIGMOID = 'hsigmoid'
     CONV_LAYER = "conv"
     CONVTRANS_LAYER = "convt"
+    EXCONV_LAYER = "exconv"
+    EXCONVTRANS_LAYER = "exconvt"
+    CUDNNCONV_LAYER = "cudnn_conv"
     POOL_LAYER = "pool"
     BATCH_NORM_LAYER = 'batch_norm'
     NORM_LAYER = 'norm'
@@ -1762,7 +1765,8 @@ def img_conv_layer(input,
                    filter_size_y=None,
                    stride_y=None,
                    padding_y=None,
-                   trans=False):
+                   trans=False,
+                   layer_type=None):
     """
     Convolution layer for image. Paddle only support square input currently and
     thus input image's width equals height.
@@ -1829,6 +1833,10 @@ def img_conv_layer(input,
     :type layer_attr: ExtraLayerAttribute
     :param trans: true if it is a convTransLayer, false if it is a convLayer
     :type trans: bool
+    :param layer_type: specify the layer_type, default is None. If trans=True,
+                       layer_type has to be "exconvt", otherwise layer_type 
+                       has to be either "exconv" or "cudnn_conv"
+    :type layer_type: String
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -1864,8 +1872,15 @@ def img_conv_layer(input,
         param_attr.attr["initial_std"] = init_w
         param_attr.attr["initial_strategy"] = 0
         param_attr.attr["initial_smart"] = False
-
-    lt = LayerType.CONVTRANS_LAYER if trans else LayerType.CONV_LAYER
+    
+    if layer_type:
+        if trans:
+            assert layer_type in ["exconvt"]
+        else:
+            assert layer_type in ["exconv", "cudnn_conv"]
+        lt = layer_type
+    else:
+        lt = LayerType.CONVTRANS_LAYER if trans else LayerType.CONV_LAYER
 
     l = Layer(
         name=name,
