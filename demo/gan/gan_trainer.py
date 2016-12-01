@@ -91,7 +91,7 @@ def load_mnist_data(imageFile):
     data = data / 255.0 * 2.0 - 1.0
 
     f.close()
-    return data
+    return data.astype('float32')
 
 def load_cifar_data(cifar_path):
     batch_size = 10000

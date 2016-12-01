@@ -29,9 +29,9 @@ is_discriminator = mode == "discriminator"
 
 print('mode=%s' % mode)
 # the dim of the noise (z) as the input of the generator network
-noise_dim = 10 
+noise_dim = 10
 # the dim of the hidden layer
-hidden_dim = 15
+hidden_dim = 10
 # the dim of the generated sample
 sample_dim = 2
 
