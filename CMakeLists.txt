@@ -73,28 +73,8 @@ include(coveralls)
 
 # Set PaddlePaddle version to Git tag name or Git commit ID.
 find_package(Git REQUIRED)
-execute_process(
-  COMMAND ${GIT_EXECUTABLE} describe --tags --exact-match --abbrev=0
-  WORKING_DIRECTORY ${PROJ_ROOT}
-  OUTPUT_VARIABLE GIT_TAG_NAME
-  RESULT_VARIABLE GIT_RESULT
-  ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(NOT ${GIT_RESULT})
-  set(PADDLE_VERSION ${GIT_TAG_NAME})
-else()
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} log -1 --format=%h
-    WORKING_DIRECTORY ${PROJ_ROOT}
-    OUTPUT_VARIABLE GIT_SHA1
-    RESULT_VARIABLE GIT_RESULT
-    ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-  if(NOT ${GIT_RESULT})
-    set(PADDLE_VERSION ${GIT_SHA1})
-  else()
-    set(PADDLE_VERSION "unknown")
-    message(WARNING "Cannot add paddle version from git tag")
-  endif()
-endif()
+# version.cmake will get the current PADDLE_VERSION
+include(version)
 add_definitions(-DPADDLE_VERSION=\"${PADDLE_VERSION}\")
 
 
