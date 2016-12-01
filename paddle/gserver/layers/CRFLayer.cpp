@@ -91,8 +91,8 @@ void CRFLayer::backward(const UpdateCallback& callback) {
   const int* starts = label.sequenceStartPositions->getData(false);
   int numSequences = label.sequenceStartPositions->getSize() - 1;
 
+  bool needWGrad = weight_->getWGrad() ? true : false;
   for (int i = 0; i < numSequences; ++i) {
-    bool needWGrad = weight_->getWGrad() ? true : false;
     crfs_[i].backward(output.value->getData() + numClasses_ * starts[i],
                       label.ids->getData() + starts[i],
                       starts[i + 1] - starts[i], needWGrad);

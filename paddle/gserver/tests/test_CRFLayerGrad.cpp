@@ -108,7 +108,7 @@ TEST(CRFLayer, cost) {
 }
 
 inline real epsilon() {
-  return typeid(real) == typeid(double) ? 1e-10 : 0.05;
+  return typeid(real) == typeid(double) ? 1e-10 : 0.06;
 }
 
 TestConfig initTestConfig(size_t numClasses, bool withWeight) {
