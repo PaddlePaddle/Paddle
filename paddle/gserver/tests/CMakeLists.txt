@@ -71,9 +71,13 @@ add_unittest(test_RecurrentLayer
 
 ############### test_WarpCTCLayer #######################
 if(NOT WITH_DOUBLE)
-    add_unittest(test_WarpCTCLayer
+    add_unittest_without_exec(test_WarpCTCLayer
         test_WarpCTCLayer.cpp
         TestUtil.cpp)
+
+    add_test(NAME test_WarpCTCLayer
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_WarpCTCLayer --warpctc_dir=${PROJ_ROOT}/warp-ctc/build
+        WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
 endif()
 
 ############### test_RecurrentGradientMachine ###############

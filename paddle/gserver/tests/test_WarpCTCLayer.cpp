@@ -38,7 +38,7 @@ const real* getData(const Matrix& matrix) {
   }
 }
 
-void checkError(const Matrix& matrix1, const Matrix& matrix2) {
+int checkError(const Matrix& matrix1, const Matrix& matrix2) {
   CHECK_EQ(matrix1.getHeight(), matrix2.getHeight());
   CHECK_EQ(matrix1.getWidth(), matrix2.getWidth());
   CHECK_EQ(matrix1.isTransposed(), matrix2.isTransposed());
@@ -62,6 +62,7 @@ void checkError(const Matrix& matrix1, const Matrix& matrix2) {
     }
   }
   EXPECT_EQ(count, 0) << "There are " << count << " different element.";
+  return count;
 }
 
 void initArgument(size_t batchSize,
@@ -72,7 +73,6 @@ void initArgument(size_t batchSize,
   data.grad = Matrix::create(batchSize, layerSize, false, useGpu);
   data.value->randomizeUniform();
   data.value->add(-0.5);
-  /// data.value->sigmoid(*data.value);
   data.grad->zeroMem();
 
   generateSequenceStartPositions(batchSize, data.sequenceStartPositions);
@@ -89,9 +89,6 @@ LayerPtr createDataLayer(
   DataLayerPtr dataLayer = std::dynamic_pointer_cast<DataLayer>(layer);
   dataLayer->setData(data);
   dataLayer->forward(PASS_GC);
-
-  /// std::cout << "dataLayer: " << std::endl;
-  /// (dataLayer->getOutput().value)->print(std::cout);
 
   return layer;
 }
@@ -198,14 +195,14 @@ LayerPtr createWarpCTCLayer(string name,
 }
 
 TEST(Layer, WarpCTCLayer) {
-  for (auto layerSize : {10, 64, 128}) {
-    for (auto batchSize : {1, 10, 20, 64}) {
+  for (auto layerSize : {10, 64}) {
+    for (auto batchSize : {1, 10, 32}) {
       for (auto normByTimes : {false, true}) {
         for (auto useGpu : {false, true}) {
 #ifdef PADDLE_ONLY_CPU
           if (useGpu) continue;
 #endif
-          LOG(INFO) << " layerSize=" << layerSize << " batchSize=" << batchSize
+          LOG(INFO) << "layerSize=" << layerSize << " batchSize=" << batchSize
                     << " normByTimes = " << normByTimes << " useGpu=" << useGpu;
 
           FLAGS_use_gpu = useGpu;
@@ -229,13 +226,17 @@ TEST(Layer, WarpCTCLayer) {
           LayerPtr ctcLayer = createCTCLayer(
               "cost", layerSize, useGpu, normByTimes, dataLayer1, labelLayer);
 
-          /// Check loss
-          checkError(*(warpctcLayer->getOutput().value),
-                     *(ctcLayer->getOutput().value));
+          /// Check cost
+          LOG(INFO) << "Check cost: "
+                    << checkError(*(warpctcLayer->getOutput().value),
+                                  *(ctcLayer->getOutput().value))
+                    << " different elements.";
 
           /// Check gradients
-          checkError(*(dataLayer0->getOutput().grad),
-                     *(dataLayer1->getOutput().grad));
+          LOG(INFO) << "Check gradients: "
+                    << checkError(*(dataLayer0->getOutput().grad),
+                                  *(dataLayer1->getOutput().grad))
+                    << " different elements";
         }
       }
     }
