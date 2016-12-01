@@ -16,6 +16,7 @@ PaddlePaddle文档
 --------
 * `新写Layer <../doc/dev/new_layer/index.html>`_
 * `如何贡献文档 <howto/how_to_write_docs/index.html>`_
+* `如何构建Docker Image <howto/build_docker_image.html>`_
 
 算法教程
 --------

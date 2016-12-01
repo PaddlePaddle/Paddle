@@ -166,9 +166,8 @@ TEST(Projection, scaling) {
   }
 }
 
-#ifndef PADDLE_ONLY_CPU
-TEST(Projection, conv) {
-  const int NUM_FILTERS = 16;
+void testProjectionConv(size_t groups) {
+  const int NUM_FILTERS = 18;
   const int FILTER_SIZE = 2;
   const int FILTER_SIZE_Y = 3;
   const int CHANNELS = 3;
@@ -186,7 +185,7 @@ TEST(Projection, conv) {
   conv->set_padding_y(1);
   conv->set_stride(2);
   conv->set_stride_y(2);
-  conv->set_groups(1);
+  conv->set_groups(groups);
   conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(IMAGE_SIZE);
   int output_x = outputSize(conv->img_size(),
@@ -206,12 +205,19 @@ TEST(Projection, conv) {
   testProjectionGrad(
       conf,
       INPUT_DATA,
-      /* parameterSize */ NUM_FILTERS * CHANNELS * FILTER_SIZE * FILTER_SIZE_Y,
+      /* parameterSize */ NUM_FILTERS * CHANNELS * FILTER_SIZE * FILTER_SIZE_Y
+                          / groups,
       /* batchSize */ 100,
       true,
       false,
       NUM_FILTERS,
       true);
+}
+
+#ifndef PADDLE_ONLY_CPU
+TEST(Projection, conv) {
+  testProjectionConv(1);
+  testProjectionConv(3);
 }
 #endif
 
