@@ -94,6 +94,11 @@ float construct(int height, int width) {
 }
 
 template <>
+double construct(int height, int width) {
+  return 0.5;
+}
+
+template <>
 size_t construct(int height, int width) {
   size_t offset = std::rand() % (height < width ? height : width);
   return offset;

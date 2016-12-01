@@ -290,8 +290,8 @@ void testMatrixDeepSwap(int height, int width) {
   // swap matrix cpuA and cpuB
   cpuA->deepSwap(*cpuB);
 
-  MatrixCheckEqual(*cpuA, *cpuCopyB);
-  MatrixCheckEqual(*cpuB, *cpuCopyA);
+  TensorCheckEqual(*cpuA, *cpuCopyB);
+  TensorCheckEqual(*cpuB, *cpuCopyA);
 }
 
 void testMatrixTranspose(int height, int width) {
