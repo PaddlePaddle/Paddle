@@ -24,7 +24,9 @@ def doubleEqual(a, b):
 
 def __readFromFile():
     for i in xrange(10002):
-        yield np.random.rand(784), random.randint(0, 9)
+        label = np.random.randint(0, 9)
+        sample = np.random.rand(784) + 0.1 * label
+        yield sample, label
 
 
 def loadMNISTTrainData(batch_size=100):

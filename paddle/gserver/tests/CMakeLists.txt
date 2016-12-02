@@ -39,9 +39,17 @@ add_unittest_without_exec(test_ConvUnify
     test_ConvUnify.cpp
     LayerGradUtil.cpp
     TestUtil.cpp)
-
+    
 add_test(NAME test_ConvUnify
     COMMAND test_ConvUnify)
+################# test_BatchNorm #######################
+add_unittest_without_exec(test_BatchNorm
+    test_BatchNorm.cpp
+    LayerGradUtil.cpp
+    TestUtil.cpp)
+
+add_test(NAME test_BatchNorm
+    COMMAND test_BatchNorm)
 ################## test_Evaluator #######################
 add_unittest(test_Evaluator
     test_Evaluator.cpp
