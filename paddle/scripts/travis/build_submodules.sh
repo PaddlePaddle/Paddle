@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+WORK_DIR=$PWD
 PROJ_ROOT=$(git rev-parse --show-cdup)
 SUBMODULES=$(grep path ${PROJ_ROOT}.gitmodules | sed 's/^.*path = //')
 
@@ -16,3 +17,4 @@ do
     ;;
   esac
 done
+cd $WORK_DIR

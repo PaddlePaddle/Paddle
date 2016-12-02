@@ -1874,7 +1874,7 @@ def img_conv_layer(input,
         param_attr.attr["initial_std"] = init_w
         param_attr.attr["initial_strategy"] = 0
         param_attr.attr["initial_smart"] = False
-    
+
     if layer_type:
         if trans:
             assert layer_type in ["exconvt"]
@@ -4125,11 +4125,11 @@ def warp_ctc_layer(input,
 
     Note:
         - Let num_classes represent the category number. Considering the 'blank'
-          label needed by CTC, you need to use (num_classes + 1) as the input size.
-          Thus, the size of both warp_ctc_layer and 'input' layer should be set to
-          num_classes + 1.
-        - You can set 'blank' to [0, num_classes - 1], which should be consistent
-          as that used in your labels.
+          label needed by CTC, you need to use (num_classes + 1) as the input
+          size. Thus, the size of both warp_ctc_layer and 'input' layer should
+          be set to num_classes + 1.
+        - You can set 'blank' to any value ranged in [0, num_classes], which
+          should be consistent as that used in your labels.
         - As a native 'softmax' activation is interated to the warp-ctc library,
          'linear' activation is expected instead in the 'input' layer.
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-./submodules.sh
+./build_submodules.sh
 source ./common.sh
 CMAKE_EXTRA=""
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
