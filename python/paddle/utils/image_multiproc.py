@@ -1,44 +1,50 @@
-import os, psutil
-import cv2
-from paddle.utils.image_util import *
+import os, sys
+import numpy as np
+from PIL import Image
+from cStringIO import StringIO
 import multiprocessing
-import subprocess, signal, sys
+from functools import partial
+
+from paddle.utils.image_util import *
+from paddle.trainer.config_parser import logger
+
+try:
+    import cv2
+except ImportError:
+    logger.warning("OpenCV2 is not installed, using PIL to prcoess")
+    cv2 = None
 
 
-class CvImageTransfomer(ImageTransformer):
+class CvTransfomer(ImageTransformer):
     """
-    CvImageTransfomer used python-opencv to process image.
+    CvTransfomer used python-opencv to process image.
     """
 
-    def __init__(self,
-                 min_size=None,
-                 crop_size=None,
-                 transpose=None,
-                 channel_swap=None,
-                 mean=None,
-                 is_train=True,
-                 is_color=True):
+    def __init__(
+            self,
+            min_size=None,
+            crop_size=None,
+            transpose=(2, 0, 1),  # transpose to C * H * W
+            channel_swap=None,
+            mean=None,
+            is_train=True,
+            is_color=True):
         ImageTransformer.__init__(self, transpose, channel_swap, mean, is_color)
         self.min_size = min_size
         self.crop_size = crop_size
         self.is_train = is_train
 
-    def cv_resize_fixed_short_side(self, im, min_size):
+    def resize(self, im, min_size):
         row, col = im.shape[:2]
-        scale = min_size / float(min(row, col))
-        if row < col:
-            row = min_size
-            col = int(round(col * scale))
-            col = col if col > min_size else min_size
+        new_row, new_col = min_size, min_size
+        if row > col:
+            new_row = min_size * row / col
         else:
-            col = min_size
-            row = int(round(row * scale))
-            row = row if row > min_size else min_size
-        resized_size = row, col
-        im = cv2.resize(im, resized_size, interpolation=cv2.INTER_CUBIC)
+            new_col = min_size * col / row
+        im = cv2.resize(im, (new_row, new_col), interpolation=cv2.INTER_CUBIC)
         return im
 
-    def crop_img(self, im):
+    def crop_and_flip(self, im):
         """
         Return cropped image.
         The size of the cropped image is inner_size * inner_size.
@@ -65,8 +71,8 @@ class CvImageTransfomer(ImageTransformer):
         return im
 
     def transform(self, im):
-        im = self.cv_resize_fixed_short_side(im, self.min_size)
-        im = self.crop_img(im)
+        im = self.resize(im, self.min_size)
+        im = self.crop_and_flip(im)
         # transpose, swap channel, sub mean
         im = im.astype('float32')
         ImageTransformer.transformer(self, im)
@@ -81,90 +87,187 @@ class CvImageTransfomer(ImageTransformer):
         im = self.load_image_from_string(data)
         return self.transform(im)
 
+    def load_image_from_file(self, file):
+        flag = cv2.CV_LOAD_IMAGE_COLOR if self.is_color else cv2.CV_LOAD_IMAGE_GRAYSCALE
+        im = cv2.imread(file, flag)
+        return im
 
-class MultiProcessImageTransfomer():
+    def transform_from_file(self, file):
+        im = self.load_image_from_file(file)
+        return self.transform(im)
+
+
+class PILTransfomer(ImageTransformer):
+    """
+    PILTransfomer used PIL to process image.
+    """
+
+    def __init__(
+            self,
+            min_size=None,
+            crop_size=None,
+            transpose=(2, 0, 1),  # transpose to C * H * W
+            channel_swap=None,
+            mean=None,
+            is_train=True,
+            is_color=True):
+        ImageTransformer.__init__(self, transpose, channel_swap, mean, is_color)
+        self.min_size = min_size
+        self.crop_size = crop_size
+        self.is_train = is_train
+
+    def resize(self, im, min_size):
+        row, col = im.size[:2]
+        new_row, new_col = min_size, min_size
+        if row > col:
+            new_row = min_size * row / col
+        else:
+            new_col = min_size * col / row
+        im = im.resize((new_row, new_col), Image.ANTIALIAS)
+        return im
+
+    def crop_and_flip(self, im):
+        """
+        Return cropped image.
+        The size of the cropped image is inner_size * inner_size.
+        """
+        row, col = im.size[:2]
+        start_h, start_w = 0, 0
+        if self.is_train:
+            start_h = np.random.randint(0, row - self.crop_size + 1)
+            start_w = np.random.randint(0, col - self.crop_size + 1)
+        else:
+            start_h = (row - self.crop_size) / 2
+            start_w = (col - self.crop_size) / 2
+        end_h, end_w = start_h + self.crop_size, start_w + self.crop_size
+        im = im.crop((start_h, start_w, end_h, end_w))
+        if (self.is_train) and (np.random.randint(2) == 0):
+            im = im.transpose(Image.FLIP_LEFT_RIGHT)
+        return im
+
+    def transform(self, im):
+        im = self.resize(im, self.min_size)
+        im = self.crop_and_flip(im)
+        im = np.array(im, dtype=np.float32)  # convert to numpy.array
+        # transpose, swap channel, sub mean
+        ImageTransformer.transformer(self, im)
+        return im
+
+    def load_image_from_string(self, data):
+        im = Image.open(StringIO(data))
+        return im
+
+    def transform_from_string(self, data):
+        im = self.load_image_from_string(data)
+        return self.transform(im)
+
+    def load_image_from_file(self, file):
+        im = Image.open(file)
+        return im
+
+    def transform_from_file(self, file):
+        im = self.load_image_from_file(file)
+        return self.transform(im)
+
+
+def warpper(cls, (dat, label)):
+    return cls.job(dat, label)
+
+
+class MultiProcessImageTransformer(object):
     def __init__(self,
                  procnum=10,
-                 capacity=10240,
-                 min_size=None,
+                 resize_size=None,
                  crop_size=None,
-                 transpose=None,
+                 transpose=(2, 0, 1),
                  channel_swap=None,
                  mean=None,
                  is_train=True,
-                 is_color=True):
-        self.procnum = procnum
-        self.capacity = capacity
-        self.size = 0
-        self.count = 0
-        signal.signal(signal.SIGTERM, self.kill_child_processes)
-        self.fetch_queue = multiprocessing.Queue(maxsize=capacity)
-        self.cv_transformer = CvImageTransfomer(min_size, crop_size, transpose,
-                                                channel_swap, mean, is_train,
-                                                is_color)
+                 is_color=True,
+                 is_img_string=True):
+        """
+        Processing image with multi-process. If it is used in PyDataProvider,
+        the simple usage for CNN is as follows:
+       
+        .. code-block:: python
 
-    def __del__(self):
+            def hool(settings, is_train,  **kwargs):
+                settings.is_train = is_train
+                settings.mean_value = np.array([103.939,116.779,123.68], dtype=np.float32)
+                settings.input_types = [
+                    dense_vector(3 * 224 * 224),
+                    integer_value(1)]
+                settings.transformer = MultiProcessImageTransformer(
+                    procnum=10,
+                    resize_size=256,
+                    crop_size=224,
+                    transpose=(2, 0, 1),
+                    mean=settings.mean_values,
+                    is_train=settings.is_train)
+
+
+            @provider(init_hook=hook, pool_size=20480)
+            def process(settings, file_list):
+                with open(file_list, 'r') as fdata:
+                    for line in fdata: 
+                        data_dic = np.load(line.strip()) # load the data batch pickled by Pickle.
+                        data = data_dic['data']
+                        labels = data_dic['label']
+                        labels = np.array(labels, dtype=np.float32)
+                        for im, lab in settings.dp.run(data, labels):
+                            yield [im.astype('float32'), int(lab)]
+
+        :param procnum: processor number.
+        :type procnum: int
+        :param resize_size: the shorter edge size of image after resizing.
+        :type resize_size: int
+        :param crop_size: the croping size.
+        :type crop_size: int
+        :param transpose: the transpose order, Paddle only allow C * H * W order.
+        :type transpose: tuple or list
+        :param channel_swap: the channel swap order, RGB or BRG.
+        :type channel_swap: tuple or list
+        :param mean: the mean values of image, per-channel mean or element-wise mean.
+        :type mean: array, The dimension is 1 for per-channel mean.
+                    The dimension is 3 for element-wise mean. 
+        :param is_train: training peroid or testing peroid.
+        :type is_train: bool.
+        :param is_color: the image is color or gray. 
+        :type is_color: bool.
+        :param is_img_string: The input can be the file name of image or image string.
+        :type is_img_string: bool.
+        """
+
+        self.pool = multiprocessing.Pool(procnum)
+        self.is_img_string = is_img_string
+        if cv2 is not None:
+            self.transformer = CvTransfomer(resize_size, crop_size, transpose,
+                                            channel_swap, mean, is_train,
+                                            is_color)
+        else:
+            self.transformer = PILTransfomer(resize_size, crop_size, transpose,
+                                             channel_swap, mean, is_train,
+                                             is_color)
+
+    def run(self, data, label):
         try:
-            for p in self.procs:
-                p.join()
-        except Exception as e:
-            print str(e)
+            fun = partial(warpper, self)
+            return self.pool.imap_unordered(fun, zip(data, label), chunksize=5)
+        except KeyboardInterrupt:
+            self.pool.terminate()
+        except Exception, e:
+            self.pool.terminate()
 
-    def reset(self, size):
-        self.size = size
-        self.count = 0
-        self.procs = []
+    def job(self, data, label):
+        if self.is_img_string:
+            return self.transformer.transform_from_string(data), label
+        else:
+            return self.transformer.transform_from_file(data), label
 
-    def run_proc(self, data, label):
-        dlen = len(label)
-        self.reset(dlen)
-        for i in xrange(self.procnum):
-            start = dlen * i / self.procnum
-            end = dlen * (i + 1) / self.procnum
-            proc = multiprocessing.Process(
-                target=self.batch_transfomer,
-                args=(data[start:end], label[start:end]))
-            proc.daemon = True
-            self.procs.append(proc)
-        for p in self.procs:
-            p.start()
+    def __getstate__(self):
+        self_dict = self.__dict__.copy()
+        del self_dict['pool']
+        return self_dict
 
-    def get(self):
-        """
-        Return one processed image.
-        """
-        # block if necessary until an item is available
-        data, lab = self.fetch_queue.get(block=True)
-        self.count += 1
-        if self.count == self.size:
-            try:
-                for p in self.procs:
-                    p.join()
-            except Exception as e:
-                print str(e)
-        return data, lab
-
-    def batch_transfomer(self, data, label):
-        """
-        param data: input data in format of image string
-        type data: a list of string
-        label: the label of image
-        """
-        for i in xrange(len(label)):
-            res = self.cv_transformer.transform_from_string(data[i])
-            self.fetch_queue.put((res, int(label[i])))
-
-    def kill_child_processes(self, signum, frame):
-        """
-        Kill a process's child processes in python.
-        """
-        parent_id = os.getpid()
-        ps_command = subprocess.Popen(
-            "ps -o pid --ppid %d --noheaders" % parent_id,
-            shell=True,
-            stdout=subprocess.PIPE)
-        ps_output = ps_command.stdout.read()
-        retcode = ps_command.wait()
-        for pid_str in ps_output.strip().split("\n")[:-1]:
-            os.kill(int(pid_str), signal.SIGTERM)
-        sys.exit()
+    def __setstate__(self, state):
+        self.__dict__.update(state)
