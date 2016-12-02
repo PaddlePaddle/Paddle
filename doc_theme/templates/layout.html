@@ -73,7 +73,7 @@
   {%- endblock %}
   {%- block extrahead %} 
 
-  <link rel="stylesheet" href="{{pathto('_static/css/perfect-scrollbar.min.css', 1)}}" type="text/css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
   <link rel="stylesheet" href="{{pathto('_static/css/override.css', 1)}}" type="text/css" />
   <script>
   var _hmt = _hmt || [];
@@ -182,8 +182,8 @@
     <script type="text/javascript" src="{{ pathto('_static/js/theme.js', 1) }}"></script>
   {% endif %}
   
-  <script src="{{ pathto('_static/js/bootstrap.min.js', 1) }}"></script>
-  <script src="{{ pathto('_static/js/perfect-scrollbar.jquery.min.js', 1) }}"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/js/perfect-scrollbar.jquery.min.js"></script>
   <script src="{{ pathto('_static/js/paddle_doc_init.js', 1) }}"></script>
   {%- block footer %} {% endblock %}
 
