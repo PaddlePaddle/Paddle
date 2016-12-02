@@ -428,7 +428,7 @@ a, a:focus, a:hover, a:visited {
     top: 0;
     width: 100%;
     left: 0;
-    padding: 30px;
+    padding: 0 30px;
     height: 60px;
 }
 .wy-breadcrumbs {
@@ -452,7 +452,7 @@ a, a:focus, a:hover, a:visited {
     max-width: none;
     overflow: auto;
     position: relative;
-    padding: 0 30px;
+    padding: 30px;
     background-color: #fff;
 }
 .wy-nav-content h1 {
