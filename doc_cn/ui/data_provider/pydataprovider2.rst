@@ -156,6 +156,11 @@ PaddlePaddle的数据包括四种主要类型，和三种序列模式。
 
 其中，f代表一个浮点数，i代表一个整数。
 
+注意：对sparse_binary_vector和sparse_float_vector，PaddlePaddle存的是有值位置的索引。例如，
+
+- 对一个5维非序列的稀疏01向量 ``[0, 1, 1, 0, 0]`` ，类型是sparse_binary_vector，返回的是 ``[1, 2]`` 。
+- 对一个5维非序列的稀疏浮点向量 ``[0, 0.5, 0.7, 0, 0]`` ，类型是sparse_float_vector，返回的是 ``[(1, 0.5), (2, 0.7)]`` 。
+
 init_hook
 +++++++++
 
