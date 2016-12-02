@@ -20,7 +20,7 @@ PaddlePaddle的Docker Image构建源码放置在 ``${源码根目录}/paddle/scr
     cd ${源码根目录}/paddle/scripts/docker/
     docker build --build-arg LOWEST_DL_SPEED=50K \
                  --build-arg WITH_GPU=ON \
-                 --tag  paddle_gpu:latest
+                 --tag  paddle_gpu:latest .
 
 其中，``--build-arg`` 传入的配置参数包括:
 
