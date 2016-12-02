@@ -281,6 +281,13 @@ FloatArray Vector::getData() const {
   }
 }
 
+void Vector::copyFrom(Vector* src) throw(RangeError) {
+  if (src->m->vec->getSize() !=  m->vec->getSize()) {
+    throw RangeError();
+  }
+  m->vec->copyFrom(*src->m->vec);
+}
+
 bool Vector::isGpu() const {
   return std::dynamic_pointer_cast<paddle::GpuVector>(m->vec) != nullptr;
 }
