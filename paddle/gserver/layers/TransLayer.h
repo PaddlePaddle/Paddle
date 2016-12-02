@@ -20,7 +20,7 @@ limitations under the License. */
 
 namespace paddle {
 /**
- * A layer for transposition.
+ * A layer for transposing a minibatch matrix.
  * \f[
      y = x^\mathrm{T}
  * \f]

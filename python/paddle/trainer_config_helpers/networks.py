@@ -957,22 +957,22 @@ def simple_gru(input,
     use one complete layer to implement rnn (including simple rnn, gru and lstm)
     with multiple time steps, such as recurrent_layer, lstmemory, grumemory. But,
     the multiplication operation :math:`W x_t` is not computed in these layers.
-    See details in their interfaces in layers.py. 
+    See details in their interfaces in layers.py.
     The other implementation is to use an recurrent group which can ensemble a
     series of layers to compute rnn step by step. This way is flexible for
     attenion mechanism or other complex connections.
 
     - gru_step_layer: only compute rnn by one step. It needs an memory as input
       and can be used in recurrent group.
-    - gru_unit: a wrapper of gru_step_layer with memory. 
+    - gru_unit: a wrapper of gru_step_layer with memory.
     - gru_group: a GRU cell implemented by a combination of multiple layers in
       recurrent group.
-      But :math:`W x_t` is not done in group.  
+      But :math:`W x_t` is not done in group.
     - gru_memory: a GRU cell implemented by one layer, which does same calculation
-      with gru_group and is faster than gru_group. 
-    - simple_gru: a complete GRU implementation inlcuding :math:`W x_t` and 
+      with gru_group and is faster than gru_group.
+    - simple_gru: a complete GRU implementation inlcuding :math:`W x_t` and
       gru_group. :math:`W` contains :math:`W_r`, :math:`W_z` and :math:`W`, see
-      formula in grumemory. 
+      formula in grumemory.
 
     The computational speed is that, grumemory is relatively better than
     gru_group, and gru_group is relatively better than simple_gru.

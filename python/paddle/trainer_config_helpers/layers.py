@@ -70,6 +70,8 @@ __all__ = [
     'interpolation_layer',
     'bilinear_interp_layer',
     'trans_layer',
+    'rotate_layer',
+    'flip_layer',
     'sum_to_one_norm_layer',
     'get_output_layer',
     'LayerType',
@@ -154,6 +156,7 @@ class LayerType(object):
     POWER_LAYER = 'power'
     SCALING_LAYER = 'scaling'
     TRANS_LAYER = 'trans'
+    ROTATE_LAYER = 'rotate'
     OUT_PROD_LAYER = 'out_prod'
     FEATURE_MAP_EXPAND_LAYER = 'featmap_expand'
 
@@ -1642,7 +1645,7 @@ def scaling_layer(input, weight, name=None, layer_attr=None):
 @layer_support()
 def trans_layer(input, name=None, layer_attr=None):
     """
-    A layer for transposition.
+    A layer for transposing a minibatch matrix.
 
     .. math::
        y = x^\mathrm{T}
@@ -1671,6 +1674,87 @@ def trans_layer(input, name=None, layer_attr=None):
         **ExtraAttr.to_kwargs(layer_attr))
     return LayerOutput(
         name, LayerType.TRANS_LAYER, parents=[input], size=input.size)
+
+
+@wrap_name_default()
+@layer_support()
+def rotate_layer(input, height, name=None, layer_attr=None):
+    """
+    A layer for rotation (clock-wise), usually used when the input sample
+    is some image or map.
+
+    .. math::
+       y(j,i) = x(M-i-1,j)
+
+    where :math:`x` is (M x N) input, and :math:`y` is (N x M) output.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       rot = rotate_layer(input=layer,
+                          height=100)
+
+    :param input: Input layer.
+    :type input: LayerOutput
+    :param height: The height of the sample matrix
+    :type height: int
+    :param name: Layer name.
+    :type name: basestring
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    l = Layer(name=name,
+              height=height,
+              type=LayerType.ROTATE_LAYER,
+              inputs=[input.name],
+              **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(name=name,
+                       layer_type=LayerType.ROTATE_LAYER,
+                       parents=[input],
+                       size=l.config.size)
+
+
+@wrap_name_default()
+@layer_support()
+def flip_layer(input, height, name=None, layer_attr=None):
+    """
+    A layer for flipping the matrix w.r.t the matrix center.
+    It's essentially rotating the matrix twice.
+    Used for input as image or map.
+
+    .. math::
+       y(i,j) = x(M-i-1, N-j-1)
+
+    where :math:`x` is (M x N) input, and :math:`y` is (M x N) output.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       flip = flip_layer(input=layer,
+                         height=100)
+
+    :param input: Input layer.
+    :type input: LayerOutput
+    :param height: The height of the sample matrix
+    :type height: int
+    :param name: Layer name.
+    :type name: basestring
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    return rotate_layer(input=rotate_layer(input=input,
+                                           height=height),
+                        height=height,
+                        name=name,
+                        layer_attr=layer_attr)
 
 
 @wrap_name_default()
@@ -1826,14 +1910,14 @@ def img_conv_layer(input,
                    trans=False,
                    layer_type=None):
     """
-    Convolution layer for image. Paddle can support both square and non-square 
+    Convolution layer for image. Paddle can support both square and non-square
     input currently.
 
     The details of convolution layer, please refer UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/
     FeatureExtractionUsingConvolution/>`_ .
 
-    Convolution Transpose (deconv) layer for image. Paddle can support both square 
+    Convolution Transpose (deconv) layer for image. Paddle can support both square
     and non-square input currently.
 
     The details of convolution transpose layer,
@@ -1892,7 +1976,7 @@ def img_conv_layer(input,
     :param trans: true if it is a convTransLayer, false if it is a convLayer
     :type trans: bool
     :param layer_type: specify the layer_type, default is None. If trans=True,
-                       layer_type has to be "exconvt", otherwise layer_type 
+                       layer_type has to be "exconvt", otherwise layer_type
                        has to be either "exconv" or "cudnn_conv"
     :type layer_type: String
     :return: LayerOutput object.
@@ -3619,9 +3703,9 @@ def pad_layer(input,
     input data and 3 zeros after the input data in channel dimension.
     pad_h means padding zeros in height dimension. pad_w means padding zeros
     in width dimension.
-    
+
     For example,
-    
+
     .. code-block::
 
       input(2,2,2,3)  = [
@@ -3630,7 +3714,7 @@ def pad_layer(input,
                           [ [[4,3,1], [1,8,7]],
                             [[3,8,9], [2,3,5]] ]
                         ]
- 
+
       pad_c=[1,1], pad_h=[0,0], pad_w=[0,0]
       output(2,4,2,3) = [
                           [ [[0,0,0], [0,0,0]],
@@ -4739,6 +4823,7 @@ def cross_entropy_with_selfnorm(input,
                                 layer_attr=None):
     """
     A loss layer for multi class entropy with selfnorm.
+    Input should be a vector of positive numbers, without normalization.
 
     .. code-block:: python
 
