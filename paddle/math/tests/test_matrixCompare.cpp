@@ -765,12 +765,12 @@ void testMatrixTranspose(int height, int width) {
   MatrixPtr cpu = std::make_shared<CpuMatrix>(height, width);
   MatrixPtr gpu = std::make_shared<GpuMatrix>(height, width);
   MatrixPtr cpuT = std::make_shared<CpuMatrix>(width, height);
-  MatrixPtr gpuT = std::make_shared<GpuMatrix>(width, height);
+  MatrixPtr gpuT = nullptr;
 
   cpu->randomizeUniform();
   gpu->copyFrom(*cpu);
   cpu->transpose(cpuT, false);
-  gpu->transpose(gpuT, false);
+  gpu->transpose(gpuT, true);
 
   MatrixPtr outputCheck = std::make_shared<CpuMatrix>(width, height);
   outputCheck->copyFrom(*gpuT);
@@ -780,7 +780,7 @@ void testMatrixTranspose(int height, int width) {
 void testMatrixInverse(int height) {
   MatrixPtr cpu = std::make_shared<CpuMatrix>(height, height);
   MatrixPtr gpu = std::make_shared<GpuMatrix>(height, height);
-  MatrixPtr cpuI = std::make_shared<CpuMatrix>(height, height);
+  MatrixPtr cpuI = nullptr;
   MatrixPtr gpuI = std::make_shared<GpuMatrix>(height, height);
 
   /* Make matrix well conditioned: cpu * cpuT + Identity */
@@ -792,7 +792,7 @@ void testMatrixInverse(int height) {
   cpu->add(*outputCheck);
 
   gpu->copyFrom(*cpu);
-  cpu->inverse(cpuI, false);
+  cpu->inverse(cpuI, true);
   gpu->inverse(gpuI, false);
 
   outputCheck->copyFrom(*gpuI);
