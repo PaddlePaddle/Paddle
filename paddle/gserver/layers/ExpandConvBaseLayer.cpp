@@ -147,7 +147,7 @@ void ExpandConvBaseLayer::expandFwdOnce(MatrixPtr image,
   real *expInData = expandInput_->getData();
   for (int g = 0; g < groups_[inIdx]; ++g) {
     MatrixPtr A =
-        Matrix::create(wgtData, subK, subM, true, useGpu_);  // mark transpose
+        Matrix::create(wgtData, subM, subK, false, useGpu_);  // mark transpose
     MatrixPtr B = Matrix::create(expInData, subK, subN, false, useGpu_);
     MatrixPtr C = Matrix::create(outData, subM, subN, false, useGpu_);
     C->mul(A, B, 1, 1);
@@ -184,7 +184,7 @@ void ExpandConvBaseLayer::bpropActs(MatrixPtr out,
       // create temporary matrix
       MatrixPtr C = Matrix::create(expandInData, subK, subN, false, useGpu_);
       MatrixPtr B = Matrix::create(localGradData, subM, subN, false, useGpu_);
-      MatrixPtr A = Matrix::create(wgtData, subK, subM, false, useGpu_);
+      MatrixPtr A = Matrix::create(wgtData, subM, subK, true, useGpu_);
       C->mul(A, B);  // mul
 
       // clear the temporary matrix
@@ -249,10 +249,10 @@ void ExpandConvBaseLayer::bpropWeights(MatrixPtr image,
 
     // expand-mul one-group by one
     for (int g = 0; g < groups_[inpIdx]; g++) {
-      MatrixPtr A = Matrix::create(expandInData, subK, subN, false, useGpu_);
-      MatrixPtr B = Matrix::create(gradData, subM, subN, true, useGpu_);
-      MatrixPtr C = Matrix::create(wGradData, subK, subM, false, useGpu_);
-      C->mul(A, B, 1, 1);
+      MatrixPtr A = Matrix::create(expandInData, subK, subN, true, useGpu_);
+      MatrixPtr B = Matrix::create(gradData, subM, subN, false, useGpu_);
+      MatrixPtr C = Matrix::create(wGradData, subM, subK, false, useGpu_);
+      C->mul(B, A, 1, 1);
 
       A->clear();
       B->clear();
