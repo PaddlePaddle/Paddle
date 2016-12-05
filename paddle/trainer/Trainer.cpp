@@ -39,7 +39,6 @@ limitations under the License. */
 #include "TrainerConfigHelper.h"
 
 P_DEFINE_string(config, "", "Trainer config file");
-<<<<<<< HEAD
 
 P_DEFINE_int32(test_period, 0,
                "if equal 0, do test on all test data at the end of "
