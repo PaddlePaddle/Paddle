@@ -25,20 +25,6 @@ sys.path.insert(0, '@PROJ_ROOT@/python')
 
 templates_path = ["@PROJ_ROOT@/doc/templates"]
 
-# -- Doxygen Settings
-breathe_projects = {
-   'paddle': '@PADDLE_DOXYGEN_OUTPUT@/xml'
-}
-breathe_default_project = 'paddle'
-
-breathe_domain_by_extension = {
-    'h': 'cpp',  # mapping XXX.h XXX.cpp together
-}
-
-breathe_default_members = {
-    'protected-members','undoc-members'
-}
-
 # -- General configuration ------------------------------------------------
 
 # General information about the project.
@@ -62,7 +48,6 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
-    'breathe'
 ]
 
 

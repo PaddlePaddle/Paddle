@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Preprocess Movielens dataset, to get movie/user object.
 
@@ -66,8 +65,8 @@ class SortedIDGenerator(object):
         self.__key_set__.add(key)
 
     def finish_scan(self, compare=None, key=None, reverse=False):
-        self.__key_set__ = sorted(list(self.__key_set__), cmp=compare,
-                                  key=key, reverse=reverse)
+        self.__key_set__ = sorted(
+            list(self.__key_set__), cmp=compare, key=key, reverse=reverse)
         self.dict = dict()
         for idx, each_key in enumerate(self.__key_set__):
             self.dict[each_key] = idx
@@ -207,11 +206,10 @@ class EmbeddingFieldParser(object):
             self.dict = EmbeddingFieldParser.CharBasedEmbeddingDict(
                 self.seq_type == EmbeddingFieldParser.SEQUENCE)
         elif config['dict']['type'] == 'split':
-            self.dict = SplitEmbeddingDict(
-                config['dict'].get('delimiter', ','))
+            self.dict = SplitEmbeddingDict(config['dict'].get('delimiter', ','))
         elif config['dict']['type'] == 'whole_content':
-            self.dict = EmbeddingFieldParser.WholeContentDict(
-                config['dict']['sort'])
+            self.dict = EmbeddingFieldParser.WholeContentDict(config['dict'][
+                'sort'])
         else:
             print config
             assert False
@@ -333,8 +331,8 @@ class ContentExtractorFactory(object):
                 return PositionContentExtractor(config['pos'])
             else:
                 extra_args = config['regex']
-                return RegexPositionContentExtractor(pos=config['pos'],
-                                                     **extra_args)
+                return RegexPositionContentExtractor(
+                    pos=config['pos'], **extra_args)
 
 
 class MetaFile(object):
@@ -364,9 +362,10 @@ class MetaFile(object):
 
             metas = map(lambda x: x.meta_field(), field_parsers)
             # print metas
-            key_index = filter(lambda x: x is not None, map(
-                lambda (idx, meta): idx if 'is_key' in meta and meta['is_key']
-                else None, enumerate(metas)))[0]
+            key_index = filter(
+                lambda x: x is not None,
+                map(lambda (idx, meta): idx if 'is_key' in meta and meta['is_key'] else None,
+                    enumerate(metas)))[0]
 
             key_map = []
             for i in range(min(key_index, len(metas))):
@@ -374,12 +373,7 @@ class MetaFile(object):
             for i in range(key_index + 1, len(metas)):
                 key_map.append(i)
 
-            obj = {
-                '__meta__': {
-                    'raw_meta': metas,
-                    'feature_map': key_map
-                }
-            }
+            obj = {'__meta__': {'raw_meta': metas, 'feature_map': key_map}}
 
             for each_block in reader.read():
                 idx = field_parsers[key_index].parse(each_block)

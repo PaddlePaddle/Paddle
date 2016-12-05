@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 #include <cstddef>
 #include <stdint.h>
@@ -52,9 +51,14 @@ public:
   size_t cRow_;
   size_t dCol_;
   size_t dRow_;
-  MatrixOffset(size_t aCol = 0, size_t aRow = 0, size_t bCol = 0,
-               size_t bRow = 0, size_t cCol = 0, size_t cRow = 0,
-               size_t dCol = 0, size_t dRow = 0)
+  MatrixOffset(size_t aCol = 0,
+               size_t aRow = 0,
+               size_t bCol = 0,
+               size_t bRow = 0,
+               size_t cCol = 0,
+               size_t cRow = 0,
+               size_t dCol = 0,
+               size_t dRow = 0)
       : aCol_(aCol),
         aRow_(aRow),
         bCol_(bCol),
@@ -65,7 +69,7 @@ public:
         dRow_(dRow) {}
 };
 
-template<class T>
+template <class T>
 class BaseMatrixT {
 public:
   size_t height_, width_;
@@ -97,8 +101,12 @@ public:
         trans_(mat.trans_),
         useGpu_(useGpu) {}
 
-  BaseMatrixT(size_t height, size_t width, size_t stride, T* data, bool trans,
-             bool use_gpu)
+  BaseMatrixT(size_t height,
+              size_t width,
+              size_t stride,
+              T* data,
+              bool trans,
+              bool use_gpu)
       : height_(height),
         width_(width),
         stride_(stride),
@@ -167,12 +175,17 @@ public:
    * @endcode
    */
   template <class Op, class bAsRowVector, class bAsColVector>
-  int applyBinary(Op op, BaseMatrixT& b, int numRows, int numCols,
-                  MatrixOffset& offset, bAsRowVector, bAsColVector);
+  int applyBinary(Op op,
+                  BaseMatrixT& b,
+                  int numRows,
+                  int numCols,
+                  MatrixOffset& offset,
+                  bAsRowVector,
+                  bAsColVector);
 
   template <class Op>
-  int applyBinary(Op op, BaseMatrixT& b, int numRows, int numCols,
-                  MatrixOffset& offset);
+  int applyBinary(
+      Op op, BaseMatrixT& b, int numRows, int numCols, MatrixOffset& offset);
 
   /**
    * ternary operator: element wise op(a, b, c).
@@ -212,13 +225,22 @@ public:
    * @endcode
    */
   template <class Op, class cAsRowVector, class cAsColVector>
-  int applyTernary(Op op, BaseMatrixT& b, BaseMatrixT& c, int numRows,
-                   int numCols, MatrixOffset& offset, cAsRowVector,
+  int applyTernary(Op op,
+                   BaseMatrixT& b,
+                   BaseMatrixT& c,
+                   int numRows,
+                   int numCols,
+                   MatrixOffset& offset,
+                   cAsRowVector,
                    cAsColVector);
 
   template <class Op>
-  int applyTernary(Op op, BaseMatrixT& b, BaseMatrixT& c, int numRows,
-                   int numCols, MatrixOffset& offset);
+  int applyTernary(Op op,
+                   BaseMatrixT& b,
+                   BaseMatrixT& c,
+                   int numRows,
+                   int numCols,
+                   MatrixOffset& offset);
 
   /**
    * quaternary operator: element wise op(a, b, c, d).
@@ -247,8 +269,13 @@ public:
    * @endcode
    */
   template <class Op>
-  int applyQuaternary(Op op, BaseMatrixT& b, BaseMatrixT& c, BaseMatrixT& d,
-                      int numRows, int numCols, MatrixOffset& offset);
+  int applyQuaternary(Op op,
+                      BaseMatrixT& b,
+                      BaseMatrixT& c,
+                      BaseMatrixT& d,
+                      int numRows,
+                      int numCols,
+                      MatrixOffset& offset);
 
   /**
    * a aggregate expression that apply each row(or column) of matrix b.
@@ -266,10 +293,20 @@ public:
    *    a[i] = sv(a[i], dst)
    * @endcode
    */
-  template <class Agg, class Op, class Saver, class aAsRowVector,
+  template <class Agg,
+            class Op,
+            class Saver,
+            class aAsRowVector,
             class aAsColVector>
-  int aggregate(Agg agg, Op op, Saver sv, BaseMatrixT& b, int numRows,
-                int numCols, MatrixOffset& offset, aAsRowVector, aAsColVector);
+  int aggregate(Agg agg,
+                Op op,
+                Saver sv,
+                BaseMatrixT& b,
+                int numRows,
+                int numCols,
+                MatrixOffset& offset,
+                aAsRowVector,
+                aAsColVector);
 
   /**
    * a aggregate expression that apply each row(or column) of matrix b and c.
@@ -288,10 +325,20 @@ public:
    *     a[i] = sv(a[i], dst)
    * @endcode
    */
-  template <class Agg, class Op, class Saver, class aAsRowVector,
+  template <class Agg,
+            class Op,
+            class Saver,
+            class aAsRowVector,
             class aAsColVector>
-  int aggregate(Agg agg, Op op, Saver sv, BaseMatrixT& b, BaseMatrixT& c,
-                int numRows, int numCols, MatrixOffset& offset, aAsRowVector,
+  int aggregate(Agg agg,
+                Op op,
+                Saver sv,
+                BaseMatrixT& b,
+                BaseMatrixT& c,
+                int numRows,
+                int numCols,
+                MatrixOffset& offset,
+                aAsRowVector,
                 aAsColVector);
 
   /**
@@ -310,12 +357,37 @@ public:
    *
    * @code
    * for each row i & 0 <= j < b.width_, do:
+   *   dst = agg(op(b[i*ldb + j], c[i*ldc + j])
+   *   this[i] = sv(this[i], dst)
+   * @endcode
+   */
+  template <class Agg, class Op, class Saver>
+  int applyRow(Agg agg, Op op, Saver sv, BaseMatrixT& b, BaseMatrixT& c);
+
+  // Same as the above with the special handing of sv=add2(scaleDest, scaleAgg)
+  template <class Agg, class Op>
+  int applyRow(Agg agg,
+               Op op,
+               real scaleDest,
+               real scaleAgg,
+               BaseMatrixT& b,
+               BaseMatrixT& c);
+
+  /**
+   * a aggregate expression that apply each row of matrix b.
+   *
+   * @code
+   * for each row i & 0 <= j < b.width_, do:
    *   dst = agg(b[i*ldb + j])
    *   this[i] = sv(this[i], dst)
    * @endcode
    */
   template <class Agg, class Saver>
   int applyRow(Agg agg, Saver sv, BaseMatrixT& b);
+
+  // Same as the above with the special handing of sv=add2(scaleDest, scaleAgg)
+  template <class Agg>
+  int applyRow(Agg agg, real scaleDest, real scaleAgg, BaseMatrixT& b);
 
   /**
    * a aggregate expression that apply each column of matrix b.
@@ -339,6 +411,10 @@ public:
    */
   template <class Agg, class Saver>
   int applyCol(Agg agg, Saver sv, BaseMatrixT& b);
+
+  // Same as the above with the special handing of sv=add2(scaleDest, scaleAgg)
+  template <class Agg>
+  int applyCol(Agg agg, real scaleDest, real scaleAgg, BaseMatrixT& b);
 
   bool useGpu() const { return useGpu_; }
 
@@ -378,6 +454,17 @@ public:
    * @endcode
    */
   void assign(T p);
+
+  /**
+   * @code
+   * swap(this, b)
+   * example: swap two Matrices
+   * MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
+   * MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
+   * cpuA->deepSwap(*cpuB);
+   * @endcode
+   */
+  void deepSwap(BaseMatrixT& b);
 
   /**
    * @code
@@ -639,8 +726,7 @@ public:
    * this = a*p1 + b*p2 + c*p3
    * @endcode
    */
-  void add3(BaseMatrixT& b, BaseMatrixT& c, BaseMatrixT& d, T p1, T p2,
-            T p3);
+  void add3(BaseMatrixT& b, BaseMatrixT& c, BaseMatrixT& d, T p1, T p2, T p3);
 
   /**
    * @code
@@ -650,9 +736,9 @@ public:
    */
   void sgdUpdate(BaseMatrixT& b,  //  grad
                  BaseMatrixT& c,  //  mom
-                 T p1,        //  learningRate,
-                 T p2,        //  momentum,
-                 T p3);       //  decayRate
+                 T p1,            //  learningRate,
+                 T p2,            //  momentum,
+                 T p3);           //  decayRate
 
   /**
    * @code
@@ -663,9 +749,9 @@ public:
   void sgdUpdate(BaseMatrixT& b,  // grad,
                  BaseMatrixT& c,  // mom,
                  BaseMatrixT& d,  // lr,
-                 T p1,        // learningRate,
-                 T p2,        // momentum,
-                 T p3);       // decayRate
+                 T p1,            // learningRate,
+                 T p2,            // momentum,
+                 T p3);           // decayRate
 
   /// apply L1/L2 to *this*
   void applyL1(T learningRate, T decayRate);
@@ -742,17 +828,21 @@ public:
    * this = b>c ? b : c
    * @endcode
    */
-   void max(BaseMatrixT& b, BaseMatrixT& c);  //  NOLINT
+  void max(BaseMatrixT& b, BaseMatrixT& c);  //  NOLINT
 
   /**
    * @code
    * this[destCol] += (b>p1 == c>p1) ? 0 : 1)
    * @endcode
    */
-  void binaryClassificationError(size_t destCol, BaseMatrixT& b, BaseMatrixT& c,
+  void binaryClassificationError(size_t destCol,
+                                 BaseMatrixT& b,
+                                 BaseMatrixT& c,
                                  T p);
-  void binaryClassificationError2(size_t destCol, BaseMatrixT& b,
-                                  BaseMatrixT& c, T p);
+  void binaryClassificationError2(size_t destCol,
+                                  BaseMatrixT& b,
+                                  BaseMatrixT& c,
+                                  T p);
 
   /**
    * @code
@@ -808,8 +898,8 @@ public:
    * this += sqr(p1*b + p2*c + p3*d)
    * @endcode
    */
-  void addSquareSum(BaseMatrixT& b, BaseMatrixT& c, BaseMatrixT d, T p1,
-                    T p2, T p3);
+  void addSquareSum(
+      BaseMatrixT& b, BaseMatrixT& c, BaseMatrixT d, T p1, T p2, T p3);
 
   /**
    * @code
@@ -920,22 +1010,31 @@ public:
   void addRowScale(size_t cCol, BaseMatrixT& b, BaseMatrixT& c);
 
   /// calculate the sum of each row of the matrix b.
-  void sumRows(BaseMatrixT& b);
+  /// this_i = scaleDest * this_i + scaleSum * \sum_j b_{ij}
+  void sumRows(BaseMatrixT& b, T scaleSum, T scaleDest);
+
   /// calculate the maximum value of each row of the matrix b.
   void maxRows(BaseMatrixT& b);
   /// calculate the minimum value of each row of the matrix b.
   void minRows(BaseMatrixT& b);
 
-  /// calculate the sum of each column of the matrix b.
-  void sumCols(BaseMatrixT& b);
   /// calculate the maximum value of each column of the matrix b.
   void maxCols(BaseMatrixT& b);
   /// calculate the minimum value of each column of the matrix b.
   void minCols(BaseMatrixT& b);
-  void sumCols(BaseMatrixT& b, T scale);
 
-  /// calculate the sum of each row of (b - c)^2.
-  void sumOfSquares(BaseMatrixT& b, BaseMatrixT& c);
+  /// calculate the sum of each column of the matrix b.
+  /// this_i = scaleDest * this_i + scaleSum * \sum_j b_{ji}
+  void sumCols(BaseMatrixT& b, T scaleSum, T scaleDest);
+
+  /// this_i = scaleDest * this_i + scaleSum * \sum_j (b_{ij} - c_{ij})^2
+  void sumOfSquaredDiffs(BaseMatrixT& b,
+                         BaseMatrixT& c,
+                         T scaleSum,
+                         T scaleDest);
+
+  /// this_i = scaleDest * this_i + scaleSum * \sum_j b_{ij} * c_{ij}
+  void sumOfProducts(BaseMatrixT& b, BaseMatrixT& c, T scaleSum, T scaleDest);
 
   /**
    * @code
@@ -950,9 +1049,7 @@ public:
    */
   void rowPow(size_t cCol, BaseMatrixT& b, BaseMatrixT& c);
 
-  virtual bool isSparse() const {
-    return false;
-  }
+  virtual bool isSparse() const { return false; }
 };
 
 typedef BaseMatrixT<real> BaseMatrix;

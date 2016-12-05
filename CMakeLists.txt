@@ -1,17 +1,24 @@
 cmake_minimum_required(VERSION 2.8)
 
 project(paddle CXX C)
-set(PADDLE_MAJOR_VERSION 0)
-set(PADDLE_MINOR_VERSION 8)
-set(PADDLE_PATCH_VERSION 0b3)
-set(PADDLE_VERSION ${PADDLE_MAJOR_VERSION}.${PADDLE_MINOR_VERSION}.${PADDLE_PATCH_VERSION})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 set(PROJ_ROOT ${CMAKE_SOURCE_DIR})
 include(package)
-include(swig)
+find_package(SWIG 2.0)
 find_package(CUDA QUIET)
 find_package(Protobuf REQUIRED)
+
+# Check protobuf library version.
+execute_process(COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --version
+	OUTPUT_VARIABLE PROTOBUF_VERSION)
+string(REPLACE "libprotoc " "" PROTOBUF_VERSION ${PROTOBUF_VERSION})
+
+set(PROTOBUF_3 OFF)
+if (${PROTOBUF_VERSION} VERSION_GREATER "3.0.0" OR ${PROTOBUF_VERSION} VERSION_EQUAL "3.0.0")
+    set(PROTOBUF_3 ON)
+endif()
+
 find_package(PythonLibs 2.7 REQUIRED)
 find_package(PythonInterp 2.7 REQUIRED)
 find_package(ZLIB REQUIRED)
@@ -36,6 +43,7 @@ option(WITH_RDMA "Compile PaddlePaddle with rdma support" OFF)
 option(WITH_GLOG "Compile PaddlePaddle use glog, otherwise use a log implement internally" ${LIBGLOG_FOUND})
 option(WITH_GFLAGS "Compile PaddlePaddle use gflags, otherwise use a flag implement internally" ${GFLAGS_FOUND})
 option(WITH_TIMER "Compile PaddlePaddle use timer" OFF)
+option(WITH_PROFILER "Compile PaddlePaddle use gpu profiler" OFF)
 option(WITH_TESTING "Compile and run unittest for PaddlePaddle" ${GTEST_FOUND})
 option(WITH_DOC "Compile PaddlePaddle with documentation" OFF)
 option(WITH_SWIG_PY "Compile PaddlePaddle with py PaddlePaddle prediction api" ${SWIG_FOUND})
@@ -44,7 +52,7 @@ option(ON_COVERALLS "Generating code coverage data on coveralls or not." OFF)
 option(COVERALLS_UPLOAD "Uploading the generated coveralls json." ON)
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING 
+    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
         "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
         FORCE)
 endif()
@@ -52,38 +60,22 @@ endif()
 include(enableCXX11)
 include(cpplint)
 include(ccache)
+if(WITH_RDMA)
+  include(rdma)
+endif()
 include(util)
 include(flags)
 include(cudnn)
 include(FindPythonModule)
 include(check_packages)
+include(swig)
 include(coveralls)
 
-# add PaddlePaddle version
-if(DEFINED ENV{PADDLE_VERSION})
-    add_definitions(-DPADDLE_VERSION=\"$ENV{PADDLE_VERSION}\")
-else()
-    if(EXISTS ${PROJ_ROOT}/.svn/)
-        find_package(Subversion REQUIRED)
-        if(SUBVERSION_FOUND)
-            Subversion_WC_INFO(${PROJ_ROOT} Project)
-            add_definitions(-DPADDLE_VERSION=${Project_WC_REVISION})
-        endif()
-    elseif(EXISTS ${PROJ_ROOT}/.git/)
-        find_package(Git REQUIRED)
-        execute_process(
-            COMMAND ${GIT_EXECUTABLE} log -1 --format=%H
-            WORKING_DIRECTORY ${PROJ_ROOT}
-            OUTPUT_VARIABLE GIT_SHA1
-            RESULT_VARIABLE GIT_RESULT
-            ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-        if(NOT ${GIT_RESULT})
-            add_definitions(-DPADDLE_VERSION=\"${GIT_SHA1}\")
-        else()
-            message(WARNING "Cannot add paddle version from git tag")
-        endif()
-    endif()
-endif()
+# Set PaddlePaddle version to Git tag name or Git commit ID.
+find_package(Git REQUIRED)
+# version.cmake will get the current PADDLE_VERSION
+include(version)
+add_definitions(-DPADDLE_VERSION=\"${PADDLE_VERSION}\")
 
 
 if(NOT WITH_GPU)
@@ -91,14 +83,26 @@ if(NOT WITH_GPU)
     add_definitions(-DHPPL_STUB_FUNC)
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
+    if(${CUDA_VERSION_MAJOR} GREATER 6)
+        if(COMPILER_SUPPORT_CXX11)
+            LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
+        endif()
+    endif()
+
     # TODO(yuyang18): Change it to remove std=c++11 in cuda compile.
     set(CUDA_PROPAGATE_HOST_FLAGS OFF)
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle need cudnn to compile")
     endif()
+    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-g -O3 --use_fast_math")
+
+    if(WITH_AVX)
+        set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${AVX_FLAG}")
+    else(WITH_AVX)
+        set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SSE3_FLAG}")
+    endif(WITH_AVX)
 
     if(WITH_DSO)
-        set(CUDA_LIBRARIES "")
         add_definitions(-DPADDLE_USE_DSO)
     endif(WITH_DSO)
 
@@ -118,12 +122,16 @@ if(NOT WITH_TIMER)
     add_definitions(-DPADDLE_DISABLE_TIMER)
 endif(NOT WITH_TIMER)
 
+if(NOT WITH_PROFILER)
+    add_definitions(-DPADDLE_DISABLE_PROFILER)
+endif(NOT WITH_PROFILER)
+
 if(WITH_AVX)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${AVX_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AVX_FLAGS}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${AVX_FLAG}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AVX_FLAG}")
 else(WITH_AVX)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse3")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse3")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SSE3_FLAG}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SSE3_FLAG}")
 endif(WITH_AVX)
 
 if(WITH_PYTHON)
@@ -133,9 +141,11 @@ else(WITH_PYTHON)
     add_definitions(-DPADDLE_NO_PYTHON)
 endif(WITH_PYTHON)
 
-if(NOT WITH_RDMA)
-    add_definitions(-DPADDLE_DISABLE_RDMA)
-endif()
+if(WITH_RDMA)
+  include_directories("${RDMA_INC_DIR}")
+else(WITH_RDMA)
+  add_definitions(-DPADDLE_DISABLE_RDMA)
+endif(WITH_RDMA)
 
 if(WITH_GLOG)
     add_definitions(-DPADDLE_USE_GLOG)

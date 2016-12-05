@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_SEQUENCE_H_
 #define HL_SEQUENCE_H_
 
@@ -32,7 +31,7 @@ limitations under the License. */
 extern void hl_max_sequence_forward(real* input,
                                     const int* sequence,
                                     real* output,
-                                    int *index,
+                                    int* index,
                                     int numSequences,
                                     int dim);
 
@@ -46,11 +45,8 @@ extern void hl_max_sequence_forward(real* input,
  * @param[in]   dim             input dimension.
  *
  */
-extern void hl_max_sequence_backward(real* outputGrad,
-                                     int *index,
-                                     real* inputGrad,
-                                     int numSequences,
-                                     int dim);
+extern void hl_max_sequence_backward(
+    real* outputGrad, int* index, real* inputGrad, int numSequences, int dim);
 
 /**
  * @brief   Context projection forward.
@@ -63,7 +59,8 @@ extern void hl_max_sequence_backward(real* outputGrad,
  * @param[in]   inputDim        input sequence dimension.
  * @param[in]   contextLength   context length.
  * @param[in]   contextStart    context start.
- * @param[in]   beginPad        number of extra timesteps added at the beginning.
+ * @param[in]   beginPad        number of extra timesteps added at the
+ * beginning.
  * @param[in]   isPadding       trainable padding.
  *
  */
@@ -109,7 +106,8 @@ extern void hl_context_projection_backward_data(real* outputGrad,
  * @param[in]   totalPad        number of extra timesteps.
  * @param[in]   contextLength   context length.
  * @param[in]   contextStart    context start.
- * @param[in]   beginPad        number of extra timesteps added at the beginning.
+ * @param[in]   beginPad        number of extra timesteps added at the
+ * beginning.
  *
  */
 extern void hl_context_projection_backward_weight(real* outputGrad,
@@ -141,9 +139,9 @@ extern void hl_context_projection_backward_weight(real* outputGrad,
  * @param[in]       seq2batch   copy direction.
  *
  */
-extern void hl_sequence2batch_copy(real *batch,
-                                   real *sequence,
-                                   const int *batchIndex,
+extern void hl_sequence2batch_copy(real* batch,
+                                   real* sequence,
+                                   const int* batchIndex,
                                    int seqWidth,
                                    int batchCount,
                                    bool seq2batch);
@@ -167,9 +165,9 @@ extern void hl_sequence2batch_copy(real *batch,
  * @param[in]       seq2batch   copy direction.
  *
  */
-extern void hl_sequence2batch_add(real *batch,
-                                  real *sequence,
-                                  int *batchIndex,
+extern void hl_sequence2batch_add(real* batch,
+                                  real* sequence,
+                                  int* batchIndex,
                                   int seqWidth,
                                   int batchCount,
                                   bool seq2batch);

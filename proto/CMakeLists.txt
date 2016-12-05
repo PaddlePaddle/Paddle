@@ -11,8 +11,12 @@ set(real_proto_files)
 # TODO(yuyang18): Some internal proto will also be depended on.
 #                 Find a way to automatically calculate all depends.
 foreach(filename ${proto_filenames})
+    set(PROTOBUF_3_FLAGS "")
+    if (PROTOBUF_3)
+        set(PROTOBUF_3_FLAGS "-Dproto3")
+    endif()
     add_custom_command(OUTPUT ${filename}
-        COMMAND ${M4_EXECUTABLE} -Dreal=${ACCURACY} -I '${INTERNAL_PROTO_PATH}'
+	COMMAND ${M4_EXECUTABLE} -Dreal=${ACCURACY} ${PROTOBUF_3_FLAGS} -I '${INTERNAL_PROTO_PATH}'
               ${PROJ_ROOT}/proto/${filename}.m4 > ${filename}
         DEPENDS ${PROJ_ROOT}/proto/${filename}.m4
         COMMENT "Generate ${filename}")

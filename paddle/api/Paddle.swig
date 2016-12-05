@@ -4,6 +4,13 @@
 #define SWIG_FILE_WITH_INIT
 #include "api/PaddleAPI.h"   
 %}
+
+%include "exception.i"
+%typemap(throws) UnsupportError %{
+  SWIG_exception(SWIG_RuntimeError, $1.what());
+  SWIG_fail;
+%}
+
 %include "std_vector.i"
 %include "std_pair.i"
 #ifdef SWIGPYTHON
@@ -133,14 +140,21 @@ namespace std {
 %newobject Matrix::createZero;
 %newobject Matrix::createSparse;
 %newobject Matrix::createDense;
+%newobject Matrix::createDenseFromNumpy;
+%newobject Matrix::createCpuDenseFromNumpy;
+%newobject Matrix::createGpuDenseFromNumpy;
 %newobject Vector::createZero;
 %newobject Vector::create;
+%newobject Vector::createVectorFromNumpy;
 %newobject Vector::createCpuVectorFromNumpy;
 %newobject Vector::createGpuVectorFromNumpy;
 %newobject IVector::createZero;
 %newobject IVector::create;
+%newobject IVector::createVectorFromNumpy;
+%newobject IVector::createCpuVectorFromNumpy;
+%newobject IVector::createGpuVectorFromNumpy;
 %newobject Trainer::createByCommandLine;
-%newobject Trainer::getNetworkOutput;
+%newobject Trainer::getForwardOutput;
 %newobject Trainer::getLayerOutput;
 %newobject Arguments::getSlotValue;
 %newobject Arguments::getSlotIds;
@@ -180,4 +194,3 @@ namespace std {
 %ignore ParameterTraverseCallbackPrivate;
 %include "utils/GlobalConstants.h"
 %include "api/PaddleAPI.h"
-

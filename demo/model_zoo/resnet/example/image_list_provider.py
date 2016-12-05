@@ -16,8 +16,7 @@ from paddle.utils.image_util import *
 from paddle.trainer.PyDataProvider2 import *
 
 
-def hook(settings, image_size, crop_size, color, file_list,
-         is_train, **kwargs):
+def hook(settings, image_size, crop_size, color, file_list, is_train, **kwargs):
     """
     Description: Init with a list of data file
     file_list is the name list of input files.
@@ -58,7 +57,7 @@ def hook(settings, image_size, crop_size, color, file_list,
         sz = settings.crop_size * settings.crop_size
         settings.img_mean = np.zeros(sz * 3, dtype=np.single)
         for idx, value in enumerate(settings.mean_value):
-            settings.img_mean[idx * sz: (idx + 1) * sz] = value
+            settings.img_mean[idx * sz:(idx + 1) * sz] = value
         settings.img_mean = settings.img_mean.reshape(3, settings.crop_size,
                                                       settings.crop_size)
 
@@ -69,7 +68,8 @@ def hook(settings, image_size, crop_size, color, file_list,
 
     settings.input_types = [
         dense_vector(settings.img_input_size),  # image feature
-        integer_value(1)]  # labels
+        integer_value(1)
+    ]  # labels
 
     settings.logger.info('Image short side: %s', settings.img_size)
     settings.logger.info('Crop size: %s', settings.crop_size)
@@ -97,9 +97,6 @@ def processData(settings, file_list):
     # swap channel
     if settings.is_swap_channel:
         img = img[settings.swap_channel, :, :]
-    img_feat = preprocess_img(img,
-                              settings.img_mean,
-                              settings.crop_size,
-                              settings.is_train,
-                              settings.color)
+    img_feat = preprocess_img(img, settings.img_mean, settings.crop_size,
+                              settings.is_train, settings.color)
     yield img_feat.tolist(), int(lab.strip())

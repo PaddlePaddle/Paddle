@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-
 #include "SIMDFunctions.h"
 #include <immintrin.h>
 #include <algorithm>
@@ -85,7 +83,9 @@ static void batch_addto_sse(float* a, const float* b[], int batch, size_t len) {
   return;
 }
 
-static void col_max_sse(float* result, const float* data, int dim,
+static void col_max_sse(float* result,
+                        const float* data,
+                        int dim,
                         int numSamples) {
   // first sample, direct copy
   for (int d = 0; d < dim; ++d) {
@@ -195,7 +195,9 @@ static void batch_addto_avx(float* a, const float* b[], int batch, size_t len) {
   return;
 }
 
-static void col_max_avx(float* result, const float* data, int dim,
+static void col_max_avx(float* result,
+                        const float* data,
+                        int dim,
                         int numSamples) {
   // first sample, direct copy
   for (int d = 0; d < dim; ++d) {
@@ -289,8 +291,8 @@ static void decayL1_avx(float* dst, float* src, float lambda, size_t sz) {
   }
 }
 
-static void decayL1_avx(float* dst, float* src, float* lr, float lambda,
-                        size_t sz) {
+static void decayL1_avx(
+    float* dst, float* src, float* lr, float lambda, size_t sz) {
   int64_t i;
   int64_t size = sz;
   float src_val;
@@ -379,8 +381,8 @@ void colMaxImpl(float* result, const float* data, int dim, int numSamples) {
 void decayL1AvxImpl(float* dst, float* src, float lambda, size_t len) {
   decayL1_avx(dst, src, lambda, len);
 }
-void decayL1AvxImpl(float* dst, float* src, float* lr, float lambda,
-                    size_t len) {
+void decayL1AvxImpl(
+    float* dst, float* src, float* lr, float lambda, size_t len) {
   decayL1_avx(dst, src, lr, lambda, len);
 }
 

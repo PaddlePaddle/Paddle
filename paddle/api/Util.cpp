@@ -37,9 +37,15 @@ FloatArray::FloatArray(const float* b, const size_t l)
 IntArray::IntArray(const int* b, const size_t l, bool f)
     : buf(b), length(l), needFree(f) {}
 
-IntWithFloatArray::IntWithFloatArray(const float* v, const int* i, size_t l,
+IntWithFloatArray::IntWithFloatArray(const float* v,
+                                     const int* i,
+                                     size_t l,
                                      bool f)
     : valBuf(v), idxBuf(i), length(l), needFree(f) {}
+
+bool isUsingGpu() { return FLAGS_use_gpu; }
+
+void setUseGpu(bool useGpu) { FLAGS_use_gpu = useGpu; }
 
 bool isGpuVersion() {
 #ifdef PADDLE_ONLY_CPU

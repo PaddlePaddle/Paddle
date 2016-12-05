@@ -24,13 +24,19 @@ z = out_prod_layer(input1=x, input2=y)
 x1 = fc_layer(input=x, size=5)
 y1 = fc_layer(input=y, size=5)
 
-z1 = mixed_layer(act=LinearActivation(),
-                 input=[conv_operator(img=x1,
-                                      filter=y1,
-                                      filter_size=1,
-                                      num_filters=5,
-                                      num_channel=5,
-                                      stride=1)])
+z1 = mixed_layer(
+    act=LinearActivation(),
+    input=[
+        conv_operator(
+            img=x1,
+            filter=y1,
+            filter_size=1,
+            num_filters=5,
+            num_channels=5,
+            stride=1)
+    ])
+
+assert z1.size > 0
 
 y2 = fc_layer(input=y, size=15)
 
@@ -39,34 +45,36 @@ cos3 = cos_sim(a=x1, b=y2, size=3)
 
 linear_comb = linear_comb_layer(weights=x1, vectors=y2, size=3)
 
-out = fc_layer(input=[cos1, cos3, linear_comb, z, z1],
-               size=num_classes,
-               act=SoftmaxActivation())
+out = fc_layer(
+    input=[cos1, cos3, linear_comb, z, z1],
+    size=num_classes,
+    act=SoftmaxActivation())
 
 print_layer(input=[out])
 
 outputs(classification_cost(out, data_layer(name="label", size=num_classes)))
 
-dotmul = mixed_layer(input=[dotmul_operator(a=x1, b=x1),
-                            dotmul_projection(input=y1)])
+dotmul = mixed_layer(
+    input=[dotmul_operator(
+        a=x1, b=x1), dotmul_projection(input=y1)])
 
-proj_with_attr_init = mixed_layer(input=full_matrix_projection(input=y1,
-                                                               param_attr=ParamAttr(learning_rate = 0,
-                                                                                 initial_mean = 0,
-                                                                                 initial_std = 0)),
-                               bias_attr = ParamAttr(initial_mean=0, initial_std=0, learning_rate=0),
-                               act = LinearActivation(),
-                               size = 5,
-                               name='proj_with_attr_init')
-
+proj_with_attr_init = mixed_layer(
+    input=full_matrix_projection(
+        input=y1,
+        param_attr=ParamAttr(
+            learning_rate=0, initial_mean=0, initial_std=0)),
+    bias_attr=ParamAttr(
+        initial_mean=0, initial_std=0, learning_rate=0),
+    act=LinearActivation(),
+    size=5,
+    name='proj_with_attr_init')
 
 # for ctc
-tmp = fc_layer(input=[x1, dotmul, proj_with_attr_init],
-               size=num_classes + 1,
-               act=SoftmaxActivation())
-ctc = ctc_layer(input=tmp,
-                label=y,
-                size=num_classes + 1)
+tmp = fc_layer(
+    input=[x1, dotmul, proj_with_attr_init],
+    size=num_classes + 1,
+    act=SoftmaxActivation())
+ctc = ctc_layer(input=tmp, label=y, size=num_classes + 1)
 ctc_eval = ctc_error_evaluator(input=tmp, label=y)
 
 settings(
@@ -74,5 +82,4 @@ settings(
     learning_rate=2e-3,
     learning_method=AdamOptimizer(),
     regularization=L2Regularization(8e-4),
-    gradient_clipping_threshold=25
-)
+    gradient_clipping_threshold=25)

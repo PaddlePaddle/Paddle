@@ -98,7 +98,8 @@ def main():
         cost_vec = outArgs.getSlotValue(0)
         assert isinstance(cost_vec, swig_paddle.Matrix)
         cost_vec = cost_vec.copyToNumpyMat()
-        print 'Finish Batch', batch_id, 'with cost ', cost_vec.sum() / batch_size
+        print 'Finish Batch', batch_id, 'with cost ', cost_vec.sum(
+        ) / batch_size
         batch_id += 1
 
     for optimizer in optimizers:

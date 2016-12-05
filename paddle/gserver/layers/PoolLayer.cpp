@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "PoolLayer.h"
 #include "PoolProjectionLayer.h"
@@ -52,10 +51,8 @@ bool PoolLayer::init(const LayerMap& layerMap,
 Layer* PoolLayer::create(const LayerConfig& config) {
   CHECK_EQ(config.inputs_size(), 1);
   const std::string& pool = config.inputs(0).pool_conf().pool_type();
-  if (pool == "max-projection") {
-    return new MaxPoolProjectionLayer(config);
-  } else if (pool == "avg-projection") {
-    return new AvgPoolProjectionLayer(config);
+  if (pool == "max-projection" || pool == "avg-projection") {
+    return new PoolProjectionLayer(config);
 #ifndef PADDLE_ONLY_CPU
   } else if (CudnnPoolLayer::typeCheck(pool)) {
     return new CudnnPoolLayer(config);

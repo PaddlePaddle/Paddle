@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <stdint.h>
@@ -47,17 +46,17 @@ const int UPDATE_TYPE_NUM = 32;
  * TrainRole denotes the role of current training, different roles have
  * different jobs.
  *
- * control, major, minor are three kinds of role to support mutiple GPUs 
+ * control, major, minor are three kinds of role to support mutiple GPUs
  * parallel SGD training. SM on GPU card has two groups, each group
  * consist of a major and a minor.
  *
  * @param    single  single GPU card single thread training.
- * 
+ *
  *
  * @param    control current parameter updates via control role,
  *                   not participate in real training. control role is
- *                   responsible for merging all major's gradient and 
- *                   update parameter value. 
+ *                   responsible for merging all major's gradient and
+ *                   update parameter value.
  *
  * @param    major   major role paticipates in real training, when local
  *                   gradient is ready, merge its corresponding minor's
@@ -83,7 +82,8 @@ typedef void (ParallelParameter::*UpdateFunction)(real learnRate);
 
 class ParallelParameter {
 public:
-  static ParallelParameterPtr create(TrainerRole role, ParameterPtr localParam,
+  static ParallelParameterPtr create(TrainerRole role,
+                                     ParameterPtr localParam,
                                      int asyncCount = 1);
 
   ParallelParameter(TrainerRole role, ParameterPtr localParam) {
@@ -135,7 +135,7 @@ protected:
 };
 
 /**
- * this class is designed for multi-threading training. 
+ * this class is designed for multi-threading training.
  *
  * "Synchronous" means multiple GPUs calculate 1/4 mini-Batch,
  * but will get only one gradient
@@ -209,14 +209,14 @@ public:
    * When asynchronous training, update strategy including slave and master.
    *
    * slave: If in range asyncCount, adopting self-update method.
-   *        If beyond asyncCount, waiting for master to update. 
+   *        If beyond asyncCount, waiting for master to update.
    */
   void slaveUpdate(real learnRate);
 
   /**
    * When asynchronous training, update strategy including slave and master.
    *
-   * master: it only polls slaves, do not training data. 
+   * master: it only polls slaves, do not training data.
    *         If slave's gradient is ready, fetch it.
    *         Update master's parameter, then copy it into
    *         corresponding slave.
@@ -227,7 +227,7 @@ public:
 private:
   /**
    * When asynchronous training, every aysnc trainer needs to
-   * accumulate a number of batch gradient. 
+   * accumulate a number of batch gradient.
    *
    * gradientAccum_ is used to save the sum of gradients.
    */

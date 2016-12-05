@@ -27,11 +27,12 @@ is_predict = get_config_arg('is_predict', bool, False)
 trn = 'data/train.list' if not is_predict else None
 tst = 'data/test.list' if not is_predict else 'data/pred.list'
 process = 'process' if not is_predict else 'process_predict'
-define_py_data_sources2(train_list=trn,
-                        test_list=tst,
-                        module="dataprovider_emb",
-                        obj=process,
-                        args={"dictionary": word_dict})
+define_py_data_sources2(
+    train_list=trn,
+    test_list=tst,
+    module="dataprovider_emb",
+    obj=process,
+    args={"dictionary": word_dict})
 
 batch_size = 128 if not is_predict else 1
 settings(
@@ -39,19 +40,17 @@ settings(
     learning_rate=2e-3,
     learning_method=AdamOptimizer(),
     regularization=L2Regularization(8e-4),
-    gradient_clipping_threshold=25
-)
+    gradient_clipping_threshold=25)
 
-bias_attr = ParamAttr(initial_std=0.,l2_rate=0.)
+bias_attr = ParamAttr(initial_std=0., l2_rate=0.)
 data = data_layer(name="word", size=len(word_dict))
 emb = embedding_layer(input=data, size=128)
 
 bi_lstm = bidirectional_lstm(input=emb, size=128)
 dropout = dropout_layer(input=bi_lstm, dropout_rate=0.5)
 
-output = fc_layer(input=dropout, size=2,
-                  bias_attr=bias_attr,
-                  act=SoftmaxActivation())
+output = fc_layer(
+    input=dropout, size=2, bias_attr=bias_attr, act=SoftmaxActivation())
 
 if is_predict:
     maxid = maxid_layer(output)

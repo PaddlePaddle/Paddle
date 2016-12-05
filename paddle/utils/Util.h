@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <algorithm>
@@ -47,7 +46,8 @@ limitations under the License. */
  */
 #define FOR_EACH(iterator_name, container)                              \
   for (auto iterator_name = (container).begin(), e = (container).end(); \
-       iterator_name != e; ++iterator_name)
+       iterator_name != e;                                              \
+       ++iterator_name)
 
 /**
  * Loop over the elements in a container in reverse order
@@ -60,8 +60,8 @@ limitations under the License. */
  */
 #define FOR_EACH_R(iterator_name, container)                              \
   for (auto iterator_name = (container).rbegin(), e = (container).rend(); \
-       iterator_name != e; ++iterator_name)
-
+       iterator_name != e;                                                \
+       ++iterator_name)
 
 namespace paddle {
 
@@ -77,11 +77,11 @@ pid_t getTID();
  * \f]
  */
 inline constexpr size_t findLastSet(size_t x) {
-  return std::is_same<size_t , unsigned int>::value ?
-      (x ? 8 * sizeof(x) - __builtin_clz(x) : 0)
-    : (std::is_same<size_t , unsigned long>::value ? // NOLINT
-      (x ? 8 * sizeof(x) - __builtin_clzl(x) : 0)
-    : (x ? 8 * sizeof(x) - __builtin_clzll(x) : 0));
+  return std::is_same<size_t, unsigned int>::value
+             ? (x ? 8 * sizeof(x) - __builtin_clz(x) : 0)
+             : (std::is_same<size_t, unsigned long>::value  // NOLINT
+                    ? (x ? 8 * sizeof(x) - __builtin_clzl(x) : 0)
+                    : (x ? 8 * sizeof(x) - __builtin_clzll(x) : 0));
 }
 
 /**
@@ -94,7 +94,6 @@ inline int mod(int a, int b) {
   int r = a % b;
   return r >= 0 ? r : r + b;
 }
-
 
 /**
  * find the value given a key k from container c.
@@ -120,7 +119,7 @@ static bool contains(const Container& container, const T& val) {
 /**
  * pop and get the front element of a container
  */
-template<typename Container>
+template <typename Container>
 typename Container::value_type pop_get_front(Container& c) {
   typename Container::value_type v;
   swap(v, c.front());
@@ -207,7 +206,6 @@ protected:
   int devId_;
 };
 
-
 /**
  * Enables direct access to memory allocations on a peer device(d2).
  * input:
@@ -249,7 +247,6 @@ public:
 private:
   bool syncFlag_;
 };
-
 
 inline bool useGpu(int deviceId) {
   return FLAGS_parallel_nn ? (deviceId >= 0 ? true : false) : FLAGS_use_gpu;
@@ -328,7 +325,9 @@ T readT(char*& p, const char* pEnd) {
   return v;
 }
 
-void memcpyWithCheck(void* dest, const void* src, size_t num,
+void memcpyWithCheck(void* dest,
+                     const void* src,
+                     size_t num,
                      const void* srcEnd);
 
 /**
@@ -337,7 +336,6 @@ void memcpyWithCheck(void* dest, const void* src, size_t num,
  */
 class SyncThreadPool;
 SyncThreadPool* getGlobalSyncThreadPool();
-
 
 namespace path {
 
@@ -363,7 +361,8 @@ std::string dirname(const std::string& path);
 std::string join(const std::string& part1, const std::string& part2);
 
 template <typename... Args>
-std::string join(const std::string& part1, const std::string& part2,
+std::string join(const std::string& part1,
+                 const std::string& part2,
                  Args... args) {
   return join(join(part1, part2), args...);
 }
@@ -392,8 +391,8 @@ public:
     std::call_once(onceFlag_, [&] { invokeThreadId_ = curThreadId; });
     CHECK_EQ(invokeThreadId_, curThreadId)
         << "This method should invoke in "
-           "same thread, but first invoked in " << invokeThreadId_
-        << " current invoked in " << curThreadId;
+           "same thread, but first invoked in "
+        << invokeThreadId_ << " current invoked in " << curThreadId;
   }
 
 private:
@@ -447,27 +446,22 @@ private:
  * @brief The ScopedCallbacks class is a callback invoker when object is
  *        created and destroyed.
  */
-template <typename CallbackType, typename ...Args>
+template <typename CallbackType, typename... Args>
 class ScopedCallbacks {
 public:
-  ScopedCallbacks(CallbackType enter,
-                  CallbackType exit,
-                  Args& ... args)
-    : exit_(std::bind(exit, args...)) {
+  ScopedCallbacks(CallbackType enter, CallbackType exit, Args&... args)
+      : exit_(std::bind(exit, args...)) {
     enter(args...);
   }
 
   ScopedCallbacks(const ScopedCallbacks& other) = delete;
-  ScopedCallbacks& operator = (const ScopedCallbacks& other) = delete;
+  ScopedCallbacks& operator=(const ScopedCallbacks& other) = delete;
 
-  ~ScopedCallbacks() {
-    exit_();
-  }
+  ~ScopedCallbacks() { exit_(); }
 
 private:
   std::function<void()> exit_;
 };
-
 
 /**
  * std compatible allocator with memory alignment.
@@ -537,8 +531,7 @@ public:
       return nullptr;
     }
     if (n > max_size()) {
-      throw std::length_error(
-          "AlignAllocator<T>::allocate() - Int Overflow.");
+      throw std::length_error("AlignAllocator<T>::allocate() - Int Overflow.");
     }
     void* r = nullptr;
     CHECK_EQ(posix_memalign(&r, Alignment * 8, sizeof(T) * n), 0);
@@ -557,7 +550,6 @@ public:
 private:
   AlignedAllocator& operator=(const AlignedAllocator&);  // disable
 };
-
 
 class Deprecated {
 public:

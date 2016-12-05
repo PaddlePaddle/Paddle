@@ -16,16 +16,19 @@ import numpy as np
 from PIL import Image
 from cStringIO import StringIO
 
+
 def resize_image(img, target_size):
     """
     Resize an image so that the shorter edge has length target_size.
     img: the input image to be resized.
     target_size: the target resized image size.
     """
-    percent = (target_size/float(min(img.size[0], img.size[1])))
-    resized_size = int(round(img.size[0] * percent)), int(round(img.size[1] * percent))
+    percent = (target_size / float(min(img.size[0], img.size[1])))
+    resized_size = int(round(img.size[0] * percent)), int(
+        round(img.size[1] * percent))
     img = img.resize(resized_size, Image.ANTIALIAS)
     return img
+
 
 def flip(im):
     """
@@ -37,6 +40,7 @@ def flip(im):
         return im[:, :, ::-1]
     else:
         return im[:, ::-1]
+
 
 def crop_img(im, inner_size, color=True, test=True):
     """
@@ -50,20 +54,22 @@ def crop_img(im, inner_size, color=True, test=True):
       If True, crop the center of images.
     """
     if color:
-        height, width = max(inner_size, im.shape[1]), max(inner_size, im.shape[2])
+        height, width = max(inner_size, im.shape[1]), max(inner_size,
+                                                          im.shape[2])
         padded_im = np.zeros((3, height, width))
         startY = (height - im.shape[1]) / 2
         startX = (width - im.shape[2]) / 2
         endY, endX = startY + im.shape[1], startX + im.shape[2]
-        padded_im[:, startY: endY, startX: endX] = im
+        padded_im[:, startY:endY, startX:endX] = im
     else:
         im = im.astype('float32')
-        height, width = max(inner_size, im.shape[0]), max(inner_size, im.shape[1])
+        height, width = max(inner_size, im.shape[0]), max(inner_size,
+                                                          im.shape[1])
         padded_im = np.zeros((height, width))
         startY = (height - im.shape[0]) / 2
         startX = (width - im.shape[1]) / 2
         endY, endX = startY + im.shape[0], startX + im.shape[1]
-        padded_im[startY: endY, startX: endX] = im
+        padded_im[startY:endY, startX:endX] = im
     if test:
         startY = (height - inner_size) / 2
         startX = (width - inner_size) / 2
@@ -72,18 +78,20 @@ def crop_img(im, inner_size, color=True, test=True):
         startX = np.random.randint(0, width - inner_size + 1)
     endY, endX = startY + inner_size, startX + inner_size
     if color:
-        pic = padded_im[:, startY: endY, startX: endX]
+        pic = padded_im[:, startY:endY, startX:endX]
     else:
-        pic = padded_im[startY: endY, startX: endX]
+        pic = padded_im[startY:endY, startX:endX]
     if (not test) and (np.random.randint(2) == 0):
         pic = flip(pic)
     return pic
+
 
 def decode_jpeg(jpeg_string):
     np_array = np.array(Image.open(StringIO(jpeg_string)))
     if len(np_array.shape) == 3:
         np_array = np.transpose(np_array, (2, 0, 1))
     return np_array
+
 
 def preprocess_img(im, img_mean, crop_size, is_train, color=True):
     """
@@ -99,6 +107,7 @@ def preprocess_img(im, img_mean, crop_size, is_train, color=True):
     pic -= img_mean
     return pic.flatten()
 
+
 def load_meta(meta_path, mean_img_size, crop_size, color=True):
     """
     Return the loaded meta file.
@@ -109,16 +118,17 @@ def load_meta(meta_path, mean_img_size, crop_size, color=True):
     mean = np.load(meta_path)['data_mean']
     border = (mean_img_size - crop_size) / 2
     if color:
-        assert(mean_img_size * mean_img_size * 3 == mean.shape[0])
+        assert (mean_img_size * mean_img_size * 3 == mean.shape[0])
         mean = mean.reshape(3, mean_img_size, mean_img_size)
-        mean = mean[:, border: border + crop_size,
-                       border: border + crop_size].astype('float32')
+        mean = mean[:, border:border + crop_size, border:border +
+                    crop_size].astype('float32')
     else:
-        assert(mean_img_size * mean_img_size == mean.shape[0])
+        assert (mean_img_size * mean_img_size == mean.shape[0])
         mean = mean.reshape(mean_img_size, mean_img_size)
-        mean = mean[border: border + crop_size,
-                    border: border + crop_size].astype('float32')
+        mean = mean[border:border + crop_size, border:border +
+                    crop_size].astype('float32')
     return mean
+
 
 def load_image(img_path, is_color=True):
     """
@@ -129,6 +139,7 @@ def load_image(img_path, is_color=True):
     img = Image.open(img_path)
     img.load()
     return img
+
 
 def oversample(img, crop_dims):
     """
@@ -152,50 +163,53 @@ def oversample(img, crop_dims):
         for j in w_indices:
             crops_ix[curr] = (i, j, i + crop_dims[0], j + crop_dims[1])
             curr += 1
-    crops_ix[4] = np.tile(im_center, (1, 2)) + np.concatenate([
-        -crop_dims / 2.0,
-         crop_dims / 2.0
-    ])
+    crops_ix[4] = np.tile(im_center, (1, 2)) + np.concatenate(
+        [-crop_dims / 2.0, crop_dims / 2.0])
     crops_ix = np.tile(crops_ix, (2, 1))
 
     # Extract crops
-    crops = np.empty((10 * len(img), crop_dims[0], crop_dims[1],
-                      im_shape[-1]), dtype=np.float32)
+    crops = np.empty(
+        (10 * len(img), crop_dims[0], crop_dims[1], im_shape[-1]),
+        dtype=np.float32)
     ix = 0
     for im in img:
         for crop in crops_ix:
             crops[ix] = im[crop[0]:crop[2], crop[1]:crop[3], :]
             ix += 1
-        crops[ix-5:ix] = crops[ix-5:ix, :, ::-1, :]  # flip for mirrors
+        crops[ix - 5:ix] = crops[ix - 5:ix, :, ::-1, :]  # flip for mirrors
     return crops
 
+
 class ImageTransformer:
-    def __init__(self, transpose = None,
-                 channel_swap = None, mean = None, is_color = True):
+    def __init__(self,
+                 transpose=None,
+                 channel_swap=None,
+                 mean=None,
+                 is_color=True):
         self.transpose = transpose
         self.channel_swap = None
         self.mean = None
-        self.is_color = is_color 
+        self.is_color = is_color
 
-    def set_transpose(self, order): 
+    def set_transpose(self, order):
         if self.is_color:
-            assert 3 == len(order) 
+            assert 3 == len(order)
         self.transpose = order
 
-    def set_channel_swap(self, order): 
+    def set_channel_swap(self, order):
         if self.is_color:
-            assert 3 == len(order) 
+            assert 3 == len(order)
         self.channel_swap = order
 
     def set_mean(self, mean):
         # mean value, may be one value per channel 
         if mean.ndim == 1:
-            mean = mean[:, np.newaxis, np.newaxis]       
-        else: 
+            mean = mean[:, np.newaxis, np.newaxis]
+        else:
             # elementwise mean
             if self.is_color:
                 assert len(mean.shape) == 3
-        self.mean = mean 
+        self.mean = mean
 
     def transformer(self, data):
         if self.transpose is not None:

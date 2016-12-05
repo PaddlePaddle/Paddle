@@ -18,6 +18,7 @@ limitations under the License. */
 #include "hl_matrix_ops.cuh"
 #include "hl_matrix_apply.cuh"
 #include "hl_sequence.h"
+#include "hl_sparse.ph"
 #include "paddle/utils/Logging.h"
 #include "hl_device_functions.cuh"
 #include "hl_gpu_matrix_kernel.cuh"
@@ -315,6 +316,85 @@ void hl_matrix_classification_error(real* A_d,
   KeMatrixClassificationError<1024><<< dimM, 1024, 0, STREAM_DEFAULT >>>
     (A_d, B_d, C_d, dimN);
   CHECK_SYNC("hl_matrix_classification_error");
+}
+
+__global__ void KeMatrixMultiBinaryCrossEntropy(real* output,
+                                                real* entropy,
+                                                int* row,
+                                                int* col,
+                                                int dimM,
+                                                int dimN) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < dimM) {
+    for (int i = 0; i < dimN; i ++) {
+      entropy[index] -= log(1 - output[index * dimN + i]);
+    }
+    int *row_col = col + row[index];
+    int col_num = row[index + 1] - row[index];
+    for (int i = 0; i < col_num; i ++) {
+      real o = output[index * dimN + row_col[i]];
+      entropy[index] -= log(o / (1 - o));
+    }
+  }
+}
+
+void hl_matrix_multi_binary_cross_entropy(real* output,
+                                          real* entropy,
+                                          hl_sparse_matrix_s csr_mat,
+                                          int dimM,
+                                          int dimN) {
+  CHECK_NOTNULL(output);
+  CHECK_NOTNULL(entropy);
+  CHECK_NOTNULL(csr_mat);
+  CHECK_EQ(csr_mat->format, HL_SPARSE_CSR);
+  int n_threads = 1024;
+  int blocks = (dimM + n_threads - 1) / n_threads;
+  dim3 threads(n_threads);
+  dim3 grid(blocks);
+  hl_csr_matrix mat = (hl_csr_matrix)(csr_mat->matrix);
+  KeMatrixMultiBinaryCrossEntropy<<< grid, threads, 0, STREAM_DEFAULT >>>
+          (output, entropy, mat->csr_row, mat->csr_col, dimM, dimN);
+  CHECK_SYNC("hl_matrix_multi_binary_cross_entropy failed");
+}
+
+__global__ void KeMatrixMultiBinaryCrossEntropyBp(real* output,
+                                                  real* grad,
+                                                  int* row,
+                                                  int* col,
+                                                  int dimM,
+                                                  int dimN) {
+  int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (row_idx < dimM) {
+    for (int i = 0; i < dimN; i ++) {
+      int index = row_idx * dimN + i;
+      grad[index] += 1.0 / (1 - output[index]);
+    }
+    int col_num = row[row_idx + 1] - row[row_idx];
+    int *row_col = col + row[row_idx];
+    for (int i = 0; i < col_num; i ++) {
+      int index = row_idx * dimN + row_col[i];
+      grad[index] -= 1.0 / (output[index] * (1 - output[index]));
+    }
+  }
+}
+
+void hl_matrix_multi_binary_cross_entropy_bp(real* output,
+                                             real* grad,
+                                             hl_sparse_matrix_s csr_mat,
+                                             int dimM,
+                                             int dimN) {
+  CHECK_NOTNULL(output);
+  CHECK_NOTNULL(grad);
+  CHECK_NOTNULL(csr_mat);
+  CHECK_EQ(csr_mat->format, HL_SPARSE_CSR);
+  int n_threads = 1024;
+  int blocks = (dimM + n_threads - 1) / n_threads;
+  dim3 threads(n_threads);
+  dim3 grid(blocks);
+  hl_csr_matrix mat = (hl_csr_matrix)(csr_mat->matrix);
+  KeMatrixMultiBinaryCrossEntropyBp<<< grid, threads, 0, STREAM_DEFAULT >>>
+          (output, grad, mat->csr_row, mat->csr_col, dimM, dimN);
+  CHECK_SYNC("hl_matrix_multi_binary_cross_entropy_bp failed");
 }
 
 __global__ void KeMatrixCrossEntropy(real* O,
@@ -685,7 +765,7 @@ __global__ void KeMatrixAddSharedBias(real* A,
   int dim = N / channel;
   if (index < M * N) {
     int i = index % N;
-    i = i / dim; 
+    i = i / dim;
     A[index] += scale * B[i];
   }
 }
@@ -713,7 +793,7 @@ __global__ void KeMatrixCollectSharedBias(real *B,
                                           const int dim,
                                           const int limit,
                                           real scale) {
-  if (dim < limit) { 
+  if (dim < limit) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < channel) {
       real sum = 0.0;

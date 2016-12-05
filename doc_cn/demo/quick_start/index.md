@@ -32,13 +32,11 @@
 
 ## 数据格式准备(Data Preparation)
 在本问题中，我们使用[Amazon电子产品评论数据](http://jmcauley.ucsd.edu/data/amazon/)，
-将评论分为好评(正样本)和差评(负样本)两类。[源码](https://github.com/baidu/Paddle)的`demo/quick_start`里提供了数据下载脚本
-和预处理脚本。
+将评论分为好评(正样本)和差评(负样本)两类。[源码](https://github.com/PaddlePaddle/Paddle)的`demo/quick_start`里提供了下载已经预处理数据的脚本（如果想从最原始的数据处理，可以使用脚本 `./demo/quick_start/data/proc_from_raw_data/get_data.sh`）。
 
 ```bash
 cd demo/quick_start
 ./data/get_data.sh
-./preprocess.sh
 ```
 
 ## 数据向模型传送(Transfer Data to Model)
@@ -134,9 +132,8 @@ define_py_data_sources2(train_list='data/train.list',
 * obj="process": 指定生成数据的函数
 * args={"dictionary": word_dict}: 额外的参数，这里指定词典
 
-更详细用例请参考文档<a href = "../../../doc/ui/data_provider/python_case.html">Python Use Case</a>，
-数据格式和详细文档请参考<a href = "../../../doc/ui/data_provider/pydataprovider2.html">
-PyDataProviderWrapper</a>。
+更详细数据格式和用例请参考<a href = "../../ui/data_provider/pydataprovider2.html">
+PyDataProvider2</a>。
 
 ## 网络结构(Network Architecture)
 本节我们将专注于网络结构的介绍。
@@ -144,7 +141,7 @@ PyDataProviderWrapper</a>。
 
 我们将以基本的逻辑回归网络作为起点，并逐渐展示更加深入的功能。更详细的网络配置
 连接请参考<a href = "../../../doc/layer.html">Layer文档</a>。
-所有配置在[源码](https://github.com/baidu/Paddle)`demo/quick_start`目录，首先列举逻辑回归网络。
+所有配置在[源码](https://github.com/PaddlePaddle/Paddle)`demo/quick_start`目录，首先列举逻辑回归网络。
 
 ### 逻辑回归模型(Logistic Regression)
 

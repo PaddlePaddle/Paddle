@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from paddle.trainer.config_parser import *
-__all__ = ['ParamAttr', 'ExtraAttr', 'ParameterAttribute',
-           'ExtraLayerAttribute']
+__all__ = [
+    'ParamAttr', 'ExtraAttr', 'ParameterAttribute', 'ExtraLayerAttribute'
+]
 
 
 def convert_and_compare(x, Type):
@@ -25,7 +26,8 @@ def convert_and_compare(x, Type):
     :param Type: target type to check x over                                                                                                                                                           
     
     """
-    return type(x)(Type(x))==x
+    return type(x)(Type(x)) == x
+
 
 def is_compatible_with(x, Type):
     """                                                                                                                                                                                                
@@ -38,9 +40,9 @@ def is_compatible_with(x, Type):
         return True
     try:
         if float == Type or int == Type:
-        # avoid those types that can be converted to float/int but not very                                                                                                                            
-        # meaningful and  could potentially lead to error                                                                                                                                              
-        # i.e., str and bool typed value should not be used for initializing float/int variable                                                                                                        
+            # avoid those types that can be converted to float/int but not very                                                                                                                            
+            # meaningful and  could potentially lead to error                                                                                                                                              
+            # i.e., str and bool typed value should not be used for initializing float/int variable                                                                                                        
             if not isinstance(x, str) and not isinstance(x, bool):
                 return convert_and_compare(x, Type)
         elif bool == Type:
@@ -91,9 +93,17 @@ class ParameterAttribute(object):
     :type sparse_update: bool
     """
 
-    def __init__(self, name=None, is_static=False, initial_std=None,
-                 initial_mean=None, initial_max=None, initial_min=None,
-                 l1_rate=None, l2_rate=None, learning_rate=None, momentum=None,
+    def __init__(self,
+                 name=None,
+                 is_static=False,
+                 initial_std=None,
+                 initial_mean=None,
+                 initial_max=None,
+                 initial_min=None,
+                 l1_rate=None,
+                 l2_rate=None,
+                 learning_rate=None,
+                 momentum=None,
                  sparse_update=False):
         # initialize strategy.
         if is_static:
@@ -183,7 +193,10 @@ class ExtraLayerAttribute(object):
     :type device: int
     """
 
-    def __init__(self, error_clipping_threshold=None, drop_rate=None, device=None):
+    def __init__(self,
+                 error_clipping_threshold=None,
+                 drop_rate=None,
+                 device=None):
         self.attr = dict()
         if isinstance(error_clipping_threshold, float):
             assert error_clipping_threshold > 0
@@ -200,8 +213,8 @@ class ExtraLayerAttribute(object):
         for key in self.attr:
             if not hasattr(self, 'can_%s' % key) or \
                     not getattr(self, 'can_%s' % key):
-                raise NotImplementedError(
-                    "Layer %s cannot support %s" % (layer_name, key))
+                raise NotImplementedError("Layer %s cannot support %s" %
+                                          (layer_name, key))
 
     @staticmethod
     def to_kwargs(attr):

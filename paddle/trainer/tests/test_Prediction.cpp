@@ -20,7 +20,8 @@ limitations under the License. */
 
 P_DECLARE_string(config);
 P_DECLARE_string(config_args);
-P_DEFINE_string(merger, "./paddle_merge_model",
+P_DEFINE_string(merger,
+                "./paddle_merge_model",
                 "path to paddle_merge_model binary");
 
 using namespace paddle;  // NOLINT
@@ -120,8 +121,10 @@ TEST(GradientMachine, create) {
           rand() / (real)RAND_MAX;  // NOLINT TODO(yuyang): use rand_r
     }
   }
-  MatrixPtr input = Matrix::create(numSamples, inputDim,
-                                   /* trans */ false, FLAGS_use_gpu);
+  MatrixPtr input = Matrix::create(numSamples,
+                                   inputDim,
+                                   /* trans */ false,
+                                   FLAGS_use_gpu);
   input->copyFrom(cpuInput);
   inArgs[0].value = input;
   gradientMachine1->forward(inArgs, &outArgs, PASS_TEST);
@@ -139,8 +142,8 @@ TEST(GradientMachine, create) {
 
   gradientMachine3->forward(inArgs, &outArgs2, PASS_TEST);
   out2.copyFrom(*outArgs2[0].value);
-  checkBuffer(out1.getData(), out2.getData(),
-              out2.getHeight() * out2.getWidth());
+  checkBuffer(
+      out1.getData(), out2.getData(), out2.getHeight() * out2.getWidth());
 
   cmd = " rm -rf " + modelDir + "/*";
   LOG(INFO) << "cmd " << cmd;

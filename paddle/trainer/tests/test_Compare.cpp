@@ -52,8 +52,8 @@ void calcGradient(bool useGpu, comData& Data) {
   vector<Argument>& inArgs = dataBatch.getStreams();
   trainer.getGradientMachine()->start(trainer.getConfig(), nullptr);
   for (int i = 0; i < 2; ++i) {
-    trainer.getGradientMachine()->forwardBackward(inArgs, &Data.outArgs,
-                                                  PASS_TRAIN);
+    trainer.getGradientMachine()->forwardBackward(
+        inArgs, &Data.outArgs, PASS_TRAIN);
   }
   trainer.getGradientMachine()->finish();
 }

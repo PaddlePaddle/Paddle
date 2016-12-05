@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Convert torch parameter file to paddle model files.
 
@@ -28,10 +27,11 @@ import torchfile
 import cPickle as pickle
 import argparse
 
+
 # save parameters
 def save_layer_parameters(outfile, feats):
     version = 0
-    value_size  = 4;
+    value_size = 4
     ret = ""
     for feat in feats:
         ret += feat.tostring()
@@ -41,15 +41,17 @@ def save_layer_parameters(outfile, feats):
     fo.write(ret)
     fo.close()
 
+
 def save_net_parameters(layers, params, output_path):
     for i in range(len(layers)):
-        weight = params[i*2]
-        biases = params[i*2+1]        
+        weight = params[i * 2]
+        biases = params[i * 2 + 1]
         weight_file = os.path.join(output_path, '_%s.w0' % layers[i])
         biases_file = os.path.join(output_path, '_%s.wbias' % layers[i])
         print "Saving for layer %s." % layers[i]
         save_layer_parameters(weight_file, [weight])
         save_layer_parameters(biases_file, biases)
+
 
 def load_layer_parameters(filename):
     fn = open(filename, 'rb')
@@ -60,16 +62,20 @@ def load_layer_parameters(filename):
     value = np.fromfile(fn, dtype)
     return value
 
+
 def main(argv):
     """
     main method of converting torch to paddle files.
     :param argv:
     :return:
     """
-    cmdparser = argparse.ArgumentParser("Convert torch parameter file to paddle model files.")
-    cmdparser.add_argument('-i', '--input', help='input filename of torch parameters')
+    cmdparser = argparse.ArgumentParser(
+        "Convert torch parameter file to paddle model files.")
+    cmdparser.add_argument(
+        '-i', '--input', help='input filename of torch parameters')
     cmdparser.add_argument('-l', '--layers', help='list of layer names')
-    cmdparser.add_argument('-o', '--output', help='output file path of paddle model')
+    cmdparser.add_argument(
+        '-o', '--output', help='output file path of paddle model')
 
     args = cmdparser.parse_args(argv)
     if args.input and args.layers and args.output:
@@ -77,7 +83,10 @@ def main(argv):
         layers = [line.strip() for line in open(args.layers, 'r')]
         save_net_parameters(layers, params, args.output)
     else:
-        print('Usage: python torch2paddle.py -i torchfile.t7 -l layers.txt -o path/to/paddle_model')
+        print(
+            'Usage: python torch2paddle.py -i torchfile.t7 -l layers.txt -o path/to/paddle_model'
+        )
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

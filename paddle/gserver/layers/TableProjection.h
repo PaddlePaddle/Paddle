@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Projection.h"
@@ -34,7 +33,8 @@ namespace paddle {
  */
 class TableProjection : public Projection {
 public:
-  TableProjection(const ProjectionConfig& config, const ParameterPtr& parameter,
+  TableProjection(const ProjectionConfig& config,
+                  const ParameterPtr& parameter,
                   bool useGpu);
   /**
    * If use sparse row matrix as parameter, prefetch feature ids in input label.

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "DataProvider.h"
@@ -65,8 +64,8 @@ void DataProviderGroup<T>::reset() {
   provider_ = nullptr;
 
   // shuffle file list
-  std::shuffle(fileList_.begin(), fileList_.end(),
-      ThreadLocalRandomEngine::get());
+  std::shuffle(
+      fileList_.begin(), fileList_.end(), ThreadLocalRandomEngine::get());
 
   startLoader();
   DataProvider::reset();
@@ -113,8 +112,9 @@ void DataProviderGroup<T>::startLoader() {
     size_t endPos = std::min(fileList_.size(), startPos + loadFileCount);
     std::vector<std::string> fileVec(fileList_.begin() + startPos,
                                      fileList_.begin() + endPos);
-    loader_->addJob([this, fileVec]()
-                        -> ProviderPtrType { return this->loadFile(fileVec); });
+    loader_->addJob([this, fileVec]() -> ProviderPtrType {
+      return this->loadFile(fileVec);
+    });
   }
   loader_->stopAddJob();
 }

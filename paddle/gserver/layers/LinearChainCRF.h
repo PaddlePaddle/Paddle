@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/math/Matrix.h"
@@ -31,7 +30,8 @@ public:
    * \f$P(s) = (1/Z) exp(a_{s_1} + b_{s_L}
    *                  + \sum_{l=1}^L x_{s_l}
    *                  + \sum_{l=2}^L w_{s_{l-1},s_l})\f$
-   * where \f$Z\f$ is a normalization value so that the sum of \f$P(s)\f$ over all possible
+   * where \f$Z\f$ is a normalization value so that the sum of \f$P(s)\f$ over
+   * all possible
    * sequences is \f$1\f$, and \f$x\f$ is the input feature to the CRF.
    */
   LinearChainCRF(int numClasses, real* para, real* grad);
