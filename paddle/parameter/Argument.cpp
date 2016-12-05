@@ -225,6 +225,8 @@ void Argument::resizeAndCopyFrom(const Argument& src,
   }
   resizeAndCopy(udp, src.udp, useGpu, stream);
   resizeAndCopy(strs, src.strs, useGpu, stream);
+  frameWidth = src.frameWidth;
+  frameHeight = src.frameHeight;
 }
 
 int32_t Argument::resizeAndCopyFrom(const Argument& src,

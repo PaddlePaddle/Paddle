@@ -38,11 +38,12 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
     filterSizeY_.push_back(conf.filter_size_y());
     filterPixels_.push_back(filterSize_.back() * filterSizeY_.back());
     channels_.push_back(conf.channels());
-    imgSizeH_.push_back(conf.img_size());
+    imgSizeH_.push_back(conf.has_img_size_y() ? conf.img_size_y()
+                                              : conf.img_size());
     imgSizeW_.push_back(conf.img_size());
     groups_.push_back(conf.groups());
     filterChannels_.push_back(conf.filter_channels());
-    outputH_.push_back(conf.output_x());
+    outputH_.push_back(conf.has_output_y() ? conf.output_y() : conf.output_x());
     outputW_.push_back(conf.output_x());
   }
 
@@ -91,16 +92,19 @@ size_t ConvBaseLayer::calOutputSize() {
     for (size_t i = 0; i < inputLayers_.size(); i++) {
       inH.push_back(inputLayers_[i]->getOutput().getFrameHeight());
       inW.push_back(inputLayers_[i]->getOutput().getFrameWidth());
+      const ConvConfig& conf = config_.inputs(i).conv_conf();
       if (isDeconv_) {
-        if (inH[i] == 0) inH[i] = config_.inputs(i).conv_conf().output_x();
-        if (inW[i] == 0) inW[i] = config_.inputs(i).conv_conf().output_x();
+        if (inH[i] == 0)
+          inH[i] = conf.has_output_y() ? conf.output_y() : conf.output_x();
+        if (inW[i] == 0) inW[i] = conf.output_x();
         outH.push_back(imageSize(
             inH[i], filterSizeY_[i], paddingY_[i], strideY_[i], caffeMode_));
         outW.push_back(imageSize(
             inW[i], filterSize_[i], padding_[i], stride_[i], caffeMode_));
       } else {
-        if (inH[i] == 0) inH[i] = config_.inputs(i).conv_conf().img_size();
-        if (inW[i] == 0) inW[i] = config_.inputs(i).conv_conf().img_size();
+        if (inH[i] == 0)
+          inH[i] = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
+        if (inW[i] == 0) inW[i] = conf.img_size();
         outH.push_back(outputSize(
             inH[i], filterSizeY_[i], paddingY_[i], strideY_[i], caffeMode_));
         outW.push_back(outputSize(

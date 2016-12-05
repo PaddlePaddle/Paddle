@@ -77,6 +77,12 @@ message ConvConfig {
   required uint32 filter_size_y = 10;
   required uint32 padding_y = 11;
   required uint32 stride_y = 12;
+
+  // if not set, use output_x
+  optional uint32 output_y = 13;
+
+  // if not set, use img_size
+  optional uint32 img_size_y = 14;
 }
 
 message PoolConfig {
@@ -122,11 +128,9 @@ message PoolConfig {
 }
 
 message SppConfig {
-  required string pool_type = 1;
-  required uint32 pyramid_height = 2;
-  required uint32 channels = 3;
-  required uint32 img_size = 4;
-  optional uint32 img_size_y = 5;
+  required ImageConfig image_conf = 1;
+  required string pool_type = 2;
+  required uint32 pyramid_height = 3;
 }
 
 message NormConfig {
@@ -156,6 +160,12 @@ message NormConfig {
   // fixed window: shared a fixed window for each value
   // sliding window: have a different window for each value
   optional bool blocked = 8;
+
+  // if not set, use output_x
+  optional uint32 output_y = 9;
+
+  // if not set, use img_size
+  optional uint32 img_size_y = 10;
 }
 
 message BlockExpandConfig {
@@ -180,12 +190,8 @@ message BlockExpandConfig {
 }
 
 message MaxOutConfig {
-  required uint32 channels = 1;
+  required ImageConfig image_conf = 1;
   required uint32 groups = 2;
-
-  // The size of input feature map.
-  required uint32 img_size_x = 3;
-  required uint32 img_size_y = 4;
 }
 
 message ProjectionConfig {
@@ -226,12 +232,10 @@ message OperatorConfig {
 
 message BilinearInterpConfig {
   // The size of input feature map.
-  optional uint32 img_size_x = 1;
-  optional uint32 img_size_y = 2;
+  required ImageConfig image_conf = 1;
   // The size of output feature map.
-  required uint32 out_size_x = 3;
-  required uint32 out_size_y = 4;
-  required uint32 num_channels = 5;
+  required uint32 out_size_x = 2;
+  required uint32 out_size_y = 3;
 }
 
 message ImageConfig {
@@ -241,6 +245,7 @@ message ImageConfig {
 
   // The size of input feature map.
   required uint32 img_size = 8;
+  required uint32 img_size_y = 9;
 }
 
 message LayerInputConfig {
@@ -413,7 +418,10 @@ sinclude(`ModelConfigLayer.proto.m4')
   // string type is used for flexibility: different types can be converted
   // to string and reinterpreted in the user's own layer implementation.  
   optional string user_arg = 49;
-
+  
+  // to indicate rectangle image data
+  optional uint64 height = 50;
+  optional uint64 width = 51;
 }
 
 message EvaluatorConfig {

@@ -1,0 +1,10 @@
+net: "alexnet.prototxt"
+base_lr: 0.01
+lr_policy: "fixed"
+display: 20
+max_iter: 200
+momentum: 0.9
+weight_decay: 0.0005
+snapshot: 10000
+snapshot_prefix: "models/caffe_alexnet_train"
+solver_mode: GPU

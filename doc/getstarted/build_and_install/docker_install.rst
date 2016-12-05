@@ -1,122 +1,81 @@
-Docker installation guide
-==========================
+Using and Building Docker Images
+================================
 
-PaddlePaddle provide the `Docker <https://www.docker.com/>`_ image. `Docker`_ is a lightweight container utilities. The performance of PaddlePaddle in `Docker`_ container is basically as same as run it in a normal linux. The `Docker`_ is a very convenient way to deliver the binary release for linux programs.
+We release PaddlePaddle in the form of `Docker <https://www.docker.com/>`_ images on `dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_.   Running as Docker containers is currently the only officially-supported way to running PaddlePaddle.
 
-..  note::
+Run Docker images
+-----------------
 
-    The `Docker`_ image is the recommended way to run PaddlePaddle 
+For each version of PaddlePaddle, we release 4 variants of Docker images:
 
-PaddlePaddle Docker images
---------------------------
++-----------------+-------------+-------+
+|                 |   CPU AVX   |  GPU  |
++=================+=============+=======+
+|       cpu       |   yes       |  no   |
++-----------------+-------------+-------+
+|    cpu-noavx    |   no        |  no   |
++-----------------+-------------+-------+
+|       gpu       |   yes       |  yes  |
++-----------------+-------------+-------+
+|    gpu-noavx    |   no        |  yes  |
++-----------------+-------------+-------+
 
-There are 12 `images <https://hub.docker.com/r/paddledev/paddle/tags/>`_ for PaddlePaddle, and the name is :code:`paddle-dev/paddle`,  tags are\: 
+We run the following command on Linux to check if the CPU supports :code:`AVX`.
 
+.. code-block:: bash
 
-+-----------------+------------------+------------------------+-----------------------+
-|                 |   normal         |           devel        |          demo         |
-+=================+==================+========================+=======================+
-|       CPU       | cpu-latest       | cpu-devel-latest       | cpu-demo-latest       |
-+-----------------+------------------+------------------------+-----------------------+
-|       GPU       | gpu-latest       | gpu-devel-latest       | gpu-demo-latest       |
-+-----------------+------------------+------------------------+-----------------------+
-| CPU WITHOUT AVX | cpu-noavx-latest | cpu-devel-noavx-latest | cpu-demo-noavx-latest |
-+-----------------+------------------+------------------------+-----------------------+
-| GPU WITHOUT AVX | gpu-noavx-latest | gpu-devel-noavx-latest | gpu-demo-noavx-latest |
-+-----------------+------------------+------------------------+-----------------------+
+   if cat /proc/cpuinfo | grep -i avx; then echo Yes; else echo No; fi
 
-And the three columns are:
+On Mac OS X, we need to run
 
-* normal\: The docker image only contains binary of PaddlePaddle.
-* devel\: The docker image contains PaddlePaddle binary, source code and essential build environment.
-* demo\: The docker image contains the dependencies to run PaddlePaddle demo.
+.. code-block:: bash
 
-And the four rows are:
-
-* CPU\: CPU Version. Support CPU which has :code:`AVX` instructions.
-* GPU\: GPU Version. Support GPU, and cpu has :code:`AVX` instructions.
-* CPU WITHOUT AVX\: CPU Version, which support most CPU even doesn't have :code:`AVX` instructions.
-* GPU WITHOUT AVX\: GPU Version, which support most CPU even doesn't have :code:`AVX` instructions.
-
-User can choose any version depends on machine. The following script can help you to detect your CPU support :code:`AVX` or not.
-
-..  code-block:: bash
-    
-    if cat /proc/cpuinfo | grep -q avx ; then echo "Support AVX"; else echo "Not support AVX"; fi
-
-If the output is :code:`Support AVX`, then you can choose the AVX version of PaddlePaddle, otherwise, you need select :code:`noavx` version of PaddlePaddle. For example, the CPU develop version of PaddlePaddle is :code:`paddle-dev/paddle:cpu-devel-latest`.
-
-The PaddlePaddle images don't contain any entry command. You need to write your entry command to use this image. See :code:`Remote Access` part or just use following command to run a :code:`bash`
-
-..  code-block:: bash
-
-    docker run -it paddledev/paddle:cpu-latest /bin/bash
+   sysctl -a | grep machdep.cpu.leaf7_features
 
 
-Download and Run Docker images
-------------------------------
+Once we determine the proper variant, we can cope with the Docker image tag name by appending the version number.  For example, the following command runs the AVX-enabled image of the most recent version:
 
-You have to install Docker in your machine which has linux kernel version 3.10+ first. You can refer to the official guide https://docs.docker.com/engine/installation/ for further information.
+.. code-block:: bash
 
-You can use :code:`docker pull ` to download images first, or just launch a container with :code:`docker run` \:
+    docker run -it --rm paddledev/paddle:cpu-latest /bin/bash
 
-..  code-block:: bash
+To run a GPU-enabled image, you need to install CUDA and let Docker knows about it:
 
-    docker run -it paddledev/paddle:cpu-latest
-
-
-If you want to launch container with GPU support, you need to set some environment variables at the same time:
-
-..  code-block:: bash
+.. code-block:: bash
 
     export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
     export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
     docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
 
+The default entry point of all our Docker images starts the OpenSSH server.  To run PaddlePaddle and to expose OpenSSH port to 2202 on the host computer:
 
-Some notes for docker
----------------------
+.. code-block:: bash
 
-Performance
-+++++++++++
+    docker run -d -p 2202:22 paddledev/paddle:cpu-latest
 
-Since Docker is based on the lightweight virtual containers, the CPU computing performance maintains well. And GPU driver and equipments are all mapped to the container, so the GPU computing performance would not be seriously affected.
+Then we can login to the container using username :code:`root` and password :code:`root`:
 
-If you use high performance nic, such as RDMA(RoCE 40GbE or IB 56GbE), Ethernet(10GbE), it is recommended to use config "-net = host".
+.. code-block:: bash
 
-
-
-
-Remote access
-+++++++++++++
+    ssh -p 2202 root@localhost
 
 
-If you want to enable ssh access background, you need to build an image by yourself. Please refer to official guide https://docs.docker.com/engine/reference/builder/ for further information.
+Build Docker images
+-------------------
 
-Following is a simple Dockerfile with ssh:
+Developers might want to build Docker images from their local commit or from a tagged version.  Suppose that your local repo is at :code:`~/work/Paddle`, the following steps builds a cpu variant from your current work:
 
-..  literalinclude:: ../../doc_cn/build_and_install/install/paddle_ssh.Dockerfile
+.. code-block:: bash
 
-Then you can build an image with Dockerfile and launch a container:
+  cd ~/Paddle
+  ./paddle/scripts/docker/generates.sh # Use m4 to generate Dockerfiles for each variant.
+  docker build -t paddle:latest -f ./paddle/scripts/docker/Dockerfile.cpu
 
-..  code-block:: bash
+As a release engineer, you might want to build Docker images for a certain version and publish them to dockerhub.com.  You can do this by switching to the right Git tag, or create a new tag, before running `docker build`.  For example, the following commands build Docker images for v0.9.0:
 
-    # cd into Dockerfile directory
-    docker build . -t paddle_ssh
-    # run container, and map host machine port 8022 to container port 22
-    docker run -d -p 8022:22 --name paddle_ssh_machine paddle_ssh
+.. code-block:: bash
 
-Now, you can ssh on port 8022 to access the container, username is root, password is also root:
-
-..  code-block:: bash
-
-    ssh -p 8022 root@YOUR_HOST_MACHINE
-
-You can stop and delete the container as following:
-
-..  code-block:: bash
-
-    # stop
-    docker stop paddle_ssh_machine
-    # delete
-    docker rm paddle_ssh_machine
+   cd ~/Paddle
+   git checkout tags/v0.9.0
+   ./paddle/scripts/docker/generates.sh # Use m4 to generate Dockerfiles for each variant.
+   docker build -t paddle:cpu-v0.9.0 -f ./paddle/scripts/docker/Dockerfile.cpu
