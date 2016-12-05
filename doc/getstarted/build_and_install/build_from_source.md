@@ -15,13 +15,15 @@ cd paddle
 
 ## <span id="requirements">Requirements</span>
 
-To compile the source code, your computer must be equipped with GCC >=4.6 or Clang compiler.
+To compile the source code, your computer must be equipped with the following dependencies.
+
 ### Dependencies
 
+- **Compiler**: GCC >= 4.8 or Clang >= 3.3 (AppleClang >= 5.1)
 - **CMake**: version >= 2.8
 - **BLAS**: MKL, OpenBlas or ATLAS
-- **protobuf**: version >= 2.4, **Note: 3.x is not supported**
-- **python**: only python 2.7 is supported currently
+- **Protocol Buffers**: version >= 2.4, **Note: 3.x is not supported**
+- **Python**: only python 2.7 is supported currently
 
 ### Options
 
