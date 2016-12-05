@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "PaddleAPI.h"
+#include "PaddleAPIPrivate.h"
 #include "paddle/parameter/ParameterOptimizer.h"
 #include "Internal.h"
 #include <algorithm>
@@ -31,17 +31,21 @@ struct ParameterTraverseCallbackPrivate {
       const paddle::ParameterOptimizer::TraverseCallback& callback)
       : callback(callback) {}
 
-  void apply(const std::vector<Vector*>& vecs, const ParameterConfig& conf,
+  void apply(const std::vector<Vector*>& vecs,
+             const ParameterConfig& conf,
              size_t sparseId) {
     std::vector<paddle::VectorPtr> real_vecs;
     real_vecs.resize(vecs.size());
-    std::transform(vecs.begin(), vecs.end(), real_vecs.begin(), [](Vector* v) {
-      if (v) {
-        return *(paddle::VectorPtr*)(v->getSharedPtr());
-      } else {
-        return paddle::VectorPtr();
-      }
-    });
+    std::transform(vecs.begin(),
+                   vecs.end(),
+                   real_vecs.begin(),
+                   [](Vector* v) {
+                     if (v) {
+                       return *(paddle::VectorPtr*)(v->getSharedPtr());
+                     } else {
+                       return paddle::VectorPtr();
+                     }
+                   });
 
     paddle::ParameterConfig& real_conf =
         *(paddle::ParameterConfig*)(const_cast<ParameterConfig&>(conf)
@@ -60,10 +64,9 @@ ParameterOptimizer::~ParameterOptimizer() {
 
 ParameterOptimizer* ParameterOptimizer::create(OptimizationConfig* config) {
   CHECK(config != nullptr);
-  auto opt_config_ptr = (paddle::OptimizationConfig*)config->getRawPtr();
   auto retOptimizer = new ParameterOptimizer();
   retOptimizer->m->optimizer.reset(
-      paddle::ParameterOptimizer::create(*opt_config_ptr, false));
+      paddle::ParameterOptimizer::create(config->m->getConfig(), false));
   return retOptimizer;
 }
 
@@ -86,10 +89,12 @@ void ParameterOptimizer::startBatch(size_t numSamplesProcessed) {
 void ParameterOptimizer::finishBatch() { m->optimizer->finishBatch(); }
 
 void ParameterOptimizer::update(const std::vector<Vector*>& vecs,
-                                const ParameterConfig& conf, size_t sparseId) {
-  ParameterTraverseCallbackPrivate invoker([&](
-      const paddle::VectorPtr _vecs[], const paddle::ParameterConfig& config,
-      size_t sid = -1UL) { m->optimizer->update(_vecs, config, sid); });
+                                const ParameterConfig& conf,
+                                size_t sparseId) {
+  ParameterTraverseCallbackPrivate invoker(
+      [&](const paddle::VectorPtr _vecs[],
+          const paddle::ParameterConfig& config,
+          size_t sid = -1UL) { m->optimizer->update(_vecs, config, sid); });
   invoker.apply(vecs, conf, sparseId);
 }
 
@@ -116,8 +121,9 @@ void ParameterTraverseCallback::apply(const std::vector<Vector*>& vecs,
 
 ParameterTraverseCallback* ParameterOptimizer::needSpecialTraversal(
     const ParameterConfig& config) const {
-  auto& param_config = *(paddle::ParameterConfig*)const_cast<ParameterConfig&>(
-                            config).getRawPtr();
+  auto& param_config =
+      *(paddle::ParameterConfig*)const_cast<ParameterConfig&>(config)
+           .getRawPtr();
   auto callback = m->optimizer->needSpecialTraversal(param_config);
   if (callback) {
     auto retCallback = new ParameterTraverseCallback();

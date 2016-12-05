@@ -45,10 +45,8 @@ class DenseScanner(IScanner):
     def finish_scan(self, argument):
         assert isinstance(argument, swig_paddle.Arguments)
         assert isinstance(self.input_type, dp2.InputType)
-        m = swig_paddle.Matrix.createDense(self.__mat__,
-                                           self.__height__,
-                                           self.input_type.dim,
-                                           False)
+        m = swig_paddle.Matrix.createDense(self.__mat__, self.__height__,
+                                           self.input_type.dim, False)
         argument.setSlotValue(self.pos, m)
 
 
@@ -63,7 +61,8 @@ class SparseBinaryScanner(IScanner):
 
     def scan(self, dat):
         self.extend_cols(dat)
-        self.__rows__.append(len(dat))
+        self.__rows__.append(len(self.__cols__))
+        self.__height__ += 1
 
     def extend_cols(self, dat):
         self.__cols__.extend(dat)
@@ -140,8 +139,10 @@ class DataProviderConverter(object):
         assert isinstance(argument, swig_paddle.Arguments)
         argument.resize(len(self.input_types))
 
-        scanners = [DataProviderConverter.create_scanner(i, each_type)
-                    for i, each_type in enumerate(self.input_types)]
+        scanners = [
+            DataProviderConverter.create_scanner(i, each_type)
+            for i, each_type in enumerate(self.input_types)
+        ]
 
         for each_sample in dat:
             for each_step, scanner in zip(each_sample, scanners):
@@ -170,11 +171,14 @@ class DataProviderConverter(object):
         assert retv is not None
 
         if each.seq_type == dp2.SequenceType.SUB_SEQUENCE:
-            retv = SequenceScanner(each, i, retv, lambda a, p, seq:
-            a.setSlotSubSequenceStartPositions(p, seq))
+            retv = SequenceScanner(
+                each, i, retv,
+                lambda a, p, seq: a.setSlotSubSequenceStartPositions(p, seq))
 
-        if each.seq_type in [dp2.SequenceType.SUB_SEQUENCE,
-                             dp2.SequenceType.SEQUENCE]:
-            retv = SequenceScanner(each, i, retv, lambda a, p, seq:
-            a.setSlotSequenceStartPositions(p, seq))
+        if each.seq_type in [
+                dp2.SequenceType.SUB_SEQUENCE, dp2.SequenceType.SEQUENCE
+        ]:
+            retv = SequenceScanner(
+                each, i, retv,
+                lambda a, p, seq: a.setSlotSequenceStartPositions(p, seq))
         return retv

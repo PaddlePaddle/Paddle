@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Stat.h"
 #include "MixedLayer.h"
 
@@ -29,8 +28,8 @@ bool MixedLayer::init(const LayerMap& layerMap,
   projections_.resize(inputLayers_.size());
   for (size_t i = 0; i < inputLayers_.size(); i++) {
     if (config_.inputs(i).has_proj_conf()) {
-      projections_[i].reset(Projection::create(config_.inputs(i).proj_conf(),
-                                               parameters_[i], useGpu_));
+      projections_[i].reset(Projection::create(
+          config_.inputs(i).proj_conf(), parameters_[i], useGpu_));
     } else {
       CHECK(!parameters_[i]) << "should no parameters for operators";
     }
@@ -41,9 +40,12 @@ bool MixedLayer::init(const LayerMap& layerMap,
     }
     operators_.emplace_back(Operator::create(operator_conf, useGpu_));
   }
+
   /* initialize biases_ */
   if (biasParameter_.get() != NULL) {
-    biases_ = std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_));
+    sharedBias_ = config_.shared_biases();
+    size_t psize = config_.bias_size();
+    biases_ = std::unique_ptr<Weight>(new Weight(1, psize, biasParameter_));
   }
 
   return true;
@@ -119,12 +121,6 @@ void MixedLayer::forward(PassType passType) {
 
   MatrixPtr outV = getOutputValue();
 
-  /* add the bias-vector */
-  if (biases_.get() != NULL) {
-    REGISTER_TIMER_INFO("FwBiasTimer", getName().c_str());
-    outV->addBias(*(biases_->getW()), 1);
-  }
-
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
     if (projections_[i]) {
       projections_[i]->forward(&getInput(i), &output_, passType);
@@ -138,6 +134,12 @@ void MixedLayer::forward(PassType passType) {
       ins.push_back(&getInput(input_index));
     }
     op->forward(ins, &output_, passType);
+  }
+
+  /* add the bias-vector */
+  if (biases_.get() != NULL) {
+    REGISTER_TIMER_INFO("FwBiasTimer", getName().c_str());
+    outV->addBias(*(biases_->getW()), 1, sharedBias_);
   }
 
   /* activation */ {
@@ -154,7 +156,7 @@ void MixedLayer::backward(const UpdateCallback& callback) {
 
   if (biases_ && biases_->getWGrad()) {
     REGISTER_TIMER_INFO("BpBiasTimer", getName().c_str());
-    biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
+    biases_->getWGrad()->collectBias(*getOutputGrad(), 1, sharedBias_);
 
     /* Increasing the number of gradient */
     biases_->getParameterPtr()->incUpdate(callback);

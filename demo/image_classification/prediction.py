@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os,sys
+import os, sys
 import numpy as np
 import logging
 from PIL import Image
@@ -24,8 +24,10 @@ from py_paddle import swig_paddle, DataProviderConverter
 from paddle.trainer.PyDataProvider2 import dense_vector
 from paddle.trainer.config_parser import parse_config
 
-logging.basicConfig(format='[%(levelname)s %(asctime)s %(filename)s:%(lineno)s] %(message)s')
+logging.basicConfig(
+    format='[%(levelname)s %(asctime)s %(filename)s:%(lineno)s] %(message)s')
 logging.getLogger().setLevel(logging.INFO)
+
 
 class ImageClassifier():
     def __init__(self,
@@ -58,18 +60,19 @@ class ImageClassifier():
         self.oversample = oversample
         self.is_color = is_color
 
-        self.transformer = image_util.ImageTransformer(is_color = is_color)
-        self.transformer.set_transpose((2,0,1))
+        self.transformer = image_util.ImageTransformer(is_color=is_color)
+        self.transformer.set_transpose((2, 0, 1))
 
         self.mean_file = mean_file
         mean = np.load(self.mean_file)['data_mean']
         mean = mean.reshape(3, self.crop_dims[0], self.crop_dims[1])
-        self.transformer.set_mean(mean) # mean pixel
+        self.transformer.set_mean(mean)  # mean pixel
         gpu = 1 if use_gpu else 0
         conf_args = "is_test=1,use_gpu=%d,is_predict=1" % (gpu)
         conf = parse_config(train_conf, conf_args)
         swig_paddle.initPaddle("--use_gpu=%d" % (gpu))
-        self.network = swig_paddle.GradientMachine.createFromConfigProto(conf.model_config)
+        self.network = swig_paddle.GradientMachine.createFromConfigProto(
+            conf.model_config)
         assert isinstance(self.network, swig_paddle.GradientMachine)
         self.network.loadParameters(self.model_dir)
 
@@ -90,14 +93,14 @@ class ImageClassifier():
             # image_util.resize_image: short side is self.resize_dim
             image = image_util.resize_image(image, self.resize_dim)
             image = np.array(image)
-            input = np.zeros((1, image.shape[0], image.shape[1], 3),
-                             dtype=np.float32)
+            input = np.zeros(
+                (1, image.shape[0], image.shape[1], 3), dtype=np.float32)
             input[0] = image.astype(np.float32)
             input = image_util.oversample(input, self.crop_dims)
         else:
             image = image.resize(self.crop_dims, Image.ANTIALIAS)
-            input = np.zeros((1, self.crop_dims[0], self.crop_dims[1], 3),
-                             dtype=np.float32)
+            input = np.zeros(
+                (1, self.crop_dims[0], self.crop_dims[1], 3), dtype=np.float32)
             input[0] = np.array(image).astype(np.float32)
 
         data_in = []
@@ -133,22 +136,24 @@ class ImageClassifier():
         lab = np.argsort(-prob)
         logging.info("Label of %s is: %d", image, lab[0])
 
-if __name__ == '__main__':
-    image_size=32
-    crop_size=32
-    multi_crop=True
-    config="vgg_16_cifar.py"
-    output_layer="__fc_layer_1__"
-    mean_path="data/cifar-out/batches/batches.meta"
-    model_path=sys.argv[1]
-    image=sys.argv[2]
-    use_gpu=bool(int(sys.argv[3]))
 
-    obj = ImageClassifier(train_conf=config,
-                          model_dir=model_path,
-                          resize_dim=image_size,
-                          crop_dim=crop_size,
-                          mean_file=mean_path,
-                          use_gpu=use_gpu,
-                          oversample=multi_crop)
+if __name__ == '__main__':
+    image_size = 32
+    crop_size = 32
+    multi_crop = True
+    config = "vgg_16_cifar.py"
+    output_layer = "__fc_layer_1__"
+    mean_path = "data/cifar-out/batches/batches.meta"
+    model_path = sys.argv[1]
+    image = sys.argv[2]
+    use_gpu = bool(int(sys.argv[3]))
+
+    obj = ImageClassifier(
+        train_conf=config,
+        model_dir=model_path,
+        resize_dim=image_size,
+        crop_dim=crop_size,
+        mean_file=mean_path,
+        use_gpu=use_gpu,
+        oversample=multi_crop)
     obj.predict(image, output_layer)

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "hl_gpu.h"
 #include "CpuSparseMatrix.h"
 #include "SparseMatrix.h"
@@ -24,24 +23,35 @@ namespace paddle {
 
 const size_t CpuSparseMatrix::DEFAULT_AVG_WIDTH;
 
-CpuSparseMatrix::CpuSparseMatrix(size_t height, size_t width, size_t nnz,
-                                 SparseValueType valueType, SparseFormat format,
+CpuSparseMatrix::CpuSparseMatrix(size_t height,
+                                 size_t width,
+                                 size_t nnz,
+                                 SparseValueType valueType,
+                                 SparseFormat format,
                                  bool trans)
     : Matrix(NULL, height, width, trans, false) {
   resize(height, width, nnz, valueType, format);
 }
 
-CpuSparseMatrix::CpuSparseMatrix(CpuMemHandlePtr dataHandle, size_t height,
-                                 size_t width, size_t nnz,
-                                 SparseValueType valueType, SparseFormat format,
+CpuSparseMatrix::CpuSparseMatrix(CpuMemHandlePtr dataHandle,
+                                 size_t height,
+                                 size_t width,
+                                 size_t nnz,
+                                 SparseValueType valueType,
+                                 SparseFormat format,
                                  bool trans)
     : Matrix(dataHandle, height, width, trans, false) {
   resize(height, width, nnz, valueType, format);
 }
 
-CpuSparseMatrix::CpuSparseMatrix(real* data, int* rows, int* cols,
-                                 size_t height, size_t width, size_t nnz,
-                                 SparseValueType valueType, SparseFormat format,
+CpuSparseMatrix::CpuSparseMatrix(real* data,
+                                 int* rows,
+                                 int* cols,
+                                 size_t height,
+                                 size_t width,
+                                 size_t nnz,
+                                 SparseValueType valueType,
+                                 SparseFormat format,
                                  bool trans)
     : Matrix(NULL, height, width, trans, false) {
   cols_ = cols;
@@ -54,8 +64,11 @@ CpuSparseMatrix::CpuSparseMatrix(real* data, int* rows, int* cols,
   format_ = format;
 }
 
-void CpuSparseMatrix::resize(size_t newHeight, size_t newWidth, size_t newNnz,
-                             SparseValueType valueType, SparseFormat format) {
+void CpuSparseMatrix::resize(size_t newHeight,
+                             size_t newWidth,
+                             size_t newNnz,
+                             SparseValueType valueType,
+                             SparseFormat format) {
   CHECK_LE(newNnz, newHeight * newWidth);
   size_t newSize = 0;
   if (format == SPARSE_CSR) {
@@ -110,23 +123,38 @@ void CpuSparseMatrix::sparseResize() {
 }
 
 void CpuSparseMatrix::resize(size_t newHeight, size_t newWidth) {
-  resize(newHeight, newWidth, newHeight * std::min(DEFAULT_AVG_WIDTH, newWidth),
-         valueType_, format_);
+  resize(newHeight,
+         newWidth,
+         newHeight * std::min(DEFAULT_AVG_WIDTH, newWidth),
+         valueType_,
+         format_);
 }
 
 MatrixPtr CpuSparseMatrix::getTranspose() {
   if (!memoryHandle_ && !value_) {
-    MatrixPtr dest(new CpuSparseMatrix(height_, width_, elementCnt_, valueType_,
-                                       format_, true));
+    MatrixPtr dest(new CpuSparseMatrix(
+        height_, width_, elementCnt_, valueType_, format_, true));
     return dest;
   } else if (memoryHandle_) {
     MatrixPtr dest(new CpuSparseMatrix(
-        std::dynamic_pointer_cast<CpuMemoryHandle>(memoryHandle_), height_,
-        width_, elementCnt_, valueType_, format_, true));
+        std::dynamic_pointer_cast<CpuMemoryHandle>(memoryHandle_),
+        height_,
+        width_,
+        elementCnt_,
+        valueType_,
+        format_,
+        true));
     return dest;
   } else if (value_) {
-    MatrixPtr dest(new CpuSparseMatrix(value_, rows_, cols_, height_, width_,
-                                       elementCnt_, valueType_, format_, true));
+    MatrixPtr dest(new CpuSparseMatrix(value_,
+                                       rows_,
+                                       cols_,
+                                       height_,
+                                       width_,
+                                       elementCnt_,
+                                       valueType_,
+                                       format_,
+                                       true));
     return dest;
   } else {
     return NULL;
@@ -140,7 +168,10 @@ void CpuSparseMatrix::mul(MatrixPtr a, MatrixPtr b, real scaleAB, real scaleT) {
 
   if (dynamic_cast<CpuMatrix*>(a.get()) && dynamic_cast<CpuMatrix*>(b.get())) {
     CpuMatrix::mul(dynamic_cast<CpuMatrix*>(a.get()),
-                   dynamic_cast<CpuMatrix*>(b.get()), this, scaleAB, scaleT);
+                   dynamic_cast<CpuMatrix*>(b.get()),
+                   this,
+                   scaleAB,
+                   scaleT);
   } else {
     LOG(FATAL) << "not supported";
   }
@@ -243,7 +274,8 @@ void CpuSparseMatrix::randomizeUniform() {
   }
 }
 
-void CpuSparseMatrix::copyFrom(std::vector<int>& rows, std::vector<int>& cols,
+void CpuSparseMatrix::copyFrom(std::vector<int>& rows,
+                               std::vector<int>& cols,
                                std::vector<real>& values) {
   size_t size = format_ == SPARSE_CSR ? cols.size() : rows.size();
   resize(height_, width_, size, valueType_, format_);
@@ -302,11 +334,11 @@ MatrixPtr CpuSparseMatrix::clone(size_t height, size_t width, bool useGpu) {
   }
   CHECK(width && height);
   if (!useGpu) {
-    return std::make_shared<CpuSparseMatrix>(height, width, 0, valueType_,
-                                             format_);
+    return std::make_shared<CpuSparseMatrix>(
+        height, width, 0, valueType_, format_);
   } else {
-    return std::make_shared<GpuSparseMatrix>(height, width, elementCnt_,
-                                             valueType_, format_);
+    return std::make_shared<GpuSparseMatrix>(
+        height, width, elementCnt_, valueType_, format_);
   }
 }
 
@@ -315,13 +347,25 @@ MatrixPtr CpuSparseMatrix::subMatrix(size_t startRow, size_t numRows) {
   CHECK_EQ(format_, SPARSE_CSR);
   if (valueType_ == NO_VALUE) {
     return std::make_shared<CpuSparseMatrix>(
-        nullptr, rows_ + startRow, cols_, numRows, width_,
-        rows_[startRow + numRows] - rows_[startRow], valueType_, format_,
+        nullptr,
+        rows_ + startRow,
+        cols_,
+        numRows,
+        width_,
+        rows_[startRow + numRows] - rows_[startRow],
+        valueType_,
+        format_,
         trans_);
   } else {
     return std::make_shared<CpuSparseMatrix>(
-        value_, rows_ + startRow, cols_, numRows, width_,
-        rows_[startRow + numRows] - rows_[startRow], valueType_, format_,
+        value_,
+        rows_ + startRow,
+        cols_,
+        numRows,
+        width_,
+        rows_[startRow + numRows] - rows_[startRow],
+        valueType_,
+        format_,
         trans_);
   }
 }
@@ -404,14 +448,13 @@ void CpuSparseMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   }
 }
 
-void CpuSparseMatrix::setRow(size_t row, size_t colNum,
-                             const unsigned int* cols, const real* values) {
+void CpuSparseMatrix::setRow(size_t row,
+                             size_t colNum,
+                             const unsigned int* cols,
+                             const real* values) {
   if (format_ == SPARSE_CSR) {
     CHECK_LT(row, height_);
     CHECK(NULL != cols);
-    for (size_t i = row; i < height_; i++) {
-      CHECK_EQ(rows_[i + 1], rows_[i]);
-    }
     if (0 == row) {
       rows_[row] = 0;
     }
@@ -497,11 +540,23 @@ void CpuSparseMatrix::copyFrom(const GpuSparseMatrix& src, hl_stream_t stream) {
   CHECK_EQ(size_t(elementCnt_), src.getElementCnt());
   size_t valSize = valueType_ == NO_VALUE ? 0 : elementCnt_;
   if (format_ == SPARSE_CSC)
-    hl_memcpy_from_csc_matrix(value_, valSize, rows_, elementCnt_, cols_,
-                              width_ + 1, src.sMatrix_.get(), stream);
+    hl_memcpy_from_csc_matrix(value_,
+                              valSize,
+                              rows_,
+                              elementCnt_,
+                              cols_,
+                              width_ + 1,
+                              src.sMatrix_.get(),
+                              stream);
   else
-    hl_memcpy_from_csr_matrix(value_, valSize, rows_, height_ + 1, cols_,
-                              elementCnt_, src.sMatrix_.get(), stream);
+    hl_memcpy_from_csr_matrix(value_,
+                              valSize,
+                              rows_,
+                              height_ + 1,
+                              cols_,
+                              elementCnt_,
+                              src.sMatrix_.get(),
+                              stream);
 }
 
 void CpuSparseMatrix::copyFrom(const CpuSparseMatrix& src) {
@@ -539,14 +594,16 @@ void CpuSparseMatrix::copyFrom(const CpuSparseMatrix& src) {
   }
 }
 
-void CpuSparseMatrix::copyRow(int offsets, size_t colNum,
+void CpuSparseMatrix::copyRow(int offsets,
+                              size_t colNum,
                               const sparse_non_value_t* row) {
   for (size_t j = 0; j < colNum; j++) {
     cols_[offsets + j] = row[j].col;
   }
 }
 
-void CpuSparseMatrix::copyRow(int offsets, size_t colNum,
+void CpuSparseMatrix::copyRow(int offsets,
+                              size_t colNum,
                               const sparse_float_value_t* row) {
   for (size_t j = 0; j < colNum; j++) {
     cols_[offsets + j] = row[j].col;
@@ -599,7 +656,8 @@ void CpuSparseMatrix::trimFrom(const CpuSparseMatrix& src) {
   if (format_ == SPARSE_CSR) {
     int* srcCols = src.getCols();
     size_t numLessWidth =
-        std::count_if(srcCols, srcCols + src.getElementCnt(),
+        std::count_if(srcCols,
+                      srcCols + src.getElementCnt(),
                       [this](size_t n) { return n < this->width_; });
     resize(height_, width_, numLessWidth, valueType_, format_);
     rows_[0] = 0;
@@ -639,13 +697,15 @@ void CpuSparseMatrix::trimFrom(const CpuSparseMatrix& src) {
 
 void CpuSparseMatrix::zeroMem() {
   CHECK(valueType_ == FLOAT_VALUE);
-  memset(value_, 0, elementCnt_* sizeof(real));
+  memset(value_, 0, elementCnt_ * sizeof(real));
 }
 
-template void CpuSparseMatrix::copyFrom(int64_t* ids, int64_t* indices,
+template void CpuSparseMatrix::copyFrom(int64_t* ids,
+                                        int64_t* indices,
                                         sparse_non_value_t* data);
 
-template void CpuSparseMatrix::copyFrom(int64_t* ids, int64_t* indices,
+template void CpuSparseMatrix::copyFrom(int64_t* ids,
+                                        int64_t* indices,
                                         sparse_float_value_t* data);
 
 template void CpuSparseMatrix::copyFrom(int64_t* indices,
@@ -676,7 +736,9 @@ void CpuSparseMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
     }
 
     size_t outsize = std::min(num, beam);
-    std::partial_sort(vec.begin(), vec.begin() + outsize, vec.end(),
+    std::partial_sort(vec.begin(),
+                      vec.begin() + outsize,
+                      vec.end(),
                       [](const valuepair& a, const valuepair& b) {
                         return a.first > b.first;
                       });

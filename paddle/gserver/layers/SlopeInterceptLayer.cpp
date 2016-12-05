@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
@@ -21,7 +20,8 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * @brief A layer for applying a slope and an intercept to the input element-wise.
+ * @brief A layer for applying a slope and an intercept to the input
+ * element-wise.
  * This layer is used in NEURAL TURING MACHINE.
  * @note There is no activation and weight in this layer.
  *
@@ -29,7 +29,8 @@ namespace paddle {
  *    y = ax + b
  * \f]
  *
- * Here, a is scale and b is offset, which are provided as attributes of the layer.
+ * Here, a is scale and b is offset, which are provided as attributes of the
+ * layer.
  *
  * The config file api is slope_intercept_layer.
  */

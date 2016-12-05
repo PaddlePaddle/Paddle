@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+ifdef(`proto3', `syntax = "proto2";')
 
 import "DataConfig.proto";
 import "ModelConfig.proto";
@@ -130,7 +131,7 @@ message OptimizationConfig {
 };
 
 message TrainerConfig {
-  required ModelConfig model_config = 1;
+  optional ModelConfig model_config = 1;
   optional DataConfig data_config = 2;
   required OptimizationConfig opt_config = 3;
   optional DataConfig test_data_config = 4;

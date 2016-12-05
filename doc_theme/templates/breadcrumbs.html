@@ -1,0 +1,24 @@
+{# Support for Sphinx 1.3+ page_source_suffix, but don't break old builds. #}
+
+{% if page_source_suffix %} 
+{% set suffix = page_source_suffix %}
+{% else %}
+{% set suffix = source_suffix %}
+{% endif %}
+
+{% if meta is defined and 'github_url' in meta %}
+{% set display_github = True %}
+{% endif %}
+
+{% if meta is defined and 'bitbucket_url' in meta %}
+{% set display_bitbucket = True %}
+{% endif %}
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+      {% for doc in parents %}
+        <li><a href="{{ doc.link|e }}">{{ doc.title }}</a> > </li>
+      {% endfor %}
+    <li>{{ title }}</li>
+  </ul>
+</div>

@@ -32,7 +32,7 @@ class TestArguments(unittest.TestCase):
         iv = args.getSlotIds(0)
         assert isinstance(iv, swig_paddle.IVector)
         np_arr = iv.toNumpyArrayInplace()
-        self.assertEqual(np_arr.shape, (6,))
+        self.assertEqual(np_arr.shape, (6, ))
 
 
 if __name__ == '__main__':

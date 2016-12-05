@@ -18,14 +18,14 @@ from optparse import OptionParser
 from py_paddle import swig_paddle, DataProviderConverter
 from paddle.trainer.PyDataProvider2 import integer_value_sequence
 from paddle.trainer.config_parser import parse_config
-
 """
 Usage: run following command to show help message.
   python predict.py -h
 """
 
+
 class SentimentPrediction():
-    def __init__(self, train_conf, dict_file, model_dir=None, label_file = None):
+    def __init__(self, train_conf, dict_file, model_dir=None, label_file=None):
         """
         train_conf: trainer configure.
         dict_file: word dictionary file name.
@@ -44,10 +44,11 @@ class SentimentPrediction():
             self.load_label(label_file)
 
         conf = parse_config(train_conf, "is_predict=1")
-        self.network = swig_paddle.GradientMachine.createFromConfigProto(conf.model_config)
+        self.network = swig_paddle.GradientMachine.createFromConfigProto(
+            conf.model_config)
         self.network.loadParameters(self.model_dir)
-        slots = [integer_value_sequence(self.dict_dim)]
-        self.converter = DataProviderConverter(slots)
+        input_types = [integer_value_sequence(self.dict_dim)]
+        self.converter = DataProviderConverter(input_types)
 
     def load_dict(self):
         """
@@ -61,7 +62,7 @@ class SentimentPrediction():
         """
         Load label.
         """
-        self.label={}
+        self.label = {}
         for v in open(label_file, 'r'):
             self.label[int(v.split('\t')[1])] = v.split('\t')[0]
 
@@ -72,7 +73,9 @@ class SentimentPrediction():
         with open(data_file, 'r') as fdata:
             for line in fdata:
                 words = line.strip().split()
-                word_slot = [self.word_dict[w] for w in words if w in self.word_dict]
+                word_slot = [
+                    self.word_dict[w] for w in words if w in self.word_dict
+                ]
                 if not word_slot:
                     print "all words are not in dictionary: %s", line
                     continue
@@ -89,24 +92,47 @@ class SentimentPrediction():
         if self.label is None:
             print("%s: predicting label is %d" % (data_file, lab[0][0]))
         else:
-            print("%s: predicting label is %s" % (data_file, self.label[lab[0][0]]))
+            print("%s: predicting label is %s" %
+                  (data_file, self.label[lab[0][0]]))
+
 
 def option_parser():
     usage = "python predict.py -n config -w model_dir -d dictionary -i input_file "
     parser = OptionParser(usage="usage: %s [options]" % usage)
-    parser.add_option("-n", "--tconf", action="store",
-                      dest="train_conf", help="network config")
-    parser.add_option("-d", "--dict", action="store",
-                      dest="dict_file",help="dictionary file")
-    parser.add_option("-b", "--label", action="store",
-                      dest="label", default=None,
-                      help="dictionary file")
-    parser.add_option("-i", "--data", action="store",
-                      dest="data", help="data file to predict")
-    parser.add_option("-w", "--model", action="store",
-                      dest="model_path", default=None,
-                      help="model path")
+    parser.add_option(
+        "-n",
+        "--tconf",
+        action="store",
+        dest="train_conf",
+        help="network config")
+    parser.add_option(
+        "-d",
+        "--dict",
+        action="store",
+        dest="dict_file",
+        help="dictionary file")
+    parser.add_option(
+        "-b",
+        "--label",
+        action="store",
+        dest="label",
+        default=None,
+        help="dictionary file")
+    parser.add_option(
+        "-i",
+        "--data",
+        action="store",
+        dest="data",
+        help="data file to predict")
+    parser.add_option(
+        "-w",
+        "--model",
+        action="store",
+        dest="model_path",
+        default=None,
+        help="model path")
     return parser.parse_args()
+
 
 def main():
     options, args = option_parser()
@@ -118,6 +144,7 @@ def main():
     swig_paddle.initPaddle("--use_gpu=0")
     predict = SentimentPrediction(train_conf, dict_file, model_path, label)
     predict.predict(data)
+
 
 if __name__ == '__main__':
     main()

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 #include "NormProjectionLayer.h"
@@ -24,7 +23,7 @@ size_t CMRProjectionNormLayer::getSize() {
   imgSizeH_ = inputLayers_[0]->getOutput().getFrameHeight();
   imgSizeW_ = inputLayers_[0]->getOutput().getFrameWidth();
   if (imgSizeH_ == 0) {
-    imgSizeH_ = imgSize_;
+    imgSizeH_ = imgSizeY_;
   }
   if (imgSizeW_ == 0) {
     imgSizeW_ = imgSize_;
@@ -65,8 +64,8 @@ void CMRProjectionNormLayer::forward(PassType passType) {
 
   denoms_->zeroMem();
 
-  outV->crossMapNormalFwd(*input, imgSizeH_, imgSizeW_, *denoms_, channels_,
-                          size_, scale_, pow_);
+  outV->crossMapNormalFwd(
+      *input, imgSizeH_, imgSizeW_, *denoms_, channels_, size_, scale_, pow_);
 }
 
 void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
@@ -81,8 +80,15 @@ void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
   MatrixPtr localOutV = getOutputValue();
   MatrixPtr preOutV = inputLayers_[0]->getOutputValue();
 
-  preOutGrad->crossMapNormalBwd(*localGrad, *denoms_, *preOutV, *localOutV,
-                                channels_, imgSizeH_, imgSizeW_, size_, scale_,
+  preOutGrad->crossMapNormalBwd(*localGrad,
+                                *denoms_,
+                                *preOutV,
+                                *localOutV,
+                                channels_,
+                                imgSizeH_,
+                                imgSizeW_,
+                                size_,
+                                scale_,
                                 pow_);
 }
 }  // namespace paddle

@@ -625,7 +625,10 @@ void BaseMatrixT<T>::squareDerivative(BaseMatrixT& b) {
   applyBinary(binary::SquareDerivative<T>(), b);
 }
 
-DEFINE_MATRIX_BINARY_OP(Tanh, b = 2.0 / (1.0 + exp(-2 * a)) - 1.0);
+DEFINE_MATRIX_BINARY_OP(Tanh,
+    T tmp = -2.0 * a;
+    tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
+    b = 2.0 / (1.0 + std::exp(tmp)) - 1.0);
 template<>
 void BaseMatrixT<real>::tanh(BaseMatrixT& b) {
   applyBinary(binary::Tanh<real>(), b);
@@ -1239,6 +1242,12 @@ void BaseMatrixT<T>::assignAtOffset(BaseMatrixT& b, int64_t columnOffset) {
   }
 }
 
+DEFINE_MATRIX_BINARY_OP(DeepSwap, T tmp = a; a = b; b = tmp);
+template<class T>
+void BaseMatrixT<T>::deepSwap(BaseMatrixT& b) {
+    applyBinary(binary::DeepSwap<T>(), b);
+}
+
 template<>
 void BaseMatrixT<real>::rowDotMul(size_t destCol,
                                   BaseMatrixT& b,
@@ -1448,8 +1457,10 @@ template<>
 template <class Agg>
 int BaseMatrixT<real>::applyRow(Agg agg, BaseMatrixT& b) {
   MatrixOffset offset(0, 0, 0, 0, 0, 0);
-  int numRows = b.height_;
-  int numCols = b.width_;
+  size_t numRows = b.height_;
+  size_t numCols = b.width_;
+  CHECK_EQ(height_, numRows);
+  CHECK_EQ(width_, 1UL);
   aggregate(agg, base::unary::identity(), base::binary::second(), b, numRows,
             numCols, offset, false_type(), true_type() /*aAsColVector*/);
 
@@ -1460,8 +1471,10 @@ template<>
 template <class Agg, class Saver>
 int BaseMatrixT<real>::applyRow(Agg agg, Saver sv, BaseMatrixT& b) {
   MatrixOffset offset(0, 0, 0, 0, 0, 0);
-  int numRows = b.height_;
-  int numCols = b.width_;
+  size_t numRows = b.height_;
+  size_t numCols = b.width_;
+  CHECK_EQ(height_, numRows);
+  CHECK_EQ(width_, 1UL);
   aggregate(agg, base::unary::identity(), sv, b, numRows, numCols, offset,
             false_type(), true_type() /*aAsColVector*/);
 
@@ -1470,10 +1483,59 @@ int BaseMatrixT<real>::applyRow(Agg agg, Saver sv, BaseMatrixT& b) {
 
 template<>
 template <class Agg>
+int BaseMatrixT<real>::applyRow(
+     Agg agg, real scaleDest, real scaleAgg, BaseMatrixT& b) {
+  if (scaleDest != 0) {
+    applyRow(agg, base::binary::add2(scaleDest, scaleAgg), b);
+  } else {
+    applyRow(agg, base::binary::second(), b);
+    if (scaleAgg != 1) {
+      mulScalar(scaleAgg);
+    }
+  }
+  return 0;
+}
+
+template<>
+template <class Agg, class Op, class Saver>
+int BaseMatrixT<real>::applyRow(Agg agg, Op op, Saver sv,
+                                BaseMatrixT& b, BaseMatrixT& c) {
+  MatrixOffset offset(0, 0, 0, 0, 0, 0);
+  size_t numRows = b.height_;
+  size_t numCols = b.width_;
+  CHECK_EQ(height_, numRows);
+  CHECK_EQ(width_, 1UL);
+  CHECK_EQ(c.height_, numRows);
+  CHECK_EQ(c.width_, numCols);
+  aggregate(agg, op, sv,
+            b, c, numRows, numCols, offset,
+            false_type(), true_type() /*aAsColVector*/);
+  return 0;
+}
+
+template<>
+template <class Agg, class Op>
+int BaseMatrixT<real>::applyRow(Agg agg, Op op, real scaleDest, real scaleAgg,
+                                BaseMatrixT& b, BaseMatrixT& c) {
+  if (scaleDest != 0) {
+    applyRow(agg, op, base::binary::add2(scaleDest, scaleAgg), b, c);
+  } else {
+    applyRow(agg, op, base::binary::second(), b, c);
+    if (scaleAgg != 1) {
+      mulScalar(scaleAgg);
+    }
+  }
+  return 0;
+}
+
+template<>
+template <class Agg>
 int BaseMatrixT<real>::applyCol(Agg agg, BaseMatrixT& b) {
   MatrixOffset offset(0, 0, 0, 0, 0, 0);
-  int numRows = b.height_;
-  int numCols = b.width_;
+  size_t numRows = b.height_;
+  size_t numCols = b.width_;
+  CHECK_EQ(width_, numCols);
+  CHECK_EQ(height_, 1UL);
   aggregate(agg, base::unary::identity(), base::binary::second(), b, numRows,
             numCols, offset, true_type() /*aAsRowVector*/, false_type());
 
@@ -1484,8 +1546,10 @@ template<>
 template <class Agg, class Saver>
 int BaseMatrixT<real>::applyCol(Agg agg, Saver sv, BaseMatrixT& b) {
   MatrixOffset offset(0, 0, 0, 0, 0, 0);
-  int numRows = b.height_;
-  int numCols = b.width_;
+  size_t numRows = b.height_;
+  size_t numCols = b.width_;
+  CHECK_EQ(width_, numCols);
+  CHECK_EQ(height_, 1UL);
   aggregate(agg, base::unary::identity(), sv, b, numRows, numCols, offset,
             true_type() /*aAsRowVector*/, false_type());
 
@@ -1493,8 +1557,23 @@ int BaseMatrixT<real>::applyCol(Agg agg, Saver sv, BaseMatrixT& b) {
 }
 
 template<>
-void BaseMatrixT<real>::sumRows(BaseMatrixT& b) {
-  applyRow(aggregate::sum(), b);
+template <class Agg>
+int BaseMatrixT<real>::applyCol(
+     Agg agg, real scaleDest, real scaleAgg, BaseMatrixT& b) {
+  if (scaleDest != 0) {
+    applyCol(agg, base::binary::add2(scaleDest, scaleAgg), b);
+  } else {
+    applyCol(agg, base::binary::second(), b);
+    if (scaleAgg != 1) {
+      mulScalar(scaleAgg);
+    }
+  }
+  return 0;
+}
+
+template<>
+void BaseMatrixT<real>::sumRows(BaseMatrixT& b, real scaleSum, real scaleDest) {
+  applyRow(aggregate::sum(), scaleDest, scaleSum, b);
 }
 
 template<>
@@ -1508,11 +1587,6 @@ void BaseMatrixT<real>::minRows(BaseMatrixT& b) {
 }
 
 template<>
-void BaseMatrixT<real>::sumCols(BaseMatrixT& b) {
-  applyCol(aggregate::sum(), b);
-}
-
-template<>
 void BaseMatrixT<real>::maxCols(BaseMatrixT& b) {
   applyCol(aggregate::max(), b);
 }
@@ -1523,18 +1597,22 @@ void BaseMatrixT<real>::minCols(BaseMatrixT& b) {
 }
 
 template<>
-void BaseMatrixT<real>::sumCols(BaseMatrixT& b, real scale) {
-  applyCol(aggregate::sum(), base::binary::add2(1.0, scale), b);
+void BaseMatrixT<real>::sumCols(BaseMatrixT& b, real scaleSum, real scaleDest) {
+  applyCol(aggregate::sum(), scaleDest, scaleSum, b);
 }
 
 template<>
-void BaseMatrixT<real>::sumOfSquares(BaseMatrixT& b, BaseMatrixT& c) {
-  int numRows = b.height_;
-  int numCols = b.width_;
-  MatrixOffset offset(0, 0, 0, 0, 0, 0);
-  aggregate(aggregate::sum(), base::binary::squaredDiff(), base::binary::add(),
-            b, c, numRows, numCols, offset, false_type(),
-            true_type() /*aAsColVector*/);
+void BaseMatrixT<real>::sumOfSquaredDiffs(
+    BaseMatrixT& b, BaseMatrixT& c, real scaleSum, real scaleDest) {
+  applyRow(aggregate::sum(), base::binary::squaredDiff(),
+           scaleDest, scaleSum, b, c);
+}
+
+template<>
+void BaseMatrixT<real>::sumOfProducts(
+    BaseMatrixT& b, BaseMatrixT& c, real scaleSum, real scaleDest) {
+  applyRow(aggregate::sum(), base::binary::mul(),
+           scaleDest, scaleSum, b, c);
 }
 
 template class BaseMatrixT<real>;

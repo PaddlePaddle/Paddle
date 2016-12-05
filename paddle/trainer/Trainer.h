@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/utils/Util.h"
@@ -66,17 +65,16 @@ public:
    * @param testDataProvider Test Data Provider. null if create from config.
    */
   virtual void init(
-      const std::shared_ptr<TrainerConfigHelper> &config,
+      const std::shared_ptr<TrainerConfigHelper>& config,
       bool testing = false,
-      const std::shared_ptr<GradientMachine> &gradientMachine = nullptr,
-      const std::shared_ptr<DataProvider> &dataProvider = nullptr,
-      const std::shared_ptr<DataProvider> &testDataProvider = nullptr);
+      const std::shared_ptr<GradientMachine>& gradientMachine = nullptr,
+      const std::shared_ptr<DataProvider>& dataProvider = nullptr,
+      const std::shared_ptr<DataProvider>& testDataProvider = nullptr);
 
   /**
    * Initialize Trainer from command line flags.
    */
   void init(int argc, char** argv);
-
 
   /**
    * Train until num_passes reached.
@@ -94,6 +92,12 @@ public:
    */
   real checkGradient();
 
+  void startTrain();
+  void finishTrain();
+  void startTrainPass();
+  void finishTrainPass();
+  void trainOneDataBatch(DataBatch& dataBatch);
+  void time();
 
   /**
    * given a dataBatch and the current parameter value
@@ -102,7 +106,8 @@ public:
    * TODO(yuyang18): I think this method is deprecated and buggy. Should it be
    * removed?
    */
-  real calcGradient(const DataBatch& dataBatch, const Vector& value,
+  real calcGradient(const DataBatch& dataBatch,
+                    const Vector& value,
                     Vector& gradient);
 
   /**
@@ -144,11 +149,11 @@ public:
 
 protected:
   /**
-   * Train one pass of data. passId starts from 0
+   * Train one pass of data.
    *
    * SGD Method.
    */
-  void trainOnePass(int passId);
+  void trainOnePass();
 
   /**
    * Train one pass in one batch.
@@ -161,6 +166,8 @@ protected:
    */
   void clearGradient();
 
+  void createTester();
+
 private:
   std::unique_ptr<TesterConfig> createTesterConfig();
 
@@ -172,6 +179,17 @@ protected:
   DataProviderPtr testDataProvider_;
   MachineState trainState_;
   MachineState testState_;
+
+  struct TrainPassContext {
+    int64_t batchId;
+    real avgTestCost;
+    int64_t numAvgTests;
+    int passId;
+    int passInnerId;
+  };
+  std::vector<paddle::Argument> forwardOutput_;
+
+  TrainPassContext trainPassContext_;
 
   std::unique_ptr<Evaluator> evaluator_;
   std::unique_ptr<Evaluator> currentEvaluator_;
@@ -188,12 +206,12 @@ protected:
   // parameter util
   std::unique_ptr<ParameterUtil> paramUtil_;
 
-  #ifdef PADDLE_METRIC_LEARNING
+#ifdef PADDLE_METRIC_LEARNING
   MetricTrainer trainerInternal_;
-  #else
+#else
   // trainer Internal
   TrainerInternal trainerInternal_;
-  #endif
+#endif
 };
 
 }  // namespace paddle

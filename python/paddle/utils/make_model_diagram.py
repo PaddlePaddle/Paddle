@@ -15,7 +15,6 @@
 # Generate dot diagram file for the given paddle model config
 # The generated file can be viewed using Graphviz (http://graphviz.org)
 
-
 import sys
 import traceback
 
@@ -46,16 +45,16 @@ def make_diagram(config_file, dot_file, config_arg_str):
     submodel_layers = set()
 
     def make_link(link):
-        return 'l%s -> l%s;' % (
-            name2id[link.layer_name], name2id[link.link_name])
+        return 'l%s -> l%s;' % (name2id[link.layer_name],
+                                name2id[link.link_name])
 
     def make_mem(mem):
         s = ''
         if mem.boot_layer_name:
-            s += 'l%s -> l%s;\n' % (
-                name2id[mem.boot_layer_name], name2id[mem.layer_name])
-        s += 'l%s -> l%s [style=dashed];' % (
-            name2id[mem.layer_name], name2id[mem.link_name])
+            s += 'l%s -> l%s;\n' % (name2id[mem.boot_layer_name],
+                                    name2id[mem.layer_name])
+        s += 'l%s -> l%s [style=dashed];' % (name2id[mem.layer_name],
+                                             name2id[mem.link_name])
         return s
 
     print >> f, 'digraph graphname {'
@@ -110,8 +109,8 @@ def make_diagram(config_file, dot_file, config_arg_str):
 
 
 def usage():
-    print >> sys.stderr, ("Usage: python show_model_diagram.py"
-                          + " CONFIG_FILE DOT_FILE [config_str]")
+    print >> sys.stderr, ("Usage: python show_model_diagram.py" +
+                          " CONFIG_FILE DOT_FILE [config_str]")
     exit(1)
 
 

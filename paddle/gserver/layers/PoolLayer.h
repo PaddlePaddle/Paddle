@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/math/MathUtils.h"
 #include <vector>
 
 namespace paddle {
@@ -47,16 +47,6 @@ public:
   static Layer* create(const LayerConfig& config);
 
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  /**
-   * Calculate output size according window size and padding size.
-   */
-  int outputSize(int imageSize, int windowSize, int padding, int stride) {
-    int outputSize;
-    outputSize =
-        (imageSize - windowSize + 2 * padding + stride - 1) / stride + 1;
-    return outputSize;
-  }
 };
 
 }  // namespace paddle

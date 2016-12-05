@@ -18,7 +18,7 @@ set -e
 function get_best_pass() {
   cat $1  | grep -Pzo 'Test .*\n.*pass-.*' | \
   sed  -r 'N;s/Test.* cost=([0-9]+\.[0-9]+).*\n.*pass-([0-9]+)/\1 \2/g' |\
-  sort | head -n 1
+  sort -n | head -n 1
 }
 
 log=train.log
@@ -36,5 +36,5 @@ paddle train \
   --job=test \
   --use_gpu=false \
   --config_args=is_test=1 \
+  --test_all_data_in_one_period=1 \
 2>&1 | tee 'test.log'
-

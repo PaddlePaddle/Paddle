@@ -20,22 +20,30 @@ import unittest
 
 class TestIVector(unittest.TestCase):
     def test_createZero(self):
-        m = swig_paddle.IVector.createZero(10)
+        m = swig_paddle.IVector.createZero(10, False)
         self.assertIsNotNone(m)
         for i in xrange(10):
             self.assertEqual(m[i], 0)
             m[i] = i
             self.assertEqual(m[i], i)
+        
+        m = swig_paddle.IVector.createZero(10)
+        self.assertEqual(m.isGpu(), swig_paddle.isUsingGpu())
+        self.assertEqual(m.getData(), [0]*10)
 
     def test_create(self):
-        m = swig_paddle.IVector.create(range(10))
+        m = swig_paddle.IVector.create(range(10), False)
         self.assertIsNotNone(m)
         for i in xrange(10):
             self.assertEqual(m[i], i)
+        
+        m = swig_paddle.IVector.create(range(10))
+        self.assertEqual(m.isGpu(), swig_paddle.isUsingGpu())
+        self.assertEqual(m.getData(), range(10))
 
-    def test_numpy(self):
+    def test_cpu_numpy(self):
         vec = np.array([1, 3, 4, 65, 78, 1, 4], dtype="int32")
-        iv = swig_paddle.IVector.createCpuVectorFromNumpy(vec)
+        iv = swig_paddle.IVector.createCpuVectorFromNumpy(vec, copy=False)
         self.assertEqual(vec.shape[0], int(iv.__len__()))
         vec[4] = 832
         for i in xrange(len(iv)):
@@ -61,27 +69,45 @@ class TestIVector(unittest.TestCase):
             expect_vec = range(0, 10)
             expect_vec[4] = 7
             self.assertEqual(vec.getData(), expect_vec)
+    
+    def test_numpy(self):
+        vec = np.array([1, 3, 4, 65, 78, 1, 4], dtype="int32")
+        iv = swig_paddle.IVector.createVectorFromNumpy(vec)
+        self.assertEqual(iv.isGpu(), swig_paddle.isUsingGpu())
+        self.assertEqual(iv.getData(), list(vec))
 
 
 class TestVector(unittest.TestCase):
     def testCreateZero(self):
-        v = swig_paddle.Vector.createZero(10)
+        v = swig_paddle.Vector.createZero(10, False)
         self.assertIsNotNone(v)
         for i in xrange(len(v)):
             self.assertTrue(util.doubleEqual(v[i], 0))
             v[i] = i
             self.assertTrue(util.doubleEqual(v[i], i))
+        
+        v = swig_paddle.Vector.createZero(10)
+        self.assertEqual(v.isGpu(), swig_paddle.isUsingGpu())
+        self.assertEqual(v.getData(), [0]*10)
 
     def testCreate(self):
-        v = swig_paddle.Vector.create([x / 100.0 for x in xrange(100)])
+        v = swig_paddle.Vector.create([x / 100.0 for x in xrange(100)], False)
         self.assertIsNotNone(v)
         for i in xrange(len(v)):
             self.assertTrue(util.doubleEqual(v[i], i / 100.0))
         self.assertEqual(100, len(v))
+        
+        v = swig_paddle.Vector.create([x / 100.0 for x in xrange(100)])
+        self.assertEqual(v.isGpu(), swig_paddle.isUsingGpu())
+        self.assertEqual(100, len(v))
+        vdata = v.getData()
+        for i in xrange(len(v)):
+            self.assertTrue(util.doubleEqual(vdata[i], i / 100.0))
+        
 
-    def testNumpy(self):
+    def testCpuNumpy(self):
         numpy_arr = np.array([1.2, 2.3, 3.4, 4.5], dtype="float32")
-        vec = swig_paddle.Vector.createCpuVectorFromNumpy(numpy_arr)
+        vec = swig_paddle.Vector.createCpuVectorFromNumpy(numpy_arr, copy=False)
         assert isinstance(vec, swig_paddle.Vector)
         numpy_arr[0] = 0.1
         for n, v in zip(numpy_arr, vec):
@@ -102,9 +128,18 @@ class TestVector(unittest.TestCase):
 
         for i in xrange(1, len(numpy_3)):
             util.doubleEqual(numpy_3[i], vec[i])
+    
+    def testNumpy(self):
+        numpy_arr = np.array([1.2, 2.3, 3.4, 4.5], dtype="float32")
+        vec = swig_paddle.Vector.createVectorFromNumpy(numpy_arr)
+        self.assertEqual(vec.isGpu(), swig_paddle.isUsingGpu())
+        vecData = vec.getData()
+        for n, v in zip(numpy_arr, vecData):
+            self.assertTrue(util.doubleEqual(n, v))
+        
 
     def testCopyFromNumpy(self):
-        vec = swig_paddle.Vector.createZero(1)
+        vec = swig_paddle.Vector.createZero(1, False)
         arr = np.array([1.3, 3.2, 2.4], dtype="float32")
         vec.copyFromNumpyArray(arr)
         for i in xrange(len(vec)):
@@ -112,5 +147,9 @@ class TestVector(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    swig_paddle.initPaddle("--use_gpu=1" if swig_paddle.isGpuVersion() else "--use_gpu=0")
-    unittest.main()
+    swig_paddle.initPaddle("--use_gpu=0")
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestVector)
+    unittest.TextTestRunner().run(suite)
+    if swig_paddle.isGpuVersion():
+        swig_paddle.setUseGpu(True)
+        unittest.main()

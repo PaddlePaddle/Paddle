@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_BATCH_TRANSPOSE_H_
 #define HL_BATCH_TRANSPOSE_H_
 
@@ -31,10 +30,7 @@ limitations under the License. */
  *          order. Each batch has height * width data, which are
  *          arranged in height-first (or row-first) manner.
  */
-extern void batchTranspose(const real* input,
-                           real* output,
-                           int width,
-                           int height,
-                           int batchSize);
+extern void batchTranspose(
+    const real* input, real* output, int width, int height, int batchSize);
 
 #endif  // HL_BATCH_TRANSPOSE_H_

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <memory>
@@ -37,12 +36,13 @@ class BaseVector;
 
 class SyncThreadPool;
 
-template<class T>
+class Matrix;
+
+template <class T>
 class BaseVector : public BaseMatrixT<T> {
 public:
   BaseVector(size_t size, T* data, bool useGpu)
-    : BaseMatrixT<T>(1, size, data, false, useGpu),
-      size_(this->width_) {}
+      : BaseMatrixT<T>(1, size, data, false, useGpu), size_(this->width_) {}
 
   ~BaseVector() {}
 
@@ -111,7 +111,8 @@ public:
     this->size_ = newSize;
   }
 
-  static void resizeOrCreate(std::shared_ptr<VectorT<T>>& vec, size_t size,
+  static void resizeOrCreate(std::shared_ptr<VectorT<T>>& vec,
+                             size_t size,
                              bool useGpu) {
     if (vec) {
       vec->resize(size);
@@ -154,6 +155,12 @@ public:
   void subVecFrom(const VectorT<T>& src, std::pair<size_t, size_t> interval) {
     subVecFrom(src, interval.first, interval.second - interval.first);
   }
+
+  /**
+   * convert the vector to a sparse one_hot matrix of width idRange
+   * only applies to IVector
+   */
+  std::shared_ptr<Matrix> toOneHotSparseMatrix(size_t idRange, bool useGpu);
 
   /**
    * This function will crash if the size of src and dest is different.
@@ -258,7 +265,7 @@ public:
   /// print the "idx" element of the Vector
   virtual void printOneElement(std::ostream& os, size_t idx) const = 0;
 
-  template<typename ExpressionType>
+  template <typename ExpressionType>
   void operator=(const ExpressionType& expr) {
     if (BaseVector<T>::useGpu_) {
       TensorGpuApply<T>(*this, expr);
@@ -324,7 +331,7 @@ public:
   virtual void print(std::ostream& os, size_t num) const;
   virtual void printOneElement(std::ostream& os, size_t idx) const;
 
-  template<typename ExpressionType>
+  template <typename ExpressionType>
   void operator=(const ExpressionType& expr) {
     TensorGpuApply<T>(*this, expr);
   }
@@ -393,7 +400,7 @@ public:
   virtual void print(std::ostream& os, size_t num) const;
   virtual void printOneElement(std::ostream& os, size_t idx) const;
 
-  template<typename ExpressionType>
+  template <typename ExpressionType>
   void operator=(const ExpressionType& expr) {
     TensorCpuApply<T>(*this, expr);
   }
@@ -442,11 +449,7 @@ public:
    *
    * SYNCED: data is located in CPU and GPU simultaneously.
    */
-  enum SyncedFlag {
-    DATA_AT_CPU = 0,
-    DATA_AT_GPU = 1,
-    SYNCED = 2
-  };
+  enum SyncedFlag { DATA_AT_CPU = 0, DATA_AT_GPU = 1, SYNCED = 2 };
 
   /**
    * @brief A constructor, create cpuVectorT_ or gpuVectorT_.
@@ -480,8 +483,7 @@ public:
    */
   CpuGpuVectorT(size_t size, T* data, bool useGpu);
 
-  CpuGpuVectorT(CpuGpuVectorT<T>& src,
-    size_t offset, size_t size);
+  CpuGpuVectorT(CpuGpuVectorT<T>& src, size_t offset, size_t size);
 
   virtual ~CpuGpuVectorT() {}
 
@@ -500,8 +502,8 @@ public:
    * @brief resize or create CpuGpuVectorT.
    */
   static void resizeOrCreate(std::shared_ptr<CpuGpuVectorT<T>>& vec,
-                             size_t size, bool useGpu);
-
+                             size_t size,
+                             bool useGpu);
 
   /**
    * @brief return a const cpuVectorT_ or gpuVectorT_.
@@ -533,10 +535,10 @@ public:
    */
   const T* getData(bool useGpu) const;
 
-// TODO(yuyang18): Make getData more c++ style.
-//  inline T* getData(bool useGpu) {
-//    return getMutableData(useGpu);
-//  }
+  // TODO(yuyang18): Make getData more c++ style.
+  //  inline T* getData(bool useGpu) {
+  //    return getMutableData(useGpu);
+  //  }
 
   T* getMutableData(bool useGpu);
 
@@ -626,8 +628,11 @@ public:
   /**
    * @brief copy from (src + offset) using specifed-stream.
    */
-  void copyFrom(CpuGpuVectorT<T>& src, size_t offset, size_t size,
-                bool useGpu, hl_stream_t stream);
+  void copyFrom(CpuGpuVectorT<T>& src,
+                size_t offset,
+                size_t size,
+                bool useGpu,
+                hl_stream_t stream);
 
   /**
    * @brief copy from src using specifed-stream.
@@ -637,16 +642,12 @@ public:
   /**
    * @brief return sync_.
    */
-  inline SyncedFlag* getSync() const {
-    return sync_;
-  }
+  inline SyncedFlag* getSync() const { return sync_; }
 
   /**
    * @brief set sync_.
    */
-  inline void setSync(SyncedFlag* sync) {
-    sync_ = sync;
-  }
+  inline void setSync(SyncedFlag* sync) { sync_ = sync; }
 
   inline void setSync(SyncedFlag syncFlag) {
     if (sync_) {

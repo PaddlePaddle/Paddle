@@ -17,5 +17,3 @@ endif()
 if(WITH_SWIG_PY)
   add_subdirectory(api)
 endif()
-
-

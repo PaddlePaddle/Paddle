@@ -17,7 +17,7 @@ set -e
 function get_best_pass() {
   cat $1  | grep -Pzo 'Test .*\n.*pass-.*' | \
   sed  -r 'N;s/Test.* classification_error_evaluator=([0-9]+\.[0-9]+).*\n.*pass-([0-9]+)/\1 \2/g' |\
-  sort | head -n 1
+  sort -n | head -n 1
 }
 
 log=train.log

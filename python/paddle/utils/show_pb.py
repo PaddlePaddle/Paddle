@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Show the content of proto buffer data file of PADDLE
 """
@@ -20,6 +19,7 @@ import os
 import sys
 from google.protobuf.internal.decoder import _DecodeVarint
 import paddle.proto.DataFormat_pb2 as DataFormat
+
 
 def read_proto(file, message):
     """
@@ -39,7 +39,7 @@ def read_proto(file, message):
 
 
 def usage():
-    print >>sys.stderr, "Usage: python show_pb.py PROTO_DATA_FILE"
+    print >> sys.stderr, "Usage: python show_pb.py PROTO_DATA_FILE"
     exit(1)
 
 
@@ -51,10 +51,7 @@ if __name__ == '__main__':
     header = DataFormat.DataHeader()
     read_proto(f, header)
     print header
-    
+
     sample = DataFormat.DataSample()
     while read_proto(f, sample):
         print sample
-
-
-    

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Util.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/math/TrainingAlgorithmOp.h"
@@ -71,13 +70,15 @@ void SparseMomentumParameterOptimizer::update(const VectorPtr vecs[],
                                      tau_ * alpha_ * gamma_ * learningRate_);
     vecs[PARAMETER_VALUE]->add(*vecs[PARAMETER_MOMENTUM_UT],
                                tau_ / beta_ + 1.0 / alpha_,
-                               *vecs[PARAMETER_MOMENTUM_VT], 1.0 / beta_);
+                               *vecs[PARAMETER_MOMENTUM_VT],
+                               1.0 / beta_);
 
   } else {
-    vecs[PARAMETER_VALUE]->sgdUpdate(
-        *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-        learningRate_ * paraConfig.learning_rate(), paraConfig.momentum(),
-        applyDecay_ ? paraConfig.decay_rate() : 0);
+    vecs[PARAMETER_VALUE]->sgdUpdate(*vecs[PARAMETER_GRADIENT],
+                                     *vecs[PARAMETER_MOMENTUM],
+                                     learningRate_ * paraConfig.learning_rate(),
+                                     paraConfig.momentum(),
+                                     applyDecay_ ? paraConfig.decay_rate() : 0);
   }
 }
 
@@ -90,7 +91,8 @@ SparseMomentumParameterOptimizer::needSpecialTraversal(
     //  2. Note that \tau * u_t + v_t = \beta \theta_t, therefore:
     //     u_t should be rescaled to u_t/alpha_
     //     v_t should be reset to \theta_t
-    return [this](const VectorPtr vecs[], const ParameterConfig& config,
+    return [this](const VectorPtr vecs[],
+                  const ParameterConfig& config,
                   size_t sparseId) {
       vecs[PARAMETER_MOMENTUM_UT]->divScalar(alpha_);
       vecs[PARAMETER_MOMENTUM_VT]->assign(*vecs[PARAMETER_VALUE]);
@@ -125,8 +127,16 @@ void AdagradParameterOptimizer::update(const VectorPtr vecs[],
   real momentum = config.momentum();
   real decayRate = applyDecay_ ? config.decay_rate() : 0;
 
-  adagradApply(value, grad, mom, accum_buffer, accum, lr,
-    epsilon, learningRate, momentum, decayRate);
+  adagradApply(value,
+               grad,
+               mom,
+               accum_buffer,
+               accum,
+               lr,
+               epsilon,
+               learningRate,
+               momentum,
+               decayRate);
 }
 
 ParameterOptimizer::TraverseCallback
@@ -135,7 +145,8 @@ AdagradParameterOptimizer::needSpecialTraversal(
   if (numUpdates_ % kMaxNumAccumulates == 0) {
     // Move the sum to a different buffer to avoid loss of precision
     // due to too many sums.
-    return [this](const VectorPtr vecs[], const ParameterConfig& config,
+    return [this](const VectorPtr vecs[],
+                  const ParameterConfig& config,
                   size_t sparseId) {
       vecs[PARAMETER_GRADIENT_SQURESUM]->add(
           *vecs[PARAMETER_GRADIENT_SQURESUM1]);
@@ -161,8 +172,17 @@ void AdaDeltaParameterOptimizer::update(const VectorPtr vecs[],
   real momentum = config.momentum();
   real decayRate = applyDecay_ ? config.decay_rate() : 0;
 
-  adadeltaApply(value, grad, mom, accum, accum_update, lr,
-    rou_, epsilon_, learningRate, momentum, decayRate);
+  adadeltaApply(value,
+                grad,
+                mom,
+                accum,
+                accum_update,
+                lr,
+                rou_,
+                epsilon_,
+                learningRate,
+                momentum,
+                decayRate);
 }
 
 void RMSPropParameterOptimizer::update(const VectorPtr vecs[],
@@ -189,9 +209,19 @@ void RMSPropParameterOptimizer::update(const VectorPtr vecs[],
   real momentum = config.momentum();
   real decayRate = applyDecay_ ? config.decay_rate() : 0;
 
-  rmspropApply(value, grad, mom, sum, sum1, lr,
-    accumulatedRou, rou_, epsilon, learningRate, momentum, decayRate,
-    firstTime);
+  rmspropApply(value,
+               grad,
+               mom,
+               sum,
+               sum1,
+               lr,
+               accumulatedRou,
+               rou_,
+               epsilon,
+               learningRate,
+               momentum,
+               decayRate,
+               firstTime);
 }
 
 void DecayedAdagradParameterOptimizer::update(const VectorPtr vecs[],
@@ -217,9 +247,18 @@ void DecayedAdagradParameterOptimizer::update(const VectorPtr vecs[],
   real momentum = config.momentum();
   real decayRate = applyDecay_ ? config.decay_rate() : 0;
 
-  decayedAdagradApply(value, grad, mom, sum, lr,
-    accumulatedRou, rou_, epsilon, learningRate, momentum, decayRate,
-    firstTime);
+  decayedAdagradApply(value,
+                      grad,
+                      mom,
+                      sum,
+                      lr,
+                      accumulatedRou,
+                      rou_,
+                      epsilon,
+                      learningRate,
+                      momentum,
+                      decayRate,
+                      firstTime);
 }
 
 void AdamParameterOptimizer::update(const VectorPtr vecs[],
@@ -235,8 +274,16 @@ void AdamParameterOptimizer::update(const VectorPtr vecs[],
   BaseMatrix& mom = *vecs[PARAMETER_MOMENTUM];
   BaseMatrix& v = *vecs[PARAMETER_SECOND_MOMENTUM];
 
-  adamApply(value, grad, mom, v,
-    beta1_, beta2_, beta1_power, beta2_power, epsilon_, learningRate);
+  adamApply(value,
+            grad,
+            mom,
+            v,
+            beta1_,
+            beta2_,
+            beta1_power,
+            beta2_power,
+            epsilon_,
+            learningRate);
 }
 
 void AdamaxParameterOptimizer::update(const VectorPtr vecs[],
@@ -250,8 +297,7 @@ void AdamaxParameterOptimizer::update(const VectorPtr vecs[],
   BaseMatrix& mom = *vecs[PARAMETER_MOMENTUM];
   BaseMatrix& u = *vecs[PARAMETER_WEIGHTED_INFINITY_NORM];
 
-  adamaxApply(value, grad, mom, u,
-    beta1_, beta2_, step_, learningRate);
+  adamaxApply(value, grad, mom, u, beta1_, beta2_, step_, learningRate);
 }
 
 void OptimizerWithGradientClipping::update(const VectorPtr vecs[],

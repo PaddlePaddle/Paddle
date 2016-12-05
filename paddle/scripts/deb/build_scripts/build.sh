@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
+apt-get update
 apt-get install -y dh-make
 cd ~
 mkdir -p ~/dist/gpu
 mkdir -p ~/dist/cpu
 mkdir -p ~/dist/cpu-noavx
 mkdir -p ~/dist/gpu-noavx
-git clone https://github.com/baidu/Paddle.git paddle
 cd paddle
 mkdir build
 cd build
@@ -33,5 +33,3 @@ cmake .. -DWITH_GPU=ON -DWITH_SWIG_PY=ON -DWITH_AVX=OFF -DCUDNN_ROOT=/usr/
 make -j `nproc`
 cpack -D CPACK_GENERATOR='DEB' ..
 mv *.deb ~/dist/gpu-noavx
-
-

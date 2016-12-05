@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "PaddleAPI.h"
 #include "paddle/parameter/Parameter.h"
 
@@ -69,3 +68,5 @@ ParameterConfig* Parameter::getConfig() {
 }
 
 size_t Parameter::getID() const { return m->getPtr()->getID(); }
+
+void Parameter::setValueUpdated() { m->getPtr()->setValueUpdated(); }

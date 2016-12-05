@@ -13,8 +13,6 @@
 # The document of clang-format is 
 #   http://clang.llvm.org/docs/ClangFormat.html
 #   http://clang.llvm.org/docs/ClangFormatStyleOptions.html
-#
-# TODO(yuyang18): Add python and other language code style
 ---
 Language:        Cpp
 BasedOnStyle:  Google
@@ -22,8 +20,9 @@ IndentWidth:     2
 TabWidth:        2
 ContinuationIndentWidth: 4
 AccessModifierOffset: -2  # The private/protected/public has no indent in class
-PointerAlignment: Left    # int* p/int& p, not int *p/int &p
 Standard:  Cpp11 
 AllowAllParametersOfDeclarationOnNextLine: true
+BinPackParameters: false
+BinPackArguments: false
 ...
 

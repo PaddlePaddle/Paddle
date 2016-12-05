@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Tester.h"
 
 #include <fenv.h>
@@ -37,58 +36,63 @@ limitations under the License. */
 
 namespace paddle {
 
-Tester::Tester(const std::shared_ptr<TrainerConfigHelper> &config,
-               std::unique_ptr<TesterConfig> &&intconfig,
-               const GradientMachinePtr &gradientMachine,
-               const std::shared_ptr<ParameterUpdater> &parameterUpdater,
-               std::shared_ptr<DataProvider> testDataProvider):
-               config_(config),
-               intconfig_(std::move(intconfig)),
-               gradientMachine_(gradientMachine),
-               parameterUpdater_(parameterUpdater),
-               testDataProvider_(testDataProvider) {
-  testEvaluator_.reset(gradientMachine_ ->makeEvaluator());
+Tester::Tester(const std::shared_ptr<TrainerConfigHelper>& config,
+               std::unique_ptr<TesterConfig>&& intconfig,
+               const GradientMachinePtr& gradientMachine,
+               const std::shared_ptr<ParameterUpdater>& parameterUpdater,
+               std::shared_ptr<DataProvider> testDataProvider)
+    : config_(config),
+      intconfig_(std::move(intconfig)),
+      gradientMachine_(gradientMachine),
+      parameterUpdater_(parameterUpdater),
+      testDataProvider_(testDataProvider) {
+  testEvaluator_.reset(gradientMachine_->makeEvaluator());
   if (intconfig_->distributeTest) {
     testParameterClient_.reset(new ParameterClient2(true));
   }
 
   if (testParameterClient_) {
-    testParameterClient_->init(
-        gradientMachine_->getParameters());
+    testParameterClient_->init(gradientMachine_->getParameters());
   }
 
   std::unique_ptr<ParameterUtilConfig> paramConfig(
-      new ParameterUtilConfig(
-          intconfig_->saveOnlyOne,
-          intconfig_->savingPeriod,
-          intconfig_->loadsaveParametersInPserver,
-          intconfig_->config));
+      new ParameterUtilConfig(intconfig_->saveOnlyOne,
+                              intconfig_->savingPeriod,
+                              intconfig_->loadsaveParametersInPserver,
+                              intconfig_->config));
 
   paramUtil_.reset(new ParameterUtil(
-      config_,
-      std::move(paramConfig),
-      gradientMachine_,
-      parameterUpdater_));
+      config_, std::move(paramConfig), gradientMachine_, parameterUpdater_));
 }
 
-void Tester::testOnePeriod() {
-  DataBatch dataBatch;
-  int64_t batchSize = config_->getOptConfig().batch_size();
+void Tester::startTestPeriod() {
   testEvaluator_->start();
-  real cost = 0;
-  int64_t numSamples = 0;
-  bool testAllData =
-      intconfig_->testPeriod == 0 || intconfig_->testAllDataInOnePeriod;
-
-  int batches =
-      testAllData ? std::numeric_limits<int>::max() : intconfig_->testPeriod;
+  testContext_.cost = 0;
+  testContext_.numSamples = 0;
 
   parameterUpdater_->apply();
   if (intconfig_->prevBatchState) {
     gradientMachine_->getState(*intconfig_->trainState);
     gradientMachine_->setState(*intconfig_->testState);
   }
+}
 
+void Tester::testOneDataBatch(const DataBatch& dataBatch,
+                              std::vector<Argument>* outArgs) {
+  testContext_.cost +=
+      forwardOneBatch(dataBatch, testEvaluator_.get(), outArgs);
+  testContext_.numSamples += dataBatch.getSize();
+}
+
+void Tester::testOnePeriod() {
+  DataBatch dataBatch;
+  int64_t batchSize = config_->getOptConfig().batch_size();
+
+  int batches = std::numeric_limits<int>::max();
+
+  std::vector<Argument> outArgs;
+
+  startTestPeriod();
   for (int i = 0; i < batches; ++i) {
     int num = testDataProvider_->getNextBatch(batchSize, &dataBatch);
     if (num == 0) {
@@ -96,19 +100,20 @@ void Tester::testOnePeriod() {
       if (intconfig_->prevBatchState) {
         gradientMachine_->resetState();
       }
-      if (testAllData) {
-        break;
-      } else {
-        num = testDataProvider_->getNextBatch(batchSize, &dataBatch);
-      }
+      break;
     }
-    cost += testOneBatch(dataBatch, testEvaluator_.get());
-    numSamples += num;
+    testOneDataBatch(dataBatch, &outArgs);
   }
+  finishTestPeriod();
+}
+
+void Tester::finishTestPeriod() {
   testEvaluator_->finish();
-  CHECK_GT(numSamples, 0) << "There is no samples in your test batch. Possibly "
-                             "wrong implementation of DataProvidor.reset()";
-  LOG(INFO) << " Test samples=" << numSamples << " cost=" << cost / numSamples
+  CHECK_GT(testContext_.numSamples, 0)
+      << "There is no samples in your test batch. Possibly "
+         "wrong implementation of DataProvidor.reset()";
+  LOG(INFO) << " Test samples=" << testContext_.numSamples
+            << " cost=" << testContext_.cost / testContext_.numSamples
             << " Eval: " << *testEvaluator_;
   parameterUpdater_->restore();
   if (intconfig_->prevBatchState) {
@@ -128,9 +133,11 @@ int64_t Tester::testOneBatchById(int64_t batchId) {
     return 0;
   }
 
+  std::vector<Argument> outArgs;
+
   stats_ += std::pair<int64_t, real>{
       actualBatchSize,
-      testOneBatch(dataBatch, testEvaluator_.get())};
+      forwardOneBatch(dataBatch, testEvaluator_.get(), &outArgs)};
 
   if (((batchId + 1) % intconfig_->logPeriod) == 0) {
     LOG(INFO) << " Batch=" << batchId + 1 << " " << stats_.getStats(false);
@@ -139,7 +146,10 @@ int64_t Tester::testOneBatchById(int64_t batchId) {
   return actualBatchSize;
 }
 
-real Tester::testOneBatch(const DataBatch &dataBatch, Evaluator *evaluator) {
+real Tester::forwardOneBatch(const DataBatch& dataBatch,
+                             Evaluator* evaluator,
+                             std::vector<Argument>* pOutArgs) {
+  auto& outArgs = *pOutArgs;
   const std::vector<Argument>& inArgs = dataBatch.getStreams();
   if (intconfig_->loadsaveParametersInPserver) {
     REGISTER_TIMER("prefetch");
@@ -148,18 +158,18 @@ real Tester::testOneBatch(const DataBatch &dataBatch, Evaluator *evaluator) {
                                            true /*after apply*/);
   }
 
-  std::vector<Argument> outArgs;
   gradientMachine_->forward(inArgs, &outArgs, PASS_TEST);
 
   // write features if set this flag and outArgs is not empty
   std::string featFile = intconfig_->featFile;
-  if (!featFile.empty() && !outArgs.empty()) {
+  if (!featFile.empty() && outArgs.empty()) {
     size_t numOutputs = outArgs.size();
     std::vector<MatrixPtr> featMatrices;
     featMatrices.resize(numOutputs);
     for (size_t i = 0; i < numOutputs; ++i) {
       featMatrices[i] = Matrix::create(outArgs[i].value->getHeight(),
-                                       outArgs[i].value->getWidth(), false,
+                                       outArgs[i].value->getWidth(),
+                                       false,
                                        false);  // CPU data buffer
       featMatrices[i]->copyFrom(*(outArgs[i].value), HPPL_STREAM_DEFAULT);
     }
@@ -201,19 +211,18 @@ real Tester::testOneBatch(const DataBatch &dataBatch, Evaluator *evaluator) {
   return Argument::sumCosts(outArgs);
 }
 
-
 void Tester::testOnePassBatch(int passId) {
   stats_.reset();
   const std::vector<Argument> inArgs;
   gradientMachine_->forward(inArgs, nullptr, PASS_TEST);
-  int64_t num; real cost;
+  int64_t num;
+  real cost;
   gradientMachine_->getStats(cost, num);
-  stats_ += std::pair<int64_t, real> {num, cost};
+  stats_ += std::pair<int64_t, real>{num, cost};
   gradientMachine_->onPassEnd();
 
   LOG(INFO) << " Pass=" << passId << " " << stats_.getStats(false);
 }
-
 
 void Tester::testOnePass(int passId) {
   stats_.reset();
@@ -244,7 +253,6 @@ void Tester::testOnePass(int passId) {
   }
 }
 
-
 void Tester::test() {
   CHECK(testDataProvider_) << "TestData is not specified";
   testDataProvider_->setSkipShuffle();
@@ -260,33 +268,32 @@ void Tester::test() {
     intconfig_->testPass = 0;
     intconfig_->numPasses = modelList.size();
     intconfig_->savingPeriod = 1;
-    CHECK_EQ(intconfig_->testWait, 0) <<
-      "--test_wait must be 0 for evaluation";
+    CHECK_EQ(intconfig_->testWait, 0) << "--test_wait must be 0 for evaluation";
   } else if (!initModelPath.empty()) {
     modelList.push_back(initModelPath);
     intconfig_->testPass = 0;
     intconfig_->numPasses = 1;
     intconfig_->savingPeriod = 1;
-    CHECK_EQ(intconfig_->testWait, 0) <<
-      "--test_wait must be 0 for evaluation";
+    CHECK_EQ(intconfig_->testWait, 0) << "--test_wait must be 0 for evaluation";
   }
 
   for (int i = intconfig_->testPass; i < intconfig_->numPasses; ++i) {
     int passId = i;
     if (passId % intconfig_->savingPeriod == 0) {
       if (intconfig_->testWait) {
-        while (paramUtil_->loadParameters(passId,
-                true /*local*/, true /*remote*/) == false) {
+        while (paramUtil_->loadParameters(
+                   passId, true /*local*/, true /*remote*/) == false) {
           LOG(INFO) << "Waiting for parameters of pass " << passId;
           sleep(60);  // sleep 60s
         }
       } else {
         if (modelList.size() == 0) {
-          CHECK_EQ(paramUtil_->loadParameters(passId,
-                  true /*local*/, true /*remote*/), true);
+          CHECK_EQ(paramUtil_->loadParameters(
+                       passId, true /*local*/, true /*remote*/),
+                   true);
         } else {
-          paramUtil_->loadParametersWithPath(modelList[i],
-                                      true /*local*/, true /*remote*/);
+          paramUtil_->loadParametersWithPath(
+              modelList[i], true /*local*/, true /*remote*/);
         }
       }
       if (IGradientMachineMode::trainWholeDataInOneBatch(intconfig_->mode)) {
@@ -305,9 +312,8 @@ void Tester::test() {
   gradientMachine_->finish();
 }
 
-
 void Tester::printOutput(const std::vector<Argument>& outArgs,
-                          std::ostream& os) {
+                         std::ostream& os) {
   size_t numOutputs = outArgs.size();
   size_t numIns = outArgs[0].getBatchSize();
   if (cpuMat_.size() != numOutputs || cpuVec_.size() != numOutputs) {
@@ -325,11 +331,13 @@ void Tester::printOutput(const std::vector<Argument>& outArgs,
         } else if (dynamic_cast<GpuSparseMatrix*>(outArgs[i].value.get())) {
           auto sparseMat =
               dynamic_cast<GpuSparseMatrix*>(outArgs[i].value.get());
-          cpuMat_[i] = Matrix::createSparseMatrix(
-              sparseMat->getHeight(), sparseMat->getWidth(),
-              sparseMat->getElementCnt(), sparseMat->getValueType(),
-              sparseMat->format_, false, /* trans */
-              false);                    /* useGpu */
+          cpuMat_[i] = Matrix::createSparseMatrix(sparseMat->getHeight(),
+                                                  sparseMat->getWidth(),
+                                                  sparseMat->getElementCnt(),
+                                                  sparseMat->getValueType(),
+                                                  sparseMat->format_,
+                                                  false,  /* trans */
+                                                  false); /* useGpu */
           hl_stream_t stream = HPPL_STREAM_DEFAULT;
           cpuMat_[i]->copyFrom(*sparseMat, stream);
         } else {

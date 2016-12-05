@@ -13,9 +13,9 @@
 # limitations under the License.
 
 o = open("./" + "train.list", "w")
-o.write("./data/raw_data/train" +"\n")
+o.write("./data/raw_data/train" + "\n")
 o.close()
 
 o = open("./" + "test.list", "w")
-o.write("./data/raw_data/t10k" +"\n")
+o.write("./data/raw_data/t10k" + "\n")
 o.close()

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Util.h"
 
 #include <dirent.h>
@@ -54,7 +53,8 @@ P_DEFINE_int32(seed, 1, "random number seed. 0 for srand(time)");
 #include <gperftools/profiler.h>
 
 P_DEFINE_int32(profile_signal, 12, "signal for switch google profiler");
-P_DEFINE_string(profile_data_file, "gperf.prof",
+P_DEFINE_string(profile_data_file,
+                "gperf.prof",
                 "file for storing profile data");
 
 static void profilerSwitch(int signalNumber) {
@@ -94,19 +94,19 @@ static void installProfilerSwitch() {}
 namespace paddle {
 
 pid_t getTID() {
-  #if defined(__APPLE__) || defined(__OSX__)
-      // syscall is deprecated: first deprecated in macOS 10.12.
-      // syscall is unsupported;
-      // syscall pid_t tid = syscall(SYS_thread_selfid);
-      uint64_t tid;
-      pthread_threadid_np(NULL, &tid);
-  #else
-      #ifndef __NR_gettid
-      #define __NR_gettid 224
-      #endif
-      pid_t tid = syscall(__NR_gettid);
-  #endif
-  CHECK_NE(tid, -1);
+#if defined(__APPLE__) || defined(__OSX__)
+  // syscall is deprecated: first deprecated in macOS 10.12.
+  // syscall is unsupported;
+  // syscall pid_t tid = syscall(SYS_thread_selfid);
+  uint64_t tid;
+  pthread_threadid_np(NULL, &tid);
+#else
+#ifndef __NR_gettid
+#define __NR_gettid 224
+#endif
+  pid_t tid = syscall(__NR_gettid);
+#endif
+  CHECK_NE((int)tid, -1);
   return tid;
 }
 
@@ -126,22 +126,25 @@ void registerInitFunction(std::function<void()> func, int priority) {
 }
 
 void runInitFunctions() {
-  std::call_once(g_onceFlag, []() {
-    LOG(INFO) << "Calling runInitFunctions";
-    if (g_initFuncs) {
-      std::sort(g_initFuncs->begin(), g_initFuncs->end(),
-                [](const PriorityFuncPair& x, const PriorityFuncPair& y) {
-                  return x.first > y.first;
-                });
-      for (auto& f : *g_initFuncs) {
-        f.second();
-      }
-      delete g_initFuncs;
-      g_initFuncs = nullptr;
-    }
-    g_initialized = true;
-    LOG(INFO) << "Call runInitFunctions done.";
-  });
+  std::call_once(
+      g_onceFlag,
+      []() {
+        LOG(INFO) << "Calling runInitFunctions";
+        if (g_initFuncs) {
+          std::sort(g_initFuncs->begin(),
+                    g_initFuncs->end(),
+                    [](const PriorityFuncPair& x, const PriorityFuncPair& y) {
+                      return x.first > y.first;
+                    });
+          for (auto& f : *g_initFuncs) {
+            f.second();
+          }
+          delete g_initFuncs;
+          g_initFuncs = nullptr;
+        }
+        g_initialized = true;
+        LOG(INFO) << "Call runInitFunctions done.";
+      });
 }
 
 void initMain(int argc, char** argv) {
@@ -282,7 +285,7 @@ void mkDir(const char* filename) {
   }
 }
 
-void mkDirRecursively(const char *dir) {
+void mkDirRecursively(const char* dir) {
   struct stat sb;
 
   if (!stat(dir, &sb)) return;
@@ -302,7 +305,6 @@ void loadFileList(const std::string& fileListFileName,
     fileList.push_back(line);
   }
 }
-
 
 double getMemoryUsage() {
   FILE* fp = fopen("/proc/meminfo", "r");
@@ -363,7 +365,9 @@ size_t calculateServiceNum(const std::string& pservers, int ports_num) {
   return hosts.size() * ports_num;
 }
 
-void memcpyWithCheck(void* dest, const void* src, size_t num,
+void memcpyWithCheck(void* dest,
+                     const void* src,
+                     size_t num,
                      const void* srcEnd) {
   int minus = (char*)srcEnd - (char*)src - num;
   CHECK_LE(0, minus) << "memcpyWithCheck: copy " << num
@@ -378,7 +382,7 @@ hl_activation_mode_t hlActiveType(const std::string& type) {
     return HL_ACTIVATION_RELU;
   } else if (type == "tanh") {
     return HL_ACTIVATION_TANH;
-  } else if (type == "linear") {
+  } else if (type == "linear" || type == "") {
     return HL_ACTIVATION_LINEAR;
   } else {
     LOG(FATAL) << "Do not support activation type " << type;

@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <stddef.h>
 #include <stdint.h>
 #include <string>
+#include <stdexcept>
 #include <vector>
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/TypeDefs.h"
@@ -42,6 +42,12 @@ using namespace paddle::enumeration_wrapper;  // NOLINT
  */
 void initPaddle(int argc, char** argv);
 
+/// Return FLAGS_use_gpu
+bool isUsingGpu();
+
+/// Set the Flags_use_gpu to the given parameter
+void setUseGpu(bool useGpu);
+
 /// Return true if this py_paddle is compiled in GPU Version
 bool isGpuVersion();
 
@@ -52,7 +58,11 @@ class IOError {};
 class RangeError {};
 
 /// Not support Error, such as access GPU memory directly, etc.
-class UnsupportError {};
+class UnsupportError : public std::runtime_error {
+public:
+  UnsupportError() : std::runtime_error(" "){};
+  UnsupportError(const std::string& message) : std::runtime_error(message){};
+};
 
 /// This type will map to python's list of float.
 struct FloatArray {
@@ -101,7 +111,9 @@ public:
   /**
    * Create A Matrix with height,width, which is filled by zero.
    */
-  static Matrix* createZero(size_t height, size_t width, bool useGpu = false);
+  static Matrix* createZero(size_t height,
+                            size_t width,
+                            bool useGpu = isUsingGpu());
 
   /**
    * Create Sparse Matrix.
@@ -112,9 +124,12 @@ public:
    *
    * @note the default sparse type is SPARSE_CSR.
    */
-  static Matrix* createSparse(size_t height, size_t width, size_t nnz,
-                              bool isNonVal = true, bool trans = false,
-                              bool useGpu = false);
+  static Matrix* createSparse(size_t height,
+                              size_t width,
+                              size_t nnz,
+                              bool isNonVal = true,
+                              bool trans = false,
+                              bool useGpu = isUsingGpu());
 
   /**
    * Create Dense Matrix.
@@ -122,8 +137,17 @@ public:
    * @param data  list of float should be passed in python.
    * @note        the value will be copy into a new matrix.
    */
-  static Matrix* createDense(const std::vector<float>& data, size_t height,
-                             size_t width, bool useGpu = false);
+  static Matrix* createDense(const std::vector<float>& data,
+                             size_t height,
+                             size_t width,
+                             bool useGpu = isUsingGpu());
+
+  static Matrix* createDenseFromNumpy(
+      float* data,
+      int dim1,
+      int dim2,
+      bool copy = true,
+      bool useGpu = isUsingGpu()) throw(UnsupportError);
 
   /**
    *  Create Cpu Dense Matrix from numpy matrix, dtype=float32
@@ -132,10 +156,15 @@ public:
    *  @param dim1  dimension of data.
    *  @param dim2  dimension of data.
    *  @param copy  true if copy into a new matrix, false will create
-   *               matrix inplace.
+   *               matrix inplace. copy = false should be used with extreme
+   *               care because Matrix will share the memory with the given
+   *               numpy array. If the numpy array object is no longer valid,
+   *               the memory space will not be usable.
    */
-  static Matrix* createCpuDenseFromNumpy(float* data, int dim1, int dim2,
-                                         bool copy = false);
+  static Matrix* createCpuDenseFromNumpy(float* data,
+                                         int dim1,
+                                         int dim2,
+                                         bool copy = true);
 
   /// Create Gpu Dense Matrix from numpy matrix, dtype=float32
   static Matrix* createGpuDenseFromNumpy(float* data, int dim1, int dim2);
@@ -154,11 +183,13 @@ public:
    * numpy_mat = m.toNumpyMat()
    * @endcode
    */
-  void toNumpyMatInplace(float** view_data, int* dim1,
+  void toNumpyMatInplace(float** view_data,
+                         int* dim1,
                          int* dim2) throw(UnsupportError);
 
   /// Copy To numpy mat.
-  void copyToNumpyMat(float** view_m_data, int* dim1,
+  void copyToNumpyMat(float** view_m_data,
+                      int* dim1,
                       int* dim2) throw(UnsupportError);
 
   /// Copy From Numpy Mat
@@ -221,25 +252,39 @@ public:
   ~Vector();
 
   /// Create Vector filled with zero.
-  static Vector* createZero(size_t sz, bool useGpu = false);
+  static Vector* createZero(size_t sz, bool useGpu = isUsingGpu());
 
   /**
    * Create Vector from list of float.
    *
    * It will create a new vector, and copy data into it.
    */
-  static Vector* create(const std::vector<float>& data, bool useGpu = false);
+  static Vector* create(const std::vector<float>& data,
+                        bool useGpu = isUsingGpu());
 
+  static Vector* createVectorFromNumpy(
+      float* data,
+      int dim,
+      bool copy = true,
+      bool useGpu = isUsingGpu()) throw(UnsupportError);
   /**
    * Create Cpu Vector from numpy array, which dtype=float32
    *
    * If copy is false, it will create vector inplace.
    */
-  static Vector* createCpuVectorFromNumpy(float* data, int dim,
-                                          bool copy = false);
+  static Vector* createCpuVectorFromNumpy(float* data,
+                                          int dim,
+                                          bool copy = true);
 
   /// Create Gpu Vector from numpy array, which dtype=float32
   static Vector* createGpuVectorFromNumpy(float* data, int dim);
+
+  /**
+   * copy from another vector
+   * throw(RangeError) if size of src vector is different from size of this
+   * vector
+   */
+  void copyFrom(Vector* src) throw(RangeError);
 
   /// Cast to numpy array inplace.
   void toNumpyArrayInplace(float** view_data, int* dim1) throw(UnsupportError);
@@ -258,6 +303,9 @@ public:
 
   /// Return is GPU vector or not.
   bool isGpu() const;
+
+  /// Return a list of float, the memory is alloced and copied.
+  FloatArray getData() const;
 
   /// __len__ in python
   size_t getSize() const;
@@ -279,25 +327,33 @@ class IVector {
 
 public:
   /// Create IVector filled with zero
-  static IVector* createZero(size_t sz, bool useGpu = false);
+  static IVector* createZero(size_t sz, bool useGpu = isUsingGpu());
 
   /**
    * Create IVector from list of int.
    * It will create a new vector, and copy data into it.
    */
-  static IVector* create(const std::vector<int>& data, bool useGpu = false);
+  static IVector* create(const std::vector<int>& data,
+                         bool useGpu = isUsingGpu());
+
+  static IVector* createVectorFromNumpy(
+      int* data,
+      int dim,
+      bool copy = true,
+      bool useGpu = isUsingGpu()) throw(UnsupportError);
 
   /**
    * Create Cpu IVector from numpy array, which dtype=int32
    *
    * If copy is false, it will create vector inplace
    */
-  static IVector* createCpuVectorFromNumpy(int* data, int dim,
-                                           bool copy = false);
+  static IVector* createCpuVectorFromNumpy(int* data,
+                                           int dim,
+                                           bool copy = true);
   /**
    * Create Gpu IVector from numpy array, which dtype=int32
    */
-  static IVector* createGpuVectorFromNumy(int* data, int dim);
+  static IVector* createGpuVectorFromNumpy(int* data, int dim);
 
   /// Cast to numpy array inplace.
   void toNumpyArrayInplace(int** view_data, int* dim1) throw(UnsupportError);
@@ -372,6 +428,7 @@ public:
    * the param idx is the slot id
    */
   Matrix* getSlotValue(size_t idx) const throw(RangeError);
+  Matrix* getSlotGrad(size_t idx) const throw(RangeError);
   IVector* getSlotIds(size_t idx) const throw(RangeError);
   Matrix* getSlotIn(size_t idx) const throw(RangeError);
   IVector* getSlotSequenceStartPositions(size_t idx) const throw(RangeError);
@@ -388,6 +445,7 @@ public:
    * The other param is the input Matrix or vector.
    */
   void setSlotValue(size_t idx, Matrix* mat) throw(RangeError);
+  void setSlotGrad(size_t idx, Matrix* mat) throw(RangeError);
   void setSlotIn(size_t idx, Matrix* mat) throw(RangeError);
   void setSlotIds(size_t idx, IVector* vec) throw(RangeError);
   void setSlotSequenceStartPositions(size_t idx,
@@ -446,7 +504,6 @@ struct OptimizationConfigPrivate;
 class OptimizationConfig {
   DISABLE_COPY_AND_ASSIGN(OptimizationConfig);
   OptimizationConfig();
-  void* getRawPtr();
 
 public:
   static OptimizationConfig* createFromProtoString(const std::string& str);
@@ -462,6 +519,7 @@ private:
 
   friend class TrainerConfig;
   friend class ParameterOptimizer;
+  friend class Trainer;
 };
 
 struct ParameterPrivate;
@@ -489,6 +547,7 @@ public:
   size_t getID() const;
 
   ParameterConfig* getConfig();
+  void setValueUpdated();
 
 private:
   static Parameter* createFromRawPtr(void* ptr);
@@ -515,8 +574,6 @@ public:
   virtual ~ModelConfig();
 
 private:
-  void* getPaddleModelConfig() const;
-
   ModelConfigPrivate* m;
   friend class TrainerConfig;
   friend struct TrainerConfigPrivate;
@@ -539,6 +596,7 @@ public:
 
   static TrainerConfig* createFromTrainerConfigFile(
       const std::string& configPath);
+  static TrainerConfig* createFromProtoString(const std::string& str);
 
   ModelConfig* getModelConfig() const;
 
@@ -546,6 +604,7 @@ public:
 
 private:
   TrainerConfigPrivate* m;
+  friend class Trainer;
 };
 
 /**
@@ -576,7 +635,8 @@ class ParameterTraverseCallback {
 public:
   ~ParameterTraverseCallback();
 
-  void apply(const std::vector<Vector*>& vecs, const ParameterConfig& config,
+  void apply(const std::vector<Vector*>& vecs,
+             const ParameterConfig& config,
              size_t sparseId);
 
 private:
@@ -609,7 +669,8 @@ public:
 
   void finishBatch();
 
-  void update(const std::vector<Vector*>& vecs, const ParameterConfig& conf,
+  void update(const std::vector<Vector*>& vecs,
+              const ParameterConfig& conf,
               size_t sparseId = NO_SPARSE_ID);
 
   std::vector<int> getParameterTypes() const;
@@ -649,7 +710,8 @@ public:
    * model config by TrainerConfig
    */
   static GradientMachine* createByModelConfig(
-      ModelConfig* conf, GradientMatchineCreateMode mode = CREATE_MODE_NORMAL,
+      ModelConfig* conf,
+      GradientMatchineCreateMode mode = CREATE_MODE_NORMAL,
       const std::vector<int>& parameterTypes = defaultParamTypes);
 
   /**
@@ -672,7 +734,8 @@ public:
   /**
    * Combine forward/backward
    */
-  void forwardBackward(const Arguments& inArgs, Arguments* outArgs,
+  void forwardBackward(const Arguments& inArgs,
+                       Arguments* outArgs,
                        PassType passType,
                        const UpdateCallback& callback = UpdateCallback());
 
@@ -693,18 +756,22 @@ public:
    */
   SequenceGenerator* asSequenceGenerator(
       const std::vector<std::string>& dict = std::vector<std::string>(),
-      size_t begin_id = 0UL, size_t end_id = 0UL, size_t max_length = 100UL,
+      size_t begin_id = 0UL,
+      size_t end_id = 0UL,
+      size_t max_length = 100UL,
       size_t beam_size = -1UL);
 
 private:
   GradientMachinePrivate* m;
 
   static GradientMachine* createFromPaddleModelPtr(
-      void* confPtr, GradientMatchineCreateMode mode,
+      const void* confPtr,
+      GradientMatchineCreateMode mode,
       const std::vector<int>& types);
 
   // Not to use c++ 11 init-list, so we use static var as function default arg.
   static std::vector<int> defaultParamTypes;
+  friend class Trainer;
 };
 
 struct TrainerPrivate;
@@ -712,6 +779,7 @@ class Trainer {
 private:
   TrainerPrivate* m;
   Trainer();
+  Trainer(TrainerConfig* optConfig, GradientMachine* gm);
   DISABLE_COPY_AND_ASSIGN(Trainer);
 
 public:
@@ -720,38 +788,42 @@ public:
   /// Create A Trainer By TrainerConfig. using paddle command line.
   static Trainer* createByCommandLine() throw(IOError);
 
-  /// Start Train.
+  static Trainer* create(TrainerConfig* optConfig,
+                         GradientMachine* gm) throw(IOError);
+
+  /// Start training
   void startTrain();
+
+  /// Finish training
   void finishTrain();
 
-  /// Start Pass.
+  /// Start a pass.
   void startTrainPass();
-  void finishTrainPass();
 
-  void setBatchSize(size_t batchSize);
+  /// Finish a pass
+  void finishTrainPass();
 
   /**
    * Train one batch,
    *
-   * @param batchSize -1 wiil use command line or batch size set before,
-   *                  otherwise use this batchSize for train.
-   *
    * @return true if all batch finished.
    */
-  bool trainOneBatch(size_t batchSize = -1UL);
+  bool trainOneBatch(size_t batchSize);
 
-  bool prepareBatchData(size_t batchSize = -1UL);
+  void trainOneDataBatch(size_t batchSize, const Arguments& args);
 
-  void finishTrainOneBatch();
+  void startTestPeriod();
+  void testOneDataBatch(size_t batchSize, const Arguments& args);
+  void finishTestPeriod();
 
-  void forwardOneBatch() throw(UnsupportError);
+  void forwardOneBatch(size_t batchSize);
 
-  Arguments* getNetworkOutput();
+  Arguments* getForwardOutput();
 
   Matrix* getLayerOutput(const std::string& layerName);
 };
 
-/// The N-Best results generated from one input sequence.
+/// the N-Best results generated from one input sequence.
 class ISequenceResults {
 public:
   virtual ~ISequenceResults();

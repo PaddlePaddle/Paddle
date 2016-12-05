@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 #include <string>
+#include <vector>
 
 namespace paddle {
 
@@ -32,6 +32,7 @@ struct Argument;
 class ActivationFunction {
 public:
   static ActivationFunction* create(const std::string& type);
+  static std::vector<std::string> getAllRegisteredTypes();
 
   ActivationFunction() {}
 

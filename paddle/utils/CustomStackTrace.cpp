@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "CustomStackTrace.h"
 #include "CommandLineParser.h"
 #include <iostream>
 
-P_DEFINE_bool(layer_stack_error_only_current_thread,
+P_DEFINE_bool(
+    layer_stack_error_only_current_thread,
     true,
     "Dump current thread or whole process layer stack when signal error "
     "occurred. true means only dump current thread layer stack");
@@ -33,21 +33,23 @@ void installLayerStackTracer() {
     if (!gLayerStackTrace.empty()) {
       size_t curTid = -1UL;
       std::hash<std::thread::id> hasher;
-      gLayerStackTrace.dump([&curTid, &hasher](std::thread::id tid,
-                            bool* isForwarding,
-                            const std::string& layerName) {
-        if (curTid != hasher(tid)) {
-          if (curTid != -1UL) {
-            std::cerr << std::endl;
-          }
-          curTid = hasher(tid);
-          std::cerr << "Thread [" << tid << "] ";
-          if (isForwarding) {
-            std::cerr << (*isForwarding ? "Forwarding ": "Backwarding ");
-          }
-        }
-        std::cerr << layerName << ", ";
-      }, FLAGS_layer_stack_error_only_current_thread);
+      gLayerStackTrace.dump(
+          [&curTid, &hasher](std::thread::id tid,
+                             bool* isForwarding,
+                             const std::string& layerName) {
+            if (curTid != hasher(tid)) {
+              if (curTid != -1UL) {
+                std::cerr << std::endl;
+              }
+              curTid = hasher(tid);
+              std::cerr << "Thread [" << tid << "] ";
+              if (isForwarding) {
+                std::cerr << (*isForwarding ? "Forwarding " : "Backwarding ");
+              }
+            }
+            std::cerr << layerName << ", ";
+          },
+          FLAGS_layer_stack_error_only_current_thread);
       std::cerr << std::endl;
     }
     std::cerr.write(data, sz);

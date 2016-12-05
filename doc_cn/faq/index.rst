@@ -4,22 +4,18 @@ PaddlePaddle常见问题
 
 ..  contents::
 
-1. 如何减少PaddlePaddle的内存占用
+1. 如何减少内存占用
 ---------------------------------
 
-神经网络的训练本身是一个非常消耗内存和显存的工作。经常会消耗数十G的内存和数G的显存。
+神经网络的训练本身是一个非常消耗内存和显存的工作，经常会消耗数10GB的内存和数GB的显存。
 PaddlePaddle的内存占用主要分为如下几个方面\:
 
-* DataProvider缓冲池内存 (只针对内存)
-* 神经元激活内存 （针对内存和显存）
-* 参数内存 (针对内存和显存)
+* DataProvider缓冲池内存（只针对内存）
+* 神经元激活内存（针对内存和显存）
+* 参数内存 （针对内存和显存）
 * 其他内存杂项
 
-这其中，其他内存杂项是指PaddlePaddle本身所用的一些内存，包括字符串分配，临时变量等等，
-这些内存就不考虑如何缩减了。
-
-其他的内存的减少方法依次为
-
+其中，其他内存杂项是指PaddlePaddle本身所用的一些内存，包括字符串分配，临时变量等等，暂不考虑在内。
 
 减少DataProvider缓冲池内存
 ++++++++++++++++++++++++++
@@ -39,28 +35,28 @@ PyDataProvider使用的是异步加载，同时在内存里直接随即选取数
 
 ..  literalinclude:: reduce_min_pool_size.py
 
-这样做可以极大的减少内存占用，并且可能会加速训练过程。 详细文档参考 `这里
+这样做可以极大的减少内存占用，并且可能会加速训练过程，详细文档参考 `这里
 <../ui/data_provider/pydataprovider2.html#provider>`_ 。
 
 神经元激活内存
 ++++++++++++++
 
-神经网络在训练的时候，会对每一个激活暂存一些数据，包括激活，參差等等。
+神经网络在训练的时候，会对每一个激活暂存一些数据，如神经元激活值等。
 在反向传递的时候，这些数据会被用来更新参数。这些数据使用的内存主要和两个参数有关系，
 一是batch size，另一个是每条序列(Sequence)长度。所以，其实也是和每个mini-batch中包含
 的时间步信息成正比。
 
-所以，做法可以有两种。他们是
+所以做法可以有两种：
 
 * 减小batch size。 即在网络配置中 :code:`settings(batch_size=1000)` 设置成一个小一些的值。但是batch size本身是神经网络的超参数，减小batch size可能会对训练结果产生影响。
 * 减小序列的长度，或者直接扔掉非常长的序列。比如，一个数据集大部分序列长度是100-200,
-  但是突然有一个10000长的序列，就很容易导致内存超限。特别是在LSTM等RNN中。
+  但是突然有一个10000长的序列，就很容易导致内存超限，特别是在LSTM等RNN中。
 
 参数内存
 ++++++++
 
 PaddlePaddle支持非常多的优化算法(Optimizer)，不同的优化算法需要使用不同大小的内存。
-例如如果使用 :code:`adadelta` 算法，则需要使用参数规模大约5倍的内存。 如果参数保存下来的
+例如使用 :code:`adadelta` 算法，则需要使用等于权重参数规模大约5倍的内存。举例，如果参数保存下来的模型目录
 文件为 :code:`100M`， 那么该优化算法至少需要 :code:`500M` 的内存。
 
 可以考虑使用一些优化算法，例如 :code:`momentum`。
@@ -68,11 +64,11 @@ PaddlePaddle支持非常多的优化算法(Optimizer)，不同的优化算法需
 2. 如何加速PaddlePaddle的训练速度
 ---------------------------------
 
-PaddlePaddle是神经网络训练平台，加速PaddlePaddle训练有如下几个方面\：
+加速PaddlePaddle训练可以考虑从以下几个方面\：
 
 * 减少数据载入的耗时
 * 加速训练速度
-* 利用更多的计算资源
+* 利用分布式训练驾驭更多的计算资源
 
 减少数据载入的耗时
 ++++++++++++++++++
@@ -108,25 +104,20 @@ PaddlePaddle支持Sparse的训练，sparse训练需要训练特征是 :code:`spa
 利用更多的计算资源可以分为一下几个方式来进行\:
 
 * 单机CPU训练
-  * 使用多线程训练。设置命令行参数 :code:`trainer_count`，即可以设置参与训练的线程数量。使用方法为 :code:`paddle train --trainer_count=4`
+  * 使用多线程训练。设置命令行参数 :code:`trainer_count`。
+
 * 单机GPU训练
-  * 使用显卡训练。设置命令行参数 :code:`use_gpu`。 使用方法为 :code:`paddle train --use_gpu=true`
-  * 使用多块显卡训练。设置命令行参数 :code:`use_gpu` 和 :code:`trainer_count`。使用 :code:`--use_gpu=True` 开启GPU训练，使用 :code:`trainer_count` 指定显卡数量。使用方法为 :code:`paddle train --use_gpu=true --trainer_count=4`
+  * 使用显卡训练。设置命令行参数 :code:`use_gpu`。
+  * 使用多块显卡训练。设置命令行参数 :code:`use_gpu` 和 :code:`trainer_count` 。
+
 * 多机训练
-  * 使用多机训练的方法也比较简单，需要先在每个节点启动 :code:`paddle pserver`，在使用 :code:`paddle train --pservers=192.168.100.1,192.168.100.2` 来指定每个pserver的ip地址
-  * 具体的多机训练方法参考 `多机训练 <TBD>`_ 文档。
+  * 具体的多机训练方法参考  `多机训练文档 <../ui/data_provider/pydataprovider2.html#provider>`_ 。
 
 
 3. 遇到“非法指令”或者是“illegal instruction” 
 --------------------------------------------
 
-paddle在进行计算的时候为了提升计算性能，使用了avx指令。部分老的cpu型号无法支持这样的指令。通常来说执行下grep avx /proc/cpuinfo看看是否有输出即可知道是否支持。（另：用此方法部分虚拟机可能检测到支持avx指令但是实际运行会挂掉，请当成是不支持，看下面的解决方案）
-
-解决办法是\:
-
-* 使用 NO_AVX的 `安装包 <../build_and_install/index.html>`_ 或者 `Docker image <../build_and_install/install/docker_install.html>`_
-* 或者，使用 :code:`-DWITH_AVX=OFF` 重新编译PaddlePaddle。
-
+PaddlePaddle使用avx SIMD指令提高cpu执行效率，因此错误的使用二进制发行版可能会导致这种错误，请选择正确的版本。
 
 4. 如何选择SGD算法的学习率
 --------------------------
@@ -158,7 +149,7 @@ paddle在进行计算的时候为了提升计算性能，使用了avx指令。�
 6. 如何共享参数
 ---------------
 
-PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字的参数，会共享参数。设置参数的名字，可以使用 :code:`ParamAttr(name="YOUR_PARAM_NAME")` 来设置。更方便的设置方式，是想要共享的参数使用同样的 :code:`ParamAttr` 对象。
+PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字的参数，会共享参数。设置参数的名字，可以使用 :code:`ParamAttr(name="YOUR_PARAM_NAME")` 来设置。更方便的设置方式，是使得要共享的参数使用同样的 :code:`ParamAttr` 对象。
 
 简单的全连接网络，参数共享的配置示例为\:
 
@@ -166,4 +157,98 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
 这里 :code:`hidden_a` 和 :code:`hidden_b` 使用了同样的parameter和bias。并且softmax层的两个输入也使用了同样的参数 :code:`softmax_param`。
 
+7. *-cp27mu-linux_x86_64.whl is not a supported wheel on this platform.
+-----------------------------------------------------------------------
 
+出现这个问题的主要原因是，系统编译wheel包的时候，使用的 :code:`wheel` 包是最新的，
+而系统中的 :code:`pip` 包比较老。具体的解决方法是，更新 :code:`pip` 包并重新编译PaddlePaddle。
+更新 :code:`pip` 包的方法是\:
+
+..  code-block:: bash
+
+    pip install --upgrade pip
+
+8.  python相关的单元测试都过不了
+--------------------------------
+
+如果出现以下python相关的单元测试都过不了的情况：
+
+..  code-block:: bash
+
+    24 - test_PyDataProvider (Failed)
+    26 - test_RecurrentGradientMachine (Failed)
+    27 - test_NetworkCompare (Failed)
+    28 - test_PyDataProvider2 (Failed)
+    32 - test_Prediction (Failed)
+    33 - test_Compare (Failed)
+    34 - test_Trainer (Failed)
+    35 - test_TrainerOnePass (Failed)
+    36 - test_CompareTwoNets (Failed)
+    37 - test_CompareTwoOpts (Failed)
+    38 - test_CompareSparse (Failed)
+    39 - test_recurrent_machine_generation (Failed)
+    40 - test_PyDataProviderWrapper (Failed)
+    41 - test_config_parser (Failed)
+    42 - test_swig_api (Failed)
+    43 - layers_test (Failed)
+    
+并且查询PaddlePaddle单元测试的日志，提示：
+
+..  code-block:: bash
+    
+    paddle package is already in your PYTHONPATH. But unittest need a clean environment.
+    Please uninstall paddle package before start unittest. Try to 'pip uninstall paddle'.
+    
+解决办法是：
+
+* 卸载PaddlePaddle包 :code:`pip uninstall paddle`, 清理掉老旧的PaddlePaddle安装包，使得单元测试有一个干净的环境。如果PaddlePaddle包已经在python的site-packages里面，单元测试会引用site-packages里面的python包，而不是源码目录里 :code:`/python` 目录下的python包。同时，即便设置 :code:`PYTHONPATH` 到 :code:`/python` 也没用，因为python的搜索路径是优先已经安装的python包。
+
+9. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致
+----------------------------------------------------------
+
+这是目前CMake寻找Python的逻辑存在缺陷，如果系统安装了多个Python版本，CMake找到的Python库和Python解释器版本可能有不一致现象，导致编译PaddlePaddle失败。正确的解决方法是，
+用户强制指定特定的Python版本，具体操作如下：
+
+    ..  code-block:: bash
+        
+        cmake .. -DPYTHON_EXECUTABLE=<exc_path> -DPYTHON_LIBRARY=<lib_path>  -DPYTHON_INCLUDE_DIR=<inc_path>
+
+用户需要指定本机上Python的路径：``<exc_path>``, ``<lib_path>``, ``<inc_path>``
+
+10. A protocol message was rejected because it was too big
+----------------------------------------------------------
+
+如果在训练NLP相关模型时，出现以下错误：
+
+..  code-block:: bash
+
+    [libprotobuf ERROR google/protobuf/io/coded_stream.cc:171] A protocol message was rejected because it was too big (more than 67108864 bytes).  To increase the limit (or to disable these warnings), see CodedInputStream::SetTotalBytesLimit() in google/protobuf/io/coded_stream.h.
+    F1205 14:59:50.295174 14703 TrainerConfigHelper.cpp:59] Check failed: m->conf.ParseFromString(configProtoStr) 
+
+可能的原因是：传给dataprovider的某一个args过大，一般是由于直接传递大字典导致的。错误的define_py_data_sources2类似：
+
+..  code-block:: python
+
+     src_dict = dict()
+     for line_count, line in enumerate(open(src_dict_path, "r")):
+        src_dict[line.strip()] = line_count
+
+     define_py_data_sources2(
+        train_list,
+        test_list,
+        module="dataprovider",
+        obj="process",
+        args={"src_dict": src_dict})
+
+解决方案是：将字典的地址作为args传给dataprovider，然后在dataprovider里面根据该地址加载字典。即define_py_data_sources2应改为：
+
+..  code-block:: python
+
+     define_py_data_sources2(
+        train_list,
+        test_list,
+        module="dataprovider",
+        obj="process",
+        args={"src_dict_path": src_dict_path})
+
+完整源码可参考 `seqToseq <https://github.com/PaddlePaddle/Paddle/tree/develop/demo/seqToseq>`_ 示例。

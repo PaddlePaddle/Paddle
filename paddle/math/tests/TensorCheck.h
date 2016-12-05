@@ -12,50 +12,128 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
+#pragma once
+
+/**
+ * This file provides a TensorCheck template function, which can be used to
+ * compare CpuMatrix and GpuMatrix, CpuVector and GpuVector, and so on.
+ */
+
+#include <cmath>
 #include "paddle/math/Matrix.h"
 
-using namespace paddle;  // NOLINT
-using namespace std;     // NOLINT
+namespace autotest {
 
-template<typename Tensor>
-extern void TensorCheckEqual(const Tensor& tensor1, const Tensor& tensor2);
+using paddle::Matrix;
+using paddle::CpuMatrix;
+using paddle::GpuMatrix;
+using paddle::VectorT;
+using paddle::CpuVectorT;
+using paddle::GpuVectorT;
 
-void TensorCheckEqual(const CpuMatrix& matrix1, const CpuMatrix& matrix2) {
-  CHECK(matrix1.getHeight() == matrix2.getHeight());
-  CHECK(matrix1.getWidth() == matrix2.getWidth());
+class AssertEqual {
+public:
+  AssertEqual(real err = 0) : err_(err) {}
 
-  int height = matrix1.getHeight();
-  int width = matrix1.getWidth();
-  const real* data1 = matrix1.getData();
-  const real* data2 = matrix2.getData();
-  int count = 0;
-  for (int i = 0; i < height; i++) {
-    for (int j = 0; j < width; j++) {
-      if (data1[i * width + j] != data2[i * width + j]) {
-        count++;
+  inline bool operator()(real a, real b) {
+    if (err_ == 0) {
+      if (a != b) {
+        return false;
+      }
+    } else {
+      if (std::fabs(a - b) > err_) {
+        if ((std::fabs(a - b) / std::fabs(a)) > (err_ / 10.0f)) {
+          return false;
+        }
       }
     }
+
+    return true;
   }
-  EXPECT_EQ(count, 0) << "There are " << count << " different element.";
-}
 
-void TensorCheckEqual(const GpuMatrix& matrix1, const GpuMatrix& matrix2) {
-  CpuMatrix cpu1(matrix1.getHeight(), matrix1.getWidth());
-  CpuMatrix cpu2(matrix2.getHeight(), matrix2.getWidth());
-  cpu1.copyFrom(matrix1);
-  cpu2.copyFrom(matrix2);
-  TensorCheckEqual(cpu1, cpu2);
-}
+private:
+  real err_;
+};
 
-void TensorCheckErr(const CpuMatrix& matrix1, const CpuMatrix& matrix2) {
+template <typename Tensor>
+class CopyToCpu;
+
+template <>
+class CopyToCpu<CpuMatrix> {
+public:
+  explicit CopyToCpu(const CpuMatrix& arg) : arg_(arg) {}
+  const CpuMatrix& copiedArg() const { return arg_; }
+
+private:
+  const CpuMatrix& arg_;
+};
+
+template <>
+class CopyToCpu<GpuMatrix> {
+public:
+  explicit CopyToCpu(const GpuMatrix& arg)
+      : arg_(arg.getHeight(), arg.getWidth()) {
+    arg_.copyFrom(arg);
+  }
+  CpuMatrix& copiedArg() { return arg_; }
+
+private:
+  CpuMatrix arg_;
+};
+
+template <>
+class CopyToCpu<Matrix> {
+public:
+  explicit CopyToCpu(const Matrix& arg)
+      : arg_(arg.getHeight(), arg.getWidth()) {
+    arg_.copyFrom(arg);
+  }
+  CpuMatrix& copiedArg() { return arg_; }
+
+private:
+  CpuMatrix arg_;
+};
+
+template <typename T>
+class CopyToCpu<CpuVectorT<T>> {
+public:
+  explicit CopyToCpu(const CpuVectorT<T>& arg) : arg_(arg) {}
+  const CpuVectorT<T>& copiedArg() const { return arg_; }
+
+private:
+  const CpuVectorT<T>& arg_;
+};
+
+template <typename T>
+class CopyToCpu<GpuVectorT<T>> {
+public:
+  explicit CopyToCpu(const GpuVectorT<T>& arg) : arg_(arg.getSize()) {
+    arg_.copyFrom(arg);
+  }
+  CpuVectorT<T>& copiedArg() { return arg_; }
+
+private:
+  CpuVectorT<T> arg_;
+};
+
+template <typename T>
+class CopyToCpu<VectorT<T>> {
+public:
+  explicit CopyToCpu(const VectorT<T>& arg) : arg_(arg.getSize()) {
+    arg_.copyFrom(arg);
+  }
+  CpuVectorT<T>& copiedArg() { return arg_; }
+
+private:
+  CpuVectorT<T> arg_;
+};
+
+template <typename AssertEq>
+void TensorCheck(AssertEq compare,
+                 const CpuMatrix& matrix1,
+                 const CpuMatrix& matrix2) {
   CHECK(matrix1.getHeight() == matrix2.getHeight());
   CHECK(matrix1.getWidth() == matrix2.getWidth());
-#ifndef PADDLE_TYPE_DOUBLE
-  real err = 1e-5;
-#else
-  real err = 1e-10;
-#endif
 
   int height = matrix1.getHeight();
   int width = matrix1.getWidth();
@@ -66,27 +144,18 @@ void TensorCheckErr(const CpuMatrix& matrix1, const CpuMatrix& matrix2) {
     for (int j = 0; j < width; j++) {
       real a = data1[i * width + j];
       real b = data2[i * width + j];
-      if (fabs(a - b) > err) {
-        if ((fabsf(a - b) / fabsf(a)) > (err / 10.0f)) {
-          count++;
-        }
+      if (!compare(a, b)) {
+        count++;
       }
     }
   }
   EXPECT_EQ(count, 0) << "There are " << count << " different element.";
 }
 
-void TensorCheckErr(const GpuMatrix& matrix1, const GpuMatrix& matrix2) {
-  CpuMatrix cpu1(matrix1.getHeight(), matrix1.getWidth());
-  CpuMatrix cpu2(matrix2.getHeight(), matrix2.getWidth());
-  cpu1.copyFrom(matrix1);
-  cpu2.copyFrom(matrix2);
-  TensorCheckErr(cpu1, cpu2);
-}
-
-template<class T>
-void TensorCheckEqual(const CpuVectorT<T>& vector1,
-                      const CpuVectorT<T>& vector2) {
+template <typename AssertEq, class T>
+void TensorCheck(AssertEq compare,
+                 const CpuVectorT<T>& vector1,
+                 const CpuVectorT<T>& vector2) {
   CHECK(vector1.getSize() == vector2.getSize());
 
   const T* data1 = vector1.getData();
@@ -94,49 +163,54 @@ void TensorCheckEqual(const CpuVectorT<T>& vector1,
   size_t size = vector1.getSize();
   int count = 0;
   for (size_t i = 0; i < size; i++) {
-    if (data1[i] != data2[i]) {
+    real a = data1[i];
+    real b = data2[i];
+    if (!compare(a, b)) {
       count++;
     }
   }
   EXPECT_EQ(count, 0) << "There are " << count << " different element.";
 }
 
-template<class T>
-void TensorCheckEqual(const GpuVectorT<T>& vector1,
-                      const GpuVectorT<T>& vector2) {
-  CpuVectorT<T> cpu1(vector1.getSize());
-  CpuVectorT<T> cpu2(vector2.getSize());
-  cpu1.copyFrom(vector1);
-  cpu2.copyFrom(vector2);
-  TensorCheckEqual(cpu1, cpu2);
+template <typename AssertEq, typename Tensor1, typename Tensor2>
+void TensorCheck(AssertEq compare,
+                 const Tensor1& tensor1,
+                 const Tensor2& tensor2) {
+  TensorCheck(compare,
+              CopyToCpu<Tensor1>(tensor1).copiedArg(),
+              CopyToCpu<Tensor2>(tensor2).copiedArg());
 }
 
-// Performance Check
-#ifdef PADDLE_DISABLE_TIMER
+template <typename AssertEq>
+void TensorCheck(AssertEq compare, real args1, real args2) {
+  EXPECT_EQ(compare(args1, args2), true) << "[Test error] args1 = " << args1
+                                         << ", args2 = " << args2;
+}
 
-#define EXPRESSION_PERFORMANCE(expression)  \
-    expression;
+template <typename AssertEq>
+void TensorCheck(AssertEq compare, size_t args1, size_t args2) {
+  EXPECT_EQ(args1, args2) << "[Test error] args1 = " << args1
+                          << ", args2 = " << args2;
+}
 
+template <typename Tensor1, typename Tensor2>
+void TensorCheckEqual(const Tensor1& tensor1, const Tensor2& tensor2) {
+  AssertEqual compare(0);
+  TensorCheck(compare,
+              CopyToCpu<Tensor1>(tensor1).copiedArg(),
+              CopyToCpu<Tensor2>(tensor2).copiedArg());
+}
+
+template <typename Tensor1, typename Tensor2>
+void TensorCheckErr(const Tensor1& tensor1, const Tensor2& tensor2) {
+#ifndef PADDLE_TYPE_DOUBLE
+  AssertEqual compare(1e-3);
 #else
-
-#include "paddle/utils/Stat.h"
-
-#define EXPRESSION_PERFORMANCE(expression) \
-  do {\
-    char expr[30];\
-    strncpy(expr, #expression, 30);\
-    if (expr[29] != '\0') {\
-      expr[27] = '.'; expr[28] = '.'; expr[29] = '\0';\
-    }\
-    expression;\
-    for (int i = 0; i < 20; i++) {\
-      REGISTER_TIMER(expr);\
-      expression;\
-    }\
-    LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')\
-      << *globalStat.getStat(expr);\
-    globalStat.reset();\
-  } while (0)
-
+  AssertEqual compare(1e-10);
 #endif
+  TensorCheck(compare,
+              CopyToCpu<Tensor1>(tensor1).copiedArg(),
+              CopyToCpu<Tensor2>(tensor2).copiedArg());
+}
 
+}  // namespace autotest

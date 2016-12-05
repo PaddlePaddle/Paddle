@@ -2,8 +2,8 @@
 
 add_simple_unittest(test_ExecViaCpu)
 add_simple_unittest(test_SIMDFunctions)
-add_simple_unittest(test_matrix)
 add_simple_unittest(test_TrainingAlgorithm)
+add_simple_unittest(test_SparseMatrix)
 
 # TODO(yuyang18): Refactor TestUtil.cpp. Remove this cross module reference.
 add_unittest(test_matrixCompare
@@ -14,6 +14,7 @@ add_simple_unittest(test_sparseMatrixCompare)
 add_simple_unittest(test_perturbation)
 add_simple_unittest(test_CpuGpuVector)
 add_simple_unittest(test_Allocator)
+
 if(WITH_GPU)
     if(COMPILER_SUPPORT_CXX11)
     	CUDA_ADD_EXECUTABLE(test_Tensor test_Tensor.cu)
@@ -28,3 +29,7 @@ else()
     add_unittest(test_lazyAssign test_lazyAssign.cu)
 endif(WITH_GPU)
 
+add_simple_unittest(test_FPException)
+add_simple_unittest(test_GpuProfiler)
+add_simple_unittest(test_BaseMatrix)
+add_simple_unittest(test_Matrix)

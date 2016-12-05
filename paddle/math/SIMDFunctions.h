@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
@@ -123,8 +121,8 @@ void batchAddToImpl(float* a, const float* b[], int batch, size_t len);
 void colMaxImpl(float* result, const float* data, int dim, int numSamples);
 #ifdef __AVX__
 void decayL1AvxImpl(float* dst, float* src, float lambda, size_t len);
-void decayL1AvxImpl(float* dst, float* src, float* lr, float lambda,
-                    size_t len);
+void decayL1AvxImpl(
+    float* dst, float* src, float* lr, float lambda, size_t len);
 #endif
 }  // namespace internal
 
@@ -153,8 +151,8 @@ inline void decayL1(float* dst, float* src, float lambda, size_t len) {
 }
 
 template <>
-inline void decayL1(float* dst, float* src, float* lr, float lambda,
-                    size_t len) {
+inline void decayL1(
+    float* dst, float* src, float* lr, float lambda, size_t len) {
 #ifdef __AVX__
   internal::decayL1AvxImpl(dst, src, lr, lambda, len);
 #else

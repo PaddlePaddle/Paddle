@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <vector>
@@ -44,13 +43,13 @@ public:
 
 /**
  * @brief response normalization within feature maps
- * namely normalize in independent channel 
- * When code refactoring, we delete the original implementation. 
+ * namely normalize in independent channel
+ * When code refactoring, we delete the original implementation.
  * Need to implement in the futrue.
  */
 class ResponseNormLayer : public NormLayer {
 protected:
-  size_t channels_, size_, outputX_, imgSize_;
+  size_t channels_, size_, outputX_, imgSize_, outputY_, imgSizeY_;
   float scale_, pow_;
   MatrixPtr denoms_;
 
