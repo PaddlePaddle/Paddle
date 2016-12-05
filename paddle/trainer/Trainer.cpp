@@ -39,20 +39,16 @@ limitations under the License. */
 #include "TrainerConfigHelper.h"
 
 P_DEFINE_string(config, "", "Trainer config file");
-P_DEFINE_int32(test_period,
-               0,
-               "Run test every so many train batches."
-               " 0 for testing after each pass."
-               " If not 0, test log_period batches."
-               " If 0, test on all test data");
+
+P_DEFINE_int32(test_period, 0,
+               "if equal 0, do test on all test data at the end of "
+               "each pass. While if equal non-zero, do test on all test "
+               "data every test_period batches");
+P_DEFINE_bool(test_all_data_in_one_period, false,
+               "This option was deprecated, since we will always do "
+               "test on all test set ");
 
 P_DEFINE_bool(local, true, "Train in local mode or not");
-
-P_DEFINE_bool(
-    test_all_data_in_one_period,
-    false,
-    "true will test all data in one test peroid."
-    "Otherwise test (batch_size * log_peroid) data in one test period.");
 
 P_DEFINE_int32(average_test_period,
                0,
@@ -633,8 +629,19 @@ void Trainer::test() { tester_->test(); }
 
 std::unique_ptr<TesterConfig> Trainer::createTesterConfig() {
   TesterConfig* conf = new TesterConfig;
+  if (FLAGS_test_period) {
+    LOG(WARNING)
+      << "The meaning of --test_period is changed: "
+      << "if equal 0, do test on all test data at the end of "
+      << "each pass. While if equal non-zero, do test on all test "
+      << "data every test_period batches ";
+  }
+  if (FLAGS_test_all_data_in_one_period) {
+    LOG(WARNING)
+      << "--test_all_data_in_one_period was deprecated, since "
+      << "we will always do test on all test set ";
+  }
   conf->testPeriod = FLAGS_test_period;
-  conf->testAllDataInOnePeriod = FLAGS_test_all_data_in_one_period;
   conf->prevBatchState = FLAGS_prev_batch_state;
   conf->logPeriod = FLAGS_log_period;
   conf->loadsaveParametersInPserver = FLAGS_loadsave_parameters_in_pserver;
