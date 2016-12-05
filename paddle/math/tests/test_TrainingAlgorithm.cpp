@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/math/TrainingAlgorithmOp.h"
 #include "OriginalOptimizerApi.h"
 #include "TensorCheck.h"
+#include "PerfUtils.h"
 
 using namespace paddle;  // NOLINT
 
@@ -32,21 +33,20 @@ public:
     max_diff_ = FLAGS_max_diff;
     FLAGS_max_diff = max_diff;
   }
-  ~SetMaxDiff() {
-    FLAGS_max_diff = max_diff_;
-  }
+  ~SetMaxDiff() { FLAGS_max_diff = max_diff_; }
+
 private:
   double max_diff_;
 };
 
-#define COPY_VECTOR_TO_CPU(cpuVec, vector)  \
-  do {\
-    if (vector->useGpu()) {\
-      cpuVec = Vector::create(vector->getSize(), false);\
-      cpuVec->copyFrom(*vector);\
-    } else {\
-      cpuVec = vector;\
-    }\
+#define COPY_VECTOR_TO_CPU(cpuVec, vector)               \
+  do {                                                   \
+    if (vector->useGpu()) {                              \
+      cpuVec = Vector::create(vector->getSize(), false); \
+      cpuVec->copyFrom(*vector);                         \
+    } else {                                             \
+      cpuVec = vector;                                   \
+    }                                                    \
   } while (0)
 
 int VectorCheckErr(const Vector& vector1, const Vector& vector2) {
@@ -79,8 +79,8 @@ int VectorCheckErr(const VectorPtr& vector1, const VectorPtr& vector2) {
 
 #ifdef PADDLE_DISABLE_TIMER
 
-#define CHECK_VECTORPTR(vector1, vector2)   \
-    EXPECT_EQ(VectorCheckErr(vector1, vector2), 0)
+#define CHECK_VECTORPTR(vector1, vector2) \
+  EXPECT_EQ(VectorCheckErr(vector1, vector2), 0)
 
 #else
 
@@ -96,8 +96,20 @@ void testCase(testMatrixFunc matrixFunc) {
 #else
   for (auto useGpu : {false}) {
 #endif
-    for (auto size : {1, 32, 64, 128, 512, 1024, 4096, 32768, 65536, 131072,
-                       262144, 524288, 1048576, 2097152}) {
+    for (auto size : {1,
+                      32,
+                      64,
+                      128,
+                      512,
+                      1024,
+                      4096,
+                      32768,
+                      65536,
+                      131072,
+                      262144,
+                      524288,
+                      1048576,
+                      2097152}) {
       LOG(INFO) << " size=" << size << " useGpu=" << useGpu;
       matrixFunc(size, useGpu);
     }
@@ -105,10 +117,10 @@ void testCase(testMatrixFunc matrixFunc) {
 }
 
 #define INIT_VECTOR(vec1, vec2, type, size, useGpu) \
-    vec1[type] = Vector::create(size, useGpu);      \
-    vec2[type] = Vector::create(size, useGpu);      \
-    vec1[type]->rand();                             \
-    vec2[type]->copyFrom(*vec1[type]);
+  vec1[type] = Vector::create(size, useGpu);        \
+  vec2[type] = Vector::create(size, useGpu);        \
+  vec1[type]->rand();                               \
+  vec2[type]->copyFrom(*vec1[type]);
 
 void testAdagrad(size_t size, bool useGpu) {
   VectorPtr bufs1[NUM_PARAMETER_TYPES];
@@ -120,13 +132,13 @@ void testAdagrad(size_t size, bool useGpu) {
   INIT_VECTOR(bufs1, bufs2, PARAMETER_GRADIENT_SQURESUM1, size, useGpu);
   INIT_VECTOR(bufs1, bufs2, PARAMETER_LEARNING_RATE, size, useGpu);
 
-  real epsilon = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real epsilon = (real)rand() / (real)RAND_MAX;       // NOLINT
   real learningRate = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real momentum = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real decayRate = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real momentum = (real)rand() / (real)RAND_MAX;      // NOLINT
+  real decayRate = (real)rand() / (real)RAND_MAX;     // NOLINT
 
-  EXPRESSION_PERFORMANCE(AdagradParameterOptimizer(bufs1,
-    epsilon, learningRate, momentum, decayRate));
+  EXPRESSION_PERFORMANCE(AdagradParameterOptimizer(
+      bufs1, epsilon, learningRate, momentum, decayRate));
 
   BaseMatrix& value = *bufs2[PARAMETER_VALUE];
   BaseMatrix& grad = *bufs2[PARAMETER_GRADIENT];
@@ -135,8 +147,16 @@ void testAdagrad(size_t size, bool useGpu) {
   BaseMatrix& accum = *bufs2[PARAMETER_GRADIENT_SQURESUM1];
   BaseMatrix& lr = *bufs2[PARAMETER_LEARNING_RATE];
 
-  EXPRESSION_PERFORMANCE(adagradApply(value, grad, mom, accum_buffer, accum, lr,
-    epsilon, learningRate, momentum, decayRate));
+  EXPRESSION_PERFORMANCE(adagradApply(value,
+                                      grad,
+                                      mom,
+                                      accum_buffer,
+                                      accum,
+                                      lr,
+                                      epsilon,
+                                      learningRate,
+                                      momentum,
+                                      decayRate));
 
   CHECK_VECTORPTR(bufs1[PARAMETER_VALUE], bufs2[PARAMETER_VALUE]);
   CHECK_VECTORPTR(bufs1[PARAMETER_MOMENTUM], bufs2[PARAMETER_MOMENTUM]);
@@ -146,9 +166,7 @@ void testAdagrad(size_t size, bool useGpu) {
                   bufs2[PARAMETER_LEARNING_RATE]);
 }
 
-TEST(Training, Adagrad) {
-  testCase(testAdagrad);
-}
+TEST(Training, Adagrad) { testCase(testAdagrad); }
 
 void testAdaDelta(size_t size, bool useGpu) {
   VectorPtr bufs1[NUM_PARAMETER_TYPES];
@@ -160,14 +178,14 @@ void testAdaDelta(size_t size, bool useGpu) {
   INIT_VECTOR(bufs1, bufs2, PARAMETER_GRADIENT_SQURESUM1, size, useGpu);
   INIT_VECTOR(bufs1, bufs2, PARAMETER_LEARNING_RATE, size, useGpu);
 
-  real rou = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real epsilon = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real rou = (real)rand() / (real)RAND_MAX;           // NOLINT
+  real epsilon = (real)rand() / (real)RAND_MAX;       // NOLINT
   real learningRate = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real momentum = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real decayRate = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real momentum = (real)rand() / (real)RAND_MAX;      // NOLINT
+  real decayRate = (real)rand() / (real)RAND_MAX;     // NOLINT
 
-  EXPRESSION_PERFORMANCE(AdaDeltaParameterOptimizer(bufs1,
-    rou, epsilon, learningRate, momentum, decayRate));
+  EXPRESSION_PERFORMANCE(AdaDeltaParameterOptimizer(
+      bufs1, rou, epsilon, learningRate, momentum, decayRate));
 
   BaseMatrix& value = *bufs2[PARAMETER_VALUE];
   BaseMatrix& grad = *bufs2[PARAMETER_GRADIENT];
@@ -176,8 +194,17 @@ void testAdaDelta(size_t size, bool useGpu) {
   BaseMatrix& accum_update = *bufs2[PARAMETER_GRADIENT_SQURESUM1];
   BaseMatrix& lr = *bufs2[PARAMETER_LEARNING_RATE];
 
-  EXPRESSION_PERFORMANCE(adadeltaApply(value, grad, mom, accum, accum_update,
-    lr, rou, epsilon, learningRate, momentum, decayRate));
+  EXPRESSION_PERFORMANCE(adadeltaApply(value,
+                                       grad,
+                                       mom,
+                                       accum,
+                                       accum_update,
+                                       lr,
+                                       rou,
+                                       epsilon,
+                                       learningRate,
+                                       momentum,
+                                       decayRate));
 
   CHECK_VECTORPTR(bufs1[PARAMETER_VALUE], bufs2[PARAMETER_VALUE]);
   CHECK_VECTORPTR(bufs1[PARAMETER_MOMENTUM], bufs2[PARAMETER_MOMENTUM]);
@@ -189,11 +216,9 @@ void testAdaDelta(size_t size, bool useGpu) {
                   bufs2[PARAMETER_LEARNING_RATE]);
 }
 
-TEST(Training, AdaDelta) {
-  testCase(testAdaDelta);
-}
+TEST(Training, AdaDelta) { testCase(testAdaDelta); }
 
-template<bool isFirstTime>
+template <bool isFirstTime>
 void testRMSProp(size_t size, bool useGpu) {
   VectorPtr bufs1[NUM_PARAMETER_TYPES];
   VectorPtr bufs2[NUM_PARAMETER_TYPES];
@@ -207,18 +232,23 @@ void testRMSProp(size_t size, bool useGpu) {
   /* make sure 'g - f.square()' greater than 0 */
   bufs1[PARAMETER_GRADIENT_SQURESUM]->add(1.0);
   bufs2[PARAMETER_GRADIENT_SQURESUM]->copyFrom(
-    *bufs1[PARAMETER_GRADIENT_SQURESUM]);
+      *bufs1[PARAMETER_GRADIENT_SQURESUM]);
 
-  real rou = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real epsilon = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real rou = (real)rand() / (real)RAND_MAX;           // NOLINT
+  real epsilon = (real)rand() / (real)RAND_MAX;       // NOLINT
   real learningRate = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real momentum = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real decayRate = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real momentum = (real)rand() / (real)RAND_MAX;      // NOLINT
+  real decayRate = (real)rand() / (real)RAND_MAX;     // NOLINT
   real accumulatedRou = rou;
 
   EXPRESSION_PERFORMANCE(RMSPropParameterOptimizer(bufs1,
-    accumulatedRou, rou, epsilon, learningRate, momentum, decayRate,
-    isFirstTime));
+                                                   accumulatedRou,
+                                                   rou,
+                                                   epsilon,
+                                                   learningRate,
+                                                   momentum,
+                                                   decayRate,
+                                                   isFirstTime));
 
   BaseMatrix& value = *bufs2[PARAMETER_VALUE];
   BaseMatrix& grad = *bufs2[PARAMETER_GRADIENT];
@@ -227,9 +257,19 @@ void testRMSProp(size_t size, bool useGpu) {
   BaseMatrix& sum1 = *bufs2[PARAMETER_GRADIENT_SQURESUM1];
   BaseMatrix& lr = *bufs2[PARAMETER_LEARNING_RATE];
 
-  EXPRESSION_PERFORMANCE(rmspropApply(value, grad, mom, sum, sum1, lr,
-    accumulatedRou, rou, epsilon, learningRate, momentum, decayRate,
-    isFirstTime));
+  EXPRESSION_PERFORMANCE(rmspropApply(value,
+                                      grad,
+                                      mom,
+                                      sum,
+                                      sum1,
+                                      lr,
+                                      accumulatedRou,
+                                      rou,
+                                      epsilon,
+                                      learningRate,
+                                      momentum,
+                                      decayRate,
+                                      isFirstTime));
 
   CHECK_VECTORPTR(bufs1[PARAMETER_VALUE], bufs2[PARAMETER_VALUE]);
   CHECK_VECTORPTR(bufs1[PARAMETER_MOMENTUM], bufs2[PARAMETER_MOMENTUM]);
@@ -246,7 +286,7 @@ TEST(Training, RMSProp) {
   testCase(testRMSProp<false>);
 }
 
-template<bool isFirstTime>
+template <bool isFirstTime>
 void testDecayedAdagrad(size_t size, bool useGpu) {
   VectorPtr bufs1[NUM_PARAMETER_TYPES];
   VectorPtr bufs2[NUM_PARAMETER_TYPES];
@@ -256,11 +296,11 @@ void testDecayedAdagrad(size_t size, bool useGpu) {
   INIT_VECTOR(bufs1, bufs2, PARAMETER_GRADIENT_SQURESUM, size, useGpu);
   INIT_VECTOR(bufs1, bufs2, PARAMETER_LEARNING_RATE, size, useGpu);
 
-  real rou = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real epsilon = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real rou = (real)rand() / (real)RAND_MAX;           // NOLINT
+  real epsilon = (real)rand() / (real)RAND_MAX;       // NOLINT
   real learningRate = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real momentum = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real decayRate = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real momentum = (real)rand() / (real)RAND_MAX;      // NOLINT
+  real decayRate = (real)rand() / (real)RAND_MAX;     // NOLINT
   real accumulatedRou = rou;
 
   if (isFirstTime) {
@@ -269,8 +309,13 @@ void testDecayedAdagrad(size_t size, bool useGpu) {
   }
 
   EXPRESSION_PERFORMANCE(DecayedAdagradParameterOptimizer(bufs1,
-    accumulatedRou, rou, epsilon, learningRate, momentum, decayRate,
-    isFirstTime));
+                                                          accumulatedRou,
+                                                          rou,
+                                                          epsilon,
+                                                          learningRate,
+                                                          momentum,
+                                                          decayRate,
+                                                          isFirstTime));
 
   BaseMatrix& value = *bufs2[PARAMETER_VALUE];
   BaseMatrix& grad = *bufs2[PARAMETER_GRADIENT];
@@ -278,9 +323,18 @@ void testDecayedAdagrad(size_t size, bool useGpu) {
   BaseMatrix& sum = *bufs2[PARAMETER_GRADIENT_SQURESUM];
   BaseMatrix& lr = *bufs2[PARAMETER_LEARNING_RATE];
 
-  EXPRESSION_PERFORMANCE(decayedAdagradApply(value, grad, mom, sum, lr,
-    accumulatedRou, rou, epsilon, learningRate, momentum, decayRate,
-    isFirstTime));
+  EXPRESSION_PERFORMANCE(decayedAdagradApply(value,
+                                             grad,
+                                             mom,
+                                             sum,
+                                             lr,
+                                             accumulatedRou,
+                                             rou,
+                                             epsilon,
+                                             learningRate,
+                                             momentum,
+                                             decayRate,
+                                             isFirstTime));
 
   CHECK_VECTORPTR(bufs1[PARAMETER_VALUE], bufs2[PARAMETER_VALUE]);
   CHECK_VECTORPTR(bufs1[PARAMETER_MOMENTUM], bufs2[PARAMETER_MOMENTUM]);
@@ -303,23 +357,31 @@ void testAdam(size_t size, bool useGpu) {
   INIT_VECTOR(bufs1, bufs2, PARAMETER_MOMENTUM, size, useGpu);
   INIT_VECTOR(bufs1, bufs2, PARAMETER_SECOND_MOMENTUM, size, useGpu);
 
-  real beta1 = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real beta2 = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real beta1_power = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real beta2_power = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real epsilon = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real beta1 = (real)rand() / (real)RAND_MAX;         // NOLINT
+  real beta2 = (real)rand() / (real)RAND_MAX;         // NOLINT
+  real beta1_power = (real)rand() / (real)RAND_MAX;   // NOLINT
+  real beta2_power = (real)rand() / (real)RAND_MAX;   // NOLINT
+  real epsilon = (real)rand() / (real)RAND_MAX;       // NOLINT
   real learningRate = (real)rand() / (real)RAND_MAX;  // NOLINT
 
-  EXPRESSION_PERFORMANCE(AdamParameterOptimizer(bufs1,
-    beta1, beta2, beta1_power, beta2_power, epsilon, learningRate));
+  EXPRESSION_PERFORMANCE(AdamParameterOptimizer(
+      bufs1, beta1, beta2, beta1_power, beta2_power, epsilon, learningRate));
 
   BaseMatrix& value = *bufs2[PARAMETER_VALUE];
   BaseMatrix& grad = *bufs2[PARAMETER_GRADIENT];
   BaseMatrix& mom = *bufs2[PARAMETER_MOMENTUM];
   BaseMatrix& v = *bufs2[PARAMETER_SECOND_MOMENTUM];
 
-  EXPRESSION_PERFORMANCE(adamApply(value, grad, mom, v,
-    beta1, beta2, beta1_power, beta2_power, epsilon, learningRate));
+  EXPRESSION_PERFORMANCE(adamApply(value,
+                                   grad,
+                                   mom,
+                                   v,
+                                   beta1,
+                                   beta2,
+                                   beta1_power,
+                                   beta2_power,
+                                   epsilon,
+                                   learningRate));
 
   CHECK_VECTORPTR(bufs1[PARAMETER_VALUE], bufs2[PARAMETER_VALUE]);
   CHECK_VECTORPTR(bufs1[PARAMETER_MOMENTUM], bufs2[PARAMETER_MOMENTUM]);
@@ -327,9 +389,7 @@ void testAdam(size_t size, bool useGpu) {
                   bufs2[PARAMETER_SECOND_MOMENTUM]);
 }
 
-TEST(Training, Adam) {
-  testCase(testAdam);
-}
+TEST(Training, Adam) { testCase(testAdam); }
 
 void testAdamax(size_t size, bool useGpu) {
   VectorPtr bufs1[NUM_PARAMETER_TYPES];
@@ -344,16 +404,16 @@ void testAdamax(size_t size, bool useGpu) {
   real alpha = (real)rand() / (real)RAND_MAX;  // NOLINT
   int64_t step = 2;
 
-  EXPRESSION_PERFORMANCE(AdamaxParameterOptimizer(bufs1,
-    beta1, beta2, step, alpha));
+  EXPRESSION_PERFORMANCE(
+      AdamaxParameterOptimizer(bufs1, beta1, beta2, step, alpha));
 
   BaseMatrix& value = *bufs2[PARAMETER_VALUE];
   BaseMatrix& grad = *bufs2[PARAMETER_GRADIENT];
   BaseMatrix& mom = *bufs2[PARAMETER_MOMENTUM];
   BaseMatrix& u = *bufs2[PARAMETER_WEIGHTED_INFINITY_NORM];
 
-  EXPRESSION_PERFORMANCE(adamaxApply(value, grad, mom, u,
-    beta1, beta2, step, alpha));
+  EXPRESSION_PERFORMANCE(
+      adamaxApply(value, grad, mom, u, beta1, beta2, step, alpha));
 
   CHECK_VECTORPTR(bufs1[PARAMETER_VALUE], bufs2[PARAMETER_VALUE]);
   CHECK_VECTORPTR(bufs1[PARAMETER_MOMENTUM], bufs2[PARAMETER_MOMENTUM]);
@@ -376,33 +436,29 @@ void testSparseMomentum(size_t size, bool useGpu) {
   INIT_VECTOR(bufs1, bufs2, PARAMETER_MOMENTUM_UT, size, useGpu);
   INIT_VECTOR(bufs1, bufs2, PARAMETER_MOMENTUM_VT, size, useGpu);
 
-  real alpha = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real beta = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real gamma = (real)rand() / (real)RAND_MAX;  // NOLINT
-  real tau = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real alpha = (real)rand() / (real)RAND_MAX;         // NOLINT
+  real beta = (real)rand() / (real)RAND_MAX;          // NOLINT
+  real gamma = (real)rand() / (real)RAND_MAX;         // NOLINT
+  real tau = (real)rand() / (real)RAND_MAX;           // NOLINT
   real learningRate = (real)rand() / (real)RAND_MAX;  // NOLINT
 
-  EXPRESSION_PERFORMANCE(SparseMomentumParameterOptimizer(bufs1,
-    alpha, beta, gamma, tau, learningRate));
+  EXPRESSION_PERFORMANCE(SparseMomentumParameterOptimizer(
+      bufs1, alpha, beta, gamma, tau, learningRate));
 
   BaseMatrix& value = *bufs2[PARAMETER_VALUE];
   BaseMatrix& grad = *bufs2[PARAMETER_GRADIENT];
   BaseMatrix& momU = *bufs2[PARAMETER_MOMENTUM_UT];
   BaseMatrix& momV = *bufs2[PARAMETER_MOMENTUM_VT];
 
-  EXPRESSION_PERFORMANCE(sparseMomentumApply(value, grad, momU, momV,
-    alpha, beta, gamma, tau, learningRate));
+  EXPRESSION_PERFORMANCE(sparseMomentumApply(
+      value, grad, momU, momV, alpha, beta, gamma, tau, learningRate));
 
   CHECK_VECTORPTR(bufs1[PARAMETER_VALUE], bufs2[PARAMETER_VALUE]);
-  CHECK_VECTORPTR(bufs1[PARAMETER_MOMENTUM_UT],
-                  bufs2[PARAMETER_MOMENTUM_UT]);
-  CHECK_VECTORPTR(bufs1[PARAMETER_MOMENTUM_VT],
-                  bufs2[PARAMETER_MOMENTUM_VT]);
+  CHECK_VECTORPTR(bufs1[PARAMETER_MOMENTUM_UT], bufs2[PARAMETER_MOMENTUM_UT]);
+  CHECK_VECTORPTR(bufs1[PARAMETER_MOMENTUM_VT], bufs2[PARAMETER_MOMENTUM_VT]);
 }
 
-TEST(Training, SparseMomentum) {
-  testCase(testSparseMomentum);
-}
+TEST(Training, SparseMomentum) { testCase(testSparseMomentum); }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
@@ -411,4 +467,3 @@ int main(int argc, char** argv) {
   hl_init(FLAGS_gpu_id);
   return RUN_ALL_TESTS();
 }
-

@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/math/Matrix.h"
 #include "paddle/math/TensorAssign.h"
 #include "TensorCheck.h"
+#include "PerfUtils.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
