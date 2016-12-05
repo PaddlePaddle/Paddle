@@ -66,7 +66,9 @@ Tester::Tester(const std::shared_ptr<TrainerConfigHelper>& config,
 }
 
 void Tester::startTestPeriod() {
-  testDataProvider_->reset();
+  if (testDataProvider_) {
+    testDataProvider_->reset();
+  }
   testEvaluator_->start();
   testContext_.cost = 0;
   testContext_.numSamples = 0;
