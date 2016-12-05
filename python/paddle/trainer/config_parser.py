@@ -3377,7 +3377,20 @@ def parse_config(config_file, config_arg_str):
     g_root_submodel.is_recurrent_layer_group = False
     g_current_submodel = g_root_submodel
 
-    execfile(config_file, make_config_environment(config_file, config_args))
+    # for paddle on spark, need support non-file config.
+    # you can use parse_config like below:
+    #
+    # from paddle.trainer.config_parser import parse_config
+    # def configs():
+    #    #your paddle config code, which is same as config file.
+    #
+    # config = parse_config(configs, "is_predict=1")
+    # # then you get config proto object.
+    if hasattr(config_file, '__call__'):
+      config_file.func_globals.update(make_config_environment("", config_args))
+      config_file()
+    else:
+      execfile(config_file, make_config_environment(config_file, config_args))
     for k, v in settings.iteritems():
         if v is None:
             continue

@@ -87,10 +87,8 @@ void Tester::testOneDataBatch(const DataBatch& dataBatch,
 void Tester::testOnePeriod() {
   DataBatch dataBatch;
   int64_t batchSize = config_->getOptConfig().batch_size();
-  bool testAllData =
-      intconfig_->testPeriod == 0 || intconfig_->testAllDataInOnePeriod;
-  int batches =
-      testAllData ? std::numeric_limits<int>::max() : intconfig_->testPeriod;
+
+  int batches = std::numeric_limits<int>::max();
 
   std::vector<Argument> outArgs;
 
@@ -102,11 +100,7 @@ void Tester::testOnePeriod() {
       if (intconfig_->prevBatchState) {
         gradientMachine_->resetState();
       }
-      if (testAllData) {
-        break;
-      } else {
-        num = testDataProvider_->getNextBatch(batchSize, &dataBatch);
-      }
+      break;
     }
     testOneDataBatch(dataBatch, &outArgs);
   }
