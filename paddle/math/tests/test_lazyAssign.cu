@@ -19,6 +19,8 @@ limitations under the License. */
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
+using autotest::TensorCheckEqual;
+using autotest::TensorCheckErr;
 
 typedef std::function<void(int height, int width)> testMatrixFunc;
 void testMatrixCase(testMatrixFunc matrixFunc) {

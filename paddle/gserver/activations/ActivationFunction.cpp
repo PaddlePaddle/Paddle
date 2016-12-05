@@ -345,7 +345,7 @@ void forward(Argument& act) {
                          useGpu(act.deviceId));
 
   act.in->copyFrom(*act.value);
-  act.value->log(*act.value);
+  act.value->log2(*act.value);
 }
 
 void backward(Argument& act) { act.grad->dotDiv(*act.grad, *act.in); }

@@ -18,6 +18,8 @@ limitations under the License. */
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
+using autotest::TensorCheckEqual;
+using autotest::TensorCheckErr;
 
 #define INIT_UNARY(A1, A2)                  \
     Tensor A1(height, width);               \
