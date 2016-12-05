@@ -9,8 +9,8 @@ RUN apt-get update \
     sed grep graphviz libjpeg-dev zlib1g-dev doxygen \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     && apt-get clean -y
-RUN pip install BeautifulSoup docopt PyYAML pillow \
-    'sphinx>=1.4.0' sphinx_rtd_theme breathe recommonmark
+RUN pip install -U BeautifulSoup docopt PyYAML pillow \
+    sphinx sphinx_rtd_theme breathe recommonmark
 
 ARG WITH_AVX
 ENV WITH_AVX=${WITH_AVX:-ON}
