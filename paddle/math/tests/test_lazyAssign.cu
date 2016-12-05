@@ -18,8 +18,9 @@ limitations under the License. */
 #include "TensorCheck.h"
 #include "PerfUtils.h"
 
-using namespace paddle;  // NOLINT
-using namespace std;     // NOLINT
+using paddle::BaseMatrix;
+using paddle::CpuMatrix;
+using paddle::GpuMatrix;
 using autotest::TensorCheckEqual;
 using autotest::TensorCheckErr;
 

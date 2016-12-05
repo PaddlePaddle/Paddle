@@ -16,8 +16,13 @@ limitations under the License. */
 #include "paddle/math/Matrix.h"
 #include "TensorCheck.h"
 
-using namespace paddle;  // NOLINT
-using namespace std;     // NOLINT
+using paddle::Matrix;
+using paddle::CpuMatrix;
+using paddle::GpuMatrix;
+using paddle::CpuVector;
+using paddle::GpuVector;
+using paddle::CpuIVector;
+using paddle::GpuIVector;
 using autotest::TensorCheckEqual;
 using autotest::TensorCheckErr;
 

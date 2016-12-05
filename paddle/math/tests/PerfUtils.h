@@ -22,6 +22,7 @@ limitations under the License. */
 #else
 
 #include "paddle/utils/Stat.h"
+using namespace paddle;  // NOLINT
 
 #define EXPRESSION_PERFORMANCE(expression)                             \
   do {                                                                 \
