@@ -217,3 +217,16 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
     $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddlepaddle:latest-gpu
 
 更多关于Docker的安装与使用, 请参考 `PaddlePaddle Docker 文档 <http://www.paddlepaddle.org/doc_cn/build_and_install/install/docker_install.html>`_ 。
+
+
+10. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致
+----------------------------------------------------------
+
+这是目前CMake寻找Python的逻辑存在缺陷，如果系统安装了多个Python版本，CMake找到的Python库和Python解释器版本可能有不一致现象，导致编译PaddlePaddle失败。正确的解决方法是，
+用户强制指定特定的Python版本，具体操作如下：
+
+    ..  code-block:: bash
+        
+        cmake .. -DPYTHON_EXECUTABLE=<exc_path> -DPYTHON_LIBRARY=<lib_path>  -DPYTHON_INCLUDE_DIR=<inc_path>
+
+用户需要指定本机上Python的路径：``<exc_path>``, ``<lib_path>``, ``<inc_path>``

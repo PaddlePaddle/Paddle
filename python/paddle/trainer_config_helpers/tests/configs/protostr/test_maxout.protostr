@@ -4,6 +4,8 @@ layers {
   type: "data"
   size: 2304
   active_type: ""
+  height: 48
+  width: 48
 }
 layers {
   name: "__conv_0__"
@@ -26,11 +28,15 @@ layers {
       filter_size_y: 3
       padding_y: 1
       stride_y: 1
+      output_y: 48
+      img_size_y: 48
     }
   }
   bias_parameter_name: "___conv_0__.wbias"
   num_filters: 16
   shared_biases: true
+  height: 48
+  width: 48
 }
 layers {
   name: "__maxout_layer_0__"
@@ -40,12 +46,16 @@ layers {
   inputs {
     input_layer_name: "__conv_0__"
     maxout_conf {
-      channels: 16
+      image_conf {
+        channels: 16
+        img_size: 48
+        img_size_y: 48
+      }
       groups: 2
-      img_size_x: 0
-      img_size_y: 0
     }
   }
+  height: 48
+  width: 48
 }
 layers {
   name: "__pool_0__"
@@ -69,48 +79,58 @@ layers {
       padding_y: 0
     }
   }
+  height: 24
+  width: 24
 }
 layers {
   name: "__conv_1__"
   type: "exconv"
-  size: 18432
+  size: 73728
   active_type: ""
   inputs {
     input_layer_name: "__pool_0__"
     input_parameter_name: "___conv_1__.w0"
     conv_conf {
       filter_size: 3
-      channels: 32
+      channels: 8
       stride: 1
       padding: 1
       groups: 1
-      filter_channels: 32
-      output_x: 12
-      img_size: 12
+      filter_channels: 8
+      output_x: 24
+      img_size: 24
       caffe_mode: true
       filter_size_y: 3
       padding_y: 1
       stride_y: 1
+      output_y: 24
+      img_size_y: 24
     }
   }
   bias_parameter_name: "___conv_1__.wbias"
   num_filters: 128
   shared_biases: true
+  height: 24
+  width: 24
 }
 layers {
   name: "__maxout_layer_1__"
   type: "maxout"
-  size: 9216
+  size: 18432
   active_type: ""
   inputs {
-    input_layer_name: "__conv_0__"
+    input_layer_name: "__conv_1__"
     maxout_conf {
-      channels: 128
+      image_conf {
+        channels: 128
+        img_size: 24
+        img_size_y: 24
+      }
       groups: 4
-      img_size_x: 0
-      img_size_y: 0
     }
   }
+  height: 24
+  width: 24
 }
 layers {
   name: "__block_expand_layer_0__"
@@ -118,7 +138,7 @@ layers {
   size: 192
   active_type: ""
   inputs {
-    input_layer_name: "__maxout_layer_0__"
+    input_layer_name: "__maxout_layer_1__"
     block_expand_conf {
       channels: 32
       stride_x: 1
@@ -133,6 +153,8 @@ layers {
       img_size_y: 0
     }
   }
+  height: 24
+  width: 24
 }
 layers {
   name: "__fc_layer_0__"
@@ -143,6 +165,8 @@ layers {
     input_layer_name: "__block_expand_layer_0__"
     input_parameter_name: "___fc_layer_0__.w0"
   }
+  height: 24
+  width: 24
 }
 parameters {
   name: "___conv_0__.w0"
@@ -164,9 +188,9 @@ parameters {
 }
 parameters {
   name: "___conv_1__.w0"
-  size: 36864
+  size: 9216
   initial_mean: 0.0
-  initial_std: 0.0833333333333
+  initial_std: 0.166666666667
   initial_strategy: 0
   initial_smart: false
 }

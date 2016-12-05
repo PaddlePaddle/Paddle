@@ -271,7 +271,9 @@ public:
   void finishAsyncLoad() {
     stopping_ = true;
     taskReadySem_.post();
-    asyncLoader_->join();
+    if (asyncLoader_) {
+      asyncLoader_->join();
+    }
   }
 
   void setPending(bool pending) { pending_ = pending; }

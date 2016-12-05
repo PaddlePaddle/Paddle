@@ -1585,11 +1585,6 @@ void BaseMatrixT<real>::minRows(BaseMatrixT& b) {
 }
 
 template<>
-void BaseMatrixT<real>::sumCols(BaseMatrixT& b) {
-  applyCol(aggregate::sum(), b);
-}
-
-template<>
 void BaseMatrixT<real>::maxCols(BaseMatrixT& b) {
   applyCol(aggregate::max(), b);
 }
