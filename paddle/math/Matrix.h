@@ -1214,6 +1214,9 @@ public:
   void accumulateColSum(Matrix& src);
   real getAbsSum();
 
+  real getMin();
+  real getMax();
+
   MatrixPtr getTranspose();
   void transpose(MatrixPtr matTrans, bool memAlloc);
 
