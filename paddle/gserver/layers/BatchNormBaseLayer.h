@@ -77,9 +77,8 @@ protected:
   MatrixPtr savedMean_;
   MatrixPtr savedInvVar_;
 
-  /// Height or width of input image feature, now height is equal to width.
-  /// imgSize is 1 if the input is fully-connected layer.
-  int imgSize_;
+  /// Height or width of input image feature.
+  /// Both of them are 1 if the input is fully-connected layer.
   int imageH_;
   int imageW_;
   /// Height * Width.

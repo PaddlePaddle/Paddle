@@ -457,6 +457,17 @@ public:
 
   /**
    * @code
+   * swap(this, b)
+   * example: swap two Matrices
+   * MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
+   * MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
+   * cpuA->deepSwap(*cpuB);
+   * @endcode
+   */
+  void deepSwap(BaseMatrixT& b);
+
+  /**
+   * @code
    * this = this + p
    * @endcode
    */
@@ -1007,8 +1018,6 @@ public:
   /// calculate the minimum value of each row of the matrix b.
   void minRows(BaseMatrixT& b);
 
-  /// calculate the sum of each column of the matrix b.
-  void sumCols(BaseMatrixT& b);
   /// calculate the maximum value of each column of the matrix b.
   void maxCols(BaseMatrixT& b);
   /// calculate the minimum value of each column of the matrix b.

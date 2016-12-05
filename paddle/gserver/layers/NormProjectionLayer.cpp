@@ -23,7 +23,7 @@ size_t CMRProjectionNormLayer::getSize() {
   imgSizeH_ = inputLayers_[0]->getOutput().getFrameHeight();
   imgSizeW_ = inputLayers_[0]->getOutput().getFrameWidth();
   if (imgSizeH_ == 0) {
-    imgSizeH_ = imgSize_;
+    imgSizeH_ = imgSizeY_;
   }
   if (imgSizeW_ == 0) {
     imgSizeW_ = imgSize_;

@@ -1240,6 +1240,12 @@ void BaseMatrixT<T>::assignAtOffset(BaseMatrixT& b, int64_t columnOffset) {
   }
 }
 
+DEFINE_MATRIX_BINARY_OP(DeepSwap, T tmp = a; a = b; b = tmp);
+template<class T>
+void BaseMatrixT<T>::deepSwap(BaseMatrixT& b) {
+    applyBinary(binary::DeepSwap<T>(), b);
+}
+
 template<>
 void BaseMatrixT<real>::rowDotMul(size_t destCol,
                                   BaseMatrixT& b,
@@ -1576,11 +1582,6 @@ void BaseMatrixT<real>::maxRows(BaseMatrixT& b) {
 template<>
 void BaseMatrixT<real>::minRows(BaseMatrixT& b) {
   applyRow(aggregate::min(), b);
-}
-
-template<>
-void BaseMatrixT<real>::sumCols(BaseMatrixT& b) {
-  applyCol(aggregate::sum(), b);
 }
 
 template<>

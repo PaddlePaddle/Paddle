@@ -49,7 +49,7 @@ public:
  */
 class ResponseNormLayer : public NormLayer {
 protected:
-  size_t channels_, size_, outputX_, imgSize_;
+  size_t channels_, size_, outputX_, imgSize_, outputY_, imgSizeY_;
   float scale_, pow_;
   MatrixPtr denoms_;
 
