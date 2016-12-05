@@ -21,8 +21,7 @@ namespace paddle {
 /**
  * Calculate the actual allocation size according to the required size.
  */
-MemoryHandle::MemoryHandle(size_t size)
-    : size_(size), buf_(nullptr) {
+MemoryHandle::MemoryHandle(size_t size) : size_(size), buf_(nullptr) {
   if (size_ <= 256) {
     // Memory allocation in cuda is always aligned to at least 256 bytes.
     // In many cases it is 512 bytes.
@@ -44,9 +43,7 @@ GpuMemoryHandle::GpuMemoryHandle(size_t size) : MemoryHandle(size) {
   buf_ = allocator_->alloc(allocSize_);
 }
 
-GpuMemoryHandle::~GpuMemoryHandle() {
-  allocator_->free(buf_, allocSize_);
-}
+GpuMemoryHandle::~GpuMemoryHandle() { allocator_->free(buf_, allocSize_); }
 
 CpuMemoryHandle::CpuMemoryHandle(size_t size) : MemoryHandle(size) {
   CHECK(size != 0) << " allocate 0 bytes";
@@ -54,8 +51,6 @@ CpuMemoryHandle::CpuMemoryHandle(size_t size) : MemoryHandle(size) {
   buf_ = allocator_->alloc(allocSize_);
 }
 
-CpuMemoryHandle::~CpuMemoryHandle() {
-  allocator_->free(buf_, allocSize_);
-}
+CpuMemoryHandle::~CpuMemoryHandle() { allocator_->free(buf_, allocSize_); }
 
 }  // namespace paddle

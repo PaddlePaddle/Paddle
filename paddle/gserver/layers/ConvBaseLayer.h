@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "Layer.h"
@@ -27,6 +26,9 @@ namespace paddle {
 class ConvBaseLayer : public Layer {
 protected:
   typedef std::vector<int> IntV;
+
+  /// True if it's deconv layer, false if it's convolution layer
+  bool isDeconv_;
 
   /// The number of filters.
   int numFilters_;

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "ProtoServer.h"
 
 namespace paddle {
@@ -42,8 +41,8 @@ void ProtoServer::handleRequest(std::unique_ptr<MsgReader> msgReader,
 
 void ProtoServer::registerServiceFunctionImp(const std::string& funcName,
                                              ServiceFunction func) {
-  CHECK(!nameToFuncMap_.count(funcName))
-      << "Duplicated registration: " << funcName;
+  CHECK(!nameToFuncMap_.count(funcName)) << "Duplicated registration: "
+                                         << funcName;
   nameToFuncMap_[funcName] = func;
 }
 

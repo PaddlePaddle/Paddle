@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "FirstOrderOptimizer.h"
@@ -25,7 +24,8 @@ namespace paddle {
  */
 ParameterOptimizer* sgdOptimizerCreate(const OptimizationConfig& optConfig,
                                        const ParameterConfig& paraConfig,
-                                       bool isParameterSparse, bool inPserver);
+                                       bool isParameterSparse,
+                                       bool inPserver);
 
 /*
  * Get the parameter types needed for the specific optimization

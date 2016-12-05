@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "FullMatrixProjection.h"
 
 namespace paddle {
@@ -52,7 +51,9 @@ void FullMatrixProjection::backward(const UpdateCallback& callback) {
   }
 
   hl_set_sync_flag(syncFlag);
-  parameter_->incUpdate(callback);
+  if (weight_->getWGrad()) {
+    parameter_->incUpdate(callback);
+  }
 }
 
 }  // namespace paddle

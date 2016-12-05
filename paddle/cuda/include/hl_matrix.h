@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_MATRIX_H_
 #define HL_MATRIX_H_
 
@@ -30,13 +29,8 @@ limitations under the License. */
  * @param[in]   beta    scalar used for addition.
  *
  */
-extern void hl_matrix_add(real* A_d,
-                          real* B_d,
-                          real* C_d,
-                          int dimM,
-                          int dimN,
-                          real alpha,
-                          real beta);
+extern void hl_matrix_add(
+    real* A_d, real* B_d, real* C_d, int dimM, int dimN, real alpha, real beta);
 /**
  * @brief   Matrix Softmax.
  *
@@ -46,7 +40,7 @@ extern void hl_matrix_add(real* A_d,
  * @param[in]   dimN    matrix width.
  *
  */
-extern void hl_matrix_softmax(real *A_d, real *C_d, int dimM, int dimN);
+extern void hl_matrix_softmax(real* A_d, real* C_d, int dimM, int dimN);
 
 /**
  * @brief   Matrix softmax derivative.
@@ -58,11 +52,8 @@ extern void hl_matrix_softmax(real *A_d, real *C_d, int dimM, int dimN);
  * @param[in]   dimN         matrix width.
  *
  */
-extern void hl_matrix_softmax_derivative(real* grad_d,
-                                         real* output_d,
-                                         real* sftmaxSum_d,
-                                         int dimM,
-                                         int dimN);
+extern void hl_matrix_softmax_derivative(
+    real* grad_d, real* output_d, real* sftmaxSum_d, int dimM, int dimN);
 
 /**
  * @brief   Sequence softmax.
@@ -73,8 +64,8 @@ extern void hl_matrix_softmax_derivative(real* grad_d,
  * @param[in]   numSequence sequence number.
  *
  */
-extern void hl_sequence_softmax_forward(real *A_d,
-                                        real *C_d,
+extern void hl_sequence_softmax_forward(real* A_d,
+                                        real* C_d,
                                         const int* index,
                                         int numSequence);
 
@@ -88,11 +79,8 @@ extern void hl_sequence_softmax_forward(real *A_d,
  * @param[in]   dimN    matrix width.
  *
  */
-extern void hl_matrix_classification_error(real* A_d,
-                                           int* B_d,
-                                           real* C_d,
-                                           int dimM,
-                                           int dimN);
+extern void hl_matrix_classification_error(
+    real* A_d, int* B_d, real* C_d, int dimM, int dimN);
 
 /**
  * @brief   Matrix cross entropy.
@@ -104,11 +92,8 @@ extern void hl_matrix_classification_error(real* A_d,
  * @param[in]   dimN    matrix width.
  *
  */
-extern void hl_matrix_cross_entropy(real* A_d,
-                                    real* C_d,
-                                    int* label_d,
-                                    int dimM,
-                                    int dimN);
+extern void hl_matrix_cross_entropy(
+    real* A_d, real* C_d, int* label_d, int dimM, int dimN);
 
 /**
  * @brief   Matrix cross entropy back propagation.
@@ -120,11 +105,32 @@ extern void hl_matrix_cross_entropy(real* A_d,
  * @param[in]   dimN        matrix width.
  *
  */
-extern void hl_matrix_cross_entropy_bp(real* grad_d,
-                                       real* output_d,
-                                       int* label_d,
-                                       int dimM,
-                                       int dimN);
+extern void hl_matrix_cross_entropy_bp(
+    real* grad_d, real* output_d, int* label_d, int dimM, int dimN);
+
+/**
+ * @brief  Matrix multi-binary label cross entropy
+ *
+ * @param[in]   output    input matrix (M x N).
+ * @param[out]  entropy   output matrix (M x 1).
+ * @param[in]   mat       input sparse matrix.
+ * @param[in]   dimM      matrix height.
+ * @param[in]   dimN      matrix width.
+ */
+extern void hl_matrix_multi_binary_cross_entropy(
+    real* output, real* entropy, hl_sparse_matrix_s mat, int dimM, int dimN);
+
+/**
+ * @brief  Matrix multi-binary label cross entropy backprop
+ *
+ * @param[in]   output    input matrix (M x N).
+ * @param[out]  grad      output matrix (M x N).
+ * @param[in]   mat       input sparse matrix.
+ * @param[in]   dimM      matrix height.
+ * @param[in]   dimN      matrix width.
+ */
+extern void hl_matrix_multi_binary_cross_entropy_bp(
+    real* output, real* grad, hl_sparse_matrix_s mat, int dimM, int dimN);
 
 /**
  * @brief  Matrix zero memory.
@@ -146,12 +152,8 @@ extern void hl_matrix_zero_mem(real* data, int num);
  * @param[in]  partial_sum
  */
 
-extern void hl_param_relu_forward(real* output,
-                                  real* input,
-                                  real* w,
-                                  int width,
-                                  int height,
-                                  int partial_sum);
+extern void hl_param_relu_forward(
+    real* output, real* input, real* w, int width, int height, int partial_sum);
 /**
  * @brief parameter relu backward w
  *

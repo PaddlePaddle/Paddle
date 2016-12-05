@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <memory>
@@ -32,9 +31,9 @@ public:
 
 protected:
   PoolAllocator* allocator_;
-  size_t size_;         // the requested size
-  size_t allocSize_;    // the allocated size
-  int deviceId_;        // the device id of memory if gpu memory
+  size_t size_;       // the requested size
+  size_t allocSize_;  // the allocated size
+  int deviceId_;      // the device id of memory if gpu memory
   void* buf_;
 };
 

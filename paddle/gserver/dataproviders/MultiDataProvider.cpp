@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Util.h"
 #include "MultiDataProvider.h"
 #include "paddle/utils/Logging.h"
@@ -59,10 +58,8 @@ MultiDataProvider::MultiDataProvider(const DataConfig& config,
                    "MultiDataProvider";
       subConfig.set_async_load_data(false);
     }
-    subDataProviders_[i] =
-        std::unique_ptr<DataProvider>(DataProvider::create(subConfig,
-                                                           modelConfig,
-                                                           useGpu_));
+    subDataProviders_[i] = std::unique_ptr<DataProvider>(
+        DataProvider::create(subConfig, modelConfig, useGpu_));
   }
 }
 

@@ -155,7 +155,7 @@ TEST(SMatrix, sMatrixMul) {
   for (auto M : {1, 40, 128, 200}) {
     for (auto N : {100, 2000, 20480}) {
       for (auto K : {100, 512, 1024}) {
-        VLOG(3) << " M=" << M << " N=" << N << " K=" << K;;
+        VLOG(3) << " M=" << M << " N=" << N << " K=" << K;
         testSpMatrixMul(M, N, K, 0.05);
       }
     }

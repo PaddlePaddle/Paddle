@@ -12,8 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """ module for launching cluster job """
 
 import os
@@ -23,12 +21,12 @@ import copy
 import time
 import signal
 
-
 from fabric.api import run, put, settings, env, prefix
 from fabric.tasks import execute
 
 #configuration for cluster
 import conf
+
 
 def refine_unknown_args(cmd_args):
     '''
@@ -37,7 +35,7 @@ def refine_unknown_args(cmd_args):
     new_args = []
     for arg in cmd_args:
         if arg.startswith("--") and arg.find("=") != -1:
-            equal_pos = arg.find("=") #find first = pos
+            equal_pos = arg.find("=")  #find first = pos
             arglist = list(arg)
             arglist[equal_pos] = " "
             arg = "".join(arglist)
@@ -50,6 +48,7 @@ def refine_unknown_args(cmd_args):
             new_args.append(arg)
     return new_args
 
+
 def kill_process():
     '''
     kill comments threads
@@ -59,6 +58,7 @@ def kill_process():
          | grep -v grep  \
          | awk '{print $2}' \
          | xargs kill > /dev/null 2>&1")
+
 
 def job_prepare(jobdir, data=None):
     '''
@@ -70,6 +70,7 @@ def job_prepare(jobdir, data=None):
     This function just prepare all related model and other resources
     needed at runtime.
     '''
+
     def job_create_workspace(jobdir, data=None):
         '''
         prepare job workspace, common file, etc.
@@ -94,7 +95,8 @@ def job_prepare(jobdir, data=None):
         execute(set_nodefile, i, hosts=conf.HOSTS[i])
     #clean rubbish caused by exception 
     with settings(warn_only=True):
-          execute(kill_process, hosts=conf.HOSTS)
+        execute(kill_process, hosts=conf.HOSTS)
+
 
 def job_pserver(jobdir, pids=None):
     '''
@@ -124,9 +126,8 @@ def job_pserver(jobdir, pids=None):
 
     execute(start_pserver, jobdir, pargs, hosts=conf.HOSTS)
 
-def job_trainer(jobdir,
-        train_args_dict,
-        pids=None):
+
+def job_trainer(jobdir, train_args_dict, pids=None):
     '''
     start paddle trainer
     '''
@@ -171,9 +172,8 @@ def job_trainer(jobdir,
         train_args += " --trainer_id=" + str(i)
         execute(start_trainer, jobdir, train_args, hosts=conf.HOSTS[i])
 
-def job_all(job_package,
-        jobdir=None,
-        train_args_dict=None):
+
+def job_all(job_package, jobdir=None, train_args_dict=None):
     '''
     param job_package
     param train_args_dict
@@ -183,9 +183,10 @@ def job_all(job_package,
         jobdir = conf.ROOT_DIR + "/JOB" + timestamp
     job_prepare(jobdir, job_package)
     job_pserver(jobdir)
-    time.sleep(5) #wait until pservers completely start
+    time.sleep(5)  #wait until pservers completely start
     job_trainer(jobdir, train_args_dict)
     job_clean()
+
 
 def job_clean():
     '''
@@ -193,31 +194,41 @@ def job_clean():
     is launched successfully since these process are daemon processes.
     so this job_clean can alway clean job rubbish process with ctrl+c.
     '''
+
     def signal_handler(signal, frame):
         '''
         SIGINT handler
         '''
+
         def kill_process():
-             run("ps aux \
+            run("ps aux \
                   | grep paddle_process_by_paddle \
                   | grep -v grep  \
                   | awk '{print $2}' \
                   | xargs kill > /dev/null 2>&1")
+
         with settings(warn_only=True):
-              execute(kill_process, hosts=conf.HOSTS)
+            execute(kill_process, hosts=conf.HOSTS)
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.pause()
 
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(prog="paddle.py",
-            description='simple tool for cluster training')
-    parser.add_argument('-j', '--job_workspace',
-            required=False, default=None,
-            help='job workspace')
-    parser.add_argument('-p', '--job_dispatch_package',
-            required=False, default=None,
-            help='job package for dispatching to all other nodes')
+    parser = argparse.ArgumentParser(
+        prog="paddle.py", description='simple tool for cluster training')
+    parser.add_argument(
+        '-j',
+        '--job_workspace',
+        required=False,
+        default=None,
+        help='job workspace')
+    parser.add_argument(
+        '-p',
+        '--job_dispatch_package',
+        required=False,
+        default=None,
+        help='job package for dispatching to all other nodes')
 
     args, train_args_list = parser.parse_known_args()
     train_args = refine_unknown_args(train_args_list)
@@ -227,14 +238,10 @@ if __name__ == '__main__':
         #if assigned workspace, do not need to dispatch data,
         #so job_local_package should be None
         assert args.job_dispatch_package is None
-        job_all(None,
-                args.job_workspace,
-                train_args_dict)
+        job_all(None, args.job_workspace, train_args_dict)
     elif args.job_dispatch_package is not None:
         assert args.job_workspace is None
         assert os.path.isdir(args.job_dispatch_package)
-        job_all(args.job_dispatch_package,
-                None,
-                train_args_dict)
+        job_all(args.job_dispatch_package, None, train_args_dict)
     else:
         print "--job_workspace or --job_dispatch_package should be set"

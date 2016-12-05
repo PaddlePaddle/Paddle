@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/gserver/layers/Layer.h"
 #include <functional>
 
@@ -31,7 +30,8 @@ class RecurrentLayerGroup : public Layer {
 public:
   explicit RecurrentLayerGroup(const LayerConfig& config) : Layer(config) {}
 
-  void initSubNetwork(NeuralNetwork* rootNetwork, const ModelConfig& config,
+  void initSubNetwork(NeuralNetwork* rootNetwork,
+                      const ModelConfig& config,
                       const std::vector<ParameterType>& parameterTypes,
                       bool useGpu);
 
@@ -53,7 +53,7 @@ public:
   /**
    * @see Layer.accessSubNetwork
    */
-  void accessSubNetwork(const std::function<void(NeuralNetwork &)> &callback) {
+  void accessSubNetwork(const std::function<void(NeuralNetwork&)>& callback) {
     callback(*network_);
   }
 
@@ -64,8 +64,10 @@ private:
 REGISTER_LAYER(recurrent_layer_group, RecurrentLayerGroup);
 
 void RecurrentLayerGroup::initSubNetwork(
-    NeuralNetwork* rootNetwork, const ModelConfig& config,
-    const std::vector<ParameterType>& parameterTypes, bool useGpu) {
+    NeuralNetwork* rootNetwork,
+    const ModelConfig& config,
+    const std::vector<ParameterType>& parameterTypes,
+    bool useGpu) {
   setNeedGradient(true);
 
   network_.reset(new RecurrentGradientMachine(config_.name(), rootNetwork));

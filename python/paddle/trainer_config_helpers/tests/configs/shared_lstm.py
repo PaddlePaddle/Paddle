@@ -16,14 +16,26 @@ with mixed_layer(size=400, bias_attr=False) as m2:
 lstm_param = ParamAttr(name='lstm_param')
 lstm_bias = ParamAttr(name='lstm_bias', initial_mean=0., initial_std=0.)
 
-lstm1 = lstmemory_group(input=m1, param_attr=lstm_param, lstm_bias_attr=lstm_bias, mixed_bias_attr=False)
-lstm2 = lstmemory_group(input=m2, param_attr=lstm_param, lstm_bias_attr=lstm_bias, mixed_bias_attr=False)
+lstm1 = lstmemory_group(
+    input=m1,
+    param_attr=lstm_param,
+    lstm_bias_attr=lstm_bias,
+    mixed_bias_attr=False)
+lstm2 = lstmemory_group(
+    input=m2,
+    param_attr=lstm_param,
+    lstm_bias_attr=lstm_bias,
+    mixed_bias_attr=False)
 
 softmax_param = ParamAttr(name='softmax_param')
 
-predict = fc_layer(input=[last_seq(input=lstm1), last_seq(input=lstm2)],
-                   size=10,
-                   param_attr=[softmax_param, softmax_param],
-                   bias_attr=False,
-                   act=SoftmaxActivation())
-outputs(classification_cost(input=predict, label=data_layer(name='label', size=10)))
+predict = fc_layer(
+    input=[last_seq(input=lstm1), last_seq(input=lstm2)],
+    size=10,
+    param_attr=[softmax_param, softmax_param],
+    bias_attr=False,
+    act=SoftmaxActivation())
+outputs(
+    classification_cost(
+        input=predict, label=data_layer(
+            name='label', size=10)))

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 #include <string>
 
@@ -20,9 +19,9 @@ namespace paddle {
 
 namespace enumeration_wrapper {
 enum PassType {
-  PASS_TRAIN,  // Train pass
-  PASS_TEST,   // Test pass
-  PASS_GC,     // Gradient Check pass
+  PASS_TRAIN,   // Train pass
+  PASS_TEST,    // Test pass
+  PASS_GC,      // Gradient Check pass
   PASS_METRIC,  // pass for generate template output with no drop rate.
   // pass for metric learning training with metric learning error, only used
   // when we are doing KNN evaluation.
@@ -81,7 +80,7 @@ enum ParameterType {
 }  // namespace enumeration_wrapper
 
 //! explicit import enum into paddle namespace.
-using namespace enumeration_wrapper;    // NOLINT
+using namespace enumeration_wrapper;  // NOLINT
 
 class TrainAlgorithm {
 public:

@@ -35,7 +35,9 @@ public:
   void forwardBatch(hl_lstm_value value, int frameSize, int batchSize);
 
   template <bool useGpu>
-  void backwardBatch(hl_lstm_value value, hl_lstm_grad grad, int frameSize,
+  void backwardBatch(hl_lstm_value value,
+                     hl_lstm_grad grad,
+                     int frameSize,
                      int batchSize);
 
   /**
@@ -51,7 +53,8 @@ public:
   template <bool useGpu>
   void forwardOneSequence(hl_lstm_value value, int frameSize);
   template <bool useGpu>
-  void backwardOneSequence(hl_lstm_value value, hl_lstm_grad grad,
+  void backwardOneSequence(hl_lstm_value value,
+                           hl_lstm_grad grad,
                            int frameSize);
 
 public:

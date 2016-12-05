@@ -65,4 +65,3 @@ struct ArgumentsPrivate {
     return *(std::shared_ptr<T>*)(rawPtr);
   }
 };
-

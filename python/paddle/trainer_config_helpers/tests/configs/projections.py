@@ -3,10 +3,7 @@ Test mixed layer, projections and operators.
 '''
 from paddle.trainer_config_helpers import *
 
-settings(
-    batch_size=1000,
-    learning_rate=1e-4
-)
+settings(batch_size=1000, learning_rate=1e-4)
 
 din = data_layer(name='test', size=100)
 
@@ -29,19 +26,22 @@ with mixed_layer() as m5:
 
 with mixed_layer() as m6:
     m6 += dotmul_operator(a=m3, b=m4)
+    m6 += scaling_projection(m3)
 
-img = data_layer(name='img', size=32*32)
-flt = data_layer(name='filter', size=3*3*1*64)
+img = data_layer(name='img', size=32 * 32)
+flt = data_layer(name='filter', size=3 * 3 * 1 * 64)
 
 with mixed_layer() as m7:
-    m7 += conv_operator(img=img, filter=flt, num_filters=64,
-                        num_channel=1, filter_size=3)
+    m7 += conv_operator(
+        img=img, filter=flt, num_filters=64, num_channels=1, filter_size=3)
 
-end = mixed_layer(input=[full_matrix_projection(input=m5),
-                         trans_full_matrix_projection(input=m6),
-                         full_matrix_projection(input=m7)],
-                  size=100,
-                  layer_attr=ExtraAttr(drop_rate=0.5,
-                                       error_clipping_threshold=40))
+end = mixed_layer(
+    input=[
+        full_matrix_projection(input=m5),
+        trans_full_matrix_projection(input=m6), full_matrix_projection(input=m7)
+    ],
+    size=100,
+    layer_attr=ExtraAttr(
+        drop_rate=0.5, error_clipping_threshold=40))
 
 outputs(end)

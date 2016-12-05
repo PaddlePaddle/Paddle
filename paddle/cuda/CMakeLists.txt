@@ -81,5 +81,8 @@ else()
     add_library(paddle_cuda ${CUDA_SOURCES})
 endif()
 
-add_style_check_target(paddle_cuda ${CUDA_SOURCES})
-add_style_check_target(paddle_cuda ${CUDA_HEADERS})
+add_style_check_target(paddle_cuda
+                       ${CUDA_SOURCES}
+                       ${CUDA_HEADERS}
+                       ${CUDA_DSO_SOURCES}
+                       ${CUDA_CXX_WITH_GPU_SOURCES})

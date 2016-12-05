@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
@@ -67,19 +66,37 @@ bool CosSimVecMatLayer::init(const LayerMap& layerMap,
 
   CHECK_EQ(dataDim * numKeys, memoryDim) << "Dimension mismatch";
 
-  tmpRow0 = Matrix::create(nullptr, /* height= */ 1, dataDim,
-                           /* trans= */ false, useGpu_);
-  tmpRow1 = Matrix::create(nullptr, /* height= */ 1, dataDim,
-                           /* trans= */ false, useGpu_);
-  tmpRow2 = Matrix::create(nullptr, /* height= */ numKeys, 1,
-                           /* trans= */ false, useGpu_);
-  tmpRow3 = Matrix::create(nullptr, /* height= */ numKeys, 1,
-                           /* trans= */ false, useGpu_);
+  tmpRow0 = Matrix::create(nullptr,
+                           /* height= */ 1,
+                           dataDim,
+                           /* trans= */ false,
+                           useGpu_);
+  tmpRow1 = Matrix::create(nullptr,
+                           /* height= */ 1,
+                           dataDim,
+                           /* trans= */ false,
+                           useGpu_);
+  tmpRow2 = Matrix::create(nullptr,
+                           /* height= */ numKeys,
+                           1,
+                           /* trans= */ false,
+                           useGpu_);
+  tmpRow3 = Matrix::create(nullptr,
+                           /* height= */ numKeys,
+                           1,
+                           /* trans= */ false,
+                           useGpu_);
 
-  tmpMtx0 = Matrix::create(nullptr, /* height= */ numKeys, dataDim,
-                           /* trans= */ false, useGpu_);
-  tmpMtx1 = Matrix::create(nullptr, /* height= */ numKeys, dataDim,
-                           /* trans= */ false, useGpu_);
+  tmpMtx0 = Matrix::create(nullptr,
+                           /* height= */ numKeys,
+                           dataDim,
+                           /* trans= */ false,
+                           useGpu_);
+  tmpMtx1 = Matrix::create(nullptr,
+                           /* height= */ numKeys,
+                           dataDim,
+                           /* trans= */ false,
+                           useGpu_);
   return true;
 }
 
@@ -131,8 +148,12 @@ void CosSimVecMatLayer::backward(const UpdateCallback& callback) {
       tmpRow2->setData(outV->rowBuf(i));
       tmpRow3->setData(outG->rowBuf(i));
 
-      tmpRow3->cosSimDerivative(*(tmpRow2), *(tmpMtx0), *(tmpRow0), *(tmpMtx1),
-                                *(tmpRow1), config_.cos_scale());
+      tmpRow3->cosSimDerivative(*(tmpRow2),
+                                *(tmpMtx0),
+                                *(tmpRow0),
+                                *(tmpMtx1),
+                                *(tmpRow1),
+                                config_.cos_scale());
     }
   } else {
     CHECK(!inG0 || !inG1) << "Not supported";
