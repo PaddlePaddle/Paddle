@@ -22,9 +22,6 @@ set(CUDA_CXX_WITH_GPU_SOURCES
 set_source_files_properties(${CUDA_CXX_WITH_GPU_SOURCES}
                             PROPERTIES COMPILE_FLAGS "-D__NVCC__")
 
-set_source_files_properties(${AVX_SOURCES}
-                            PROPERTIES COMPILE_FLAGS "-mavx")
-
 set(CUDA_DSO_SOURCES
     src/hl_dso_loader.cc
     src/hl_cudart_wrap.cc)

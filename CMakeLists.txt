@@ -51,13 +51,7 @@ option(ON_TRAVIS "Running test on travis-ci or not." OFF)
 option(ON_COVERALLS "Generating code coverage data on coveralls or not." OFF)
 option(COVERALLS_UPLOAD "Uploading the generated coveralls json." ON)
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
-        "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-        FORCE)
-endif()
 
-include(enableCXX11)
 include(cpplint)
 include(ccache)
 if(WITH_RDMA)
@@ -84,17 +78,14 @@ if(NOT WITH_GPU)
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
     if(${CUDA_VERSION_MAJOR} GREATER 6)
-        if(COMPILER_SUPPORT_CXX11)
-            LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
-        endif()
+        LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
     endif()
 
-    # TODO(yuyang18): Change it to remove std=c++11 in cuda compile.
     set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle need cudnn to compile")
     endif()
-    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-g -O3 --use_fast_math")
 
     if(WITH_AVX)
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${AVX_FLAG}")
