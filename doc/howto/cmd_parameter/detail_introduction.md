@@ -31,7 +31,7 @@
   - type: string (default: null).
 
 * `--version`
-  - Whether to print version infomatrion.
+  - Whether to print version information.
   - type: bool (default: 0).
 
 * `--show_layer_stat`
