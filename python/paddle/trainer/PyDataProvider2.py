@@ -27,6 +27,14 @@ class SequenceType(object):
     SEQUENCE = 1
     SUB_SEQUENCE = 2
 
+    @staticmethod
+    def all():
+        return range(3)
+
+    @staticmethod
+    def is_valid(st):
+        return isinstance(st, int) and st in SequenceType.all()
+
 
 # TODO(yuyang18): Add string data type here.
 class DataType(object):
@@ -34,6 +42,18 @@ class DataType(object):
     SparseNonValue = 1
     SparseValue = 2
     Index = 3
+
+    @staticmethod
+    def all():
+        return range(4)
+
+    @staticmethod
+    def base_matrix():
+        return [DataType.Dense, DataType.SparseNonValue, DataType.SparseValue]
+
+    @staticmethod
+    def is_valid(st):
+        return isinstance(st, int) and st in DataType.all()
 
 
 class CacheType(object):

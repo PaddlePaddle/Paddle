@@ -15,19 +15,20 @@
 from paddle.trainer.config_parser import logger
 import functools
 
-__all__ = ['deprecated']
+__all__ = ['deprecated', "deprecated_msg"]
 
 
-def deprecated(instead):
+def deprecated_msg(msg):
     def __impl__(func):
-        @functools.wraps(func)
         def __wrapper__(*args, **kwargs):
-            logger.warning("The interface %s is deprecated, "
-                           "will be removed soon. Please use %s instead." %
-                           (func.__name__, instead))
-
+            logger.warning("The interface %s is deprecated. %s" %
+                           (func.__name__, msg))
             return func(*args, **kwargs)
 
         return __wrapper__
 
     return __impl__
+
+
+def deprecated(instead):
+    return deprecated_msg("Please use %s instead." % instead)

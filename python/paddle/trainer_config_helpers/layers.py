@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import functools
 import collections
 
 from paddle.trainer.config_parser import *
@@ -22,6 +20,10 @@ from .evaluators import *
 from .poolings import MaxPooling, AvgPooling, BasePoolingType
 from .attrs import *
 from .default_decorators import *
+from paddle.trainer.PyDataProvider2 import *
+
+import input_check_decorators as check
+import utils
 
 try:
     import cPickle as pickle
@@ -241,7 +243,8 @@ class LayerOutput(object):
                  img_norm_type=None,
                  size=None,
                  outputs=None,
-                 reverse=None):
+                 reverse=None,
+                 input_type=None):
         assert isinstance(name, basestring)
         assert isinstance(layer_type, basestring)
         assert size is not None
@@ -259,6 +262,7 @@ class LayerOutput(object):
             outputs = ['default']
         self.outputs = outputs
         self.reverse = reverse
+        self.input_type = input_type
 
     def __repr__(self):
         """
@@ -766,7 +770,7 @@ def mixed_layer(size=0,
 
 
 @layer_support()
-def data_layer(name, size, layer_attr=None):
+def data_layer(name, size=None, input_type=None, layer_attr=None):
     """
     Define DataLayer For NeuralNetwork.
 
@@ -775,24 +779,33 @@ def data_layer(name, size, layer_attr=None):
     ..  code-block:: python
 
         data = data_layer(name="input",
-                          size=1000)
+                          input_type=dense_vector(1000))
 
     :param name: Name of this data layer.
     :type name: basestring
     :param size: Size of this data layer.
     :type size: int
+    :param input_type: The input type for data layer. Used for input check
+    :type input_type: InputType
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
+    if size is None:
+        assert input_type is not None, "Size is not set. You must set one of size or input_type."
+
+    if input_type is not None:
+        assert isinstance(input_type, InputType)
+        size = input_type.dim  # overwrite size.
+
     Layer(
         type=LayerType.DATA,
         name=name,
         size=size,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
 
-    return LayerOutput(name, LayerType.DATA, size=size)
+    return LayerOutput(name, LayerType.DATA, size=size, input_type=input_type)
 
 
 @wrap_name_default("embedding")
@@ -826,6 +839,10 @@ def embedding_layer(input, size, name=None, param_attr=None, layer_attr=None):
     return mix
 
 
+@check.check_input(
+    check.AcceptInput(data_type=DataType.base_matrix()),
+    check.OutputType(data_type=DataType.Dense),
+    check.default_seq_type_and_size())
 @wrap_name_default()
 @wrap_param_attr_default()
 @wrap_bias_attr_default()
@@ -1580,6 +1597,17 @@ def scaling_layer(input, weight, name=None, layer_attr=None):
         name, LayerType.SCALING_LAYER, parents=[weight, input], size=input.size)
 
 
+@utils.deprecated_msg(
+    "trans_layer is very dangerous because the input  must be a square matrix" +
+    ", which means the height and the width of this input matrix must be" +
+    " same. The width of matrix always is feature dimension and the height" +
+    " of matrix always is the batch size.  Please make sure what are you" +
+    " doing when using this layer.")
+@check.check_input(
+    check.InputSize(1),
+    check.AcceptInput(data_type=DataType.base_matrix()),
+    check.SameOutputType(),
+    check.default_seq_type_and_size())
 @wrap_name_default()
 @layer_support()
 def trans_layer(input, name=None, layer_attr=None):
@@ -1971,8 +1999,9 @@ def img_pool_layer(input,
         pool_type.name = 'avg'
 
     type_name = pool_type.name + '-projection' \
-      if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
-      else pool_type.name
+        if (
+        isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
+        else pool_type.name
 
     pool_size_y = pool_size if pool_size_y is None else pool_size_y
     stride_y = stride if stride_y is None else stride_y
@@ -2902,8 +2931,8 @@ def recurrent_group(step,
 
     assert (targetInlink == None or targetInlink_in_inlinks())
     targetInlinkName = None if targetInlink == None \
-                            else targetInlink.name if isinstance(targetInlink, LayerOutput) \
-                                                   else targetInlink.input.name
+        else targetInlink.name if isinstance(targetInlink, LayerOutput) \
+        else targetInlink.input.name
 
     contains_sub_seq = [False]
 
@@ -3651,6 +3680,26 @@ def tensor_layer(a,
         name, LayerType.TENSOR_LAYER, parents=[a, b], activation=act, size=size)
 
 
+def __selective_fc_accept_inputs__(input_types, output, next_callback):
+    sel = input_types[-1]
+    inputs = input_types[:-1]
+
+    # each inputs of selective_fc, should be dense matrix.
+    for ipt in inputs:
+        assert isinstance(ipt, InputType)
+        assert ipt.type == DataType.Dense
+
+    # select mask should be sparse non value.
+    assert isinstance(sel, InputType)
+    assert sel.type == DataType.SparseNonValue
+
+    return next_callback(input_types, output)
+
+
+@check.check_input(
+    __selective_fc_accept_inputs__,
+    check.OutputType(data_type=DataType.SparseValue),
+    check.default_seq_type_and_size())
 @wrap_name_default()
 @wrap_param_attr_default()
 @wrap_bias_attr_default()
@@ -3668,7 +3717,7 @@ def selective_fc_layer(input,
                        bias_attr=None,
                        layer_attr=None):
     """
-    Selectived fully connected layer. Different from fc_layer, the output
+    Selective fully connected layer. Different from fc_layer, the output
     of this layer maybe sparse. It requires an additional input to indicate
     several selected columns for output. If the selected columns is not
     specified, selective_fc_layer acts exactly like fc_layer.
