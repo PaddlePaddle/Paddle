@@ -371,7 +371,7 @@ MatrixPtr GpuMatrix::getTranspose() {
   }
 }
 
-void GpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
+void GpuMatrix::transpose(MatrixPtr& matTrans, bool memAlloc) {
   if (memAlloc) {
     matTrans = std::make_shared<GpuMatrix>(width_, height_);
   } else {
@@ -391,7 +391,7 @@ MatrixPtr GpuMatrix::getInverse() {
   return matInv;
 }
 
-void GpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+void GpuMatrix::inverse(MatrixPtr& matInv, bool memAlloc) {
   CHECK_EQ(height_, width_);
 
   if (memAlloc) {
@@ -1836,7 +1836,7 @@ MatrixPtr CpuMatrix::getTranspose() {
   }
 }
 
-void CpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
+void CpuMatrix::transpose(MatrixPtr& matTrans, bool memAlloc) {
   if (memAlloc) {
     matTrans = std::make_shared<CpuMatrix>(width_, height_);
   } else {
@@ -1860,7 +1860,7 @@ MatrixPtr CpuMatrix::getInverse() {
   return matInv;
 }
 
-void CpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+void CpuMatrix::inverse(MatrixPtr& matInv, bool memAlloc) {
   CHECK_EQ(height_, width_);
 
   if (memAlloc) {
