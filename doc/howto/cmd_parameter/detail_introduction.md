@@ -110,7 +110,7 @@
   - type: int32 (default: -1).
 
 * `--test_period`
-   - if equal 0, do test on all test data at the end of each pass while if equal non-zero, do test on all test data once each test_period batches passed while training is going on.
+   - if equal 0, do test on all test data at the end of each pass. While if equal non-zero, do test on all test data every test_period batches.
   - type: int32 (default: 0).
 
 * `--test_wait`

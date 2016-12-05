@@ -42,9 +42,8 @@ P_DEFINE_string(config, "", "Trainer config file");
 
 P_DEFINE_int32(test_period, 0,
                "if equal 0, do test on all test data at the end of "
-               "each pass while if equal non-zero, do test on all test "
-               "data once each test_period batches passed while "
-               "training is going on");
+               "each pass. While if equal non-zero, do test on all test "
+               "data every test_period batches");
 P_DEFINE_bool(test_all_data_in_one_period, false,
                "This option was deprecated, since we will always do "
                "test on all test set ");
@@ -634,9 +633,8 @@ std::unique_ptr<TesterConfig> Trainer::createTesterConfig() {
     LOG(WARNING)
       << "The meaning of --test_period is changed: "
       << "if equal 0, do test on all test data at the end of "
-      << "each pass while if equal non-zero, do test on all test "
-      << "data once each test_period batches passed while "
-      << "training is going on";
+      << "each pass. While if equal non-zero, do test on all test "
+      << "data every test_period batches ";
   }
   if (FLAGS_test_all_data_in_one_period) {
     LOG(WARNING)
