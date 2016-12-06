@@ -13,8 +13,15 @@ RUN pip install -U BeautifulSoup docopt PyYAML pillow \
     sphinx sphinx_rtd_theme breathe recommonmark
 
 ARG WITH_AVX
-ENV WITH_AVX=${WITH_AVX:-ON}
+ARG WITH_DOC
+ARG WITH_SWIG_PY
+ARG WITH_STYLE_CHECK
+
 ENV WITH_GPU=OFF
+ENV WITH_AVX=${WITH_AVX:-ON}
+ENV WITH_DOC=${WITH_DOC:-ON}
+ENV WITH_SWIG_PY=${WITH_SWIG_PY:-ON}
+ENV WITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
 
 RUN mkdir /paddle
 COPY . /paddle/
