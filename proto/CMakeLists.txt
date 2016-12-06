@@ -1,12 +1,3 @@
-execute_process(COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --version
-	OUTPUT_VARIABLE PROTOBUF_VERSION)
-string(REPLACE "libprotoc " "" PROTOBUF_VERSION ${PROTOBUF_VERSION})
-
-set(PROTOBUF_3 OFF)
-if (${PROTOBUF_VERSION} VERSION_GREATER "3.0.0" OR ${PROTOBUF_VERSION} VERSION_EQUAL "3.0.0")
-    set(PROTOBUF_3 ON)
-endif()
-
 set(proto_filenames
     DataConfig.proto
     DataFormat.proto

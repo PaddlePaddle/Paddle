@@ -1018,8 +1018,6 @@ public:
   /// calculate the minimum value of each row of the matrix b.
   void minRows(BaseMatrixT& b);
 
-  /// calculate the sum of each column of the matrix b.
-  void sumCols(BaseMatrixT& b);
   /// calculate the maximum value of each column of the matrix b.
   void maxCols(BaseMatrixT& b);
   /// calculate the minimum value of each column of the matrix b.

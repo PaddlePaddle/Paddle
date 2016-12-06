@@ -26,11 +26,15 @@ layers {
       filter_size_y: 32
       padding_y: 1
       stride_y: 1
+      output_y: 227
+      img_size_y: 256
     }
   }
   bias_parameter_name: "___conv_0__.wbias"
   num_filters: 64
   shared_biases: true
+  height: 227
+  width: 227
 }
 layers {
   name: "__batch_norm_0__"
@@ -43,6 +47,7 @@ layers {
     image_conf {
       channels: 64
       img_size: 227
+      img_size_y: 227
     }
   }
   inputs {
@@ -55,6 +60,8 @@ layers {
   }
   bias_parameter_name: "___batch_norm_0__.wbias"
   moving_average_fraction: 0.9
+  height: 227
+  width: 227
 }
 layers {
   name: "__crmnorm_0__"
@@ -72,8 +79,12 @@ layers {
       output_x: 227
       img_size: 227
       blocked: false
+      output_y: 227
+      img_size_y: 227
     }
   }
+  height: 227
+  width: 227
 }
 layers {
   name: "__pool_0__"
@@ -97,6 +108,8 @@ layers {
       padding_y: 0
     }
   }
+  height: 196
+  width: 196
 }
 parameters {
   name: "___conv_0__.w0"
