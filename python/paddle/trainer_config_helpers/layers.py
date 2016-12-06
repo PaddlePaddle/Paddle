@@ -106,6 +106,7 @@ __all__ = [
     'out_prod_layer',
     'print_layer',
     'spp_layer',
+    'caffe_layer',
 ]
 
 
@@ -168,6 +169,7 @@ class LayerType(object):
     BLOCK_EXPAND = "blockexpand"
     MAXOUT = "maxout"
     SPP_LAYER = "spp"
+    CAFFE_LAYER = "caffe"
 
     PRINT_LAYER = "print"
 
@@ -4028,6 +4030,27 @@ def maxout_layer(input,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name, LayerType.MAXOUT, parents=[input], size=l.config.size)
+
+
+@wrap_name_default()
+@layer_support()
+def caffe_layer(input,
+                prototxt=None,
+                num_weights=0,
+                name=None,
+                bias=False,
+                act=None,
+                layer_attr=None):
+    Layer(
+        name=name,
+        inputs=Input(input.name),
+        type=LayerType.CAFFE_LAYER,
+        bias=bias,
+        prototxt=prototxt,
+        num_weights=num_weights,
+        active_type=act.name,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(name, LayerType.CAFFE_LAYER, parents=[input], size=1)
 
 
 @wrap_name_default()

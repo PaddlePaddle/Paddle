@@ -422,6 +422,9 @@ sinclude(`ModelConfigLayer.proto.m4')
   // to indicate rectangle image data
   optional uint64 height = 50;
   optional uint64 width = 51;
+
+  // Caffe layer config
+  optional string prototxt = 52;
 }
 
 message EvaluatorConfig {

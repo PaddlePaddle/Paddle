@@ -2996,6 +2996,24 @@ class RecurrentLayerGroup(LayerBase):
             name, 'recurrent_layer_group', 0, inputs=[], device=device)
 
 
+@config_layer('caffe')
+class CaffeLayer(LayerBase):
+    def __init__(self,
+                 name,
+                 inputs,
+                 prototxt,
+                 num_weights=0,
+                 bias=False,
+                 **xargs):
+        super(CaffeLayer, self).__init__(
+            name, 'caffe', 0, inputs=inputs, **xargs)
+        for input_index in xrange(num_weights):
+            input_layer = self.get_input_layer(input_index)
+            dims = [1, 1]
+            self.create_input_parameter(input_index, 1, dims)
+        self.create_bias_parameter(bias, 1)
+
+
 # Deprecated, use a new layer specific class instead
 @config_func
 def Layer(name, type, **xargs):

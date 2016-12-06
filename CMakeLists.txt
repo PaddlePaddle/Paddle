@@ -184,6 +184,6 @@ if(WITH_DOC)
     add_subdirectory(doc_cn)
 endif()
 
-if(WITH_DOC)
+if(USE_CAFFE)
     add_subdirectory(plugin/caffe)
 endif()
