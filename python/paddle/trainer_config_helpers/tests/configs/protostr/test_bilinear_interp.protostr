@@ -26,11 +26,15 @@ layers {
       filter_size_y: 3
       padding_y: 1
       stride_y: 1
+      output_y: 48
+      img_size_y: 48
     }
   }
   bias_parameter_name: "___conv_0__.wbias"
   num_filters: 16
   shared_biases: true
+  height: 48
+  width: 48
 }
 layers {
   name: "__bilinear_interp_layer_0__"
@@ -40,11 +44,17 @@ layers {
   inputs {
     input_layer_name: "__conv_0__"
     bilinear_interp_conf {
+      image_conf {
+        channels: 16
+        img_size: 48
+        img_size_y: 48
+      }
       out_size_x: 64
       out_size_y: 64
-      num_channels: 16
     }
   }
+  height: 64
+  width: 64
 }
 layers {
   name: "__pool_0__"
@@ -55,19 +65,21 @@ layers {
     input_layer_name: "__bilinear_interp_layer_0__"
     pool_conf {
       pool_type: "max-projection"
-      channels: 4
+      channels: 16
       size_x: 2
       stride: 2
-      output_x: 64
-      img_size: 128
+      output_x: 32
+      img_size: 64
       padding: 0
       size_y: 2
       stride_y: 2
-      output_y: 64
-      img_size_y: 128
+      output_y: 32
+      img_size_y: 64
       padding_y: 0
     }
   }
+  height: 32
+  width: 32
 }
 layers {
   name: "__fc_layer_0__"
@@ -78,6 +90,8 @@ layers {
     input_layer_name: "__pool_0__"
     input_parameter_name: "___fc_layer_0__.w0"
   }
+  height: 32
+  width: 32
 }
 parameters {
   name: "___conv_0__.w0"

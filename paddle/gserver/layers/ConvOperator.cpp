@@ -93,9 +93,9 @@ private:
   bool caffeMode_;
   int inputOffset_, outputOffset_, weightOffset_;
   int numFilters_;
-  int padding_, stride_, filterSize_, channels_, imgSize_;
+  int padding_, stride_, filterSize_, channels_, imgSize_, imgSizeY_;
   int paddingY_, strideY_, filterSizeY_;
-  int imgPixels_, filterPixels_, filterChannels_, outputX_, outputs_;
+  int imgPixels_, filterPixels_, filterChannels_, outputX_, outputY_, outputs_;
 
   /// Following member variables are same with CudnnConvLayer.
   /// There is no explanation here.
@@ -144,7 +144,7 @@ void ConvOperator::allocConvWorkSpace(size_t maxWorkSpace) {
 void ConvOperator::reshape(int batchSize) {
   imageH_ = ins_[0]->getFrameHeight();
   imageW_ = ins_[0]->getFrameWidth();
-  if (imageH_ == 0) imageH_ = imgSize_;
+  if (imageH_ == 0) imageH_ = imgSizeY_;
   if (imageW_ == 0) imageW_ = imgSize_;
   outputH_ = outputSize(imageH_, filterSizeY_, paddingY_, strideY_, caffeMode_);
   outputW_ = outputSize(imageW_, filterSize_, padding_, stride_, caffeMode_);
@@ -182,7 +182,10 @@ void ConvOperator::computeConvSizes() {
   hl_create_tensor_descriptor(&inputDesc_);
   int outputX =
       outputSize(imgSize_, filterSize_, padding_, stride_, caffeMode_);
+  int outputY =
+      outputSize(imgSizeY_, filterSizeY_, paddingY_, strideY_, caffeMode_);
   CHECK_EQ(outputX, outputX_);
+  CHECK_EQ(outputY, outputY_);
   hl_create_tensor_descriptor(&outputDesc_);
   hl_create_convolution_descriptor(&convDesc_,
                                    inputDesc_,
@@ -236,10 +239,12 @@ void ConvOperator::getConvParams() {
   filterPixels_ = filterSize_ * filterSizeY_;
   channels_ = conf.channels();
   imgSize_ = conf.img_size();
-  imgPixels_ = imgSize_ * imgSize_;
+  imgSizeY_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
+  imgPixels_ = imgSize_ * imgSizeY_;
   CHECK_EQ(conf.groups(), 1U);
   filterChannels_ = conf.filter_channels();
   outputX_ = conf.output_x();
+  outputY_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
   outputs_ = outputX_ * outputX_;
 }
 

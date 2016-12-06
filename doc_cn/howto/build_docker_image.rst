@@ -18,13 +18,13 @@ PaddlePaddle的Docker Image构建源码放置在 ``${源码根目录}/paddle/scr
 ..  code-block:: bash
 
     cd ${源码根目录}/paddle/scripts/docker/
-    docker build --build-arg LOWEST_DL_SPEED=50K\
+    docker build --build-arg LOWEST_DL_SPEED=50K \
                  --build-arg WITH_GPU=ON \
                  --tag  paddle_gpu:latest .
 
 其中，``--build-arg`` 传入的配置参数包括:
 
-- LOWEST\_DL\_SPEED\: 在多线程下载过程中，设置下线线程的最低速度。
+- LOWEST\_DL\_SPEED\: 在多线程下载过程中，设置下载线程的最低速度。
 
   - 默认单位是Bytes，但可以传入10K、10M、或10G等这样的单位。
   - 如果小于这个速度，那么这个线程将会关闭。当所有的线程都关闭了，那么下载进程将会重启。

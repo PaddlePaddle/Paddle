@@ -5,7 +5,7 @@ set -e
 
 protostr=`dirname $0`/protostr
 
-files=`ls $protostr | grep -v "unitest"`
+files=`ls $protostr | grep -v "unittest"`
 
 ./generate_protostr.sh
 
