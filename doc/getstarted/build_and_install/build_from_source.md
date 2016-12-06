@@ -17,13 +17,14 @@ cd paddle
 
 To compile the source code, your computer must be equipped with the following dependencies.
 
-### Dependencies
-
 - **Compiler**: GCC >= 4.8 or Clang >= 3.3 (AppleClang >= 5.1)
 - **CMake**: version >= 2.8
 - **BLAS**: MKL, OpenBlas or ATLAS
 - **Protocol Buffers**: version >= 2.4, **Note: 3.x is not supported**
 - **Python**: only python 2.7 is supported currently
+
+**Note:** For CUDA 7.0 and CUDA 7.5, GCC 5.0 and up are not supported!
+For CUDA 8.0, GCC versions later than 5.3 are not supported!
 
 ### Options
 
@@ -51,8 +52,8 @@ PaddlePaddle supports some build options. To enable it, first you need to instal
 </html>
 
 **Note:**
-  - The GPU version works best with Cuda Toolkit 7.5 and cuDNN v5.
-  - Other versions like Cuda Toolkit 6.5, 7.0, 8.0 and cuDNN v2, v3, v4 are also supported.
+  - The GPU version works best with Cuda Toolkit 8.0 and cuDNN v5.
+  - Other versions like Cuda Toolkit 7.0, 7.5 and cuDNN v3, v4 are also supported.
   - **To utilize cuDNN v5, Cuda Toolkit 7.5 is prerequisite and vice versa.**
 
 As a simple example, consider the following:  

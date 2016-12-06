@@ -77,11 +77,9 @@ if(NOT WITH_GPU)
     add_definitions(-DHPPL_STUB_FUNC)
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
-    if(${CUDA_VERSION_MAJOR} GREATER 6)
-        LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
+    if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)
+        message(FATAL_ERROR "Paddle need CUDA >= 7.0 to compile")
     endif()
-
-    set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle need cudnn to compile")

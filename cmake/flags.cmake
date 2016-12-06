@@ -138,8 +138,11 @@ foreach(flag ${GPU_COMMON_FLAGS})
 endforeach()
 
 
+set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
+LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
 LIST(APPEND CUDA_NVCC_FLAGS --use_fast_math)
 
 if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
