@@ -24,21 +24,20 @@ def hook(settings, src_dict_path, trg_dict_path, is_generating, file_list,
     # job_mode = 1: training mode
     # job_mode = 0: generating mode
     settings.job_mode = not is_generating
-    settings.src_dict = dict()
-    with open(src_dict_path, "r") as fin:
-        settings.src_dict = {
-            line.strip(): line_count
-            for line_count, line in enumerate(fin)
-        }
-    settings.trg_dict = dict()
-    with open(trg_dict_path, "r") as fin:
-        settings.trg_dict = {
-            line.strip(): line_count
-            for line_count, line in enumerate(fin)
-        }
+
+    def fun(dict_path):
+        out_dict = dict()
+        with open(dict_path, "r") as fin:
+            out_dict = {
+                line.strip(): line_count
+                for line_count, line in enumerate(fin)
+            }
+        return out_dict
+
+    settings.src_dict = fun(src_dict_path)
+    settings.trg_dict = fun(trg_dict_path)
 
     settings.logger.info("src dict len : %d" % (len(settings.src_dict)))
-    settings.sample_count = 0
 
     if settings.job_mode:
         settings.slots = {
