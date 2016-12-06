@@ -46,7 +46,7 @@ void ConvProjection::getConvParams() {
   filterH_ = conf.filter_size_y();
   filterW_ = conf.filter_size();
 
-  configImgH_ = conf.img_size();
+  configImgH_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
   configImgW_ = conf.img_size();
 
   channels_ = conf.channels();
@@ -58,9 +58,11 @@ void ConvProjection::getConvParams() {
 }
 
 void ConvProjection::initCudnn() {
-  hl_create_filter_descriptor(
-      &filterDesc_, channels_ / groups_, numFilters_ / groups_,
-      filterH_, filterW_);
+  hl_create_filter_descriptor(&filterDesc_,
+                              channels_ / groups_,
+                              numFilters_ / groups_,
+                              filterH_,
+                              filterW_);
   hl_create_tensor_descriptor(&inputDesc_);
   hl_create_tensor_descriptor(&outputDesc_);
   hl_create_convolution_descriptor(&convDesc_,

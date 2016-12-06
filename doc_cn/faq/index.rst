@@ -202,3 +202,53 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 解决办法是：
 
 * 卸载PaddlePaddle包 :code:`pip uninstall paddle`, 清理掉老旧的PaddlePaddle安装包，使得单元测试有一个干净的环境。如果PaddlePaddle包已经在python的site-packages里面，单元测试会引用site-packages里面的python包，而不是源码目录里 :code:`/python` 目录下的python包。同时，即便设置 :code:`PYTHONPATH` 到 :code:`/python` 也没用，因为python的搜索路径是优先已经安装的python包。
+
+9. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致
+----------------------------------------------------------
+
+这是目前CMake寻找Python的逻辑存在缺陷，如果系统安装了多个Python版本，CMake找到的Python库和Python解释器版本可能有不一致现象，导致编译PaddlePaddle失败。正确的解决方法是，
+用户强制指定特定的Python版本，具体操作如下：
+
+    ..  code-block:: bash
+        
+        cmake .. -DPYTHON_EXECUTABLE=<exc_path> -DPYTHON_LIBRARY=<lib_path>  -DPYTHON_INCLUDE_DIR=<inc_path>
+
+用户需要指定本机上Python的路径：``<exc_path>``, ``<lib_path>``, ``<inc_path>``
+
+10. A protocol message was rejected because it was too big
+----------------------------------------------------------
+
+如果在训练NLP相关模型时，出现以下错误：
+
+..  code-block:: bash
+
+    [libprotobuf ERROR google/protobuf/io/coded_stream.cc:171] A protocol message was rejected because it was too big (more than 67108864 bytes).  To increase the limit (or to disable these warnings), see CodedInputStream::SetTotalBytesLimit() in google/protobuf/io/coded_stream.h.
+    F1205 14:59:50.295174 14703 TrainerConfigHelper.cpp:59] Check failed: m->conf.ParseFromString(configProtoStr) 
+
+可能的原因是：传给dataprovider的某一个args过大，一般是由于直接传递大字典导致的。错误的define_py_data_sources2类似：
+
+..  code-block:: python
+
+     src_dict = dict()
+     for line_count, line in enumerate(open(src_dict_path, "r")):
+        src_dict[line.strip()] = line_count
+
+     define_py_data_sources2(
+        train_list,
+        test_list,
+        module="dataprovider",
+        obj="process",
+        args={"src_dict": src_dict})
+
+解决方案是：将字典的地址作为args传给dataprovider，然后在dataprovider里面根据该地址加载字典。即define_py_data_sources2应改为：
+
+..  code-block:: python
+
+     define_py_data_sources2(
+        train_list,
+        test_list,
+        module="dataprovider",
+        obj="process",
+        args={"src_dict_path": src_dict_path})
+
+完整源码可参考 `seqToseq <https://github.com/PaddlePaddle/Paddle/tree/develop/demo/seqToseq>`_ 示例。

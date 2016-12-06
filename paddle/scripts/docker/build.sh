@@ -20,8 +20,28 @@ cmake .. \
       -DWITH_AVX=${WITH_AVX} \
       -DWITH_SWIG_PY=ON \
       -DCUDNN_ROOT=/usr/ \
-      -DWITH_STYLE_CHECK=OFF
+      -DWITH_STYLE_CHECK=OFF \
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 make -j `nproc`
 make install
+
+# Install woboq_codebrowser.
+git clone https://github.com/woboq/woboq_codebrowser /woboq
+cd /woboq
+cmake -DLLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config-3.8 \
+      -DCMAKE_BUILD_TYPE=Release \
+      .
+make
+
+export WOBOQ_OUT=/usr/share/nginx/html/paddle
+export BUILD_DIR=/paddle/build
+mkdir -p $WOBOQ_OUT
+cp -rv /woboq/data $WOBOQ_OUT/../data
+/woboq/generator/codebrowser_generator \
+    -b /paddle/build \
+    -a \
+    -o $WOBOQ_OUT \
+    -p paddle:/paddle
+/woboq/indexgenerator/codebrowser_indexgenerator $WOBOQ_OUT
 
 trap : 0
