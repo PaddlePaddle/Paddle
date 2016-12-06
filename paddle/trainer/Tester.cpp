@@ -17,22 +17,22 @@ limitations under the License. */
 #include <fenv.h>
 #include <stdio.h>
 
-#include <iostream>
 #include <iomanip>
-#include <sstream>
+#include <iostream>
 #include <limits>
+#include <sstream>
 
 #include <google/protobuf/text_format.h>
 
+#include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
-#include "paddle/utils/GlobalConstants.h"
 
+#include "TesterConfig.h"
+#include "paddle/gserver/gradientmachines/GradientMachineMode.h"
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/gserver/layers/ValidationLayer.h"
-#include "paddle/gserver/gradientmachines/GradientMachineMode.h"
-#include "TesterConfig.h"
 
 namespace paddle {
 
@@ -66,6 +66,9 @@ Tester::Tester(const std::shared_ptr<TrainerConfigHelper>& config,
 }
 
 void Tester::startTestPeriod() {
+  if (testDataProvider_) {
+    testDataProvider_->reset();
+  }
   testEvaluator_->start();
   testContext_.cost = 0;
   testContext_.numSamples = 0;
@@ -87,27 +90,18 @@ void Tester::testOneDataBatch(const DataBatch& dataBatch,
 void Tester::testOnePeriod() {
   DataBatch dataBatch;
   int64_t batchSize = config_->getOptConfig().batch_size();
-
-  int batches = std::numeric_limits<int>::max();
-
   std::vector<Argument> outArgs;
-
   startTestPeriod();
-  for (int i = 0; i < batches; ++i) {
-    int num = testDataProvider_->getNextBatch(batchSize, &dataBatch);
-    if (num == 0) {
-      testDataProvider_->reset();
-      if (intconfig_->prevBatchState) {
-        gradientMachine_->resetState();
-      }
-      break;
-    }
+  while (testDataProvider_->getNextBatch(batchSize, &dataBatch) != 0) {
     testOneDataBatch(dataBatch, &outArgs);
   }
   finishTestPeriod();
 }
 
 void Tester::finishTestPeriod() {
+  if (intconfig_->prevBatchState) {
+    gradientMachine_->resetState();
+  }
   testEvaluator_->finish();
   CHECK_GT(testContext_.numSamples, 0)
       << "There is no samples in your test batch. Possibly "
