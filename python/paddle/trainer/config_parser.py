@@ -1872,7 +1872,7 @@ class BatchNormLayer(LayerBase):
         image_conf = self.config.inputs[0].image_conf
         parse_image(self.inputs[0].image, input_layer.name, image_conf)
         self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                           image_conf.channels)
+                           image_conf.channels, False)
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
@@ -3387,10 +3387,11 @@ def parse_config(config_file, config_arg_str):
     # config = parse_config(configs, "is_predict=1")
     # # then you get config proto object.
     if hasattr(config_file, '__call__'):
-      config_file.func_globals.update(make_config_environment("", config_args))
-      config_file()
+        config_file.func_globals.update(
+            make_config_environment("", config_args))
+        config_file()
     else:
-      execfile(config_file, make_config_environment(config_file, config_args))
+        execfile(config_file, make_config_environment(config_file, config_args))
     for k, v in settings.iteritems():
         if v is None:
             continue
