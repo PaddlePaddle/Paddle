@@ -1872,7 +1872,7 @@ class BatchNormLayer(LayerBase):
         image_conf = self.config.inputs[0].image_conf
         parse_image(self.inputs[0].image, input_layer.name, image_conf)
         self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                           image_conf.channels)
+                           image_conf.channels, False)
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
