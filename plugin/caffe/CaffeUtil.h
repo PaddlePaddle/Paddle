@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
 #include <google/protobuf/message.h>
 #include <google/protobuf/text_format.h>
 
@@ -59,4 +61,5 @@ public:
     return ptr.get();
   }
 };
-}
+
+}  // namespace paddle

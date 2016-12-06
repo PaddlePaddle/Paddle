@@ -248,6 +248,11 @@ message ImageConfig {
   required uint32 img_size_y = 9;
 }
 
+message CaffeConfig {
+  required string prototxt = 1;
+}
+
+
 message LayerInputConfig {
   required string input_layer_name = 1;
   optional string input_parameter_name = 2;
@@ -424,7 +429,7 @@ sinclude(`ModelConfigLayer.proto.m4')
   optional uint64 width = 51;
 
   // Caffe layer config
-  optional string prototxt = 52;
+  optional CaffeConfig caffe_conf = 52;
 }
 
 message EvaluatorConfig {

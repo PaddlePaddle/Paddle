@@ -25,7 +25,7 @@ bool CaffeLayer::init(const LayerMap& layerMap,
   Layer::init(layerMap, parameterMap);
 
   // create caffe layer
-  auto param = getLayerParameter(config_.prototxt());
+  auto param = getLayerParameter(config_.caffe_conf().prototxt());
   caffeOp_ = LayerRegistry<real>::CreateLayer(*param);
 
   propagateDown_.resize(inputLayers_.size());

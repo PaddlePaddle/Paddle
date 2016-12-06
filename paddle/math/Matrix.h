@@ -1122,6 +1122,7 @@ public:
   virtual void paramReluBackwardDiff(Matrix& oGrad, Matrix& data, Matrix& W) {
     LOG(FATAL) << "Not implemented";
   }
+
   virtual void bilinearForward(const Matrix& in,
                                const size_t inImgH,
                                const size_t inImgW,
@@ -1141,6 +1142,15 @@ public:
                                 const real ratioH,
                                 const real ratioW) {
     LOG(FATAL) << "Not implemented";
+  }
+
+  template <typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    if (useGpu_) {
+      TensorGpuApply<real>(*this, expr);
+    } else {
+      TensorCpuApply<real>(*this, expr);
+    }
   }
 };
 
@@ -1518,6 +1528,11 @@ public:
   void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
 
   void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label);
+
+  template <typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    TensorGpuApply<real>(*this, expr);
+  }
 };
 
 class CpuMatrix : public Matrix {
@@ -1917,6 +1932,11 @@ public:
                         const size_t numChannels,
                         const real ratioH,
                         const real ratioW);
+
+  template <typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    TensorCpuApply<real>(*this, expr);
+  }
 };
 
 class SharedCpuMatrix : public CpuMatrix {
@@ -1957,6 +1977,7 @@ public:
   void add(real p1, real p2);
 
 private:
+  using Matrix::mul;
   void initShared(int blockNum);
   void initBlock(int blockNum);
 
