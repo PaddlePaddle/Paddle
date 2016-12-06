@@ -31,7 +31,8 @@ void SparseMomentumParameterOptimizer(const VectorPtr vecs[],
                                    tau * alpha * gamma * learningRate);
   vecs[PARAMETER_VALUE]->add(*vecs[PARAMETER_MOMENTUM_UT],
                              tau / beta + 1.0 / alpha,
-                             *vecs[PARAMETER_MOMENTUM_VT], 1.0 / beta);
+                             *vecs[PARAMETER_MOMENTUM_VT],
+                             1.0 / beta);
 }
 
 void AdagradParameterOptimizer(const VectorPtr vecs[],
@@ -46,10 +47,12 @@ void AdagradParameterOptimizer(const VectorPtr vecs[],
   vecs[PARAMETER_LEARNING_RATE]->add(epsilon);
   vecs[PARAMETER_LEARNING_RATE]->invSqrt(*vecs[PARAMETER_LEARNING_RATE]);
 
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate,
-      momentum, decayRate);
+  vecs[PARAMETER_VALUE]->sgdUpdate(*vecs[PARAMETER_GRADIENT],
+                                   *vecs[PARAMETER_MOMENTUM],
+                                   *vecs[PARAMETER_LEARNING_RATE],
+                                   learningRate,
+                                   momentum,
+                                   decayRate);
 }
 
 void AdaDeltaParameterOptimizer(const VectorPtr vecs[],
@@ -59,24 +62,29 @@ void AdaDeltaParameterOptimizer(const VectorPtr vecs[],
                                 real momentum,
                                 real decayRate) {
   // E(g_t^2) = \rou * E(g_{t-1}^2) + (1-\rou) * g^2
-  vecs[PARAMETER_GRADIENT_SQURESUM]->decayAddSquare(*vecs[PARAMETER_GRADIENT],
-                                                    rou, 1.0f - rou);
+  vecs[PARAMETER_GRADIENT_SQURESUM]->decayAddSquare(
+      *vecs[PARAMETER_GRADIENT], rou, 1.0f - rou);
 
   // learn_rate = sqrt( ( E(dx_{t-1}^2) + epsilon ) / ( E(g_t^2) + epsilon ) )
   vecs[PARAMETER_LEARNING_RATE]->dotDiv(*vecs[PARAMETER_GRADIENT_SQURESUM1],
                                         *vecs[PARAMETER_GRADIENT_SQURESUM],
-                                        epsilon, epsilon);
+                                        epsilon,
+                                        epsilon);
   vecs[PARAMETER_LEARNING_RATE]->sqrt2();
 
   // E(dx_t^2) = \rou * E(dx_{t-1}^2) + (1-\rou) * (-g*learn_rate)^2
   vecs[PARAMETER_GRADIENT_SQURESUM1]->decayAddSquareMul(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_LEARNING_RATE], rou,
+      *vecs[PARAMETER_GRADIENT],
+      *vecs[PARAMETER_LEARNING_RATE],
+      rou,
       1.0f - rou);
 
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate,
-      momentum, decayRate);
+  vecs[PARAMETER_VALUE]->sgdUpdate(*vecs[PARAMETER_GRADIENT],
+                                   *vecs[PARAMETER_MOMENTUM],
+                                   *vecs[PARAMETER_LEARNING_RATE],
+                                   learningRate,
+                                   momentum,
+                                   decayRate);
 }
 
 void RMSPropParameterOptimizer(const VectorPtr vecs[],
@@ -91,12 +99,11 @@ void RMSPropParameterOptimizer(const VectorPtr vecs[],
   // For the first time update, make the sum be the current square
   // so that the initial estimation of E(g_t^2) will not be too small.
   vecs[PARAMETER_GRADIENT_SQURESUM]->decayAddSquare(
-      *vecs[PARAMETER_GRADIENT], accumulatedRou,
-      firstTime ? 1.0f : 1.0f - rou);
+      *vecs[PARAMETER_GRADIENT], accumulatedRou, firstTime ? 1.0f : 1.0f - rou);
 
   // E(g_t) = \rou * E(g_{t-1}) + (1-\rou) * g
-  vecs[PARAMETER_GRADIENT_SQURESUM1]->add(*vecs[PARAMETER_GRADIENT],
-                                          accumulatedRou, 1.0f - rou);
+  vecs[PARAMETER_GRADIENT_SQURESUM1]->add(
+      *vecs[PARAMETER_GRADIENT], accumulatedRou, 1.0f - rou);
 
   // learn_rate = 1/sqrt( ( E(g_t^2) - (E(g_t))^2 + epsilon )
   // Basiclly if the sign of the gradient changes more often,
@@ -107,10 +114,12 @@ void RMSPropParameterOptimizer(const VectorPtr vecs[],
   vecs[PARAMETER_LEARNING_RATE]->add(epsilon);
   vecs[PARAMETER_LEARNING_RATE]->invSqrt(*vecs[PARAMETER_LEARNING_RATE]);
 
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate,
-      momentum, decayRate);
+  vecs[PARAMETER_VALUE]->sgdUpdate(*vecs[PARAMETER_GRADIENT],
+                                   *vecs[PARAMETER_MOMENTUM],
+                                   *vecs[PARAMETER_LEARNING_RATE],
+                                   learningRate,
+                                   momentum,
+                                   decayRate);
 }
 
 void DecayedAdagradParameterOptimizer(const VectorPtr vecs[],
@@ -125,8 +134,7 @@ void DecayedAdagradParameterOptimizer(const VectorPtr vecs[],
   // For the first time update, make the sum be the current square
   // so that the initial estimation of E(g_t^2) will not be too small.
   vecs[PARAMETER_GRADIENT_SQURESUM]->decayAddSquare(
-      *vecs[PARAMETER_GRADIENT], accumulatedRou,
-      firstTime ? 1.0f : 1.0f - rou);
+      *vecs[PARAMETER_GRADIENT], accumulatedRou, firstTime ? 1.0f : 1.0f - rou);
 
   // learn_rate = 1/sqrt( ( E(g_t^2) + epsilon )
   // Basiclly if the bigger the magnitude gradient is,
@@ -135,10 +143,12 @@ void DecayedAdagradParameterOptimizer(const VectorPtr vecs[],
   vecs[PARAMETER_LEARNING_RATE]->add(*vecs[PARAMETER_GRADIENT_SQURESUM]);
   vecs[PARAMETER_LEARNING_RATE]->invSqrt(*vecs[PARAMETER_LEARNING_RATE]);
 
-  vecs[PARAMETER_VALUE]->sgdUpdate(
-      *vecs[PARAMETER_GRADIENT], *vecs[PARAMETER_MOMENTUM],
-      *vecs[PARAMETER_LEARNING_RATE], learningRate,
-      momentum, decayRate);
+  vecs[PARAMETER_VALUE]->sgdUpdate(*vecs[PARAMETER_GRADIENT],
+                                   *vecs[PARAMETER_MOMENTUM],
+                                   *vecs[PARAMETER_LEARNING_RATE],
+                                   learningRate,
+                                   momentum,
+                                   decayRate);
 }
 
 void AdamParameterOptimizer(const VectorPtr vecs[],
@@ -164,16 +174,13 @@ void AdamParameterOptimizer(const VectorPtr vecs[],
   // \theta_t = \theta_{t-1} - \alpha * \sqrt(1-\beta_2^t) / (1-\beta_1^t) * tmp
   g->sqrt2(*v);
   g->dotDiv(*m, *g, 0., epsilon);
-  real alpha = learningRate *
-    std::sqrt((real)1 - beta2_power) / ((real)1 - beta1_power);
+  real alpha =
+      learningRate * std::sqrt((real)1 - beta2_power) / ((real)1 - beta1_power);
   theta->add(*theta, 1.0, *g, -alpha);
 }
 
-void AdamaxParameterOptimizer(const VectorPtr vecs[],
-                              real beta1,
-                              real beta2,
-                              int64_t step,
-                              real alpha) {
+void AdamaxParameterOptimizer(
+    const VectorPtr vecs[], real beta1, real beta2, int64_t step, real alpha) {
   Vector* m = vecs[PARAMETER_MOMENTUM].get();
   Vector* g = vecs[PARAMETER_GRADIENT].get();
   Vector* u = vecs[PARAMETER_WEIGHTED_INFINITY_NORM].get();
@@ -192,4 +199,3 @@ void AdamaxParameterOptimizer(const VectorPtr vecs[],
   real learningRate = alpha / (1 - std::pow(beta1, step));
   theta->add(*theta, 1.0, *g, -learningRate);
 }
-

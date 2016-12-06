@@ -23,7 +23,7 @@ namespace paddle {
 /**
  * \brief The tensor cpu evaluate api.
  */
-template<class T, typename LeftType, typename RightType>
+template <class T, typename LeftType, typename RightType>
 inline void TensorCpuApply(LeftType& lhs, const RightType& rhs) {
   TensorApply<LeftType, T> lhs_(lhs);
   TensorApply<const RightType, T> rhs_(rhs);
@@ -48,16 +48,17 @@ inline void TensorCpuApply(LeftType& lhs, const RightType& rhs) {
 }
 
 #ifdef __NVCC__
-template<typename LeftType, typename RightType>
-__global__
-void TensorElementWiseOp(LeftType lhs, RightType rhs, const int border) {
+template <typename LeftType, typename RightType>
+__global__ void TensorElementWiseOp(LeftType lhs,
+                                    RightType rhs,
+                                    const int border) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < border) {
     lhs.applyRef(idx) = rhs.apply(idx);
   }
 }
 
-template<typename LeftType, typename RightType>
+template <typename LeftType, typename RightType>
 __global__ void TensorElementWiseOp(LeftType lhs, RightType rhs) {
   const int colIdx = blockIdx.x * blockDim.x + threadIdx.x;
   const int rowIdx = blockIdx.y * blockDim.y + threadIdx.y;
@@ -71,7 +72,7 @@ __global__ void TensorElementWiseOp(LeftType lhs, RightType rhs) {
 /**
  * \brief The tensor gpu evaluate api.
  */
-template<class T, typename LeftType, typename RightType>
+template <class T, typename LeftType, typename RightType>
 inline void TensorGpuApply(LeftType& lhs, const RightType& rhs) {
   TensorApply<LeftType, T> lhs_(lhs);
   TensorApply<const RightType, T> rhs_(rhs);
@@ -86,8 +87,8 @@ inline void TensorGpuApply(LeftType& lhs, const RightType& rhs) {
     int size = dimM * dimN;
     int blockSize = size <= 1024 ? size : 1024;
     int gridSize = (size + 1024 - 1) / 1024;
-    TensorElementWiseOp
-      <<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(lhs_, rhs_, size);
+    TensorElementWiseOp<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+        lhs_, rhs_, size);
   } else {
     int blockSizeY = std::min(32, dimM);
     int blockSizeX = (32 / blockSizeY) * 32;
@@ -95,16 +96,14 @@ inline void TensorGpuApply(LeftType& lhs, const RightType& rhs) {
     int gridSizeY = std::min(32, (dimM + blockSizeY - 1) / blockSizeY);
     dim3 threads(blockSizeX, blockSizeY);
     dim3 grid(gridSizeX, gridSizeY);
-    TensorElementWiseOp
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(lhs_, rhs_);
+    TensorElementWiseOp<<<grid, threads, 0, STREAM_DEFAULT>>>(lhs_, rhs_);
   }
 
   CHECK_SYNC("TensorGpuApply failed");
 }
 #else
-template<class T, typename LeftType, typename RightType>
-inline void TensorGpuApply(LeftType& lhs, RightType& rhs) {
-}
+template <class T, typename LeftType, typename RightType>
+inline void TensorGpuApply(LeftType& lhs, RightType& rhs) {}
 #endif
 
 }  // namespace paddle

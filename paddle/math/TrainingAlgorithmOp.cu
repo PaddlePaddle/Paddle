@@ -355,4 +355,3 @@ void adamaxApply(BaseMatrix& value,
 }  // namespace paddle
 
 #endif
-

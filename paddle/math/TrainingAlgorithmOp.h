@@ -119,5 +119,4 @@ extern void adamaxApply(BaseMatrix& value,
                         real beta2,
                         int64_t step,
                         real alpha);
-
 }  // namespace paddle
