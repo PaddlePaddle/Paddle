@@ -48,8 +48,10 @@ void CaffeLayer::forward(PassType passType) {
   Layer::forward(passType);
   setMode(useGpu_);
 
-  // set data of bot_, top_
-  // Argument2CaffeBlob
+  // set data of bot_
+  for (size_t i = 0; i != inputLayers_.size(); ++i) {
+    SetDataToBlob(getInput(i), bot_[i], useGpu_);
+  }
 
   caffeLayerSetup();
 

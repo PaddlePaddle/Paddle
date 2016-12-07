@@ -25,7 +25,7 @@ limitations under the License. */
 
 namespace paddle {
 
-bool ReadProtoFromTextContent(const std::string& text,
+bool readProtoFromTextContent(const std::string& text,
                               ::google::protobuf::Message* proto) {
   bool success = google::protobuf::TextFormat::ParseFromString(text, proto);
   return success;
@@ -33,7 +33,7 @@ bool ReadProtoFromTextContent(const std::string& text,
 
 inline caffe::LayerParameter* getLayerParameter(const std::string& value) {
   caffe::NetParameter net_param;
-  if (!ReadProtoFromTextContent(value, &net_param))
+  if (!readProtoFromTextContent(value, &net_param))
     CHECK(false) << "Caffe Net Prototxt: " << value << "Initialized Failed";
 
   CHECK_EQ(net_param.layer_size(), 1) << "Protoxt " << value

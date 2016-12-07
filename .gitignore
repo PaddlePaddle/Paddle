@@ -9,3 +9,5 @@ build/
 .pydevproject
 Makefile
 .test_env/
+
+warp-ctc/
