@@ -15,9 +15,10 @@ limitations under the License. */
 #ifndef PADDLE_NO_PYTHON
 #include <gtest/gtest.h>
 #include <fstream>
-#include "paddle/utils/Util.h"
-#include "paddle/utils/PythonUtil.h"
 #include "paddle/gserver/dataproviders/DataProvider.h"
+#include "paddle/utils/ProtoAttrs.h"
+#include "paddle/utils/PythonUtil.h"
+#include "paddle/utils/Util.h"
 
 P_DEFINE_string(train_list, "unittest.list", "file list for unittest");
 
@@ -33,14 +34,20 @@ extern void clearOnPoolFilledHook();
 
 const paddle::real epsilon = 1e-5;
 
+static inline void setFunction(paddle::DataConfig* config,
+                               const std::string& method) {
+  paddle::AttributeWriter<> attrs(config->mutable_attributes());
+  config->set_type("py2");
+  config->set_files(FLAGS_train_list.c_str());
+  attrs.addStr("pydp2.load_module", "test_PyDataProvider2");
+  attrs.addStr("pydp2.load_obj", method);
+}
+
 static inline int64_t readDataBatch(paddle::DataBatch* batch,
                                     const std::string& funcName,
                                     int64_t batchSize = 65535) {
   paddle::DataConfig config;
-  config.set_type("py2");
-  config.set_files(FLAGS_train_list.c_str());
-  config.set_load_data_module("test_PyDataProvider2");
-  config.set_load_data_object(funcName);
+  setFunction(&config, funcName);
   std::unique_ptr<paddle::DataProvider> provider(
       paddle::DataProvider::create(config, false));
   provider->setSkipShuffle();
@@ -50,11 +57,7 @@ static inline int64_t readDataBatch(paddle::DataBatch* batch,
 
 TEST(PyDataProvider2, dense_no_seq) {
   paddle::DataConfig config;
-  config.set_type("py2");
-  config.set_files(FLAGS_train_list.c_str());
-  config.set_load_data_module("test_PyDataProvider2");
-  config.set_load_data_object("test_dense_no_seq");
-
+  setFunction(&config, "test_dense_no_seq");
   std::unique_ptr<paddle::DataProvider> provider(
       paddle::DataProvider::create(config, false));
 
@@ -96,10 +99,7 @@ TEST(PyDataProvider2, dense_no_seq) {
 
 TEST(PyDataProvider2, index_no_seq) {
   paddle::DataConfig config;
-  config.set_type("py2");
-  config.set_files(FLAGS_train_list.c_str());
-  config.set_load_data_module("test_PyDataProvider2");
-  config.set_load_data_object("test_index_no_seq");
+  setFunction(&config, "test_index_no_seq");
   std::unique_ptr<paddle::DataProvider> provider(
       paddle::DataProvider::create(config, false));
 
@@ -130,11 +130,9 @@ TEST(PyDataProvider2, init_hook) {
   CHECK_PY(dps) << "Error!";
 
   paddle::DataConfig config;
-  config.set_type("py2");
-  config.set_files(FLAGS_train_list.c_str());
-  config.set_load_data_module("test_PyDataProvider2");
-  config.set_load_data_object("test_init_hook");
-  config.set_load_data_args(PyString_AsString(dps.get()));
+  setFunction(&config, "test_init_hook");
+  paddle::AttributeWriter<> w(config.mutable_attributes());
+  w.addStr("pydp2.load_args", PyString_AsString(dps.get()));
 
   std::unique_ptr<paddle::DataProvider> provider(
       paddle::DataProvider::create(config, false));
@@ -154,10 +152,7 @@ TEST(PyDataProvider2, init_hook) {
 
 TEST(PyDataProvider2, sparse_no_value_no_seq) {
   paddle::DataConfig config;
-  config.set_type("py2");
-  config.set_files(FLAGS_train_list.c_str());
-  config.set_load_data_module("test_PyDataProvider2");
-  config.set_load_data_object("test_sparse_non_value_no_seq");
+  setFunction(&config, "test_sparse_non_value_no_seq");
   std::unique_ptr<paddle::DataProvider> provider(
       paddle::DataProvider::create(config, false));
   provider->setSkipShuffle();
@@ -249,11 +244,7 @@ TEST(PyDataProvider2, index_sub_seq) {
 
 TEST(PyDataProvider2, min_pool_size) {
   paddle::DataConfig config;
-  config.set_type("py2");
-  config.set_files(FLAGS_train_list.c_str());
-  config.set_load_data_module("test_PyDataProvider2");
-  config.set_load_data_object("test_min_pool_size");
-  config.set_load_data_args("");
+  setFunction(&config, "test_min_pool_size");
   size_t totalData = 1 << 14;
   constexpr size_t batchSize = 100;
   constexpr size_t minPoolSize = 1000;
@@ -280,11 +271,7 @@ TEST(PyDataProvider2, min_pool_size) {
 
 TEST(PyDataProvider2, can_over_batch_size) {
   paddle::DataConfig config;
-  config.set_type("py2");
-  config.set_files(FLAGS_train_list.c_str());
-  config.set_load_data_module("test_PyDataProvider2");
-  config.set_load_data_object("test_can_over_batch_size");
-  config.set_load_data_args("");
+  setFunction(&config, "test_can_over_batch_size");
   paddle::DataBatch batch;
   std::unique_ptr<paddle::DataProvider> provider(
       paddle::DataProvider::create(config, false));
@@ -302,11 +289,7 @@ TEST(PyDataProvider2, can_over_batch_size) {
 
 TEST(PyDataProvider2, input_order) {
   paddle::DataConfig config;
-  config.set_type("py2");
-  config.set_files(FLAGS_train_list.c_str());
-  config.set_load_data_module("test_PyDataProvider2");
-  config.set_load_data_object("test_input_order");
-  config.set_load_data_args("");
+  setFunction(&config, "test_input_order");
 
   paddle::ModelConfig modelConfig;
   *modelConfig.add_input_layer_names() = "input1";
@@ -331,11 +314,7 @@ TEST(PyDataProvider2, input_order) {
 
 TEST(PyDataProvider2, test_check) {
   paddle::DataConfig config;
-  config.set_type("py2");
-  config.set_files(FLAGS_train_list.c_str());
-  config.set_load_data_module("test_PyDataProvider2");
-  config.set_load_data_object("test_check");
-  config.set_load_data_args("");
+  setFunction(&config, "test_check");
   paddle::DataBatch batch;
   std::unique_ptr<paddle::DataProvider> provider(
       paddle::DataProvider::create(config, false));
@@ -355,10 +334,7 @@ TEST(PyDataProvider2, test_check) {
 
 TEST(PyDataProvider2, multiThread) {
   paddle::DataConfig config;
-  config.set_type("py2");
-  config.set_files(FLAGS_train_list.c_str());
-  config.set_load_data_module("test_PyDataProvider2");
-  config.set_load_data_object("test_dense_no_seq");
+  setFunction(&config, "test_dense_no_seq");
   config.set_async_load_data(true);
 
   std::unique_ptr<paddle::DataProvider> provider(

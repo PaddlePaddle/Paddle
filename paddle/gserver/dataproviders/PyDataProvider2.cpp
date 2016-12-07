@@ -15,18 +15,19 @@ limitations under the License. */
 #ifndef PADDLE_NO_PYTHON
 
 #include <Python.h>
+#include <numpy/numpyconfig.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unordered_set>
 #include <list>
-#include <numpy/numpyconfig.h>
+#include <unordered_set>
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/ndarrayobject.h>
 
 #include "DataProvider.h"
 
-#include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Locks.h"
+#include "paddle/utils/ProtoAttrs.h"
+#include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -202,9 +203,11 @@ public:
                   bool useGpu)
       : DataProvider(config, useGpu), callingContextCreated_(2) {
     if (PyArray_API == NULL) import_array();
-    auto& args = config.load_data_args();
+    AttributeReader<> reader(config.attributes());
+    bool hasLoadArgs;
+    const std::string& args = reader.getStr("pydp2.load_args", &hasLoadArgs);
     PyObjectPtr kwargs = PyObjectPtr(PyDict_New());
-    if (!args.empty()) {
+    if (hasLoadArgs) {
       kwargs = callPythonFuncRetPyObj(
           "paddle.trainer.PyDataProvider2", "deserialize_args", {args});
     }
@@ -219,8 +222,8 @@ public:
     kwargsDict.setStringList("input_order", inputs);
 
     // kwargs is keyword arguemts to create object.
-    this->createPyDataObj(config.load_data_module(),
-                          config.load_data_object(),
+    this->createPyDataObj(reader.getStr("pydp2.load_module"),
+                          reader.getStr("pydp2.load_obj"),
                           config.files(),
                           std::move(kwargs));
     DBG << "Instance " << instance_.get() << " loaded.";
@@ -400,10 +403,9 @@ private:
 
       if (this->loadThread_) {  // wait poolActualSize < poolSize;
         std::unique_lock<std::mutex> l(mtx_);
-        pushCV_.wait(l,
-                     [this, additionalBatchSize] {
-                       return this->poolActualSize_ < poolSize_;
-                     });
+        pushCV_.wait(l, [this, additionalBatchSize] {
+          return this->poolActualSize_ < poolSize_;
+        });
       }
 
       {
@@ -529,12 +531,10 @@ public:
                         // but, loading from cache, cache object should ensure
                         // data pool ready.
       std::unique_lock<std::mutex> l(mtx_);
-      pullCV_.wait(l,
-                   [this, &size] {
-                     return this->poolActualSize_ >=
-                                std::max(size, this->minPoolSize_) ||
-                            callingContexts_.empty();
-                   });
+      pullCV_.wait(l, [this, &size] {
+        return this->poolActualSize_ >= std::max(size, this->minPoolSize_) ||
+               callingContexts_.empty();
+      });
 
       if (unittest::OnPoolFilled) {
         (*unittest::OnPoolFilled)(this->poolActualSize_);

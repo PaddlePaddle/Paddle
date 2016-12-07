@@ -15,7 +15,7 @@
 Data Sources are helpers to define paddle training data or testing data.
 """
 from paddle.trainer.config_parser import *
-from .utils import deprecated
+from paddle.proto.Attribute_pb2 import Attribute
 
 try:
     import cPickle as pickle
@@ -85,9 +85,22 @@ def define_py_data_source(file_list,
             data = DataBase()
             data.type = 'py2'
             data.files = files
-            data.load_data_module = load_data_module
-            data.load_data_object = load_data_object
-            data.load_data_args = load_data_args
+            module = data.attributes.add()
+            module.name = "pydp2.load_module"
+            module.type = Attribute.STRING
+            module.s_val = load_data_module
+
+            object = data.attributes.add()
+            object.name = "pydp2.load_obj"
+            object.type = Attribute.STRING
+            object.s_val = load_data_object
+
+            if load_data_args is not None:
+                args = data.attributes.add()
+                args.name = "pydp2.load_args"
+                args.type = Attribute.STRING
+                args.s_val = load_data_args
+
             data.async_load_data = True
             return data
 

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 ifdef(`proto3', `syntax = "proto2";')
 
+import "Attribute.proto";
 import "ParameterConfig.proto";
 
 package paddle;

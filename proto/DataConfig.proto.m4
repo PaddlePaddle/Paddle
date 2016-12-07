@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 ifdef(`proto3', `syntax = "proto2";')
+import "Attribute.proto";
 
 package paddle;
 
@@ -81,5 +82,8 @@ sinclude(`DataConfigInter.proto.m4')
 
   // the usage ratio of instances. Setting to 1.0 means the use of all instances.
   optional real usage_ratio = 27 [default = 1.0];
+
+  // Data Provider attributes.
+  repeated Attribute attributes = 100;
 };
 

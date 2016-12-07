@@ -4,7 +4,8 @@ set(proto_filenames
     ModelConfig.proto
     ParameterConfig.proto
     ParameterService.proto
-    TrainerConfig.proto)
+    TrainerConfig.proto
+    Attribute.proto)
 
 set(real_proto_files)
 
