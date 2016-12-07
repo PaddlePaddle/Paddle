@@ -11,6 +11,7 @@ You can download PaddlePaddle from the [github source](https://github.com/Paddle
 ```bash
 git clone https://github.com/PaddlePaddle/Paddle paddle
 cd paddle
+git submodule update --init --recursive
 ```
 
 ## <span id="requirements">Requirements</span>
