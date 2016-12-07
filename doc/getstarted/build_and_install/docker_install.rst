@@ -79,6 +79,7 @@ source code:
    cd ~
    git clone github.com/PaddlePaddle/Paddle
    cd Paddle
+   git submodule update --init --recursive
    docker build --build-arg WITH_AVX=OFF -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
    docker build --build-arg WITH_AVX=OFF -t paddle:gpu-noavx -f paddle/scripts/docker/Dockerfile.gpu .
 

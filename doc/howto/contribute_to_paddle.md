@@ -36,8 +36,9 @@ If your repository doesn't contain **develop** branch, just create it by your ow
 git clone https://github.com/USERNAME/Paddle.git Paddle
 cd Paddle
 git checkout -b develop  # create develop branch.
-git remote add upstream https://github.com/baidu/Paddle.git  # add upstream to baidu/Paddle
+git remote add upstream https://github.com/PaddlePaddle/Paddle.git  # add upstream to baidu/Paddle
 git pull upstream develop  # update to upstream
+git submodule update --init --recursive
 ```
 
 Then you can start to develop by making a local developement branch
@@ -69,7 +70,7 @@ To do this, you'll need to add a remote at first:
 # see the current configured remote repository
 git remote -v
 # add upstream repository
-git remote add upstream https://github.com/baidu/Paddle.git
+git remote add upstream https://github.com/PaddlePaddle/Paddle.git
 # verify the new upstream
 git remote -v
 ```
