@@ -136,7 +136,7 @@ public:
     return sum;
   }
 
-  virtual void square() {
+  virtual void square2() {
     CHECK(isContiguous());
     if (valueType_ == NO_VALUE) {
       return;

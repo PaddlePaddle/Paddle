@@ -37,7 +37,7 @@ PaddlePaddle是一个深度学习框架，支持单机模式和多机模式。
 DataProvider
 ============
 
-DataProvider是PaddlePaddle系统的数据提供器，trainer进程会调用DataProvider函数，将用户的原始数据转换成系统可以识别的数据类型。当所有数据读取完一轮后，DataProvider返回空数据，通知系统一轮数据读取结束，系统每一轮训练开始时会重置DataProvider。需要注意的是，DataProvider是被系统调用，而不是新数据驱动系统，一些随机化噪声添加都应该在DataProvider中完成。
+DataProvider是PaddlePaddle系统的数据提供器，将用户的原始数据转换成系统可以识别的数据类型。每当系统需要新的数据训练时, trainer进程会调用DataProvider函数返回数据。当所有数据读取完一轮后，DataProvider返回空数据，通知系统一轮数据读取结束，并且系统每一轮训练开始时会重置DataProvider。需要注意的是，DataProvider是被系统调用，而不是新数据驱动系统，一些随机化噪声添加都应该在DataProvider中完成。
 
 在不同的应用里，训练数据的格式往往各不相同。因此，为了用户能够灵活的处理数据，我们提供了Python处理数据的接口，称为 `PyDataProvider`_ 。在 ``PyDataProvider`` 中，系统C++模块接管了shuffle、处理batch、GPU和CPU通信、双缓冲、异步读取等问题，一些情况下(如：``min_pool_size=0``)需要Python接口里处理shuffle，可以参考 `PyDataProvider`_ 的相关文档继续深入了解。
 
@@ -53,6 +53,8 @@ DataProvider是PaddlePaddle系统的数据提供器，trainer进程会调用Data
     :linenos:
 
 文件开头 ``from paddle.trainer_config_helpers import *`` ，是因为PaddlePaddle配置文件与C++模块通信的最基础协议是protobuf，为了避免用户直接写复杂的protobuf string，我们为用户定以Python接口来配置网络，该Python代码可以生成protobuf包，这就是`trainer_config_helpers`_的作用。因此，在文件的开始，需要import这些函数。 这个包里面包含了模型配置需要的各个模块。
+
+需要注意的是，这个 ``paddle.trainer_config_helpers`` 包是标准的 Python 包，这意味着用户可以选择自己喜欢的 IDE 或者编辑器来编写配置文件，这个 Python 包注释文档比较完善，并且考虑了 IDE 的代码提示与类型注释。
 
 下面分别介绍DataConfig、OptimizationConfig、ModelConfig这三部分该概念。
 

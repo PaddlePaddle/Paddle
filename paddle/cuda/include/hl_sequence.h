@@ -173,6 +173,39 @@ extern void hl_sequence2batch_add(real* batch,
                                   bool seq2batch);
 
 /**
+ * @brief   Memory copy from sequence to batch,
+ *          while padding all sequences to the same length.
+ *
+ * if seq2batch == true
+ *
+ *    copy from sequence to batch:
+ *        batch[i] = sequence[sequenceStartPositions[i]]
+ *
+ * if seq2batch == false
+ *
+ *    copy from batch to sequence:
+ *        sequence[sequenceStartPositions[i]] = batch[i]
+ *
+ * @param[in,out]   batch                   batch matrix.
+ * @param[in,out]   sequence                sequence matrix.
+ * @param[in]       sequenceStartPositions  index vector.
+ * @param[in]       sequenceWidth           width of sequence.
+ * @param[in]       maxSequenceLength       maximum length of sequences.
+ * @param[in]       numSequences            number of sequences.
+ * @param[in]       normByTimes             whether dividing sequence's length.
+ * @param[in]       seq2batch               copy direction.
+ *
+ */
+extern void hl_sequence2batch_copy_padding(real* batch,
+                                           real* sequence,
+                                           const int* sequenceStartPositions,
+                                           const size_t sequenceWidth,
+                                           const size_t maxSequenceLength,
+                                           const size_t numSequences,
+                                           bool normByTimes,
+                                           bool seq2batch);
+
+/**
  * @brief  dst = Op(src), src is sequence.
  *
  * mode = 0, Op is average.
