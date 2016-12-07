@@ -348,10 +348,7 @@ TEST(PyDataProvider2, multiThread) {
 
 TEST(PyDataProvider2, minPoolSizeWithCache) {
   paddle::DataConfig config;
-  config.set_type("py2");
-  config.set_files(FLAGS_train_list.c_str());
-  config.set_load_data_module("test_PyDataProvider2");
-  config.set_load_data_object("test_min_pool_size_with_cache");
+  setFunction(&config, "test_min_pool_size_with_cache");
   config.set_async_load_data(true);
 
   std::unique_ptr<paddle::DataProvider> provider(

@@ -21,12 +21,19 @@ data_config {
   files: "train.list"
   async_load_data: true
   for_test: false
-  load_data_module: "a"
-  load_data_object: "c"
-  load_data_args: ""
   data_ratio: 1
   is_main_data: true
   usage_ratio: 1.0
+  attributes {
+    name: "pydp2.load_module"
+    type: STRING
+    s_val: "a"
+  }
+  attributes {
+    name: "pydp2.load_obj"
+    type: STRING
+    s_val: "c"
+  }
 }
 opt_config {
   batch_size: 1000
@@ -60,12 +67,19 @@ test_data_config {
   files: "test.list"
   async_load_data: true
   for_test: true
-  load_data_module: "b"
-  load_data_object: "d"
-  load_data_args: ""
   data_ratio: 1
   is_main_data: true
   usage_ratio: 1.0
+  attributes {
+    name: "pydp2.load_module"
+    type: STRING
+    s_val: "b"
+  }
+  attributes {
+    name: "pydp2.load_obj"
+    type: STRING
+    s_val: "d"
+  }
 }
 save_dir: "./output/model"
 start_pass: 0
