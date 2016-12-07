@@ -148,6 +148,11 @@ function(link_paddle_exe TARGET_NAME)
             target_link_libraries(${TARGET_NAME} rt)
         endif()
     endif()
+
+    if(NOT WITH_DSO)
+        target_link_libraries(${TARGET_NAME}
+            ${WARPCTC_LIBRARY})
+    endif()
 endfunction()
 
 # link_paddle_test

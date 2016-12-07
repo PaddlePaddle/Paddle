@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
 project(paddle CXX C)
-set(PADDLE_MAJOR_VERSION 0)
-set(PADDLE_MINOR_VERSION 9)
-set(PADDLE_PATCH_VERSION 0a0)
-set(PADDLE_VERSION ${PADDLE_MAJOR_VERSION}.${PADDLE_MINOR_VERSION}.${PADDLE_PATCH_VERSION})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 set(PROJ_ROOT ${CMAKE_SOURCE_DIR})
@@ -12,6 +8,17 @@ include(package)
 find_package(SWIG 2.0)
 find_package(CUDA QUIET)
 find_package(Protobuf REQUIRED)
+
+# Check protobuf library version.
+execute_process(COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --version
+	OUTPUT_VARIABLE PROTOBUF_VERSION)
+string(REPLACE "libprotoc " "" PROTOBUF_VERSION ${PROTOBUF_VERSION})
+
+set(PROTOBUF_3 OFF)
+if (${PROTOBUF_VERSION} VERSION_GREATER "3.0.0" OR ${PROTOBUF_VERSION} VERSION_EQUAL "3.0.0")
+    set(PROTOBUF_3 ON)
+endif()
+
 find_package(PythonLibs 2.7 REQUIRED)
 find_package(PythonInterp 2.7 REQUIRED)
 find_package(ZLIB REQUIRED)
@@ -45,7 +52,7 @@ option(ON_COVERALLS "Generating code coverage data on coveralls or not." OFF)
 option(COVERALLS_UPLOAD "Uploading the generated coveralls json." ON)
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING 
+    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
         "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
         FORCE)
 endif()
@@ -64,36 +71,16 @@ include(check_packages)
 include(swig)
 include(coveralls)
 
-# add PaddlePaddle version
-if(DEFINED ENV{PADDLE_VERSION})
-    add_definitions(-DPADDLE_VERSION=\"$ENV{PADDLE_VERSION}\")
-else()
-    if(EXISTS ${PROJ_ROOT}/.svn/)
-        find_package(Subversion REQUIRED)
-        if(SUBVERSION_FOUND)
-            Subversion_WC_INFO(${PROJ_ROOT} Project)
-            add_definitions(-DPADDLE_VERSION=${Project_WC_REVISION})
-        endif()
-    elseif(EXISTS ${PROJ_ROOT}/.git/)
-        find_package(Git REQUIRED)
-        execute_process(
-            COMMAND ${GIT_EXECUTABLE} log -1 --format=%H
-            WORKING_DIRECTORY ${PROJ_ROOT}
-            OUTPUT_VARIABLE GIT_SHA1
-            RESULT_VARIABLE GIT_RESULT
-            ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-        if(NOT ${GIT_RESULT})
-            add_definitions(-DPADDLE_VERSION=\"${GIT_SHA1}\")
-        else()
-            message(WARNING "Cannot add paddle version from git tag")
-        endif()
-    endif()
-endif()
-
+# Set PaddlePaddle version to Git tag name or Git commit ID.
+find_package(Git REQUIRED)
+# version.cmake will get the current PADDLE_VERSION
+include(version)
+add_definitions(-DPADDLE_VERSION=\"${PADDLE_VERSION}\")
 
 if(NOT WITH_GPU)
     add_definitions(-DPADDLE_ONLY_CPU)
     add_definitions(-DHPPL_STUB_FUNC)
+
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
     if(${CUDA_VERSION_MAJOR} GREATER 6)
@@ -115,14 +102,14 @@ else()
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SSE3_FLAG}")
     endif(WITH_AVX)
 
-    if(WITH_DSO)
-        add_definitions(-DPADDLE_USE_DSO)
-    endif(WITH_DSO)
-
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
     include_directories(${CUDA_TOOLKIT_INCLUDE})
 endif(NOT WITH_GPU)
+
+if(WITH_DSO)
+    add_definitions(-DPADDLE_USE_DSO)
+endif(WITH_DSO)
 
 if(WITH_DOUBLE)
     add_definitions(-DPADDLE_TYPE_DOUBLE)

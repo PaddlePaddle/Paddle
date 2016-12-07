@@ -12,6 +12,8 @@ hidden = fc_layer(input=seq_in, size=4)
 outputs(
     ctc_layer(
         input=seq_in, label=labels),
+    warp_ctc_layer(
+        input=seq_in, label=labels, blank=0),
     crf_layer(
         input=hidden, label=data_layer(
             name='crf_label', size=4)),

@@ -166,9 +166,8 @@ TEST(Projection, scaling) {
   }
 }
 
-#ifndef PADDLE_ONLY_CPU
-TEST(Projection, conv) {
-  const int NUM_FILTERS = 16;
+void testProjectionConv(size_t groups) {
+  const int NUM_FILTERS = 18;
   const int FILTER_SIZE = 2;
   const int FILTER_SIZE_Y = 3;
   const int CHANNELS = 3;
@@ -186,7 +185,7 @@ TEST(Projection, conv) {
   conv->set_padding_y(1);
   conv->set_stride(2);
   conv->set_stride_y(2);
-  conv->set_groups(1);
+  conv->set_groups(groups);
   conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(IMAGE_SIZE);
   int output_x = outputSize(conv->img_size(),
@@ -203,15 +202,21 @@ TEST(Projection, conv) {
   conf.set_input_size(IMAGE_SIZE * IMAGE_SIZE * CHANNELS);
   conf.set_output_size(output_x * output_y * NUM_FILTERS);
 
-  testProjectionGrad(
-      conf,
-      INPUT_DATA,
-      /* parameterSize */ NUM_FILTERS * CHANNELS * FILTER_SIZE * FILTER_SIZE_Y,
-      /* batchSize */ 100,
-      true,
-      false,
-      NUM_FILTERS,
-      true);
+  testProjectionGrad(conf,
+                     INPUT_DATA,
+                     /* parameterSize */ NUM_FILTERS * CHANNELS * FILTER_SIZE *
+                         FILTER_SIZE_Y / groups,
+                     /* batchSize */ 100,
+                     true,
+                     false,
+                     NUM_FILTERS,
+                     true);
+}
+
+#ifndef PADDLE_ONLY_CPU
+TEST(Projection, conv) {
+  testProjectionConv(1);
+  testProjectionConv(3);
 }
 #endif
 
@@ -223,9 +228,10 @@ TEST(Layer, BilinearInterpLayer) {
 
   LayerInputConfig* input = config.layerConfig.add_inputs();
   BilinearInterpConfig* bilinear = input->mutable_bilinear_interp_conf();
-  bilinear->set_img_size_x(32);
-  bilinear->set_img_size_y(32);
-  bilinear->set_num_channels(4);
+  ImageConfig* image = bilinear->mutable_image_conf();
+  image->set_img_size(32);
+  image->set_img_size_y(32);
+  image->set_channels(4);
 
   for (auto useGpu : {false, true}) {
     for (auto outSize : {32, 64}) {
@@ -348,7 +354,7 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
   config.layerConfig.set_partial_sum(1);
   config.layerConfig.set_shared_biases(true);
 
-  config.inputDefs.push_back({INPUT_DATA, "layer_0", 768, 288});
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 384, 288});
   LayerInputConfig* input = config.layerConfig.add_inputs();
   ConvConfig* conv = input->mutable_conv_conf();
   conv->set_filter_size(2);
@@ -361,12 +367,18 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
   conv->set_groups(1);
   conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(16);
+  conv->set_img_size_y(8);
   conv->set_output_x(outputSize(conv->img_size(),
                                 conv->filter_size(),
                                 conv->padding(),
                                 conv->stride(),
                                 /* caffeMode */ true));
-  config.layerConfig.set_size(conv->output_x() * conv->output_x() *
+  conv->set_output_y(outputSize(conv->img_size_y(),
+                                conv->filter_size_y(),
+                                conv->padding_y(),
+                                conv->stride_y(),
+                                /* caffeMode */ true));
+  config.layerConfig.set_size(conv->output_x() * conv->output_y() *
                               config.layerConfig.num_filters());
 
   testLayerGrad(config, "conv", 100, trans, useGpu);
@@ -466,10 +478,11 @@ TEST(Layer, maxoutLayer) {
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 4096, 0});
   LayerInputConfig* input = config.layerConfig.add_inputs();
   MaxOutConfig* maxout = input->mutable_maxout_conf();
+  ImageConfig* image = maxout->mutable_image_conf();
 
-  maxout->set_img_size_x(32);
-  maxout->set_img_size_y(32);
-  maxout->set_channels(4);
+  image->set_img_size(32);
+  image->set_img_size_y(32);
+  image->set_channels(4);
   maxout->set_groups(2);
 
   for (auto useGpu : {false, true}) {
@@ -981,7 +994,7 @@ void testNormLayer(const string& normType, bool trans, bool useGpu) {
   config.layerConfig.set_type("norm");
   config.layerConfig.set_active_type("relu");
 
-  config.inputDefs.push_back({INPUT_DATA, "layer_0", 3136, 0});
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1568, 0});
   LayerInputConfig* input = config.layerConfig.add_inputs();
   NormConfig* norm = input->mutable_norm_conf();
   norm->set_norm_type(normType);
@@ -991,7 +1004,9 @@ void testNormLayer(const string& normType, bool trans, bool useGpu) {
   norm->set_pow(0.75);
   norm->set_blocked(0);
   norm->set_img_size(14);
+  norm->set_img_size_y(7);
   norm->set_output_x(norm->img_size());
+  norm->set_output_y(norm->img_size_y());
   if (norm->norm_type() == "cmrnorm" ||
       norm->norm_type() == "cmrnorm-projection") {
     norm->set_scale(norm->scale() / norm->size());
@@ -999,7 +1014,7 @@ void testNormLayer(const string& normType, bool trans, bool useGpu) {
     norm->set_scale(norm->scale() / (norm->size() * norm->size()));
   }
 
-  config.layerConfig.set_size(norm->output_x() * norm->output_x() *
+  config.layerConfig.set_size(norm->output_x() * norm->output_y() *
                               norm->channels());
   config.biasSize = 0;
 
@@ -1100,11 +1115,12 @@ void testSppLayer(const string& poolType,
   SppConfig* sppConfig = input->mutable_spp_conf();
   sppConfig->set_pool_type(poolType);
   sppConfig->set_pyramid_height(pyramidHeight);
-  sppConfig->set_channels(16);
-  sppConfig->set_img_size(10);
-  sppConfig->set_img_size_y(20);
+  ImageConfig* imageConfig = sppConfig->mutable_image_conf();
+  imageConfig->set_channels(16);
+  imageConfig->set_img_size(10);
+  imageConfig->set_img_size_y(20);
   int outputSize = (std::pow(4, sppConfig->pyramid_height()) - 1) / (4 - 1);
-  config.layerConfig.set_size(outputSize * sppConfig->channels());
+  config.layerConfig.set_size(outputSize * imageConfig->channels());
   testLayerGrad(config, "spp", 100, trans, useGpu);
 }
 
@@ -1414,13 +1430,15 @@ void testBatchNormLayer(const string& type, bool trans, bool useGpu) {
   TestConfig config;
   const int CHANNELS = 10;
   const int IMG_SIZE = 16;
+  const int IMG_SIZE_Y = 8;
+  size_t size = CHANNELS * IMG_SIZE * IMG_SIZE_Y;
   config.layerConfig.set_type(type);
-  config.layerConfig.set_size(CHANNELS * IMG_SIZE * IMG_SIZE);
+  config.layerConfig.set_size(size);
   config.layerConfig.set_active_type("sigmoid");
   config.biasSize = CHANNELS;
   config.inputDefs.push_back({INPUT_DATA,
                               "layer_0",
-                              /* dim= */ IMG_SIZE * IMG_SIZE * CHANNELS,
+                              /* dim= */ size,
                               /* paraSize= */ CHANNELS});
 
   config.inputDefs.push_back({INPUT_DATA, "layer_1_running_mean", 1, CHANNELS});
@@ -1435,6 +1453,7 @@ void testBatchNormLayer(const string& type, bool trans, bool useGpu) {
   ImageConfig* img_conf = input->mutable_image_conf();
   img_conf->set_channels(CHANNELS);
   img_conf->set_img_size(IMG_SIZE);
+  img_conf->set_img_size_y(IMG_SIZE_Y);
 
   testLayerGrad(config,
                 "batch_norm",
@@ -1461,6 +1480,7 @@ TEST(Operator, conv) {
   const int FILTER_SIZE_Y = 3;
   const int CHANNELS = 3;
   const int IMAGE_SIZE = 16;
+  const int IMAGE_SIZE_Y = 8;
   OperatorConfig& operatorConf = *config.layerConfig.add_operator_confs();
   operatorConf.set_type("conv");
   ConvConfig* conv = operatorConf.mutable_conv_conf();
@@ -1475,19 +1495,22 @@ TEST(Operator, conv) {
   conv->set_groups(1);
   conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(IMAGE_SIZE);
-  int output_x = outputSize(conv->img_size(),
-                            conv->filter_size(),
-                            conv->padding(),
-                            conv->stride(),
-                            /* caffeMode */ true);
-  conv->set_output_x(output_x);
-  config.layerConfig.set_size(output_x * output_x *
-                              config.layerConfig.num_filters());
-  config.layerConfig.set_size(conv->output_x() * conv->output_x() *
+  conv->set_img_size_y(IMAGE_SIZE_Y);
+  conv->set_output_x(outputSize(conv->img_size(),
+                                conv->filter_size(),
+                                conv->padding(),
+                                conv->stride(),
+                                /*  caffeMode */ true));
+  conv->set_output_y(outputSize(conv->img_size_y(),
+                                conv->filter_size_y(),
+                                conv->padding_y(),
+                                conv->stride_y(),
+                                /*  caffeMode */ true));
+  config.layerConfig.set_size(conv->output_x() * conv->output_y() *
                               NUM_FILTERS);
 
   config.inputDefs.push_back(
-      {INPUT_DATA, "layer_0", IMAGE_SIZE * IMAGE_SIZE * CHANNELS, 0});
+      {INPUT_DATA, "layer_0", IMAGE_SIZE * IMAGE_SIZE_Y * CHANNELS, 0});
   config.inputDefs.push_back(
       {INPUT_DATA,
        "layer_1",
