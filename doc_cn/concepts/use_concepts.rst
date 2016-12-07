@@ -15,7 +15,7 @@ PaddlePaddle是一个深度学习框架，支持单机模式和多机模式。
 系统框图
 ========
 
-下图描述了用户使用框图，PaddlePaddle的trainer进程里内嵌了Python解释器，trainer进程可以利用这个解释器执行Python脚本，Python脚本里定义了模型配置、训练算法、以及数据读取函数。其中，数据读取程序往往定义在一个单独Python脚本文件里，被称为DataProvider，通常是一个Python函数。模型配置、训练算法通常定义在另一单独Python文件中。下面将分别介绍这两部分。
+下图描述了用户使用框图，PaddlePaddle的trainer进程里内嵌了Python解释器，trainer进程可以利用这个解释器执行Python脚本，Python脚本里定义了模型配置、训练算法、以及数据读取函数。其中，数据读取程序往往定义在一个单独Python脚本文件里，被称为DataProvider，通常是一个Python函数。模型配置、训练算法通常定义在另一单独Python文件中, 称为训练配置文件。下面将分别介绍这两部分。
 
 ..	graphviz:: 
 
@@ -42,12 +42,12 @@ DataProvider是PaddlePaddle系统的数据提供器，将用户的原始数据�
 在不同的应用里，训练数据的格式往往各不相同。因此，为了用户能够灵活的处理数据，我们提供了Python处理数据的接口，称为 `PyDataProvider`_ 。在 ``PyDataProvider`` 中，系统C++模块接管了shuffle、处理batch、GPU和CPU通信、双缓冲、异步读取等问题，一些情况下(如：``min_pool_size=0``)需要Python接口里处理shuffle，可以参考 `PyDataProvider`_ 的相关文档继续深入了解。
 
 
-模型配置文件
+训练配置文件
 ============
 
-模型配置文件主要包括数据传入接口定义(DataConfig)、优化算法(OptimizationConfig)、网络结构(ModelConfig)。 其中数据传入接口定义与DataProvider的关系是：DataProvider里定义数据读取函数，配置文件的DataConfig里指定DataProvider文件名字、生成数据函数接口，请不要混淆。
+训练配置文件主要包括数据传入接口定义(DataConfig)、优化算法(OptimizationConfig)、网络结构(ModelConfig)。 其中数据传入接口定义与DataProvider的关系是：DataProvider里定义数据读取函数，配置文件的DataConfig里指定DataProvider文件名字、生成数据函数接口，请不要混淆。
 
-一个简单的模型配置文件为：
+一个简单的训练配置文件为：
 
 ..  literalinclude:: trainer_config.py
     :linenos:
