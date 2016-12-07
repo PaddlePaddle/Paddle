@@ -12,6 +12,14 @@ RUN apt-get update \
 RUN pip install -U BeautifulSoup docopt PyYAML pillow \
     sphinx sphinx_rtd_theme breathe recommonmark
 
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y curl software-properties-common \
+    && add-apt-repository ppa:webupd8team/java \
+    && echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections \
+    && echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list \
+    && curl https://bazel.build/bazel-release.pub.gpg | apt-key add - \
+    && apt-get update && apt-get install -y oracle-java8-installer bazel
+
 ARG WITH_AVX
 ARG WITH_DOC
 ARG WITH_SWIG_PY
