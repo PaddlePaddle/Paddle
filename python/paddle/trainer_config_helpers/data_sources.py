@@ -95,7 +95,7 @@ def define_py_data_source(file_list,
             object.type = Attribute.STRING
             object.s_val = load_data_object
 
-            if load_data_args is not None:
+            if load_data_args is not None and len(load_data_args) != 0:
                 args = data.attributes.add()
                 args.name = "pydp2.load_args"
                 args.type = Attribute.STRING

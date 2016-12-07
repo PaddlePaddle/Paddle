@@ -25,6 +25,7 @@ limitations under the License. */
 #include "hl_sparse.h"
 #include "hl_lstm.h"
 #include "hl_sequence.h"
+#include "hl_warpctc_wrap.h"
 
 #ifdef HPPL_STUB_FUNC
 #include "stub/hl_cuda_stub.h"
