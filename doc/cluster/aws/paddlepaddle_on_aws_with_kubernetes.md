@@ -8,6 +8,7 @@ You need an Amazon account and your user account needs the following privileges 
 * AmazonS3FullAccess
 * AmazonRoute53FullAccess
 * AmazonRoute53DomainsFullAccess
+* AmazonElasticFileSystemFullAccess
 * AmazonVPCFullAccess
 * IAMUserSSHKeys
 * IAMFullAccess
@@ -22,7 +23,7 @@ If you are new to Kubernetes or AWS and just want to run PaddlePaddle, you can f
 
 ###AWS Login
 
-First configure your aws account information:
+First configure your AWS account information:
 
 ```
 aws configure
@@ -38,7 +39,7 @@ Default output format: json
 
 ```
 
-###Cluster Start Up
+###Kubernetes Cluster Start Up
 And then type the following command:
 
 ```
@@ -202,7 +203,7 @@ By default, the script will provision a new VPC and a 4 node k8s cluster in us-w
 export KUBE_AWS_ZONE=us-west-2a 
 export NUM_NODES=2 
 export MASTER_SIZE=m3.medium 
-export NODE_SIZE=m3.medium 
+export NODE_SIZE=m3.large 
 export AWS_S3_REGION=us-west-2a 
 export AWS_S3_BUCKET=mycompany-kubernetes-artifacts 
 export KUBE_AWS_INSTANCE_PREFIX=k8s 
@@ -218,10 +219,91 @@ export PATH=<path/to/kubernetes-directory>/platforms/linux/amd64:$PATH
 Now you can use administration tool kubectl to operate the cluster.
 By default, kubectl will use the kubeconfig file generated during the cluster startup for authenticating against the API, the location is in `~/.kube/config`.
 
-For running PaddlePaddle training with Kubernetes on AWS, you can refer to [this article](https://github.com/drinktee/Paddle/blob/k8s/doc_cn/cluster/k8s/distributed_training_on_kubernetes.md).
+###Setup PaddlePaddle Environment on AWS
+
+For the design of running PaddlePaddle on Kubernetes, you really need to read [this article](https://github.com/drinktee/Paddle/blob/k8s/doc_cn/cluster/k8s/distributed_training_on_kubernetes.md) first.
 
 
-###Cluster Tear Down
+For sharing the training data across all the Kubernetes nodes, we use EFS (Elastic File System) in AWS. Ceph might be a better solution, but it requires high version of Linux kernel that might not be stable enough at this moment. We haven't automated the EFS setup at this moment, so please do the following steps:
+
+
+1. Make sure you add the AmazonElasticFileSystemFullAccess policy into your AWS account.
+
+2. Create the Elastic File System in AWS console, and attach the Kubernetes VPC with it.
+
+3. Modify the Kubernetes security group, add additional inbound policy "All TCP TCP 0 - 65535 0.0.0.0/0" for Kubernetes default VPC security group.
+
+4. Follow the EC2 mount instruction to mount the disk onto all the Kubernetes nodes, we recommend to mount EFS disk onto ~/efs.
+
+
+And now you can place your training data onto the EFS, you should follow [this article](https://github.com/drinktee/Paddle/blob/k8s/doc_cn/cluster/k8s/distributed_training_on_kubernetes.md) to locate your data.
+
+###Start PaddlePaddle Training Demo on AWS
+
+After setting up all the steps on AWS, We can start up our PaddlePaddle training recommendation demo by using:
+
+```
+kubectl create -f job.yaml
+```
+
+The yaml file content is as follows:
+
+```
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: paddle-cluster-job
+spec:
+  parallelism: 3
+  completions: 3
+  template:
+    metadata:
+      name: paddle-cluster-job
+    spec:
+      volumes:
+      - name: jobpath
+        hostPath:
+          path: /home/admin/efs
+      containers:
+      - name: trainer
+        image: drinkcode/paddle:k8s-job
+        command: ["bin/bash",  "-c", "/root/start.sh"]
+        env:
+        - name: JOB_NAME
+          value: paddle-cluster-job
+        - name: JOB_PATH
+          value: /home/jobpath
+        - name: JOB_NAMESPACE
+          value: default
+        - name: TRAIN_CONFIG_DIR
+          value: recommendation
+        - name: CONF_PADDLE_NIC
+          value: eth0
+        - name: CONF_PADDLE_PORT
+          value: "7164"
+        - name: CONF_PADDLE_PORTS_NUM
+          value: "2"
+        - name: CONF_PADDLE_PORTS_NUM_SPARSE
+          value: "2"
+        - name: CONF_PADDLE_GRADIENT_NUM
+          value: "3"
+        volumeMounts:
+        - name: jobpath
+          mountPath: /home/jobpath
+        ports:
+        - name: jobport
+          hostPort: 30001
+          containerPort: 30001
+      restartPolicy: Never
+
+```
+It will generate three PaddlePaddle job runing on distributed Kubernetes nodes, and all the training result will be written into EFS.
+
+We've made an experiment of running this PaddlePaddle recommendation training demo on three 2 core 8 GB machine (m3.large), and it took 8 hours to generate 10 models.
+
+
+
+###Kubernetes Cluster Tear Down
 If you want to tear down the running cluster:
 
 ```
