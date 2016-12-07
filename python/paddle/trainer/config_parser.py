@@ -2987,6 +2987,27 @@ class CTCLayer(LayerBase):
         config_assert(len(self.inputs) == 2, 'CTCLayer must have 2 inputs')
 
 
+@config_layer('warp_ctc')
+class WarpCTCLayer(LayerBase):
+    def __init__(self,
+                 name,
+                 size,
+                 inputs,
+                 blank=0,
+                 norm_by_times=False,
+                 device=None):
+        super(WarpCTCLayer, self).__init__(
+            name, 'warp_ctc', size=size, inputs=inputs, device=device)
+        self.config.blank = blank
+        self.config.norm_by_times = norm_by_times
+        config_assert(len(self.inputs) == 2, 'WarpCTCLayer must have 2 inputs')
+        input_layer = self.get_input_layer(0)
+        config_assert(
+            (input_layer.active_type == '' or
+             input_layer.active_type == 'linear'),
+            "Expecting the active_type of input layer to be linear or null")
+
+
 @config_layer('recurrent_layer_group')
 class RecurrentLayerGroup(LayerBase):
     def __init__(self, name, device=None):
