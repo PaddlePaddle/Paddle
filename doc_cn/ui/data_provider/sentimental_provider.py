@@ -8,19 +8,16 @@ def on_init(settings, dictionary, **kwargs):
 
     # set input types in runtime. It will do the same thing as
     # @provider(input_types) will do, but it is set dynamically during runtime.
-    settings.input_types = [
+    settings.input_types = {
         # The text is a sequence of integer values, and each value is a word id.
         # The whole sequence is the sentences that we want to predict its
         # sentimental.
-        integer_value(
-            len(dictionary), seq_type=SequenceType),  # text input
+        'data': integer_value_sequence(len(dictionary)),  # text input
+        'label': integer_value(2)  # label positive/negative
+    }
 
-        # label positive/negative
-        integer_value(2)
-    ]
-
-    # save dictionary as settings.dictionary. It will be used in process
-    # method.
+    # save dictionary as settings.dictionary. 
+    # It will be used in process method.
     settings.dictionary = dictionary
 
 
