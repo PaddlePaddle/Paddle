@@ -6,7 +6,7 @@ add_test(NAME layers_test
 
 add_test(NAME test_reset_hook
   COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
-        python ${PROJ_ROOT}/python/paddle/trainer_config_helpers/tests/test_rest_hook.py
+        python ${PROJ_ROOT}/python/paddle/trainer_config_helpers/tests/test_reset_hook.py
     WORKING_DIRECTORY ${PROJ_ROOT}/python/paddle)
 
 if (PROTOBUF_3)
