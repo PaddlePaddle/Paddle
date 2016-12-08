@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include <paddle/utils/PythonUtil.h>
@@ -25,7 +24,8 @@ namespace paddle {
 
 class PyDataProvider : public DataProvider {
 public:
-  PyDataProvider(const DataConfig& config, bool useGpu,
+  PyDataProvider(const DataConfig& config,
+                 bool useGpu,
                  bool loadDataAll = true);
 
   virtual void reset();
@@ -48,21 +48,27 @@ protected:
 
   void parseHeaderData(const std::string& headerData);
   void fillDenseSlot(ProtoSlot& slot, char*& data, const char* dataEnd);
-  void fillSparseNonValueSlot(ProtoSlot& slot, char*& data,
+  void fillSparseNonValueSlot(ProtoSlot& slot,
+                              char*& data,
                               const char* dataEnd);
   void fillSparseValueSlot(ProtoSlot& slot, char*& data, const char* dataEnd);
   void fillIndexSlot(ProtoSlot& slot, char*& data, const char* dataEnd);
   void fillStringSlot(ProtoSlot& slot, char*& data, const char* dataEnd);
   void fillSlotsByStr(const std::string& samples);
-  void handleDenseSlot(ProtoSlot& slot, size_t slotIndex,
+  void handleDenseSlot(ProtoSlot& slot,
+                       size_t slotIndex,
                        std::vector<Argument>& cpuArguments);
-  void handleSparseNonValueSlot(ProtoSlot& slot, size_t slotIndex,
+  void handleSparseNonValueSlot(ProtoSlot& slot,
+                                size_t slotIndex,
                                 std::vector<Argument>& cpuArguments);
-  void handleSparseValueSlot(ProtoSlot& slot, size_t slotIndex,
+  void handleSparseValueSlot(ProtoSlot& slot,
+                             size_t slotIndex,
                              std::vector<Argument>& cpuArguments);
-  void handleIndexSlot(ProtoSlot& slot, size_t slotIndex,
+  void handleIndexSlot(ProtoSlot& slot,
+                       size_t slotIndex,
                        std::vector<Argument>& cpuArguments);
-  void handleStringSlot(ProtoSlot& slot, size_t slotIndex,
+  void handleStringSlot(ProtoSlot& slot,
+                        size_t slotIndex,
                         std::vector<Argument>& cpuArguments);
   void resetSlots();
   void loadData(const std::vector<std::string>& fileList);

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_SEQUENCE_STUB_H_
 #define HL_SEQUENCE_STUB_H_
 
@@ -21,15 +20,12 @@ limitations under the License. */
 inline void hl_max_sequence_forward(real* input,
                                     const int* sequence,
                                     real* output,
-                                    int *index,
+                                    int* index,
                                     int numSequences,
                                     int dim) {}
 
-inline void hl_max_sequence_backward(real* outputGrad,
-                                     int *index,
-                                     real* inputGrad,
-                                     int numSequences,
-                                     int dim) {}
+inline void hl_max_sequence_backward(
+    real* outputGrad, int* index, real* inputGrad, int numSequences, int dim) {}
 
 inline void hl_context_projection_forward(real* input,
                                           const int* sequence,
@@ -60,19 +56,28 @@ inline void hl_context_projection_backward_weight(real* outputGrad,
                                                   int contextStart,
                                                   int beginPad) {}
 
-inline void hl_sequence2batch_copy(real *batch,
-                                   real *sequence,
-                                   const int *batchIndex,
+inline void hl_sequence2batch_copy(real* batch,
+                                   real* sequence,
+                                   const int* batchIndex,
                                    int seqWidth,
                                    int batchCount,
                                    bool seq2batch) {}
 
-inline void hl_sequence2batch_add(real *batch,
-                                  real *sequence,
-                                  int *batchIndex,
+inline void hl_sequence2batch_add(real* batch,
+                                  real* sequence,
+                                  int* batchIndex,
                                   int seqWidth,
                                   int batchCount,
                                   bool seq2batch) {}
+
+inline void hl_sequence2batch_copy_padding(real* batch,
+                                           real* sequence,
+                                           const int* sequenceStartPositions,
+                                           const size_t sequenceWidth,
+                                           const size_t maxSequenceLength,
+                                           const size_t numSequences,
+                                           bool normByTimes,
+                                           bool seq2batch) {}
 
 inline void hl_sequence_avg_forward(real* dst,
                                     real* src,

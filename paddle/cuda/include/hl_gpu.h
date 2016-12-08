@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_GPU_H_
 #define HL_GPU_H_
 
@@ -26,6 +25,7 @@ limitations under the License. */
 #include "hl_sparse.h"
 #include "hl_lstm.h"
 #include "hl_sequence.h"
+#include "hl_warpctc_wrap.h"
 
 #ifdef HPPL_STUB_FUNC
 #include "stub/hl_cuda_stub.h"

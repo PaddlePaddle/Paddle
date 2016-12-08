@@ -32,24 +32,30 @@ void DataLayer::copyDataToOutput(Argument& output) {
                                           data_.value->getWidth(),
                                           useGpu(output.deviceId));
       } else {
-        output.value->resize(data_.value->getHeight(),
-                             data_.value->getWidth());
+        output.value->resize(data_.value->getHeight(), data_.value->getWidth());
       }
       output.value->copyFrom(*data_.value);
     }
     if (data_.grad) {
-      Matrix::resizeOrCreate(output.grad, data_.grad->getHeight(),
+      Matrix::resizeOrCreate(output.grad,
+                             data_.grad->getHeight(),
                              data_.grad->getWidth(),
-                             /* trans= */ false, useGpu(output.deviceId));
+                             /* trans= */ false,
+                             useGpu(output.deviceId));
     }
     if (data_.ids) {
-      IVector::resizeOrCreate(output.ids, data_.ids->getSize(),
-                              useGpu(output.deviceId));
+      IVector::resizeOrCreate(
+          output.ids, data_.ids->getSize(), useGpu(output.deviceId));
       output.ids->copyFrom(*data_.ids);
     }
   }
-  output.setFrameHeight(data_.getFrameHeight());
-  output.setFrameWidth(data_.getFrameWidth());
+  if (config_.height() && config_.width()) {
+    output.setFrameHeight(config_.height());
+    output.setFrameWidth(config_.width());
+  } else {
+    output.setFrameHeight(data_.getFrameHeight());
+    output.setFrameHeight(data_.getFrameHeight());
+  }
   output.cpuSequenceDims = data_.cpuSequenceDims;
   output.sequenceStartPositions = data_.sequenceStartPositions;
   output.subSequenceStartPositions = data_.subSequenceStartPositions;

@@ -1,10 +1,13 @@
 # PaddlePaddle
 
 
-[![Build Status](https://travis-ci.org/baidu/Paddle.svg?branch=master)](https://travis-ci.org/baidu/Paddle)
-[![Coverage Status](https://coveralls.io/repos/github/baidu/Paddle/badge.svg?branch=develop)](https://coveralls.io/github/baidu/Paddle?branch=develop)
-[![Join the chat at https://gitter.im/PaddlePaddle/Deep_Learning](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/PaddlePaddle/Deep_Learning?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/cn/index.html)
+[![Coverage Status](https://coveralls.io/repos/github/PaddlePaddle/Paddle/badge.svg?branch=develop)](https://coveralls.io/github/PaddlePaddle/Paddle?branch=develop)
+[![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
+[![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
+
 
 Welcome to the PaddlePaddle GitHub.
 
@@ -14,7 +17,7 @@ developed by Baidu scientists and engineers for the purpose of applying deep
 learning to many products at Baidu.
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
-Please refer to our [release announcement](https://github.com/baidu/Paddle/releases) to track the latest feature of PaddlePaddle.
+Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest feature of PaddlePaddle.
 
 ## Features
 
@@ -89,7 +92,7 @@ Both [English Docs](http://paddlepaddle.org/doc/) and [Chinese Docs](http://padd
 
 ## Ask Questions
 
-You are welcome to submit questions and bug reports as [Github Issues](https://github.com/baidu/paddle/issues).
+You are welcome to submit questions and bug reports as [Github Issues](https://github.com/PaddlePaddle/Paddle/issues).
 
 ## Copyright and License
 PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).

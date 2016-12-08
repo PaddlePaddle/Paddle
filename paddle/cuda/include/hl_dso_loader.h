@@ -12,17 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_DSO_LOADER_H_
 #define HL_DSO_LOADER_H_
 
 #include <dlfcn.h>
 #include <string>
 #include <memory>
-#include <cuda_runtime.h>
-#include <cublas_v2.h>
-#include <curand.h>
-#include <cudnn.h>
 #include "hl_base.h"
 
 /**
@@ -56,5 +51,13 @@ void GetCudartDsoHandle(void** dso_handle);
  *
  */
 void GetCurandDsoHandle(void** dso_handle);
+
+/**
+ * @brief    load the DSO of warp-ctc
+ *
+ * @param    **dso_handle   dso handler
+ *
+ */
+void GetWarpCTCDsoHandle(void** dso_handle);
 
 #endif  // HL_DSO_LOADER_H_

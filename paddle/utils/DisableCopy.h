@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 /**
  * Disable copy macro.
  */
-#define DISABLE_COPY(CLASS_NAME)\
-  CLASS_NAME(CLASS_NAME &&) = delete; \
+#define DISABLE_COPY(CLASS_NAME)                \
+  CLASS_NAME(CLASS_NAME &&) = delete;           \
   CLASS_NAME(const CLASS_NAME &other) = delete; \
-  CLASS_NAME& operator=(const CLASS_NAME &other) = delete
+  CLASS_NAME &operator=(const CLASS_NAME &other) = delete

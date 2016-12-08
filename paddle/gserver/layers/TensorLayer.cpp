@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "TensorLayer.h"
 
 #include "paddle/utils/Logging.h"
@@ -72,7 +71,9 @@ void TensorLayer::forward(PassType passType) {
     MatrixPtr input1 = getInputValue(0);
     MatrixPtr input2 = getInputValue(1);
     MatrixPtr tmpMat = Matrix::create(input2->getHeight(),
-      input2->getWidth(), /* trans= */ false, input2->useGpu());
+                                      input2->getWidth(),
+                                      /* trans= */ false,
+                                      input2->useGpu());
     REGISTER_TIMER_INFO("TensorFwMulTimer", getName().c_str());
     for (size_t i = 0; i < getSize(); ++i) {
       MatrixPtr weights = weights_[i]->getW();
@@ -101,7 +102,9 @@ void TensorLayer::backward(const UpdateCallback& callback) {
   MatrixPtr input2 = getInputValue(1);
   MatrixPtr oGrad = getOutputGrad();
   MatrixPtr tmpMat = Matrix::create(input1->getHeight(),
-    input1->getWidth(), /* trans= */ false, input1->useGpu());
+                                    input1->getWidth(),
+                                    /* trans= */ false,
+                                    input1->useGpu());
 
   /* trans(grad * e1) * e2 */ {
     REGISTER_TIMER_INFO("TensorGradMulTimer", getName().c_str());

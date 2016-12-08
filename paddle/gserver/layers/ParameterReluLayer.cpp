@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "ParameterReluLayer.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
@@ -59,8 +58,8 @@ void ParameterReluLayer::backward(const UpdateCallback& callback) {
   }
 
   MatrixPtr preGrad = getInputGrad(0);
-  preGrad->paramReluBackwardDiff(*getOutputGrad(), *(getInputValue(0)),
-                                 *(weight_->getW()));
+  preGrad->paramReluBackwardDiff(
+      *getOutputGrad(), *(getInputValue(0)), *(weight_->getW()));
   {
     REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());
     weight_->getParameterPtr()->incUpdate(callback);

@@ -177,6 +177,8 @@ layers {
       filter_size_y: 3
       padding_y: 0
       stride_y: 1
+      output_y: 30
+      img_size_y: 32
     }
     num_filters: 64
   }

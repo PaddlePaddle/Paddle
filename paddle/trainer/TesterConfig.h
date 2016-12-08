@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #pragma once
 
 #include "paddle/utils/Util.h"
@@ -39,11 +38,6 @@ struct TesterConfig {
    * indicate test period
    */
   int testPeriod;
-
-  /**
-   * indicate whether testing data in one period
-   */
-  bool testAllDataInOnePeriod;
 
   /**
    * indicate whether to save previous batch state

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Logging.h"
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
@@ -26,7 +25,7 @@ namespace paddle {
  * \f[
  *   y = x^w
  * \f]
- * where \f$x\f$ is a input vector, \f$w\f$ is scalar weight, 
+ * where \f$x\f$ is a input vector, \f$w\f$ is scalar weight,
  * and output \f$y\f$ is a vector.
  *
  * The config file api is power_layer.
@@ -100,7 +99,7 @@ void PowerLayer::backward(const UpdateCallback& callback) {
     Matrix::resizeOrCreate(tmpMtx, batchSize, dataDim, false, useGpu_);
 
     if (inG0) {
-      tmpMtx->log(*inV1);
+      tmpMtx->log2(*inV1);
       tmpMtx->dotMul(*tmpMtx, *outV);
 
       // inG0 += outG .* (log(inV1) * outV)

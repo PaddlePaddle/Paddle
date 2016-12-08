@@ -12,60 +12,63 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "Trainer.h"
 
 #include <fenv.h>
 #include <stdio.h>
 
-#include <iostream>
 #include <iomanip>
-#include <sstream>
+#include <iostream>
 #include <limits>
+#include <sstream>
 
 #include <google/protobuf/text_format.h>
 
+#include "paddle/utils/Excepts.h"
+#include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
-#include "paddle/utils/Excepts.h"
-#include "paddle/utils/GlobalConstants.h"
 
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
-#include "paddle/gserver/gradientmachines/GradientMachineMode.h"
-#include "paddle/gserver/layers/ValidationLayer.h"
+#include "RemoteParameterUpdater.h"
 #include "TesterConfig.h"
 #include "ThreadParameterUpdater.h"
-#include "RemoteParameterUpdater.h"
 #include "TrainerConfigHelper.h"
+#include "paddle/gserver/gradientmachines/GradientMachineMode.h"
+#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
+#include "paddle/gserver/layers/ValidationLayer.h"
 
 P_DEFINE_string(config, "", "Trainer config file");
-P_DEFINE_int32(test_period, 0,
-               "Run test every so many train batches."
-               " 0 for testing after each pass."
-               " If not 0, test log_period batches."
-               " If 0, test on all test data");
+
+P_DEFINE_int32(test_period,
+               0,
+               "if equal 0, do test on all test data at the end of "
+               "each pass. While if equal non-zero, do test on all test "
+               "data every test_period batches");
+P_DEFINE_bool(test_all_data_in_one_period,
+              false,
+              "This option was deprecated, since we will always do "
+              "test on all test set ");
 
 P_DEFINE_bool(local, true, "Train in local mode or not");
 
-P_DEFINE_bool(
-    test_all_data_in_one_period, false,
-    "true will test all data in one test peroid."
-    "Otherwise test (batch_size * log_peroid) data in one test period.");
-
-P_DEFINE_int32(average_test_period, 0,
+P_DEFINE_int32(average_test_period,
+               0,
                "Do test on average parameter every so"
                " many batches. MUST be devided by FLAGS_log_period."
                " Default 0 means do not test average parameter");
 
 P_DEFINE_int32(saving_period, 1, "Save parameteres every so many passes");
-P_DEFINE_int64(saving_period_by_batches, 0,
+P_DEFINE_int64(saving_period_by_batches,
+               0,
                "Save parameters every so many batches in one pass");
 P_DEFINE_string(save_dir, "", "Directory for saving model parameter");
-P_DEFINE_int32(start_pass, 0,
+P_DEFINE_int32(start_pass,
+               0,
                "Start training from this pass. "
                "Will load parameter from the previous pass");
-P_DEFINE_int32(test_pass, -1,
+P_DEFINE_int32(test_pass,
+               -1,
                "Will load parameter start from this pass to test");
 P_DEFINE_int32(test_wait, 0, "Waiting for pass parameter if not exist");
 P_DEFINE_bool(with_cost, true, "enable cost layer or not");
@@ -73,17 +76,21 @@ P_DEFINE_bool(distribute_test, false, "test in distribute mode");
 
 P_DEFINE_int32(num_passes, 100, "train for so many passes");
 
-P_DEFINE_string(config_args, "",
+P_DEFINE_string(config_args,
+                "",
                 "arguments passed to config file."
                 "Format: key1=value1,key2=value2");
 
-P_DEFINE_bool(save_only_one, false,
+P_DEFINE_bool(save_only_one,
+              false,
               "Save only parameters in last pass, remove previous.");
 
 P_DEFINE_string(feat_file, "", "File name of extracted feature.");
-P_DEFINE_string(predict_output_dir, "",
+P_DEFINE_string(predict_output_dir,
+                "",
                 "Directory that saves the predicted results of output layers");
-P_DEFINE_string(model_list, "",
+P_DEFINE_string(model_list,
+                "",
                 "File that saves the model list when evaluation");
 
 namespace paddle {
@@ -98,11 +105,11 @@ void Trainer::init(int argc, char** argv) {
   init(config);
 }
 
-void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
+void Trainer::init(const std::shared_ptr<TrainerConfigHelper>& config,
                    bool testing,
-                   const std::shared_ptr<GradientMachine> &gradientMachine,
-                   const std::shared_ptr<DataProvider> &dataProvider,
-                   const std::shared_ptr<DataProvider> &testDataProvider) {
+                   const std::shared_ptr<GradientMachine>& gradientMachine,
+                   const std::shared_ptr<DataProvider>& dataProvider,
+                   const std::shared_ptr<DataProvider>& testDataProvider) {
   this->stats_ = std::make_shared<TrainerStats>();
 
   config_ = config;
@@ -156,13 +163,16 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
       LOG(INFO) << "trainer mode: Testing";
     }
   } else if (IGradientMachineMode::tryGetMode(
-               (int*)&mode_, config_->getOptConfig().algorithm(),
-               FLAGS_trainer_count,
-               FLAGS_local, FLAGS_use_gpu)) {
+                 (int*)&mode_,
+                 config_->getOptConfig().algorithm(),
+                 FLAGS_trainer_count,
+                 FLAGS_local,
+                 FLAGS_use_gpu)) {
     LOG(INFO) << "Custom trainer mode.";
   } else if ((config_->getOptConfig().algorithm() == TrainAlgorithm::SGD ||
-              config_->getOptConfig().algorithm() == TrainAlgorithm::AsyncSGD)
-             && useSparseUpdater) {
+              config_->getOptConfig().algorithm() ==
+                  TrainAlgorithm::AsyncSGD) &&
+             useSparseUpdater) {
     mode_ = GradientMachine::kSgdSparseCpuTraining;
     LOG(INFO) << "trainer mode: SgdSparseCpuTraining";
   } else {
@@ -171,29 +181,29 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
   }
 
   // initialize trainer internal
-  trainerInternal_.init(config_, gradientMachine,
+  trainerInternal_.init(config_,
+                        gradientMachine,
                         TrainerInternalConfig::createFromMode(mode_),
-                        stats_, testing);
+                        stats_,
+                        testing);
   std::unique_ptr<ParameterUtilConfig> paramConfig(
-          new ParameterUtilConfig(FLAGS_save_only_one,
-                                  FLAGS_saving_period,
-                                  FLAGS_loadsave_parameters_in_pserver,
-                                  FLAGS_config));
+      new ParameterUtilConfig(FLAGS_save_only_one,
+                              FLAGS_saving_period,
+                              FLAGS_loadsave_parameters_in_pserver,
+                              FLAGS_config));
 
   paramUtil_.reset(
-      new paddle::ParameterUtil(
-          config_,
-          std::move(paramConfig),
-          trainerInternal_.getGradientMachine(),
-          trainerInternal_.getParameterUpdater()));
+      new paddle::ParameterUtil(config_,
+                                std::move(paramConfig),
+                                trainerInternal_.getGradientMachine(),
+                                trainerInternal_.getParameterUpdater()));
 
-
-  bool gpuData = FLAGS_use_gpu && (!FLAGS_parallel_nn) &&
-                 (!IGradientMachineMode::dataMustInCpu(mode_,
-                                                       FLAGS_trainer_count));
+  bool gpuData =
+      FLAGS_use_gpu && (!FLAGS_parallel_nn) &&
+      (!IGradientMachineMode::dataMustInCpu(mode_, FLAGS_trainer_count));
 
   dataProvider_ = dataProvider;
-  if (!dataProvider_ && config_->hasDataConfig()) {
+  if (!dataProvider_ && config_->hasDataConfig() && !testing_) {
     dataProvider_.reset(DataProvider::create(*config_, *config_, gpuData));
   }
   if (!testDataProvider_) {
@@ -244,12 +254,14 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper> &config,
       } else if (!config_->getConfig().init_model_path().empty() &&
                  (FLAGS_local || FLAGS_trainer_id == 0)) {
         paramUtil_->loadParametersWithPath(
-              config_->getConfig().init_model_path(),
-              false /*local*/, true /*remote*/);
+            config_->getConfig().init_model_path(),
+            false /*local*/,
+            true /*remote*/);
       } else if (config_->getConfig().start_pass() > 0 &&
                  (FLAGS_local || FLAGS_trainer_id == 0)) {
         CHECK(paramUtil_->loadParameters(config_->getConfig().start_pass() - 1,
-              false /*local*/, true /*remote*/));
+                                         false /*local*/,
+                                         true /*remote*/));
       } else {
         trainerInternal_.getParameterUpdater()->randParametersRemote();
       }
@@ -277,9 +289,8 @@ void Trainer::train(size_t numPasses) {
   finishTrain();
 }
 
-
 static double genPerturbation(real* d, real* grad, size_t dim) {
-  auto & reng = ThreadLocalRandomEngine::get();
+  auto& reng = ThreadLocalRandomEngine::get();
   std::uniform_real_distribution<double> dist(-1, 1);
   double gradNorm = 0, dNorm = 0;
   for (size_t i = 0; i < dim; ++i) {
@@ -383,16 +394,10 @@ void Trainer::startTrain() {
     dataProvider_->reset();
   }
 
-  if (this->testDataProvider_) {
-    this->testDataProvider_->reset();
-  }
-
   trainerInternal_.getGradientMachine()->start(*config_, dataProvider_);
 }
 
-void Trainer::finishTrain() {
-  trainerInternal_.getGradientMachine()->finish();
-}
+void Trainer::finishTrain() { trainerInternal_.getGradientMachine()->finish(); }
 
 void Trainer::startTrainPass() {
   stats_->reset();
@@ -421,9 +426,8 @@ void Trainer::trainOneDataBatch(DataBatch& dataBatch) {
       if (FLAGS_prev_batch_state) {
         trainerInternal_.getGradientMachine()->getState(trainState_);
       }
-      trainPassContext_.avgTestCost +=
-          tester_->forwardOneBatch(
-            dataBatch, averageEvaluator_.get(), &forwardOutput_);
+      trainPassContext_.avgTestCost += tester_->forwardOneBatch(
+          dataBatch, averageEvaluator_.get(), &forwardOutput_);
       if (FLAGS_prev_batch_state) {
         trainerInternal_.getGradientMachine()->setState(trainState_);
       }
@@ -434,16 +438,16 @@ void Trainer::trainOneDataBatch(DataBatch& dataBatch) {
   {
     REGISTER_TIMER("TrainBatch");
     trainerInternal_.trainOneBatch(
-      trainPassContext_.batchId, dataBatch, &forwardOutput_);
+        trainPassContext_.batchId, dataBatch, &forwardOutput_);
   }
 
   if (averageEvaluator_ &&
-      trainPassContext_.batchId % FLAGS_average_test_period
-        == FLAGS_average_test_period - 1) {
+      trainPassContext_.batchId % FLAGS_average_test_period ==
+          FLAGS_average_test_period - 1) {
     averageEvaluator_->finish();
     LOG(INFO) << " Averaged parameter:"
-              << " cost=" << trainPassContext_.avgTestCost
-                             / trainPassContext_.numAvgTests
+              << " cost="
+              << trainPassContext_.avgTestCost / trainPassContext_.numAvgTests
               << " Eval: " << *averageEvaluator_;
     trainPassContext_.numAvgTests = 0;
     trainPassContext_.avgTestCost = 0;
@@ -463,15 +467,15 @@ void Trainer::trainOneDataBatch(DataBatch& dataBatch) {
   }
 
   if (FLAGS_saving_period_by_batches > 0 &&
-      trainPassContext_.batchId
-          > FLAGS_saving_period_by_batches * trainPassContext_.passInnerId &&
+      trainPassContext_.batchId >
+          FLAGS_saving_period_by_batches * trainPassContext_.passInnerId &&
       0 == FLAGS_trainer_id) {
     trainerInternal_.getParameterUpdater()->catchUpWith();
     if (testDataProvider_) {
       tester_->testOnePeriod();
     }
-    paramUtil_->saveParametersOnePass(
-      trainPassContext_.passId, trainPassContext_.passInnerId);
+    paramUtil_->saveParametersOnePass(trainPassContext_.passId,
+                                      trainPassContext_.passInnerId);
     ++trainPassContext_.passInnerId;
   }
 }
@@ -482,8 +486,8 @@ void Trainer::finishTrainPass() {
     return;
   }
 
-  trainerInternal_.finishTrainPass(
-    trainPassContext_.passId, trainPassContext_.batchId);
+  trainerInternal_.finishTrainPass(trainPassContext_.passId,
+                                   trainPassContext_.batchId);
 
   FOR_TIMING(globalStat.setThreadInfo(true));
   FOR_TIMING(globalStat.printAllStatus());
@@ -493,8 +497,8 @@ void Trainer::finishTrainPass() {
     tester_->testOnePeriod();
   }
 
-  if (trainPassContext_.passId % FLAGS_saving_period == 0
-      && FLAGS_trainer_id == 0) {
+  if (trainPassContext_.passId % FLAGS_saving_period == 0 &&
+      FLAGS_trainer_id == 0) {
     paramUtil_->saveParametersOnePass(trainPassContext_.passId);
   }
   ++trainPassContext_.passId;
@@ -526,8 +530,8 @@ void Trainer::trainOnePassBatch(int passId) {
   const std::vector<Argument> inArgs;
   {
     REGISTER_TIMER("onePass");
-    trainerInternal_.getGradientMachine()->forwardBackward(inArgs, nullptr,
-                                                        PASS_TRAIN, nullptr);
+    trainerInternal_.getGradientMachine()->forwardBackward(
+        inArgs, nullptr, PASS_TRAIN, nullptr);
   }
 
   real cost = .0;
@@ -537,8 +541,7 @@ void Trainer::trainOnePassBatch(int passId) {
 
   trainerInternal_.getGradientMachine()->onPassEnd();
 
-  bool accepted =
-    trainerInternal_.getParameterUpdater()->finishPass(cost);
+  bool accepted = trainerInternal_.getParameterUpdater()->finishPass(cost);
 
   globalStat.setThreadInfo(true);
   globalStat.printAllStatus();
@@ -559,11 +562,12 @@ void Trainer::trainOnePassBatch(int passId) {
   }
 }
 
-real Trainer::calcGradient(const DataBatch& dataBatch, const Vector& value,
+real Trainer::calcGradient(const DataBatch& dataBatch,
+                           const Vector& value,
                            Vector& gradient) {
   CHECK_EQ(value.getSize(), gradient.getSize());
   std::vector<ParameterPtr>& parameters =
-    trainerInternal_.getGradientMachine()->getParameters();
+      trainerInternal_.getGradientMachine()->getParameters();
 
   clearGradient();
 
@@ -584,8 +588,8 @@ real Trainer::calcGradient(const DataBatch& dataBatch, const Vector& value,
   std::vector<Argument> inArgs = dataBatch.getStreams();
   std::vector<Argument> outArgs;
 
-  trainerInternal_.getGradientMachine()->forwardBackward(inArgs, &outArgs,
-                                                         PASS_TRAIN);
+  trainerInternal_.getGradientMachine()->forwardBackward(
+      inArgs, &outArgs, PASS_TRAIN);
   real cost = Argument::sumCosts(outArgs);
 
   offset = 0;
@@ -612,20 +616,28 @@ void Trainer::clearGradient() {
 int Trainer::getBatchSize() { return config_->getOptConfig().batch_size(); }
 
 void Trainer::createTester() {
-  tester_.reset(new paddle::Tester(config_, createTesterConfig(),
+  tester_.reset(new paddle::Tester(config_,
+                                   createTesterConfig(),
                                    trainerInternal_.getGradientMachine(),
                                    trainerInternal_.getParameterUpdater(),
                                    testDataProvider_));
 }
 
-void Trainer::test() {
-  tester_->test();
-}
+void Trainer::test() { tester_->test(); }
 
 std::unique_ptr<TesterConfig> Trainer::createTesterConfig() {
   TesterConfig* conf = new TesterConfig;
+  if (FLAGS_test_period) {
+    LOG(WARNING) << "The meaning of --test_period is changed: "
+                 << "if equal 0, do test on all test data at the end of "
+                 << "each pass. While if equal non-zero, do test on all test "
+                 << "data every test_period batches ";
+  }
+  if (FLAGS_test_all_data_in_one_period) {
+    LOG(WARNING) << "--test_all_data_in_one_period was deprecated, since "
+                 << "we will always do test on all test set ";
+  }
   conf->testPeriod = FLAGS_test_period;
-  conf->testAllDataInOnePeriod = FLAGS_test_all_data_in_one_period;
   conf->prevBatchState = FLAGS_prev_batch_state;
   conf->logPeriod = FLAGS_log_period;
   conf->loadsaveParametersInPserver = FLAGS_loadsave_parameters_in_pserver;
@@ -648,7 +660,5 @@ std::unique_ptr<TesterConfig> Trainer::createTesterConfig() {
   return std::unique_ptr<TesterConfig>(conf);
 }
 
-ParameterUtil* Trainer::getParameterUtilPtr() {
-  return paramUtil_.get();
-}
+ParameterUtil* Trainer::getParameterUtilPtr() { return paramUtil_.get(); }
 }  // namespace paddle

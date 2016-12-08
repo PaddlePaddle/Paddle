@@ -76,7 +76,7 @@ inline sxi_sock* accept(sxi_socket* s) {
 
 inline sockaddr_in* getSourceAddress(sxi_sock* sock) {
 #ifndef PADDLE_DISABLE_RDMA
-  return reinterpret_cast<sockaddr_in *>(&sock->sa);
+  return reinterpret_cast<sockaddr_in*>(&sock->sa);
 #else
   PROMPT_ERR();
 #endif
@@ -97,7 +97,6 @@ inline int close(sxi_sock* sock) {
   PROMPT_ERR();
 #endif
 }
-
 
 inline void init() {
 #ifndef PADDLE_DISABLE_RDMA
@@ -154,7 +153,6 @@ inline sxi_sock* connect(sxi_socket* socket, const char* url) {
   PROMPT_ERR();
 #endif
 }
-
 
 }  //  namespace rdma
 }  //  namespace paddle

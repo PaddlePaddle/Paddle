@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+ifdef(`proto3', `syntax = "proto2";')
 
 import "ParameterConfig.proto";
 
@@ -76,6 +77,12 @@ message ConvConfig {
   required uint32 filter_size_y = 10;
   required uint32 padding_y = 11;
   required uint32 stride_y = 12;
+
+  // if not set, use output_x
+  optional uint32 output_y = 13;
+
+  // if not set, use img_size
+  optional uint32 img_size_y = 14;
 }
 
 message PoolConfig {
@@ -92,7 +99,7 @@ message PoolConfig {
   optional uint32 start = 4;
 
   // Defines the stride size between successive pooling squares.
-  required uint32 stride = 5;
+  required uint32 stride = 5 [default = 1];
 
   // The size of output feature map.
   required uint32 output_x = 6;
@@ -105,27 +112,25 @@ message PoolConfig {
   optional uint32 padding = 8 [default = 0];
 
   // if not set, use size_x
-  optional uint32 size_y = 9 [default = 0];
+  optional uint32 size_y = 9;
 
   // if not set, use stride
-  optional uint32 stride_y = 10 [default = 0];
+  optional uint32 stride_y = 10;
 
   // if not set, use output_x
-  optional uint32 output_y = 11 [default = 0];
+  optional uint32 output_y = 11;
 
   // if not set, use img_size
-  optional uint32 img_size_y = 12 [default = 0];
+  optional uint32 img_size_y = 12;
 
   // if not set, use padding
-  optional uint32 padding_y = 13 [default = 0];
+  optional uint32 padding_y = 13;
 }
 
 message SppConfig {
-  required string pool_type = 1;
-  required uint32 pyramid_height = 2;
-  required uint32 channels = 3;
-  required uint32 img_size = 4;
-  optional uint32 img_size_y = 5;
+  required ImageConfig image_conf = 1;
+  required string pool_type = 2;
+  required uint32 pyramid_height = 3;
 }
 
 message NormConfig {
@@ -155,6 +160,12 @@ message NormConfig {
   // fixed window: shared a fixed window for each value
   // sliding window: have a different window for each value
   optional bool blocked = 8;
+
+  // if not set, use output_x
+  optional uint32 output_y = 9;
+
+  // if not set, use img_size
+  optional uint32 img_size_y = 10;
 }
 
 message BlockExpandConfig {
@@ -179,12 +190,8 @@ message BlockExpandConfig {
 }
 
 message MaxOutConfig {
-  required uint32 channels = 1;
+  required ImageConfig image_conf = 1;
   required uint32 groups = 2;
-
-  // The size of input feature map.
-  required uint32 img_size_x = 3;
-  required uint32 img_size_y = 4;
 }
 
 message ProjectionConfig {
@@ -225,12 +232,10 @@ message OperatorConfig {
 
 message BilinearInterpConfig {
   // The size of input feature map.
-  optional uint32 img_size_x = 1;
-  optional uint32 img_size_y = 2;
+  required ImageConfig image_conf = 1;
   // The size of output feature map.
-  required uint32 out_size_x = 3;
-  required uint32 out_size_y = 4;
-  required uint32 num_channels = 5;
+  required uint32 out_size_x = 2;
+  required uint32 out_size_y = 3;
 }
 
 message ImageConfig {
@@ -240,6 +245,7 @@ message ImageConfig {
 
   // The size of input feature map.
   required uint32 img_size = 8;
+  required uint32 img_size_y = 9;
 }
 
 message LayerInputConfig {
@@ -412,7 +418,13 @@ sinclude(`ModelConfigLayer.proto.m4')
   // string type is used for flexibility: different types can be converted
   // to string and reinterpreted in the user's own layer implementation.  
   optional string user_arg = 49;
+  
+  // to indicate rectangle image data
+  optional uint64 height = 50;
+  optional uint64 width = 51;
 
+  // blank label used in ctc loss
+  optional uint32 blank = 52 [default = 0];
 }
 
 message EvaluatorConfig {

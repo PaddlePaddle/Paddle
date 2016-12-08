@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "test_matrixUtil.h"
 #include "hl_batch_transpose.h"
 
@@ -48,8 +47,8 @@ TEST(MatrixBatchTransTest, test_batch_matrix_transpose) {
             cData[sample_id * nx * ny + j * nx + i];
   // device
   gMat->copyFrom(*cMat, HPPL_STREAM_DEFAULT);
-  batchTranspose(gMat->getData(), gBatchTransMat->getData(), nx, ny,
-                 numSamples);
+  batchTranspose(
+      gMat->getData(), gBatchTransMat->getData(), nx, ny, numSamples);
   cMat_d2h->copyFrom(*gBatchTransMat, HPPL_STREAM_DEFAULT);
   checkMatrixEqual(cBatchTransMat, cMat_d2h);
 }

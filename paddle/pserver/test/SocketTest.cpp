@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include "paddle/utils/Util.h"
 
 #include <stdio.h>
@@ -184,7 +183,8 @@ SocketClient::SocketClient(const std::string& serverAddr, int serverPort) {
 
   bzero((char*)&serv_addr, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
-  bcopy((char*)server->h_addr, (char*)&serv_addr.sin_addr.s_addr,
+  bcopy((char*)server->h_addr,
+        (char*)&serv_addr.sin_addr.s_addr,
         server->h_length);
   serv_addr.sin_port = htons(serverPort);
 
