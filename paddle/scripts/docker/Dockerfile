@@ -1,6 +1,7 @@
 FROM ubuntu:14.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install -y cmake libprotobuf-dev protobuf-compiler git \
     libgoogle-glog-dev libgflags-dev libatlas-dev libatlas3-base g++ m4 python-pip \
@@ -12,7 +13,11 @@ RUN apt-get update \
 RUN pip install -U BeautifulSoup docopt PyYAML pillow \
     sphinx sphinx_rtd_theme breathe recommonmark
 
-ARG DEBIAN_FRONTEND=noninteractive
+# cmake tends to hide and blur the dependencies between code modules, as
+# noted here https://github.com/PaddlePaddle/Paddle/issues/763. We are
+# thinking about using Bazel to fix this problem, e.g.,
+# https://github.com/PaddlePaddle/Paddle/issues/681#issuecomment-263996102. To
+# start the trail of fixing, we add Bazel to our Dockerfiles.
 RUN apt-get update && apt-get install -y curl software-properties-common \
     && add-apt-repository ppa:webupd8team/java \
     && echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections \
