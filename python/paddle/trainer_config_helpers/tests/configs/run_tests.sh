@@ -31,7 +31,7 @@ else
   done
 
   for file in ${whole_configs[*]}
-do
+  do
     if ! $1 $protostr/$file.protostr $protostr/$file.protostr.unittest --whole; then
       diff $protostr/$file.protostr $protostr/$file.protostr.unittest -u
     fi
