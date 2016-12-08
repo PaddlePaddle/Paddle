@@ -4,9 +4,7 @@ PaddlePaddle 基本使用概念
 
 PaddlePaddle是一个深度学习框架，支持单机模式和多机模式。
 
-单节模式用命令 ``paddle train`` 可以启动一个trainer进程，一个单机训练作业只包括一个trainer进程，单机的所有设备使用，均在单机进程内调度完成。
-
-如果数据规模比较大，希望加速训练，可以启动分布式作业。一个分布式作业里包括若干trainer进程和若干Parameter Server（或称pserver）进程。用命令 ``paddle pserver`` 可以启动 pserver 进程，pserver进程用于协调多个trainer进程之间的通信。
+单机模式用命令 ``paddle train`` 可以启动一个trainer进程，单机训练通常只包括一个trainer进程。如果数据规模比较大，希望加速训练，可以启动分布式作业。一个分布式作业里包括若干trainer进程和若干Parameter Server（或称pserver）进程。用命令 ``paddle pserver`` 可以启动 pserver 进程，pserver进程用于协调多个trainer进程之间的通信。
 
 本文首先介绍trainer进程中的一些使用概念，然后介绍pserver进程中概念。
 
@@ -15,7 +13,7 @@ PaddlePaddle是一个深度学习框架，支持单机模式和多机模式。
 系统框图
 ========
 
-下图描述了用户使用框图，PaddlePaddle的trainer进程里内嵌了Python解释器，trainer进程可以利用这个解释器执行Python脚本，Python脚本里定义了模型配置、训练算法、以及数据读取函数。其中，数据读取程序往往定义在一个单独Python脚本文件里，被称为DataProvider，通常是一个Python函数。模型配置、训练算法通常定义在另一单独Python文件中, 称为训练配置文件。下面将分别介绍这两部分。
+下图描述了用户使用框图，PaddlePaddle的trainer进程里内嵌了Python解释器，trainer进程可以利用这个解释器执行Python脚本，Python脚本里定义了模型配置、训练算法、以及数据读取函数。其中，数据读取程序往往定义在一个单独Python脚本文件里，被称为数据提供器（DataProvider），通常是一个Python函数。模型配置、训练算法通常定义在另一单独Python文件中, 称为训练配置文件。下面将分别介绍这两部分。
 
 ..	graphviz:: 
 
@@ -34,8 +32,8 @@ PaddlePaddle是一个深度学习框架，支持单机模式和多机模式。
 		py -> data_provider [dir="back"];
 	}
 
-DataProvider
-============
+数据提供器
+==========
 
 DataProvider是PaddlePaddle系统的数据提供器，将用户的原始数据转换成系统可以识别的数据类型。每当系统需要新的数据训练时, trainer进程会调用DataProvider函数返回数据。当所有数据读取完一轮后，DataProvider返回空数据，通知系统一轮数据读取结束，并且系统每一轮训练开始时会重置DataProvider。需要注意的是，DataProvider是被系统调用，而不是新数据驱动系统，一些随机化噪声添加都应该在DataProvider中完成。
 
@@ -45,7 +43,7 @@ DataProvider是PaddlePaddle系统的数据提供器，将用户的原始数据�
 训练配置文件
 ============
 
-训练配置文件主要包括数据传入接口定义(DataConfig)、优化算法(OptimizationConfig)、网络结构(ModelConfig)。 其中数据传入接口定义与DataProvider的关系是：DataProvider里定义数据读取函数，配置文件的DataConfig里指定DataProvider文件名字、生成数据函数接口，请不要混淆。
+训练配置文件主要包括数据源、优化算法、网络结构配置三部分。 其中数据源配置与DataProvider的关系是：DataProvider里定义数据读取函数，训练配置文件的数据源配置中指定DataProvider文件名字、生成数据函数接口，请不要混淆。
 
 一个简单的训练配置文件为：
 
@@ -54,26 +52,22 @@ DataProvider是PaddlePaddle系统的数据提供器，将用户的原始数据�
 
 文件开头 ``from paddle.trainer_config_helpers import *`` ，是因为PaddlePaddle配置文件与C++模块通信的最基础协议是protobuf，为了避免用户直接写复杂的protobuf string，我们为用户定以Python接口来配置网络，该Python代码可以生成protobuf包，这就是`trainer_config_helpers`_的作用。因此，在文件的开始，需要import这些函数。 这个包里面包含了模型配置需要的各个模块。
 
-需要注意的是，这个 ``paddle.trainer_config_helpers`` 包是标准的 Python 包，这意味着用户可以选择自己喜欢的 IDE 或者编辑器来编写配置文件，这个 Python 包注释文档比较完善，并且考虑了 IDE 的代码提示与类型注释。
+下面分别介绍数据源配置、优化算法配置、网络结构配置这三部分该概念。
 
-下面分别介绍DataConfig、OptimizationConfig、ModelConfig这三部分该概念。
-
-DataConfig
+数据源配置
 ----------
 
-使用 `PyDataProvider`_ 的函数 ``define_py_data_sources2`` 配置数据源，后缀 2 是Paddle历史遗留问题，因为Paddle之前使用的PyDataProvider性能问题，重构了一个新的 `PyDataProvider`_ 。
-
-``define_py_data_sources2`` 里通过train_list和test_list指定是训练文件列表和测试文件列表。 如果传入字符串的话，是指一个数据列表文件。这个数据列表文件中包含的是每一个训练或者测试文件的路径。如果传入一个list的话，则会默认生成一个list文件，再传入给train.list或者test.list。
+使用 `PyDataProvider`_ 的函数 ``define_py_data_sources2`` 配置数据源。``define_py_data_sources2`` 里通过train_list和test_list指定是训练文件列表和测试文件列表。 如果传入字符串的话，是指一个数据列表文件。这个数据列表文件中包含的是每一个训练或者测试文件的路径。如果传入一个list的话，则会默认生成一个list文件，再传入给train.list或者test.list。
 
 ``module`` 和 ``obj`` 指定了DataProvider的文件名和返回数据的函数名。更详细的使用，请参考 `PyDataProvider`_ 。
 
-OptimizationConfig
-------------------
+优化算法配置
+------------
 
-通过`settings`_ 接口设置神经网络所使用的训练参数和 `优化算法`_ ，包括学习率、batch_size、优化算法、正则方法等，具体的使用方法请参考 `settings`_ 文档。
+通过 `settings`_ 接口设置神经网络所使用的训练参数和 `优化算法`_ ，包括学习率、batch_size、优化算法、正则方法等，具体的使用方法请参考 `settings`_ 文档。
 
-ModelConfig
------------
+网络结构配置
+------------
 
 神经网络配置主要包括网络连接、激活函数、损失函数、评估器。
 
@@ -126,11 +120,11 @@ PaddlePaddle多机采用经典的 Parameter Server 架构对多个节点的 trai
 
 ..	code-block:: bash
 
-	paddle pserver --port=5000 --num_gradient_servers=4 --nics='eth0'
+	paddle pserver --port=5000 --num_gradient_servers=4 --tcp_rdma='tcp' --nics='eth0'
 
-* 指定 pserver 进程端口是 5000 。
-* 有四个训练进程(即 ``--gradient_servers=4`` ，PaddlePaddle同时将 trainer 称作 GradientServer 。因为其为负责提供Gradient) 。
-* 指定以太网类型为TCP网络。
+* ``--port=5000`` : 指定 pserver 进程端口是 5000 。
+* ``--gradient_servers=4`` : 有四个训练进程(PaddlePaddle 将 trainer 也称作 GradientServer ，因为其为负责提供Gradient) 。
+* ``--tcp_rdma='tcp' --nics=`eth0```: 指定以太网类型为TCP网络，指定网络接口名字为eth0。
 
 启动之后 pserver 进程之后，需要启动 trainer 训练进程，在各个机器上运行如下命令\:
 
@@ -140,8 +134,8 @@ PaddlePaddle多机采用经典的 Parameter Server 架构对多个节点的 trai
 
 对于简单的多机协同训练使用上述方式即可。另外，pserver/train 通常在高级情况下，还需要设置下面两个参数\：
 
-* --ports_num\: 一个 pserver 进程共绑定多少个端口用来做稠密更新。默认是1
-* --ports_num_for_sparse\: 一个pserver进程共绑定多少端口用来做稀疏更新，默认是0
+* --ports_num\: 一个 pserver 进程共绑定多少个端口用来做稠密更新，默认是1。
+* --ports_num_for_sparse\: 一个pserver进程共绑定多少端口用来做稀疏更新，默认是0。
 
 使用手工指定端口数量，是因为Paddle的网络通信中，使用了 int32 作为消息长度，比较容易在大模型下溢出。所以，在 pserver 进程中可以启动多个子线程去接受 trainer 的数据，这样单个子线程的长度就不会溢出了。但是这个值不可以调的过大，因为增加这个值，对性能尤其是内存占用有一定的开销，另外稀疏更新的端口如果太大的话，很容易导致某一个参数服务器没有分配到任何参数。
 

@@ -255,7 +255,7 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 完整源码可参考 `seqToseq <https://github.com/PaddlePaddle/Paddle/tree/develop/demo/seqToseq>`_ 示例。
 
 11. 如何指定GPU设备
------------------
+-------------------
 
 例如机器上有4块GPU，编号从0开始，指定使用2、3号GPU：
 
