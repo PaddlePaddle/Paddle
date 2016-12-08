@@ -242,7 +242,7 @@ embedding模型需要稍微改变提供数据的Python脚本，即 ``dataprovide
     :align: center
     :scale: 80%
 
-时序模型，也称为RNN模型, 包括简单的RNN模型, GRU模型和LSTM模型等等。
+时序模型，也称为RNN模型, 包括简单的 `RNN模型 <https://en.wikipedia.org/wiki/Recurrent_neural_network>`_, `GRU模型 <https://en.wikipedia.org/wiki/Gated_recurrent_unit>`_ 和 `LSTM模型 <https://en.wikipedia.org/wiki/Long_short-term_memory>`_ 等等。
 
 - GRU模型配置：
 
@@ -269,7 +269,7 @@ embedding模型需要稍微改变提供数据的Python脚本，即 ``dataprovide
 =========
 
 `优化算法 <http://www.paddlepaddle.org/doc/ui/api/trainer_config_helpers/optimizers_index.html>`_ 包括
-Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优化方法，同时使用了L2正则和梯度截断。
+Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优化方法，同时使用了L2正则(L2 Regularization)和梯度截断(Gradient Clipping)。
 
 .. code-block:: python
 
