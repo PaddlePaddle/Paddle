@@ -28,3 +28,15 @@ bind(
     actual = "@six_archive//:six",
 )
 
+
+new_http_archive(
+    name = "python_archive",
+    url="http://paddlepaddle.bj.bcebos.com/bazel/python/macos/python27.mac.bin.tar.gz",
+    sha256="4905cf20272b8118f4f0afb570549ee0b492280f7eb12a51bf79dd79f2e871fe",
+    build_file = "third_party/python.BUILD",
+)
+
+bind(
+    name = "libpython",
+    actual = "@python_archive//:libpython"
+)
