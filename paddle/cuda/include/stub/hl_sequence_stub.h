@@ -70,6 +70,15 @@ inline void hl_sequence2batch_add(real* batch,
                                   int batchCount,
                                   bool seq2batch) {}
 
+inline void hl_sequence2batch_copy_padding(real* batch,
+                                           real* sequence,
+                                           const int* sequenceStartPositions,
+                                           const size_t sequenceWidth,
+                                           const size_t maxSequenceLength,
+                                           const size_t numSequences,
+                                           bool normByTimes,
+                                           bool seq2batch) {}
+
 inline void hl_sequence_avg_forward(real* dst,
                                     real* src,
                                     const int* starts,

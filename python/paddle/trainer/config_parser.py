@@ -1872,7 +1872,7 @@ class BatchNormLayer(LayerBase):
         image_conf = self.config.inputs[0].image_conf
         parse_image(self.inputs[0].image, input_layer.name, image_conf)
         self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                           image_conf.channels)
+                           image_conf.channels, False)
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
@@ -2987,6 +2987,27 @@ class CTCLayer(LayerBase):
         config_assert(len(self.inputs) == 2, 'CTCLayer must have 2 inputs')
 
 
+@config_layer('warp_ctc')
+class WarpCTCLayer(LayerBase):
+    def __init__(self,
+                 name,
+                 size,
+                 inputs,
+                 blank=0,
+                 norm_by_times=False,
+                 device=None):
+        super(WarpCTCLayer, self).__init__(
+            name, 'warp_ctc', size=size, inputs=inputs, device=device)
+        self.config.blank = blank
+        self.config.norm_by_times = norm_by_times
+        config_assert(len(self.inputs) == 2, 'WarpCTCLayer must have 2 inputs')
+        input_layer = self.get_input_layer(0)
+        config_assert(
+            (input_layer.active_type == '' or
+             input_layer.active_type == 'linear'),
+            "Expecting the active_type of input layer to be linear or null")
+
+
 @config_layer('recurrent_layer_group')
 class RecurrentLayerGroup(LayerBase):
     def __init__(self, name, device=None):
@@ -3377,7 +3398,21 @@ def parse_config(config_file, config_arg_str):
     g_root_submodel.is_recurrent_layer_group = False
     g_current_submodel = g_root_submodel
 
-    execfile(config_file, make_config_environment(config_file, config_args))
+    # for paddle on spark, need support non-file config.
+    # you can use parse_config like below:
+    #
+    # from paddle.trainer.config_parser import parse_config
+    # def configs():
+    #    #your paddle config code, which is same as config file.
+    #
+    # config = parse_config(configs, "is_predict=1")
+    # # then you get config proto object.
+    if hasattr(config_file, '__call__'):
+        config_file.func_globals.update(
+            make_config_environment("", config_args))
+        config_file()
+    else:
+        execfile(config_file, make_config_environment(config_file, config_args))
     for k, v in settings.iteritems():
         if v is None:
             continue

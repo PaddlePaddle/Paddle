@@ -40,11 +40,6 @@ struct TesterConfig {
   int testPeriod;
 
   /**
-   * indicate whether testing data in one period
-   */
-  bool testAllDataInOnePeriod;
-
-  /**
    * indicate whether to save previous batch state
    */
   bool prevBatchState;

@@ -10,9 +10,8 @@ paddle train \
   --config=network_config \
   --save_dir=output \
   --trainer_count=COUNT \                #(default:1)
-  --test_period=M \                      #(default:1000）
-  --test_all_data_in_one_period=true \   #(default:false) 
-  --num_passes=N \                       #(defalut:100）
+  --test_period=M \                      #(default:0) 
+  --num_passes=N \                       #(defalut:100)
   --log_period=K \                       #(default:100)
   --dot_period=1000 \                    #(default:1)
   #[--show_parameter_stats_period=100] \ #(default:0)

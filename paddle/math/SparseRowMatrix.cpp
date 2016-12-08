@@ -15,15 +15,14 @@ limitations under the License. */
 #include "SparseRowMatrix.h"
 #include "CpuSparseMatrix.h"
 
-#include <cmath>
 #include <algorithm>
 
 #include "paddle/utils/Logging.h"
 
 #include "SIMDFunctions.h"
 
-#include "paddle/utils/Util.h"
 #include "paddle/utils/Thread.h"
+#include "paddle/utils/Util.h"
 
 P_DEFINE_bool(allow_inefficient_sparse_update,
               false,
@@ -34,8 +33,6 @@ namespace paddle {
 const unsigned int SparseRowCpuMatrix::kUnusedId_ = -1U;
 
 void SparseRowCpuMatrix::init(size_t height, size_t width) {
-  // @TODO(yuyang18) Just remove this limit
-  CHECK(simd::vec_check(width)) << width;
   height_ = height;
   if (!indexDictHandle_) {
     indexDictHandle_.reset(new IndexDict);

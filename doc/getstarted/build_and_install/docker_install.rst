@@ -19,8 +19,8 @@ automatically runs the following commands:
 
 .. code-block:: base
 
-   docker build -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
-   docker build -t paddle:gpu-noavx -f paddle/scripts/docker/Dockerfile.gpu .
+   docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile .
+   docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu .
 
 
 To run the CPU-only image as an interactive container:
@@ -79,5 +79,28 @@ source code:
    cd ~
    git clone github.com/PaddlePaddle/Paddle
    cd Paddle
+   git submodule update --init --recursive
    docker build --build-arg WITH_AVX=OFF -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
    docker build --build-arg WITH_AVX=OFF -t paddle:gpu-noavx -f paddle/scripts/docker/Dockerfile.gpu .
+
+
+Documentation
+-------------
+
+Paddle Docker images include an HTML version of C++ source code
+generated using `woboq code browser
+<https://github.com/woboq/woboq_codebrowser>`_.  This makes it easy
+for users to browse and understand the C++ source code.
+
+As long as we give the Paddle Docker container a name, we can run an
+additional nginx Docker container to serve the volume from the Paddle
+container:
+
+.. code-block:: bash
+
+   docker run -d --name paddle-cpu-doc paddle:cpu
+   docker run -d --volumes-from paddle-cpu-doc -p 8088:80 nginx
+
+
+Then we can direct our Web browser to the HTML version of source code
+at http://localhost:8088/paddle/

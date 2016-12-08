@@ -20,11 +20,7 @@ popd > /dev/null
 
 cd $SCRIPTPATH
 
-if [ ! -f ../../dist/*.whl ] ; then  # Swig not compiled.
-  exit 0
-fi
-
-rm .test_env -rf
+rm -rf .test_env
 virtualenv .test_env
 source .test_env/bin/activate
 

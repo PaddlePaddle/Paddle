@@ -1,23 +1,32 @@
 FROM ubuntu:14.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
-RUN apt-get update && \
-    apt-get install -y cmake libprotobuf-dev protobuf-compiler git \
+RUN apt-get update \
+    && apt-get install -y cmake libprotobuf-dev protobuf-compiler git \
     libgoogle-glog-dev libgflags-dev libatlas-dev libatlas3-base g++ m4 python-pip \
     python-protobuf python-numpy python-dev swig openssh-server \
     wget unzip python-matplotlib tar xz-utils bzip2 gzip coreutils \
-    sed grep graphviz libjpeg-dev zlib1g-dev doxygen && \
-    apt-get clean -y
-RUN pip install BeautifulSoup docopt PyYAML pillow \
-    'sphinx>=1.4.0' sphinx_rtd_theme breathe recommonmark
+    sed grep graphviz libjpeg-dev zlib1g-dev doxygen \
+    clang-3.8 llvm-3.8 libclang-3.8-dev \
+    && apt-get clean -y
+RUN pip install -U BeautifulSoup docopt PyYAML pillow \
+    sphinx sphinx_rtd_theme breathe recommonmark
 
 ARG WITH_AVX
-ENV WITH_AVX=${WITH_AVX:-ON}
+ARG WITH_DOC
+ARG WITH_SWIG_PY
+ARG WITH_STYLE_CHECK
+
 ENV WITH_GPU=OFF
+ENV WITH_AVX=${WITH_AVX:-ON}
+ENV WITH_DOC=${WITH_DOC:-ON}
+ENV WITH_SWIG_PY=${WITH_SWIG_PY:-ON}
+ENV WITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
 
 RUN mkdir /paddle
 COPY . /paddle/
 RUN /paddle/paddle/scripts/docker/build.sh
+VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
 
 RUN echo 'export LD_LIBRARY_PATH=/usr/lib64:${LD_LIBRARY_PATH}' >> /etc/profile
 RUN pip install /usr/local/opt/paddle/share/wheels/*.whl

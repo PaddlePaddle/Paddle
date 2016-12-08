@@ -71,10 +71,10 @@ find_package(Git REQUIRED)
 include(version)
 add_definitions(-DPADDLE_VERSION=\"${PADDLE_VERSION}\")
 
-
 if(NOT WITH_GPU)
     add_definitions(-DPADDLE_ONLY_CPU)
     add_definitions(-DHPPL_STUB_FUNC)
+
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
     if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)
@@ -91,14 +91,14 @@ else()
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SSE3_FLAG}")
     endif(WITH_AVX)
 
-    if(WITH_DSO)
-        add_definitions(-DPADDLE_USE_DSO)
-    endif(WITH_DSO)
-
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
     include_directories(${CUDA_TOOLKIT_INCLUDE})
 endif(NOT WITH_GPU)
+
+if(WITH_DSO)
+    add_definitions(-DPADDLE_USE_DSO)
+endif(WITH_DSO)
 
 if(WITH_DOUBLE)
     add_definitions(-DPADDLE_TYPE_DOUBLE)
