@@ -37,7 +37,7 @@ void printVersion(std::ostream& os) {
 #define xstr(s) str(s)
 #define str(s) #s
 
-  os << "paddle version: " << str(PADDLE_VERSION) << std::endl
+  os << "paddle version: " << xstr(PADDLE_VERSION) << std::endl
      << std::boolalpha << "\t"
      << "withGpu: " << version::isWithGpu() << std::endl
      << "\t"
