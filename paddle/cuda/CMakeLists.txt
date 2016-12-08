@@ -34,9 +34,6 @@ else()
         src/hl_warpctc_wrap.cc)
 endif()
 
-set_source_files_properties(${AVX_SOURCES}
-                            PROPERTIES COMPILE_FLAGS "-mavx")
-
 set(CUDA_CU_SOURCES
     src/hl_perturbation_util.cu
     src/hl_cuda_aggregate.cu
