@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,27 +14,36 @@
 # limitations under the License.
 
 import sys
+import re
 import getopt
 
-whole = False
-opts, args = getopt.getopt(sys.argv[1:], "", ["whole"])
-for op, value in opts:
-  if op == "--whole":
-    whole = True
+def main(print_whole_config, globals, locals):
+  '''
+     this test will all test_config.py
+  '''
+  cmdstr = """from paddle.trainer.config_parser import parse_config\n"""
+  importstr = ""
+  functionstr = ""
 
-cmdstr = """
-from paddle.trainer.config_parser import *
-from paddle.trainer_config_helpers import *
-def configs():\n"""
+  for line in sys.stdin:
+    if re.match("^import", line) or re.match("^from.*import", line):
+      importstr = importstr + line
+    else:
+      functionstr = functionstr + "  " + line
 
-for line in sys.stdin:
-  if "import" in line and "from" in line:
-    continue
-  cmdstr = cmdstr + "  " + line
+  cmdstr = cmdstr + importstr + """def configs():\n""" + functionstr
+  #cmdstr = cmdstr + """def configs():\n""" + importstr + functionstr
+  if print_whole_config:
+    cmdstr = cmdstr + """print parse_config(configs, "")"""
+  else:
+    cmdstr = cmdstr + """print parse_config(configs, "").model_config"""
 
-if whole:
-  cmdstr = cmdstr + """print parse_config(configs, "")"""
-else:
-  cmdstr = cmdstr + """print parse_config(configs, "").model_config"""
+  exec(cmdstr, globals, locals)
 
-exec(cmdstr)
+if __name__ == '__main__':
+  whole = False
+  opts, args = getopt.getopt(sys.argv[1:], "", ["whole"])
+  for op, value in opts:
+    if op == "--whole":
+      whole = True
+  main(whole, globals(), locals())
