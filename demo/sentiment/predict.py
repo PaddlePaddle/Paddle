@@ -66,42 +66,27 @@ class SentimentPrediction():
         for v in open(label_file, 'r'):
             self.label[int(v.split('\t')[1])] = v.split('\t')[0]
 
-    def get_data(self, data):
+    def get_index(self, data):
         """
-        Get input data of paddle format.
+        transform word into integer index according to the dictionary.
         """
-        for line in data:
-            words = line.strip().split()
-            word_slot = [
-                self.word_dict[w] for w in words if w in self.word_dict
-            ]
-            if not word_slot:
-                print "all words are not in dictionary: %s", line
-                continue
-            yield [word_slot]
+        words = data.strip().split()
+        word_slot = [
+            self.word_dict[w] for w in words if w in self.word_dict
+        ]
+        return word_slot
 
-    def predict(self, batch_size):
-
-        def batch_predict(batch_data):
-            input = self.converter(self.get_data(batch_data))
-            output = self.network.forwardTest(input)
-            prob = output[0]["value"]
-            labs = np.argsort(-prob)
-            for idx, lab in enumerate(labs):
-                if self.label is None:
-                    print("predicting label is %d" % (lab[0]))
-                else:
-                    print("predicting label is %s" %
-                          (self.label[lab[0]]))
-
-        batch = []
-        for line in sys.stdin:
-            batch.append(line)
-            if len(batch) == batch_size:
-                batch_predict(batch)
-                batch=[]
-        if len(batch) > 0:
-            batch_predict(batch)
+    def batch_predict(self, data_batch):
+        input = self.converter(data_batch)
+        output = self.network.forwardTest(input)
+        prob = output[0]["value"]
+        labs = np.argsort(-prob)
+        for idx, lab in enumerate(labs):
+            if self.label is None:
+                print("predicting label is %d" % (lab[0]))
+            else:
+                print("predicting label is %s" %
+                      (self.label[lab[0]]))
 
 def option_parser():
     usage = "python predict.py -n config -w model_dir -d dictionary -i input_file "
@@ -152,8 +137,15 @@ def main():
     label = options.label
     swig_paddle.initPaddle("--use_gpu=0")
     predict = SentimentPrediction(train_conf, dict_file, model_path, label)
-    predict.predict(batch_size)
 
+    batch = []
+    for line in sys.stdin:
+        batch.append([predict.get_index(line)])
+        if len(batch) == batch_size:
+            predict.batch_predict(batch)
+            batch=[]
+    if len(batch) > 0:
+        predict.batch_predict(batch)
 
 if __name__ == '__main__':
     main()
