@@ -1,8 +1,8 @@
 # 语义角色标注教程 #
 
-语义角色标注（Semantic role labeling, SRL）是浅语义解析的一种形式，其目的是在给定的输入句子中发现每个谓词的谓词参数结构。 SRL作为很多自然语言处理任务中的中间步骤是很有用的，如信息提取、文档自动分类和问答。 实例如下 [1]:
+语义角色标注（Semantic role labeling, SRL）是浅层语义解析的一种形式，其目的是在给定的输入句子中发现每个谓词的谓词参数结构。 SRL作为很多自然语言处理任务中的中间步骤是很有用的，如信息提取、文档自动分类和问答。 实例如下 [1]:
 
- [ <sub>A0</sub> 他 ] [ <sub>AM-MOD</sub> 将 ][ <sub>AM-NEG</sub> 不会 ] [ <sub>V</sub> 接受] [ <sub>A1</sub> 任何东西 ] 从 [<sub>A2</sub> 那些他写的东西中 ]。
+ [ <sub>A0</sub> He ] [ <sub>AM-MOD</sub> would ][ <sub>AM-NEG</sub> n’t ] [ <sub>V</sub> accept] [ <sub>A1</sub> anything of value ] from [<sub>A2</sub> those he was writing about ]. 
 
 - V: 动词
 - A0: 接受者
@@ -12,12 +12,12 @@
 - AM-MOD: 情态动词 
 - AM-NEG: 否定
 
-给定动词“接受”，句子中的大部分将会扮演某些语义角色。这里，标签方案来自 Penn Proposition Bank。
+给定动词“accept”，句子中的大部分将会扮演某些语义角色。这里，标签方案来自 Penn Proposition Bank。
 
-到目前为止，大多数成功的SRL系统是建立在某种形式的解析结果之上的，其中在语法结构上使用了预先定义的特征模板。 本教程将介绍使用深度双向长短期记忆（DB-LSTM）模型[2]的端到端系统来解决SRL任务，这在很大程度上优于先前的最先进的系统。 这个系统将SRL任务视为序列标记问题。
+到目前为止，大多数成功的SRL系统是建立在某种形式的解析结果之上的，其中在语法结构上使用了预先定义的特征模板。 本教程将介绍使用深度双向长短期记忆（DB-LSTM）模型[2]的端到端系统来解决SRL任务，这在很大程度上优于先前的最先进的系统。 这个系统将SRL任务视为序列标注问题。
 
 ## 数据描述
-相关论文[2]采用 CoNLL-2005＆2012 共享任务中设置的数据进行训练和测试。根据数据许可证，演示采用 CoNLL-2005 的测试数据集，可以在网站上找到。
+相关论文[2]采用 CoNLL-2005＆2012 共享任务中设置的数据进行训练和测试。由于数据许可的原因，演示采用 CoNLL-2005 的测试数据集，可以在网站上找到。
 
 用户只需执行以下命令就可以下载并处理原始数据：
 
@@ -35,7 +35,7 @@ feature: the extracted features from data set
 
 ## 训练
 ### DB-LSTM
-请参阅情绪分析的演示以了解有关长期短期记忆单元的更多信息。
+请参阅情感分析的演示以了解有关长期短期记忆单元的更多信息。
 
 与在 Sentiment Analysis 演示中使用的 Bidirectional-LSTM 不同，DB-LSTM 采用另一种方法来堆叠LSTM层。首先，标准LSTM以正向处理该序列。该 LSTM 层的输入和输出作为下一个 LSTM 层的输入，并被反向处理。这两个标准 LSTM 层组成一对 LSTM。然后我们堆叠一对对的 LSTM 层后得到深度 LSTM 模型。
 
@@ -45,7 +45,7 @@ feature: the extracted features from data set
 </center>
 
 ### 特征
-两个输入特性在这个管道中起着至关重要的作用：predicate（pred）和argument（arguments）。 还采用了两个其他特征：谓词上下文（ctx-p）和区域标记（mr）。 因为单个谓词不能精确地描述谓词信息，特别是当相同的词在句子中出现多于一次时。 使用谓词上下文，可以在很大程度上消除歧义。类似地，如果它位于谓词上下文区域中，则使用区域标记 m<sub>r</sub> = 1 来表示参数位置，反之则 m<sub>r</sub> = 0。这四个简单的特征是我们的SRL系统所需要的。上下文大小设置为1的一个样本的特征如下[2]所示：
+两个输入特性在这个流程中起着至关重要的作用：predicate（pred）和argument（arguments）。 还采用了两个其他特征：谓词上下文（ctx-p）和区域标记（mr）。 因为单个谓词不能精确地描述谓词信息，特别是当相同的词在句子中出现多于一次时。 使用谓词上下文，可以在很大程度上消除歧义。类似地，如果它位于谓词上下文区域中，则使用区域标记 m<sub>r</sub> = 1 来表示参数位置，反之则 m<sub>r</sub> = 0。这四个简单的特征是我们的SRL系统所需要的。上下文大小设置为1的一个样本的特征如下[2]所示：
 <center>
 ![pic](./feature.jpg)
 </center>
@@ -104,13 +104,13 @@ def process(settings, file_name):
             yield word_slot, predicate_slot, ctx_n2_slot, ctx_n1_slot, \
                   ctx_0_slot, ctx_p1_slot, ctx_p2_slot, mark_slot, label_slot
 ```
-函数 `process` 产出有8个特征和标签的9个表。
+函数 `process` 返回8个特征list和1个标签list。
 
 ### 神经网络配置
 
 `db_lstm.py` 是在训练过程中加载字典并定义数据提供程序模块和网络架构的神经网络配置文件。
 
-九个 `data_layer` 从数据提供程序加载实例。八个特征分别转换为嵌入，并由`mixed_layer`混合。 深度双向LSTM层提取softmax层的特征。目标函数是标签的交叉熵。
+九个 `data_layer` 从数据提供程序加载实例。八个特征分别转换为向量，并由`mixed_layer`混合。 深度双向LSTM层提取softmax层的特征。目标函数是标签的交叉熵。
 
 ### 训练 
 训练的脚本是 `train.sh`，用户只需执行:
@@ -136,11 +136,11 @@ paddle train \
 
 -  \--config=./db_lstm.py : 网络配置文件
 -  \--use_gpu=false: 使用 CPU 训练（如果已安装 PaddlePaddle GPU版本并想使用 GPU 训练可以设置为true，目前 crf_layer 不支持 GPU）
--  \--log_period=500: 每20批(batch)输出日志
+-  \--log_period=500: 每20个batch输出日志
 -  \--trainer_count=1: 设置线程数（或 GPU 数）
--  \--show_parameter_stats_period=5000: 每100批显示参数统计
+-  \--show_parameter_stats_period=5000: 每100个batch显示参数统计
 -  \--save_dir=./output: 模型输出路径
--  \--num_passes=10000: 设置通过数，一次通过意味着PaddlePaddle训练数据集中的所有样本一次
+-  \--num_passes=10000: 设置数据遍历次数，一个pass意味着PaddlePaddle训练数据集中的所有样本被遍历一次
 -  \--average_test_period=10000000:  每个 average_test_period 批次对平均参数进行测试
 -  \--init_model_path=./data: 参数初始化路径
 -  \--load_missing_parameter_strategy=rand: 随机初始不存在的参数
@@ -191,7 +191,7 @@ python predict.py
      -o $output_file
 ```
 
-`predict.py` 是主要的可执行python脚本，其中包括函数：加载模型，加载数据，数据预测。网络模型将输出标签的概率分布。 在演示中，我们使用最大概率的标签作为结果。用户还可以根据概率分布矩阵实现集束搜索或维特比解码。
+`predict.py` 是主要的可执行python脚本，其中包括函数：加载模型，加载数据，数据预测。网络模型将输出标签的概率分布。 在演示中，我们使用最大概率的标签作为结果。用户还可以根据概率分布矩阵实现柱搜索或维特比解码。
 
 预测后，结果保存在 `predict.res` 中。
 
