@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ limitations under the License. */
 #include <float.h>
 #include "hl_base.h"
 #include "hl_cnn.h"
+#include "hl_device_functions.cuh"
 
 __global__ void KeFeature2col(size_t n, size_t height, const real* data_im,
                               size_t blockH, size_t blockW, size_t width,
@@ -641,10 +642,10 @@ __global__ void KeBilinearInterpBw(real* in,
     real* inPos =
       &in[outIdH * inputW + channelId * inImgSize + inImgIdy * inImgW + inImgIdx];
     const real* outPos = &out[outIdH * outputW + outIdW];
-    atomicAdd(&inPos[0], h2lambda * w2lambda * outPos[0]);
-    atomicAdd(&inPos[wId], h2lambda * w1lambda * outPos[0]);
-    atomicAdd(&inPos[hId * inImgW], h1lambda * w2lambda * outPos[0]);
-    atomicAdd(&inPos[hId * inImgW + wId], h1lambda * w1lambda * outPos[0]);
+    paddle::paddleAtomicAdd(&inPos[0], h2lambda * w2lambda * outPos[0]);
+    paddle::paddleAtomicAdd(&inPos[wId], h2lambda * w1lambda * outPos[0]);
+    paddle::paddleAtomicAdd(&inPos[hId * inImgW], h1lambda * w2lambda * outPos[0]);
+    paddle::paddleAtomicAdd(&inPos[hId * inImgW + wId], h1lambda * w1lambda * outPos[0]);
   }
 }
 

@@ -32,11 +32,3 @@ Each line of train.list and test.list is an absolute or relative path (relative
 to the PaddePaddle program runtime) of data file. Fascinatingly more, each line
 can also be a HDFS file path or a SQL connection string. As long as the user
 assures how to access each file in DataProvider.
-
-Please refer to the following articles for more information about the detail
-usages of DataProvider and how to implement a new DataProvider,
-
-..  toctree::
-
-    pydataprovider2.rst
-    write_new_dataprovider.rst

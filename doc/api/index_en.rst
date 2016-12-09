@@ -7,8 +7,8 @@ DataProvider API
 ..  toctree::
   :maxdepth: 1
 
-  data_provider/index.rst
-  data_provider/pydataprovider2.rst
+  data_provider/index_en.rst
+  data_provider/pydataprovider2_en.rst
 
 Model Config API
 ----------------
@@ -16,7 +16,6 @@ Model Config API
 ..  toctree::
   :maxdepth: 1
 
-  trainer_config_helpers/index.rst
   trainer_config_helpers/optimizers.rst
   trainer_config_helpers/data_sources.rst
   trainer_config_helpers/layers.rst
