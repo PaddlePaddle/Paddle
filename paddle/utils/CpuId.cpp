@@ -34,7 +34,7 @@ static InitFunction __init_simd_flags(
 
 SIMDFlags::SIMDFlags() {
     unsigned int cpuInfo[4];
-
+    // CPUID: https://en.wikipedia.org/wiki/CPUID
     CPUID(cpuInfo, 0x00000001);
     simd_flags_ |= cpuInfo[3] & (1 << 25) ? SIMD_SSE   : SIMD_NONE;
     simd_flags_ |= cpuInfo[3] & (1 << 26) ? SIMD_SSE2  : SIMD_NONE;

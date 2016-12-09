@@ -61,7 +61,7 @@ private:
 #define HAS_SSE3     SIMDFlags::instance()->isSSE3()
 #define HAS_SSSE3    SIMDFlags::instance()->isSSSE3()
 #define HAS_SSE41    SIMDFlags::instance()->isSSE41()
-#define HAS_SSS42    SIMDFlags::instance()->isSSE42()
+#define HAS_SSE42    SIMDFlags::instance()->isSSE42()
 #define HAS_FMA3     SIMDFlags::instance()->isFMA3()
 #define HAS_FMA4     SIMDFlags::instance()->isFMA4()
 #define HAS_AVX      SIMDFlags::instance()->isAVX()
