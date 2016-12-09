@@ -5,6 +5,7 @@ add_simple_unittest(test_StringUtils)
 add_simple_unittest(test_CustomStackTrace)
 add_simple_unittest(test_ThreadBarrier)
 add_simple_unittest(test_SpinLock)
+add_simple_unittest(test_SIMDFlags)
 
 add_executable(
     test_CustomStackTracePrint
