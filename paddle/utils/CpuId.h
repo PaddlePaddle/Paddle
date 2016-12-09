@@ -24,17 +24,17 @@ public:
 
     static SIMDFlags* instance();
 
-    inline bool isSSE()       { return simd_flags_ & SIMD_SSE;   }
-    inline bool isSSE2()      { return simd_flags_ & SIMD_SSE2;  }
-    inline bool isSSE3()      { return simd_flags_ & SIMD_SSE3;  }
-    inline bool isSSSE3()     { return simd_flags_ & SIMD_SSSE3; }
-    inline bool isSSE41()     { return simd_flags_ & SIMD_SSE41; }
-    inline bool isSSE42()     { return simd_flags_ & SIMD_SSE42; }
-    inline bool isFMA3()      { return simd_flags_ & SIMD_FMA3;  }
-    inline bool isFMA4()      { return simd_flags_ & SIMD_FMA4;  }
-    inline bool isAVX()       { return simd_flags_ & SIMD_AVX;   }
-    inline bool isAVX2()      { return simd_flags_ & SIMD_AVX2;  }
-    inline bool isAVX512()    { return simd_flags_ & SIMD_AVX512;}
+    inline bool isSSE()   const { return simd_flags_ & SIMD_SSE;   }
+    inline bool isSSE2()  const { return simd_flags_ & SIMD_SSE2;  }
+    inline bool isSSE3()  const { return simd_flags_ & SIMD_SSE3;  }
+    inline bool isSSSE3() const { return simd_flags_ & SIMD_SSSE3; }
+    inline bool isSSE41() const { return simd_flags_ & SIMD_SSE41; }
+    inline bool isSSE42() const { return simd_flags_ & SIMD_SSE42; }
+    inline bool isFMA3()  const { return simd_flags_ & SIMD_FMA3;  }
+    inline bool isFMA4()  const { return simd_flags_ & SIMD_FMA4;  }
+    inline bool isAVX()   const { return simd_flags_ & SIMD_AVX;   }
+    inline bool isAVX2()  const { return simd_flags_ & SIMD_AVX2;  }
+    inline bool isAVX512()const { return simd_flags_ & SIMD_AVX512;}
 
 private:
     enum simd_t {

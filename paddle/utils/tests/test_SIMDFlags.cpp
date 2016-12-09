@@ -20,14 +20,14 @@ using namespace paddle; // NOLINT
 
 TEST(SIMDFlags, gccTest) {
 #if (defined(__GNUC__) || defined(__GNUG__)) && !(defined(__clang__))
-    CHECK(__builtin_cpu_supports("sse")   == HAS_SSE);
-    CHECK(__builtin_cpu_supports("sse2")  == HAS_SSE2);
-    CHECK(__builtin_cpu_supports("sse3")  == HAS_SSE3);
-    CHECK(__builtin_cpu_supports("ssse3") == HAS_SSSE3);
-    CHECK(__builtin_cpu_supports("sse4.1")== HAS_SSE41);
-    CHECK(__builtin_cpu_supports("sse4.2")== HAS_SSE42);
-    CHECK(__builtin_cpu_supports("avx")   == HAS_AVX);
-    CHECK(__builtin_cpu_supports("avx2")  == HAS_AVX2);
+    CHECK(!__builtin_cpu_supports("sse")   != HAS_SSE);
+    CHECK(!__builtin_cpu_supports("sse2")  != HAS_SSE2);
+    CHECK(!__builtin_cpu_supports("sse3")  != HAS_SSE3);
+    CHECK(!__builtin_cpu_supports("ssse3") != HAS_SSSE3);
+    CHECK(!__builtin_cpu_supports("sse4.1")!= HAS_SSE41);
+    CHECK(!__builtin_cpu_supports("sse4.2")!= HAS_SSE42);
+    CHECK(!__builtin_cpu_supports("avx")   != HAS_AVX);
+    CHECK(!__builtin_cpu_supports("avx2")  != HAS_AVX2);
 #endif
 }
 

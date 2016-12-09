@@ -28,10 +28,6 @@ limitations under the License. */
 
 namespace paddle {
 
-/// init simd instance
-static InitFunction __init_simd_flags(
-    []{ SIMDFlags::instance(); }, std::numeric_limits<int>::max());
-
 SIMDFlags::SIMDFlags() {
     unsigned int cpuInfo[4];
     // CPUID: https://en.wikipedia.org/wiki/CPUID
