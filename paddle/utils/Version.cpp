@@ -33,7 +33,11 @@ void printVersion(std::ostream& os) {
 #ifndef PADDLE_VERSION
 #define PADDLE_VERSION "unknown"
 #endif
-  os << "paddle version: " << PADDLE_VERSION << std::endl
+// converts macro to string https://gcc.gnu.org/onlinedocs/cpp/Stringification.html
+#define xstr(s) str(s)
+#define str(s) #s
+
+  os << "paddle version: " << xstr(PADDLE_VERSION) << std::endl
      << std::boolalpha << "\t"
      << "withGpu: " << version::isWithGpu() << std::endl
      << "\t"
