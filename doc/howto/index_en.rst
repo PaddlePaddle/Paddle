@@ -7,9 +7,9 @@ Usage
 ..  toctree::
   :maxdepth: 1
 
-  cmd_parameter/index.md
-  deep_model/index.rst
-  cluster/cluster_train.md
+  cmd_parameter/index_en.md
+  deep_model/index_en.rst
+  cluster/cluster_train_en.md
 
 Development
 ------------
@@ -17,8 +17,8 @@ Development
 ..  toctree::
   :maxdepth: 1
 
-  new_layer/index.rst
-  contribute_to_paddle.md
+  new_layer/index_en.rst
+  contribute_to_paddle_en.md
 
 Optimization
 -------------
@@ -26,4 +26,4 @@ Optimization
 ..  toctree::
   :maxdepth: 1
 
-  optimization/index.rst
+  optimization/index_en.rst

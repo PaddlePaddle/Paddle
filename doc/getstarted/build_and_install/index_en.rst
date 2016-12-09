@@ -6,10 +6,9 @@ Install PaddlePaddle
 
 ..  toctree::
     :maxdepth: 1
-    :glob:
 
-    docker_install.rst
-    ubuntu_install.rst
+    docker_install_en.rst
+    ubuntu_install_en.rst
 
 Build from Source
 -----------------
@@ -20,6 +19,5 @@ Build from Source
 
 ..  toctree::
     :maxdepth: 1
-    :glob:
 
-    build_from_source.md
+    build_from_source_en.md
