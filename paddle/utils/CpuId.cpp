@@ -51,7 +51,11 @@ SIMDFlags::SIMDFlags() {
     simd_flags_ |= cpuInfo[2] & (1 << 16) ? SIMD_FMA4  : SIMD_NONE;
 }
 
-const SIMDFlags* SIMDFlags::instance() {
+bool SIMDFlags::check(int flags) const {
+    return (simd_flags_ & flags) == flags;
+}
+
+SIMDFlags const* SIMDFlags::instance() {
     static SIMDFlags instance;
     return &instance;
 }

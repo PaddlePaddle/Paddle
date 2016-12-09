@@ -15,56 +15,65 @@ limitations under the License. */
 
 namespace paddle {
 
+enum simd_t {
+    SIMD_NONE     = 0,        ///< None
+    SIMD_SSE      = 1 << 0,   ///< SSE
+    SIMD_SSE2     = 1 << 1,   ///< SSE 2
+    SIMD_SSE3     = 1 << 2,   ///< SSE 3
+    SIMD_SSSE3    = 1 << 3,   ///< SSSE 3
+    SIMD_SSE41    = 1 << 4,   ///< SSE 4.1
+    SIMD_SSE42    = 1 << 5,   ///< SSE 4.2
+    SIMD_FMA3     = 1 << 6,   ///< FMA 3
+    SIMD_FMA4     = 1 << 7,   ///< FMA 4
+    SIMD_AVX      = 1 << 8,   ///< AVX
+    SIMD_AVX2     = 1 << 9,   ///< AVX 2
+    SIMD_AVX512   = 1 << 10,  ///< AVX 512
+};
+
 class SIMDFlags final {
 public:
     DISABLE_COPY(SIMDFlags);
-
     SIMDFlags();
 
-    static const SIMDFlags* instance();
-
-    inline bool isSSE()   const { return simd_flags_ & SIMD_SSE;   }
-    inline bool isSSE2()  const { return simd_flags_ & SIMD_SSE2;  }
-    inline bool isSSE3()  const { return simd_flags_ & SIMD_SSE3;  }
-    inline bool isSSSE3() const { return simd_flags_ & SIMD_SSSE3; }
-    inline bool isSSE41() const { return simd_flags_ & SIMD_SSE41; }
-    inline bool isSSE42() const { return simd_flags_ & SIMD_SSE42; }
-    inline bool isFMA3()  const { return simd_flags_ & SIMD_FMA3;  }
-    inline bool isFMA4()  const { return simd_flags_ & SIMD_FMA4;  }
-    inline bool isAVX()   const { return simd_flags_ & SIMD_AVX;   }
-    inline bool isAVX2()  const { return simd_flags_ & SIMD_AVX2;  }
-    inline bool isAVX512()const { return simd_flags_ & SIMD_AVX512;}
+    static SIMDFlags const* instance();
+    bool check(int flags) const;
 
 private:
-    enum simd_t {
-        SIMD_NONE     = 0,        ///< None
-        SIMD_SSE      = 1 << 0,   ///< SSE
-        SIMD_SSE2     = 1 << 1,   ///< SSE 2
-        SIMD_SSE3     = 1 << 2,   ///< SSE 3
-        SIMD_SSSE3    = 1 << 3,   ///< SSSE 3
-        SIMD_SSE41    = 1 << 4,   ///< SSE 4.1
-        SIMD_SSE42    = 1 << 5,   ///< SSE 4.2
-        SIMD_FMA3     = 1 << 6,   ///< FMA 3
-        SIMD_FMA4     = 1 << 7,   ///< FMA 4
-        SIMD_AVX      = 1 << 8,   ///< AVX
-        SIMD_AVX2     = 1 << 9,   ///< AVX 2
-        SIMD_AVX512   = 1 << 10,  ///< AVX 512
-    };
-
-    /// simd flags
     int simd_flags_ = SIMD_NONE;
 };
 
-#define HAS_SSE      SIMDFlags::instance()->isSSE()
-#define HAS_SSE2     SIMDFlags::instance()->isSSE2()
-#define HAS_SSE3     SIMDFlags::instance()->isSSE3()
-#define HAS_SSSE3    SIMDFlags::instance()->isSSSE3()
-#define HAS_SSE41    SIMDFlags::instance()->isSSE41()
-#define HAS_SSE42    SIMDFlags::instance()->isSSE42()
-#define HAS_FMA3     SIMDFlags::instance()->isFMA3()
-#define HAS_FMA4     SIMDFlags::instance()->isFMA4()
-#define HAS_AVX      SIMDFlags::instance()->isAVX()
-#define HAS_AVX2     SIMDFlags::instance()->isAVX2()
-#define HAS_AVX512   SIMDFlags::instance()->isAVX512()
+/**
+ * @brief   Check SIMD flags at runtime.
+ *
+ * For example.
+ * @code{.cpp}
+ *
+ * if (HAS_SIMD(SIMD_AVX2 | SIMD_FMA4)) {
+ *      avx2_fm4_stub();   
+ * } else if (HAS_SIMD(SIMD_AVX)) {
+ *      avx_stub();   
+ * }
+ *
+ * @endcode
+ */
+#define HAS_SIMD(__flags)  SIMDFlags::instance()->check(__flags)
+
+/**
+ * @brief   Check SIMD flags at runtime.
+ *
+ * 1. Check all SIMD flags at runtime: HAS_SSE && HAS_SSE2 && HAS_SSE3 
+ * 2. Check one SIMD flags at runtime: HAS_SSE || HAS_SSE2 || HAS_SSE3 
+ */
+#define HAS_SSE      HAS_SIMD(SIMD_SSE)
+#define HAS_SSE2     HAS_SIMD(SIMD_SSE2)
+#define HAS_SSE3     HAS_SIMD(SIMD_SSE3)
+#define HAS_SSSE3    HAS_SIMD(SIMD_SSSE3)
+#define HAS_SSE41    HAS_SIMD(SIMD_SSE41)
+#define HAS_SSE42    HAS_SIMD(SIMD_SSE42)
+#define HAS_FMA3     HAS_SIMD(SIMD_FMA3)
+#define HAS_FMA4     HAS_SIMD(SIMD_FMA4)
+#define HAS_AVX      HAS_SIMD(SIMD_AVX)
+#define HAS_AVX2     HAS_SIMD(SIMD_AVX2)
+#define HAS_AVX512   HAS_SIMD(SIMD_AVX512)
 
 }   // namespace paddle
