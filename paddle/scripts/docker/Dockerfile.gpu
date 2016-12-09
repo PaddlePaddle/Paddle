@@ -11,7 +11,7 @@ RUN apt-get update \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     && apt-get clean -y
 RUN pip install -U BeautifulSoup docopt PyYAML pillow \
-    sphinx sphinx_rtd_theme breathe recommonmark
+    sphinx sphinx_rtd_theme recommonmark
 
 # cmake tends to hide and blur the dependencies between code modules, as
 # noted here https://github.com/PaddlePaddle/Paddle/issues/763. We are
