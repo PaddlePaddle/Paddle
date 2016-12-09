@@ -11,7 +11,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <iostream>
 #include "DisableCopy.h"
 
 namespace paddle {
@@ -22,7 +21,7 @@ public:
 
     SIMDFlags();
 
-    static SIMDFlags* instance();
+    static const SIMDFlags* instance();
 
     inline bool isSSE()   const { return simd_flags_ & SIMD_SSE;   }
     inline bool isSSE2()  const { return simd_flags_ & SIMD_SSE2;  }

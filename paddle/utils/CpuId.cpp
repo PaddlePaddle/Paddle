@@ -14,6 +14,8 @@ limitations under the License. */
 
 #ifdef _WIN32
 
+#include <intrin.h>
+
 /// for MSVC
 #define CPUID(info, x)  __cpuidex(info, x, 0)
 
@@ -49,7 +51,7 @@ SIMDFlags::SIMDFlags() {
     simd_flags_ |= cpuInfo[2] & (1 << 16) ? SIMD_FMA4  : SIMD_NONE;
 }
 
-SIMDFlags* SIMDFlags::instance() {
+const SIMDFlags* SIMDFlags::instance() {
     static SIMDFlags instance;
     return &instance;
 }
