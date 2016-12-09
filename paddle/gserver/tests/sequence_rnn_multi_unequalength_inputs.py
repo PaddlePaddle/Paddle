@@ -16,11 +16,11 @@
 from paddle.trainer_config_helpers import *
 
 ######################## data source ################################
-define_py_data_sources2(train_list='gserver/tests/Sequence/dummy.list',
-                        test_list=None,
-                        module='rnn_data_provider',
-                        obj='process_unequalength_seq')
-
+define_py_data_sources2(
+    train_list='gserver/tests/Sequence/dummy.list',
+    test_list=None,
+    module='rnn_data_provider',
+    obj='process_unequalength_seq')
 
 settings(batch_size=2, learning_rate=0.01)
 ######################## network configure ################################
@@ -38,38 +38,40 @@ emb2 = embedding_layer(input=speaker2, size=word_dim)
 # This hierachical RNN is designed to be equivalent to the RNN in
 # sequence_nest_rnn_multi_unequalength_inputs.conf
 
+
 def step(x1, x2):
-	def calrnn(y):
-		mem = memory(name = 'rnn_state_' + y.name, size = hidden_dim)
-		out = fc_layer(input = [y, mem],
-					   size = hidden_dim,
-					   act = TanhActivation(),
-					   bias_attr = True,
-					   name = 'rnn_state_' + y.name)
-		return out
-	
-	encoder1 = calrnn(x1)
-	encoder2 = calrnn(x2)
-	return [encoder1, encoder2]
+    def calrnn(y):
+        mem = memory(name='rnn_state_' + y.name, size=hidden_dim)
+        out = fc_layer(
+            input=[y, mem],
+            size=hidden_dim,
+            act=TanhActivation(),
+            bias_attr=True,
+            name='rnn_state_' + y.name)
+        return out
+
+    encoder1 = calrnn(x1)
+    encoder2 = calrnn(x2)
+    return [encoder1, encoder2]
+
 
 encoder1_rep, encoder2_rep = recurrent_group(
-    name="stepout",
-    step=step,
-    input=[emb1, emb2])
+    name="stepout", step=step, input=[emb1, emb2])
 
-encoder1_last = last_seq(input = encoder1_rep)
-encoder1_expandlast = expand_layer(input = encoder1_last,
-                                   expand_as = encoder2_rep)
-context = mixed_layer(input = [identity_projection(encoder1_expandlast),
-                               identity_projection(encoder2_rep)],
-                      size = hidden_dim)
+encoder1_last = last_seq(input=encoder1_rep)
+encoder1_expandlast = expand_layer(input=encoder1_last, expand_as=encoder2_rep)
+context = mixed_layer(
+    input=[
+        identity_projection(encoder1_expandlast),
+        identity_projection(encoder2_rep)
+    ],
+    size=hidden_dim)
 
 rep = last_seq(input=context)
-prob = fc_layer(size=label_dim,
-                input=rep,
-                act=SoftmaxActivation(),
-                bias_attr=True)
+prob = fc_layer(
+    size=label_dim, input=rep, act=SoftmaxActivation(), bias_attr=True)
 
-outputs(classification_cost(input=prob,
-                            label=data_layer(name="label", size=label_dim)))
-
+outputs(
+    classification_cost(
+        input=prob, label=data_layer(
+            name="label", size=label_dim)))

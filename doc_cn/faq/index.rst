@@ -274,7 +274,7 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
 例如机器上有4块GPU，编号从0开始，指定使用2、3号GPU：
 
-* 方式1：通过 ``CUDA_VISIBLE_DEVICES`` 环境变量来指定特定的GPU。
+* 方式1：通过 `CUDA_VISIBLE_DEVICES <http://www.acceleware.com/blog/cudavisibledevices-masking-gpus>`_ 环境变量来指定特定的GPU。
 
 ..      code-block:: bash
 

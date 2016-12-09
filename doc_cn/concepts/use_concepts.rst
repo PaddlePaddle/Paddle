@@ -93,7 +93,7 @@ DataProvider是PaddlePaddle系统的数据提供器，将用户的原始数据�
   
 - ``outputs``: 标记网络输出的函数为 ``outputs`` 。
 
- 训练阶段，网络的输出为神经网络的优化目标；预测阶段，网络的输出也可通过 ``outputs`` 标记。
+  训练阶段，网络的输出为神经网络的优化目标；预测阶段，网络的输出也可通过 ``outputs`` 标记。
 
 
 这里对 ``mixed_layer`` 稍做详细说明， 该Layer将多个输入(Projection 或 Operator)累加求和，具体计算是通过内部的 Projection 和 Operator 完成，然后加 Bias 和 activation 操作，
@@ -152,6 +152,4 @@ PaddlePaddle多机采用经典的 Parameter Server 架构对多个节点的 trai
 .. _损失函数层: ../../doc/ui/api/trainer_config_helpers/layers.html#cost-layers
 .. _评估器: ../../doc/ui/api/trainer_config_helpers/evaluators.html
 .. _mixed_layer: ../../doc/ui/api/trainer_config_helpers/layers.html#mixed-layer
-.. _masking-gpu: http://www.acceleware.com/blog/cudavisibledevices-masking-gpus
-
 ..  _集群训练Paddle: ../cluster/index.html

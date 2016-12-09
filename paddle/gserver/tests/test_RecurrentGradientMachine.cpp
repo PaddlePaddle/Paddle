@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/utils/Util.h>
-#include <paddle/utils/Version.h>
-#include <paddle/utils/PythonUtil.h>
+#include <paddle/gserver/gradientmachines/GradientMachine.h>
 #include <paddle/trainer/Trainer.h>
 #include <paddle/trainer/TrainerInternal.h>
-#include <paddle/gserver/gradientmachines/GradientMachine.h>
+#include <paddle/utils/PythonUtil.h>
+#include <paddle/utils/Util.h>
+#include <paddle/utils/Version.h>
 
 P_DECLARE_int32(seed);
 
@@ -45,10 +45,9 @@ public:
     auto p = const_cast<TrainerForTest*>(this);
     auto& params = p->getGradientMachine()->getParameters();
     return std::accumulate(
-        params.begin(),
-        params.end(),
-        0UL,
-        [](size_t a, const ParameterPtr& p) { return a + p->getSize(); });
+        params.begin(), params.end(), 0UL, [](size_t a, const ParameterPtr& p) {
+          return a + p->getSize();
+        });
   }
 };
 
@@ -148,8 +147,8 @@ TEST(RecurrentGradientMachine, rnn_multi_input) {
 
 TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
   for (bool useGpu : {false, true}) {
-    test("gserver/tests/sequence_rnn_multi_unequalength_inputs.conf",
-         "gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.conf",
+    test("gserver/tests/sequence_rnn_multi_unequalength_inputs.py",
+         "gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py",
          1e-6,
          useGpu);
   }
