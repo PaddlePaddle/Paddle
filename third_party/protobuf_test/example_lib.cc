@@ -1,6 +1,11 @@
 #include "third_party/protobuf_test/example_lib.h"
-#include <string>
 
-std::string get_greet(const ::protos::Greeting& who) {
+namespace third_party {
+namespace protobuf_test {
+
+std::string get_greet(const Greeting& who) {
   return "Hello " + who.name();
 }
+
+}  // namespace protobuf_test
+}  // namespace thrid_party

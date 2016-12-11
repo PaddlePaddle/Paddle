@@ -7,6 +7,7 @@ cpp_proto_library(
     protos = [
         "example.proto"
     ],
+    with_grpc = True,
 )
 
 cc_library(
@@ -14,4 +15,14 @@ cc_library(
     srcs = ["example_lib.cc"],
     hdrs = ["example_lib.h"],
     deps = [":example_proto"],
+)
+
+cc_test(
+    name = "example_lib_test",
+    srcs = ["example_lib_test.cc"],
+    copts = ["-Iexternal/gtest/include"],
+    deps =[
+        "@gtest//:main",
+        ":example_lib",
+    ],
 )

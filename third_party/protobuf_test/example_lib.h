@@ -4,4 +4,10 @@
 
 #include <string>
 
-std::string get_greet(const ::protos::Greeting &who);
+namespace third_party {
+namespace protobuf_test {
+
+std::string get_greet(const Greeting &who);
+
+}  // namespace protobuf_test
+}  // namespace third_party

@@ -161,12 +161,13 @@ The general development workflow with Docker and Bazel is as follows:
       cd /paddle # where paddle source code has been mounted into the container
       mkdir -p build
       cd build
-      cmake ..
+      cmake -DWITH_TESTING=ON ..
       make -j `nproc`
+      CTEST_OUTPUT_ON_FAILURE=1 ctest
 
    or Bazel in the container:
 
    .. code-block:: bash
 
       cd /paddle
-      bazel build ...
+      bazel test ...
