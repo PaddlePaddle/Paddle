@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,10 +33,10 @@ def process(settings, file_name):
             label, comment = line.strip().split('\t')
             label = int(''.join(label.split()))
             words = comment.split()
-            word_slot = [
+            words = [
                 settings.word_dict[w] for w in words if w in settings.word_dict
             ]
-            yield word_slot, label
+            yield words, label
 
 
 ## for hierarchical sequence network
@@ -52,20 +52,20 @@ def hook2(settings, dict_file, **kwargs):
 @provider(init_hook=hook2, should_shuffle=False)
 def process2(settings, file_name):
     with open(file_name) as fdata:
-        label_list = []
-        word_slot_list = []
+        labels = []
+        sentences = []
         for line in fdata:
             if (len(line)) > 1:
                 label, comment = line.strip().split('\t')
                 label = int(''.join(label.split()))
                 words = comment.split()
-                word_slot = [
+                words = [
                     settings.word_dict[w] for w in words
                     if w in settings.word_dict
                 ]
-                label_list.append(label)
-                word_slot_list.append(word_slot)
+                labels.append(label)
+                sentences.append(words)
             else:
-                yield word_slot_list, label_list
-                label_list = []
-                word_slot_list = []
+                yield sentences, labels
+                labels = []
+                sentences = []

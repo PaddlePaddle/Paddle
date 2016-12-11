@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -141,9 +141,9 @@ def init_config_environment(
         g_add_submodel_suffix=False,
 
         # Whether current layer needs to pass the image height and width.
-        # Default value is true, but if it encounters recurrent_layer_group, 
-        # it will be false. The reason is that image is converted to be sequence, 
-        # image height will be sequence length, and image width will be feature 
+        # Default value is true, but if it encounters recurrent_layer_group,
+        # it will be false. The reason is that image is converted to be sequence,
+        # image height will be sequence length, and image width will be feature
         # length of each timestep.
         g_pass_height_width=True, ):
 
@@ -1067,7 +1067,7 @@ def cnn_output_size(img_size, filter_size, padding, stride, caffe_mode):
         return 1 + int(math.ceil(output))
 
 
-#calcualte image_size based on output_size for de-convolution (ConvTransLayer). 
+#calcualte image_size based on output_size for de-convolution (ConvTransLayer).
 #It is the reverse function of cnn_output_size
 def cnn_image_size(output_size, filter_size, padding, stride, caffe_mode):
     img_size = (output_size - 1) * stride + filter_size - 2 * padding
@@ -3364,6 +3364,14 @@ def my_fatal(s):
     logger.critical(s)
     raise Exception()
 
+_parse_config_hooks = set()
+def register_parse_config_hook(f):
+    """
+    Register a hook function for parse_config. parse_config will invoke the hook
+    at the beginning of parse. This make it possible to reset global state for
+    for constructing the model.
+    """
+    _parse_config_hooks.add(f)
 
 def parse_config(config_file, config_arg_str):
     '''
@@ -3371,6 +3379,8 @@ def parse_config(config_file, config_arg_str):
     passed to config script as a dictionary CONFIG_ARGS
     '''
     init_config_environment()
+    for hook in _parse_config_hooks:
+        hook()
 
     config_args = {}
 
