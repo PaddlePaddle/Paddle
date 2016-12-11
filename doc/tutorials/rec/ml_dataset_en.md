@@ -1,3 +1,8 @@
+```eval_rst
+..  _demo_ml_dataset_en:
+
+```
+
 # MovieLens Dataset
 
 The [MovieLens Dataset](http://grouplens.org/datasets/movielens/) was collected by GroupLens Research.

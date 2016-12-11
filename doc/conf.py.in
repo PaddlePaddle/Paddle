@@ -144,5 +144,6 @@ def setup(app):
     # no c++ API for now
     app.add_config_value('recommonmark_config', {
             'url_resolver': lambda url: github_doc_root + url,
+	    'enable_eval_rst': True,
             }, True)
     app.add_transform(AutoStructify)

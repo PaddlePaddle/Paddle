@@ -1,5 +1,7 @@
+..  _api_pydataprovider:
+
 PyDataProvider2
-=================
+===============
 
 We highly recommand users to use PyDataProvider2 to provide training or testing
 data to PaddlePaddle. The user only needs to focus on how to read a single
