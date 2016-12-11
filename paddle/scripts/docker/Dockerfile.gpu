@@ -4,12 +4,14 @@ MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install -y cmake libprotobuf-dev protobuf-compiler git \
-    libgoogle-glog-dev libgflags-dev libatlas-dev libatlas3-base g++ m4 python-pip \
+    libgoogle-glog-dev libgflags-dev libgtest-dev \
+    libatlas-dev libatlas3-base g++ m4 python-pip \
     python-protobuf python-numpy python-dev swig openssh-server \
     wget unzip python-matplotlib tar xz-utils bzip2 gzip coreutils \
     sed grep graphviz libjpeg-dev zlib1g-dev doxygen \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     && apt-get clean -y
+RUN cd /usr/src/gtest && cmake . && make && sudo cp *.a /usr/lib
 RUN pip install -U BeautifulSoup docopt PyYAML pillow \
     sphinx sphinx_rtd_theme breathe recommonmark
 
