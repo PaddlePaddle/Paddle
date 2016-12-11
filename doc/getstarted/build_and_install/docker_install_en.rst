@@ -119,7 +119,7 @@ The general development workflow with Docker and Bazel is as follows:
 
    .. code-block:: bash
 
-   git clone --recursive https://github.com/paddlepaddle/paddle
+      git clone --recursive https://github.com/paddlepaddle/paddle
 
 
 1. Build a development Docker image `paddle:dev` from the source code.
@@ -129,8 +129,8 @@ The general development workflow with Docker and Bazel is as follows:
 
    .. code-block:: bash
 
-   cd paddle
-   docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile .
+      cd paddle
+      docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile .
 
 
 1. Run the image as a container and mounting local source code
@@ -139,34 +139,34 @@ The general development workflow with Docker and Bazel is as follows:
 
    .. code-block:: bash
 
-   docker run \
-    -d # run the container in background mode \
-    --name paddle # we can run a nginx container to serve documents \
-    -p 2022:22    # so we can SSH into this container \
-    -v $PWD:/paddle # mount the source code \
-    -v $HOME/.cache/bazel:/root/.cache/bazel # mount Bazel cache \
-    paddle:dev
+      docker run \
+       -d # run the container in background mode \
+       --name paddle # we can run a nginx container to serve documents \
+       -p 2022:22    # so we can SSH into this container \
+       -v $PWD:/paddle # mount the source code \
+       -v $HOME/.cache/bazel:/root/.cache/bazel # mount Bazel cache \
+       paddle:dev
 
 1. SSH into the container:
 
    .. code-block:: bash
 
-   ssh root@localhost -p 2022
+      ssh root@localhost -p 2022
 
 1. We can edit the source code in the container or on this host.  Then
    we can build using cmake
 
    .. code-block:: bash
 
-   cd /paddle # where paddle source code has been mounted into the container
-   mkdir -p build
-   cd build
-   cmake ..
-   make -j `nproc`
+      cd /paddle # where paddle source code has been mounted into the container
+      mkdir -p build
+      cd build
+      cmake ..
+      make -j `nproc`
 
    or Bazel in the container:
 
    .. code-block:: bash
 
-   cd /paddle
-   bazel build ...
+      cd /paddle
+      bazel build ...
