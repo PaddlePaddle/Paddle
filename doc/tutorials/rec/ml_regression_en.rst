@@ -16,7 +16,7 @@ Data Preparation
 ````````````````
 Download and extract dataset
 ''''''''''''''''''''''''''''
-We use :ref:`demo_ml_dataset` here. 
+We use :ref:`demo_ml_dataset_en` here. 
 To download and unzip the dataset, simply run the following commands.
 
 ..  code-block:: bash
@@ -280,7 +280,7 @@ The run.sh is shown as follow:
 It just start a paddle training process, write the log to `log.txt`,
 then print it on screen.
 
-Each command line argument in :code:`run.sh`, please refer to the :ref:`cmd_line_index` page. The short description of these arguments is shown as follow.
+Each command line argument in :code:`run.sh`, please refer to the :ref:`cmd_line_index_en` page. The short description of these arguments is shown as follow.
 
 *  config\: Tell paddle which file is neural network configuration.
 *  save_dir\: Tell paddle save model into './output'
