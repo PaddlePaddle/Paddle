@@ -1,3 +1,7 @@
+```eval_rst
+..  _cmd_detail_introduction_en:
+```
+
 # Detail Description
 
 ## Common
