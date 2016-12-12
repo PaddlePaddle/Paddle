@@ -381,57 +381,45 @@ void hl_avgpool_backward(const int frameCnt, const real* outGrad,
   CHECK_SYNC("hl_avgpool_backward failed");
 }
 
-__global__ void KeCMRNormFillScale(size_t nthreads, const real* in,
+__global__ void KeCMRNormFillScale(size_t imageSize, const real* in,
                                    real* scale, size_t channels,
                                    size_t height, size_t width, size_t size,
                                    real alpha) {
-  size_t index = threadIdx.x + blockIdx.x * blockDim.x;
-  if (index < nthreads) {
-    // find out the local offset
-    size_t w = index % width;
-    size_t h = (index / width) % height;
-    size_t n = index / width / height;
-    size_t offset = (n * channels * height + h) * width + w;
-    size_t step = height * width;
+  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < imageSize) {
+    const int w = idx % width;
+    const int h = (idx / width) % height;
+    const int n = idx / width / height;
+    const int offset = (n * channels * height + h) * width + w;
+
     in += offset;
     scale += offset;
-    size_t head = 0;
-    size_t pre_pad = (size - 1) / 2;
-    size_t post_pad = size - pre_pad - 1;
-    real accum_scale = 0;
-    // fill the scale at [n, :, h, w]
-    // accumulate values
-    while (head < post_pad) {
-      accum_scale += in[head * step] * in[head * step];
-      ++head;
-    }
-    // until we reach size, nothing needs to be subtracted
-    while (head < size) {
-      accum_scale += in[head * step] * in[head * step];
-      scale[(head - post_pad) * step] = 1. + accum_scale * alpha;
-      ++head;
-    }
-    // both add and subtract
-    while (head < channels) {
-      accum_scale += in[head * step] * in[head * step];
-      accum_scale -= in[(head - size) * step] * in[(head - size) * step];
-      scale[(head - post_pad) * step] = 1. + accum_scale * alpha;
-      ++head;
-    }
-    // subtract only
-    while (head < channels + post_pad) {
-      accum_scale -= in[(head - size) * step] * in[(head - size) * step];
-      scale[(head - post_pad) * step] = 1. + accum_scale * alpha;
-      ++head;
+    const int step = height * width;
+    const int pre_pad = (size - 1) / 2;
+    const int post_pad = size - pre_pad - 1;
+
+    real accum = 0;
+    int index = 0;
+    while (index < channels + post_pad) {
+      if (index < channels) {
+        accum += in[index * step] * in[index * step];
+      }
+      if (index >= size) {
+        accum -= in[(index - size) * step] * in[(index - size) * step];
+      }
+      if (index >= post_pad) {
+        scale[(index - post_pad) * step] = 1. + accum * alpha;
+      }
+      ++index;
     }
   }
 }
 
- __global__ void KeCMRNormOutput(size_t nthreads, const real* in,
-                                 const real* scale, real negative_beta,
-                                 real* out) {
-  size_t index = threadIdx.x + blockIdx.x * blockDim.x;
-  if (index < nthreads) {
+__global__ void KeCMRNormOutput(size_t inputSize, const real* in,
+                                const real* scale, real negative_beta,
+                                real* out) {
+  const int index = threadIdx.x + blockIdx.x * blockDim.x;
+  if (index < inputSize) {
     out[index] = in[index] * pow(scale[index], negative_beta);
   }
 }
@@ -440,84 +428,60 @@ void hl_CMRNorm_forward(size_t frameCnt, const real* in, real* scale,
                         real* out, size_t channels,
                         size_t height, size_t width, size_t sizeX,
                         real alpha, real beta) {
-  size_t threadsNum = frameCnt * height * width;
-  size_t blocksX = (threadsNum + 1024 - 1) / 1024;
-  size_t blocksY = 1;
-  dim3 threads(1024, 1);
-  dim3 grid(blocksX, blocksY);
+  size_t imageSize = frameCnt * height * width;
+  int blockSize = 1024;
+  int gridSize = (imageSize + 1024 - 1) / 1024;
+  KeCMRNormFillScale<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
+      (imageSize, in, scale, channels, height, width, sizeX, alpha);
 
-  KeCMRNormFillScale<<<grid, threads, 0, STREAM_DEFAULT>>>
-      (threadsNum, in, scale, channels, height, width, sizeX, alpha);
-
-  threadsNum = frameCnt * height * width *channels;
-  blocksX = (threadsNum + 1024 -1) / 1024;
-  dim3 threads2(1024, 1);
-  dim3 grid2(blocksX, blocksY);
-  KeCMRNormOutput<<<grid2, threads2, 0, STREAM_DEFAULT>>>
-           (threadsNum, in, scale, beta, out);
+  size_t inputSize = frameCnt * height * width *channels;
+  blockSize = 1024;
+  gridSize = (inputSize + 1024 - 1) / 1024;
+  KeCMRNormOutput<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
+           (inputSize, in, scale, beta, out);
   CHECK_SYNC("hl_CMRNorm_forward");
 }
 
-__global__ void KeCMRNormDiff(size_t nthreads, const real* bottom_data,
+__global__ void KeCMRNormDiff(size_t imageSize, const real* bottom_data,
                               const real* top_data, const real* scale,
                               const real* top_diff, size_t channels,
                               size_t height, size_t width, size_t size,
                               real negative_beta, real cache_ratio,
                               real* bottom_diff ) {
-  int index = threadIdx.x + blockIdx.x * blockDim.x;
-  if (index < nthreads) {
-    // find out the local offset
-    size_t w = index % width;
-    size_t h = (index / width) % height;
-    size_t n = index / width / height;
-    size_t offset = (n * channels * height + h) * width + w;
-    size_t step = height * width;
+  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < imageSize) {
+    const int w = idx % width;
+    const int h = (idx / width) % height;
+    const int n = idx / width / height;
+    const int offset = (n * channels * height + h) * width + w;
     bottom_data += offset;
     top_data += offset;
     scale += offset;
     top_diff += offset;
     bottom_diff += offset;
-    int head = 0;
-    int pre_pad = size - (size + 1) / 2;
-    int post_pad = size - pre_pad - 1;
-    real accum_ratio = 0;
-    // accumulate values
-    while (head < post_pad) {
-      accum_ratio += top_diff[head * step] *
-        top_data[head * step] / scale[head * step];
-      ++head;
-    }
-    // until we reach size, nothing needs to be subtracted
-    while (head < size) {
-      accum_ratio += top_diff[head * step] *
-        top_data[head * step] / scale[head * step];
-      bottom_diff[(head - post_pad) * step] +=
-        top_diff[(head - post_pad) * step] *
-        pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
-        bottom_data[(head - post_pad) * step] * accum_ratio;
-      ++head;
-    }
-    // both add and subtract
-    while (head < channels) {
-      accum_ratio += top_diff[head * step] * top_data[head * step] /
-          scale[head * step];
-      accum_ratio -= top_diff[(head - size) * step] *
-          top_data[(head - size) * step] / scale[(head - size) * step];
-      bottom_diff[(head - post_pad) * step] +=
-        top_diff[(head - post_pad) * step] *
-        pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
-        bottom_data[(head - post_pad) * step] * accum_ratio;
-      ++head;
-    }
-    // subtract only
-    while (head < channels + post_pad) {
-      accum_ratio -= top_diff[(head - size) * step] *
-          top_data[(head - size) * step] / scale[(head - size) * step];
-      bottom_diff[(head - post_pad) * step] +=
-        top_diff[(head - post_pad) * step] *
-        pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
-        bottom_data[(head - post_pad) * step] * accum_ratio;
-      ++head;
+
+    const int step = height * width;
+    const int pre_pad = size - (size + 1) / 2;
+    const int post_pad = size - pre_pad - 1;
+
+    int index = 0;
+    real accum = 0;
+    while (index < channels + post_pad) {
+      if (index < channels) {
+        accum += top_diff[index * step] * top_data[index * step] /
+          scale[index * step];
+      }
+      if (index >= size) {
+        accum -= top_diff[(index - size) * step] *
+          top_data[(index - size) * step] / scale[(index - size) * step];
+      }
+      if (index >= post_pad) {
+        bottom_diff[(index - post_pad) * step] +=
+          top_diff[(index - post_pad) * step] *
+          pow(scale[(index - post_pad) * step], negative_beta) - cache_ratio *
+          bottom_data[(index - post_pad) * step] * accum;
+      }
+      ++index;
     }
   }
 }
@@ -528,14 +492,12 @@ void hl_CMRNorm_backward(size_t frameCnt, const real* inV,
                          real *inDiff, size_t channels,
                          size_t height, size_t width, size_t sizeX,
                          real alpha, real beta) {
-  size_t threadsNum = frameCnt * height * width;
-  size_t blocksX = (threadsNum + 1024 - 1) / 1024;
-  size_t blocksY = 1;
-  dim3 threads(1024, 1);
-  dim3 grid(blocksX, blocksY);
-  KeCMRNormDiff <<<grid, threads, 0, STREAM_DEFAULT>>>
-           (threadsNum, inV, outV, scale, outDiff, channels,
-           height, width, sizeX, alpha, beta, inDiff);
+  size_t imageSize = frameCnt * height * width;
+  int blockSize = 1024;
+  int gridSize = (imageSize + 1024 - 1) / 1024;
+  KeCMRNormDiff <<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
+    (imageSize, inV, outV, scale, outDiff, channels,
+      height, width, sizeX, alpha, beta, inDiff);
   CHECK_SYNC("hl_CMRNorm_backward");
 }
 

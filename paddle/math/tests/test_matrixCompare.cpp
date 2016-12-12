@@ -1261,6 +1261,121 @@ TEST(Matrix, MaxOutFwdBwd) {
     }
   }
 }
+void testCrossMapNormalFwd(
+    int numSamples, int channels, int imgSizeH, int imgSizeW, int sizeX) {
+  float scale = 1.5;
+  float pow = 0.5;
+  int width = imgSizeH * imgSizeW * channels;
+  MatrixPtr input = CpuMatrix::create(numSamples, width, false, false);
+  MatrixPtr denorms = CpuMatrix::create(numSamples, width, false, false);
+  MatrixPtr target = CpuMatrix::create(numSamples, width, false, false);
+  MatrixPtr inputGpu = GpuMatrix::create(numSamples, width, false, true);
+  MatrixPtr denormsGpu = GpuMatrix::create(numSamples, width, false, true);
+  MatrixPtr targetGpu = GpuMatrix::create(numSamples, width, false, true);
+
+  input->randomizeUniform();
+  target->randomizeUniform();
+  inputGpu->copyFrom(*input);
+  targetGpu->copyFrom(*target);
+
+  target->crossMapNormalFwd(
+      *input, imgSizeH, imgSizeW, *denorms, channels, sizeX, scale, pow);
+  targetGpu->crossMapNormalFwd(
+      *inputGpu, imgSizeH, imgSizeW, *denormsGpu, channels, sizeX, scale, pow);
+
+  TensorCheckErr(*target, *targetGpu);
+  TensorCheckErr(*denorms, *denormsGpu);
+}
+
+TEST(Matrix, crossMapNormalFwd) {
+  for (auto numSamples : {5, 32}) {
+    for (auto channels : {1, 5, 32}) {
+      for (auto imgSizeH : {5, 33, 100}) {
+        for (auto imgSizeW : {5, 32, 96}) {
+          for (auto sizeX : {1, 2, 3, 5, 7}) {
+            VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
+                    << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW
+                    << " sizeX=" << sizeX;
+            testCrossMapNormalFwd(
+                numSamples, channels, imgSizeH, imgSizeW, sizeX);
+          }
+        }
+      }
+    }
+  }
+}
+
+void testCrossMapNormalBwd(
+    int numSamples, int channels, int imgSizeH, int imgSizeW, int sizeX) {
+  float scale = 1.5;
+  float pow = 0.5;
+  size_t width = imgSizeH * imgSizeW * channels;
+  MatrixPtr localGrad = CpuMatrix::create(numSamples, width, false, false);
+  MatrixPtr denoms = CpuMatrix::create(numSamples, width, false, false);
+  MatrixPtr output = CpuMatrix::create(numSamples, width, false, false);
+  MatrixPtr preOutV = CpuMatrix::create(numSamples, width, false, false);
+  MatrixPtr localOutV = CpuMatrix::create(numSamples, width, false, false);
+
+  localGrad->randomizeUniform();
+  denoms->randomizeUniform();
+  preOutV->randomizeUniform();
+  localOutV->randomizeUniform();
+  output->randomizeUniform();
+  denoms->add(0.01);
+
+  MatrixPtr localGradGpu = GpuMatrix::create(numSamples, width, false, true);
+  MatrixPtr denomsGpu = GpuMatrix::create(numSamples, width, false, true);
+  MatrixPtr outputGpu = GpuMatrix::create(numSamples, width, false, true);
+  MatrixPtr preOutVGpu = GpuMatrix::create(numSamples, width, false, true);
+  MatrixPtr localOutVGpu = GpuMatrix::create(numSamples, width, false, true);
+
+  localGradGpu->copyFrom(*localGrad);
+  denomsGpu->copyFrom(*denoms);
+  preOutVGpu->copyFrom(*preOutV);
+  localOutVGpu->copyFrom(*localOutV);
+  outputGpu->copyFrom(*output);
+
+  output->crossMapNormalBwd(*localGrad,
+                            *denoms,
+                            *preOutV,
+                            *localOutV,
+                            channels,
+                            imgSizeH,
+                            imgSizeW,
+                            sizeX,
+                            scale,
+                            pow);
+  outputGpu->crossMapNormalBwd(*localGradGpu,
+                               *denomsGpu,
+                               *preOutVGpu,
+                               *localOutVGpu,
+                               channels,
+                               imgSizeH,
+                               imgSizeW,
+                               sizeX,
+                               scale,
+                               pow);
+
+  TensorCheckErr(*output, *outputGpu);
+}
+
+TEST(Matrix, crossMapNormalBwd) {
+  for (auto numSamples : {5, 32}) {
+    for (auto channels : {1, 5, 32}) {
+      for (auto imgSizeH : {5, 33, 100}) {
+        for (auto imgSizeW : {5, 32, 96}) {
+          for (auto sizeX : {1, 2, 3, 5, 7}) {
+            VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
+                    << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW
+                    << " sizeX=" << sizeX;
+            testCrossMapNormalBwd(
+                numSamples, channels, imgSizeH, imgSizeW, sizeX);
+          }
+        }
+      }
+    }
+  }
+}
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

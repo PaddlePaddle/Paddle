@@ -2227,52 +2227,43 @@ void CpuMatrix::crossMapNormalFwd(Matrix& input,
                                   size_t sizeX,
                                   float scale,
                                   float pow) {
-  size_t num = input.getHeight();
+  CHECK(isContiguous());
+  CHECK(input.isContiguous());
+  CHECK(denoms.isContiguous());
+  CHECK_EQ(getHeight(), input.getHeight());
+  CHECK_EQ(getWidth(), input.getWidth());
+  CHECK_EQ(getHeight(), denoms.getHeight());
+  CHECK_EQ(getWidth(), denoms.getWidth());
+
+  size_t numSample = input.getHeight();
+  size_t numCols = input.getWidth();
   size_t height = imgSizeH;
   size_t width = imgSizeW;
-  size_t numCols = input.getWidth();
-  CHECK(height * width * channels == input.getWidth());
-  CHECK(denoms.getHeight() == input.getHeight() &&
-        denoms.getWidth() == input.getWidth() && input.getHeight() == height_ &&
-        input.getWidth() == width_);
-  real* imgData = input.getData();
-  real* diffData = input.getData();
-  real* targetData = getData();
-  size_t halfSize = sizeX / 2;
-  size_t imgPixels = height * width;
+  CHECK(height * width * channels == numCols);
 
-  // use integral vector to implement the sum in local window
-  real* integralData =
-      (real*)malloc((channels + sizeX + 1) * sizeof(real));  // NOLINT // TODO:
-  for (size_t i = 0; i <= halfSize; i++) {
-    integralData[i] = 0;
-  }
-  for (size_t i = 0; i < num; i++) {
-    real* targetPtr = targetData + i * numCols;
-    real* imgPtr = imgData + i * numCols;
-    real* diffPtr = diffData + i * numCols;
-    for (size_t m = 0; m < height; m++) {
-      for (size_t n = 0; n < width; n++) {
-        for (size_t c = 0; c < channels; c++) {
-          integralData[c + halfSize + 1] =
-              integralData[c + halfSize] + _square(*(diffPtr + c * imgPixels));
+  // TODO(hedaoyuan) After commit TensorExpress code,
+  // Reconstruction this code to remove the temporary memory.
+  CpuMatrix tmp(channels, height * width);
+  CpuMatrix tmp2(tmp.getData(), 1, channels * height * width);
+  denoms.zero();
+  const int start = -((int)sizeX - 1) / 2;
+  const int end = (int)sizeX + start;
+  for (size_t i = 0; i < numSample; i++) {
+    input.subMatrix(i, 1)->square2(tmp2);
+    CpuMatrix subDen(
+        denoms.subMatrix(i, 1)->getData(), channels, height * width);
+    for (int c = 0; c < (int)channels; c++) {
+      for (int s = start; s < end; s++) {
+        if (c + s >= 0 && c + s < (int)channels) {
+          subDen.subMatrix(c, 1)->add(*tmp.subMatrix(c + s, 1));
         }
-        for (size_t k = channels + halfSize + 1; k <= channels + sizeX; k++) {
-          integralData[k] = integralData[channels + halfSize];
-        }
-        for (size_t k = 0; k < channels; k += 1) {
-          real a = integralData[k + sizeX] - integralData[k];
-          a = scale * a + 1;
-          targetPtr[k * imgPixels] = imgPtr[k * imgPixels] * _pow(a, -pow);
-        }
-        diffPtr++;
-        targetPtr++;
-        imgPtr++;
       }
     }
   }
-  free(integralData);
-  integralData = NULL;
+
+  denoms.add(scale, (real)1);
+  this->pow2(denoms, -pow);
+  this->dotMul(input);
 }
 
 void CpuMatrix::crossMapNormalBwd(Matrix& localGrad,
@@ -2282,19 +2273,63 @@ void CpuMatrix::crossMapNormalBwd(Matrix& localGrad,
                                   size_t channels,
                                   size_t imgSizeH,
                                   size_t imgSizeW,
-                                  size_t size,
+                                  size_t sizeX,
                                   float scale,
                                   float pow) {
-  LOG(FATAL) << "Not implemented";
+  CHECK(isContiguous());
+  CHECK(localGrad.isContiguous());
+  CHECK(denoms.isContiguous());
+  CHECK(preOutV.isContiguous());
+  CHECK(localOutV.isContiguous());
+  CHECK_EQ(getHeight(), localGrad.getHeight());
+  CHECK_EQ(getWidth(), localGrad.getWidth());
+  CHECK_EQ(getHeight(), denoms.getHeight());
+  CHECK_EQ(getWidth(), denoms.getWidth());
+  CHECK_EQ(getHeight(), preOutV.getHeight());
+  CHECK_EQ(getWidth(), preOutV.getWidth());
+  CHECK_EQ(getHeight(), localOutV.getHeight());
+  CHECK_EQ(getWidth(), localOutV.getWidth());
 
-  CHECK(imgSizeH * imgSizeW * channels == preOutV.getWidth());
-  CHECK(denoms.getHeight() == preOutV.getHeight() &&
-        denoms.getWidth() == preOutV.getWidth() &&
-        preOutV.getHeight() == height_ && preOutV.getWidth() == width_);
-  CHECK(denoms.getHeight() == localGrad.getHeight() &&
-        denoms.getWidth() == localGrad.getWidth());
+  size_t numSample = getHeight();
+  size_t numCols = getWidth();
+  size_t height = imgSizeH;
+  size_t width = imgSizeW;
+  CHECK(height * width * channels == numCols);
 
-  // NOLINT // TODO:
+  // TODO(hedaoyuan) After commit TensorExpress code,
+  // Reconstruction this code to remove the temporary memory.
+  CpuMatrix tmp(1, height * width);
+
+  const int start = -((int)sizeX) / 2;
+  const int end = (int)sizeX + start;
+  const real ratio = -(real)2 * scale * pow;
+  for (size_t i = 0; i < numSample; i++) {
+    CpuMatrix inputDiff(
+        this->subMatrix(i, 1)->getData(), channels, height * width);
+    CpuMatrix outDiff(
+        localGrad.subMatrix(i, 1)->getData(), channels, height * width);
+    CpuMatrix input(
+        preOutV.subMatrix(i, 1)->getData(), channels, height * width);
+    CpuMatrix output(
+        localOutV.subMatrix(i, 1)->getData(), channels, height * width);
+    CpuMatrix subDen(
+        denoms.subMatrix(i, 1)->getData(), channels, height * width);
+
+    for (int c = 0; c < (int)channels; c++) {
+      tmp.pow2(*subDen.subMatrix(c, 1), -pow);
+      inputDiff.subMatrix(c, 1)
+          ->addDotMul(tmp, *outDiff.subMatrix(c, 1), (real)1, (real)1);
+      for (int s = start; s < end; s++) {
+        if (c + s >= 0 && c + s < (int)channels) {
+          tmp.dotMul(*outDiff.subMatrix(c + s, 1), *output.subMatrix(c + s, 1));
+          tmp.mulScalar(ratio);
+          tmp.dotDiv(tmp, *subDen.subMatrix(c + s, 1));
+          tmp.dotMul(*input.subMatrix(c, 1));
+          inputDiff.subMatrix(c, 1)->add(tmp);
+        }
+      }
+    }
+  }
 }
 
 /**
