@@ -391,7 +391,8 @@ paddle train \
 --use_gpu=false
 ```
 
-If you want to install the remote training platform, which enables distributed training on clusters, follow the instructions here: <a href = "../../howto/cluster/cluster_train_en.html">Platform</a> documentation. We do not provide examples on how to train on clusters. Please refer to other demos or platform training documentation for mode details on training on clusters.
+We do not provide examples on how to train on clusters. If you want to train on clusters, please follow the <a href = "../../howto/cluster/cluster_train_en.html">distributed training</a> documentation or other demos for mode details.
+
 ## Inference
 You can use the trained model to perform prediction on the dataset with no labels. You can also evaluate the model on dataset with labels to obtain its test accuracy.
 <center> ![](./PipelineTest_en.png) </center>

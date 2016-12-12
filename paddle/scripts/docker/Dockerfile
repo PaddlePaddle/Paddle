@@ -13,7 +13,7 @@ RUN apt-get update \
     && apt-get clean -y
 RUN cd /usr/src/gtest && cmake . && make && sudo cp *.a /usr/lib
 RUN pip install -U BeautifulSoup docopt PyYAML pillow \
-    sphinx sphinx_rtd_theme breathe recommonmark
+    sphinx sphinx_rtd_theme recommonmark
 
 # cmake tends to hide and blur the dependencies between code modules, as
 # noted here https://github.com/PaddlePaddle/Paddle/issues/763. We are
