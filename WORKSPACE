@@ -15,3 +15,11 @@ new_http_archive(
     build_file = "third_party/gtest.BUILD",
     strip_prefix = "googletest-release-1.7.0",
 )
+
+# External dependency to gflags.  This method comes from
+# https://github.com/gflags/example/blob/master/WORKSPACE.
+git_repository(
+    name   = "gflags",
+    tag    = "v2.2.0",
+    remote = "https://github.com/gflags/gflags.git"
+)
