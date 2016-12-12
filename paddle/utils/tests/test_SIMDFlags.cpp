@@ -19,33 +19,33 @@ using namespace paddle;  // NOLINT
 
 TEST(SIMDFlags, gccTest) {
 #if (defined(__GNUC__) || defined(__GNUG__)) && !(defined(__clang__))
-  CHECK(!__builtin_cpu_supports("sse") != HAS_SSE);
-  CHECK(!__builtin_cpu_supports("sse2") != HAS_SSE2);
-  CHECK(!__builtin_cpu_supports("sse3") != HAS_SSE3);
-  CHECK(!__builtin_cpu_supports("ssse3") != HAS_SSSE3);
+  // clang-format off
+  CHECK(!__builtin_cpu_supports("sse")    != HAS_SSE);
+  CHECK(!__builtin_cpu_supports("sse2")   != HAS_SSE2);
+  CHECK(!__builtin_cpu_supports("sse3")   != HAS_SSE3);
+  CHECK(!__builtin_cpu_supports("ssse3")  != HAS_SSSE3);
   CHECK(!__builtin_cpu_supports("sse4.1") != HAS_SSE41);
   CHECK(!__builtin_cpu_supports("sse4.2") != HAS_SSE42);
-  CHECK(!__builtin_cpu_supports("avx") != HAS_AVX);
-  CHECK(!__builtin_cpu_supports("avx2") != HAS_AVX2);
+  CHECK(!__builtin_cpu_supports("avx")    != HAS_AVX);
+  CHECK(!__builtin_cpu_supports("avx2")   != HAS_AVX2);
+// clang-format on
 #endif
 }
 
 TEST(SIMDFlags, normalPrint) {
-  auto simd = SIMDFlags::instance();
-  LOG(INFO) << "Has SSE2:    " << std::boolalpha << simd->isSSE2();
-  LOG(INFO) << "Has SSE3:    " << std::boolalpha << simd->isSSE3();
-  LOG(INFO) << "Has SSSE3:   " << std::boolalpha << simd->isSSSE3();
-  LOG(INFO) << "Has SSE4.1:  " << std::boolalpha << simd->isSSE41();
-  LOG(INFO) << "Has SSE4.2:  " << std::boolalpha << simd->isSSE42();
-  LOG(INFO) << "Has FMA3:    " << std::boolalpha << simd->isFMA3();
-  LOG(INFO) << "Has FMA4:    " << std::boolalpha << simd->isFMA4();
-  LOG(INFO) << "Has AVX:     " << std::boolalpha << simd->isAVX();
-  LOG(INFO) << "Has AVX2:    " << std::boolalpha << simd->isAVX2();
-  LOG(INFO) << "Has AVX512:  " << std::boolalpha << simd->isAVX512();
+  LOG(INFO) << "Has SSE:     " << std::boolalpha << HAS_SSE;
+  LOG(INFO) << "Has SSE2:    " << std::boolalpha << HAS_SSE2;
+  LOG(INFO) << "Has SSE3:    " << std::boolalpha << HAS_SSE3;
+  LOG(INFO) << "Has SSSE3:   " << std::boolalpha << HAS_SSSE3;
+  LOG(INFO) << "Has SSE4:    " << std::boolalpha << HAS_SSE41 || HAS_SSE42;
+  LOG(INFO) << "Has FMA3:    " << std::boolalpha << HAS_FMA3;
+  LOG(INFO) << "Has FMA4:    " << std::boolalpha << HAS_FMA4;
+  LOG(INFO) << "Has AVX:     " << std::boolalpha << HAS_AVX;
+  LOG(INFO) << "Has AVX2:    " << std::boolalpha << HAS_AVX2;
+  LOG(INFO) << "Has AVX512:  " << std::boolalpha << HAS_AVX512;
 }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  paddle::initMain(argc, argv);
   return RUN_ALL_TESTS();
 }
