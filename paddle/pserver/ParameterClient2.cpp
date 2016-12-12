@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@ limitations under the License. */
 #include <unistd.h>
 
 #include "ParameterClient2.h"
-#include "paddle/utils/StringUtil.h"
+#include "paddle/math/SparseRowMatrix.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/Stat.h"
-#include "paddle/math/SparseRowMatrix.h"
+#include "paddle/utils/StringUtil.h"
 
 P_DEFINE_string(pservers, "127.0.0.1", "Comma separated addresses of pservers");
 P_DEFINE_int32(parallel_thread_num, 1, "Thread number for parameter send");

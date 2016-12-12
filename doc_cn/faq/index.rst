@@ -268,3 +268,20 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
         args={"src_dict_path": src_dict_path})
 
 完整源码可参考 `seqToseq <https://github.com/PaddlePaddle/Paddle/tree/develop/demo/seqToseq>`_ 示例。
+
+11. 如何指定GPU设备
+-------------------
+
+例如机器上有4块GPU，编号从0开始，指定使用2、3号GPU：
+
+* 方式1：通过 `CUDA_VISIBLE_DEVICES <http://www.acceleware.com/blog/cudavisibledevices-masking-gpus>`_ 环境变量来指定特定的GPU。
+
+..      code-block:: bash
+
+        env CUDA_VISIBLE_DEVICES=2,3 paddle train --use_gpu=true --trainer_count=2
+
+* 方式2：通过命令行参数 ``--gpu_id`` 指定。
+
+..      code-block:: bash
+
+        paddle train --use_gpu=true --trainer_count=2 --gpu_id=2

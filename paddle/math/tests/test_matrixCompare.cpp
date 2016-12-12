@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@ limitations under the License. */
 /// This unittest checks GpuMatrix/CpuMatrix get same result, so disable when
 /// only cpu version.
 
-#include "paddle/utils/Util.h"
+#include <gtest/gtest.h>
+#include "TensorCheck.h"
+#include "paddle/gserver/tests/TestUtil.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
-#include <gtest/gtest.h>
-#include "paddle/gserver/tests/TestUtil.h"
 #include "paddle/utils/Stat.h"
-#include "TensorCheck.h"
+#include "paddle/utils/Util.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

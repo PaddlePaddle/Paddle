@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@ limitations under the License. */
 
 #include "CommandLineParser.h"
 #ifndef PADDLE_USE_GFLAGS
-#include "paddle/utils/StringUtil.h"
-#include <algorithm>
-#include <iostream>
-#include <iomanip>
 #include <stdlib.h>
+#include <algorithm>
+#include <iomanip>
+#include <iostream>
 #include <string>
-#include <vector>
-#include <utility>
 #include <tuple>
+#include <utility>
+#include <vector>
+#include "paddle/utils/StringUtil.h"
 
 namespace paddle {
 
@@ -46,16 +46,13 @@ template <>
 bool StringToValue<bool>(const std::string& content, bool* value) {
   std::string tmp = content;
 
-  std::transform(tmp.begin(),
-                 tmp.end(),
-                 tmp.begin(),
-                 [](char in) -> char {
-                   if (in <= 'Z' && in >= 'A') {
-                     return in - ('Z' - 'z');
-                   } else {
-                     return in;
-                   }
-                 });  // tolower.
+  std::transform(tmp.begin(), tmp.end(), tmp.begin(), [](char in) -> char {
+    if (in <= 'Z' && in >= 'A') {
+      return in - ('Z' - 'z');
+    } else {
+      return in;
+    }
+  });  // tolower.
 
   if (tmp == "true" || tmp == "1") {
     *value = true;

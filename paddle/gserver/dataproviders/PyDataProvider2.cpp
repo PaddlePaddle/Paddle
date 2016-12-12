@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,18 +15,18 @@ limitations under the License. */
 #ifndef PADDLE_NO_PYTHON
 
 #include <Python.h>
+#include <numpy/numpyconfig.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unordered_set>
 #include <list>
-#include <numpy/numpyconfig.h>
+#include <unordered_set>
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/ndarrayobject.h>
 
 #include "DataProvider.h"
 
-#include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Locks.h"
+#include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -400,10 +400,9 @@ private:
 
       if (this->loadThread_) {  // wait poolActualSize < poolSize;
         std::unique_lock<std::mutex> l(mtx_);
-        pushCV_.wait(l,
-                     [this, additionalBatchSize] {
-                       return this->poolActualSize_ < poolSize_;
-                     });
+        pushCV_.wait(l, [this, additionalBatchSize] {
+          return this->poolActualSize_ < poolSize_;
+        });
       }
 
       {
@@ -529,12 +528,10 @@ public:
                         // but, loading from cache, cache object should ensure
                         // data pool ready.
       std::unique_lock<std::mutex> l(mtx_);
-      pullCV_.wait(l,
-                   [this, &size] {
-                     return this->poolActualSize_ >=
-                                std::max(size, this->minPoolSize_) ||
-                            callingContexts_.empty();
-                   });
+      pullCV_.wait(l, [this, &size] {
+        return this->poolActualSize_ >= std::max(size, this->minPoolSize_) ||
+               callingContexts_.empty();
+      });
 
       if (unittest::OnPoolFilled) {
         (*unittest::OnPoolFilled)(this->poolActualSize_);

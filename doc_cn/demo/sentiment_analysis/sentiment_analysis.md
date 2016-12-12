@@ -291,20 +291,21 @@ predict.sh:
 model=model_output/pass-00002/
 config=trainer_config.py
 label=data/pre-imdb/labels.list
-python predict.py \
-     -n $config\
-     -w $model \
-     -b $label \
-     -d data/pre-imdb/dict.txt \
-     -i data/aclImdb/test/pos/10007_10.txt
+cat ./data/aclImdb/test/pos/10007_10.txt | python predict.py \
+     --tconf=$config\
+     --model=$model \
+     --label=$label \
+     --dict=./data/pre-imdb/dict.txt \
+     --batch_size=1
 ```
 
-* `predict.py`: 预测接口脚本。
-*  -n $config : 设置网络配置。
-*  -w $model: 设置模型路径。
-*  -b $label: 设置标签类别字典，这个字典是整数标签和字符串标签的一个对应。
-*  -d data/pre-imdb/dict.txt: 设置字典文件。
-*  -i data/aclImdb/test/pos/10014_7.txt: 设置一个要预测的示例文件。
+* `cat ./data/aclImdb/test/pos/10007_10.txt` : 输入预测样本。
+* `predict.py` : 预测接口脚本。
+* `--tconf=$config` : 设置网络配置。
+* `--model=$model` : 设置模型路径。
+* `--label=$label` : 设置标签类别字典，这个字典是整数标签和字符串标签的一个对应。
+* `--dict=data/pre-imdb/dict.txt` : 设置字典文件。
+* `--batch_size=1` : 设置batch size。
 
 注意应该确保默认模型路径`model_output / pass-00002`存在或更改为其它模型路径。
 

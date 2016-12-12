@@ -30,7 +30,6 @@ if(WITH_DOC)
   find_package(Sphinx REQUIRED)
   find_package(Doxygen REQUIRED)
   find_python_module(recommonmark REQUIRED)
-  find_python_module(breathe REQUIRED)
 endif()
 
 if(WITH_SWIG_PY)

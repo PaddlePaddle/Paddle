@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@ limitations under the License. */
 
 #ifndef PADDLE_ONLY_CPU
 
-#include "paddle/utils/Util.h"
-#include "paddle/math/Matrix.h"
-#include "paddle/math/SparseMatrix.h"
 #include <gtest/gtest.h>
 #include "paddle/gserver/tests/TestUtil.h"
+#include "paddle/math/Matrix.h"
+#include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Stat.h"
+#include "paddle/utils/Util.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -52,7 +52,9 @@ void MatrixCheckErr(const Matrix& matrix1, const Matrix& matrix2) {
   EXPECT_EQ(count, 0) << "There are " << count << " different element.";
 }
 
-void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
+void testBilinearFwdBwd(int numSamples,
+                        int imgSizeH,
+                        int imgSizeW,
                         int channels) {
   int inWidth = imgSizeH * imgSizeW * channels;
   int outWidth = 2 * imgSizeH * 2 * imgSizeW * channels;
@@ -73,10 +75,22 @@ void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
   {
     // nvprof: GPU Proflier
     REGISTER_GPU_PROFILER("testBilinearFwdBwd");
-    target->bilinearForward(*input, imgSizeH, imgSizeW,
-        2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
-    targetGpu->bilinearForward(*inputGpu, imgSizeH, imgSizeW,
-        2 * imgSizeH, 2 * imgSizeW, channels, ratioH, ratioW);
+    target->bilinearForward(*input,
+                            imgSizeH,
+                            imgSizeW,
+                            2 * imgSizeH,
+                            2 * imgSizeW,
+                            channels,
+                            ratioH,
+                            ratioW);
+    targetGpu->bilinearForward(*inputGpu,
+                               imgSizeH,
+                               imgSizeW,
+                               2 * imgSizeH,
+                               2 * imgSizeW,
+                               channels,
+                               ratioH,
+                               ratioW);
   }
 
   // check
@@ -88,8 +102,8 @@ void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
   MatrixPtr inputGpuGrad = GpuMatrix::create(numSamples, inWidth, false, true);
 
   MatrixPtr targetGrad = CpuMatrix::create(numSamples, outWidth, false, false);
-  MatrixPtr targetGpuGrad = GpuMatrix::create(numSamples, outWidth, false,
-                                              true);
+  MatrixPtr targetGpuGrad =
+      GpuMatrix::create(numSamples, outWidth, false, true);
   MatrixPtr targetCheckGrad =
       CpuMatrix::create(numSamples, inWidth, false, false);
 
@@ -98,10 +112,22 @@ void testBilinearFwdBwd(int numSamples, int imgSizeH, int imgSizeW,
   inputGpuGrad->copyFrom(*inputGrad);
   targetGpuGrad->copyFrom(*targetGrad);
 
-  inputGrad->bilinearBackward(*targetGrad, 2 * imgSizeH, 2 * imgSizeW,
-      imgSizeH, imgSizeW, channels, ratioH, ratioW);
-  inputGpuGrad->bilinearBackward(*targetGpuGrad, 2 * imgSizeH, 2 * imgSizeW,
-      imgSizeH, imgSizeW, channels, ratioH, ratioW);
+  inputGrad->bilinearBackward(*targetGrad,
+                              2 * imgSizeH,
+                              2 * imgSizeW,
+                              imgSizeH,
+                              imgSizeW,
+                              channels,
+                              ratioH,
+                              ratioW);
+  inputGpuGrad->bilinearBackward(*targetGpuGrad,
+                                 2 * imgSizeH,
+                                 2 * imgSizeW,
+                                 imgSizeH,
+                                 imgSizeW,
+                                 channels,
+                                 ratioH,
+                                 ratioW);
 
   // check
   targetCheckGrad->copyFrom(*inputGpuGrad);
@@ -116,8 +142,9 @@ TEST(Profiler, testBilinearFwdBwd) {
     // nvprof: GPU Proflier
     REGISTER_GPU_PROFILER("testBilinearFwdBwd");
     // Paddle built-in timer
-    REGISTER_TIMER_INFO("testBilinearFwdBwd",
-      "numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64");
+    REGISTER_TIMER_INFO(
+        "testBilinearFwdBwd",
+        "numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64");
     testBilinearFwdBwd(numSamples, imgSize, imgSize, channels);
   }
   globalStat.printAllStatus();
@@ -128,8 +155,9 @@ int main(int argc, char** argv) {
   initMain(argc, argv);
 
   // nvprof: GPU Proflier
-  REGISTER_GPU_PROFILER("RecursiveProfilingTest",
-    "numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64");
+  REGISTER_GPU_PROFILER(
+      "RecursiveProfilingTest",
+      "numSamples = 10, channels = 16, imgSizeX = 64, imgSizeY = 64");
 
   return RUN_ALL_TESTS();
 }

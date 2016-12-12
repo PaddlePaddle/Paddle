@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,17 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <string>
-#include "paddle/gserver/layers/DataLayer.h"
+#include <vector>
 #include "ModelConfig.pb.h"
-#include "paddle/trainer/Trainer.h"
-#include "paddle/utils/GlobalConstants.h"
+#include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/gserver/layers/ExpandConvTransLayer.h"
 #include "paddle/math/MathUtils.h"
+#include "paddle/trainer/Trainer.h"
+#include "paddle/utils/GlobalConstants.h"
 
-#include "TestUtil.h"
 #include "LayerGradUtil.h"
+#include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

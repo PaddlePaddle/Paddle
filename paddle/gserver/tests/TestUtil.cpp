@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "TestUtil.h"
 
-#include "paddle/utils/CommandLineParser.h"
 #include "paddle/math/SparseMatrix.h"
+#include "paddle/utils/CommandLineParser.h"
 
 P_DEFINE_int32(fixed_seq_length, 0, "Produce some sequence of fixed length");
 
@@ -63,8 +63,8 @@ MatrixPtr makeRandomSparseMatrix(size_t height,
       std::dynamic_pointer_cast<GpuSparseMatrix>(mat)->copyFrom(
           ids.data(), indices.data(), data.data(), HPPL_STREAM_DEFAULT);
     } else {
-      std::dynamic_pointer_cast<CpuSparseMatrix>(mat)
-          ->copyFrom(ids.data(), indices.data(), data.data());
+      std::dynamic_pointer_cast<CpuSparseMatrix>(mat)->copyFrom(
+          ids.data(), indices.data(), data.data());
     }
     return mat;
   } else {
@@ -80,8 +80,8 @@ MatrixPtr makeRandomSparseMatrix(size_t height,
       std::dynamic_pointer_cast<GpuSparseMatrix>(mat)->copyFrom(
           ids.data(), indices.data(), data.data(), HPPL_STREAM_DEFAULT);
     } else {
-      std::dynamic_pointer_cast<CpuSparseMatrix>(mat)
-          ->copyFrom(ids.data(), indices.data(), data.data());
+      std::dynamic_pointer_cast<CpuSparseMatrix>(mat)->copyFrom(
+          ids.data(), indices.data(), data.data());
     }
     return mat;
   }

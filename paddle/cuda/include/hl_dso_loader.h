@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@ limitations under the License. */
 #define HL_DSO_LOADER_H_
 
 #include <dlfcn.h>
-#include <string>
 #include <memory>
+#include <string>
 #include "hl_base.h"
 
 /**

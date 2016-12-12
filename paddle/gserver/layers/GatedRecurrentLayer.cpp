@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "Layer.h"
 #include "GatedRecurrentLayer.h"
+#include "Layer.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -386,8 +386,9 @@ void GatedRecurrentLayer::backwardBatch(int batchSize, MatrixPtr inputGrad) {
       {
         batchSize = outputGradTmp->getHeight();
         gruValue.prevOutValue =
-            (n == 0 ? nullptr : (batchValue_->getBatchValue(n - 1, batchSize))
-                                    ->getData());
+            (n == 0
+                 ? nullptr
+                 : (batchValue_->getBatchValue(n - 1, batchSize))->getData());
         gruGrad.prevOutGrad =
             (n == 0 ? nullptr
                     : (batchGrad_->getBatchValue(n - 1, batchSize))->getData());

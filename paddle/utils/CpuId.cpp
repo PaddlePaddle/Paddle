@@ -17,47 +17,45 @@ limitations under the License. */
 #include <intrin.h>
 
 /// for MSVC
-#define CPUID(info, x)  __cpuidex(info, x, 0)
+#define CPUID(info, x) __cpuidex(info, x, 0)
 
 #else
 
 #include <cpuid.h>
 
 /// for GCC/Clang
-#define CPUID(info, x)  __cpuid_count(x, 0, info[0], info[1], info[2], info[3])
+#define CPUID(info, x) __cpuid_count(x, 0, info[0], info[1], info[2], info[3])
 
 #endif
 
 namespace paddle {
 
 SIMDFlags::SIMDFlags() {
-    unsigned int cpuInfo[4];
-    // CPUID: https://en.wikipedia.org/wiki/CPUID
-    CPUID(cpuInfo, 0x00000001);
-    simd_flags_ |= cpuInfo[3] & (1 << 25) ? SIMD_SSE   : SIMD_NONE;
-    simd_flags_ |= cpuInfo[3] & (1 << 26) ? SIMD_SSE2  : SIMD_NONE;
-    simd_flags_ |= cpuInfo[2] & (1 << 0)  ? SIMD_SSE3  : SIMD_NONE;
-    simd_flags_ |= cpuInfo[2] & (1 << 9)  ? SIMD_SSSE3 : SIMD_NONE;
-    simd_flags_ |= cpuInfo[2] & (1 << 19) ? SIMD_SSE41 : SIMD_NONE;
-    simd_flags_ |= cpuInfo[2] & (1 << 20) ? SIMD_SSE42 : SIMD_NONE;
-    simd_flags_ |= cpuInfo[2] & (1 << 12) ? SIMD_FMA3  : SIMD_NONE;
-    simd_flags_ |= cpuInfo[2] & (1 << 28) ? SIMD_AVX   : SIMD_NONE;
+  unsigned int cpuInfo[4];
+  // CPUID: https://en.wikipedia.org/wiki/CPUID
+  // clang-format off
+  CPUID(cpuInfo, 0x00000001);
+  simd_flags_ |= cpuInfo[3] & (1 << 25) ? SIMD_SSE   : SIMD_NONE;
+  simd_flags_ |= cpuInfo[3] & (1 << 26) ? SIMD_SSE2  : SIMD_NONE;
+  simd_flags_ |= cpuInfo[2] & (1 <<  0) ? SIMD_SSE3  : SIMD_NONE;
+  simd_flags_ |= cpuInfo[2] & (1 <<  9) ? SIMD_SSSE3 : SIMD_NONE;
+  simd_flags_ |= cpuInfo[2] & (1 << 19) ? SIMD_SSE41 : SIMD_NONE;
+  simd_flags_ |= cpuInfo[2] & (1 << 20) ? SIMD_SSE42 : SIMD_NONE;
+  simd_flags_ |= cpuInfo[2] & (1 << 12) ? SIMD_FMA3  : SIMD_NONE;
+  simd_flags_ |= cpuInfo[2] & (1 << 28) ? SIMD_AVX   : SIMD_NONE;
 
-    CPUID(cpuInfo, 0x00000007);
-    simd_flags_ |= cpuInfo[1] & (1 << 5)  ? SIMD_AVX2  : SIMD_NONE;
-    simd_flags_ |= cpuInfo[1] & (1 << 16) ? SIMD_AVX512: SIMD_NONE;
+  CPUID(cpuInfo, 0x00000007);
+  simd_flags_ |= cpuInfo[1] & (1 <<  5) ? SIMD_AVX2  : SIMD_NONE;
+  simd_flags_ |= cpuInfo[1] & (1 << 16) ? SIMD_AVX512: SIMD_NONE;
 
-    CPUID(cpuInfo, 0x80000001);
-    simd_flags_ |= cpuInfo[2] & (1 << 16) ? SIMD_FMA4  : SIMD_NONE;
-}
-
-bool SIMDFlags::check(int flags) const {
-    return (simd_flags_ & flags) == flags;
+  CPUID(cpuInfo, 0x80000001);
+  simd_flags_ |= cpuInfo[2] & (1 << 16) ? SIMD_FMA4  : SIMD_NONE;
+  // clang-fotmat on
 }
 
 SIMDFlags const* SIMDFlags::instance() {
-    static SIMDFlags instance;
-    return &instance;
+  static SIMDFlags instance;
+  return &instance;
 }
 
-}   // namespace paddle
+}  // namespace paddle
