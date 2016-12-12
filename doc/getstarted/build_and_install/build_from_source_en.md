@@ -79,7 +79,7 @@ As a simple example, consider the following:
 
     ```bash
     pip install 'sphinx>=1.4.0'
-    pip install sphinx_rtd_theme breathe recommonmark
+    pip install sphinx_rtd_theme recommonmark
 
     # install doxygen on Ubuntu
     sudo apt-get install doxygen 

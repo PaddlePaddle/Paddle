@@ -293,20 +293,21 @@ predict.sh:
 model=model_output/pass-00002/
 config=trainer_config.py
 label=data/pre-imdb/labels.list
-python predict.py \
-     -n $config\
-     -w $model \
-     -b $label \
-     -d data/pre-imdb/dict.txt \
-     -i data/aclImdb/test/pos/10007_10.txt
+cat ./data/aclImdb/test/pos/10007_10.txt | python predict.py \
+     --tconf=$config\
+     --model=$model \
+     --label=$label \
+     --dict=./data/pre-imdb/dict.txt \
+     --batch_size=1
 ```
 
-* `predict.py`: predicting interface.
-*  -n $config : set network configure.
-*  -w $model: set model path.
-*  -b $label: set dictionary about corresponding relation between integer label and string label.
-*  -d data/pre-imdb/dict.txt: set dictionary.
-*  -i data/aclImdb/test/pos/10014_7.txt: set one example file to predict.
+* `cat ./data/aclImdb/test/pos/10007_10.txt` : the input sample.
+* `predict.py` : predicting interface.
+* `--tconf=$config` : set network configure.
+* ` --model=$model` : set model path.
+* `--label=$label` : set dictionary about corresponding relation between integer label and string label.
+* `--dict=data/pre-imdb/dict.txt` : set dictionary.
+* `--batch_size=1` : set batch size.
 
 Note you should make sure the default model path `model_output/pass-00002`
 exists or change the model path.

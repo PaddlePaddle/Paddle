@@ -1,5 +1,4 @@
-#!/bin/bash
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+# Copyright PaddlePaddle contributors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-set -e
+import unittest
+from paddle.trainer.config_parser import parse_config
 
-#Note the default model is pass-00002, you shold make sure the model path
-#exists or change the mode path.
-model=model_output/pass-00002/
-config=trainer_config.py
-label=data/pre-imdb/labels.list
-cat ./data/aclImdb/test/pos/10007_10.txt | python predict.py \
-     --tconf=$config\
-     --model=$model \
-     --label=$label \
-     --dict=./data/pre-imdb/dict.txt \
-     --batch_size=1
+class TestParse(unittest.TestCase):
+
+    def test_parse(self):
+        a = parse_config(
+            'trainer_config_helpers/tests/layers_test_config.py', '')
+        b = parse_config(
+            'trainer_config_helpers/tests/layers_test_config.py', '')
+        self.assertEqual(a, b)
+
+
+if __name__ == '__main__':
+    unittest.main()
