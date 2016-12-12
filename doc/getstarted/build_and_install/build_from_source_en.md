@@ -14,10 +14,7 @@ cd paddle
 git submodule update --init --recursive
 ```
 
-If you already have a local PaddlePaddle repo and have not initialized the submodule, your local submodule folder will be empty. You can simply run the following command in your PaddlePaddle home directory to initialze your submodule folder.
-```
-git submodule update --init --recursive
-```
+If you already have a local PaddlePaddle repo and have not initialized the submodule, your local submodule folder will be empty. You can simply run the last line of the above codes in your PaddlePaddle home directory to initialze your submodule folder.
 
 If you have already initialized your submodule and you would like to sync with the upstream submodule repo, you can run the following command
 ```
