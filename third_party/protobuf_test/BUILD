@@ -1,13 +1,12 @@
 licenses(["notice"])  # Apache 2.0
 
-load("@org_pubref_rules_protobuf//cpp:rules.bzl", "cpp_proto_library")
+load("@protobuf//:protobuf.bzl", "cc_proto_library")
 
-cpp_proto_library(
+cc_proto_library(
     name = "example_proto",
-    protos = [
-        "example.proto"
-    ],
-    with_grpc = True,
+    srcs = ["example.proto"],
+    protoc = "@protobuf//:protoc",
+    default_runtime = "@protobuf//:protobuf",
 )
 
 cc_library(
