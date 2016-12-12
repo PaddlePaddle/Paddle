@@ -164,7 +164,7 @@ You will describe four kinds of network architectures in this section.
 <center> ![](./PipelineNetwork_en.jpg) </center>
 
 First, you will build a logistic regression model. Later, you will also get chance to build other more powerful network architectures.
-For more detailed documentation, you could refer to: <a href = "../../ui/api/trainer_config_helpers/layers.html">Layer documentation</a>。All configuration files are in `demo/quick_start` directory.
+For more detailed documentation, you could refer to: <a href = "../../ui/api/trainer_config_helpers/layers.html">layer documentation</a>. All configuration files are in `demo/quick_start` directory.
 
 ### Logistic Regression
 The architecture is illustrated in the following picture:
