@@ -99,8 +99,8 @@ public:
 
     if (config_.neg_sampling_dist_size()) {
       CHECK_EQ(numClasses_, config_.neg_sampling_dist_size());
-      sampler_.reset(new MultinomialSampler(config_.neg_sampling_dist().data(),
-                                            numClasses_));
+      sampler_.reset(MultinomialSampler::create(
+          config_.neg_sampling_dist().data(), numClasses_));
     }
 
     return true;
