@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Util.h"
 #include "Vector.h"
+#include "paddle/utils/Util.h"
 
 #include <memory>
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/Thread.h"
-#include "paddle/utils/Flags.h"
 #include "Matrix.h"
 #include "hl_gpu.h"
 #include "hl_table_apply.h"
+#include "paddle/utils/Flags.h"
+#include "paddle/utils/Logging.h"
+#include "paddle/utils/Thread.h"
+#include "paddle/utils/ThreadLocal.h"
 
 namespace paddle {
 
@@ -754,8 +754,7 @@ void ParallelCpuVectorT<real>::exec(SyncThreadPool::JobFunc func) {
 }
 
 template <class T>
-CpuGpuVectorT<T>::CpuGpuVectorT(size_t size, bool useGpu)
-    : sync_(nullptr) {
+CpuGpuVectorT<T>::CpuGpuVectorT(size_t size, bool useGpu) : sync_(nullptr) {
   if (!useGpu) {
     cpuVectorT_ = std::make_shared<CpuVectorT<T>>(size);
   } else {

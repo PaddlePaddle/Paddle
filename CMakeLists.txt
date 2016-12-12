@@ -69,7 +69,7 @@ include(coveralls)
 find_package(Git REQUIRED)
 # version.cmake will get the current PADDLE_VERSION
 include(version)
-add_definitions(-DPADDLE_VERSION=\"${PADDLE_VERSION}\")
+add_definitions(-DPADDLE_VERSION=${PADDLE_VERSION})
 
 if(NOT WITH_GPU)
     add_definitions(-DPADDLE_ONLY_CPU)

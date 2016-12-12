@@ -15,5 +15,3 @@ do
         gunzip ${fname}.gz
     fi
 done
-
-

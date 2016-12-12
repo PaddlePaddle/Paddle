@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include <thread>
 #include <functional>
-#include "paddle/pserver/ParameterClient2.h"
+#include <thread>
 #include "ParameterUpdater.h"
-#include "paddle/utils/Util.h"
+#include "paddle/pserver/ParameterClient2.h"
 #include "paddle/utils/Queue.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 

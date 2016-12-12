@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,14 +37,13 @@ public:
                         NeuralNetwork *rootNetwork = nullptr)
       : NeuralNetwork(subModelName, rootNetwork) {}
 
-  virtual void init(
-      const ModelConfig &config,
-      ParamInitCallback callback = nullptr,
-      const std::vector<ParameterType>
-          &parameterTypes = std::vector<ParameterType>{PARAMETER_VALUE,
-                                                       PARAMETER_GRADIENT,
-                                                       PARAMETER_MOMENTUM},
-      bool useGpu = FLAGS_use_gpu);
+  virtual void init(const ModelConfig &config,
+                    ParamInitCallback callback = nullptr,
+                    const std::vector<ParameterType> &parameterTypes =
+                        std::vector<ParameterType>{PARAMETER_VALUE,
+                                                   PARAMETER_GRADIENT,
+                                                   PARAMETER_MOMENTUM},
+                    bool useGpu = FLAGS_use_gpu);
 
   virtual void forward(const std::vector<Argument> &inArgs,
                        std::vector<Argument> *outArgs,
