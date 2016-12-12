@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+// clang-format off
+#include "paddle/utils/Util.h"
 
 #ifndef PADDLE_NO_PYTHON
 // must include the following two blocks, otherwise,
@@ -33,13 +35,12 @@ limitations under the License. */
 #endif
 #include <Python.h>
 #include <frameobject.h>
-
 #endif
 
 #include <stdarg.h>
 #include <map>
 #include <mutex>
-#include "paddle/utils/Util.h"
+// clang-format on
 
 namespace paddle {
 
