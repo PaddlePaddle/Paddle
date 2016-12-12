@@ -11,7 +11,7 @@ RUN apt-get update \
     sed grep graphviz libjpeg-dev zlib1g-dev doxygen \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     && apt-get clean -y
-RUN cd /usr/src/gtest && cmake . && make && sudo cp *.a /usr/lib
+RUN cd /usr/src/gtest && cmake . && make && cp *.a /usr/lib
 RUN pip install -U BeautifulSoup docopt PyYAML pillow \
     sphinx sphinx_rtd_theme recommonmark
 

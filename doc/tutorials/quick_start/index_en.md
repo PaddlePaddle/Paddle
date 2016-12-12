@@ -391,7 +391,7 @@ paddle train \
 --use_gpu=false
 ```
 
-We do not provide examples on how to train on clusters. If you want to train on clusters, please follow the <a href = "../../howto/cluster/cluster_train_en.html">distributed training</a> documentation or other demos for mode details.
+We do not provide examples on how to train on clusters here. If you want to train on clusters, please follow the <a href = "../../howto/cluster/cluster_train_en.html">distributed training</a> documentation or other demos for more details.
 
 ## Inference
 You can use the trained model to perform prediction on the dataset with no labels. You can also evaluate the model on dataset with labels to obtain its test accuracy.
