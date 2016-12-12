@@ -7,7 +7,7 @@
 论文 [Deep Residual Learning for Image Recognition](http://arxiv.org/abs/1512.03385) 中提出的ResNet网络结构在2015年ImageNet大规模视觉识别竞赛(ILSVRC 2015)的分类任务中赢得了第一名。他们提出残差学习的框架来简化网络的训练，所构建网络结构的的深度比之前使用的网络有大幅度的提高。下图展示的是基于残差的连接方式。左图构造网络模块的方式被用于34层的网络中，而右图的瓶颈连接模块用于50层，101层和152层的网络结构中。
 
 <center>![resnet_block](./resnet_block.jpg)</center>
-<center>Figure 1. ResNet Block</center>
+<center>图 1. ResNet 网络模块</center>
 
 本教程中我们给出了三个ResNet模型，这些模型都是由原作者提供的模型<https://github.com/KaimingHe/deep-residual-networks>转换过来的。我们使用PaddlePaddle在ILSVRC的验证集共5000幅图像上测试了模型的分类错误率，其中输入图像的颜色通道顺序为**BGR**，保持宽高比缩放到短边为256，只截取中心方形的图像区域。分类误差和模型大小由下表给出。
 <center>
