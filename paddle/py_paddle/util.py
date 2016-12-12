@@ -559,10 +559,10 @@ def __monkey_patch_trainer__():
 
 
 def monkeypatches():
-    patches = [__monkeypatch_init_paddle__,
-               __monkeypatch_gradient_machine__,
-               __monkey_patch_protobuf_objects__,
-               __monkey_patch_parameter__,
-               __monkey_patch_trainer__]
+    patches = [
+        __monkeypatch_init_paddle__, __monkeypatch_gradient_machine__,
+        __monkey_patch_protobuf_objects__, __monkey_patch_parameter__,
+        __monkey_patch_trainer__
+    ]
     for patch in patches:
         patch()

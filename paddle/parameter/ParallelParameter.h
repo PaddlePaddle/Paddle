@@ -16,19 +16,19 @@ limitations under the License. */
 
 #include <stdint.h>
 
+#include <sys/time.h>
+#include <unistd.h>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <sys/time.h>
-#include <unistd.h>
 
 #include "hl_gpu.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/utils/Locks.h"
+#include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/ParameterUpdateFunctions.h"
+#include "paddle/utils/Flags.h"
+#include "paddle/utils/Locks.h"
 #include "paddle/utils/TypeDefs.h"
-#include "paddle/math/Vector.h"
 
 #include "ParameterConfig.pb.h"
 

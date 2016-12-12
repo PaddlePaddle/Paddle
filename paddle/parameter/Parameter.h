@@ -23,14 +23,14 @@ limitations under the License. */
 #include "ParameterConfig.pb.h"
 #include "TrainerConfig.pb.h"
 
-#include "paddle/utils/Locks.h"
-#include "paddle/utils/TypeDefs.h"
-#include "paddle/math/Vector.h"
-#include "paddle/math/Matrix.h"
-#include "paddle/utils/Util.h"
-#include "paddle/utils/ThreadLocal.h"
 #include "ParameterUpdaterHook.h"
+#include "paddle/math/Matrix.h"
+#include "paddle/math/Vector.h"
 #include "paddle/utils/GlobalConstants.h"
+#include "paddle/utils/Locks.h"
+#include "paddle/utils/ThreadLocal.h"
+#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 

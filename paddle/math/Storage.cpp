@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Util.h"
-#include "Allocator.h"
 #include "Storage.h"
+#include "Allocator.h"
+#include "paddle/utils/Util.h"
 
 P_DEFINE_int32(pool_limit_size,
                536870912,

@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
-#include <algorithm>
 
 #include "MultiNetwork.h"
 

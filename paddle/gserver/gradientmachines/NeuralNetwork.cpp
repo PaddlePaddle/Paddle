@@ -14,15 +14,15 @@ limitations under the License. */
 
 #include "paddle/utils/Util.h"
 
-#include "paddle/utils/Logging.h"
 #include "paddle/utils/CustomStackTrace.h"
+#include "paddle/utils/Logging.h"
 
-#include "paddle/utils/Stat.h"
-#include "hl_gpu.h"
+#include "MultiNetwork.h"
 #include "NeuralNetwork.h"
 #include "RecurrentGradientMachine.h"
-#include "MultiNetwork.h"
+#include "hl_gpu.h"
 #include "paddle/gserver/layers/AgentLayer.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 void parameterInitNN(int paramId,

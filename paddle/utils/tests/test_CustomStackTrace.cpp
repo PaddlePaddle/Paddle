@@ -15,10 +15,10 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <chrono>
 
-#include "paddle/utils/CustomStackTrace.h"
 #include "paddle/utils/CommandLineParser.h"
-#include "paddle/utils/Util.h"
+#include "paddle/utils/CustomStackTrace.h"
 #include "paddle/utils/Locks.h"
+#include "paddle/utils/Util.h"
 
 P_DEFINE_int32(test_thread_num, 10, "testing thread number");
 

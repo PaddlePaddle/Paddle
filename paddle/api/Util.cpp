@@ -14,16 +14,16 @@ limitations under the License. */
 
 #include "PaddleAPI.h"
 
-#include "paddle/utils/Util.h"
-#include "paddle/utils/PythonUtil.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/utils/Excepts.h"
 #include "paddle/parameter/Parameter.h"
+#include "paddle/utils/Excepts.h"
+#include "paddle/utils/Flags.h"
+#include "paddle/utils/PythonUtil.h"
+#include "paddle/utils/Util.h"
 
 #include <fenv.h>
+#include <algorithm>
 #include <iostream>
 #include <iterator>
-#include <algorithm>
 
 void initPaddle(int argc, char** argv) {
   paddle::initMain(argc, argv);

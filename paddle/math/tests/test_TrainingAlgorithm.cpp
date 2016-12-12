@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/utils/Util.h"
-#include "paddle/math/TrainingAlgorithmOp.h"
 #include "OriginalOptimizerApi.h"
-#include "TensorCheck.h"
 #include "PerfUtils.h"
+#include "TensorCheck.h"
+#include "paddle/math/TrainingAlgorithmOp.h"
+#include "paddle/utils/Util.h"
 
 using namespace paddle;  // NOLINT
 

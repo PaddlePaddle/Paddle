@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "ProtoDataProvider.h"
-#include "paddle/utils/Util.h"
-#include "paddle/utils/StringUtil.h"
 #include <algorithm>
 #include <fstream>
 #include <istream>
+#include "paddle/utils/StringUtil.h"
+#include "paddle/utils/Util.h"
 
-#include "paddle/utils/Logging.h"
 #include "DataProviderGroup.h"
+#include "paddle/utils/Logging.h"
 
 P_DEFINE_double(memory_threshold_on_load_data,
                 1.0,
@@ -562,16 +562,16 @@ int64_t ProtoDataProvider::getNextBatchInternal(int64_t size,
         auto mat = cpuArguments[slot].value;
         mat->resize(size, dim);
         if (std::dynamic_pointer_cast<GpuSparseMatrix>(mat)) {
-          std::dynamic_pointer_cast<GpuSparseMatrix>(mat)
-              ->copyFrom(dataPos.data(),
-                         slots_[slot].indices.data(),
-                         slots_[slot].sparseNonValueData.data(),
-                         HPPL_STREAM_1);
+          std::dynamic_pointer_cast<GpuSparseMatrix>(mat)->copyFrom(
+              dataPos.data(),
+              slots_[slot].indices.data(),
+              slots_[slot].sparseNonValueData.data(),
+              HPPL_STREAM_1);
         } else if (std::dynamic_pointer_cast<CpuSparseMatrix>(mat)) {
-          std::dynamic_pointer_cast<CpuSparseMatrix>(mat)
-              ->copyFrom(dataPos.data(),
-                         slots_[slot].indices.data(),
-                         slots_[slot].sparseNonValueData.data());
+          std::dynamic_pointer_cast<CpuSparseMatrix>(mat)->copyFrom(
+              dataPos.data(),
+              slots_[slot].indices.data(),
+              slots_[slot].sparseNonValueData.data());
         } else {
           LOG(FATAL) << "Not Supported";
         }
@@ -598,16 +598,16 @@ int64_t ProtoDataProvider::getNextBatchInternal(int64_t size,
         auto mat = cpuArguments[slot].value;
         mat->resize(size, dim);
         if (std::dynamic_pointer_cast<GpuSparseMatrix>(mat)) {
-          std::dynamic_pointer_cast<GpuSparseMatrix>(mat)
-              ->copyFrom(dataPos.data(),
-                         slots_[slot].indices.data(),
-                         slots_[slot].sparseFloatValueData.data(),
-                         HPPL_STREAM_1);
+          std::dynamic_pointer_cast<GpuSparseMatrix>(mat)->copyFrom(
+              dataPos.data(),
+              slots_[slot].indices.data(),
+              slots_[slot].sparseFloatValueData.data(),
+              HPPL_STREAM_1);
         } else if (std::dynamic_pointer_cast<CpuSparseMatrix>(mat)) {
-          std::dynamic_pointer_cast<CpuSparseMatrix>(mat)
-              ->copyFrom(dataPos.data(),
-                         slots_[slot].indices.data(),
-                         slots_[slot].sparseFloatValueData.data());
+          std::dynamic_pointer_cast<CpuSparseMatrix>(mat)->copyFrom(
+              dataPos.data(),
+              slots_[slot].indices.data(),
+              slots_[slot].sparseFloatValueData.data());
         } else {
           LOG(FATAL) << "Not Supported";
         }

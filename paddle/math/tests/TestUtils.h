@@ -40,9 +40,9 @@ limitations under the License. */
 */
 
 #include <gtest/gtest.h>
+#include "TensorCheck.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
-#include "TensorCheck.h"
 
 namespace autotest {
 

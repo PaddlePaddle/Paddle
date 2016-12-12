@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "MaxOutLayer.h"
-#include "hl_gpu.h"
 #include "hl_cnn.h"
+#include "hl_gpu.h"
 
 namespace paddle {
 

@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <vector>
-#include <algorithm>
 #include "SequenceToBatch.h"
-#include <iostream>
 #include <string.h>
+#include <algorithm>
+#include <iostream>
+#include <vector>
 
 namespace paddle {
 

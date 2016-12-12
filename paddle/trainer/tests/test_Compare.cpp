@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/trainer/Trainer.h"
 
-#include <cstdlib>
 #include <gtest/gtest.h>
+#include <cstdlib>
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
