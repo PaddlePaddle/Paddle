@@ -3364,7 +3364,10 @@ def my_fatal(s):
     logger.critical(s)
     raise Exception()
 
+
 _parse_config_hooks = set()
+
+
 def register_parse_config_hook(f):
     """
     Register a hook function for parse_config. parse_config will invoke the hook
@@ -3372,6 +3375,7 @@ def register_parse_config_hook(f):
     for constructing the model.
     """
     _parse_config_hooks.add(f)
+
 
 def parse_config(config_file, config_arg_str):
     '''

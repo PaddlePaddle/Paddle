@@ -3,9 +3,7 @@
 namespace third_party {
 namespace protobuf_test {
 
-std::string get_greet(const Greeting& who) {
-  return "Hello " + who.name();
-}
+std::string get_greet(const Greeting& who) { return "Hello " + who.name(); }
 
 }  // namespace protobuf_test
 }  // namespace thrid_party
