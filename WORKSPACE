@@ -1,3 +1,4 @@
+# protobuf 3 library & compiler.
 http_archive(
     name = "protobuf",
     url = "http://github.com/google/protobuf/archive/008b5a228b37c054f46ba478ccafa5e855cb16db.tar.gz",
@@ -16,6 +17,7 @@ bind(
     actual = "@protobuf//:protoc_lib",
 )
 
+# six used for protobuf to generate python code.
 new_http_archive(
     name = "six_archive",
     url = "http://pypi.python.org/packages/source/s/six/six-1.10.0.tar.gz",
@@ -28,7 +30,13 @@ bind(
     actual = "@six_archive//:six",
 )
 
+# TODO(yuyang18):
+# Current Python include is very tricky, just copy MacOS's python library and header, 
+# to a new HTTP archive. We should change it by finding system-wide Python.
 
+# But it may not be fit with Bazel building logic. Bazel is entirely a cluster 
+# building toolchain, which should not access system local library or files 
+# at all. Find a way to fix it.
 new_http_archive(
     name = "python_archive",
     url="http://paddlepaddle.bj.bcebos.com/bazel/python/macos/python27.mac.bin.tar.gz",
@@ -40,3 +48,4 @@ bind(
     name = "libpython",
     actual = "@python_archive//:libpython"
 )
+

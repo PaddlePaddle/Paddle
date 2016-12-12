@@ -7,7 +7,7 @@
     sha: v0.13.2
     hooks:
     -   id: yapf
-        files: (.*\.(py|bzl)|BUILD|.*\.BUILD)$
+        files: (.*\.(py|bzl)|BUILD|.*\.BUILD)$  # bazel's syntax is a subset of python
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     sha: 7539d8bd1a00a3c1bfd34cdb606d3a6372e83469
     hooks:
