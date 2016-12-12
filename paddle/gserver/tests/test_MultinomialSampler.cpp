@@ -20,8 +20,8 @@ limitations under the License. */
 #undef PADDLE_DISABLE_TIMER
 #include "paddle/utils/Stat.h"
 
-#include "paddle/utils/Util.h"
 #include "paddle/gserver/layers/MultinomialSampler.h"
+#include "paddle/utils/Util.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

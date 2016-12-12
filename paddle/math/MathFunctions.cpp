@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "MathFunctions.h"
-#include "hl_matrix_ops.cuh"
 #include "hl_matrix_apply.cuh"
+#include "hl_matrix_ops.cuh"
 
 namespace paddle {
 

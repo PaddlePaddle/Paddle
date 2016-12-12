@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <vector>
-#include <string.h>
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/CommandLineParser.h"
 #include "BaseClient.h"
+#include <string.h>
+#include <vector>
+#include "paddle/utils/CommandLineParser.h"
+#include "paddle/utils/Stat.h"
 
 P_DECLARE_string(pservers);
 

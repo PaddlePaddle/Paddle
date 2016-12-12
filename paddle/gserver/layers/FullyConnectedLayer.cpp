@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "FullyConnectedLayer.h"
+#include <algorithm>
+#include <vector>
+#include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
-#include "paddle/math/SparseMatrix.h"
-#include <vector>
-#include <algorithm>
 
 namespace paddle {
 

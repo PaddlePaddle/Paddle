@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #undef PADDLE_DISABLE_TIMER
-#include <paddle/utils/PythonUtil.h>
-#include <cstdlib>
-#include <algorithm>
 #include <gtest/gtest.h>
+#include <paddle/utils/PythonUtil.h>
+#include <algorithm>
+#include <cstdlib>
 
+#include "TestUtil.h"
 #include "paddle/trainer/Trainer.h"
 #include "paddle/utils/Stat.h"
-#include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

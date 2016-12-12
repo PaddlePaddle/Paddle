@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <paddle/utils/Version.h>
-#include "paddle/gserver/layers/Layer.h"
-#include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/gserver/layers/CTCLayer.h"
-#include "paddle/gserver/layers/WarpCTCLayer.h"
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/CTCLayer.h"
+#include "paddle/gserver/layers/DataLayer.h"
+#include "paddle/gserver/layers/Layer.h"
+#include "paddle/gserver/layers/WarpCTCLayer.h"
 
 #include "TestUtil.h"
 

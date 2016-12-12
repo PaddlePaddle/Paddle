@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stdlib.h>
 #include <paddle/utils/Util.h>
+#include <stdlib.h>
 
 #include <gtest/gtest.h>
-#include <paddle/utils/Flags.h>
 #include <paddle/parameter/ParameterUpdateFunctions.h>
+#include <paddle/utils/Flags.h>
 #include <paddle/utils/Stat.h>
 #include <paddle/utils/Thread.h>
 

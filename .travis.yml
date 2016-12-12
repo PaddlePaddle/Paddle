@@ -8,10 +8,13 @@ os:
 env:
   - JOB=DOCS
   - JOB=BUILD_AND_TEST
+  - JOB=PRE_COMMIT
 matrix:
   exclude:
     - os: osx
-      env: JOB=DOCS  # Only generate documentation in linux
+      env: JOB=DOCS  # Only generate documentation in linux.
+    - os: osx
+      env: JOB=PRE_COMMIT # Only check pre-commit hook in linux
 
 addons:
   apt:
@@ -39,6 +42,7 @@ addons:
       - lcov
       - graphviz
       - swig
+      - clang-format-3.8
 before_install:
   - |
     if [ ${JOB} == "BUILD_AND_TEST" ]; then
@@ -50,7 +54,8 @@ before_install:
     fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo paddle/scripts/travis/before_install.linux.sh; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
-  - pip install wheel protobuf sphinx breathe recommonmark virtualenv numpy sphinx_rtd_theme
+  - if [[ "$JOB" == "PRE_COMMIT" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
+  - pip install wheel protobuf sphinx breathe recommonmark virtualenv numpy sphinx_rtd_theme pre-commit
 script:
   - paddle/scripts/travis/main.sh
 notifications:

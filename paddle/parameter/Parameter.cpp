@@ -12,19 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "Parameter.h"
 #include <fstream>
-#include "paddle/math/MathUtils.h"
 #include "AverageOptimizer.h"
 #include "FirstOrderOptimizer.h"
-#include "Parameter.h"
-#include "paddle/utils/Logging.h"
 #include "OptimizerFunctions.h"
 #include "OptimizerWithRegularizer.h"
 #include "ParameterUpdateFunctions.h"
-#include "paddle/math/SparseRowMatrix.h"
-#include "paddle/math/CpuSparseMatrix.h"
 #include "hl_gpu.h"
+#include "paddle/math/CpuSparseMatrix.h"
+#include "paddle/math/MathUtils.h"
+#include "paddle/math/SparseRowMatrix.h"
 #include "paddle/utils/CommandLineParser.h"
+#include "paddle/utils/Logging.h"
 
 P_DEFINE_int32(enable_grad_share,
                (100 * 1024 * 1024),

@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "ConvBaseLayer.h"
-#include "paddle/math/Matrix.h"
-#include "Projection.h"
 #include <vector>
+#include "ConvBaseLayer.h"
+#include "Projection.h"
+#include "paddle/math/Matrix.h"
 
 namespace paddle {
 

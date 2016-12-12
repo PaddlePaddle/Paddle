@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <memory>
 
-#include "paddle/gserver/evaluators/Evaluator.h"
 #include "Layer.h"
+#include "paddle/gserver/evaluators/Evaluator.h"
 
 P_DECLARE_int32(trainer_id);
 

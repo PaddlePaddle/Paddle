@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "Layer.h"
 #include "GatedRecurrentLayer.h"
+#include "Layer.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -386,8 +386,9 @@ void GatedRecurrentLayer::backwardBatch(int batchSize, MatrixPtr inputGrad) {
       {
         batchSize = outputGradTmp->getHeight();
         gruValue.prevOutValue =
-            (n == 0 ? nullptr : (batchValue_->getBatchValue(n - 1, batchSize))
-                                    ->getData());
+            (n == 0
+                 ? nullptr
+                 : (batchValue_->getBatchValue(n - 1, batchSize))->getData());
         gruGrad.prevOutGrad =
             (n == 0 ? nullptr
                     : (batchGrad_->getBatchValue(n - 1, batchSize))->getData());

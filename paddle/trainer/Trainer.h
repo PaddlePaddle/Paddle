@@ -22,13 +22,13 @@ limitations under the License. */
 #include "paddle/gserver/dataproviders/DataProvider.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 
-#include "TrainerConfigHelper.h"
-#include "ParameterUpdater.h"
-#include "TrainerInternal.h"
-#include "Tester.h"
-#include "ParamUtil.h"
-#include <fstream>
 #include <stdlib.h>
+#include <fstream>
+#include "ParamUtil.h"
+#include "ParameterUpdater.h"
+#include "Tester.h"
+#include "TrainerConfigHelper.h"
+#include "TrainerInternal.h"
 
 #ifdef PADDLE_METRIC_LEARNING
 #include "paddle/internals/metric_learning/MetricTrainer.h"

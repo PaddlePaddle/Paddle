@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <cstddef>
 #include <stdint.h>
-#include "paddle/utils/TypeDefs.h"
-#include "paddle/utils/Logging.h"
+#include <cstddef>
 #include "hl_tensor_ops.h"
+#include "paddle/utils/Logging.h"
+#include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
 

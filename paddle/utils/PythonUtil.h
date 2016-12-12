@@ -36,10 +36,10 @@ limitations under the License. */
 
 #endif
 
-#include "paddle/utils/Util.h"
 #include <stdarg.h>
-#include <mutex>
 #include <map>
+#include <mutex>
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 

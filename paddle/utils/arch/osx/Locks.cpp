@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/utils/Locks.h"
-#include "paddle/utils/Logging.h"
 #include <dispatch/dispatch.h>
-#include <atomic>
 #include <libkern/OSAtomic.h>
+#include <atomic>
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
 

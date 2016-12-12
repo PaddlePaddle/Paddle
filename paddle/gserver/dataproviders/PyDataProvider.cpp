@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "PyDataProvider.h"
-#include "paddle/utils/PythonUtil.h"
 #include <fenv.h>
-#include "paddle/utils/Util.h"
 #include "paddle/utils/Excepts.h"
+#include "paddle/utils/PythonUtil.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
@@ -316,16 +316,16 @@ void PyDataProvider::handleSparseNonValueSlot(
   auto mat = cpuArguments[slotIndex].value;
   mat->resize(slot.sampleNum, dim, slot.sampleNum, NO_VALUE, SPARSE_CSR);
   if (std::dynamic_pointer_cast<GpuSparseMatrix>(mat)) {
-    std::dynamic_pointer_cast<GpuSparseMatrix>(mat)
-        ->copyFrom(slot.sampleSequenceIdVec.data(),
-                   slot.indices.data(),
-                   slot.sparseNonValueData.data(),
-                   HPPL_STREAM_1);
+    std::dynamic_pointer_cast<GpuSparseMatrix>(mat)->copyFrom(
+        slot.sampleSequenceIdVec.data(),
+        slot.indices.data(),
+        slot.sparseNonValueData.data(),
+        HPPL_STREAM_1);
   } else if (std::dynamic_pointer_cast<CpuSparseMatrix>(mat)) {
-    std::dynamic_pointer_cast<CpuSparseMatrix>(mat)
-        ->copyFrom(slot.sampleSequenceIdVec.data(),
-                   slot.indices.data(),
-                   slot.sparseNonValueData.data());
+    std::dynamic_pointer_cast<CpuSparseMatrix>(mat)->copyFrom(
+        slot.sampleSequenceIdVec.data(),
+        slot.indices.data(),
+        slot.sparseNonValueData.data());
   } else {
     LOG(FATAL) << "Not Supported";
   }
@@ -347,16 +347,16 @@ void PyDataProvider::handleSparseValueSlot(
   auto mat = cpuArguments[slotIndex].value;
   mat->resize(slot.sampleNum, dim, slot.sampleNum, FLOAT_VALUE, SPARSE_CSR);
   if (std::dynamic_pointer_cast<GpuSparseMatrix>(mat)) {
-    std::dynamic_pointer_cast<GpuSparseMatrix>(mat)
-        ->copyFrom(slot.sampleSequenceIdVec.data(),
-                   slot.indices.data(),
-                   slot.sparseFloatValueData.data(),
-                   HPPL_STREAM_DEFAULT);
+    std::dynamic_pointer_cast<GpuSparseMatrix>(mat)->copyFrom(
+        slot.sampleSequenceIdVec.data(),
+        slot.indices.data(),
+        slot.sparseFloatValueData.data(),
+        HPPL_STREAM_DEFAULT);
   } else if (std::dynamic_pointer_cast<CpuSparseMatrix>(mat)) {
-    std::dynamic_pointer_cast<CpuSparseMatrix>(mat)
-        ->copyFrom(slot.sampleSequenceIdVec.data(),
-                   slot.indices.data(),
-                   slot.sparseFloatValueData.data());
+    std::dynamic_pointer_cast<CpuSparseMatrix>(mat)->copyFrom(
+        slot.sampleSequenceIdVec.data(),
+        slot.indices.data(),
+        slot.sparseFloatValueData.data());
   } else {
     LOG(FATAL) << "Not Supported";
   }

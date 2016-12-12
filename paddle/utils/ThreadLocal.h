@@ -15,14 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include <pthread.h>
-#include <sys/types.h>
 #include <sys/syscall.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <map>
 #include <mutex>
 #include <random>
-#include "Util.h"
 #include "Logging.h"
+#include "Util.h"
 
 namespace paddle {
 

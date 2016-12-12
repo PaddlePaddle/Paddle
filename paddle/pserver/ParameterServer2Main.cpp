@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Util.h"
-#include "paddle/utils/StringUtil.h"
 #include <fstream>
+#include "paddle/utils/StringUtil.h"
+#include "paddle/utils/Util.h"
 
-#include "paddle/utils/Flags.h"
 #include "ParameterServer2.h"
 #include "RDMANetwork.h"
+#include "paddle/utils/Flags.h"
 
 using namespace paddle;  // NOLINT
 

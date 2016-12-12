@@ -282,7 +282,7 @@ FloatArray Vector::getData() const {
 }
 
 void Vector::copyFrom(Vector* src) throw(RangeError) {
-  if (src->m->vec->getSize() !=  m->vec->getSize()) {
+  if (src->m->vec->getSize() != m->vec->getSize()) {
     throw RangeError();
   }
   m->vec->copyFrom(*src->m->vec);

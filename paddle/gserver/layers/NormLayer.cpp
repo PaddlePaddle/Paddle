@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Logging.h"
 #include "NormLayer.h"
 #include "NormProjectionLayer.h"
+#include "paddle/utils/Logging.h"
 namespace paddle {
 
 REGISTER_LAYER_CREATE_FUNC(norm, &NormLayer::create);

@@ -15,18 +15,18 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
-#include <string>
 #include <sys/time.h>
-#include <memory>
 #include <iostream>
-#include <mutex>
-#include <unordered_map>
 #include <list>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
-#include "Logging.h"
 #include "Locks.h"
-#include "ThreadLocal.h"
+#include "Logging.h"
 #include "Stat.h"
+#include "ThreadLocal.h"
 
 namespace paddle {
 

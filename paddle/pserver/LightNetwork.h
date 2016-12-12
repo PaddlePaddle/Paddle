@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include "SocketChannel.h"
 
+#include <atomic>
 #include <memory>
 #include <thread>
 #include <vector>
-#include <atomic>
 
 #include "paddle/utils/Thread.h"
 

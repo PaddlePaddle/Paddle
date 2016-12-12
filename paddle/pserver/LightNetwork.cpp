@@ -12,23 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <sys/types.h>
-#include <sys/socket.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <arpa/inet.h>
-#include <sys/ioctl.h>
 #include <net/if.h>
 #include <net/if_arp.h>
+#include <sys/ioctl.h>
 #include <sstream>
 
 #include "LightNetwork.h"
-#include "paddle/utils/Util.h"
-#include "paddle/utils/StringUtil.h"
 #include "RDMANetwork.h"
+#include "paddle/utils/StringUtil.h"
+#include "paddle/utils/Util.h"
 
 /// quick ack can reduce the latency of small message
 P_DEFINE_bool(small_messages,

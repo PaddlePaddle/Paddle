@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/utils/Logging.h"
 #include "BaseMatrix.h"
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
 

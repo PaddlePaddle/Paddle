@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <unistd.h>
 
-#include "paddle/utils/Logging.h"
 #include <atomic>
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
 

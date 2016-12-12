@@ -17,10 +17,10 @@ limitations under the License. */
 //  so disable when
 /// only cpu version.
 
-#include "paddle/utils/Util.h"
-#include "paddle/math/Matrix.h"
-#include "test_matrixUtil.h"
 #include <gtest/gtest.h>
+#include "paddle/math/Matrix.h"
+#include "paddle/utils/Util.h"
+#include "test_matrixUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

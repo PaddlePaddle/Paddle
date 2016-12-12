@@ -14,20 +14,20 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <memory>
 #include <thread>
-#include <stdint.h>
 
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/ThreadLocal.h"
 
 #include <hl_gpu.h>
 
+#include "BaseMatrix.h"
 #include "MemoryHandle.h"
-#include "paddle/utils/TypeDefs.h"
 #include "Vector.h"
 #include "paddle/utils/ThreadLocal.h"
-#include "BaseMatrix.h"
+#include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
 

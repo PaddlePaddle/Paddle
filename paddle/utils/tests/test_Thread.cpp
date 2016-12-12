@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <atomic>
-#include <paddle/utils/Thread.h>
 #include <gtest/gtest.h>
+#include <paddle/utils/Thread.h>
+#include <atomic>
 
 using paddle::AsyncThreadPool;  // NOLINT
 
@@ -52,17 +52,13 @@ TEST(AsyncThreadPool, multiThreadAddBatchJob) {
   int counter = 0;
   const int numMonitors = 300;
   const int numSlaves = 300;
-  std::vector<AsyncThreadPool::JobFunc> moniterJobs(
-      numMonitors,
-      [&] {
-        std::vector<AsyncThreadPool::JobFunc> slaveJobs(
-            numSlaves,
-            [mut, &counter] {
-              std::lock_guard<std::mutex> lk(*mut);
-              counter++;
-            });
-        levelTwoPool.addBatchJobs(slaveJobs);
-      });
+  std::vector<AsyncThreadPool::JobFunc> moniterJobs(numMonitors, [&] {
+    std::vector<AsyncThreadPool::JobFunc> slaveJobs(numSlaves, [mut, &counter] {
+      std::lock_guard<std::mutex> lk(*mut);
+      counter++;
+    });
+    levelTwoPool.addBatchJobs(slaveJobs);
+  });
   levelOnePool.addBatchJobs(moniterJobs);
   ASSERT_EQ(counter, numMonitors * numSlaves);
 }

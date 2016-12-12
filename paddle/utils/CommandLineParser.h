@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 #ifndef PADDLE_USE_GFLAGS
-#include "DisableCopy.h"
+#include <stdint.h>
 #include <string>
 #include <vector>
-#include <stdint.h>
+#include "DisableCopy.h"
 
 namespace paddle {
 

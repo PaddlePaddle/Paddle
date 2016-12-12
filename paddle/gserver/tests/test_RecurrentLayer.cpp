@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <paddle/utils/Version.h>
+#include <vector>
+#include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/gserver/layers/Layer.h"
-#include "ModelConfig.pb.h"
 
 #include "TestUtil.h"
 
@@ -220,8 +220,8 @@ TEST(Layer, RecurrentLayer) {
 }
 
 #define protected public
-#include "paddle/gserver/layers/LstmLayer.h"
 #include "paddle/gserver/layers/GatedRecurrentLayer.h"
+#include "paddle/gserver/layers/LstmLayer.h"
 template <class T>
 class TestRecurrentLayer {
 public:
