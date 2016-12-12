@@ -1,0 +1,1 @@
+../../../proto/TrainerConfig.proto.m4

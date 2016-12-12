@@ -1,0 +1,1 @@
+../../../proto/ModelConfig.proto.m4

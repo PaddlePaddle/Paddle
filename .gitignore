@@ -9,3 +9,6 @@ build/
 .pydevproject
 Makefile
 .test_env/
+
+# bazel build files
+bazel-*
