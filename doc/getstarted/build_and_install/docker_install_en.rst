@@ -122,9 +122,9 @@ The general development workflow with Docker and Bazel is as follows:
       git clone --recursive https://github.com/paddlepaddle/paddle
 
 
-2. Build a development Docker image `paddle:dev` from the source code.
-   This image contains all the development tools and dependencies of
-   PaddlePaddle.
+2. Build a development Docker image :code:`paddle:dev` from the source
+   code.  This image contains all the development tools and
+   dependencies of PaddlePaddle.
 
 
    .. code-block:: bash
@@ -139,13 +139,21 @@ The general development workflow with Docker and Bazel is as follows:
 
    .. code-block:: bash
 
-      docker run \
-       -d # run the container in background mode \
-       --name paddle # we can run a nginx container to serve documents \
-       -p 2022:22    # so we can SSH into this container \
-       -v $PWD:/paddle # mount the source code \
-       -v $HOME/.cache/bazel:/root/.cache/bazel # mount Bazel cache \
+      docker run       \
+       -d              \
+       --name paddle   \
+       -p 2022:22      \
+       -v $PWD:/paddle \
+       -v $HOME/.cache/bazel:/root/.cache/bazel \
        paddle:dev
+
+   where :code:`-d` makes the container running in background,
+   :code:`--name paddle` allows us to run a nginx container to serve
+   documents in this container, :code:`-p 2022:22` allows us to SSH
+   into this container, :code:`-v $PWD:/paddle` shares the source code
+   on the host with the container, :code:`-v
+   $HOME/.cache/bazel:/root/.cache/bazel` shares Bazel cache on the
+   host with the container.
 
 4. SSH into the container:
 
