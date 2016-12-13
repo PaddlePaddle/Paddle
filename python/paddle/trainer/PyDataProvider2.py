@@ -106,9 +106,7 @@ def integer_value_sequence(dim):
 def integer_value_sub_sequence(dim):
     return integer_value(dim, seq_type=SequenceType.SUB_SEQUENCE)
 
-
-def integer_sequence(dim):
-    return index_slot(dim, seq_type=SequenceType.SEQUENCE)
+integer_sequence = integer_value_sequence
 
 
 class SingleSlotWrapper(object):
