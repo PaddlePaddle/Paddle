@@ -17,79 +17,13 @@ limitations under the License. */
 #include <string.h>
 #include <algorithm>
 #include "Matrix.h"
+#include "RowBuffer.h"
 #include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Util.h"
 
 P_DECLARE_bool(allow_inefficient_sparse_update);
 
 namespace paddle {
-
-/**
- * @brief The RowBuffer class
- * Represent the SparseRow Matrix Data.
- *
- * If not set memory handler, then the data could be auto growth.
- */
-class RowBuffer {
-public:
-  explicit RowBuffer(size_t width) : width_(width) {}
-  RowBuffer(const CpuMemHandlePtr& mem, size_t width)
-      : preallocatedBuf_(mem), width_(width) {}
-
-  inline void reserve(int rowCnt) {
-    if (preallocatedBuf_) {
-      CHECK(preallocatedBuf_->getSize() < rowCnt * width_ * sizeof(real));
-    } else {
-      rowStore_.reserve(rowCnt * width_);
-    }
-  }
-
-  inline const real* get(int row) const {
-    if (preallocatedBuf_) {
-      CHECK_LE((row + 1) * width_ * sizeof(real), preallocatedBuf_->getSize());
-      return reinterpret_cast<real*>(preallocatedBuf_->getBuf()) + row * width_;
-    } else {
-      CHECK_LE((row + 1) * width_, rowStore_.size());
-      return rowStore_.data() + row * width_;
-    }
-  }
-
-  inline const real* getWithAutoGrowth(int row) {
-    if (preallocatedBuf_) {
-      return get(row);
-    } else {
-      if ((rowStore_.size() <= row * width_)) {
-        rowStore_.resize((row + 1) * width_);
-      }
-      return rowStore_.data() + row * width_;
-    }
-  }
-
-  inline real* data() {
-    if (preallocatedBuf_) {
-      return reinterpret_cast<real*>(preallocatedBuf_->getBuf());
-    } else {
-      return rowStore_.data();
-    }
-  }
-
-  inline void clear() { rowStore_.clear(); }
-
-  inline size_t getRowCount() const {
-    if (preallocatedBuf_) {
-      return preallocatedBuf_->getSize() / sizeof(float) / width_;
-    } else {
-      return rowStore_.size() / width_;
-    }
-  }
-
-  inline bool canAutoGrowth() const { return preallocatedBuf_ == nullptr; }
-
-private:
-  CpuMemHandlePtr preallocatedBuf_;
-  std::vector<real, AlignedAllocator<real, 32>> rowStore_;
-  size_t width_;
-};
 
 /**
  * Sparse Row
@@ -146,7 +80,7 @@ public:
    *  This is only used when SparseRowCpuMatrix is constructed with
    *  indexDictHandle.
    */
-  void reserveStore() { buf_->reserve(localIndices_->size()); }
+  void reserveStore() { buf_->resize(localIndices_->size()); }
 
   // row is the row id in the original matrix
   virtual real* getRowBuf(size_t row) { return getRow(row); }
@@ -249,7 +183,7 @@ protected:
   }
 
   inline void checkStoreSize() {
-    if (buf_->canAutoGrowth()) {
+    if (buf_->isAutoGrowth()) {
       if (buf_->getRowCount() > 0.5 * height_) {
         LOG(WARNING)
             << "There are more than 0.5*height (" << localIndices_->size()
