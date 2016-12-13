@@ -154,4 +154,12 @@ paddle train \
 python -m paddle.utils.plotcurve -i $log > plot.png
 ```
 - 这里我们使用的是GPU模式进行训练。如果你没有GPU环境，可以设置`use_gpu=0`。
-- `./demo/image_classification/vgg_16_cifar.py`是网络和数据配置文件。其它
+- `./demo/image_classification/vgg_16_cifar.py`是网络和数据配置文件。各项参数的详细说明可以在documentation of the command line flags中找到
+- 脚本`plotcurve.py`依赖于python的`matplotlib`模块。因此如果这个脚本运行失败，也许是因为需要安装`matplotlib`
+
+在训练完成后，训练及测试误差曲线图会被`plotcurve.py`脚本保存在 `plot.png`中。下面是一个误差曲线图的示例：
+
+<center>![Training and testing curves.](./plot.png)</center>
+
+## 预测在
+训练完成后，模型及参数会被保存在路径`./cifar_vgg_model/pass-%05d`下。例如，第300次训练所得的模型会被保存在`./cifar_vgg_model/pass-00299`。
