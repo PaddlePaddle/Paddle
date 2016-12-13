@@ -1280,11 +1280,25 @@ void testCrossMapNormalFwd(
   inputsGpu.copyFrom(inputs);
   outputsGpu.copyFrom(outputs);
 
-  CrossMapNormal cross;
-  cross(
+  CrossMapNormal<DEVICE_TYPE_CPU> cpuCross;
+  cpuCross(
       outputs, denoms, inputs, channels, imgSizeH, imgSizeW, sizeX, scale, pow);
+
+  CrossMapNormal<DEVICE_TYPE_GPU> gpuCross;
+  gpuCross(outputsGpu,
+           denomsGpu,
+           inputsGpu,
+           channels,
+           imgSizeH,
+           imgSizeW,
+           sizeX,
+           scale,
+           pow);
+
+#if 0
   outputsGpu.crossMapNormalFwd(
       inputsGpu, imgSizeH, imgSizeW, denomsGpu, channels, sizeX, scale, pow);
+#endif
 
   TensorCheckErr(outputs, outputsGpu);
   TensorCheckErr(denoms, denomsGpu);
@@ -1339,29 +1353,31 @@ void testCrossMapNormalBwd(
   outputsValueGpu.copyFrom(outputsValue);
   inputsGradGpu.copyFrom(inputsGrad);
 
-  CrossMapNormalGrad cross;
-  cross(inputsGrad,
-        inputsValue,
-        outputsGrad,
-        outputsValue,
-        denoms,
-        channels,
-        imgSizeH,
-        imgSizeW,
-        sizeX,
-        scale,
-        pow);
+  CrossMapNormalGrad<DEVICE_TYPE_CPU> cpuCross;
+  cpuCross(inputsGrad,
+           inputsValue,
+           outputsGrad,
+           outputsValue,
+           denoms,
+           channels,
+           imgSizeH,
+           imgSizeW,
+           sizeX,
+           scale,
+           pow);
 
-  inputsGradGpu.crossMapNormalBwd(outputsGradGpu,
-                                  denomsGpu,
-                                  inputsValueGpu,
-                                  outputsValueGpu,
-                                  channels,
-                                  imgSizeH,
-                                  imgSizeW,
-                                  sizeX,
-                                  scale,
-                                  pow);
+  CrossMapNormalGrad<DEVICE_TYPE_GPU> gpuCross;
+  gpuCross(inputsGradGpu,
+           inputsValueGpu,
+           outputsGradGpu,
+           outputsValueGpu,
+           denomsGpu,
+           channels,
+           imgSizeH,
+           imgSizeW,
+           sizeX,
+           scale,
+           pow);
 
   TensorCheckErr(inputsGrad, inputsGradGpu);
 }

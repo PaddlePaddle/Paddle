@@ -17,15 +17,16 @@ limitations under the License. */
 namespace paddle {
 
 // NCHW
-void CrossMapNormal::operator()(CpuMatrix& outputs,
-                                CpuMatrix& denoms,
-                                CpuMatrix& inputs,
-                                size_t channels,
-                                size_t imgSizeH,
-                                size_t imgSizeW,
-                                size_t sizeX,
-                                real scale,
-                                real pow) {
+template <>
+void CrossMapNormal<DEVICE_TYPE_CPU>::operator()(CpuMatrix& outputs,
+                                                 CpuMatrix& denoms,
+                                                 CpuMatrix& inputs,
+                                                 size_t channels,
+                                                 size_t imgSizeH,
+                                                 size_t imgSizeW,
+                                                 size_t sizeX,
+                                                 real scale,
+                                                 real pow) {
   CHECK(outputs.isContiguous());
   CHECK(inputs.isContiguous());
   CHECK(denoms.isContiguous());
@@ -58,17 +59,18 @@ void CrossMapNormal::operator()(CpuMatrix& outputs,
   outputs = inputs * denoms.pow(-pow);
 }
 
-void CrossMapNormalGrad::operator()(CpuMatrix& inputsGrad,
-                                    CpuMatrix& inputsValue,
-                                    CpuMatrix& outputsGrad,
-                                    CpuMatrix& outputsValue,
-                                    CpuMatrix& denoms,
-                                    size_t channels,
-                                    size_t imgSizeH,
-                                    size_t imgSizeW,
-                                    size_t sizeX,
-                                    real scale,
-                                    real pow) {
+template <>
+void CrossMapNormalGrad<DEVICE_TYPE_CPU>::operator()(CpuMatrix& inputsGrad,
+                                                     CpuMatrix& inputsValue,
+                                                     CpuMatrix& outputsGrad,
+                                                     CpuMatrix& outputsValue,
+                                                     CpuMatrix& denoms,
+                                                     size_t channels,
+                                                     size_t imgSizeH,
+                                                     size_t imgSizeW,
+                                                     size_t sizeX,
+                                                     real scale,
+                                                     real pow) {
   CHECK(inputsGrad.isContiguous());
   CHECK(outputsGrad.isContiguous());
   CHECK(denoms.isContiguous());

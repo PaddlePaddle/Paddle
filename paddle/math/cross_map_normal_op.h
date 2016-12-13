@@ -18,10 +18,30 @@ limitations under the License. */
 
 namespace paddle {
 
+enum DeviceType {
+  DEVICE_TYPE_UNSPECIFIED = 0,
+  DEVICE_TYPE_CPU = 1,
+  DEVICE_TYPE_GPU = 2,
+};
+
+template <DeviceType Device>
+struct MatrixT;
+
+template <>
+struct MatrixT<DEVICE_TYPE_CPU> {
+  using type = CpuMatrix;
+};
+
+template <>
+struct MatrixT<DEVICE_TYPE_GPU> {
+  using type = GpuMatrix;
+};
+
+template <DeviceType Device>
 struct CrossMapNormal {
-  void operator()(CpuMatrix& outputs,
-                  CpuMatrix& denoms,
-                  CpuMatrix& inputs,
+  void operator()(typename MatrixT<Device>::type& outputs,
+                  typename MatrixT<Device>::type& denoms,
+                  typename MatrixT<Device>::type& inputs,
                   size_t channels,
                   size_t imgSizeH,
                   size_t imgSizeW,
@@ -30,12 +50,13 @@ struct CrossMapNormal {
                   real pow);
 };
 
+template <DeviceType Device>
 struct CrossMapNormalGrad {
-  void operator()(CpuMatrix& inputsGrad,
-                  CpuMatrix& inputsValue,
-                  CpuMatrix& outputsGrad,
-                  CpuMatrix& outputsValue,
-                  CpuMatrix& denoms,
+  void operator()(typename MatrixT<Device>::type& inputsGrad,
+                  typename MatrixT<Device>::type& inputsValue,
+                  typename MatrixT<Device>::type& outputsGrad,
+                  typename MatrixT<Device>::type& outputsValue,
+                  typename MatrixT<Device>::type& denoms,
                   size_t channels,
                   size_t imgSizeH,
                   size_t imgSizeW,
