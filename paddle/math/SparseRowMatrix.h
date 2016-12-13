@@ -69,9 +69,7 @@ public:
    *
    *  @param row row id in local storage
    */
-  real* getLocalRow(size_t row) {
-    return const_cast<real*>(buf_->getWithAutoGrowth(row));
-  }
+  real* getLocalRow(size_t row) { return buf_->getWithAutoGrowth(row); }
 
   /**
    *  reserve the storage for rows according to current size of

@@ -58,13 +58,13 @@ public:
    * @param row the index of row.
    * @return row buffer.
    */
-  inline const real* get(int row) const {
+  inline real* get(int row) const {
     if (preallocatedBuf_) {
       CHECK_LE((row + 1) * width_ * sizeof(real), preallocatedBuf_->getSize());
       return reinterpret_cast<real*>(preallocatedBuf_->getBuf()) + row * width_;
     } else {
       CHECK_LE((row + 1) * width_, rowStore_.size());
-      return rowStore_.data() + row * width_;
+      return const_cast<real*>(rowStore_.data() + row * width_);
     }
   }
 
@@ -74,7 +74,7 @@ public:
    * @param row the index of row.
    * @return row buffer.
    */
-  inline const real* getWithAutoGrowth(int row) {
+  inline real* getWithAutoGrowth(int row) {
     if (preallocatedBuf_) {
       return get(row);
     } else {
@@ -118,6 +118,12 @@ public:
    * @return ture if can automacitally grow.
    */
   inline bool isAutoGrowth() const { return preallocatedBuf_ == nullptr; }
+
+  /**
+   * @brief return the width of matrix. a.k.a length of row.
+   * @return width of matrix
+   */
+  inline size_t getWidth() const { return width_; }
 
 private:
   CpuMemHandlePtr preallocatedBuf_;
