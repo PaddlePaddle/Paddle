@@ -1,7 +1,7 @@
 MovieLens数据集评分回归模型
 =========================
 
-这里我们在MovieLens数据集描述一种**余弦相似度回归**任务。
+这里我们在MovieLens数据集描述一种 **余弦相似度回归** 任务。
 该示例将展示paddle如何进行词向量嵌入，处理相似度回归，针对文本
 的单词级别的卷积神经网络，以及paddle如何处理多种类型的输入。
 需要注意的是，该模型网络只是用于进行demo展示paddle如何工作，而
@@ -15,7 +15,7 @@ MovieLens数据集评分回归模型
 ```````
 下载并解压数据集
 ''''''''''''''
-这里我们使用:ref:`demo_ml_dataset_en`。
+这里我们使用 :ref:`demo_ml_dataset_en` 。
 要下载和解压数据集，只需要简单的运行下面的命令即可。
 
 .. code-block:: bash
@@ -23,7 +23,7 @@ MovieLens数据集评分回归模型
 	cd demo/recommendation/data
 	./ml_data.sh
 
-:code:`demo/recommendation/data/ml-1m`的目录结构为:
+:code:`demo/recommendation/data/ml-1m` 的目录结构为:
 
 .. code-block:: text
 
@@ -35,10 +35,10 @@ MovieLens数据集评分回归模型
 
 字段配置文件
 ''''''''''
-**字段配置文件**用来具体说明数据集的字段和文件格式，
-例如，说明每个特征文件具体字段是**什么**类型。
+**字段配置文件** 用来具体说明数据集的字段和文件格式，
+例如，说明每个特征文件具体字段是 **什么** 类型。
 
-ml-1m的字段配置文件在目录:code:`demo/recommendation/data/config.json`中。
+ml-1m的字段配置文件在目录 :code:`demo/recommendation/data/config.json` 中。
 其具体说明了字段类型和文件名称:
 1) 用户文件中有四种类型的字段\: 编号，性别，年龄和职业；
 2) 文件名称为"users.dat"，文件的分隔符为"::"。
@@ -70,12 +70,12 @@ ml-1m的字段配置文件在目录:code:`demo/recommendation/data/config.json`�
 
 在movielens 1m数据集中，电影和用户有许多的特征。
 评分文件的每一行仅仅提供电影或用户的编号来代表相应的电影或用户。
-我们首先处理电影或用户的特征文件，然后用pickle命令将特征(**Meta**)对象存储为文件。
+我们首先处理电影或用户的特征文件，然后用pickle命令将特征( **Meta** )对象存储为文件。
 
 Meta配置文件
 ...........
 
-**Meta配置文件**用来具体描述**如何**解析数据集中的每一个字段。
+**Meta配置文件** 用来具体描述 **如何** 解析数据集中的每一个字段。
 该文件可以从字段配置文件生成，或是手动编辑生成。文件的格式可以
 为json或yaml格式。解析器能通过文件的扩展名自动识别文件的格式。
 
@@ -124,14 +124,14 @@ Meta配置文件
 Meta文件
 ''''''''
 
-有了meta配置文件之后，我们可以生成**Meta文件**，该文件是python的pickle对象，
+有了meta配置文件之后，我们可以生成 **Meta文件** ，该文件是python的pickle对象，
 存储着电影或用户信息。可以运行下面的命令来生成。
 
 .. code-block:: bash
 
 	python meta_generator.py ml-1m meta.bin --config=meta_config.json
 
-meta文件:code:`meta.bin`的结构如下：
+meta文件 :code:`meta.bin` 的结构如下：
 
 .. code-block:: text
 
@@ -185,17 +185,17 @@ meta文件:code:`meta.bin`的结构如下：
 分割训练/测试文件
 '''''''''''''''
 
-我们将:code:`ml-1m/ratings.dat`文件分割为训练和测试文件。分割文件的方法是：对于每位用户，我们将评分分成两部分。
+我们将 :code:`ml-1m/ratings.dat` 文件分割为训练和测试文件。分割文件的方法是：对于每位用户，我们将评分分成两部分。
 这样的话每位用户在测试文件中将与训练文件含有同样的信息。
 
-用:code:`separate.py`来分离训练和测试文件。
+用 :code:`separate.py` 来分离训练和测试文件。
 
 .. code-block:: bash
 
 	python split.py ml-1m/ratings.dat --delimiter="::" --test_ratio=0.1
 
-这样就会生成两个文件：:code:`ml-1m/ratings.dat.train`和:code:`ml-1m/ratings.data.test`。
-将他们移动到目录:code:`data`，然后进行随机打乱，再为paddle的训练过程提供文件列表。
+这样就会生成两个文件：:code:`ml-1m/ratings.dat.train` 和 :code:`ml-1m/ratings.data.test` 。
+将他们移动到目录 :code:`data` ，然后进行随机打乱，再为paddle的训练过程提供文件列表。
 
 ..  code-block:: bash
 
@@ -217,27 +217,27 @@ meta文件:code:`meta.bin`的结构如下：
     :align: center
     :alt: rec_regression_network
 
-该示例的神经网络配置文件:code:`trainer_config.py`如下所示：
+该示例的神经网络配置文件 :code:`trainer_config.py` 如下所示：
 
 ..  literalinclude:: ../../../demo/recommendation/trainer_config.py
     :language: python
     :lines: 15-
 
-在文件:code:`trainer_config.py`中，我们仅仅是讲每个特征种类映射到一个特征向量中，以下
+在文件 :code:`trainer_config.py` 中，我们仅仅是讲每个特征种类映射到一个特征向量中，以下
 展示了如何将每个特征映射到一个向量。
 
-* :code:`id`\: 仅仅是简单的嵌入，然后添加一个全连接层。
-* :code:`embedding`\:
+* :code:`id` \: 仅仅是简单的嵌入，然后添加一个全连接层。
+* :code:`embedding` \:
     - 如果是序列，则先做嵌入，然后再做一次文本卷积网络操作，
       然后得到平均采样的结果
     - 如果不是序列，则先做嵌入，然后添加一个全连接层。
-* :code:`one_host_dense`\:
+* :code:`one_host_dense` \:
     - 仅仅是两个全连接层。
 
-然后我们利用多输入的:code:`fc_layer`全连接层将电影的每个特征结合成一个电影特征，
+然后我们利用多输入的:code:`fc_layer` 全连接层将电影的每个特征结合成一个电影特征，
 并且对用户的特征做同样的操作，也得到一个用户特征。然后我们求这两个特征的余弦相似度。
 
-在这些网络中，我们用以下的一些:ref:`api_trainer_config`中的接口。
+在这些网络中，我们用以下的一些:ref:`api_trainer_config` 中的接口。
 
 *  数据层， :ref:`api_trainer_config_helpers_layers_data_layer`
 *  全连接层， :ref:`api_trainer_config_helpers_layers_fc_layer`
@@ -246,7 +246,7 @@ meta文件:code:`meta.bin`的结构如下：
 *  采样层， :ref:`api_trainer_config_helpers_layers_pooling_layer`
 *  余弦相似度层， :ref:`api_trainer_config_helpers_layers_cos_sim`
 *  文本卷积采样层， :ref:`api_trainer_config_helpers_network_text_conv_pool`
-*  声明Python数据源， :ref:`api_trainer_config_helpers_data_sources`.
+*  声明Python数据源， :ref:`api_trainer_config_helpers_data_sources` .
 
 数据提供脚本
 '''''''''''
@@ -256,40 +256,40 @@ meta文件:code:`meta.bin`的结构如下：
     :lines: 15-
 
 数据提供脚本仅仅是读取meta.bin和评分文件，生成训练需要的样本。
-在脚本:code:`dataprovider.py`中，我们需要设置：
+在脚本 :code:`dataprovider.py` 中，我们需要设置：
 
 * obj.slots\: 特征的类型和维度。
-* use_seq\: :code:`dataprovider.py`中的数据是否为序列模式。
-* process\: 返回数据的每一条样本给:code:`paddle`.
+* use_seq\: :code:`dataprovider.py` 中的数据是否为序列模式。
+* process\: 返回数据的每一条样本给 :code:`paddle` .
 
-数据提供脚本的细节文档可以参考:ref:`api_pydataprovider`.
+数据提供脚本的细节文档可以参考 :ref:`api_pydataprovider` .
 
 训练
 ````
 
 准备好数据，配置了网络，编写好数据提供脚本后，现在我们可以开始paddle训练了。
 
-代码:code:`run.sh`如下：
+代码 :code:`run.sh` 如下：
 
 ..  literalinclude:: ../../../demo/recommendation/run.sh
     :language: bash
     :lines: 16-
 
-该脚本仅仅是开始一个paddle训练过程，将日志写入文件:code:`log.txt`，然后
+该脚本仅仅是开始一个paddle训练过程，将日志写入文件 :code:`log.txt` ，然后
 打印在屏幕上。
 
-脚本:code:`run.sh`中的每一行命令，请参考页面:ref:`cmd_line_index_en`。
+脚本 :code:`run.sh` 中的每一行命令，请参考页面 :ref:`cmd_line_index_en` 。
 这些参数的简短介绍如下：
 
 *  config\: 告诉paddle哪个文件是神经网络的配置文件。
-*  save_dir\: 告诉paddle将模型保存在:code:`./output`中。
+*  save_dir\: 告诉paddle将模型保存在: code:`./output` 中。
 *  use_gpu\: 是否使用GPU，默认为不使用。
 *  trainer_count\: 一台机器上面的线程数量。
 *  test_all_data_in_one_period\: 每一个测试周期测试一次所有数据。否则，
-   每个测试周期测试:code:`batch_size`批次的数据。
-*  log_period\: 在训练了:code:`log_period`批次后打印日志.
-*  dot_period\: 在每训练:code:`dot_period`个批次后打印一个:code:`.`.
-*  num_passes\: 训练至多:code:`num_passes`轮.
+   每个测试周期测试: code:`batch_size` 批次的数据。
+*  log_period\: 在训练了: code:`log_period` 批次后打印日志.
+*  dot_period\: 在每训练: code:`dot_period` 个批次后打印一个 :code:`.` .
+*  num_passes\: 训练至多: code:`num_passes` 轮.
 
 如果训练过程启动成功的话，输出应该类似如下：
 
@@ -311,7 +311,7 @@ meta文件:code:`meta.bin`的结构如下：
     I0601 08:09:46.233438 10549 Util.cpp:209] copy trainer_config.py to ./output/model/pass-00000
     I0601 08:09:46.233541 10549 ParamUtil.cpp:147] fileName trainer_config.py
 
-模型被保存在:code:`output/`目录中。你可以在任何时候用:code:`Ctrl-C`来停止训练。
+模型被保存在 :code:`output/` 目录中。你可以在任何时候用 :code:`Ctrl-C` 来停止训练。
 
 模型评估和预测
 ````````````
@@ -322,7 +322,7 @@ meta文件:code:`meta.bin`的结构如下：
 
     ./evaluate.sh 
 
-你讲看到如下的信息：
+你将看到如下的信息：
 
 .. code-block:: text
 
