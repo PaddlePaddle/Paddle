@@ -1,7 +1,3 @@
-```eval_rst
-..  _sentiment_analysis_en:
-```
-
 # Sentiment Analysis Tutorial
 
 Sentiment analysis has many applications. A basic task in sentiment analysis is classifying the polarity of a given text at the document, sentence or feature/aspect level. One simple example is to classify the customer reviews in a shopping website, a tourism website, and group buying websites like Amazon, TaoBao, Tmall etc.

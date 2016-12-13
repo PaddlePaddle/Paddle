@@ -246,6 +246,6 @@ The code is listed below:
     outputs(beam_gen)
 
 
-Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to :ref:`sentiment_analysis_en` for more details.
+Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to :ref:`semantic_role_labeling_en` for more details.
 
 The full configuration file is located at :code:`demo/seqToseq/seqToseq_net.py`.
