@@ -1,10 +1,9 @@
 # External dependency to Google protobuf.
 http_archive(
-    name = "protobuf",
-    url = "http://github.com/google/protobuf/archive/v3.1.0.tar.gz",
-    sha256 = "0a0ae63cbffc274efb573bdde9a253e3f32e458c41261df51c5dbc5ad541e8f7",
-    strip_prefix = "protobuf-3.1.0",
-)
+    name="protobuf",
+    url="http://github.com/google/protobuf/archive/v3.1.0.tar.gz",
+    sha256="0a0ae63cbffc274efb573bdde9a253e3f32e458c41261df51c5dbc5ad541e8f7",
+    strip_prefix="protobuf-3.1.0", )
 
 # External dependency to gtest 1.7.0.  This method comes from
 # https://www.bazel.io/versions/master/docs/tutorial/cpp.html.

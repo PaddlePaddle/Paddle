@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
 #include "GradientMachine.h"
 #include "NeuralNetwork.h"
-#include <functional>
 
 #include "paddle/utils/Locks.h"
 

@@ -264,7 +264,7 @@ In this :code:`dataprovider.py`, we should set\:
 * use_seq\: Whether this :code:`dataprovider.py` in sequence mode or not.
 * process\: Return each sample of data to :code:`paddle`.
 
-The data provider details document see :ref:`api_pydataprovider`.
+The data provider details document see :ref:`api_pydataprovider2_en`.
 
 Train
 `````

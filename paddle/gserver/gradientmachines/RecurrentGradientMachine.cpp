@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/Util.h"
-#include "paddle/utils/Flags.h"
-#include <algorithm>
-#include <functional>
-#include <dlfcn.h>
-#include <limits>
-#include <cmath>
 #include "RecurrentGradientMachine.h"
+#include <dlfcn.h>
+#include <algorithm>
+#include <cmath>
+#include <functional>
+#include <limits>
 #include "NeuralNetwork.h"
 #include "paddle/gserver/layers/AgentLayer.h"
+#include "paddle/utils/Flags.h"
+#include "paddle/utils/Stat.h"
+#include "paddle/utils/Util.h"
 
 P_DEFINE_string(diy_beam_search_prob_so, "", "the diy beam search cost so");
 
@@ -78,20 +78,22 @@ static inline SymbolType loadDiySymbol(const char* symbolName) {
   return reinterpret_cast<SymbolType>(sym);
 }
 
-static InitFunction __init__diy_prob_method([] {
-  std::string soName = FLAGS_diy_beam_search_prob_so;
-  if (!soName.empty()) {
-    gDiyProbHandle = dlopen(soName.c_str(), RTLD_LAZY);
-    CHECK(gDiyProbHandle) << "Cannot Open DIY Prob So " << soName;
-    atexit(exit_diy_prob);
-    gDiyProbMethod =
-        loadDiySymbol<decltype(gDiyProbMethod)>(DIY_CALC_PROB_SYMBOL_NAME);
-    gDiyProbStart =
-        loadDiySymbol<decltype(gDiyProbStart)>(DIY_START_CALC_PROB_SYMBOL_NAME);
-    gDiyProbStop =
-        loadDiySymbol<decltype(gDiyProbStop)>(DIY_FINISH_CALC_PROB_SYMBOL_NAME);
-  }
-}, std::numeric_limits<int>::max());
+static InitFunction __init__diy_prob_method(
+    [] {
+      std::string soName = FLAGS_diy_beam_search_prob_so;
+      if (!soName.empty()) {
+        gDiyProbHandle = dlopen(soName.c_str(), RTLD_LAZY);
+        CHECK(gDiyProbHandle) << "Cannot Open DIY Prob So " << soName;
+        atexit(exit_diy_prob);
+        gDiyProbMethod =
+            loadDiySymbol<decltype(gDiyProbMethod)>(DIY_CALC_PROB_SYMBOL_NAME);
+        gDiyProbStart = loadDiySymbol<decltype(gDiyProbStart)>(
+            DIY_START_CALC_PROB_SYMBOL_NAME);
+        gDiyProbStop = loadDiySymbol<decltype(gDiyProbStop)>(
+            DIY_FINISH_CALC_PROB_SYMBOL_NAME);
+      }
+    },
+    std::numeric_limits<int>::max());
 
 class BeamSearchControlCallbacks {
 public:
@@ -1281,10 +1283,9 @@ void RecurrentGradientMachine::beamSearch(size_t batchSize) {
       std::vector<std::vector<int>*> prefixes;
       prefixes.resize(paths.size());
       std::transform(
-          paths.begin(),
-          paths.end(),
-          prefixes.begin(),
-          [](const Path& p) { return const_cast<std::vector<int>*>(&p.ids); });
+          paths.begin(), paths.end(), prefixes.begin(), [](const Path& p) {
+            return const_cast<std::vector<int>*>(&p.ids);
+          });
       beamSearchCtrlCallbacks_->beamSearchCandidateAdjust(
           prefixes, frames_[machineCur].get(), i);
     }

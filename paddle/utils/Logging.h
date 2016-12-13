@@ -18,8 +18,8 @@ limitations under the License. */
  */
 
 #pragma once
-#include <sstream>
 #include <memory>
+#include <sstream>
 #include <string>
 
 #ifndef PADDLE_USE_GLOG

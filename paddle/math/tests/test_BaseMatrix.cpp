@@ -20,8 +20,8 @@ limitations under the License. */
  */
 
 #include <gtest/gtest.h>
-#include "paddle/math/BaseMatrix.h"
 #include "TestUtils.h"
+#include "paddle/math/BaseMatrix.h"
 
 using paddle::BaseMatrix;
 using paddle::Matrix;

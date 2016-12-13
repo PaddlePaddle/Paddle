@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gtest/gtest.h>
 #include <paddle/pserver/ParameterClient2.h>
 #include <paddle/pserver/ParameterServer2.h>
-#include <gtest/gtest.h>
 #include <paddle/utils/Flags.h>
 #include <paddle/utils/Util.h>
 

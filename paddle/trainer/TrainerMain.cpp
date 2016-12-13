@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <fenv.h>
+#include "paddle/pserver/ParameterServer2.h"
+#include "paddle/utils/Excepts.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/StringUtil.h"
-#include "paddle/utils/Excepts.h"
-#include "paddle/pserver/ParameterServer2.h"
 
 #include "ParamUtil.h"
 #include "Trainer.h"

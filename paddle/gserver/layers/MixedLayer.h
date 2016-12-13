@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "Layer.h"
-#include "Projection.h"
 #include "Operator.h"
+#include "Projection.h"
 
 namespace paddle {
 

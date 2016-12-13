@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hl_cuda_cublas.h"
 #include <sys/time.h>
 #include <mutex>
 #include "hl_cuda.h"
-#include "hl_cuda_cublas.h"
-#include "hl_thread.ph"
 #include "hl_dso_loader.h"
+#include "hl_thread.ph"
 #include "paddle/utils/Logging.h"
 
 namespace dynload {

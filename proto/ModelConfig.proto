@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-ifdef(`proto3', `syntax = "proto2";')
+syntax = "proto2";
 
 import "ParameterConfig.proto";
 
@@ -20,7 +20,7 @@ package paddle;
 /**
  * Various structs for the configuration of a neural network
  */
-sinclude(`ModelConfigExt.proto.m4')
+
 
 message ExternalConfig {
   repeated string layer_names = 1;
@@ -146,8 +146,8 @@ message NormConfig {
 
   // the parameters for normalization
   // u = u / (1+scale*sum(u^2 in window))^pow
-  required real scale = 4;
-  required real pow = 5;
+  required double scale = 4;
+  required double pow = 5;
 
   // The size of output feature map.
   required uint32 output_x = 6;
@@ -223,7 +223,7 @@ message OperatorConfig {
   required uint64 output_size = 4;
 
   // For DotMulOperator
-  optional real dotmul_scale = 5 [default = 1.0];
+  optional double dotmul_scale = 5 [default = 1.0];
 
   // For ConvOperator
   optional ConvConfig conv_conf = 6;
@@ -266,7 +266,7 @@ message LayerInputConfig {
 }
 
 message LayerConfig {
-sinclude(`ModelConfigLayer.proto.m4')
+
   required string name = 1;
   required string type = 2;
   optional uint64 size = 3;
@@ -293,7 +293,7 @@ sinclude(`ModelConfigLayer.proto.m4')
   optional uint32 partial_sum = 9;
 
   // for dropout
-  optional real drop_rate = 10;
+  optional double drop_rate = 10;
 
   // for HierarchicalSoftmaxLayer and NCELayer
   // the number of classes
@@ -317,17 +317,17 @@ sinclude(`ModelConfigLayer.proto.m4')
   // For NCELayer
   // The distribution for generating the random negative labels.
   // A uniform distribution will be used if not provided
-  repeated real neg_sampling_dist = 17 [packed = true];
+  repeated double neg_sampling_dist = 17 [packed = true];
 
   // For MaxLayer
   // default: output VALUE of MaxLayer. set this flag to true for output INDEX
-  // INDEX will be put in Argument::value as real values.
+  // INDEX will be put in Argument::value as double values.
   optional bool output_max_index = 19 [default = false];
 
   /// The filed number 20 have been deprecated.
 
   // For self-normalized estimation
-  optional real softmax_selfnorm_alpha = 21 [default = 0.1];
+  optional double softmax_selfnorm_alpha = 21 [default = 0.1];
 
   /// The filed numbers 22 and 23 have been deprecated.
 
@@ -338,14 +338,14 @@ sinclude(`ModelConfigLayer.proto.m4')
   optional bool norm_by_times = 25;
 
   // for CostLayers
-  optional real coeff = 26 [default = 1.0];
+  optional double coeff = 26 [default = 1.0];
 
   // for AverageLayer
   // can be set to: 'average', 'sum' or 'squarerootn'
   optional string average_strategy = 27;
 
   // for error clipping
-  optional real error_clipping_threshold = 28 [default = 0.0];
+  optional double error_clipping_threshold = 28 [default = 0.0];
 
   // for operators used by mixed layer
   repeated OperatorConfig operator_confs = 29;
@@ -355,11 +355,11 @@ sinclude(`ModelConfigLayer.proto.m4')
   optional int32 max_sort_size = 31;
 
   // for SlopeInterceptLayer
-  optional real slope = 32;
-  optional real intercept = 33;
+  optional double slope = 32;
+  optional double intercept = 33;
 
   // for CosSimVecMatLayer and CosSimLayer
-  optional real cos_scale = 34;
+  optional double cos_scale = 34;
 
   // for DataNormLayer
   // can be set to: 'z-score', 'min-max' or 'decimal-scaling'
@@ -394,7 +394,7 @@ sinclude(`ModelConfigLayer.proto.m4')
   // if number of the selected columns is less than
   // sample number * selective_fc output size * selective_fc_mull_mull_ratio
   // sparse multiplication is used, otherwise, using full multiplication.
-  optional real selective_fc_full_mul_ratio = 44 [default = 0.02];
+  optional double selective_fc_full_mul_ratio = 44 [default = 0.02];
 
   // to indicate how many threads selective_fc use to to accelate
   // the plain_mul period
@@ -406,7 +406,7 @@ sinclude(`ModelConfigLayer.proto.m4')
   optional bool use_global_stats = 46;
 
   // use to compute moving mean and variance.
-  optional real moving_average_fraction = 47 [default = 0.9];
+  optional double moving_average_fraction = 47 [default = 0.9];
 
   // bias size
   optional uint32 bias_size = 48 [default = 0];
@@ -438,7 +438,7 @@ message EvaluatorConfig {
 
   // Used by PrecisionRecallEvaluator and ClassificationErrorEvaluator
   // For multi binary labels: true if output > classification_threshold
-  optional real classification_threshold = 6 [default = 0.5];
+  optional double classification_threshold = 6 [default = 0.5];
   // The positive label. -1 means average precision and recall
   optional int32 positive_label = 7 [default = -1];
 

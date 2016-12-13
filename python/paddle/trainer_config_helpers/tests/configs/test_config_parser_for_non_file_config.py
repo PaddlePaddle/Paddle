@@ -17,33 +17,35 @@ import sys
 import re
 import getopt
 
+
 def main(print_whole_config, globals, locals):
-  '''
+    '''
      this test will all test_config.py
   '''
-  cmdstr = """from paddle.trainer.config_parser import parse_config\n"""
-  importstr = ""
-  functionstr = ""
+    cmdstr = """from paddle.trainer.config_parser import parse_config\n"""
+    importstr = ""
+    functionstr = ""
 
-  for line in sys.stdin:
-    if re.match("^import", line) or re.match("^from.*import", line):
-      importstr = importstr + line
+    for line in sys.stdin:
+        if re.match("^import", line) or re.match("^from.*import", line):
+            importstr = importstr + line
+        else:
+            functionstr = functionstr + "  " + line
+
+    cmdstr = cmdstr + importstr + """def configs():\n""" + functionstr
+    #cmdstr = cmdstr + """def configs():\n""" + importstr + functionstr
+    if print_whole_config:
+        cmdstr = cmdstr + """print parse_config(configs, "")"""
     else:
-      functionstr = functionstr + "  " + line
+        cmdstr = cmdstr + """print parse_config(configs, "").model_config"""
 
-  cmdstr = cmdstr + importstr + """def configs():\n""" + functionstr
-  #cmdstr = cmdstr + """def configs():\n""" + importstr + functionstr
-  if print_whole_config:
-    cmdstr = cmdstr + """print parse_config(configs, "")"""
-  else:
-    cmdstr = cmdstr + """print parse_config(configs, "").model_config"""
+    exec (cmdstr, globals, locals)
 
-  exec(cmdstr, globals, locals)
 
 if __name__ == '__main__':
-  whole = False
-  opts, args = getopt.getopt(sys.argv[1:], "", ["whole"])
-  for op, value in opts:
-    if op == "--whole":
-      whole = True
-  main(whole, globals(), locals())
+    whole = False
+    opts, args = getopt.getopt(sys.argv[1:], "", ["whole"])
+    for op, value in opts:
+        if op == "--whole":
+            whole = True
+    main(whole, globals(), locals())

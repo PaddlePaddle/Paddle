@@ -15,11 +15,11 @@ limitations under the License. */
 #include "Util.h"
 
 #include <dirent.h>
+#include <pmmintrin.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <xmmintrin.h>
-#include <pmmintrin.h>
 
 #include <fstream>
 #include <mutex>
@@ -28,10 +28,10 @@ limitations under the License. */
 
 #include "CommandLineParser.h"
 #include "CustomStackTrace.h"
+#include "StringUtil.h"
 #include "Thread.h"
 #include "ThreadLocal.h"
 #include "Version.h"
-#include "StringUtil.h"
 
 P_DEFINE_int32(seed, 1, "random number seed. 0 for srand(time)");
 
@@ -126,25 +126,23 @@ void registerInitFunction(std::function<void()> func, int priority) {
 }
 
 void runInitFunctions() {
-  std::call_once(
-      g_onceFlag,
-      []() {
-        LOG(INFO) << "Calling runInitFunctions";
-        if (g_initFuncs) {
-          std::sort(g_initFuncs->begin(),
-                    g_initFuncs->end(),
-                    [](const PriorityFuncPair& x, const PriorityFuncPair& y) {
-                      return x.first > y.first;
-                    });
-          for (auto& f : *g_initFuncs) {
-            f.second();
-          }
-          delete g_initFuncs;
-          g_initFuncs = nullptr;
-        }
-        g_initialized = true;
-        LOG(INFO) << "Call runInitFunctions done.";
-      });
+  std::call_once(g_onceFlag, []() {
+    LOG(INFO) << "Calling runInitFunctions";
+    if (g_initFuncs) {
+      std::sort(g_initFuncs->begin(),
+                g_initFuncs->end(),
+                [](const PriorityFuncPair& x, const PriorityFuncPair& y) {
+                  return x.first > y.first;
+                });
+      for (auto& f : *g_initFuncs) {
+        f.second();
+      }
+      delete g_initFuncs;
+      g_initFuncs = nullptr;
+    }
+    g_initialized = true;
+    LOG(INFO) << "Call runInitFunctions done.";
+  });
 }
 
 void initMain(int argc, char** argv) {

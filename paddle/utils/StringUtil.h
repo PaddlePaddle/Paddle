@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <vector>
-#include <sstream>
 #include "Logging.h"
 
 namespace paddle {

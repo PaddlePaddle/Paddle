@@ -100,7 +100,8 @@ protected:
                              ResponseCallback callback);
 
   typedef std::function<void(std::unique_ptr<MsgReader> msgReader,
-                             ResponseCallback callback)> ServiceFunction;
+                             ResponseCallback callback)>
+      ServiceFunction;
 
   /**
    * @brief register one RPC function in function mapping

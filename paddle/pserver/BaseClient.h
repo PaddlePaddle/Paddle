@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pserver/ProtoServer.h"
+#include "ParameterService.pb.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/pserver/ProtoServer.h"
 #include "paddle/utils/Queue.h"
 #include "paddle/utils/TypeDefs.h"
-#include "ParameterService.pb.h"
 
 namespace paddle {
 

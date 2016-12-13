@@ -16,12 +16,12 @@ limitations under the License. */
 #include "PaddleAPIPrivate.h"
 
 #include <stdlib.h>
-#include <memory>
 #include <atomic>
+#include <memory>
 
+#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/trainer/ParamUtil.h"
 #include "paddle/trainer/Trainer.h"
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/trainer/TrainerInternal.h"
 #include "paddle/utils/Flags.h"
 

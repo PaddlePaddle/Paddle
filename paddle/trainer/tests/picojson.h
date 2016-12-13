@@ -30,10 +30,10 @@
 #define picojson_h
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <cstddef>
 #include <iostream>
 #include <iterator>
 #include <limits>
