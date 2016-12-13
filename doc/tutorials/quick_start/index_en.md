@@ -32,7 +32,7 @@ The monitor breaks down two months after purchase.
 the classifier should output “negative“.
 
 To build your text classification system, your code will need to perform five steps:
-<center> ![](./Pipeline_en.jpg) </center>
+<center> ![](./src/Pipeline_en.jpg) </center>
 
   - Preprocess data into a standardized format.
   - Provide data to the learning model.
@@ -160,14 +160,14 @@ You can refer to the following link for more detailed examples and data formats:
 
 ## Network Architecture
 You will describe four kinds of network architectures in this section.
-<center> ![](./PipelineNetwork_en.jpg) </center>
+<center> ![](./src/PipelineNetwork_en.jpg) </center>
 
 First, you will build a logistic regression model. Later, you will also get chance to build other more powerful network architectures.
 For more detailed documentation, you could refer to: <a href = "../../api/trainer_config_helpers/layers.html">layer documentation</a>. All configuration files are in `demo/quick_start` directory.
 
 ### Logistic Regression
 The architecture is illustrated in the following picture:
-<center> ![](./NetLR_en.png) </center>
+<center> ![](./src/NetLR_en.png) </center>
 
 - You need define the data for text features. The size of the data layer is the number of words in the dictionary.
 
@@ -182,10 +182,10 @@ label = data_layer(name="label", size=label_dim)
 ```
 
 - It uses logistic regression model to classify the vector, and it will output the classification error during training.
-	- Each layer has an *input* argument that specifies its input layer. Some layers can have multiple input layers. You can use a list of the input layers as input in that case.
-	- *size* for each layer means the number of neurons of the layer.
-	- *act_type* means activation function applied to the output of each neuron independently.
-	- Some layers can have additional special inputs. For example, `classification_cost` needs ground truth label as input to compute classification loss and error.
+    - Each layer has an *input* argument that specifies its input layer. Some layers can have multiple input layers. You can use a list of the input layers as input in that case.
+    - *size* for each layer means the number of neurons of the layer.
+    - *act_type* means activation function applied to the output of each neuron independently.
+    - Some layers can have additional special inputs. For example, `classification_cost` needs ground truth label as input to compute classification loss and error.
 ```python
 # Define a fully connected layer with logistic activation (also called softmax activation).
 output = fc_layer(input=word,
@@ -240,7 +240,7 @@ def process(settings, file_name):
 ```
 
 This model is very similar to the framework of logistic regression, but it uses word embedding vectors instead of a sparse vectors to represent words.
-<center> ![](./NetContinuous_en.png) </center>
+<center> ![](./src/NetContinuous_en.png) </center>
 
 - It can look up the dense word embedding vector in the dictionary  (its words embedding vector is `word_dim`). The input is a sequence of N words, the output is N word_dim dimensional vectors.
 
@@ -283,7 +283,7 @@ The performance is summarized in the following table:
 
 ### Convolutional Neural Network Model
 Convolutional neural network converts a sequence of word embeddings into a sentence representation using temporal convolutions. You will transform the fully connected layer of the word embedding model to 3 new sub-steps.
-<center> ![](./NetConv_en.png) </center>
+<center> ![](./src/NetConv_en.png) </center>
 
 
 Text convolution has 3 steps:
@@ -295,8 +295,8 @@ Text convolution has 3 steps:
 # context_len means convolution kernel size.
 # context_start means the start of the convolution. It can be negative. In that case, zero padding is applied.
 text_conv = sequence_conv_pool(input=emb,
-	                           context_start=k,
-	                           context_len=2 * k + 1)
+                               context_start=k,
+                               context_len=2 * k + 1)
 ```
 
 The performance is summarized in the following table：
@@ -324,7 +324,7 @@ The performance is summarized in the following table：
 <br>
 
 ### Recurrent Model
-<center> ![](./NetRNN_en.png) </center>
+<center> ![](./src/NetRNN_en.png) </center>
 
 You can use Recurrent neural network as our time sequence model, including simple RNN model, GRU model, and LSTM model。
 
@@ -378,7 +378,7 @@ settings(batch_size=128,
 
 ## Training Model
 After completing data preparation and network architecture specification, you will run the training script.
-<center> ![](./PipelineTrain_en.png) </center>
+<center> ![](./src/PipelineTrain_en.png) </center>
 
 Training script: our training script is in `train.sh` file. The training arguments are listed below:
 
@@ -395,7 +395,7 @@ We do not provide examples on how to train on clusters here. If you want to trai
 
 ## Inference
 You can use the trained model to perform prediction on the dataset with no labels. You can also evaluate the model on dataset with labels to obtain its test accuracy.
-<center> ![](./PipelineTest_en.png) </center>
+<center> ![](./src/PipelineTest_en.png) </center>
 
 The test script is listed below. PaddlePaddle can evaluate a model on the data with labels specified in `test.list`.
 

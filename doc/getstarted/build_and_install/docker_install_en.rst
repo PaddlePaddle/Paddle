@@ -17,7 +17,7 @@ CPU-only one and a CUDA GPU one.  We do so by configuring
 `dockerhub.com <https://hub.docker.com/r/paddledev/paddle/>`_
 automatically runs the following commands:
 
-.. code-block:: base
+.. code-block:: bash
 
    docker build -t paddle:cpu -f paddle/scripts/docker/Dockerfile .
    docker build -t paddle:gpu -f paddle/scripts/docker/Dockerfile.gpu .

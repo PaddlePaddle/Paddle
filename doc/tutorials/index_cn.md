@@ -12,6 +12,7 @@ There are several examples and demos here.
 ## NLP
 
 * [Sentiment Analysis](sentiment_analysis/index_cn.md)
+* [Semantic Role Labeling](semantic_role_labeling/index_cn.md)
 
 ## Recommendation
 

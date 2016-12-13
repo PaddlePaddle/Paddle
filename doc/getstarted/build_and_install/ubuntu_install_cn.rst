@@ -61,7 +61,7 @@ libcudart.so/libcudnn.so找不到
 
 安装完成后，运行 :code:`paddle train` 报错\:
 
-..     code-block:: shell
+..  code-block:: shell
 
       0831 12:36:04.151525  1085 hl_dso_loader.cc:70] Check failed: nullptr != *dso_handle For Gpu version of PaddlePaddle, it couldn't find CUDA library: libcudart.so Please make sure you already specify its path.Note: for training data on Cpu using Gpu version of PaddlePaddle,you must specify libcudart.so via LD_LIBRARY_PATH.
 
