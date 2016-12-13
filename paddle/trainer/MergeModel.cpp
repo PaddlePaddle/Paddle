@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/utils/PythonUtil.h"
-#include "paddle/pserver/ParameterServer2.h"
 #include "ParamUtil.h"
 #include "Trainer.h"
+#include "paddle/pserver/ParameterServer2.h"
+#include "paddle/utils/PythonUtil.h"
 
 P_DEFINE_string(model_dir, "", "Directory for separated model files");
 P_DEFINE_string(model_file, "", "File for merged model file");

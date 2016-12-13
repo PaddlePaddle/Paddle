@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "SparseMatrix.h"
 #include <algorithm>
+#include <iostream>
 #include <vector>
 #include "hl_gpu.h"
-#include "SparseMatrix.h"
-#include "paddle/utils/Util.h"
 #include "hl_top_k.h"
-#include <iostream>
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
@@ -537,11 +537,9 @@ void GpuSparseMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
     dataVec.emplace_back(
         rows.getData()[i], cols_full.getData()[i], value.getData()[i]);
   }
-  std::sort(dataVec.begin(),
-            dataVec.end(),
-            [](Element a, Element b) {
-              return a.row < b.row || (a.row == b.row && a.col < b.col);
-            });
+  std::sort(dataVec.begin(), dataVec.end(), [](Element a, Element b) {
+    return a.row < b.row || (a.row == b.row && a.col < b.col);
+  });
 
   /*get sorted data, row index, and col index, put them in the right place*/
   cols.resize(height_ + 1);

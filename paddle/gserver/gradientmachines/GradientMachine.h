@@ -17,15 +17,15 @@ limitations under the License. */
 #include <iostream>
 #include <vector>
 
+#include "ModelConfig.pb.h"
+#include "TrainerConfig.pb.h"
+#include "paddle/gserver/dataproviders/DataProvider.h"
+#include "paddle/gserver/evaluators/Evaluator.h"
+#include "paddle/gserver/layers/Layer.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/ParameterUpdaterBase.h"
 #include "paddle/utils/Thread.h"
-#include "TrainerConfig.pb.h"
-#include "ModelConfig.pb.h"
-#include "paddle/gserver/dataproviders/DataProvider.h"
-#include "paddle/gserver/evaluators/Evaluator.h"
-#include "paddle/gserver/layers/Layer.h"
 
 namespace paddle {
 /**

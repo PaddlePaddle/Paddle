@@ -15,24 +15,24 @@ limitations under the License. */
 #pragma once
 
 #include <atomic>
+#include <limits>
 #include <mutex>
 #include <string>
-#include <vector>
-#include <unordered_map>
 #include <type_traits>
-#include <limits>
+#include <unordered_map>
+#include <vector>
 
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "paddle/utils/Locks.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/ParameterOptimizer.h"
+#include "paddle/utils/Locks.h"
+#include "paddle/utils/Stat.h"
 #include "paddle/utils/ThreadLocal.h"
 #include "paddle/utils/TypeDefs.h"
-#include "paddle/math/Vector.h"
-#include "paddle/utils/Stat.h"
 
 #include "ParameterService.pb.h"
 

@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
 #include <stack>
 #include <thread>
 #include <unordered_map>
-#include <functional>
 
 #include "ThreadLocal.h"
 
@@ -96,7 +96,8 @@ public:
    */
   typedef std::function<void(const std::thread::id& /*threadId*/,
                              bool* /*isPushing*/,
-                             const T& /*item*/)> DumpCallback;
+                             const T& /*item*/)>
+      DumpCallback;
 
   /**
    * Dump all thread stack, and all stack will be cleared.

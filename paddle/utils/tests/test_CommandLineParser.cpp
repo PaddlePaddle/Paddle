@@ -15,8 +15,8 @@ limitations under the License. */
 #ifndef PADDLE_USE_GFLAGS
 //! Test Command Line Parser for paddle internal implement.
 
-#include <paddle/utils/CommandLineParser.h>
 #include <gtest/gtest.h>
+#include <paddle/utils/CommandLineParser.h>
 
 P_DEFINE_int32(i1, 1, "test int flag 1");
 P_DEFINE_int32(i2, 2, "test int flag 2");

@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <vector>
 #include "Layer.h"
-#include "paddle/math/Matrix.h"
 #include "NormLayer.h"
+#include "paddle/math/Matrix.h"
 
 namespace paddle {
 

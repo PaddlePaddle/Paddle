@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/utils/Stat.h"
 #include "DataFormat.pb.h"
+#include "paddle/utils/Stat.h"
 
 #include "DataProvider.h"
 #include "ProtoReader.h"

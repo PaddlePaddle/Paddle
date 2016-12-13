@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <mutex>
-#include <vector>
 #include <unordered_map>
-#include <map>
+#include <vector>
 #include "Allocator.h"
 
 namespace paddle {

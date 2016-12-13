@@ -17,10 +17,10 @@ limitations under the License. */
  * Used in embedded system where there is no glogs.
  */
 
-#include <gtest/gtest.h>
-#include <fstream>
-#include <stdlib.h>
 #include <dirent.h>
+#include <gtest/gtest.h>
+#include <stdlib.h>
+#include <fstream>
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Util.h"
 #ifndef PADDLE_USE_GLOG

@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/ParameterUpdaterBase.h"
 
-#include "paddle/gserver/layers/Layer.h"
 #include "TrainerConfig.pb.h"
+#include "paddle/gserver/layers/Layer.h"
 
 #include <memory>
 #include <vector>

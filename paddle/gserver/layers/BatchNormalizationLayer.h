@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "Layer.h"
 #include "BatchNormBaseLayer.h"
+#include "Layer.h"
 
 namespace paddle {
 

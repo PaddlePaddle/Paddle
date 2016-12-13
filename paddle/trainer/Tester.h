@@ -24,12 +24,12 @@ limitations under the License. */
 
 #include "TrainerConfig.pb.h"
 
-#include "ParameterUpdater.h"
+#include <stdlib.h>
+#include <fstream>
 #include "ParamUtil.h"
+#include "ParameterUpdater.h"
 #include "TesterConfig.h"
 #include "TrainerInternalConfig.h"
-#include <fstream>
-#include <stdlib.h>
 
 namespace paddle {
 

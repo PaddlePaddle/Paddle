@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include "paddle/utils/Stat.h"
+#include "ParameterService.pb.h"
 #include "paddle/math/Vector.h"
 #include "paddle/pserver/ProtoServer.h"
-#include "ParameterService.pb.h"
+#include "paddle/utils/Stat.h"
 
 P_DEFINE_string(server_addr, "127.0.0.1", "Server address");
 P_DEFINE_int64(dim, 50000000, "Data size");

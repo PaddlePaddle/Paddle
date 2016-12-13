@@ -14,10 +14,10 @@ limitations under the License. */
 
 #ifndef PADDLE_ONLY_CPU
 
-#include "paddle/utils/Util.h"
-#include "paddle/math/Vector.h"
-#include "test_matrixUtil.h"
 #include <gtest/gtest.h>
+#include "paddle/math/Vector.h"
+#include "paddle/utils/Util.h"
+#include "test_matrixUtil.h"
 
 using namespace paddle;  // NOLINT
 

@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include <thread>
 #include <functional>
-#include "paddle/pserver/ParameterClient2.h"
+#include <thread>
 #include "ParameterUpdater.h"
-#include "paddle/utils/Util.h"
+#include "paddle/pserver/ParameterClient2.h"
 #include "paddle/utils/Queue.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 

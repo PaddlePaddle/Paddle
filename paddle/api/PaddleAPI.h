@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <stddef.h>
 #include <stdint.h>
-#include <string>
 #include <stdexcept>
+#include <string>
 #include <vector>
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/TypeDefs.h"
