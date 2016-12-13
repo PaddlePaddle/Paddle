@@ -136,9 +136,9 @@ mean_meta_224  resnet_101  resnet_152  resnet_50
 </table></center>
 <br>
 
-### 参数观察
+### 参数读取
 
-使用者可以使用下面的python脚本来读取参数值:
+使用者可以使用下面的Python脚本来读取参数值:
 
 ```
 import sys
@@ -209,7 +209,7 @@ cd demo/model_zoo/resnet
 
 ### Python接口
 
-示例`demo/model_zoo/resnet/classify.py`中展示了如何使用python来提取特征。下面的例子同样使用了`./example/test.list`中的数据。执行的命令如下：
+示例`demo/model_zoo/resnet/classify.py`中展示了如何使用Python来提取特征。下面的例子同样使用了`./example/test.list`中的数据。执行的命令如下：
 
 ```
 cd demo/model_zoo/resnet
