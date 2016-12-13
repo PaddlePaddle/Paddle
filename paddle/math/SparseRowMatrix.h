@@ -188,10 +188,9 @@ protected:
             << ") rows are used for sparse "
             << "update, which is not efficient. Considering not use "
             << "sparse_update or set --allow_inefficient_sparse_update=true";
-
-      } else {
-        CHECK_LE(localIndices_->size(), buf_->getRowCount());
       }
+    } else {
+      CHECK_LE(localIndices_->size(), buf_->getRowCount());
     }
   }
 
