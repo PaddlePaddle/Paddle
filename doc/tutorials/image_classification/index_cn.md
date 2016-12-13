@@ -163,3 +163,39 @@ python -m paddle.utils.plotcurve -i $log > plot.png
 
 ## 预测
 在训练完成后，模型及参数会被保存在路径`./cifar_vgg_model/pass-%05d`下。例如第300次训练所得的模型会被保存在`./cifar_vgg_model/pass-00299`。
+
+要对一个图片的进行分类预测，我们可以使用`predict.sh`，该脚本将输出预测分类的标签：
+
+```
+sh predict.sh
+```
+
+predict.sh:
+```
+model=cifar_vgg_model/pass-00299/
+image=data/cifar-out/test/airplane/seaplane_s_000978.png
+use_gpu=1
+python prediction.py $model $image $use_gpu
+```
+
+## 练习
+在CUB-200数据集上使用VGG模型训练一个鸟类图片分类模型。相关的鸟类数据集可以从如下地址下载，其中包含了200种鸟类的照片（主要来自北美洲）。
+
+<http://www.vision.caltech.edu/visipedia/CUB-200.html>
+
+
+
+
+## 细节探究
+### 卷积神经网络
+卷积神经网络是一种使用卷积层的前向神经网络，很适合构建用于理解图片内容的模型。一个典型的神经网络如下图所示：
+
+![Convolutional Neural Network](./lenet.png)
+
+一个卷积神经网络包含如下层：
+
+- 卷基层：通过卷积操作从图片或特征图中提取特征
+- 池化层：使用max-pooling方式进行特征压缩
+- 全连接层：使用全连接，从特征中生成分类结果
+
+卷积神经网络:局部连接
