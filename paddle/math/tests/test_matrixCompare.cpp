@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/gserver/tests/TestUtil.h"
 #include "paddle/utils/Stat.h"
 #include "TensorCheck.h"
+#include "paddle/math/cross_map_normal_op.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -1261,30 +1262,32 @@ TEST(Matrix, MaxOutFwdBwd) {
     }
   }
 }
+
 void testCrossMapNormalFwd(
     int numSamples, int channels, int imgSizeH, int imgSizeW, int sizeX) {
   float scale = 1.5;
   float pow = 0.5;
   int width = imgSizeH * imgSizeW * channels;
-  MatrixPtr input = CpuMatrix::create(numSamples, width, false, false);
-  MatrixPtr denorms = CpuMatrix::create(numSamples, width, false, false);
-  MatrixPtr target = CpuMatrix::create(numSamples, width, false, false);
-  MatrixPtr inputGpu = GpuMatrix::create(numSamples, width, false, true);
-  MatrixPtr denormsGpu = GpuMatrix::create(numSamples, width, false, true);
-  MatrixPtr targetGpu = GpuMatrix::create(numSamples, width, false, true);
+  CpuMatrix inputs(numSamples, width);
+  CpuMatrix denoms(numSamples, width);
+  CpuMatrix outputs(numSamples, width);
+  GpuMatrix inputsGpu(numSamples, width);
+  GpuMatrix denomsGpu(numSamples, width);
+  GpuMatrix outputsGpu(numSamples, width);
 
-  input->randomizeUniform();
-  target->randomizeUniform();
-  inputGpu->copyFrom(*input);
-  targetGpu->copyFrom(*target);
+  inputs.randomizeUniform();
+  outputs.randomizeUniform();
+  inputsGpu.copyFrom(inputs);
+  outputsGpu.copyFrom(outputs);
 
-  target->crossMapNormalFwd(
-      *input, imgSizeH, imgSizeW, *denorms, channels, sizeX, scale, pow);
-  targetGpu->crossMapNormalFwd(
-      *inputGpu, imgSizeH, imgSizeW, *denormsGpu, channels, sizeX, scale, pow);
+  CrossMapNormal cross;
+  cross(
+      outputs, denoms, inputs, channels, imgSizeH, imgSizeW, sizeX, scale, pow);
+  outputsGpu.crossMapNormalFwd(
+      inputsGpu, imgSizeH, imgSizeW, denomsGpu, channels, sizeX, scale, pow);
 
-  TensorCheckErr(*target, *targetGpu);
-  TensorCheckErr(*denorms, *denormsGpu);
+  TensorCheckErr(outputs, outputsGpu);
+  TensorCheckErr(denoms, denomsGpu);
 }
 
 TEST(Matrix, crossMapNormalFwd) {
@@ -1310,53 +1313,57 @@ void testCrossMapNormalBwd(
   float scale = 1.5;
   float pow = 0.5;
   size_t width = imgSizeH * imgSizeW * channels;
-  MatrixPtr localGrad = CpuMatrix::create(numSamples, width, false, false);
-  MatrixPtr denoms = CpuMatrix::create(numSamples, width, false, false);
-  MatrixPtr output = CpuMatrix::create(numSamples, width, false, false);
-  MatrixPtr preOutV = CpuMatrix::create(numSamples, width, false, false);
-  MatrixPtr localOutV = CpuMatrix::create(numSamples, width, false, false);
 
-  localGrad->randomizeUniform();
-  denoms->randomizeUniform();
-  preOutV->randomizeUniform();
-  localOutV->randomizeUniform();
-  output->randomizeUniform();
-  denoms->add(0.01);
+  CpuMatrix inputsGrad(numSamples, width);
+  CpuMatrix inputsValue(numSamples, width);
+  CpuMatrix outputsGrad(numSamples, width);
+  CpuMatrix outputsValue(numSamples, width);
+  CpuMatrix denoms(numSamples, width);
 
-  MatrixPtr localGradGpu = GpuMatrix::create(numSamples, width, false, true);
-  MatrixPtr denomsGpu = GpuMatrix::create(numSamples, width, false, true);
-  MatrixPtr outputGpu = GpuMatrix::create(numSamples, width, false, true);
-  MatrixPtr preOutVGpu = GpuMatrix::create(numSamples, width, false, true);
-  MatrixPtr localOutVGpu = GpuMatrix::create(numSamples, width, false, true);
+  outputsGrad.randomizeUniform();
+  denoms.randomizeUniform();
+  inputsValue.randomizeUniform();
+  outputsValue.randomizeUniform();
+  inputsGrad.randomizeUniform();
+  denoms.add(0.01);
 
-  localGradGpu->copyFrom(*localGrad);
-  denomsGpu->copyFrom(*denoms);
-  preOutVGpu->copyFrom(*preOutV);
-  localOutVGpu->copyFrom(*localOutV);
-  outputGpu->copyFrom(*output);
+  GpuMatrix inputsGradGpu(numSamples, width);
+  GpuMatrix inputsValueGpu(numSamples, width);
+  GpuMatrix outputsGradGpu(numSamples, width);
+  GpuMatrix outputsValueGpu(numSamples, width);
+  GpuMatrix denomsGpu(numSamples, width);
 
-  output->crossMapNormalBwd(*localGrad,
-                            *denoms,
-                            *preOutV,
-                            *localOutV,
-                            channels,
-                            imgSizeH,
-                            imgSizeW,
-                            sizeX,
-                            scale,
-                            pow);
-  outputGpu->crossMapNormalBwd(*localGradGpu,
-                               *denomsGpu,
-                               *preOutVGpu,
-                               *localOutVGpu,
-                               channels,
-                               imgSizeH,
-                               imgSizeW,
-                               sizeX,
-                               scale,
-                               pow);
+  outputsGradGpu.copyFrom(outputsGrad);
+  denomsGpu.copyFrom(denoms);
+  inputsValueGpu.copyFrom(inputsValue);
+  outputsValueGpu.copyFrom(outputsValue);
+  inputsGradGpu.copyFrom(inputsGrad);
 
-  TensorCheckErr(*output, *outputGpu);
+  CrossMapNormalGrad cross;
+  cross(inputsGrad,
+        inputsValue,
+        outputsGrad,
+        outputsValue,
+        denoms,
+        channels,
+        imgSizeH,
+        imgSizeW,
+        sizeX,
+        scale,
+        pow);
+
+  inputsGradGpu.crossMapNormalBwd(outputsGradGpu,
+                                  denomsGpu,
+                                  inputsValueGpu,
+                                  outputsValueGpu,
+                                  channels,
+                                  imgSizeH,
+                                  imgSizeW,
+                                  sizeX,
+                                  scale,
+                                  pow);
+
+  TensorCheckErr(inputsGrad, inputsGradGpu);
 }
 
 TEST(Matrix, crossMapNormalBwd) {
