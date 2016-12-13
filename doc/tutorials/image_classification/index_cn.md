@@ -135,3 +135,22 @@ settings(
 # small_vgg is predined in trainer_config_helpers.network
 predict = small_vgg(input_image=img, num_channels=3)
 ```
+生成配置之后，我们就可以运行脚本train.sh来训练模型。请注意下面的脚本中假设该脚本放置是在路径`./demo/image_classification`下的。如果要从其它路径运行，你需要修改下面的脚本路径，以及配置文件中的相应内容。
+
+```bash
+config=vgg_16_cifar.py
+output=./cifar_vgg_model
+log=train.log
+
+paddle train \
+--config=$config \
+--dot_period=10 \
+--log_period=100 \
+--test_all_data_in_one_period=1 \
+--use_gpu=1 \
+--save_dir=$output \
+2>&1 | tee $log
+
+python -m paddle.utils.plotcurve -i $log > plot.png
+```
+
