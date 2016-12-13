@@ -74,6 +74,64 @@ python preprocess.py -i $data_dir -s 32 -c 1
 
 `./demo/image_classification/preprocess.py` 使用如下参数：
 
-- `-i` 或 `--input` 指出输入数据所在路径；
-- `-s` 或 `--size` 指出图片尺寸；
-- `-c` 或 `--color` 指出图片是彩色图或灰度图
+- `-i` 或 `--input` 给出输入数据所在路径；
+- `-s` 或 `--size` 给出图片尺寸；
+- `-c` 或 `--color` 标示图片是彩色图或灰度图
+
+## 模型训练
+在开始训练之前，我们需要先创建一个配置文件。下面我们给出了一个配置文件的示例（vgg_16_cifar.py）。**注意**，？？？
+
+```python
+from paddle.trainer_config_helpers import *
+data_dir='data/cifar-out/batches/'
+meta_path=data_dir+'batches.meta'
+args = {'meta':meta_path, 'mean_img_size': 32,
+        'img_size': 32, 'num_classes': 10,
+        'use_jpeg': 1, 'color': "color"}
+define_py_data_sources2(train_list=data_dir+"train.list",
+                        test_list=data_dir+'test.list',
+                        module='image_provider',
+                        obj='processData',
+                        args=args)
+settings(
+    batch_size = 128,
+    learning_rate = 0.1 / 128.0,
+    learning_method = MomentumOptimizer(0.9),
+    regularization = L2Regularization(0.0005 * 128))
+
+img = data_layer(name='image', size=3*32*32)
+lbl = data_layer(name="label", size=10)
+# small_vgg is predined in trainer_config_helpers.network
+predict = small_vgg(input_image=img, num_channels=3)
+outputs(classification_cost(input=predict, label=lbl))
+```
+
+在第一行中我们载入用于定义网络的函数。
+```python
+from paddle.trainer_config_helpers import *
+```
+
+之后`define_py_data_sources2`使用python数据接口进行定义，其中 `args`将在`image_provider.py`进行使用，后者负责将图片数据传递给Paddle
+ - `meta`: the mean value of training set.
+ - `mean_img_size`: the size of mean feature map.
+ - `img_size`：输入图片的高度及宽度。
+ - `num_classes`：分类的个数。
+ - `use_jpeg`：处理过程中数据存储格式
+ - `color`标示是否为彩色图片
+ 
+ `settings`用于设置训练算法。在下面的例子中， it specifies learning rate as 0.1, but divided by batch size, and the weight decay is 0.0005 and multiplied by batch size.
+ 
+ ```python
+settings(
+    batch_size = 128,
+    learning_rate = 0.1 / 128.0,
+    learning_method = MomentumOptimizer(0.9),
+    regularization = L2Regularization(0.0005 * 128)
+)
+```
+
+`small_vgg`定义了网络结构。这里我们使用了VGG卷积神经网络的一个小型版本。关于VGG卷积神经网络的描述可以参考：[http://www.robots.ox.ac.uk/~vgg/research/very_deep/](http://www.robots.ox.ac.uk/~vgg/research/very_deep/)。
+```python
+# small_vgg is predined in trainer_config_helpers.network
+predict = small_vgg(input_image=img, num_channels=3)
+```
