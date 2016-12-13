@@ -408,7 +408,7 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  virtual void addBias(Matrix& b, real scale, bool sharedBias) {
+  void addBias(Matrix& b, real scale, bool sharedBias) {
     if (!sharedBias) {
       addBias(b, scale);
     } else {
@@ -425,7 +425,7 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  virtual void collectBias(Matrix& a, real scale, bool sharedBias) {
+  void collectBias(Matrix& a, real scale, bool sharedBias) {
     if (!sharedBias) {
       collectBias(a, scale);
     } else {
