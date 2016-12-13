@@ -611,10 +611,7 @@ void PreparedOperations::addOperationHelper(Operation* op, CpuMatrixPtr mat) {
       pmat.mutable_values(), mat->getData(), pmat.num_cols() * pmat.num_rows());
 }
 
-template <typename T1, typename T2>
-static inline auto add(T1 a, T2 b) -> decltype(a + b) {
-  return a + b;
-}
+static inline real addTwo(real a, double b) { return a + b; }
 
 void ParameterClient2::doOperation(PreparedOperations& ops,
                                    bool waitForGradient,
@@ -684,7 +681,7 @@ void ParameterClient2::doOperation(PreparedOperations& ops,
                        rvec->getData() + rvec->getSize(),
                        vec.values().data(),
                        rvec->getData(),
-                       add<real, double>);
+                       addTwo);
       }
 
       CHECK_EQ(resultMatrices.size(), (size_t)result.matrices_size());
@@ -699,7 +696,7 @@ void ParameterClient2::doOperation(PreparedOperations& ops,
                        rmat->getData() + rmat->getElementCnt(),
                        mat.values().data(),
                        rmat->getData(),
-                       add<real, double>);
+                       addTwo);
       }
     }
   }

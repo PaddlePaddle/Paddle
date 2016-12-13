@@ -31,7 +31,6 @@ bool WarpCTCLayer::init(const LayerMap& layerMap,
   CHECK_EQ(numClasses_, inputLayers_[0]->getSize());
 
   blank_ = config_.blank();
-  CHECK_GE(blank_, 0UL);
   CHECK_LT(blank_, numClasses_);
 
   normByTimes_ = config_.norm_by_times();
