@@ -138,7 +138,7 @@ There are four parameters in this layer. In fact, only .w0 and .wbias are the le
 
 ### Parameter Observation
 
-Users who want to observe the parameters can use python to read:
+Users who want to observe the parameters can use Python to read:
 
 ```
 import sys
@@ -209,7 +209,7 @@ If successful, features are saved in `fea_output/rank-00000` as follows. And you
 
 ### Python Interface
 
-`demo/model_zoo/resnet/classify.py` is an example to show how to use python to extract features. Following example still uses data of `./example/test.list`. Command is as follows:
+`demo/model_zoo/resnet/classify.py` is an example to show how to use Python to extract features. Following example still uses data of `./example/test.list`. Command is as follows:
 
 ```
 cd demo/model_zoo/resnet
