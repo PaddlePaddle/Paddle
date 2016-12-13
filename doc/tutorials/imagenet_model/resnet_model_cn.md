@@ -9,7 +9,7 @@
 <center>![resnet_block](./resnet_block.jpg)</center>
 <center>图 1. ResNet 网络模块</center>
 
-本教程中我们给出了三个ResNet模型，这些模型都是由原作者提供的模型<https://github.com/KaimingHe/deep-residual-networks>转换过来的。我们使用PaddlePaddle在ILSVRC的验证集共5000幅图像上测试了模型的分类错误率，其中输入图像的颜色通道顺序为**BGR**，保持宽高比缩放到短边为256，只截取中心方形的图像区域。分类误差和模型大小由下表给出。
+本教程中我们给出了三个ResNet模型，这些模型都是由原作者提供的模型<https://github.com/KaimingHe/deep-residual-networks>转换过来的。我们使用PaddlePaddle在ILSVRC的验证集共50,000幅图像上测试了模型的分类错误率，其中输入图像的颜色通道顺序为**BGR**，保持宽高比缩放到短边为256，只截取中心方形的图像区域。分类错误率和模型大小由下表给出。
 <center>
 <table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border">
 <colgroup>
@@ -52,7 +52,7 @@
 
 ### 网络可视化
 
-你可以通过执行下面的命令来得到ResNet网络的结构图解。该脚本会生成一个dot文件，然后利用我们服务器上已安装好的draw_dot工具将dot文件转成PNG图像。如果你不是在该服务器上运行，请自行安装graphviz来转换dot文件。
+你可以通过执行下面的命令来得到ResNet网络的结构可视化图。该脚本会生成一个dot文件，然后可以转换为图片。需要安装graphviz来转换dot文件为图片。
 
 ```
 cd demo/model_zoo/resnet
@@ -94,7 +94,7 @@ mean_meta_224  resnet_101  resnet_152  resnet_50
 
 * **[Batch Normalization](<http://arxiv.org/abs/1502.03167>) 层权重**
 
-本层有四个参数，实际上只有.w0和.wbias是需要学习的参数，另外两个分别是均值和方差。在测试阶段它们将会被加载到模型中。下表展示了batch normalization层的参数。
+本层有四个参数，实际上只有.w0和.wbias是需要学习的参数，另外两个分别是滑动均值和方差。在测试阶段它们将会被加载到模型中。下表展示了batch normalization层的参数。
 <center>
 <table border="2" cellspacing="0" cellpadding="6" rules="all" frame="border">
 <colgroup>
@@ -165,7 +165,7 @@ od -j 16 -f _res2_1_branch1_bn.w0
 
 ### C++接口
 
-首先，在配置文件中的`define_py_data_sources`里指定图像数据列表，具体请参照示例`demo/model_zoo/resnet/resnet.py`。
+首先，在配置文件中的`define_py_data_sources2`里指定图像数据列表，具体请参照示例`demo/model_zoo/resnet/resnet.py`。
 
 ```
     train_list = 'train.list' if not is_test else None
@@ -233,12 +233,10 @@ python classify.py \
 * \--job=extract:              指定工作模式来提取特征。
 * \--conf=resnet.py:           网络配置文件。
 * \--use_gpu=1:                指定是否使用GPU。
-* \--model=model/resnet_5:     模型路径。
+* \--model=model/resnet_50:    模型路径。
 * \--data=./example/test.list: 数据列表。
 * \--output_layer="xxx,xxx":   指定提取特征的层。
 * \--output_dir=features:      输出目录。
-
-需要注意的是，这些ResNet模型中的卷积层适配于cudnn的实现，因此只支持GPU上操作。由于兼容性问题，它暂不支持CPU，我们以后将会修复该问题。
 
 如果运行成功，你将会看到特征存储在`features/batch_0`文件中，该文件是由cPickle产生的。你可以使用`load_feature.py`中的`load_feature_py`接口来打开该文件，它将返回如下的字典：
 
@@ -253,7 +251,7 @@ python classify.py \
 
 ## 预测
 
-`classify.py`文件也可以用于对新样本进行预测。我们提供了一个示例脚本`predict.sh`，它可以使用50层的ResNet模型来对`example/test.list`中的数据进行预测。
+`classify.py`文件也可以用于对样本进行预测。我们提供了一个示例脚本`predict.sh`，它使用50层的ResNet模型来对`example/test.list`中的数据进行预测。
 
 ```
 cd demo/model_zoo/resnet
