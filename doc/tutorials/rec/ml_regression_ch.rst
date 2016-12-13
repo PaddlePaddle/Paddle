@@ -40,7 +40,9 @@ MovieLens数据集评分回归模型
 
 ml-1m的字段配置文件在目录 :code:`demo/recommendation/data/config.json` 中。
 其具体说明了字段类型和文件名称:
+
 1) 用户文件中有四种类型的字段\: 编号，性别，年龄和职业；
+
 2) 文件名称为"users.dat"，文件的分隔符为"::"。
 
 .. include:: ../../../demo/recommendation/data/config.json
@@ -96,22 +98,22 @@ Meta配置文件
 
 * 在电影文件movies.dat中
 	* 我们仅用"::"来分隔每一行
-	* pos 0 代表编号。
+	* pos 0 代表编号
 	* pos 1 特征：
-		* name是电影名。
-		* 利用正则表达式来解析该特征。
-		* 基于字母的词嵌入特征。
-		* 是序列。
+		* name是电影名
+		* 利用正则表达式来解析该特征
+		* 基于字母的词嵌入特征
+		* 是序列
 	* pos 2 特征：
-		* name是体裁。
-		* type是one hot稠密向量。
-		* dictionary由解析自动生成，每一个key由'|'分隔。
+		* name是体裁
+		* type是one hot稠密向量
+		* dictionary由解析自动生成，每一个key由'|'分隔
 * 在用户文件users.dat中
 	* 我们仅用"::"来分隔每一行
-	* pos 0 代表编号。
+	* pos 0 代表编号
 	* pos 1 特征：
-		* name是性别。
-		* 简单的基于字母的词嵌入。
+		* name是性别
+		* 简单的基于字母的词嵌入
 	* pos 2 特征：
 		* name是年龄
 		* 是整个的词嵌入
@@ -135,7 +137,7 @@ meta文件 :code:`meta.bin` 的结构如下：
 
 .. code-block:: text
 
-	+--+ movie
+    +--+ movie
     |      +--+ __meta__
     |      |       +--+ raw_meta  # 每个特征的meta配置。列表
     |      |       |       +
@@ -229,7 +231,7 @@ meta文件 :code:`meta.bin` 的结构如下：
 * :code:`id` \: 仅仅是简单的嵌入，然后添加一个全连接层。
 * :code:`embedding` \:
     - 如果是序列，则先做嵌入，然后再做一次文本卷积网络操作，
-      然后得到平均采样的结果
+      然后得到平均采样的结果。
     - 如果不是序列，则先做嵌入，然后添加一个全连接层。
 * :code:`one_host_dense` \:
     - 仅仅是两个全连接层。
@@ -246,7 +248,7 @@ meta文件 :code:`meta.bin` 的结构如下：
 *  采样层， :ref:`api_trainer_config_helpers_layers_pooling_layer`
 *  余弦相似度层， :ref:`api_trainer_config_helpers_layers_cos_sim`
 *  文本卷积采样层， :ref:`api_trainer_config_helpers_network_text_conv_pool`
-*  声明Python数据源， :ref:`api_trainer_config_helpers_data_sources` .
+*  声明Python数据源， :ref:`api_trainer_config_helpers_data_sources` 
 
 数据提供脚本
 '''''''''''
@@ -260,9 +262,9 @@ meta文件 :code:`meta.bin` 的结构如下：
 
 * obj.slots\: 特征的类型和维度。
 * use_seq\: :code:`dataprovider.py` 中的数据是否为序列模式。
-* process\: 返回数据的每一条样本给 :code:`paddle` .
+* process\: 返回数据的每一条样本给 :code:`paddle` 。
 
-数据提供脚本的细节文档可以参考 :ref:`api_pydataprovider` .
+数据提供脚本的细节文档可以参考 :ref:`api_pydataprovider` 。
 
 训练
 ````
@@ -287,9 +289,9 @@ meta文件 :code:`meta.bin` 的结构如下：
 *  trainer_count\: 一台机器上面的线程数量。
 *  test_all_data_in_one_period\: 每一个测试周期测试一次所有数据。否则，
    每个测试周期测试: code:`batch_size` 批次的数据。
-*  log_period\: 在训练了: code:`log_period` 批次后打印日志.
-*  dot_period\: 在每训练: code:`dot_period` 个批次后打印一个 :code:`.` .
-*  num_passes\: 训练至多: code:`num_passes` 轮.
+*  log_period\: 在训练了: code:`log_period` 批次后打印日志。
+*  dot_period\: 在每训练: code:`dot_period` 个批次后打印一个 :code:`.` 。
+*  num_passes\: 训练至多: code:`num_passes` 轮。
 
 如果训练过程启动成功的话，输出应该类似如下：
 
