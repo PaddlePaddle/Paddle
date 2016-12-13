@@ -11,7 +11,7 @@ find_package(Protobuf REQUIRED)
 
 # Check protobuf library version.
 execute_process(COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --version
-	OUTPUT_VARIABLE PROTOBUF_VERSION)
+    OUTPUT_VARIABLE PROTOBUF_VERSION)
 string(REPLACE "libprotoc " "" PROTOBUF_VERSION ${PROTOBUF_VERSION})
 
 set(PROTOBUF_3 OFF)
@@ -169,5 +169,4 @@ add_subdirectory(paddle)
 add_subdirectory(python)
 if(WITH_DOC)
     add_subdirectory(doc)
-    add_subdirectory(doc_cn)
 endif()

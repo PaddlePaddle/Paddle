@@ -1,0 +1,5 @@
+编译选项,描述,注意
+MKL_ROOT,MKL的路径,${MKL_ROOT}/include下需要包含mkl.h，${MKL_ROOT}/lib目录下需要包含mkl_core，mkl_sequential和mkl_intel_lp64三个库。
+ATLAS_ROOT,ATLAS的路径,${ATLAS_ROOT}/include下需要包含cblas.h，${ATLAS_ROOT}/lib下需要包含cblas和atlas两个库。
+OPENBLAS_ROOT,OpenBLAS的路径,${OPENBLAS_ROOT}/include下需要包含cblas.h，${OPENBLAS_ROOT}/lib下需要包含openblas库。
+REFERENCE_CBLAS_ROOT,REFERENCE BLAS的路径,${REFERENCE_CBLAS_ROOT}/include下需要包含cblas.h，${REFERENCE_CBLAS_ROOT}/lib下需要包含cblas库。
