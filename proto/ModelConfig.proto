@@ -248,6 +248,15 @@ message ImageConfig {
   required uint32 img_size_y = 9;
 }
 
+message PriorBoxConfig {
+  repeated uint32 min_size = 1;
+  repeated uint32 max_size = 2;
+  repeated float aspect_ratio = 3;
+  repeated float variance = 4;
+  optional bool flip = 5 [default = true];
+  optional bool clip = 6 [default = true];
+}
+
 message LayerInputConfig {
   required string input_layer_name = 1;
   optional string input_parameter_name = 2;
@@ -263,6 +272,7 @@ message LayerInputConfig {
   optional BilinearInterpConfig bilinear_interp_conf = 10;
   optional MaxOutConfig maxout_conf = 11;
   optional SppConfig spp_conf = 12;
+  optional PriorBoxConfig priorbox_conf = 13;
 }
 
 message LayerConfig {
