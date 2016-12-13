@@ -8,26 +8,25 @@ http_archive(
 # External dependency to gtest 1.7.0.  This method comes from
 # https://www.bazel.io/versions/master/docs/tutorial/cpp.html.
 new_http_archive(
-    name = "gtest",
-    url = "https://github.com/google/googletest/archive/release-1.7.0.zip",
-    sha256 = "b58cb7547a28b2c718d1e38aee18a3659c9e3ff52440297e965f5edffe34b6d0",
-    build_file = "third_party/gtest.BUILD",
-    strip_prefix = "googletest-release-1.7.0",
-)
+    name="gtest",
+    url="https://github.com/google/googletest/archive/release-1.7.0.zip",
+    sha256="b58cb7547a28b2c718d1e38aee18a3659c9e3ff52440297e965f5edffe34b6d0",
+    build_file="third_party/gtest.BUILD",
+    strip_prefix="googletest-release-1.7.0", )
 
 # External dependency to gflags.  This method comes from
 # https://github.com/gflags/example/blob/master/WORKSPACE.
-git_repository(
-    name   = "gflags",
-    tag    = "v2.2.0",
-    remote = "https://github.com/gflags/gflags.git"
+new_git_repository(
+    name="gflags",
+    tag="v2.2.0",
+    remote="https://github.com/gflags/gflags.git",
+    build_file="third_party/gflags.BUILD",
 )
 
 # External dependency to glog.  This method comes from
 # https://github.com/reyoung/bazel_playground/blob/master/WORKSPACE
 new_git_repository(
-    name = "glog",
-    remote = "https://github.com/google/glog.git",
-    commit = "b6a5e0524c28178985f0d228e9eaa43808dbec3c",
-    build_file = "third_party/glog.BUILD"
-)
+    name="glog",
+    remote="https://github.com/google/glog.git",
+    commit="b6a5e0524c28178985f0d228e9eaa43808dbec3c",
+    build_file="third_party/glog.BUILD")

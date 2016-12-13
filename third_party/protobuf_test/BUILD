@@ -15,10 +15,10 @@ cc_library(
     deps=[":example_proto"], )
 
 cc_test(
-    name = "example_lib_test",
-    srcs = ["example_lib_test.cc"],
-    copts = ["-Iexternal/gtest/include"],
-    deps =[
+    name="example_lib_test",
+    srcs=["example_lib_test.cc"],
+    copts=["-Iexternal/gtest/include"],
+    deps=[
         "@gtest//:gtest",
         ":example_lib",
     ], )

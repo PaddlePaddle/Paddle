@@ -3,10 +3,6 @@ licenses(["notice"])
 cc_library(
     visibility = ["//visibility:public"],
     name = "glog",
-    deps = [
-        #"//third_party/libunwind:libunwind-k8",
-        "@gflags//:gflags",
-    ],
     includes = [
         ".",
         "src",
@@ -24,9 +20,6 @@ cc_library(
         "-DHAVE_INTTYPES_H",
         "-DHAVE_LIBPTHREAD",
         "-DHAVE_SYS_SYSCALL_H",
-        #"-DHAVE_LIBUNWIND_H",
-        "-DHAVE_LIB_GFLAGS",
-        #"-DHAVE_LIB_UNWIND",
         "-DHAVE_MEMORY_H",
         "-DHAVE_NAMESPACES",
         "-DHAVE_PREAD",
@@ -51,7 +44,6 @@ cc_library(
         #"-fno-sanitize=thread",
         #"-fno-sanitize=address",
         "-Iexternal/glog/src",
-        #"-I/usr/local/include", # XXX import libunwind
     ],
     srcs = [
         "src/demangle.cc",
@@ -71,17 +63,12 @@ cc_library(
         "src/demangle.h",
         "src/mock-log.h",
         "src/stacktrace.h",
-        #"src/stacktrace_libunwind-inl.h",
         "src/symbolize.h",
         "src/utilities.h",
         "src/base/commandlineflags.h",
         "src/base/googleinit.h",
         "src/base/mutex.h",
         "src/glog/log_severity.h",
-    ],
-    linkopts = [
-        #"-pthread",
-        #"-L/usr/local/lib -lunwind",
     ],
 )
 
