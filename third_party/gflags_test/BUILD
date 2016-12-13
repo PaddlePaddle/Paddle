@@ -5,7 +5,7 @@ cc_test(
     srcs = ["gflags_test.cc"],
     copts = ["-Iexternal/gtest/include"],
     deps = [
-        "@gtest//:main",
+        "@gtest//:gtest",
         "@gflags//:gflags",
      ],
 )

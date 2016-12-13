@@ -21,7 +21,7 @@ cc_test(
     srcs = ["example_lib_test.cc"],
     copts = ["-Iexternal/gtest/include"],
     deps =[
-        "@gtest//:main",
+        "@gtest//:gtest",
         ":example_lib",
     ],
 )

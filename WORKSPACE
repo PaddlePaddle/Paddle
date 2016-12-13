@@ -23,3 +23,12 @@ git_repository(
     tag    = "v2.2.0",
     remote = "https://github.com/gflags/gflags.git"
 )
+
+# External dependency to glog.  This method comes from
+# https://github.com/reyoung/bazel_playground/blob/master/WORKSPACE
+new_git_repository(
+    name = "glog",
+    remote = "https://github.com/google/glog.git",
+    commit = "b6a5e0524c28178985f0d228e9eaa43808dbec3c",
+    build_file = "third_party/glog.BUILD"
+)
