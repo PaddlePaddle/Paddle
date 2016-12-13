@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-ifdef(`proto3', `syntax = "proto2";')
+syntax = "proto2";
 
 import "ParameterConfig.proto";
 import "TrainerConfig.proto";
@@ -73,7 +73,7 @@ message SendParameterRequest {
   optional int64 num_samples = 4;
 
   // cost will be used to calculate global objective value
-  optional real cost = 5;
+  optional double cost = 5;
 
   required BatchStatus batch_status = 6;
 
@@ -245,13 +245,13 @@ enum MatrixVectorOperation {
 
 message ProtoVector {
   required int64 dim = 1;
-  repeated real values = 2 [packed = true];
+  repeated double values = 2 [packed = true];
 }
 
 message ProtoMatrix {
   required int64 num_rows = 1;
   required int64 num_cols = 2;
-  repeated real values = 3 [packed = true];
+  repeated double values = 3 [packed = true];
 }
 
 message Operation {
@@ -263,7 +263,7 @@ message Operation {
   // matrix handles created on the pserver
   repeated int64 pmatrices = 3;       // A, B, C
 
-  repeated real scalars = 4;  	      // a, b, c
+  repeated double scalars = 4;  	      // a, b, c
   repeated ProtoVector vectors = 5;   // x, y, z
   repeated ProtoMatrix matrices = 6;  // X, Y, Z
 }
@@ -272,7 +272,7 @@ message OperationResult {
   // error message. Empty if success
   optional string return_message = 1;
 //
-  repeated real scalars = 2;  // d, e, f
+  repeated double scalars = 2;  // d, e, f
   repeated ProtoVector vectors = 3;  // p, q, r
   repeated ProtoMatrix matrices = 4;  // P, Q, R
 }

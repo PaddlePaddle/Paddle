@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-ifdef(`proto3', `syntax = "proto2";')
+syntax = "proto2";
 
 package paddle;
 
@@ -32,14 +32,14 @@ message ParameterUpdaterHookConfig {
 message ParameterConfig {
   required string name = 1;
   required uint64 size = 2;
-  optional real learning_rate = 3 [default = 1.0];
-  optional real momentum = 4 [default = 0.0];
-  optional real initial_mean = 5 [default = 0.0];
-  optional real initial_std = 6 [default = 0.01];
+  optional double learning_rate = 3 [default = 1.0];
+  optional double momentum = 4 [default = 0.0];
+  optional double initial_mean = 5 [default = 0.0];
+  optional double initial_std = 6 [default = 0.01];
   // use L2-regularization if decay_rate set and decay_rate_l1 not set
-  optional real decay_rate = 7 [default = 0.0];
+  optional double decay_rate = 7 [default = 0.0];
   // use L1-regularization if decay_rate_l1 set
-  optional real decay_rate_l1 = 8 [default = 0.0];
+  optional double decay_rate_l1 = 8 [default = 0.0];
   // dims of Parameter, e.g. dims[0] as height, dims[1] as width..
   repeated uint64 dims = 9;
   // the gpu device which the parameter in.
@@ -60,7 +60,7 @@ message ParameterConfig {
   // sparse remote update or not
   optional bool sparse_remote_update = 16 [default = false];
   // gradient clipping threshold, no clipping by default
-  optional real gradient_clipping_threshold = 17 [default = 0.0];
+  optional double gradient_clipping_threshold = 17 [default = 0.0];
   // static parameters are fixed when training
   optional bool is_static = 18 [default = false];
   // para_id should NOT be set by config_parser. It is for

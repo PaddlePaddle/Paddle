@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-ifdef(`proto3', `syntax = "proto2";')
+syntax = "proto2";
 
 import "DataConfig.proto";
 import "ModelConfig.proto";
@@ -24,9 +24,9 @@ message OptimizationConfig {
   optional int32 num_batches_per_send_parameter = 5 [default = 1];
   optional int32 num_batches_per_get_parameter = 6 [default = 1];
 
-  required real learning_rate = 7;
-  optional real learning_rate_decay_a = 8 [default = 0];
-  optional real learning_rate_decay_b = 9 [default = 0];
+  required double learning_rate = 7;
+  optional double learning_rate_decay_a = 8 [default = 0];
+  optional double learning_rate_decay_b = 9 [default = 0];
   optional string learning_rate_schedule = 27 [default = "constant"];
   // learning rate will be scaled according to learning_rate_schedule
   // 1), constant:
@@ -49,14 +49,14 @@ message OptimizationConfig {
 
   // owlqn related
   // L1-regularization
-  optional real l1weight = 10 [default = 0.1];
+  optional double l1weight = 10 [default = 0.1];
   // L2-regularization
-  optional real l2weight = 11 [default = 0];
+  optional double l2weight = 11 [default = 0];
   // "c1" in wolfe condition: if (newobj <= oldobj + c1 * origDirDeriv * step)
   // then accept the step
-  optional real c1 = 12 [default = 0.0001];
+  optional double c1 = 12 [default = 0.0001];
   // multiply the step with "backoff", when wolfe condition doesn't satisfy
-  optional real backoff = 13 [default = 0.5];
+  optional double backoff = 13 [default = 0.5];
   // how many "s"s and "y"s are kept in owlqn
   optional int32 owlqn_steps = 14 [default = 10];
   // accept the step if encountered "max_backoff" times of "reduce the step"
@@ -82,15 +82,15 @@ message OptimizationConfig {
   // default learning method("momentum") use global decayed learning rate with momentum.
   // "adagrad", "adadelta" and "rmsprop" can set momentum too.
   optional string learning_method = 23 [default = "momentum"];
-  optional real ada_epsilon = 24 [default = 1e-6];
-  optional real ada_rou = 26 [default = 0.95];
+  optional double ada_epsilon = 24 [default = 1e-6];
+  optional double ada_rou = 26 [default = 0.95];
 
   // Force to do average in cpu in order to save gpu memory usage
   optional bool do_average_in_cpu = 25 [default = false];
 
   // delta add rate in pserver, used while num_batches_per_send_parameter>1
   // will be divided by #machines automatically.
-  optional real delta_add_rate = 28 [default = 1.0];
+  optional double delta_add_rate = 28 [default = 1.0];
 
   // We split a large size into smaller mini-batches, whose sizes are
   // determined by mini_batch_size. It only takes effect when there is
@@ -108,14 +108,14 @@ message OptimizationConfig {
 
   // shrink sparse parameter value
   // only works if parameter is remote sparse update and has L1 decay rate
-  optional real shrink_parameter_value = 32 [default = 0];
+  optional double shrink_parameter_value = 32 [default = 0];
 
   ////////////////////////////
   // Options Adam Optimizer //
   ////////////////////////////
-  optional real adam_beta1 = 33 [default = 0.9];
-  optional real adam_beta2 = 34 [default = 0.999];
-  optional real adam_epsilon = 35 [default = 1e-8];
+  optional double adam_beta1 = 33 [default = 0.9];
+  optional double adam_beta2 = 34 [default = 0.999];
+  optional double adam_epsilon = 35 [default = 1e-8];
 
   // arguments for learning rate scheduler
   // Format: num1:rate1,num2:rate2,...,numK:rateK
@@ -127,7 +127,7 @@ message OptimizationConfig {
   // for async sgd gradient commit control.
   // when async_lagged_grad_discard_ratio * num_gradient_servers commit passed,
   // current async gradient will be discard silently.
-  optional real async_lagged_grad_discard_ratio = 37 [default = 1.5];
+  optional double async_lagged_grad_discard_ratio = 37 [default = 1.5];
 };
 
 message TrainerConfig {
