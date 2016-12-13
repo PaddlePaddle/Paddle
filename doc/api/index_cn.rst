@@ -7,8 +7,8 @@ DataProvider API
 ..  toctree::
     :maxdepth: 1
 
-    data_provider/dataprovider_en.rst
-    data_provider/pydataprovider2_en.rst
+    data_provider/dataprovider_cn.rst
+    data_provider/pydataprovider2_cn.rst
 
 ..  _api_trainer_config:
 
@@ -34,4 +34,4 @@ Applications API
 ..  toctree::
     :maxdepth: 1
 
-    predict/swig_py_paddle_en.rst
+    predict/swig_py_paddle_cn.rst
