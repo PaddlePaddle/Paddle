@@ -1,4 +1,4 @@
-..  _api_pydataprovider:
+..  _api_pydataprovider2_en:
 
 PyDataProvider2
 ===============
@@ -103,6 +103,8 @@ And PaddlePadle will do all of the rest things\:
 * CPU-> GPU double buffering.
 
 Is this cool?
+
+..  _api_pydataprovider2_en_sequential_model:
 
 DataProvider for the sequential model
 -------------------------------------

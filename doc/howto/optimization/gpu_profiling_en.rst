@@ -51,7 +51,7 @@ In this tutorial, we will focus on nvprof and nvvp.
 :code:`test_GpuProfiler` from :code:`paddle/math/tests` directory will be used to evaluate
 above profilers. 
 
-.. literalinclude:: ../../paddle/math/tests/test_GpuProfiler.cpp
+.. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
    :language: c++
    :lines: 111-124
    :linenos:
@@ -77,7 +77,7 @@ As a simple example, consider the following:
 
 1. Add :code:`REGISTER_TIMER_INFO` and :code:`printAllStatus` functions (see the emphasize-lines).
 
-    .. literalinclude:: ../../paddle/math/tests/test_GpuProfiler.cpp
+    .. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
         :language: c++
         :lines: 111-124
         :emphasize-lines: 8-10,13
@@ -124,7 +124,7 @@ To use this command line profiler **nvprof**, you can simply issue the following
 
 1. Add :code:`REGISTER_GPU_PROFILER` function (see the emphasize-lines).
 
-    .. literalinclude:: ../../paddle/math/tests/test_GpuProfiler.cpp
+    .. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
         :language: c++
         :lines: 111-124
         :emphasize-lines: 6-7
