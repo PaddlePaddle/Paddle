@@ -161,5 +161,5 @@ python -m paddle.utils.plotcurve -i $log > plot.png
 
 <center>![Training and testing curves.](./plot.png)</center>
 
-## 预测在
-训练完成后，模型及参数会被保存在路径`./cifar_vgg_model/pass-%05d`下。例如，第300次训练所得的模型会被保存在`./cifar_vgg_model/pass-00299`。
+## 预测
+在训练完成后，模型及参数会被保存在路径`./cifar_vgg_model/pass-%05d`下。例如第300次训练所得的模型会被保存在`./cifar_vgg_model/pass-00299`。
