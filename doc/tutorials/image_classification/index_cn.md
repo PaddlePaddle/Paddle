@@ -115,8 +115,8 @@ from paddle.trainer_config_helpers import *
 ```
 
 之后定义的`define_py_data_sources2`使用python data provider接口，其中 `args`将在`image_provider.py`进行使用，后者负责将图片数据传递给Paddle
- - `meta`: the mean value of training set.
- - `mean_img_size`: the size of mean feature map.
+ - `meta`: 训练集平均值。
+ - `mean_img_size`: 特征图的平均高度及宽度。
  - `img_size`：输入图片的高度及宽度。
  - `num_classes`：分类的个数。
  - `use_jpeg`：处理过程中数据存储格式
