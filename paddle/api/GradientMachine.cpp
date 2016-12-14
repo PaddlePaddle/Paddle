@@ -15,8 +15,8 @@ limitations under the License. */
 #include "PaddleAPI.h"
 #include "PaddleAPIPrivate.h"
 
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "Internal.h"
+#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 
 std::vector<int> GradientMachine::defaultParamTypes = {
     PARAMETER_VALUE, PARAMETER_GRADIENT, PARAMETER_MOMENTUM};

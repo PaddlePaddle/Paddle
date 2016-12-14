@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
 #include "NormLayer.h"
 #include "paddle/math/Matrix.h"
-#include <vector>
 
 namespace paddle {
 

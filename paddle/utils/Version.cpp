@@ -14,16 +14,16 @@ limitations under the License. */
 
 #include "Version.h"
 
-#include "Flags.h"
-#include "Util.h"
 #include <iomanip>
 #include <numeric>
+#include "Flags.h"
+#include "Util.h"
 //! TODO(yuyang18) in gflags, version has another define. Use another flag
 //! instead.
 #ifndef PADDLE_USE_GFLAGS
-P_DEFINE_bool(version, false, "print version");
+DEFINE_bool(version, false, "print version");
 #else
-P_DECLARE_bool(version);
+DECLARE_bool(version);
 #endif
 
 namespace paddle {
@@ -33,7 +33,8 @@ void printVersion(std::ostream& os) {
 #ifndef PADDLE_VERSION
 #define PADDLE_VERSION "unknown"
 #endif
-// converts macro to string https://gcc.gnu.org/onlinedocs/cpp/Stringification.html
+// converts macro to string
+// https://gcc.gnu.org/onlinedocs/cpp/Stringification.html
 #define xstr(s) str(s)
 #define str(s) #s
 

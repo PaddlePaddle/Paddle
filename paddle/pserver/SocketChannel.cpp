@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "SocketChannel.h"
 
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include "RDMANetwork.h"
 

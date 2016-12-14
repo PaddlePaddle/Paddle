@@ -22,11 +22,11 @@ limitations under the License. */
 #include "paddle/gserver/dataproviders/DataProvider.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 
+#include <stdlib.h>
+#include <fstream>
+#include "ParameterUpdater.h"
 #include "TrainerConfig.pb.h"
 #include "TrainerConfigHelper.h"
-#include "ParameterUpdater.h"
-#include <fstream>
-#include <stdlib.h>
 
 namespace paddle {
 

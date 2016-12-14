@@ -16,8 +16,8 @@ limitations under the License. */
 #define HL_DSO_LOADER_H_
 
 #include <dlfcn.h>
-#include <string>
 #include <memory>
+#include <string>
 #include "hl_base.h"
 
 /**

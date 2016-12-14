@@ -26,7 +26,8 @@ UNK_IDX = 0
 
 
 class Prediction():
-    def __init__(self, train_conf, dict_file, model_dir, label_file, predicate_dict_file):
+    def __init__(self, train_conf, dict_file, model_dir, label_file,
+                 predicate_dict_file):
         """
         train_conf: trainer configure.
         dict_file: word dictionary file name.
@@ -35,7 +36,7 @@ class Prediction():
 
         self.dict = {}
         self.labels = {}
-        self.predicate_dict={}
+        self.predicate_dict = {}
         self.labels_reverse = {}
         self.load_dict_label(dict_file, label_file, predicate_dict_file)
 
@@ -44,25 +45,18 @@ class Prediction():
         len_pred = len(self.predicate_dict)
 
         conf = parse_config(
-            train_conf,
-            'dict_len=' + str(len_dict) + 
-            ',label_len=' + str(len_label) +
-            ',pred_len=' + str(len_pred) +
-            ',is_predict=True')
+            train_conf, 'dict_len=' + str(len_dict) + ',label_len=' +
+            str(len_label) + ',pred_len=' + str(len_pred) + ',is_predict=True')
         self.network = swig_paddle.GradientMachine.createFromConfigProto(
             conf.model_config)
         self.network.loadParameters(model_dir)
 
         slots = [
-            integer_value_sequence(len_dict),
-            integer_value_sequence(len_dict),
-            integer_value_sequence(len_dict),
-            integer_value_sequence(len_dict),
-            integer_value_sequence(len_dict),
-            integer_value_sequence(len_dict), 
-            integer_value_sequence(len_pred),
-            integer_value_sequence(2)
-            ]
+            integer_value_sequence(len_dict), integer_value_sequence(len_dict),
+            integer_value_sequence(len_dict), integer_value_sequence(len_dict),
+            integer_value_sequence(len_dict), integer_value_sequence(len_dict),
+            integer_value_sequence(len_pred), integer_value_sequence(2)
+        ]
         self.converter = DataProviderConverter(slots)
 
     def load_dict_label(self, dict_file, label_file, predicate_dict_file):
@@ -78,6 +72,7 @@ class Prediction():
 
         for line_count, line in enumerate(open(predicate_dict_file, 'r')):
             self.predicate_dict[line.strip()] = line_count
+
     def get_data(self, data_file):
         """
         Get input data of paddle format.
@@ -88,9 +83,10 @@ class Prediction():
                 ).split('\t')
                 words = sentence.split()
                 sen_len = len(words)
-                 
+
                 word_slot = [self.dict.get(w, UNK_IDX) for w in words]
-                predicate_slot = [self.predicate_dict.get(predicate, UNK_IDX)] * sen_len
+                predicate_slot = [self.predicate_dict.get(predicate, UNK_IDX)
+                                  ] * sen_len
                 ctx_n2_slot = [self.dict.get(ctx_n2, UNK_IDX)] * sen_len
                 ctx_n1_slot = [self.dict.get(ctx_n1, UNK_IDX)] * sen_len
                 ctx_0_slot = [self.dict.get(ctx_0, UNK_IDX)] * sen_len
@@ -99,7 +95,7 @@ class Prediction():
 
                 marks = mark.split()
                 mark_slot = [int(w) for w in marks]
-                
+
                 yield word_slot, ctx_n2_slot, ctx_n1_slot, \
                       ctx_0_slot, ctx_p1_slot, ctx_p2_slot, predicate_slot, mark_slot
 
@@ -123,8 +119,9 @@ class Prediction():
 
 
 def option_parser():
-    usage = ("python predict.py -c config -w model_dir " 
-             "-d word dictionary -l label_file -i input_file  -p pred_dict_file")
+    usage = (
+        "python predict.py -c config -w model_dir "
+        "-d word dictionary -l label_file -i input_file  -p pred_dict_file")
     parser = OptionParser(usage="usage: %s [options]" % usage)
     parser.add_option(
         "-c",
@@ -187,8 +184,9 @@ def main():
     output_file = options.output_file
 
     swig_paddle.initPaddle("--use_gpu=0")
-    predict = Prediction(train_conf, dict_file, model_path, label_file, predict_dict_file)
-    predict.predict(data_file,output_file)
+    predict = Prediction(train_conf, dict_file, model_path, label_file,
+                         predict_dict_file)
+    predict.predict(data_file, output_file)
 
 
 if __name__ == '__main__':

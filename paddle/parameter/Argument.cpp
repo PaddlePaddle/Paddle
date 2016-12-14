@@ -551,11 +551,10 @@ void Argument::getSeqInfo(std::vector<SeqInfo>* seqInfo) const {
     }
     seqInfo->push_back(info);
   }
-  std::sort(seqInfo->begin(),
-            seqInfo->end(),
-            [](const SeqInfo& a, const SeqInfo& b) {
-              return a.topLevelLength > b.topLevelLength;
-            });
+  std::sort(
+      seqInfo->begin(), seqInfo->end(), [](const SeqInfo& a, const SeqInfo& b) {
+        return a.topLevelLength > b.topLevelLength;
+      });
 }
 
 void Argument::checkSubset() const {

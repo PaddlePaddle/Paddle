@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Stat.h"
 #include "paddle/gserver/evaluators/Evaluator.h"
+#include "paddle/utils/Stat.h"
 
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 
-P_DECLARE_int32(trainer_id);
+DECLARE_int32(trainer_id);
 
 namespace paddle {
 
@@ -842,9 +842,9 @@ void PnpairEvaluator::calc(std::vector<PredictionResult>& predictArray) {
   auto start = predictArray.begin();
   while (start != predictArray.end()) {
     auto end = std::find_if(
-        start + 1,
-        predictArray.end(),
-        [=](const PredictionResult& x) { return x.queryid != start->queryid; });
+        start + 1, predictArray.end(), [=](const PredictionResult& x) {
+          return x.queryid != start->queryid;
+        });
     CHECK(end != start);
     stat(start - predictArray.begin(),
          end - predictArray.begin(),

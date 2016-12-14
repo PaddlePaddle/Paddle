@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Layer.h"
-#include "paddle/utils/Stat.h"
 #include "SequenceToBatch.h"
 #include "paddle/utils/CommandLineParser.h"
+#include "paddle/utils/Stat.h"
 
-P_DEFINE_bool(rnn_use_batch, false, "Using the batch method for calculation.");
+DEFINE_bool(rnn_use_batch, false, "Using the batch method for calculation.");
 
 namespace paddle {
 

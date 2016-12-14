@@ -18,11 +18,11 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-P_DECLARE_string(config);
-P_DECLARE_string(config_args);
-P_DEFINE_string(merger,
-                "./paddle_merge_model",
-                "path to paddle_merge_model binary");
+DECLARE_string(config);
+DECLARE_string(config_args);
+DEFINE_string(merger,
+              "./paddle_merge_model",
+              "path to paddle_merge_model binary");
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

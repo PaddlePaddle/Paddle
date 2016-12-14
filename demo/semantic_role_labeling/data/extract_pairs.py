@@ -66,8 +66,8 @@ def transform_labels(sentences, labels):
         else:
             verb_list = []
             for x in labels[i][0]:
-                if x !='-':
-                   verb_list.append(x)
+                if x != '-':
+                    verb_list.append(x)
 
             for j in xrange(1, len(labels[i])):
                 label_list = labels[i][j]
@@ -93,7 +93,7 @@ def transform_labels(sentences, labels):
                         is_in_bracket = True
                     else:
                         print 'error:', ll
-                sen_lab_pair.append((sentences[i], verb_list[j-1], label_seq))
+                sen_lab_pair.append((sentences[i], verb_list[j - 1], label_seq))
     return sen_lab_pair
 
 
@@ -103,7 +103,7 @@ def write_file(sen_lab_pair, output_file):
             sentence = x[0]
             label_seq = ' '.join(x[2])
             assert len(sentence.split()) == len(x[2])
-            fout.write(sentence + '\t' + x[1]+'\t' +label_seq + '\n')
+            fout.write(sentence + '\t' + x[1] + '\t' + label_seq + '\n')
 
 
 if __name__ == '__main__':

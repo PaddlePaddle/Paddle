@@ -15,26 +15,26 @@ limitations under the License. */
 #ifndef PADDLE_USE_GFLAGS
 //! Test Command Line Parser for paddle internal implement.
 
-#include <paddle/utils/CommandLineParser.h>
 #include <gtest/gtest.h>
+#include <paddle/utils/CommandLineParser.h>
 
-P_DEFINE_int32(i1, 1, "test int flag 1");
-P_DEFINE_int32(i2, 2, "test int flag 2");
+DEFINE_int32(i1, 1, "test int flag 1");
+DEFINE_int32(i2, 2, "test int flag 2");
 
-P_DEFINE_string(str1, "1", "test str flag 1");
-P_DEFINE_string(str2, "2", "test str flag 2");
+DEFINE_string(str1, "1", "test str flag 1");
+DEFINE_string(str2, "2", "test str flag 2");
 
-P_DEFINE_bool(b1, true, "test bool flag 1");
-P_DEFINE_bool(b2, false, "test bool flag 2");
+DEFINE_bool(b1, true, "test bool flag 1");
+DEFINE_bool(b2, false, "test bool flag 2");
 
-P_DEFINE_double(d1, 0.1, "test double flag 1");
-P_DEFINE_double(d2, -42.3, "test double flag 2");
+DEFINE_double(d1, 0.1, "test double flag 1");
+DEFINE_double(d2, -42.3, "test double flag 2");
 
-P_DEFINE_int64(l1, 1, "test int64 flag 1");
-P_DEFINE_int64(l2, 2, "test int64 flag 2");
+DEFINE_int64(l1, 1, "test int64 flag 1");
+DEFINE_int64(l2, 2, "test int64 flag 2");
 
-P_DEFINE_uint64(ul1, 32, "test uint64 flag 1");
-P_DEFINE_uint64(ul2, 33, "test uint64 flag 2");
+DEFINE_uint64(ul1, 32, "test uint64 flag 1");
+DEFINE_uint64(ul2, 33, "test uint64 flag 2");
 
 constexpr double EPSILON = 1e-5;
 

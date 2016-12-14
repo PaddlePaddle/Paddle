@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/math/Matrix.h"
-#include "SequenceToBatch.h"
 #include "GruCompute.h"
 #include "Layer.h"
+#include "SequenceToBatch.h"
+#include "paddle/math/Matrix.h"
 
 namespace paddle {
 

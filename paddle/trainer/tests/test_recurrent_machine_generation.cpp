@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <fstream>
 
-#include <paddle/utils/PythonUtil.h>
 #include <paddle/trainer/Trainer.h>
+#include <paddle/utils/PythonUtil.h>
 
 #include <gtest/gtest.h>
 
@@ -30,7 +30,7 @@ static string modelDir = "trainer/tests/rnn_gen_test_model_dir/t1";  // NOLINT
 static string expectFile =                                           // NOLINT
     "trainer/tests/rnn_gen_test_model_dir/r1.test";                  // NOLINT
 
-P_DECLARE_string(config_args);
+DECLARE_string(config_args);
 
 vector<float> readRetFile(const string& fname) {
   ifstream inFile(fname);
