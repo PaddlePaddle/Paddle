@@ -226,6 +226,12 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper>& config,
         DataProvider::create(config_->getTestDataConfig(), *config_, gpuData));
   }
   if (testDataProvider_) {
+    if (config_->getOptConfig().use_sparse_remote_updater()) {
+      LOG(FATAL) << "It's prohibited to set sparse_remote_update "
+                 << "in some layers if testing will be under going "
+                 << "in the middle of training. You can do testing "
+                 << "within separate process.";
+    }
     createTester();
   }
 
