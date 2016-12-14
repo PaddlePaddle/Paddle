@@ -14,28 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include "Function.h"
 #include "paddle/math/Matrix.h"
 
 namespace paddle {
-
-enum DeviceType {
-  DEVICE_TYPE_UNSPECIFIED = 0,
-  DEVICE_TYPE_CPU = 1,
-  DEVICE_TYPE_GPU = 2,
-};
-
-template <DeviceType Device>
-struct MatrixT;
-
-template <>
-struct MatrixT<DEVICE_TYPE_CPU> {
-  using type = CpuMatrix;
-};
-
-template <>
-struct MatrixT<DEVICE_TYPE_GPU> {
-  using type = GpuMatrix;
-};
 
 template <DeviceType Device>
 struct CrossMapNormal {

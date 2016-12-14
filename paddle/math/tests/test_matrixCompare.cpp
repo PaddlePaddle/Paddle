@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/utils/Stat.h"
 #include "TensorCheck.h"
 #include "paddle/math/cross_map_normal_op.h"
+#include "paddle/math/Function.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -1280,6 +1281,15 @@ void testCrossMapNormalFwd(
   inputsGpu.copyFrom(inputs);
   outputsGpu.copyFrom(outputs);
 
+  FuncConfig config;
+  config.set("size", (size_t)sizeX);
+  config.set("scale", scale);
+  config.set("pow", pow);
+  FunctionBase* cpu =
+      FunctionBase::funcRegistrar_.createByType(FUNC_NAME(CrossMapNormal, CPU));
+  cpu->init(config);
+  // cpu->calc();
+
   CrossMapNormal<DEVICE_TYPE_CPU> cpuCross;
   cpuCross(
       outputs, denoms, inputs, channels, imgSizeH, imgSizeW, sizeX, scale, pow);
@@ -1294,11 +1304,6 @@ void testCrossMapNormalFwd(
            sizeX,
            scale,
            pow);
-
-#if 0
-  outputsGpu.crossMapNormalFwd(
-      inputsGpu, imgSizeH, imgSizeW, denomsGpu, channels, sizeX, scale, pow);
-#endif
 
   TensorCheckErr(outputs, outputsGpu);
   TensorCheckErr(denoms, denomsGpu);

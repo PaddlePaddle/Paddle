@@ -128,4 +128,50 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>::operator()(CpuMatrix& inputsGrad,
   }
 }
 
+template <DeviceType Device>
+class CrossMapNormalFunc : public FunctionBase {
+public:
+  void init(const FuncConfig& config) override {
+    size_ = config.get<size_t>("size");
+    scale_ = config.get<real>("scale");
+    pow_ = config.get<real>("pow");
+  }
+
+  void calc(const Arguments& inputs,
+            const Arguments& outputs,
+            const Arguments& inouts) override {
+    CHECK_EQ(1, inputs.size());
+    CHECK_EQ(2, outputs.size());
+    CHECK_EQ(0, inouts.size());
+
+    auto input = dynamic_cast<const typename MatrixT<Device>::type&>(inputs[0]);
+    auto output =
+        dynamic_cast<const typename MatrixT<Device>::type&>(outputs[0]);
+    auto denom =
+        dynamic_cast<const typename MatrixT<Device>::type&>(outputs[1]);
+
+    CHECK(input.isContiguous());
+    CHECK(output.isContiguous());
+    CHECK(denom.isContiguous());
+    CHECK_EQ(output.getHeight(), input.getHeight());
+    CHECK_EQ(output.getWidth(), input.getWidth());
+    CHECK_EQ(output.getHeight(), denom.getHeight());
+    CHECK_EQ(output.getWidth(), denom.getWidth());
+
+    // CrossMapNormal<Device> cross;
+    // need:
+    // size_t channels,
+    // size_t imgSizeH,
+    // size_t imgSizeW,
+    // cross(output, denom, input, );
+  }
+
+private:
+  size_t size_;
+  real scale_;
+  real pow_;
+};
+
+REGISTER_TYPED_FUNC(CrossMapNormal, CPU, CrossMapNormalFunc);
+
 }  // namespace paddle
