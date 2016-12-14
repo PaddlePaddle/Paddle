@@ -83,3 +83,14 @@ add_test(NAME test_config_parser
   COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
         python ${PROJ_ROOT}/paddle/trainer/tests/config_parser_test.py
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle/)
+
+
+############# test_SgdLocalUpdaterForSparseNetwork ###########
+add_unittest_without_exec(test_SgdLocalUpdaterForSparseNetwork
+  test_SgdLocalUpdaterForSparseNetwork.cpp)
+
+add_test(NAME test_SgdLocalUpdaterForSparseNetwork
+  COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d
+      ${PROJ_ROOT}/python/
+      ${CMAKE_CURRENT_BINARY_DIR}/test_SgdLocalUpdaterForSparseNetwork
+  WORKING_DIRECTORY ${PROJ_ROOT}/paddle/trainer/tests/sgd_local_updater_sparse_network/)

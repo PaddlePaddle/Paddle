@@ -69,7 +69,7 @@ def define_py_data_source(file_list,
     """
     if isinstance(file_list, list):
         file_list_name = 'train.list'
-        if isinstance(cls, TestData):
+        if cls == TestData:
             file_list_name = 'test.list'
         with open(file_list_name, 'w') as f:
             f.writelines(file_list)
