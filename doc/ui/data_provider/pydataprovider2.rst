@@ -174,12 +174,12 @@ input_types
 +++++++++++
 
 PaddlePaddle has four data types, and three sequence types.
-The four data types are: 
+The four data types are:
 
 * :code:`dense_vector`: dense float vector.
 * :code:`sparse_binary_vector`: sparse binary vector, most of the value is 0, and
   the non zero elements are fixed to 1.
-* :code:`sparse_float_vector`: sparse float vector, most of the value is 0, and some
+* :code:`sparse_vector`: sparse float vector, most of the value is 0, and some
   non zero elements can be any float value. They are given by the user.
 * :code:`integer`: an integer scalar, that is especially used for label or word index.
 
@@ -200,7 +200,7 @@ in the above table.
 +----------------------+---------------------+-----------------------------------+------------------------------------------------+
 | sparse_binary_vector | [i, i, ...]         | [[i, ...], [i, ...], ...]         | [[[i, ...], ...], [[i, ...], ...],...]         |
 +----------------------+---------------------+-----------------------------------+------------------------------------------------+
-| sparse_float_vector  | [(i,f), (i,f), ...] | [[(i,f), ...], [(i,f), ...], ...] | [[[(i,f), ...], ...], [[(i,f), ...], ...],...] |
+| sparse_vector        | [(i,f), (i,f), ...] | [[(i,f), ...], [(i,f), ...], ...] | [[[(i,f), ...], ...], [[(i,f), ...], ...],...] |
 +----------------------+---------------------+-----------------------------------+------------------------------------------------+
 | integer_value        |  i                  | [i, i, ...]                       | [[i, ...], [i, ...], ...]                      |
 +----------------------+---------------------+-----------------------------------+------------------------------------------------+
@@ -227,7 +227,7 @@ Its parameters lists as follows:
     * :code:`is_train` is a bool parameter that indicates the DataProvider is used in
       training or testing.
     * :code:`file_list` is the list of all files.
-      
+
   * User-defined parameters args can be set in training configuration.
 
 Note, PaddlePaddle reserves the right to add pre-defined parameter, so please
