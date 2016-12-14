@@ -119,7 +119,7 @@ function(link_paddle_exe TARGET_NAME)
             ${RDMA_LD_FLAGS}
             ${RDMA_LIBS})
     endif()
-    
+
     if(WITH_PYTHON)
         target_link_libraries(${TARGET_NAME}
             ${PYTHON_LIBRARIES})
@@ -136,10 +136,10 @@ function(link_paddle_exe TARGET_NAME)
     endif()
 
     if(WITH_GPU)
-        if(NOT WITH_DSO OR WITH_METRIC) 
+        if(NOT WITH_DSO OR WITH_METRIC)
             target_link_libraries(${TARGET_NAME}
                 ${CUDNN_LIBRARY}
-                ${CUDA_curand_LIBRARY}) 
+                ${CUDA_curand_LIBRARY})
             CUDA_ADD_CUBLAS_TO_TARGET(${TARGET_NAME})
         endif()
 
@@ -206,5 +206,5 @@ function(create_resources res_file output)
     # Convert hex data for C compatibility
     string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
     # Append data to output file
-    file(APPEND ${output} "const unsigned char ${filename}[] = {${filedata}};\nconst unsigned ${filename}_size = sizeof(${filename});\n")
+    file(APPEND ${output} "const unsigned char ${filename}[] = {${filedata}0};\nconst unsigned ${filename}_size = sizeof(${filename});\n")
 endfunction()
