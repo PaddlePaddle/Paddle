@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <random>
-
 #include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
@@ -31,6 +31,17 @@ namespace paddle {
 class MultinomialSampler {
 public:
   MultinomialSampler(const real* prob, int size);
+
+  //! protobuf always using double.
+  static MultinomialSampler* create(const double* prob, int size) {
+#ifdef PADDLE_TYPE_DOUBLE
+    return new MultinomialSampler(prob, size);
+#else
+    std::unique_ptr<real[]> tmp(new real[size]);
+    std::copy(prob, prob + size, tmp.get());
+    return new MultinomialSampler(tmp.get(), size);
+#endif
+  }
 
   /**
    * @brief Generate a random sample.

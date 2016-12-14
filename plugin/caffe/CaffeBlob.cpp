@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <paddle/parameter/Argument.h>
 
-#include <caffe/layer.hpp>
 #include <caffe/blob.hpp>
+#include <caffe/layer.hpp>
 
 namespace paddle {
 
@@ -27,12 +27,15 @@ std::vector<int> ArgShape2Vector(const Argument& arg) {
   int frameHeight = arg.getFrameHeight();
   int frameWidth = arg.getFrameWidth();
   int dim = 0;
-  if (arg.value) dim = arg.value->getWidth();
-  if (arg.grad) dim = arg.grad->getWidth();
+  if (arg.value) {
+    dim = arg.value->getWidth();
+  } else if (arg.grad) {
+    dim = arg.grad->getWidth();
+  }
   CHECK(dim);
   // Paddle only support 4 dimension at most.
-  // s1 means channel number for convolution layer.
-  // s1 means hidden dimension for other layers.
+  // s1 means channel number for convolution layer,
+  // means hidden dimension for other layers.
   int s1 = 0;
   if (frameHeight && frameWidth) {
     s1 = dim / frameHeight / frameWidth;
@@ -51,9 +54,47 @@ void SetDataToBlob(const Argument& arg,
   std::vector<int> shape = ArgShape2Vector(arg);
   blob->Reshape(shape);
   if (useGpu) {
-    blob->set_gpu_data(arg.value->getData());
+    blob->set_gpu_data(arg.grad->getData());
   } else {
-    blob->set_cpu_data(arg.value->getData());
+    blob->set_cpu_data(arg.grad->getData());
+  }
+}
+
+void SetGradToBlob(const Argument& arg,
+                   ::caffe::Blob<real>* blob,
+                   bool useGpu) {
+  std::vector<int> shape = ArgShape2Vector(arg);
+  blob->Reshape(shape);
+  if (useGpu) {
+    blob->set_gpu_diff(arg.value->getData());
+  } else {
+    blob->set_cpu_diff(arg.value->getData());
+  }
+}
+
+void SetDataToArg(::caffe::Blob<real>* blob, const Argument& arg, bool useGpu) {
+  auto& shape = blob->shape();
+  int h = shape(0);
+  int w = blob->count(1);
+  if (shape.size() == 4) {
+    arg.setFrameHeight(shape[3]);
+    arg.setFrameWidth(shape[3]);
+  }
+  CHECK_LE(shape.size(), 4) << "Now only support 4-dimension at most";
+  if (useGpu) {
+    blob->set_gpu_data(arg.grad->getData());
+  } else {
+    blob->set_cpu_data(arg.grad->getData());
+  }
+}
+
+void SetGradToArg(const Argument& arg, ::caffe::Blob<real>* blob, bool useGpu) {
+  std::vector<int> shape = ArgShape2Vector(arg);
+  blob->Reshape(shape);
+  if (useGpu) {
+    blob->set_gpu_diff(arg.value->getData());
+  } else {
+    blob->set_cpu_diff(arg.value->getData());
   }
 }
 

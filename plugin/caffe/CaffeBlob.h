@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <paddle/parameter/Argument.h>
 
-#include <caffe/layer.hpp>
 #include <caffe/blob.hpp>
+#include <caffe/layer.hpp>
 
 namespace paddle {
 
@@ -26,5 +26,8 @@ void Vector2ArgShape(const Argument& arg, const std::vector<int>& vec);
 
 void SetDataToBlob(Argument& arg, ::caffe::Blob<real>* blob);
 void SetGradToBlob(Argument& arg, ::caffe::Blob<real>* blob);
+
+void SetDataToArg(::caffe::Blob<real>* blob, Argument& arg);
+void SetGradToArg(::caffe::Blob<real>* blob, Argument& arg);
 
 }  // namespace paddle

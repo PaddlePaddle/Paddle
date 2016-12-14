@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ import time
 import socket
 import os
 import argparse
-
 
 # configuration for cluster
 API = "/api/v1/namespaces/"
@@ -145,8 +144,8 @@ def startPaddle(idMap={}, train_args_dict=None):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(prog="start_paddle.py",
-                                     description='simple tool for k8s')
+    parser = argparse.ArgumentParser(
+        prog="start_paddle.py", description='simple tool for k8s')
     args, train_args_list = parser.parse_known_args()
     train_args = refine_unknown_args(train_args_list)
     train_args_dict = dict(zip(train_args[:-1:2], train_args[1::2]))

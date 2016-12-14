@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,12 +16,8 @@ limitations under the License. */
 #define HL_DSO_LOADER_H_
 
 #include <dlfcn.h>
-#include <string>
 #include <memory>
-#include <cuda_runtime.h>
-#include <cublas_v2.h>
-#include <curand.h>
-#include <cudnn.h>
+#include <string>
 #include "hl_base.h"
 
 /**
@@ -55,5 +51,13 @@ void GetCudartDsoHandle(void** dso_handle);
  *
  */
 void GetCurandDsoHandle(void** dso_handle);
+
+/**
+ * @brief    load the DSO of warp-ctc
+ *
+ * @param    **dso_handle   dso handler
+ *
+ */
+void GetWarpCTCDsoHandle(void** dso_handle);
 
 #endif  // HL_DSO_LOADER_H_

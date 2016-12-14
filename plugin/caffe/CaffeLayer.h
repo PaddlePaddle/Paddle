@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/gserver/layers/Layer.h"
 #include "CaffeUtil.h"
+#include "paddle/gserver/layers/Layer.h"
 
 namespace paddle {
 /**
@@ -29,11 +29,11 @@ protected:
   ::caffe::Layer<real>* caffeOp_;
   std::vector<::caffe::Blob<real> *> bot_, top_, wei_;
   std::vector<bool> propagateDown_;
-  bool setup_;
+  int batchSize_;
 
 public:
   explicit CaffeLayer(const LayerConfig& config)
-      : Layer(config), setup_(false) {}
+      : Layer(config), lastBatchSize_(0) {}
   ~CaffeLayer() {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
@@ -48,7 +48,7 @@ public:
    * if the blobs are not set. Then it will reshape the top blobs, namely
    * the output of this layer.
    */
-  void caffeLayerSetup();
+  void caffeLayerSetup(int curBatchSize);
 };
 
 }  // namespace paddle

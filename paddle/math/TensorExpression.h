@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <cstddef>
 #include <stdint.h>
-#include "paddle/utils/TypeDefs.h"
-#include "paddle/utils/Logging.h"
+#include <cstddef>
 #include "hl_tensor_ops.h"
+#include "paddle/utils/Logging.h"
+#include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
 

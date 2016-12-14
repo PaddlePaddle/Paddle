@@ -52,13 +52,7 @@ option(ON_COVERALLS "Generating code coverage data on coveralls or not." OFF)
 option(COVERALLS_UPLOAD "Uploading the generated coveralls json." ON)
 option(USE_CAFFE "Integrating caffe layers in Paddle." OFF)
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
-        "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-        FORCE)
-endif()
 
-include(enableCXX11)
 include(cpplint)
 include(ccache)
 if(WITH_RDMA)
@@ -76,26 +70,21 @@ include(coveralls)
 find_package(Git REQUIRED)
 # version.cmake will get the current PADDLE_VERSION
 include(version)
-add_definitions(-DPADDLE_VERSION=\"${PADDLE_VERSION}\")
-
+add_definitions(-DPADDLE_VERSION=${PADDLE_VERSION})
 
 if(NOT WITH_GPU)
     add_definitions(-DPADDLE_ONLY_CPU)
     add_definitions(-DHPPL_STUB_FUNC)
+
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
-    if(${CUDA_VERSION_MAJOR} GREATER 6)
-        if(COMPILER_SUPPORT_CXX11)
-            LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
-        endif()
+    if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)
+        message(FATAL_ERROR "Paddle need CUDA >= 7.0 to compile")
     endif()
 
-    # TODO(yuyang18): Change it to remove std=c++11 in cuda compile.
-    set(CUDA_PROPAGATE_HOST_FLAGS OFF)
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle need cudnn to compile")
     endif()
-    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-g -O3 --use_fast_math")
 
     if(WITH_AVX)
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${AVX_FLAG}")
@@ -103,14 +92,14 @@ else()
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SSE3_FLAG}")
     endif(WITH_AVX)
 
-    if(WITH_DSO)
-        add_definitions(-DPADDLE_USE_DSO)
-    endif(WITH_DSO)
-
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
     include_directories(${CUDA_TOOLKIT_INCLUDE})
 endif(NOT WITH_GPU)
+
+if(WITH_DSO)
+    add_definitions(-DPADDLE_USE_DSO)
+endif(WITH_DSO)
 
 if(WITH_DOUBLE)
     add_definitions(-DPADDLE_TYPE_DOUBLE)

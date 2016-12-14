@@ -37,10 +37,18 @@ bool CaffeLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-void CaffeLayer::caffeLayerSetup() {
-  if (!setup_) {
-    setup_ = true;
+void CaffeLayer::caffeLayerSetup(int curBatchSize) {
+  if (curBatchSize != batchSize_) {
+    /**
+     * SetUp contails follows:
+     * InitMutex();
+     * CheckBlobCounts(bottom, top);
+     * LayerSetUp(bottom, top);
+     * Reshape(bottom, top);
+     * SetLossWeights(top);
+     */
     caffeOp_->SetUp(bot_, top_);
+    batchSize_ = curBatchSize;
   }
 }
 
@@ -48,12 +56,15 @@ void CaffeLayer::forward(PassType passType) {
   Layer::forward(passType);
   setMode(useGpu_);
 
+  int batchSize = getInput(0).getBatchSize();
+
   // set data of bot_
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
     SetDataToBlob(getInput(i), bot_[i], useGpu_);
   }
+  caffeLayerSetup(batchSize);
 
-  caffeLayerSetup();
+  SetDataToArg(top_[0], getOutput(), useGpu_);
 
   // set data of weight
   // share memory between caffe blobs and paddle parameter.

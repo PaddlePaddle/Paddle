@@ -10,4 +10,7 @@ build/
 Makefile
 .test_env/
 
-warp-ctc/
+*~
+bazel-*
+
+warp-ctc
