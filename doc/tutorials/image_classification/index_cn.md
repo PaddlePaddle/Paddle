@@ -79,7 +79,7 @@ python preprocess.py -i $data_dir -s 32 -c 1
 - `-c` 或 `--color` 标示图片是彩色图或灰度图
 
 ## 模型训练
-在开始训练之前，我们需要先创建一个配置文件。下面我们给出了一个配置文件的示例（vgg_16_cifar.py）。**注意**，？？？
+在开始训练之前，我们需要先创建一个配置文件。下面我们给出了一个配置文件的示例（vgg_16_cifar.py）。**注意**，这里的列出的和`vgg_16_cifar.py`中有着细微的差别。
 
 ```python
 from paddle.trainer_config_helpers import *
@@ -111,7 +111,7 @@ outputs(classification_cost(input=predict, label=lbl))
 from paddle.trainer_config_helpers import *
 ```
 
-之后`define_py_data_sources2`使用python数据接口进行定义，其中 `args`将在`image_provider.py`进行使用，后者负责将图片数据传递给Paddle
+之后定义的`define_py_data_sources2`使用python data provider接口，其中 `args`将在`image_provider.py`进行使用，后者负责将图片数据传递给Paddle
  - `meta`: the mean value of training set.
  - `mean_img_size`: the size of mean feature map.
  - `img_size`：输入图片的高度及宽度。
@@ -119,7 +119,7 @@ from paddle.trainer_config_helpers import *
  - `use_jpeg`：处理过程中数据存储格式
  - `color`标示是否为彩色图片
  
- `settings`用于设置训练算法。在下面的例子中， it specifies learning rate as 0.1, but divided by batch size, and the weight decay is 0.0005 and multiplied by batch size.
+ `settings`用于设置训练算法。在下面的例子中，learning rate被设置为0.1除以每批图片数（batch size），而weight decay则为0.0005乘以每批图片数。
  
  ```python
 settings(
@@ -154,7 +154,7 @@ paddle train \
 python -m paddle.utils.plotcurve -i $log > plot.png
 ```
 - 这里我们使用的是GPU模式进行训练。如果你没有GPU环境，可以设置`use_gpu=0`。
-- `./demo/image_classification/vgg_16_cifar.py`是网络和数据配置文件。各项参数的详细说明可以在documentation of the command line flags中找到
+- `./demo/image_classification/vgg_16_cifar.py`是网络和数据配置文件。各项参数的详细说明可以在命令行参数相关文档中找到
 - 脚本`plotcurve.py`依赖于python的`matplotlib`模块。因此如果这个脚本运行失败，也许是因为需要安装`matplotlib`
 
 在训练完成后，训练及测试误差曲线图会被`plotcurve.py`脚本保存在 `plot.png`中。下面是一个误差曲线图的示例：
@@ -198,4 +198,6 @@ python prediction.py $model $image $use_gpu
 - 池化层：使用max-pooling方式进行特征压缩
 - 全连接层：使用全连接，从特征中生成分类结果
 
-卷积神经网络:局部连接
+卷积神经网络在图片分类上有着优异的表现，这是因为它发掘出了图片的两类重要信息:局部连接性质和空间不变性质。通过交替使用卷基和池化处理，卷积神经网络能够使得图片的这两类信息能够稳定地得到保持
+
+关于如何定义网络中的层，以及如何在层之间进行连接，请参考文档中关于网络层的相关内容。
