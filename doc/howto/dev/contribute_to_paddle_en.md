@@ -1,4 +1,4 @@
-# How to Contribute Code
+# Contribute Code
 
 We sincerely appreciate your contributions. You can use fork and pull request
 workflow to merge your code. 
