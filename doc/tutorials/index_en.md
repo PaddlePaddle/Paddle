@@ -1,7 +1,9 @@
 # TUTORIALS
-There are serveral examples and demos here.
+There are several examples and demos here.
 
-## [Quick Start](quick_start/index_en.md)
+## Quick Start
+
+* [Quick Start](quick_start/index_en.md)
 
 ## Image
 

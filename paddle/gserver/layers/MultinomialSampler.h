@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <random>
-
 #include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
@@ -31,6 +31,17 @@ namespace paddle {
 class MultinomialSampler {
 public:
   MultinomialSampler(const real* prob, int size);
+
+  //! protobuf always using double.
+  static MultinomialSampler* create(const double* prob, int size) {
+#ifdef PADDLE_TYPE_DOUBLE
+    return new MultinomialSampler(prob, size);
+#else
+    std::unique_ptr<real[]> tmp(new real[size]);
+    std::copy(prob, prob + size, tmp.get());
+    return new MultinomialSampler(tmp.get(), size);
+#endif
+  }
 
   /**
    * @brief Generate a random sample.

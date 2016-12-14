@@ -149,7 +149,7 @@ paddle train \
 
 训练后，模型将保存在目录`output`中。 我们的训练曲线如下：
 <center>
-![pic](./curve.jpg)
+![pic](./src/curve.jpg)
 </center>
 
 ### 测试
