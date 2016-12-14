@@ -1,5 +1,5 @@
 ```eval_rst
-..  _cmd_line_index_en:
+..  _cmd_line_index:
 ```
 # How to Set Command-line Parameters
 
