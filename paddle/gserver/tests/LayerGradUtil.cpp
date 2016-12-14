@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "LayerGradUtil.h"
 
-P_DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(thread_local_rand_use_global_seed);
 
 namespace paddle {
 real getCostSum(LayerPtr& testLayer, MatrixPtr weights) {

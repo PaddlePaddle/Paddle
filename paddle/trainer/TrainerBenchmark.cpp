@@ -18,9 +18,9 @@ limitations under the License. */
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
 
-P_DECLARE_int32(test_period);
+DECLARE_int32(test_period);
 
-P_DEFINE_bool(feed_data, false, "Wether to read data from DataProvider.");
+DEFINE_bool(feed_data, false, "Wether to read data from DataProvider.");
 
 namespace paddle {
 

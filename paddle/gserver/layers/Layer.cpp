@@ -33,7 +33,7 @@ limitations under the License. */
 #include "TransLayer.h"
 #include "ValidationLayer.h"
 
-P_DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
+DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
 
 namespace paddle {
 

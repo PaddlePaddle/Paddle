@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 
-P_DECLARE_int32(trainer_id);
+DECLARE_int32(trainer_id);
 
 namespace paddle {
 

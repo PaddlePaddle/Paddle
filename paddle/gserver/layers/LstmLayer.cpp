@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/math/Matrix.h"
 #include "paddle/utils/Stat.h"
 
-P_DECLARE_bool(prev_batch_state);
+DECLARE_bool(prev_batch_state);
 
 namespace paddle {
 

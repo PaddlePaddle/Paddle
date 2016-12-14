@@ -195,9 +195,9 @@ SocketClient::SocketClient(const std::string& serverAddr, int serverPort) {
   channel_.reset(new SocketChannel(sockfd));
 }
 
-P_DEFINE_string(server_addr, "127.0.0.1", "Server address");
-P_DEFINE_int64(dim, 10000000, "Data size");
-P_DEFINE_int32(loop_time, 100000, "test loop time");
+DEFINE_string(server_addr, "127.0.0.1", "Server address");
+DEFINE_int64(dim, 10000000, "Data size");
+DEFINE_int32(loop_time, 100000, "test loop time");
 
 using namespace paddle;  // NOLINT
 

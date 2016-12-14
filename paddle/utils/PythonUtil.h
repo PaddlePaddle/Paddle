@@ -40,6 +40,7 @@ limitations under the License. */
 #include <stdarg.h>
 #include <map>
 #include <mutex>
+
 // clang-format on
 
 namespace paddle {

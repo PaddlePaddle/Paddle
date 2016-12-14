@@ -21,9 +21,9 @@ limitations under the License. */
 //! TODO(yuyang18) in gflags, version has another define. Use another flag
 //! instead.
 #ifndef PADDLE_USE_GFLAGS
-P_DEFINE_bool(version, false, "print version");
+DEFINE_bool(version, false, "print version");
 #else
-P_DECLARE_bool(version);
+DECLARE_bool(version);
 #endif
 
 namespace paddle {
