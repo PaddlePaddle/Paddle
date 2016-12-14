@@ -1,13 +1,13 @@
 licenses(["notice"])
 
 cc_library(
-    visibility = ["//visibility:public"],
-    name = "glog",
-    includes = [
+    visibility=["//visibility:public"],
+    name="glog",
+    includes=[
         ".",
         "src",
     ],
-    copts = [
+    copts=[
         "-D_START_GOOGLE_NAMESPACE_='namespace google {'",
         "-D_END_GOOGLE_NAMESPACE_='}'",
         "-DGOOGLE_NAMESPACE='google'",
@@ -45,7 +45,7 @@ cc_library(
         #"-fno-sanitize=address",
         "-Iexternal/glog/src",
     ],
-    srcs = [
+    srcs=[
         "src/demangle.cc",
         "src/logging.cc",
         "src/raw_logging.cc",
@@ -59,7 +59,7 @@ cc_library(
         ":stl_logging_h",
         ":vlog_is_on_h",
     ],
-    hdrs = [
+    hdrs=[
         "src/demangle.h",
         "src/mock-log.h",
         "src/stacktrace.h",
@@ -69,74 +69,47 @@ cc_library(
         "src/base/googleinit.h",
         "src/base/mutex.h",
         "src/glog/log_severity.h",
-    ],
+    ])
+
+genrule(
+    name="config_h",
+    srcs=["src/config.h.cmake.in"],
+    outs=["config.h"],
+    cmd="awk '{ gsub(/^#cmakedefine/, \"//cmakedefine\"); print; }' $(<) > $(@)",
 )
 
 genrule(
-    name = "config_h",
-    srcs = [
-        "src/config.h.cmake.in",
-    ],
-    outs = [
-        "config.h",
-    ],
-    cmd = "awk '{ gsub(/^#cmakedefine/, \"//cmakedefine\"); print; }' $(<) > $(@)",
-)
+    name="logging_h",
+    srcs=["src/glog/logging.h.in"],
+    outs=["glog/logging.h"],
+    cmd="$(location :gen_sh) < $(<) > $(@)",
+    tools=[":gen_sh"])
 
 genrule(
-    name = "logging_h",
-    srcs = [
-        "src/glog/logging.h.in",
-    ],
-    outs = [
-        "glog/logging.h",
-    ],
-    cmd = "$(location :gen_sh) < $(<) > $(@)",
-    tools = [":gen_sh"],
-)
+    name="raw_logging_h",
+    srcs=["src/glog/raw_logging.h.in"],
+    outs=["glog/raw_logging.h"],
+    cmd="$(location :gen_sh) < $(<) > $(@)",
+    tools=[":gen_sh"])
 
 genrule(
-    name = "raw_logging_h",
-    srcs = [
-        "src/glog/raw_logging.h.in",
-    ],
-    outs = [
-        "glog/raw_logging.h",
-    ],
-    cmd = "$(location :gen_sh) < $(<) > $(@)",
-    tools = [":gen_sh"],
-)
+    name="stl_logging_h",
+    srcs=["src/glog/stl_logging.h.in"],
+    outs=["glog/stl_logging.h"],
+    cmd="$(location :gen_sh) < $(<) > $(@)",
+    tools=[":gen_sh"])
 
 genrule(
-    name = "stl_logging_h",
-    srcs = [
-        "src/glog/stl_logging.h.in",
-    ],
-    outs = [
-        "glog/stl_logging.h",
-    ],
-    cmd = "$(location :gen_sh) < $(<) > $(@)",
-    tools = [":gen_sh"],
-)
+    name="vlog_is_on_h",
+    srcs=["src/glog/vlog_is_on.h.in"],
+    outs=["glog/vlog_is_on.h"],
+    cmd="$(location :gen_sh) < $(<) > $(@)",
+    tools=[":gen_sh"])
 
 genrule(
-    name = "vlog_is_on_h",
-    srcs = [
-        "src/glog/vlog_is_on.h.in",
-    ],
-    outs = [
-        "glog/vlog_is_on.h",
-    ],
-    cmd = "$(location :gen_sh) < $(<) > $(@)",
-    tools = [":gen_sh"],
-)
-
-genrule(
-    name = "gen_sh",
-    outs = [
-        "gen.sh",
-    ],
-    cmd = """
+    name="gen_sh",
+    outs=["gen.sh"],
+    cmd="""
 cat > $@ <<"EOF"
 #! /bin/sh
 sed -e 's/@ac_cv_have_unistd_h@/1/g' \
@@ -152,5 +125,4 @@ sed -e 's/@ac_cv_have_unistd_h@/1/g' \
     -e 's/@ac_cv___attribute___noinline@/__attribute__((noinline))/g' \
     -e 's/@ac_cv___attribute___noreturn@/__attribute__((noreturn))/g' \
     -e 's/@ac_cv___attribute___printf_4_5@/__attribute__((__format__ (__printf__, 4, 5)))/g'
-EOF"""
-)
+EOF""")
