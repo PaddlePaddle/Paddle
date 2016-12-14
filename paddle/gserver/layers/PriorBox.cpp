@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,28 +33,28 @@ public:
 };
 
 bool PriorBoxLayer::init(const LayerMap& layerMap,
-                       const ParameterMap& parameterMap) {
+                         const ParameterMap& parameterMap) {
   Layer::init(layerMap, parameterMap);
-  std::copy(config_.inputs(0).priorbox_conf().min_size().begin(),
-            config_.inputs(0).priorbox_conf().min_size().end(),
+  auto pb_conf = config_.inputs(0).priorbox_conf();
+  std::copy(pb_conf.min_size().begin(),
+            pb_conf.min_size().end(),
             std::back_inserter(minSize_));
-  std::copy(config_.inputs(0).priorbox_conf().max_size().begin(),
-            config_.inputs(0).priorbox_conf().max_size().end(),
+  std::copy(pb_conf.max_size().begin(),
+            pb_conf.max_size().end(),
             std::back_inserter(maxSize_));
-  std::copy(config_.inputs(0).priorbox_conf().aspect_ratio().begin(),
-            config_.inputs(0).priorbox_conf().aspect_ratio().end(),
+  std::copy(pb_conf.aspect_ratio().begin(),
+            pb_conf.aspect_ratio().end(),
             std::back_inserter(aspectRatio_));
-  std::copy(config_.inputs(0).priorbox_conf().variance().begin(),
-            config_.inputs(0).priorbox_conf().variance().end(),
+  std::copy(pb_conf.variance().begin(),
+            pb_conf.variance().end(),
             std::back_inserter(variance_));
   // flip
   int input_ratio_length = aspectRatio_.size();
   for (int index = 0; index < input_ratio_length; index++)
-      aspectRatio_.push_back(1 / aspectRatio_[index]);
+    aspectRatio_.push_back(1 / aspectRatio_[index]);
   aspectRatio_.push_back(1.);
   numPriors_ = aspectRatio_.size();
-  if (maxSize_.size() > 0)
-      numPriors_++;
+  if (maxSize_.size() > 0) numPriors_++;
   buffer_ = Matrix::create(1, 1, false, false);
   return true;
 }
@@ -79,7 +79,7 @@ void PriorBoxLayer::forward(PassType passType) {
   int idx = 0;
   for (int h = 0; h < layer_height; ++h) {
     for (int w = 0; w < layer_width; ++w) {
-      float center_x = (w + 0.5)  * step_w;
+      float center_x = (w + 0.5) * step_w;
       float center_y = (h + 0.5) * step_h;
       int min_size = 0;
       for (size_t s = 0; s < minSize_.size(); s++) {
@@ -109,8 +109,7 @@ void PriorBoxLayer::forward(PassType passType) {
       // rest of priors.
       for (size_t r = 0; r < aspectRatio_.size(); r++) {
         float ar = aspectRatio_[r];
-        if (fabs(ar - 1.) < 1e-6)
-          continue;
+        if (fabs(ar - 1.) < 1e-6) continue;
         float box_width = min_size * sqrt(ar);
         float box_height = min_size / sqrt(ar);
         tmp_ptr[idx++] = (center_x - box_width / 2.) / image_width;
@@ -127,8 +126,7 @@ void PriorBoxLayer::forward(PassType passType) {
   for (int h = 0; h < layer_height; h++)
     for (int w = 0; w < layer_width; w++)
       for (int i = 0; i < numPriors_; i++)
-        for (int j = 0; j < 4; j++)
-          tmp_ptr[idx++] = variance_[j];
+        for (int j = 0; j < 4; j++) tmp_ptr[idx++] = variance_[j];
   MatrixPtr outV = getOutputValue();
   outV->copyFrom(buffer_->data_, dim * 2);
 }
