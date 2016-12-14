@@ -27,12 +27,12 @@ static const string& configFile1 = "trainer/tests/sample_trainer_config.conf";
 static const string& configFile2 =
     "trainer/tests/sample_trainer_config_parallel.conf";
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_string(config);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_int32(seed);
-P_DECLARE_int32(num_passes);
-P_DECLARE_int32(saving_period);
+DECLARE_bool(use_gpu);
+DECLARE_string(config);
+DECLARE_int32(gpu_id);
+DECLARE_int32(seed);
+DECLARE_int32(num_passes);
+DECLARE_int32(saving_period);
 
 class TrainerForTest : public paddle::Trainer {
 public:
@@ -122,10 +122,10 @@ TEST(average_window_cpu, gpu4) {
 #endif
 
 // 3. test trainer + pserver.
-P_DECLARE_int32(num_gradient_servers);
-P_DECLARE_int32(port);
-P_DECLARE_bool(local);
-P_DECLARE_bool(use_old_updater);
+DECLARE_int32(num_gradient_servers);
+DECLARE_int32(port);
+DECLARE_bool(local);
+DECLARE_bool(use_old_updater);
 
 double checkRemoteParameterUpdater(TrainerForTest& trainer) {
   auto gradientMachine = trainer.getGradientMachine();

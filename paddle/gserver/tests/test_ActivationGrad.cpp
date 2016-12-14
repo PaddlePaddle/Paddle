@@ -25,8 +25,8 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(use_gpu);
+DECLARE_bool(thread_local_rand_use_global_seed);
 
 void testActivation(const string& act) {
   LOG(INFO) << "test activation: " << act;

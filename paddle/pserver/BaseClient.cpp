@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Stat.h"
 
-P_DECLARE_string(pservers);
+DECLARE_string(pservers);
 
 namespace paddle {
 

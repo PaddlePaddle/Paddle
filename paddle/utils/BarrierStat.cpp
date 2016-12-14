@@ -20,15 +20,15 @@ limitations under the License. */
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/Stat.h"
 
-P_DEFINE_bool(log_barrier_abstract,
-              true,
-              "if true, show abstract of barrier performance");
-P_DEFINE_int32(log_barrier_lowest_nodes,
-               5,
-               "how many lowest node will be logged");
-P_DEFINE_bool(log_barrier_show_log,
-              false,  // for performance tuning insight
-              "if true, always show barrier abstract even with little gap");
+DEFINE_bool(log_barrier_abstract,
+            true,
+            "if true, show abstract of barrier performance");
+DEFINE_int32(log_barrier_lowest_nodes,
+             5,
+             "how many lowest node will be logged");
+DEFINE_bool(log_barrier_show_log,
+            false,  // for performance tuning insight
+            "if true, always show barrier abstract even with little gap");
 
 namespace paddle {
 

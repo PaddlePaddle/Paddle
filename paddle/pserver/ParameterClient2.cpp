@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/StringUtil.h"
 
-P_DEFINE_string(pservers, "127.0.0.1", "Comma separated addresses of pservers");
-P_DEFINE_int32(parallel_thread_num, 1, "Thread number for parameter send");
+DEFINE_string(pservers, "127.0.0.1", "Comma separated addresses of pservers");
+DEFINE_int32(parallel_thread_num, 1, "Thread number for parameter send");
 
 namespace paddle {
 

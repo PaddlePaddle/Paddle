@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/math/SparseRowMatrix.h"
 #include "paddle/utils/Thread.h"
 
-P_DECLARE_int32(trainer_count);
+DECLARE_int32(trainer_count);
 
 namespace paddle {
 
