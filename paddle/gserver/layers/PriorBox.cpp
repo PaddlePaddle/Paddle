@@ -24,11 +24,13 @@ public:
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
   void forward(PassType passType);
   void backward(const UpdateCallback& callback) {}
+  void forwardImp(const Argument& featureMap, const Argument& imageShape);
   int numPriors_;
   std::vector<int> minSize_;
   std::vector<int> maxSize_;
   std::vector<float> aspectRatio_;
   std::vector<float> variance_;
+  std::vector<Argument> tmpCpuInput_;
   MatrixPtr buffer_;
 };
 
@@ -56,16 +58,35 @@ bool PriorBoxLayer::init(const LayerMap& layerMap,
   numPriors_ = aspectRatio_.size();
   if (maxSize_.size() > 0) numPriors_++;
   buffer_ = Matrix::create(1, 1, false, false);
+  if (useGpu_) {
+    tmpCpuInput_.reserve(inputLayers_.size());
+    for (size_t i = 0; i < inputLayers_.size(); i++) {
+      tmpCpuInput_.push_back(Argument());
+    }
+  }
   return true;
 }
 
 void PriorBoxLayer::forward(PassType passType) {
   Layer::forward(passType);
-  auto input = getInput(0);
-  int layer_width = input.getFrameWidth();
-  int layer_height = input.getFrameHeight();
+  if (useGpu_) {
+    for (size_t i = 0; i < inputLayers_.size(); i++) {
+      tmpCpuInput_[i].resizeAndCopyFrom(
+          getInput(i), false, HPPL_STREAM_DEFAULT);
+      hl_stream_synchronize(HPPL_STREAM_DEFAULT);
+      forwardImp(tmpCpuInput_[0], tmpCpuInput_[1]);
+    }
+  } else {
+    forwardImp(getInput(0), getInput(1));
+  }
+}
 
-  MatrixPtr inV1 = getInputValue(1);
+void PriorBoxLayer::forwardImp(const Argument& featureMap,
+                               const Argument& imageShape) {
+  int layer_width = featureMap.getFrameWidth();
+  int layer_height = featureMap.getFrameHeight();
+
+  MatrixPtr inV1 = imageShape.value;
   int image_width = inV1->getElement(0, 0);
   int image_height = inV1->getElement(0, 1);
   float step_w = static_cast<float>(image_width) / layer_width;
@@ -130,6 +151,7 @@ void PriorBoxLayer::forward(PassType passType) {
   MatrixPtr outV = getOutputValue();
   outV->copyFrom(buffer_->data_, dim * 2);
 }
+
 REGISTER_LAYER(priorbox, PriorBoxLayer);
 
 }  // namespace paddle
