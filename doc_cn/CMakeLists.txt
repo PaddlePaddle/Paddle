@@ -15,6 +15,9 @@ set(SPHINX_CACHE_DIR "${CMAKE_CURRENT_BINARY_DIR}/_doctrees")
 # HTML output directory
 set(SPHINX_HTML_DIR "${CMAKE_CURRENT_BINARY_DIR}/html")
 
+# top index name of toctree
+set(INDEX_NAME "index_cn.rst")
+
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/conf.py.in"
     "${BINARY_BUILD_DIR}/conf.py"
@@ -25,7 +28,8 @@ sphinx_add_target(paddle_docs_cn
                   ${BINARY_BUILD_DIR}
                   ${SPHINX_CACHE_DIR}
                   ${CMAKE_CURRENT_SOURCE_DIR}
-                  ${SPHINX_HTML_DIR})
+                  ${SPHINX_HTML_DIR}
+                  ${INDEX_NAME})
 
 add_dependencies(paddle_docs_cn
   gen_proto_py)

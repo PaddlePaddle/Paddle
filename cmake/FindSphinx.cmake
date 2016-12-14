@@ -64,14 +64,16 @@ mark_as_advanced(
   SPHINX_TEXT_OUTPUT
 )
 
-function( Sphinx_add_target target_name builder conf cache source destination )
+function( Sphinx_add_target target_name builder conf cache source destination index_name)
   add_custom_target( ${target_name} ALL
+    COMMAND cp ${source}/${index_name} ${source}/index.rst
     COMMAND ${SPHINX_EXECUTABLE} -b ${builder}
     -d ${cache}
     -c ${conf}
     ${source}
     ${destination}
     COMMENT "Generating sphinx documentation: ${builder}"
+    COMMAND rm ${source}/index.rst
     )
 
   set_property(
