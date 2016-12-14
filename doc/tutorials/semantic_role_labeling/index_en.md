@@ -1,5 +1,5 @@
 ```eval_rst
-..  _semantic_role_labeling_en:
+..  _semantic_role_labeling:
 ```
 
 # Semantic Role labeling Tutorial #

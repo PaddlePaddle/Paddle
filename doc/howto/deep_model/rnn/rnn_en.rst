@@ -30,7 +30,7 @@ Then at the :code:`process` function, each :code:`yield` function will return th
     yield src_ids, trg_ids, trg_ids_next
 
 
-For more details description of how to write a data provider, please refer to :ref:`api_pydataprovider2_en` . The full data provider file is located at :code:`demo/seqToseq/dataprovider.py`.
+For more details description of how to write a data provider, please refer to :ref:`api_pydataprovider2` . The full data provider file is located at :code:`demo/seqToseq/dataprovider.py`.
 
 ===============================================
 Configure Recurrent Neural Network Architecture
@@ -246,6 +246,6 @@ The code is listed below:
     outputs(beam_gen)
 
 
-Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to :ref:`semantic_role_labeling_en` for more details.
+Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to :ref:`semantic_role_labeling` for more details.
 
 The full configuration file is located at :code:`demo/seqToseq/seqToseq_net.py`.
