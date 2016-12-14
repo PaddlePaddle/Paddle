@@ -13,7 +13,7 @@ Here is a sample python script that shows the typical prediction process for the
 MNIST classification problem. A complete sample code could be found at
 :code:`src_root/doc/ui/predict/predict_sample.py`.
 
-..  literalinclude:: ./predict_sample.py
+..  literalinclude:: src/predict_sample.py
     :language: python
     :lines: 15-18,90-100,101-104
 
