@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
 #include <cmath>
+#include <memory>
 
 #include <hl_gpu.h>
 
-#include "MemoryHandle.h"
-#include "paddle/utils/TypeDefs.h"
 #include "BaseMatrix.h"
+#include "MemoryHandle.h"
 #include "paddle/utils/Thread.h"
+#include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
 

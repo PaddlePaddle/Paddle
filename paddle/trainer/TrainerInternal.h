@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,15 +17,15 @@ limitations under the License. */
 #include "paddle/utils/Util.h"
 
 #include <stdio.h>
-#include <fstream>
 #include <stdlib.h>
+#include <fstream>
 
-#include "hl_gpu.h"
-#include "paddle/gserver/gradientmachines/GradientMachine.h"
-#include "TrainerConfig.pb.h"
 #include "ParameterUpdater.h"
+#include "TrainerConfig.pb.h"
 #include "TrainerConfigHelper.h"
 #include "TrainerInternalConfig.h"
+#include "hl_gpu.h"
+#include "paddle/gserver/gradientmachines/GradientMachine.h"
 
 namespace paddle {
 

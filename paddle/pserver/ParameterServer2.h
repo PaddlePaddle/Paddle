@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,24 +15,24 @@ limitations under the License. */
 #pragma once
 
 #include <atomic>
+#include <limits>
 #include <mutex>
 #include <string>
-#include <vector>
-#include <unordered_map>
 #include <type_traits>
-#include <limits>
+#include <unordered_map>
+#include <vector>
 
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "paddle/utils/Locks.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/ParameterOptimizer.h"
+#include "paddle/utils/Locks.h"
+#include "paddle/utils/Stat.h"
 #include "paddle/utils/ThreadLocal.h"
 #include "paddle/utils/TypeDefs.h"
-#include "paddle/math/Vector.h"
-#include "paddle/utils/Stat.h"
 
 #include "ParameterService.pb.h"
 

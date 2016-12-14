@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,13 +22,13 @@ limitations under the License. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <vector>
-#include <thread>
 #include <mutex>
+#include <thread>
+#include <vector>
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 namespace paddle {

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,23 +16,23 @@ limitations under the License. */
 
 #include <atomic>
 #include <mutex>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
-#include "paddle/utils/Locks.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
+#include "paddle/pserver/BaseClient.h"
+#include "paddle/utils/Flags.h"
+#include "paddle/utils/Locks.h"
 #include "paddle/utils/Queue.h"
 #include "paddle/utils/TypeDefs.h"
 #include "paddle/utils/Util.h"
-#include "paddle/math/Vector.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/pserver/BaseClient.h"
 
 #include "ParameterService.pb.h"
 
-#include "SparseParameterDistribution.h"
 #include "ProtoServer.h"
+#include "SparseParameterDistribution.h"
 
 P_DECLARE_int32(parallel_thread_num);
 

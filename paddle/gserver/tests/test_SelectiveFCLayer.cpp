@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gtest/gtest.h>
+#include <math.h>
 #include <paddle/utils/PythonUtil.h>
+#include <algorithm>
 #include <cstdlib>
 #include <ctime>
-#include <math.h>
-#include <gtest/gtest.h>
-#include <algorithm>
-#include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/gserver/layers/Layer.h"
-#include "paddle/gserver/layers/FullyConnectedLayer.h"
-#include "paddle/gserver/layers/SelectiveFullyConnectedLayer.h"
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
+#include "paddle/gserver/layers/FullyConnectedLayer.h"
+#include "paddle/gserver/layers/Layer.h"
+#include "paddle/gserver/layers/SelectiveFullyConnectedLayer.h"
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/trainer/Trainer.h"
 

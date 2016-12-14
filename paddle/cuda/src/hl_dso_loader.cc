@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,6 +29,8 @@ P_DEFINE_string(cuda_dir,
                 "libcudart can not be specified by cuda_dir, since some "
                 "build-in function in cudart already ran before main entry). "
                 "If default, dlopen will search cuda from LD_LIBRARY_PATH");
+
+P_DEFINE_string(warpctc_dir, "", "Specify path for loading libwarpctc.so.");
 
 static inline std::string join(const std::string& part1,
                                const std::string& part2) {
@@ -92,27 +94,28 @@ static inline void GetDsoHandleFromSearchPath(const std::string& search_root,
     *dso_handle = dlopen(dlPath.c_str(), dynload_flags);
     // if not found, search from default path
     if (nullptr == *dso_handle) {
-      LOG(WARNING) << "Failed to find cuda library: " << dlPath;
+      LOG(WARNING) << "Failed to find dynamic library: " << dlPath << " ("
+                   << dlerror() << ")";
       dlPath = dso_name;
       GetDsoHandleFromDefaultPath(dlPath, dso_handle, dynload_flags);
     }
   }
 
-  CHECK(nullptr != *dso_handle) << "Failed to find cuda library: " << dlPath
-                                << std::endl
+  CHECK(nullptr != *dso_handle) << "Failed to find dynamic library: " << dlPath
+                                << " (" << dlerror() << ") \n"
                                 << "Please specify its path correctly using "
-                                   "one of the following ways: \n"  // NOLINT
+                                   "one of the following ways: \n"
 
                                 << "Method 1. set cuda and cudnn lib path at "
                                    "runtime. "
                                 << "http://www.paddlepaddle.org/doc/ui/"
                                    "cmd_argument/"
-                                   "argument_outline.html \n"  // NOLINT
+                                   "argument_outline.html \n"
                                 << "For instance, issue command: paddle train "
                                    "--use_gpu=1 "
                                 << "--cuda_dir=/usr/local/cuda/lib64 "
                                    "--cudnn_dir=/usr/local/cudnn/lib "
-                                   "...\n"  // NOLINT
+                                   "...\n"
 
                                 << "Method 2. set environment variable "
                                    "LD_LIBRARY_PATH on Linux or "
@@ -124,7 +127,7 @@ static inline void GetDsoHandleFromSearchPath(const std::string& search_root,
                                    "DYLD_LIBRARY_PATH is impossible "
                                 << "unless System Integrity Protection (SIP) "
                                    "is disabled. However, "
-                                   "method 1 "  // NOLINT
+                                   "method 1 "
                                 << "always work well.";
 }
 
@@ -157,5 +160,13 @@ void GetCurandDsoHandle(void** dso_handle) {
   GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.dylib", dso_handle);
 #else
   GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so", dso_handle);
+#endif
+}
+
+void GetWarpCTCDsoHandle(void** dso_handle) {
+#if defined(__APPLE__) || defined(__OSX__)
+  GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib", dso_handle);
+#else
+  GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.so", dso_handle);
 #endif
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 #ifndef PADDLE_USE_GFLAGS
-#include "DisableCopy.h"
+#include <stdint.h>
 #include <string>
 #include <vector>
-#include <stdint.h>
+#include "DisableCopy.h"
 
 namespace paddle {
 

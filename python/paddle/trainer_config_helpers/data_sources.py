@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -186,8 +186,7 @@ def define_py_data_sources2(train_list, test_list, module, obj, args=None):
                                 obj="process", 
                                 args={"dictionary": dict_name})
 
-    The related data provider can refer to 
-    `here <../../data_provider/pydataprovider2.html#dataprovider-for-the-sequential-model>`__.
+    The related data provider can refer to :ref:`api_pydataprovider2_sequential_model` .
 
     :param train_list: Train list name.
     :type train_list: basestring

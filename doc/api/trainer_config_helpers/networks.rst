@@ -13,6 +13,8 @@ sequence_conv_pool
     :members: sequence_conv_pool
     :noindex:
 
+..  _api_trainer_config_helpers_network_text_conv_pool:
+
 text_conv_pool
 --------------
 ..  automodule:: paddle.trainer_config_helpers.networks

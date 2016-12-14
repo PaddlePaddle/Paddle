@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,23 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <sys/types.h>
-#include <sys/socket.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <arpa/inet.h>
-#include <sys/ioctl.h>
 #include <net/if.h>
 #include <net/if_arp.h>
+#include <sys/ioctl.h>
 #include <sstream>
 
 #include "LightNetwork.h"
-#include "paddle/utils/Util.h"
-#include "paddle/utils/StringUtil.h"
 #include "RDMANetwork.h"
+#include "paddle/utils/StringUtil.h"
+#include "paddle/utils/Util.h"
 
 /// quick ack can reduce the latency of small message
 P_DEFINE_bool(small_messages,

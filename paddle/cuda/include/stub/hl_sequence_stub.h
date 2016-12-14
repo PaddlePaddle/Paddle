@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -69,6 +69,15 @@ inline void hl_sequence2batch_add(real* batch,
                                   int seqWidth,
                                   int batchCount,
                                   bool seq2batch) {}
+
+inline void hl_sequence2batch_copy_padding(real* batch,
+                                           real* sequence,
+                                           const int* sequenceStartPositions,
+                                           const size_t sequenceWidth,
+                                           const size_t maxSequenceLength,
+                                           const size_t numSequences,
+                                           bool normByTimes,
+                                           bool seq2batch) {}
 
 inline void hl_sequence_avg_forward(real* dst,
                                     real* src,

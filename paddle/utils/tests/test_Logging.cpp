@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@ limitations under the License. */
  * Used in embedded system where there is no glogs.
  */
 
-#include <gtest/gtest.h>
-#include <fstream>
-#include <stdlib.h>
 #include <dirent.h>
+#include <gtest/gtest.h>
+#include <stdlib.h>
+#include <fstream>
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Util.h"
 #ifndef PADDLE_USE_GLOG
