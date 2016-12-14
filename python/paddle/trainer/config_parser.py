@@ -1577,9 +1577,11 @@ class PrintLayer(LayerBase):
     def __init__(self, name, inputs):
         super(PrintLayer, self).__init__(name, 'print', 0, inputs)
 
+
 @config_layer('priorbox')
 class PriorBoxLayer(LayerBase):
-    def __init__(self, name, inputs, size, min_size, max_size, aspect_ratio, variance):
+    def __init__(self, name, inputs, size, min_size, max_size, aspect_ratio,
+                 variance):
         super(PriorBoxLayer, self).__init__(name, 'priorbox', 0, inputs)
         config_assert(len(inputs) == 2, 'PriorBoxLayer must have 2 input')
         self.config.inputs[0].priorbox_conf.min_size.extend(min_size)

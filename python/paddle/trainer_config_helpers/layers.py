@@ -935,8 +935,15 @@ def print_layer(input, name=None):
         inputs=[l.name for l in input], )
     # this layer don't return anything, can not be input of other layer.
 
+
 @wrap_name_default("priorbox")
-def priorbox_layer(input, img_shape, aspect_ratio, variance, min_size, max_size=[], name=None):
+def priorbox_layer(input,
+                   img_shape,
+                   aspect_ratio,
+                   variance,
+                   min_size,
+                   max_size=[],
+                   name=None):
     """
     Compute the priorbox and set the variance. This layer is necessary for ssd.
 
@@ -957,7 +964,7 @@ def priorbox_layer(input, img_shape, aspect_ratio, variance, min_size, max_size=
     """
     # plus one for ratio 1.
     num_filters = (len(aspect_ratio) * 2 + 1 + len(max_size)) * 4
-    size=(input.size / input.num_filters) * num_filters * 2
+    size = (input.size / input.num_filters) * num_filters * 2
     Layer(
         name=name,
         type=LayerType.PRIORBOX_LAYER,
@@ -968,7 +975,12 @@ def priorbox_layer(input, img_shape, aspect_ratio, variance, min_size, max_size=
         aspect_ratio=aspect_ratio,
         variance=variance)
     return LayerOutput(
-        name, LayerType.PRIORBOX_LAYER, parents=[input, img_shape], num_filters=num_filters, size=size)
+        name,
+        LayerType.PRIORBOX_LAYER,
+        parents=[input, img_shape],
+        num_filters=num_filters,
+        size=size)
+
 
 @wrap_name_default("seq_pooling")
 @wrap_bias_attr_default(has_bias=False)

@@ -253,8 +253,6 @@ message PriorBoxConfig {
   repeated uint32 max_size = 2;
   repeated float aspect_ratio = 3;
   repeated float variance = 4;
-  optional bool flip = 5 [default = true];
-  optional bool clip = 6 [default = true];
 }
 
 message LayerInputConfig {
