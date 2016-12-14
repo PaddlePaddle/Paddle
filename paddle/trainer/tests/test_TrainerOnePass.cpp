@@ -300,7 +300,7 @@ TEST(checkRemoteUpdater, cpuDeltaTrainerOldUpdater) {
 
 int main(int argc, char** argv) {
   initMain(argc, argv);
-  initPython(argc, argv);
+  // initPython(argc, argv);
   gNumDevices = hl_get_device_count();
   testing::InitGoogleTest(&argc, argv);
 

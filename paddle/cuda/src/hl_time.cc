@@ -15,6 +15,7 @@ limitations under the License. */
 #include "hl_time.h"
 #include <stdlib.h>
 #include <chrono>
+#include <cstdint>
 #include <iostream>
 
 using std::chrono::high_resolution_clock;
