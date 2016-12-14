@@ -19,9 +19,9 @@ set -e
 model=model_output/pass-00002/
 config=trainer_config.py
 label=data/pre-imdb/labels.list
-python predict.py \
-     -n $config\
-     -w $model \
-     -b $label \
-     -d ./data/pre-imdb/dict.txt \
-     -i ./data/aclImdb/test/pos/10007_10.txt 
+cat ./data/aclImdb/test/pos/10007_10.txt | python predict.py \
+     --tconf=$config\
+     --model=$model \
+     --label=$label \
+     --dict=./data/pre-imdb/dict.txt \
+     --batch_size=1

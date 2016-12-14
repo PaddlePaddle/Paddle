@@ -30,7 +30,7 @@ Then at the :code:`process` function, each :code:`yield` function will return th
     yield src_ids, trg_ids, trg_ids_next
 
 
-For more details description of how to write a data provider, please refer to `PyDataProvider2 <../../ui/data_provider/index.html>`_. The full data provider file is located at :code:`demo/seqToseq/dataprovider.py`.
+For more details description of how to write a data provider, please refer to :ref:`api_pydataprovider2` . The full data provider file is located at :code:`demo/seqToseq/dataprovider.py`.
 
 ===============================================
 Configure Recurrent Neural Network Architecture
@@ -42,8 +42,8 @@ Simple Gated Recurrent Neural Network
 
 Recurrent neural network process a sequence at each time step sequentially. An example of the architecture of LSTM is listed below.
 
-.. image:: ../../../tutorials/sentiment_analysis/bi_lstm.jpg
-	 :align: center
+.. image:: ../../../tutorials/sentiment_analysis/src/bi_lstm.jpg
+     :align: center
 
 Generally speaking, a recurrent network perform the following operations from :math:`t=1` to :math:`t=T`, or reversely from :math:`t=T` to :math:`t=1`.
 
@@ -102,11 +102,11 @@ Sequence to Sequence Model with Attention
 We will use the sequence to sequence model with attention as an example to demonstrate how you can configure complex recurrent neural network models. An illustration of the sequence to sequence model with attention is shown in the following figure.
 
 .. image:: ../../../tutorials/text_generation/encoder-decoder-attention-model.png
- 	 :align: center
+      :align: center
 
 In this model, the source sequence :math:`S = \{s_1, \dots, s_T\}` is encoded with a bidirectional gated recurrent neural networks. The hidden states of the bidirectional gated recurrent neural network :math:`H_S = \{H_1, \dots, H_T\}` is called *encoder vector* The decoder is a gated recurrent neural network. When decoding each token :math:`y_t`, the gated recurrent neural network generates a set of weights :math:`W_S^t = \{W_1^t, \dots, W_T^t\}`, which are used to compute a weighted sum of the encoder vector. The weighted sum of the encoder vector is utilized to condition the generation of the token :math:`y_t`.
 
-The encoder part of the model is listed below. It calls :code:`grumemory` to represent gated recurrent neural network. It is the recommended way of using recurrent neural network if the network architecture is simple, because it is faster than :code:`recurrent_group`. We have implemented most of the commonly used recurrent neural network architectures, you can refer to `Layers <../../ui/api/trainer_config_helpers/layers_index.html>`_  for more details.
+The encoder part of the model is listed below. It calls :code:`grumemory` to represent gated recurrent neural network. It is the recommended way of using recurrent neural network if the network architecture is simple, because it is faster than :code:`recurrent_group`. We have implemented most of the commonly used recurrent neural network architectures, you can refer to :ref:`api_trainer_config_helpers_layers` for more details.
 
 We also project the encoder vector to :code:`decoder_size` dimensional space, get the first instance of the backward recurrent network, and project it to :code:`decoder_size` dimensional space:
 
@@ -246,6 +246,6 @@ The code is listed below:
     outputs(beam_gen)
 
 
-Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to `Semantic Role Labeling Demo <../../demo/semantic_role_labeling/index.html>`_ for more details.
+Notice that this generation technique is only useful for decoder like generation process. If you are working on sequence tagging tasks, please refer to :ref:`semantic_role_labeling` for more details.
 
 The full configuration file is located at :code:`demo/seqToseq/seqToseq_net.py`.

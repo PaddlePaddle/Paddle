@@ -18,7 +18,6 @@ limitations under the License. */
 #include <algorithm>
 #include <iomanip>
 #include "paddle/utils/Flags.h"
-#include "paddle/utils/Stat.h"
 
 DEFINE_bool(log_barrier_abstract,
             true,

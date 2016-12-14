@@ -25,7 +25,6 @@ limitations under the License. */
 
 #include "Locks.h"
 #include "Logging.h"
-#include "Stat.h"
 #include "ThreadLocal.h"
 
 namespace paddle {

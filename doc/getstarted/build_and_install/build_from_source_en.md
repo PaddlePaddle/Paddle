@@ -14,6 +14,13 @@ cd paddle
 git submodule update --init --recursive
 ```
 
+If you already have a local PaddlePaddle repo and have not initialized the submodule, your local submodule folder will be empty. You can simply run the last line of the above codes in your PaddlePaddle home directory to initialize your submodule folder.
+
+If you have already initialized your submodule and you would like to sync with the upstream submodule repo, you can run the following command
+```
+git submodule update --remote
+```
+
 ## <span id="requirements">Requirements</span>
 
 To compile the source code, your computer must be equipped with the following dependencies.
@@ -79,7 +86,7 @@ As a simple example, consider the following:
 
     ```bash
     pip install 'sphinx>=1.4.0'
-    pip install sphinx_rtd_theme breathe recommonmark
+    pip install sphinx_rtd_theme recommonmark
 
     # install doxygen on Ubuntu
     sudo apt-get install doxygen 
