@@ -79,7 +79,7 @@ var _hmt = _hmt || [];
 <span id="paddle::Layer"></span><span class="target" id="paddleclasspaddle_1_1Layer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Layer</code><a class="headerlink" href="#_CPPv2N6paddle5LayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base class for layer. Define necessary variables and functions for every layer. </p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AddtoLayer"><span class="std std-ref">paddle::AddtoLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1AgentLayer"><span class="std std-ref">paddle::AgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1BatchNormBaseLayer"><span class="std std-ref">paddle::BatchNormBaseLayer</span></a>, paddle::BilinearInterpLayer, <a class="reference internal" href="#paddleclasspaddle_1_1BlockExpandLayer"><span class="std std-ref">paddle::BlockExpandLayer</span></a>, paddle::BootBiasLayer, <a class="reference internal" href="#paddleclasspaddle_1_1ConcatenateLayer"><span class="std std-ref">paddle::ConcatenateLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConcatenateLayer2"><span class="std std-ref">paddle::ConcatenateLayer2</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvBaseLayer"><span class="std std-ref">paddle::ConvBaseLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvexCombinationLayer"><span class="std std-ref">paddle::ConvexCombinationLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ConvShiftLayer"><span class="std std-ref">paddle::ConvShiftLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CosSimLayer"><span class="std std-ref">paddle::CosSimLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CosSimVecMatLayer"><span class="std std-ref">paddle::CosSimVecMatLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span class="std std-ref">paddle::CostLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CRFLayer"><span class="std std-ref">paddle::CRFLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CTCLayer"><span class="std std-ref">paddle::CTCLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DataLayer"><span class="std std-ref">paddle::DataLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DataNormLayer"><span class="std std-ref">paddle::DataNormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1EosIdCheckLayer"><span class="std std-ref">paddle::EosIdCheckLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ExpandLayer"><span class="std std-ref">paddle::ExpandLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1FeatureMapExpandLayer"><span class="std std-ref">paddle::FeatureMapExpandLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1FullyConnectedLayer"><span class="std std-ref">paddle::FullyConnectedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GatedRecurrentLayer"><span class="std std-ref">paddle::GatedRecurrentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GatherAgentLayer"><span class="std std-ref">paddle::GatherAgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GetOutputLayer"><span class="std std-ref">paddle::GetOutputLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GruStepLayer"><span class="std std-ref">paddle::GruStepLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1HierarchicalSigmoidLayer"><span class="std std-ref">paddle::HierarchicalSigmoidLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1InterpolationLayer"><span class="std std-ref">paddle::InterpolationLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LambdaCost"><span class="std std-ref">paddle::LambdaCost</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmLayer"><span class="std std-ref">paddle::LstmLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmStepLayer"><span class="std std-ref">paddle::LstmStepLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MaxIdLayer"><span class="std std-ref">paddle::MaxIdLayer</span></a>, paddle::MaxOutLayer, <a class="reference internal" href="#paddleclasspaddle_1_1MixedLayer"><span class="std std-ref">paddle::MixedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiplexLayer"><span class="std std-ref">paddle::MultiplexLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NCELayer"><span class="std std-ref">paddle::NCELayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1NormLayer"><span class="std std-ref">paddle::NormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1OuterProdLayer"><span class="std std-ref">paddle::OuterProdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ParameterReluLayer"><span class="std std-ref">paddle::ParameterReluLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PoolLayer"><span class="std std-ref">paddle::PoolLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PowerLayer"><span class="std std-ref">paddle::PowerLayer</span></a>, paddle::PrintLayer, <a class="reference internal" href="#paddleclasspaddle_1_1RankingCost"><span class="std std-ref">paddle::RankingCost</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1RecurrentLayer"><span class="std std-ref">paddle::RecurrentLayer</span></a>, paddle::RecurrentLayerGroup, <a class="reference internal" href="#paddleclasspaddle_1_1ResizeLayer"><span class="std std-ref">paddle::ResizeLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SamplingIdLayer"><span class="std std-ref">paddle::SamplingIdLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ScalingLayer"><span class="std std-ref">paddle::ScalingLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ScatterAgentLayer"><span class="std std-ref">paddle::ScatterAgentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SelectiveFullyConnectedLayer"><span class="std std-ref">paddle::SelectiveFullyConnectedLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceConcatLayer"><span class="std std-ref">paddle::SequenceConcatLayer</span></a>, paddle::SequencePoolLayer, <a class="reference internal" href="#paddleclasspaddle_1_1SequenceReshapeLayer"><span class="std std-ref">paddle::SequenceReshapeLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SlopeInterceptLayer"><span class="std std-ref">paddle::SlopeInterceptLayer</span></a>, paddle::SpatialPyramidPoolLayer, <a class="reference internal" href="#paddleclasspaddle_1_1SubSequenceLayer"><span class="std std-ref">paddle::SubSequenceLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SumCostLayer"><span class="std std-ref">paddle::SumCostLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SumToOneNormLayer"><span class="std std-ref">paddle::SumToOneNormLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1TensorLayer"><span class="std std-ref">paddle::TensorLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1TransLayer"><span class="std std-ref">paddle::TransLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ValidationLayer"><span class="std std-ref">paddle::ValidationLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle5Layer14waitInputValueEv">
@@ -331,7 +331,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle5Layer6createERK11LayerConfig">
@@ -340,7 +340,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle5Layer10registrar_E">
@@ -349,7 +349,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle5Layer13markInputGradEi">
@@ -436,7 +436,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle5Layer7config_E">
@@ -550,7 +550,7 @@ var _hmt = _hmt || [];
 <span id="paddle::Projection"></span><span class="target" id="paddleclasspaddle_1_1Projection"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Projection</code><a class="headerlink" href="#_CPPv2N6paddle10ProjectionE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A projection takes one <a class="reference internal" href="../../parameter/parameter/parameter.html#paddlestructpaddle_1_1Argument"><span class="std std-ref">Argument</span></a> as input, calculate the result and add it to output <a class="reference internal" href="../../parameter/parameter/parameter.html#paddlestructpaddle_1_1Argument"><span class="std std-ref">Argument</span></a>. </p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ContextProjection"><span class="std std-ref">paddle::ContextProjection</span></a>, paddle::ConvProjection, <a class="reference internal" href="#paddleclasspaddle_1_1DotMulProjection"><span class="std std-ref">paddle::DotMulProjection</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1FullMatrixProjection"><span class="std std-ref">paddle::FullMatrixProjection</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1IdentityOffsetProjection"><span class="std std-ref">paddle::IdentityOffsetProjection</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1IdentityProjection"><span class="std std-ref">paddle::IdentityProjection</span></a>, paddle::PoolProjection, paddle::ScalingProjection, <a class="reference internal" href="#paddleclasspaddle_1_1TableProjection"><span class="std std-ref">paddle::TableProjection</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1TransposedFullMatrixProjection"><span class="std std-ref">paddle::TransposedFullMatrixProjection</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10Projection10ProjectionERK16ProjectionConfig12ParameterPtrb">
@@ -622,7 +622,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10Projection6createERK16ProjectionConfig12ParameterPtrb">
@@ -630,7 +630,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle10Projection10registrar_E">
@@ -639,7 +639,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle10Projection7config_E">
@@ -691,7 +691,7 @@ var _hmt = _hmt || [];
 </dl>
 </p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ConvOperator"><span class="std std-ref">paddle::ConvOperator</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1DotMulOperator"><span class="std std-ref">paddle::DotMulOperator</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle8Operator8OperatorERK14OperatorConfigb">
@@ -757,7 +757,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle8Operator6createERK14OperatorConfigb">
@@ -765,7 +765,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle8Operator10registrar_E">
@@ -773,7 +773,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle8Operator7config_E">
@@ -817,7 +817,7 @@ var _hmt = _hmt || [];
 <dd><p>This layer just copy data to output, and has no backward propagation.</p>
 <p>The config file api is data_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle9DataLayer9DataLayerERK11LayerConfig">
@@ -854,7 +854,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle9DataLayer5data_E">
@@ -875,7 +875,7 @@ var _hmt = _hmt || [];
 <dd><p>A layer has full connections to all neurons in the previous layer. It computes an inner product with a set of learned weights, and (optionally) adds biases.</p>
 <p>The config file api is fc_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle19FullyConnectedLayer19FullyConnectedLayerERK11LayerConfig">
@@ -917,7 +917,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle19FullyConnectedLayer8weights_E">
@@ -942,7 +942,7 @@ var _hmt = _hmt || [];
 <p><a class="reference internal" href="#paddleclasspaddle_1_1SelectiveFullyConnectedLayer"><span class="std std-ref">SelectiveFullyConnectedLayer</span></a> differs from <a class="reference internal" href="#paddleclasspaddle_1_1FullyConnectedLayer"><span class="std std-ref">FullyConnectedLayer</span></a> by that it requires an additional input to indicate several selected columns, and only compute the multiplications between the input matrices and the selected columns of the parameter matrices of this layer. If the selected columns is not specified, SelectiveFullyConnected layer acts exactly like <a class="reference internal" href="#paddleclasspaddle_1_1FullyConnectedLayer"><span class="std std-ref">FullyConnectedLayer</span></a>.</p>
 <p>The config file api is selective_fc_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle28SelectiveFullyConnectedLayer28SelectiveFullyConnectedLayerERK11LayerConfig">
@@ -1006,7 +1006,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle28SelectiveFullyConnectedLayer8weights_E">
@@ -1033,7 +1033,7 @@ var _hmt = _hmt || [];
 <dd><p>A Base Convolution <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">Layer</span></a>, which convolves the input image with learned filters and (optionally) adds biases. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1CudnnConvLayer"><span class="std std-ref">paddle::CudnnConvLayer</span></a>, paddle::ExpandConvBaseLayer</p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle13ConvBaseLayer13ConvBaseLayerERK11LayerConfig">
@@ -1058,7 +1058,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle13ConvBaseLayer4IntVE">
@@ -1066,7 +1066,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle13ConvBaseLayer9isDeconv_E">
@@ -1200,7 +1200,7 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="#paddleclasspaddle_1_1ConvOperator"><span class="std std-ref">ConvOperator</span></a> takes two inputs to perform the convolution. The first input is the image, and the second input is the convolution kernel. The height of data for two inputs are the same. Each data of the first input is convolved with each data of the second input indepedently. </p>
 <p>The config file api is conv_operator. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Operator"><span class="std std-ref">paddle::Operator</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle12ConvOperator12ConvOperatorERK14OperatorConfigb">
@@ -1256,7 +1256,7 @@ var _hmt = _hmt || [];
 </p>
 <p>The config file api is conv_shift_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14ConvShiftLayer14ConvShiftLayerERK11LayerConfig">
@@ -1298,7 +1298,7 @@ var _hmt = _hmt || [];
 <dd><p>A 2-dimension conv layer implemented by cuDNN. It only supports GPU mode. We automatic select <a class="reference internal" href="#paddleclasspaddle_1_1CudnnConvLayer"><span class="std std-ref">CudnnConvLayer</span></a> for GPU mode and <a class="reference internal" href="#paddleclasspaddle_1_1ExpandConvLayer"><span class="std std-ref">ExpandConvLayer</span></a> for CPU mode if you set type of &#8220;conv&#8221;. User also can specfiy type of &#8220;exconv&#8221; or &#8220;cudnn_conv&#8221; for particular type. </p>
 <p>The config file api is img_conv_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ConvBaseLayer"><span class="std std-ref">paddle::ConvBaseLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14CudnnConvLayer14CudnnConvLayerERK11LayerConfig">
@@ -1339,7 +1339,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle14CudnnConvLayer9projConf_E">
@@ -1383,7 +1383,7 @@ var _hmt = _hmt || [];
 <dd><p>A subclass of convolution layer. This layer expands input and use matrix multiplication to calculate convolution operation. </p>
 <p>The config file api is img_conv_layer. </p>
 <p>Inherits from paddle::ExpandConvBaseLayer</p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15ExpandConvLayer15ExpandConvLayerERK11LayerConfig">
@@ -1437,7 +1437,7 @@ var _hmt = _hmt || [];
 </p>
 <p>The config file api is context_projection. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Projection"><span class="std std-ref">paddle::Projection</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle17ContextProjection17ContextProjectionERK16ProjectionConfig12ParameterPtrb">
@@ -1474,7 +1474,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle17ContextProjection7weight_E">
@@ -1519,7 +1519,7 @@ var _hmt = _hmt || [];
 <dd><p>Basic parent layer of pooling Pools the input within regions. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1CudnnPoolLayer"><span class="std std-ref">paddle::CudnnPoolLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PoolProjectionLayer"><span class="std std-ref">paddle::PoolProjectionLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle9PoolLayer9PoolLayerERK11LayerConfig">
@@ -1533,7 +1533,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle9PoolLayer6createERK11LayerConfig">
@@ -1542,7 +1542,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle9PoolLayer9channels_E">
@@ -1615,7 +1615,7 @@ var _hmt = _hmt || [];
 <span id="paddle::PoolProjectionLayer"></span><span class="target" id="paddleclasspaddle_1_1PoolProjectionLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">PoolProjectionLayer</code><a class="headerlink" href="#_CPPv2N6paddle19PoolProjectionLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Basic parent layer of different kinds of pooling. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1PoolLayer"><span class="std std-ref">paddle::PoolLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle19PoolProjectionLayer19PoolProjectionLayerERK11LayerConfig">
@@ -1640,7 +1640,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle19PoolProjectionLayer9imgSizeH_E">
@@ -1684,7 +1684,7 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="#paddleclasspaddle_1_1CudnnPoolLayer"><span class="std std-ref">CudnnPoolLayer</span></a> is subclass of <a class="reference internal" href="#paddleclasspaddle_1_1PoolLayer"><span class="std std-ref">PoolLayer</span></a>, which is implemented by cudnn api and only supports GPU. </p>
 <p>The config file api is img_pool_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1PoolLayer"><span class="std std-ref">paddle::PoolLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14CudnnPoolLayer14CudnnPoolLayerERK11LayerConfig">
@@ -1721,7 +1721,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14CudnnPoolLayer9typeCheckERKNSt6stringEP17hl_pooling_mode_t">
@@ -1729,7 +1729,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle14CudnnPoolLayer12windowHeightE">
@@ -1825,7 +1825,7 @@ var _hmt = _hmt || [];
 </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ResponseNormLayer"><span class="std std-ref">paddle::ResponseNormLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle9NormLayer9NormLayerERK11LayerConfig">
@@ -1839,7 +1839,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle9NormLayer6createERK11LayerConfig">
@@ -1858,7 +1858,7 @@ var _hmt = _hmt || [];
 <span id="paddle::CMRProjectionNormLayer"></span><span class="target" id="paddleclasspaddle_1_1CMRProjectionNormLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CMRProjectionNormLayer</code><a class="headerlink" href="#_CPPv2N6paddle22CMRProjectionNormLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>response normalization across feature maps namely normalize in number of size_ channels </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ResponseNormLayer"><span class="std std-ref">paddle::ResponseNormLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle22CMRProjectionNormLayer22CMRProjectionNormLayerERK11LayerConfig">
@@ -1916,7 +1916,7 @@ var _hmt = _hmt || [];
 </ul>
 </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle13DataNormLayer21NormalizationStrategyE">
@@ -1940,7 +1940,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle13DataNormLayer13DataNormLayerERK11LayerConfig">
@@ -1971,7 +1971,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle13DataNormLayer5mode_E">
@@ -2020,7 +2020,7 @@ var _hmt = _hmt || [];
 <dd><p>response normalization within feature maps namely normalize in independent channel When code refactoring, we delete the original implementation. Need to implement in the futrue. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1NormLayer"><span class="std std-ref">paddle::NormLayer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1CMRProjectionNormLayer"><span class="std std-ref">paddle::CMRProjectionNormLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle17ResponseNormLayer17ResponseNormLayerERK11LayerConfig">
@@ -2046,7 +2046,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle17ResponseNormLayer9channels_E">
@@ -2099,7 +2099,7 @@ var _hmt = _hmt || [];
     Training by Reducing Internal Covariate Shift.&#8221; arXiv preprint arXiv:1502.03167 (2015). </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1BatchNormalizationLayer"><span class="std std-ref">paddle::BatchNormalizationLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1CudnnBatchNormLayer"><span class="std std-ref">paddle::CudnnBatchNormLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle18BatchNormBaseLayer18BatchNormBaseLayerERK11LayerConfig">
@@ -2124,7 +2124,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle18BatchNormBaseLayer6createERK11LayerConfig">
@@ -2133,7 +2133,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle18BatchNormBaseLayer7weight_E">
@@ -2220,7 +2220,7 @@ var _hmt = _hmt || [];
 <dd><p>A Inheritance class of Batch normalization layer. It supports both CPU and GPU. </p>
 <p>The config file api is batch_norm_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1BatchNormBaseLayer"><span class="std std-ref">paddle::BatchNormBaseLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle23BatchNormalizationLayer23BatchNormalizationLayerERK11LayerConfig">
@@ -2251,7 +2251,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle23BatchNormalizationLayer13setMeanAndStdEv">
@@ -2284,7 +2284,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle23BatchNormalizationLayer7tmpMat_E">
@@ -2348,7 +2348,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Static Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle23BatchNormalizationLayer3EPSE">
@@ -2373,7 +2373,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 </dl>
 </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1BatchNormBaseLayer"><span class="std std-ref">paddle::BatchNormBaseLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle19CudnnBatchNormLayer19CudnnBatchNormLayerERK11LayerConfig">
@@ -2410,7 +2410,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle19CudnnBatchNormLayer7ioDesc_E">
@@ -2436,7 +2436,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Static Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle19CudnnBatchNormLayer3EPSE">
@@ -2458,7 +2458,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
  where <span class="math">\(in\)</span> is a (batchSize x dataDim) input vector, and <span class="math">\(out\)</span> is a (batchSize x dataDim) output vector.</p>
 <p>The config file api is sum_to_one_norm_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle17SumToOneNormLayer17SumToOneNormLayerERK11LayerConfig">
@@ -2489,7 +2489,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle17SumToOneNormLayer17reciprocalRowSum_E">
@@ -2521,7 +2521,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 \[\begin{split} dx = x &gt; 0 ? dy : w .* dy \\ dw = x &gt; 0 ? 0 : dy.*x \end{split}\]</div>
  Here, x is the input, w is the weight, y is the output. dx, dw, dy is the gradient. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle18ParameterReluLayer18ParameterReluLayerERK11LayerConfig">
@@ -2552,7 +2552,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle18ParameterReluLayer7weight_E">
@@ -2589,7 +2589,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 \[\begin{split} out_{i} = act(in_{i}) \ \ \text{for} \ i = end \\ out_{i} = act(in_{i} + out_{i+1} * W) \ \ \text{for} \ start &lt;= i &lt; end \end{split}\]</div>
  There are two methods to calculate rnn. One way is to compute rnn one sequence by one sequence. The other way is to reorganize the input into batches, then compute rnn one batch by one batch. Users can select them by rnn_use_batch flag. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14RecurrentLayer14RecurrentLayerERK11LayerConfig">
@@ -2638,7 +2638,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14RecurrentLayer15forwardSequenceEi6size_tPKi">
@@ -2735,7 +2735,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle14RecurrentLayer7weight_E">
@@ -2785,7 +2785,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dl class="class">
 <dt id="_CPPv2N6paddle15SequenceToBatchE">
 <span id="paddle::SequenceToBatch"></span><span class="target" id="paddleclasspaddle_1_1SequenceToBatch"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SequenceToBatch</code><a class="headerlink" href="#_CPPv2N6paddle15SequenceToBatchE" title="Permalink to this definition">¶</a></dt>
-<dd><div class="breathe-sectiondef container">
+<dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15SequenceToBatch15SequenceToBatchEb">
@@ -2858,7 +2858,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15SequenceToBatch18sequence2BatchCopyER6MatrixR6MatrixR7IVectorb">
@@ -2871,7 +2871,7 @@ The config file api is batch_norm_layer. <dl class="docutils">
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle15SequenceToBatch20batchStartPositions_E">
@@ -2968,7 +2968,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmCompute"><span class="std std-ref">paddle::LstmCompute</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1MDLstmLayer"><span class="std std-ref">paddle::MDLstmLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle9LstmLayer9LstmLayerERK11LayerConfig">
@@ -3017,7 +3017,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle9LstmLayer15forwardSequenceEi6size_tPKi9MatrixPtr">
@@ -3085,7 +3085,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle9LstmLayer7weight_E">
@@ -3228,7 +3228,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 <dt id="_CPPv2N6paddle13LstmStepLayerE">
 <span id="paddle::LstmStepLayer"></span><span class="target" id="paddleclasspaddle_1_1LstmStepLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">LstmStepLayer</code><a class="headerlink" href="#_CPPv2N6paddle13LstmStepLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmCompute"><span class="std std-ref">paddle::LstmCompute</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle13LstmStepLayer13LstmStepLayerERK11LayerConfig">
@@ -3259,7 +3259,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle13LstmStepLayer6state_E">
@@ -3321,7 +3321,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 <dt id="_CPPv2N6paddle11LstmComputeE">
 <span id="paddle::LstmCompute"></span><span class="target" id="paddleclasspaddle_1_1LstmCompute"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">LstmCompute</code><a class="headerlink" href="#_CPPv2N6paddle11LstmComputeE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1LstmLayer"><span class="std std-ref">paddle::LstmLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1LstmStepLayer"><span class="std std-ref">paddle::LstmStepLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle11LstmCompute4initER11LayerConfig">
@@ -3415,7 +3415,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Members</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle11LstmCompute11activeNode_E">
@@ -3445,7 +3445,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 <dt id="_CPPv2N6paddle11MDLstmLayerE">
 <span id="paddle::MDLstmLayer"></span><span class="target" id="paddleclasspaddle_1_1MDLstmLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">MDLstmLayer</code><a class="headerlink" href="#_CPPv2N6paddle11MDLstmLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1LstmLayer"><span class="std std-ref">paddle::LstmLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle11MDLstmLayer11MDLstmLayerERK11LayerConfig">
@@ -3471,7 +3471,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle11MDLstmLayer18forwardOneSequenceEiR13CoordIterator">
@@ -3494,7 +3494,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle11MDLstmLayer15frameInputGate_E">
@@ -3580,7 +3580,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 <dl class="class">
 <dt id="_CPPv2N6paddle13CoordIteratorE">
 <span id="paddle::CoordIterator"></span><span class="target" id="paddleclasspaddle_1_1CoordIterator"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CoordIterator</code><a class="headerlink" href="#_CPPv2N6paddle13CoordIteratorE" title="Permalink to this definition">¶</a></dt>
-<dd><div class="breathe-sectiondef container">
+<dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle13CoordIterator4stepE6size_tb">
@@ -3643,7 +3643,7 @@ The weight ([size, 4*size]) contains <span class="math">\(W_{hi}, W_{hf}, W_{hc}
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Members</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle13CoordIterator5dims_E">
@@ -3699,7 +3699,7 @@ The config file is grumemory. <dl class="docutils">
 </dl>
 </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GruCompute"><span class="std std-ref">paddle::GruCompute</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle19GatedRecurrentLayer19GatedRecurrentLayerERK11LayerConfig">
@@ -3748,7 +3748,7 @@ The config file is grumemory. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle19GatedRecurrentLayer15forwardSequenceEi6size_tPKi9MatrixPtr">
@@ -3771,7 +3771,7 @@ The config file is grumemory. <dl class="docutils">
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle19GatedRecurrentLayer7weight_E">
@@ -3870,7 +3870,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dl>
 </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GruCompute"><span class="std std-ref">paddle::GruCompute</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle12GruStepLayer12GruStepLayerERK11LayerConfig">
@@ -3901,7 +3901,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle12GruStepLayer5gate_E">
@@ -3933,7 +3933,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dt id="_CPPv2N6paddle10GruComputeE">
 <span id="paddle::GruCompute"></span><span class="target" id="paddleclasspaddle_1_1GruCompute"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">GruCompute</code><a class="headerlink" href="#_CPPv2N6paddle10GruComputeE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1GatedRecurrentLayer"><span class="std std-ref">paddle::GatedRecurrentLayer</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1GruStepLayer"><span class="std std-ref">paddle::GruStepLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10GruCompute4initER11LayerConfig">
@@ -3983,7 +3983,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Members</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle10GruCompute11activeNode_E">
@@ -4011,7 +4011,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd><p><a class="reference internal" href="#paddleclasspaddle_1_1AgentLayer"><span class="std std-ref">AgentLayer</span></a> use as a virtual input of another layer in config, before execute forward/backward, setRealLayer() should be called to set one and only one real layer </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1SequenceAgentLayer"><span class="std std-ref">paddle::SequenceAgentLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10AgentLayer10AgentLayerERK11LayerConfig">
@@ -4047,7 +4047,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle10AgentLayer10realLayer_E">
@@ -4070,7 +4070,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <span id="paddle::SequenceAgentLayer"></span><span class="target" id="paddleclasspaddle_1_1SequenceAgentLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SequenceAgentLayer</code><a class="headerlink" href="#_CPPv2N6paddle18SequenceAgentLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>like <a class="reference internal" href="#paddleclasspaddle_1_1AgentLayer"><span class="std std-ref">AgentLayer</span></a>, but use first <em>numSamples</em> sequences </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1AgentLayer"><span class="std std-ref">paddle::AgentLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle18SequenceAgentLayer18SequenceAgentLayerERK11LayerConfig">
@@ -4106,7 +4106,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd><p>Like <a class="reference internal" href="#paddleclasspaddle_1_1AgentLayer"><span class="std std-ref">AgentLayer</span></a>, but it can gather many real layers. Each real layer give a few rows of a sequence, after gather all real layers, <a class="reference internal" href="#paddleclasspaddle_1_1GatherAgentLayer"><span class="std std-ref">GatherAgentLayer</span></a> collect a complete sequence. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1SequenceGatherAgentLayer"><span class="std std-ref">paddle::SequenceGatherAgentLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16GatherAgentLayer16GatherAgentLayerERK11LayerConfig">
@@ -4147,7 +4147,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle16GatherAgentLayer11realLayers_E">
@@ -4180,7 +4180,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <span id="paddle::SequenceGatherAgentLayer"></span><span class="target" id="paddleclasspaddle_1_1SequenceGatherAgentLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SequenceGatherAgentLayer</code><a class="headerlink" href="#_CPPv2N6paddle24SequenceGatherAgentLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Like <a class="reference internal" href="#paddleclasspaddle_1_1GatherAgentLayer"><span class="std std-ref">GatherAgentLayer</span></a>, but select a few sequence in real layer. <em>ids</em> in addRealLayer() are the ids of selected sequence. It&#8217;s used to reorder sequence output. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1GatherAgentLayer"><span class="std std-ref">paddle::GatherAgentLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle24SequenceGatherAgentLayer24SequenceGatherAgentLayerERK11LayerConfig">
@@ -4216,7 +4216,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd><p>Like <a class="reference internal" href="#paddleclasspaddle_1_1AgentLayer"><span class="std std-ref">AgentLayer</span></a>, but only select a few rows in real layer. [idIndex, idIndex + idSize) of <em>ids</em> in setRealLayerAndOutput() are the selected row ids. It&#8217;s used to scatter one layer&#8217;s output to many small submodels. <a class="reference internal" href="#paddleclasspaddle_1_1ScatterAgentLayer"><span class="std std-ref">ScatterAgentLayer</span></a> can support ids real layer, if it is, the agent will select a few ids in real layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1SequenceScatterAgentLayer"><span class="std std-ref">paddle::SequenceScatterAgentLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle17ScatterAgentLayer17ScatterAgentLayerERK11LayerConfig">
@@ -4273,7 +4273,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle17ScatterAgentLayer10realLayer_E">
@@ -4326,7 +4326,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <span id="paddle::SequenceScatterAgentLayer"></span><span class="target" id="paddleclasspaddle_1_1SequenceScatterAgentLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SequenceScatterAgentLayer</code><a class="headerlink" href="#_CPPv2N6paddle25SequenceScatterAgentLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Like <a class="reference internal" href="#paddleclasspaddle_1_1ScatterAgentLayer"><span class="std std-ref">ScatterAgentLayer</span></a>, but select a few sequence in real layer. <em>ids</em> in <a class="reference internal" href="#paddleclasspaddle_1_1ScatterAgentLayer_1abc1b52a1a9b0fa738300450626e24b80"><span class="std std-ref">setRealLayer()</span></a> or setRealLayerAndOutput() are the ids of selected sequence. It&#8217;s used to reorder sequence input. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ScatterAgentLayer"><span class="std std-ref">paddle::ScatterAgentLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle25SequenceScatterAgentLayer25SequenceScatterAgentLayerERK11LayerConfig">
@@ -4351,7 +4351,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle25SequenceScatterAgentLayer14inputStartPos_E">
@@ -4368,7 +4368,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dt id="_CPPv2N6paddle14GetOutputLayerE">
 <span id="paddle::GetOutputLayer"></span><span class="target" id="paddleclasspaddle_1_1GetOutputLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">GetOutputLayer</code><a class="headerlink" href="#_CPPv2N6paddle14GetOutputLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14GetOutputLayer14GetOutputLayerERK11LayerConfig">
@@ -4411,7 +4411,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd><p>A mixed layer has multiple input layers. Each input layer was processed by a <a class="reference internal" href="#paddleclasspaddle_1_1Projection"><span class="std std-ref">Projection</span></a> or <a class="reference internal" href="#paddleclasspaddle_1_1Operator"><span class="std std-ref">Operator</span></a>. The results of all projections or Operators are summed together with bias (if configured), and then go through an activation function and dropout (if configured).</p>
 <p>The config file api is mixed_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10MixedLayer10MixedLayerERK11LayerConfig">
@@ -4467,7 +4467,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle10MixedLayer12projections_E">
@@ -4508,7 +4508,7 @@ The config file api if gru_step_layer. <dl class="docutils">
  where <span class="math">\(.*\)</span> means element-wise multiplication.</p>
 <p>The config file api is dotmul_projection. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Projection"><span class="std std-ref">paddle::Projection</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16DotMulProjection16DotMulProjectionERK16ProjectionConfigRK12ParameterPtrb">
@@ -4526,7 +4526,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle16DotMulProjection7weight_E">
@@ -4548,7 +4548,7 @@ The config file api if gru_step_layer. <dl class="docutils">
  where <span class="math">\(.*\)</span> means element-wise multiplication, and scale is a config scalar, its default value is one.</p>
 <p>The config file api is dotmul_operator. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Operator"><span class="std std-ref">paddle::Operator</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14DotMulOperator14DotMulOperatorERK14OperatorConfigb">
@@ -4579,7 +4579,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </p>
 <p>The config file api is full_matrix_projection. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Projection"><span class="std std-ref">paddle::Projection</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle20FullMatrixProjection20FullMatrixProjectionERK16ProjectionConfigRK12ParameterPtrb">
@@ -4597,7 +4597,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle20FullMatrixProjection7weight_E">
@@ -4618,7 +4618,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </p>
 <p>The config file api is identity_projection. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Projection"><span class="std std-ref">paddle::Projection</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle18IdentityProjection18IdentityProjectionERK16ProjectionConfigRK12ParameterPtrb">
@@ -4654,7 +4654,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </p>
 <p>The config file api is identity_projection. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Projection"><span class="std std-ref">paddle::Projection</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle24IdentityOffsetProjection24IdentityOffsetProjectionERK16ProjectionConfigRK12ParameterPtrb">
@@ -4695,7 +4695,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dl>
 </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Projection"><span class="std std-ref">paddle::Projection</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15TableProjection15TableProjectionERK16ProjectionConfigRK12ParameterPtrb">
@@ -4719,7 +4719,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle15TableProjection6table_E">
@@ -4738,7 +4738,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd><p><a class="reference internal" href="#paddleclasspaddle_1_1TransposedFullMatrixProjection"><span class="std std-ref">TransposedFullMatrixProjection</span></a> performs full matrix multiplication: out.row[i] += in.row[i] * weight.transpose. </p>
 <p>The config file api is trans_full_matrix_projection. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Projection"><span class="std std-ref">paddle::Projection</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle30TransposedFullMatrixProjection30TransposedFullMatrixProjectionERK16ProjectionConfig12ParameterPtrb">
@@ -4756,7 +4756,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle30TransposedFullMatrixProjection7weight_E">
@@ -4780,7 +4780,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd><p>A layer for &#8220;internal average&#8221; for sequence input. Input: one or more sequences. Each sequence contains some instances. If SequenceLevel = kNonSeq: Output: output size is the number of input sequences (NOT input instances) output[i] = average_{for each instance in this sequence}{input[i]} If SequenceLevel = kSeq: Check input sequence must has sub-sequence Output: output size is the number of input sub-sequences output[i] = average_{for each instance in this sub-sequence}{input[i]}</p>
 <p>The config file api is pooling_layer. </p>
 <p>Inherits from paddle::SequencePoolLayer</p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle12AverageLayer15AverageStrategyE">
@@ -4804,7 +4804,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle12AverageLayer12AverageLayerERK11LayerConfig">
@@ -4835,7 +4835,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle12AverageLayer7outMtx_E">
@@ -4864,7 +4864,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd><p>A layer for &#8220;internal max&#8221; for sequence input. Input: one or more sequences. Each sequence contains some instances. If SequenceLevel = kNonSeq: Output: output size is the number of input sequences (NOT input instances) output[i] = max_{for each instance in this sequence}{input[i]} If SequenceLevel = kSeq: Check input sequence must has sub-sequence Output: output size is the number of input sub-sequences output[i] = max_{for each instance in this sub-sequence}{input[i]}</p>
 <p>The config file api is pooling_layer. </p>
 <p>Inherits from paddle::SequencePoolLayer</p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle8MaxLayer8MaxLayerERK11LayerConfig">
@@ -4895,7 +4895,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle8MaxLayer9maxIndex_E">
@@ -4914,7 +4914,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <dd><p>A layer for extracting the last instance of the input sequence. Input: a sequence If SequenceLevel = kNonseq: Output: a sequence containing only the last instance of the input sequence If SequenceLevel = kSeq: Check input sequence must has sub-sequence Output: a sequence containing only the last instance of each sub-sequence of the input sequence</p>
 <p>The config file api is last_seq and first_seq. </p>
 <p>Inherits from paddle::SequencePoolLayer</p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle25SequenceLastInstanceLayer25SequenceLastInstanceLayerERK11LayerConfig">
@@ -4945,7 +4945,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle25SequenceLastInstanceLayer7tmpSrc_E">
@@ -4971,7 +4971,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <span id="paddle::ConcatenateLayer"></span><span class="target" id="paddleclasspaddle_1_1ConcatenateLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ConcatenateLayer</code><a class="headerlink" href="#_CPPv2N6paddle16ConcatenateLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A concatenate layer has multiple input layers. It concatenates rows of each input as one row for the output of this layer and apply activation. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16ConcatenateLayer16ConcatenateLayerERK11LayerConfig">
@@ -5012,7 +5012,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <span id="paddle::ConcatenateLayer2"></span><span class="target" id="paddleclasspaddle_1_1ConcatenateLayer2"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ConcatenateLayer2</code><a class="headerlink" href="#_CPPv2N6paddle17ConcatenateLayer2E" title="Permalink to this definition">¶</a></dt>
 <dd><p>concat2 layer is like concat layer, but each input layer was processed by a <a class="reference internal" href="#paddleclasspaddle_1_1Projection"><span class="std std-ref">Projection</span></a>. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle17ConcatenateLayer217ConcatenateLayer2ERK11LayerConfig">
@@ -5043,7 +5043,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle17ConcatenateLayer212projections_E">
@@ -5081,7 +5081,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <span id="paddle::SequenceConcatLayer"></span><span class="target" id="paddleclasspaddle_1_1SequenceConcatLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SequenceConcatLayer</code><a class="headerlink" href="#_CPPv2N6paddle19SequenceConcatLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A layer for concatenating the first sequence with the second sequence following the first Input: two sequences each containing some instances Output: a concatenated sequence of the two input sequences </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle19SequenceConcatLayer19SequenceConcatLayerERK11LayerConfig">
@@ -5112,7 +5112,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle19SequenceConcatLayer7biases_E">
@@ -5133,7 +5133,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <span id="paddle::SubSequenceLayer"></span><span class="target" id="paddleclasspaddle_1_1SubSequenceLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SubSequenceLayer</code><a class="headerlink" href="#_CPPv2N6paddle16SubSequenceLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A layer for taking the subsequence according to given offset and size Input: original sequence, offset, size Output: subsequence </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16SubSequenceLayer16SubSequenceLayerERK11LayerConfig">
@@ -5164,7 +5164,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle16SubSequenceLayer7biases_E">
@@ -5208,7 +5208,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 <p>The expand method is the same with <a class="reference internal" href="#paddleclasspaddle_1_1ExpandConvLayer"><span class="std std-ref">ExpandConvLayer</span></a>, but saved the transposed value. After expanding, output_.sequenceStartPositions will store timeline. The number of time steps are outputH_ * outputW_ and the dimension of each time step is blockH_ * blockW_ * channels_. This layer can be used after convolution neural network, and before recurrent neural network.</p>
 <p>The config file api is block_expand_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16BlockExpandLayer16BlockExpandLayerERK11LayerConfig">
@@ -5239,7 +5239,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16BlockExpandLayer11getBlockNumEv">
@@ -5253,7 +5253,7 @@ The config file api if gru_step_layer. <dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle16BlockExpandLayer7blockH_E">
@@ -5342,7 +5342,7 @@ sequence is one) to sequence data.&#8221;</p>
 <p>And the output size is the batch size(not instances) of second input.</p>
 <p>The config file api is expand_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle11ExpandLayer11ExpandLayerERK11LayerConfig">
@@ -5373,7 +5373,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle11ExpandLayer11ExpandLevelE">
@@ -5393,7 +5393,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle11ExpandLayer7biases_E">
@@ -5436,7 +5436,7 @@ sequence is one) to sequence data.&#8221;</p>
 </ul>
 </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle21FeatureMapExpandLayer21FeatureMapExpandLayerERK11LayerConfig">
@@ -5482,7 +5482,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dl>
 </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle11ResizeLayer11ResizeLayerERK11LayerConfig">
@@ -5518,7 +5518,7 @@ sequence is one) to sequence data.&#8221;</p>
 <span id="paddle::SequenceReshapeLayer"></span><span class="target" id="paddleclasspaddle_1_1SequenceReshapeLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">SequenceReshapeLayer</code><a class="headerlink" href="#_CPPv2N6paddle20SequenceReshapeLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A layer for reshaping the sequence Input: a sequence Output: a sequence </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle20SequenceReshapeLayer20SequenceReshapeLayerERK11LayerConfig">
@@ -5549,7 +5549,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle20SequenceReshapeLayer7biases_E">
@@ -5578,7 +5578,7 @@ sequence is one) to sequence data.&#8221;</p>
  where <span class="math">\(y\)</span> is output, <span class="math">\(x\)</span> is input, <span class="math">\(b\)</span> is bias, and <span class="math">\(f\)</span> is activation function.</p>
 <p>The config file api is addto_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10AddtoLayer10AddtoLayerERK11LayerConfig">
@@ -5613,7 +5613,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle10AddtoLayer7biases_E">
@@ -5639,7 +5639,7 @@ sequence is one) to sequence data.&#8221;</p>
 </p>
 <p>The config file api is linear_comb_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle22ConvexCombinationLayer22ConvexCombinationLayerERK11LayerConfig">
@@ -5670,7 +5670,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle22ConvexCombinationLayer7tmpMtx0E">
@@ -5704,7 +5704,7 @@ sequence is one) to sequence data.&#8221;</p>
  where <span class="math">\(x_1\)</span> and <span class="math">\(x_2\)</span> are two (batchSize x dataDim) inputs, <span class="math">\(w\)</span> is (batchSize x 1) weight vector, and <span class="math">\(y\)</span> is (batchSize x dataDim) output.</p>
 <p>The config file api is interpolation_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle18InterpolationLayer18InterpolationLayerERK11LayerConfig">
@@ -5735,7 +5735,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle18InterpolationLayer11weightLast_E">
@@ -5768,7 +5768,7 @@ sequence is one) to sequence data.&#8221;</p>
 \[ y[i][j] = x_{x_{0}[i] + 1}[i][j], j = 0,1, ... , (x_{1}.width - 1) \]</div>
  where, y is output. <span class="math">\(x_{k}\)</span> is the k-th input layer and <span class="math">\(k = x_{0}[i] + 1\)</span>. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14MultiplexLayer14MultiplexLayerERK11LayerConfig">
@@ -5799,7 +5799,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle14MultiplexLayer13copySchedule_E">
@@ -5824,7 +5824,7 @@ sequence is one) to sequence data.&#8221;</p>
 <dt id="_CPPv2N6paddle14MultiplexLayer8CopyInfoE">
 <span id="paddle::MultiplexLayer::CopyInfo"></span><span class="target" id="paddlestructpaddle_1_1MultiplexLayer_1_1CopyInfo"></span><em class="property">struct </em><code class="descname">CopyInfo</code><a class="headerlink" href="#_CPPv2N6paddle14MultiplexLayer8CopyInfoE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A struct is used to save the copy information, includes input layer index and copy size. </p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14MultiplexLayer8CopyInfo8CopyInfoEiii">
@@ -5832,7 +5832,7 @@ sequence is one) to sequence data.&#8221;</p>
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Members</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle14MultiplexLayer8CopyInfo8startIdxE">
@@ -5870,7 +5870,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dl>
 </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14OuterProdLayer14OuterProdLayerERK11LayerConfig">
@@ -5901,7 +5901,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle14OuterProdLayer7tmpMtx0E">
@@ -5932,7 +5932,7 @@ sequence is one) to sequence data.&#8221;</p>
  where <span class="math">\(x\)</span> is a input vector, <span class="math">\(w\)</span> is scalar weight, and output <span class="math">\(y\)</span> is a vector.</p>
 <p>The config file api is power_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10PowerLayer10PowerLayerERK11LayerConfig">
@@ -5963,7 +5963,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle10PowerLayer6tmpMtxE">
@@ -5984,7 +5984,7 @@ sequence is one) to sequence data.&#8221;</p>
  where <span class="math">\(x\)</span> is (batchSize x dataDim) input, <span class="math">\(w\)</span> is (batchSize x 1) weight vector, and <span class="math">\(y\)</span> is (batchSize x dataDim) output.</p>
 <p>The config file api is scaling_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle12ScalingLayer12ScalingLayerERK11LayerConfig">
@@ -6034,7 +6034,7 @@ sequence is one) to sequence data.&#8221;</p>
 <p>Here, a is scale and b is offset, which are provided as attributes of the layer.</p>
 <p>The config file api is slope_intercept_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle19SlopeInterceptLayer19SlopeInterceptLayerERK11LayerConfig">
@@ -6087,7 +6087,7 @@ sequence is one) to sequence data.&#8221;</p>
 </p>
 <p>The config file api is tensor_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle11TensorLayer11TensorLayerERK11LayerConfig">
@@ -6123,7 +6123,7 @@ sequence is one) to sequence data.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle11TensorLayer8weights_E">
@@ -6149,7 +6149,7 @@ sequence is one) to sequence data.&#8221;</p>
  where <span class="math">\(x\)</span> is (M x N) input, and <span class="math">\(y\)</span> is (N x M) output.</p>
 <p>The config file api is trans_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10TransLayer10TransLayerERK11LayerConfig">
@@ -6193,7 +6193,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dd>: prob does not have to be unnormalized.</dd>
 </dl>
 </p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle18MultinomialSampler18MultinomialSamplerEPK4reali">
@@ -6219,7 +6219,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt>
@@ -6240,7 +6240,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle18MultinomialSampler10intervals_E">
@@ -6257,7 +6257,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dl class="class">
 <dt id="_CPPv2N6paddle18MultinomialSampler8IntervalE">
 <span id="paddle::MultinomialSampler::Interval"></span><span class="target" id="paddlestructpaddle_1_1MultinomialSampler_1_1Interval"></span><em class="property">struct </em><code class="descname">Interval</code><a class="headerlink" href="#_CPPv2N6paddle18MultinomialSampler8IntervalE" title="Permalink to this definition">¶</a></dt>
-<dd><div class="breathe-sectiondef container">
+<dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Members</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle18MultinomialSampler8Interval7otherIdE">
@@ -6283,7 +6283,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dd><p>A layer for finding the id which has the maximal value for each sample. The result is stored in output_.ids.</p>
 <p>The config file api is maxid_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10MaxIdLayer10MaxIdLayerERK11LayerConfig">
@@ -6320,7 +6320,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dd><p>A layer for sampling id from multinomial distribution from the input layer. Sampling one id for one sample. The result is stored in output_.ids. </p>
 <p>The config file api is sampling_id_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15SamplingIdLayer15SamplingIdLayerERK11LayerConfig">
@@ -6365,7 +6365,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dd><p>Base class for a particular type of cost layer. This type of cost should have one data layer, one label layer and an optional weight layer as input. The derived class should implemnt forwardImp() and backwardImp() which calculate the cost for data and label. The weight is automatically handled by the base class. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1HuberTwoClass"><span class="std std-ref">paddle::HuberTwoClass</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiBinaryLabelCrossEntropy"><span class="std std-ref">paddle::MultiBinaryLabelCrossEntropy</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiClassCrossEntropy"><span class="std std-ref">paddle::MultiClassCrossEntropy</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1MultiClassCrossEntropyWithSelfNorm"><span class="std std-ref">paddle::MultiClassCrossEntropyWithSelfNorm</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SoftBinaryClassCrossEntropy"><span class="std std-ref">paddle::SoftBinaryClassCrossEntropy</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1SumOfSquaresCostLayer"><span class="std std-ref">paddle::SumOfSquaresCostLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle9CostLayer9CostLayerERK11LayerConfig">
@@ -6411,7 +6411,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle9CostLayer12weightLayer_E">
@@ -6436,7 +6436,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 \[\begin{split} Loss = \left\{\begin{matrix} 4 * y * f &amp; \textit{if} \ \ y* f &lt; -1 \\ (1 - y * f)^2 &amp; \textit{if} \ \ -1 &lt; y * f &lt; 1 \\ 0 &amp; \textit{otherwise} \end{matrix}\right. \end{split}\]</div>
  </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span class="std std-ref">paddle::CostLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle13HuberTwoClass13HuberTwoClassERK11LayerConfig">
@@ -6484,7 +6484,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 </p>
 <p>[1] Christopher J.C. Burges, Robert Ragno, Quoc Viet Le. Learning to Rank with Nonsmooth Cost Functions. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10LambdaCost10LambdaCostERK11LayerConfig">
@@ -6548,7 +6548,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 \[ cost[i] = -sum(label[i][j]*log(output[i][j]) + (1-label[i][j])*log(1-output[i][j])) \]</div>
  </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span class="std std-ref">paddle::CostLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle28MultiBinaryLabelCrossEntropy28MultiBinaryLabelCrossEntropyERK11LayerConfig">
@@ -6572,7 +6572,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle28MultiBinaryLabelCrossEntropy13targetPerDim_E">
@@ -6593,7 +6593,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 \[ L = - \sum_{i}{t_{k} * log(P(y=k))} \]</div>
  </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span class="std std-ref">paddle::CostLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle22MultiClassCrossEntropy22MultiClassCrossEntropyERK11LayerConfig">
@@ -6632,7 +6632,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <p>The <span class="math">\(Z(x)\)</span> is the softmax normalizer.</p>
 <p>[1] Jacob Devlin, Rabih Zbib, Zhongqiang Huang, Thomas Lamar, Richard Schwartz, and John Makhoul. Fast and robust neural network joint models for statistical machine translation. In Proceedings of the ACL 2014 Conference. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span class="std std-ref">paddle::CostLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle34MultiClassCrossEntropyWithSelfNorm34MultiClassCrossEntropyWithSelfNormERK11LayerConfig">
@@ -6656,7 +6656,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle34MultiClassCrossEntropyWithSelfNorm10sftMaxSum_E">
@@ -6682,7 +6682,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 </p>
 <p>[1]. Chris Burges, Tal Shaked, Erin Renshaw, et al. Learning to Rank useing Gradient Descent. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle11RankingCost11RankingCostERK11LayerConfig">
@@ -6746,7 +6746,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 \[ L = \sum_i (\sum_j -y_j(i)*log(x_j(i))-(1-y_j(i))*log(1-x_j(i))) \]</div>
  </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span class="std std-ref">paddle::CostLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle27SoftBinaryClassCrossEntropy27SoftBinaryClassCrossEntropyERK11LayerConfig">
@@ -6770,7 +6770,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle27SoftBinaryClassCrossEntropy13targetPerDim_E">
@@ -6790,7 +6790,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 \[ L = \sum_{i=1}^N {|| \hat{y}_i - y_i||_2^2} \]</div>
  </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CostLayer"><span class="std std-ref">paddle::CostLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle21SumOfSquaresCostLayer21SumOfSquaresCostLayerERK11LayerConfig">
@@ -6826,7 +6826,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 \[ o(i) = \sum_{j=1}^D y_{ij} \]</div>
  </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle12SumCostLayer12SumCostLayerERK11LayerConfig">
@@ -6872,7 +6872,7 @@ The space requirement is O(N)=O(N * sizeof(Interval)). The computational complex
 </p>
 <p>The config file api is cos_sim. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle11CosSimLayer11CosSimLayerERK11LayerConfig">
@@ -6921,7 +6921,7 @@ Input1: a vector (batchSize * dataDim)<dl class="docutils">
 <p>Input2: a matrix in vector form (batchSize * (weightDim*dataDim))</p>
 <p>Output: a vector (batchSize * weightDim) </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle17CosSimVecMatLayer17CosSimVecMatLayerERK11LayerConfig">
@@ -6952,7 +6952,7 @@ Input1: a vector (batchSize * dataDim)<dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle17CosSimVecMatLayer7tmpMtx0E">
@@ -6995,7 +6995,7 @@ Input1: a vector (batchSize * dataDim)<dl class="docutils">
 <span id="paddle::CRFDecodingLayer"></span><span class="target" id="paddleclasspaddle_1_1CRFDecodingLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CRFDecodingLayer</code><a class="headerlink" href="#_CPPv2N6paddle16CRFDecodingLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A layer for calculating the decoding sequence of sequential conditional random field model. The decoding sequence is stored in output_.ids It also calculate error, output_.value[i] is 1 for incorrect decoding or 0 for correct decoding) See LinearChainCRF.h for the detail of the CRF formulation. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1CRFLayer"><span class="std std-ref">paddle::CRFLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16CRFDecodingLayer16CRFDecodingLayerERK11LayerConfig">
@@ -7021,7 +7021,7 @@ Input1: a vector (batchSize * dataDim)<dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle16CRFDecodingLayer4crf_E">
@@ -7040,7 +7040,7 @@ Input1: a vector (batchSize * dataDim)<dl class="docutils">
 <dd><p>A layer for calculating the cost of sequential conditional random field model. See class <a class="reference internal" href="#paddleclasspaddle_1_1LinearChainCRF"><span class="std std-ref">LinearChainCRF</span></a> for the detail of the CRF formulation. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1CRFDecodingLayer"><span class="std std-ref">paddle::CRFDecodingLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle8CRFLayer8CRFLayerERK11LayerConfig">
@@ -7066,7 +7066,7 @@ Input1: a vector (batchSize * dataDim)<dl class="docutils">
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle8CRFLayer11numClasses_E">
@@ -7103,7 +7103,7 @@ Input1: a vector (batchSize * dataDim)<dl class="docutils">
 <dt id="_CPPv2N6paddle8CTCLayerE">
 <span id="paddle::CTCLayer"></span><span class="target" id="paddleclasspaddle_1_1CTCLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">CTCLayer</code><a class="headerlink" href="#_CPPv2N6paddle8CTCLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle8CTCLayer8CTCLayerERK11LayerConfig">
@@ -7139,7 +7139,7 @@ Input1: a vector (batchSize * dataDim)<dl class="docutils">
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle8CTCLayer11numClasses_E">
@@ -7204,7 +7204,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 </p>
 <p>The config file api is hsigmod_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle24HierarchicalSigmoidLayer24HierarchicalSigmoidLayerERK11LayerConfig">
@@ -7230,7 +7230,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle24HierarchicalSigmoidLayer13getLabelLayerEv">
@@ -7239,7 +7239,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle24HierarchicalSigmoidLayer8weights_E">
@@ -7278,7 +7278,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <dl class="class">
 <dt id="_CPPv2N6paddle14LinearChainCRFE">
 <span id="paddle::LinearChainCRF"></span><span class="target" id="paddleclasspaddle_1_1LinearChainCRF"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">LinearChainCRF</code><a class="headerlink" href="#_CPPv2N6paddle14LinearChainCRFE" title="Permalink to this definition">¶</a></dt>
-<dd><div class="breathe-sectiondef container">
+<dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14LinearChainCRF14LinearChainCRFEiP4realP4real">
@@ -7310,7 +7310,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle14LinearChainCRF11numClasses_E">
@@ -7391,7 +7391,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <dl class="class">
 <dt id="_CPPv2N6paddle14LinearChainCTCE">
 <span id="paddle::LinearChainCTC"></span><span class="target" id="paddleclasspaddle_1_1LinearChainCTC"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">LinearChainCTC</code><a class="headerlink" href="#_CPPv2N6paddle14LinearChainCTCE" title="Permalink to this definition">¶</a></dt>
-<dd><div class="breathe-sectiondef container">
+<dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14LinearChainCTC14LinearChainCTCEib">
@@ -7409,7 +7409,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14LinearChainCTC12segmentRangeERiRii">
@@ -7417,7 +7417,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle14LinearChainCTC11numClasses_E">
@@ -7486,7 +7486,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <dd><p>Noise-contrastive estimation. Implements the method in the following paper: A fast and simple algorithm for training neural probabilistic language models.</p>
 <p>The config file api is nce_layer. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle8NCELayer8NCELayerERK11LayerConfig">
@@ -7565,7 +7565,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <span id="paddle::ValidationLayer"></span><span class="target" id="paddleclasspaddle_1_1ValidationLayer"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ValidationLayer</code><a class="headerlink" href="#_CPPv2N6paddle15ValidationLayerE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1AucValidation"><span class="std std-ref">paddle::AucValidation</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1PnpairValidation"><span class="std std-ref">paddle::PnpairValidation</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15ValidationLayer15ValidationLayerERK11LayerConfig">
@@ -7626,7 +7626,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <dt id="_CPPv2N6paddle13AucValidationE">
 <span id="paddle::AucValidation"></span><span class="target" id="paddleclasspaddle_1_1AucValidation"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">AucValidation</code><a class="headerlink" href="#_CPPv2N6paddle13AucValidationE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ValidationLayer"><span class="std std-ref">paddle::ValidationLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle13AucValidation13AucValidationERK11LayerConfig">
@@ -7651,7 +7651,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Members</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle13AucValidation13predictArray_E">
@@ -7662,7 +7662,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <dl class="class">
 <dt id="_CPPv2N6paddle13AucValidation16PredictionResultE">
 <span id="paddle::AucValidation::PredictionResult"></span><span class="target" id="paddlestructpaddle_1_1AucValidation_1_1PredictionResult"></span><em class="property">struct </em><code class="descname">PredictionResult</code><a class="headerlink" href="#_CPPv2N6paddle13AucValidation16PredictionResultE" title="Permalink to this definition">¶</a></dt>
-<dd><div class="breathe-sectiondef container">
+<dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle13AucValidation16PredictionResult16PredictionResultE4reali">
@@ -7670,7 +7670,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Members</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle13AucValidation16PredictionResult3outE">
@@ -7694,7 +7694,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 <dt id="_CPPv2N6paddle16PnpairValidationE">
 <span id="paddle::PnpairValidation"></span><span class="target" id="paddleclasspaddle_1_1PnpairValidation"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">PnpairValidation</code><a class="headerlink" href="#_CPPv2N6paddle16PnpairValidationE" title="Permalink to this definition">¶</a></dt>
 <dd><p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1ValidationLayer"><span class="std std-ref">paddle::ValidationLayer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16PnpairValidation16PnpairValidationERK11LayerConfig">
@@ -7737,7 +7737,7 @@ Hierarchical Probabilistic Neural Network Language Model.&#8221;</p>
 </p>
 <p>The result is stored in output_.ids. It is used by recurrent layer group. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Layer"><span class="std std-ref">paddle::Layer</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15EosIdCheckLayer15EosIdCheckLayerERK11LayerConfig">

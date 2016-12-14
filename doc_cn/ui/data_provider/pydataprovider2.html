@@ -348,7 +348,7 @@ check是false的话，没有作用。</li>
 <ul class="simple">
 <li>dense_vector 表示稠密的浮点数向量。</li>
 <li>sparse_binary_vector 表示稀疏的零一向量，即大部分值为0，有值的位置只能取1</li>
-<li>sparse_float_vector 表示稀疏的向量，即大部分值为0，有值的部分可以是任何浮点数</li>
+<li>sparse_vector 表示稀疏的向量，即大部分值为0，有值的部分可以是任何浮点数</li>
 <li>integer 表示整数标签。</li>
 </ul>
 <p>而三种序列模式为</p>
@@ -383,7 +383,7 @@ check是false的话，没有作用。</li>
 <td>[[i, ...], [i, ...], ...]</td>
 <td>[[[i, ...], ...], [[i, ...], ...],...]</td>
 </tr>
-<tr class="row-even"><td>sparse_float_vector</td>
+<tr class="row-even"><td>sparse_vector</td>
 <td>[(i,f), (i,f), ...]</td>
 <td>[[(i,f), ...], [(i,f), ...], ...]</td>
 <td>[[[(i,f), ...], ...], [[(i,f), ...], ...],...]</td>
@@ -400,10 +400,10 @@ check是false的话，没有作用。</li>
 <div class="section" id="init-hook">
 <h3>init_hook<a class="headerlink" href="#init-hook" title="Permalink to this headline">¶</a></h3>
 <p>init_hook可以传入一个函数。这个函数在初始化的时候会被调用。这个函数的参数是:</p>
-<ul>
+<ul class="simple">
 <li><dl class="first docutils">
 <dt>第一个参数是 settings 对象。这个对象和process的第一个参数一致。具有的属性有</dt>
-<dd><ul class="first last simple">
+<dd><ul class="first last">
 <li>settings.input_types 设置输入类型。参考 <a class="reference internal" href="#input-types">input_types</a></li>
 <li>settings.logger 一个logging对象</li>
 </ul>
@@ -415,7 +415,7 @@ check是false的话，没有作用。</li>
 <dd><ul class="first last">
 <li><dl class="first docutils">
 <dt>Paddle定义的参数包括:</dt>
-<dd><ul class="first last simple">
+<dd><ul class="first last">
 <li>is_train bool参数，表示这个DataProvider是训练用的DataProvider或者测试用的
 DataProvider</li>
 <li>file_list 所有文件列表。</li>
@@ -423,8 +423,7 @@ DataProvider</li>
 </dd>
 </dl>
 </li>
-<li><p class="first">用户定义的参数使用args在训练配置中设置。</p>
-</li>
+<li>用户定义的参数使用args在训练配置中设置。</li>
 </ul>
 </dd>
 </dl>

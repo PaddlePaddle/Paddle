@@ -78,7 +78,7 @@ var _hmt = _hmt || [];
 <span id="paddle::TrainerStats"></span><span class="target" id="paddleclasspaddle_1_1TrainerStats"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">TrainerStats</code><a class="headerlink" href="#_CPPv2N6paddle12TrainerStatsE" title="Permalink to this definition">¶</a></dt>
 <dd><p><a class="reference internal" href="#paddleclasspaddle_1_1TrainerStats"><span class="std std-ref">TrainerStats</span></a> object will statistics sample processed and total cost. </p>
 <p>There are two stats in it, the &#8216;AvgCost&#8217; and &#8216;CurrentAvgCost&#8217;. &#8216;AvgCost&#8217; means cost through one pass(all mini-batches). &#8216;CurrentAvgCost&#8217; means cost through one mini-batch. </p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle12TrainerStats5resetEv">
@@ -217,7 +217,7 @@ var _hmt = _hmt || [];
 <p>This remote parameter updater does not use pipeline mechanism to hide copy latency from gpu to cpu buffer. In addition the overlapped between backward and communication is not supported. </p>
 <p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdater"><span class="std std-ref">paddle::ParameterUpdater</span></a></p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ConcurrentRemoteParameterUpdater"><span class="std std-ref">paddle::ConcurrentRemoteParameterUpdater</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle22RemoteParameterUpdater22RemoteParameterUpdaterERK18OptimizationConfigiRRNSt10unique_ptrI16ParameterUpdaterEE">
@@ -278,7 +278,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle22RemoteParameterUpdater10controllerEv">
@@ -320,7 +320,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle22RemoteParameterUpdater7config_E">
@@ -400,7 +400,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Static Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle22RemoteParameterUpdater8kAverageE">
@@ -424,7 +424,7 @@ var _hmt = _hmt || [];
 <dd><p>This updater add additional optimization for overlapping synchronization from pservers with backward computation.</p>
 <p><a class="reference internal" href="../parameter/parameter/parameter.html#paddleclasspaddle_1_1Parameter"><span class="std std-ref">Parameter</span></a> can be sent to pservers when related backward stage is finished. This concurrent udpater does data copy from acceleration device to host memory aynchronously. In addition internal parameter client reads data in host memory and send them to all pservers in next stage. So this class help to pipeline device-to-host copy and host-to-network to hide network latency in backward stage. It contains separate send and recv thread for pipeline usage. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1RemoteParameterUpdater"><span class="std std-ref">paddle::RemoteParameterUpdater</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater32ConcurrentRemoteParameterUpdaterE18OptimizationConfigiRRNSt10unique_ptrI16ParameterUpdaterEE">
@@ -448,7 +448,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle32ConcurrentRemoteParameterUpdater10updateImplEP9Parameter">
@@ -521,7 +521,7 @@ var _hmt = _hmt || [];
 <p>For updating sparse parameters, all latest parameters are stored in pservers instead of keeping full copy at train end, so need to prefetch parameters weight value which can be changed in next-batch before doing next forwardbackward. Also, with above fact that the parameters can be stored in pserver instead of trainer, we can fetch specified parmeters if necessary, and can support huge parameters which is larger enough than the RAM size in single node.</p>
 <p>Internally, this updater will direct internal parameter client to encapsulate sparse specified message for all pservers. </p>
 <p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdater"><span class="std std-ref">paddle::ParameterUpdater</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater28SparseRemoteParameterUpdaterERK18OptimizationConfigib">
@@ -605,7 +605,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater10updateImplEP9Parameter">
@@ -626,7 +626,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle28SparseRemoteParameterUpdater7config_E">
@@ -683,7 +683,7 @@ var _hmt = _hmt || [];
 <p>Not all parts of one model are sparse, so it exists dense updater for normal layers while sparse updater is for sparse layers.</p>
 <p>it directly call internal dense and sparse udpater individually. </p>
 <p>Inherits from <a class="reference internal" href="../parameter/update/update.html#paddleclasspaddle_1_1ParameterUpdaterComposite"><span class="std std-ref">paddle::ParameterUpdaterComposite</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite12__anonymous4E">
@@ -707,7 +707,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle37SparseRemoteParameterUpdaterComposite37SparseRemoteParameterUpdaterCompositeERK18OptimizationConfigibRRNSt10unique_ptrI16ParameterUpdaterEE">

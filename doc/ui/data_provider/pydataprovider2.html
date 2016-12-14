@@ -30,7 +30,7 @@
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="top" title="PaddlePaddle  documentation" href="../../index.html" />
     <link rel="up" title="DataProvider Introduction" href="index.html" />
-    <link rel="next" title="Use Case" href="../cmd_argument/use_case.html" />
+    <link rel="next" title="Model Config Interface" href="../api/trainer_config_helpers/index.html" />
     <link rel="prev" title="DataProvider Introduction" href="index.html" /> 
 <script>
 var _hmt = _hmt || [];
@@ -54,7 +54,7 @@ var _hmt = _hmt || [];
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../cmd_argument/use_case.html" title="Use Case"
+          <a href="../api/trainer_config_helpers/index.html" title="Model Config Interface"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="index.html" title="DataProvider Introduction"
@@ -430,7 +430,7 @@ The four data types are:</p>
 <li><code class="code docutils literal"><span class="pre">dense_vector</span></code>: dense float vector.</li>
 <li><code class="code docutils literal"><span class="pre">sparse_binary_vector</span></code>: sparse binary vector, most of the value is 0, and
 the non zero elements are fixed to 1.</li>
-<li><code class="code docutils literal"><span class="pre">sparse_float_vector</span></code>: sparse float vector, most of the value is 0, and some
+<li><code class="code docutils literal"><span class="pre">sparse_vector</span></code>: sparse float vector, most of the value is 0, and some
 non zero elements can be any float value. They are given by the user.</li>
 <li><code class="code docutils literal"><span class="pre">integer</span></code>: an integer scalar, that is especially used for label or word index.</li>
 </ul>
@@ -468,7 +468,7 @@ in the above table.</p>
 <td>[[i, ...], [i, ...], ...]</td>
 <td>[[[i, ...], ...], [[i, ...], ...],...]</td>
 </tr>
-<tr class="row-even"><td>sparse_float_vector</td>
+<tr class="row-even"><td>sparse_vector</td>
 <td>[(i,f), (i,f), ...]</td>
 <td>[[(i,f), ...], [(i,f), ...], ...]</td>
 <td>[[[(i,f), ...], ...], [[(i,f), ...], ...],...]</td>
@@ -549,8 +549,8 @@ memory.</li>
   <p class="topless"><a href="index.html"
                         title="previous chapter">DataProvider Introduction</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="../cmd_argument/use_case.html"
-                        title="next chapter">Use Case</a></p>
+  <p class="topless"><a href="../api/trainer_config_helpers/index.html"
+                        title="next chapter">Model Config Interface</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -582,7 +582,7 @@ memory.</li>
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="../cmd_argument/use_case.html" title="Use Case"
+          <a href="../api/trainer_config_helpers/index.html" title="Model Config Interface"
              >next</a> |</li>
         <li class="right" >
           <a href="index.html" title="DataProvider Introduction"

@@ -77,7 +77,7 @@ var _hmt = _hmt || [];
 <span id="paddle::BaseClient"></span><span class="target" id="paddleclasspaddle_1_1BaseClient"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">BaseClient</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClientE" title="Permalink to this definition">¶</a></dt>
 <dd><p>it manages all connections to pservers. it exists two modes to manage connections to all pservers. Firstly, one connection owns two threads that separately manage to send and receive data. Secondly, each thread uses one connection for all activation in it. the first solution arms with sendThreads_/recvThreads_ and sendJobQueue_/ recvJobQueue_. the second solution use some shared thread pool to manage connections. In addition to pserver, metric learning also uses network to exchange features within multi-machines, so this class just abstracts some basic threads and queue buffer creation for them </p>
 <p>Subclassed by <a class="reference internal" href="#paddleclasspaddle_1_1ParameterClient2"><span class="std std-ref">paddle::ParameterClient2</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle10BaseClient10SendJobPtrE">
@@ -90,7 +90,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10BaseClient10BaseClientEbi">
@@ -139,7 +139,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle10BaseClient9ThreadPtrE">
@@ -162,7 +162,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10BaseClient12calcClientIdEii">
@@ -254,7 +254,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle10BaseClient9stopping_E">
@@ -332,7 +332,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle10BaseClient5divupEii">
@@ -344,7 +344,7 @@ var _hmt = _hmt || [];
 <dl class="class">
 <dt id="_CPPv2N6paddle10BaseClient7SendJobE">
 <span id="paddle::BaseClient::SendJob"></span><span class="target" id="paddlestructpaddle_1_1BaseClient_1_1SendJob"></span><em class="property">struct </em><code class="descname">SendJob</code><a class="headerlink" href="#_CPPv2N6paddle10BaseClient7SendJobE" title="Permalink to this definition">¶</a></dt>
-<dd><div class="breathe-sectiondef container">
+<dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Members</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle10BaseClient7SendJob17parallelInputIovsE">
@@ -374,7 +374,7 @@ var _hmt = _hmt || [];
 <span id="paddle::ParameterClient2"></span><span class="target" id="paddleclasspaddle_1_1ParameterClient2"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">ParameterClient2</code><a class="headerlink" href="#_CPPv2N6paddle16ParameterClient2E" title="Permalink to this definition">¶</a></dt>
 <dd><p>The client interface for parameter server. <a class="reference internal" href="#paddleclasspaddle_1_1ParameterClient2"><span class="std std-ref">ParameterClient2</span></a> supports 2 modes for managing connections to parameter servers, in the 1st mode one connection is shared by 2 threads that are separately responsible for sending and recieving activities, in the 2nd mode one connection is owned by only one thread, and all the sending and recieving activities run in that single thread. TODO(yanfei): Additional core idea to further optimizate pserver performance is to do sync-sgd based parameter level instead of pserver level. full-parallelization based parameter level for sync-sgd also can sense forwardbackward computation layer-by-layer for more deeper layer model. Firstly, pserver can do full-parallelization on all computation based parameter level instead of waiting for all gradients are finished and start to send back parameters value immediately if parameter is ready instead of waiting for all parameters value are ready Secondly, parameter client can write back parameters to GPU instead of waiting until all parameters are received to CPU host end. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1BaseClient"><span class="std std-ref">paddle::BaseClient</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16ParameterClient216ParameterClient2Ebii">
@@ -685,7 +685,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16ParameterClient222calcParameterBlockSizeERKNSt6vectorI12ParameterPtrEE6size_t">
@@ -693,7 +693,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt>
@@ -703,7 +703,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle16ParameterClient25port_E">
@@ -752,7 +752,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Private Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle16ParameterClient27destroyEv">

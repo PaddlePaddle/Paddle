@@ -91,21 +91,18 @@ var _hmt = _hmt || [];
 </div>
 <p>主要的软件包为py_paddle.swig_paddle，这个软件包文档相对完善。可以使用python的
 <code class="code docutils literal"><span class="pre">help()</span></code> 函数查询文档。主要步骤为:</p>
-<ul>
-<li><p class="first">在程序开始阶段，使用 <code class="code docutils literal"><span class="pre">swig_paddle.initPaddle()</span></code> 传入命令行参数初始化
+<ul class="simple">
+<li>在程序开始阶段，使用 <code class="code docutils literal"><span class="pre">swig_paddle.initPaddle()</span></code> 传入命令行参数初始化
 PaddlePaddle。详细的命令行参数请参考
-<a class="reference external" href="../cmd_argument/detail_introduction.html">命令行参数</a> 。</p>
-</li>
-<li><p class="first">接下来使用 <code class="code docutils literal"><span class="pre">parse_config()</span></code> 解析训练时的配置文件。这里要注意预测数据通常
+<a class="reference external" href="../cmd_argument/detail_introduction.html">命令行参数</a> 。</li>
+<li>接下来使用 <code class="code docutils literal"><span class="pre">parse_config()</span></code> 解析训练时的配置文件。这里要注意预测数据通常
 不包含label, 而且预测网络通常直接输出最后一层的结果而不是像训练时一样以cost
-layer作为输出，所以用于预测的配置文件要做相应的修改。</p>
-</li>
-<li><p class="first">使用 <code class="code docutils literal"><span class="pre">swig_paddle.GradientMachine.createFromConfigproto()</span></code> 根据上一步解
-析好的配置创建神经网络。</p>
-</li>
+layer作为输出，所以用于预测的配置文件要做相应的修改。</li>
+<li>使用 <code class="code docutils literal"><span class="pre">swig_paddle.GradientMachine.createFromConfigproto()</span></code> 根据上一步解
+析好的配置创建神经网络。</li>
 <li><dl class="first docutils">
 <dt>创建一个 <code class="code docutils literal"><span class="pre">DataProviderConverter</span></code> 对象converter。</dt>
-<dd><ul class="first last simple">
+<dd><ul class="first last">
 <li>swig_paddle接受的原始数据是C++的Matrix，也就是直接写内存的float数组。
 这个接口并不用户友好。所以，我们提供了一个工具类DataProviderConverter。
 这个工具类接收和PyDataProvider2一样的输入数据，详情请参考
@@ -114,8 +111,7 @@ layer作为输出，所以用于预测的配置文件要做相应的修改。</p
 </dd>
 </dl>
 </li>
-<li><p class="first">最后使用 <code class="code docutils literal"><span class="pre">forwardTest()</span></code> 直接提取出神经网络Output层的输出结果。典型的输出结果为:</p>
-</li>
+<li>最后使用 <code class="code docutils literal"><span class="pre">forwardTest()</span></code> 直接提取出神经网络Output层的输出结果。典型的输出结果为:</li>
 </ul>
 <div class="highlight-text"><div class="highlight"><pre><span></span>[{&#39;id&#39;: None, &#39;value&#39;: array([[  5.53018653e-09,   1.12194102e-05,   1.96644767e-09,
       1.43630644e-02,   1.51111044e-13,   9.85625684e-01,

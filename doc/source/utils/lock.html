@@ -78,7 +78,7 @@ var _hmt = _hmt || [];
 <span id="paddle::Thread"></span><span class="target" id="paddleclasspaddle_1_1Thread"></span><em class="property">class </em><code class="descclassname">paddle::</code><code class="descname">Thread</code><a class="headerlink" href="#_CPPv2N6paddle6ThreadE" title="Permalink to this definition">¶</a></dt>
 <dd><p>A simple wrapper for std::thread </p>
 <p>Subclassed by <a class="reference internal" href="../pserver/network/network.html#paddleclasspaddle_1_1SocketServer"><span class="std std-ref">paddle::SocketServer</span></a>, <a class="reference internal" href="../pserver/network/network.html#paddleclasspaddle_1_1SocketWorker"><span class="std std-ref">paddle::SocketWorker</span></a>, <a class="reference internal" href="#paddleclasspaddle_1_1ThreadWorker"><span class="std std-ref">paddle::ThreadWorker</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle6Thread6ThreadEv">
@@ -116,7 +116,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle6Thread7thread_E">
@@ -135,7 +135,7 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="#paddleclasspaddle_1_1ThreadWorker"><span class="std std-ref">ThreadWorker</span></a> maintains a job queue. It executes the jobs in the job queue sequentianlly in a separate thread.</p>
 <p>Use <a class="reference internal" href="#paddleclasspaddle_1_1ThreadWorker_1ac45663002b966b417524ccac3dd95b38"><span class="std std-ref">addJob()</span></a> to add a new job to the job queue. </p>
 <p>Inherits from <a class="reference internal" href="#paddleclasspaddle_1_1Thread"><span class="std std-ref">paddle::Thread</span></a></p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle12ThreadWorker7JobFuncE">
@@ -143,7 +143,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle12ThreadWorker12ThreadWorkerEv">
@@ -176,7 +176,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle12ThreadWorker3runEv">
@@ -190,7 +190,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle12ThreadWorker5jobs_E">
@@ -224,7 +224,7 @@ var _hmt = _hmt || [];
 <dd><p><a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool"><span class="std std-ref">SyncThreadPool</span></a> maintains a pool of threads. It executes the job use all workers in the pool.</p>
 <p>Use <a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool_1aa477a8f126ba9433b7b7fe7e7fcd52e5"><span class="std std-ref">exec()</span></a> to run a new job, job complete when exec returned. Only one job can exec simultaneously.</p>
 <p>Each worker has an tid whose range is [0, <a class="reference internal" href="#paddleclasspaddle_1_1SyncThreadPool_1a137196ab4b87c59ba001b127ca197ed3"><span class="std std-ref">getNumThreads()</span></a>). JobFunc can use tid to divide input data. </p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle14SyncThreadPool7JobFuncE">
@@ -232,7 +232,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14SyncThreadPool14SyncThreadPoolEv">
@@ -300,7 +300,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14SyncThreadPool10execHelperEP14SyncThreadPool7JobFunc">
@@ -318,7 +318,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle14SyncThreadPool5startEv">
@@ -339,7 +339,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle14SyncThreadPool14ownerThreadId_E">
@@ -395,7 +395,7 @@ var _hmt = _hmt || [];
 <p>Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a9bee7e6b08a88a8e9596703796b384d2"><span class="std std-ref">waitResult()</span></a> to get the results until nullptr is returned. Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a2a428608cfaf40492996951e6bf3ce15"><span class="std std-ref">stop()</span></a> to exit normally (<a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1ac0993f26d31fc8b36494aa8dd18d3fb5"><span class="std std-ref">stopAddJob()</span></a> should be called first).</p>
 <p>Force stop:</p>
 <p>Use <a class="reference internal" href="#paddleclasspaddle_1_1MultiThreadWorker_1a9eeba6482826c48450a5694c64164ac4"><span class="std std-ref">forceStop()</span></a> to exit forcibly even though there are remaining jobs in the job queue. </p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle17MultiThreadWorker10ResultTypeE">
@@ -413,7 +413,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle17MultiThreadWorker17MultiThreadWorkerE6size_t6size_t">
@@ -503,7 +503,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle17MultiThreadWorker3runEv">
@@ -517,7 +517,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Attributes</p>
 <dl class="member">
 <dt id="_CPPv2N6paddle17MultiThreadWorker9stopping_E">
@@ -564,7 +564,7 @@ var _hmt = _hmt || [];
 <p>Use <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a4848df09be835a672e9351ef5a544c81"><span class="std std-ref">addBatchJobs()</span></a> to add a batch of jobs. Unlike <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a7389d5d38028ca8cd9cc07071f5d98b7"><span class="std std-ref">addJob()</span></a>&#8216;s asynchronization, addBatchJobs will block caller&#8217;s thread until all jobs in the batch are finished.</p>
 <p>Stop: Use <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a7b5bbc8fd15e5f7ed52272a346f3f0d9"><span class="std std-ref">stop()</span></a> to stop the thread pool. Job can be added once stopped.</p>
 <p>Process-wide Singleton: Use AsyncThreadPool::ProcessChannel(N) first to create N threads. Then call <a class="reference internal" href="#paddleclasspaddle_1_1AsyncThreadPool_1a95be04dd6f37d66b4199cf2b1700444d"><span class="std std-ref">AsyncThreadPool::ProcessChannel()</span></a> to get the process-wide global thread pool. </p>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="type">
 <dt id="_CPPv2N6paddle15AsyncThreadPool7JobFuncE">
@@ -572,7 +572,7 @@ var _hmt = _hmt || [];
 <dd></dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15AsyncThreadPool15AsyncThreadPoolEv">
@@ -663,7 +663,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Static Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15AsyncThreadPool14ProcessChannelE6size_t">
@@ -672,7 +672,7 @@ var _hmt = _hmt || [];
 </dd></dl>
 
 </div>
-<div class="breathe-sectiondef container">
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Protected Functions</p>
 <dl class="function">
 <dt id="_CPPv2N6paddle15AsyncThreadPool3runEv">
