@@ -14,13 +14,9 @@ if(WITH_STYLE_CHECK)
   find_package(PythonInterp REQUIRED)
 endif()
 
-if(WITH_GLOG)
-  find_package(Glog REQUIRED)
-endif()
+find_package(Glog REQUIRED)
 
-if(WITH_GFLAGS)
-  find_package(Gflags REQUIRED)
-endif()
+find_package(Gflags REQUIRED)
 
 if(WITH_TESTING)
   find_package(GTest REQUIRED)

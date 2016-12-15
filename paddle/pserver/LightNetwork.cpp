@@ -31,23 +31,23 @@ limitations under the License. */
 #include "paddle/utils/Util.h"
 
 /// quick ack can reduce the latency of small message
-P_DEFINE_bool(small_messages,
-              false,
-              "if message size is small, recommend set it True to enable quick "
-              "ack and no delay");
+DEFINE_bool(small_messages,
+            false,
+            "if message size is small, recommend set it True to enable quick "
+            "ack and no delay");
 
 /// reasonable sock_send_buf_size can control the traffic injected into switch
 /// network. Injecting too many data into traffic could cause packets loss which
 /// cause long latency and degrade the efficiency of communication.
-P_DEFINE_int32(sock_send_buf_size,
-               1024 * 1024 * 40,
-               "restrict sock send buff size, can reduce network congestion if "
-               "set carefully");
+DEFINE_int32(sock_send_buf_size,
+             1024 * 1024 * 40,
+             "restrict sock send buff size, can reduce network congestion if "
+             "set carefully");
 
 /// reasonable size can hold bursted packets and reduce packets loss
-P_DEFINE_int32(sock_recv_buf_size,
-               1024 * 1024 * 40,
-               "restrict sock recv buff size");
+DEFINE_int32(sock_recv_buf_size,
+             1024 * 1024 * 40,
+             "restrict sock recv buff size");
 
 namespace paddle {
 

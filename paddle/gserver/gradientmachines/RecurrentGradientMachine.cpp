@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
 
-P_DEFINE_string(diy_beam_search_prob_so, "", "the diy beam search cost so");
+DEFINE_string(diy_beam_search_prob_so, "", "the diy beam search cost so");
 
 static const char* DIY_CALC_PROB_SYMBOL_NAME = "calc_prob";
 static const char* DIY_START_CALC_PROB_SYMBOL_NAME = "start_calc_prob";

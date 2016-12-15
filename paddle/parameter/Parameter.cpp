@@ -26,11 +26,11 @@ limitations under the License. */
 #include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Logging.h"
 
-P_DEFINE_int32(enable_grad_share,
-               (100 * 1024 * 1024),
-               "threshold for enable gradient parameter share for batch "
-               "multi-cpu training");
-P_DEFINE_int32(
+DEFINE_int32(enable_grad_share,
+             (100 * 1024 * 1024),
+             "threshold for enable gradient parameter share for batch "
+             "multi-cpu training");
+DEFINE_int32(
     grad_share_block_num,
     64,
     "block number of gradient parameter share for batch multi-cpu training");

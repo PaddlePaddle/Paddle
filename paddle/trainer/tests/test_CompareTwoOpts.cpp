@@ -22,20 +22,20 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_int32(gpu_id);
+DECLARE_int32(gpu_id);
 
-P_DECLARE_bool(local);
-P_DECLARE_bool(use_gpu);
+DECLARE_bool(local);
+DECLARE_bool(use_gpu);
 
-P_DECLARE_string(config);
-P_DECLARE_string(nics);
+DECLARE_string(config);
+DECLARE_string(nics);
 
-P_DEFINE_string(config_file_a, "", "config of one network to compare");
-P_DEFINE_string(config_file_b, "", "config of another network to compare");
-P_DEFINE_bool(need_high_accuracy,
-              true,
-              "whether need to run in double accuracy (recommended)");
-P_DEFINE_double(
+DEFINE_string(config_file_a, "", "config of one network to compare");
+DEFINE_string(config_file_b, "", "config of another network to compare");
+DEFINE_bool(need_high_accuracy,
+            true,
+            "whether need to run in double accuracy (recommended)");
+DEFINE_double(
     max_diff_ratio,
     0.0f,
     "max diff ratio allowed for outputs and parameters (value/gradient)");

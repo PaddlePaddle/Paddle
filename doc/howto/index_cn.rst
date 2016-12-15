@@ -1,27 +1,37 @@
-HOW TO
-=======
+进阶指南
+========
 
-Usage
--------
-
-..  toctree::
-  :maxdepth: 1
-
-  concepts/use_concepts_cn.rst
-  cluster/k8s/paddle_on_k8s_cn.md
-  cluster/k8s/distributed_training_on_k8s_cn.md
-
-Development
-------------
+使用说明
+--------
 
 ..  toctree::
   :maxdepth: 1
 
-  write_docs/index_cn.rst
-  deep_model/index_cn.rst
+  usage/concepts/use_concepts_cn.rst
+  usage/cluster/k8s/k8s_cn.md
+  usage/cluster/k8s/k8s_distributed_cn.md
 
-Optimization
--------------
+开发标准
+--------
 
 ..  toctree::
   :maxdepth: 1
+
+  dev/write_docs_cn.rst
+  dev/contribute_to_paddle_cn.md
+
+模型配置
+--------
+
+..  toctree::
+  :maxdepth: 1
+
+  deep_model/rnn/index_cn.rst
+
+性能优化
+--------
+
+..  toctree::
+  :maxdepth: 1
+
+  optimization/gpu_profiling_cn.rst

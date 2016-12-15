@@ -21,11 +21,11 @@ limitations under the License. */
 #include "NeuralNetwork.h"
 #include "ParallelNeuralNetwork.h"
 
-P_DEFINE_bool(allow_only_one_model_on_one_gpu,
-              true,
-              "If true, do not allow multiple models on one GPU device");
+DEFINE_bool(allow_only_one_model_on_one_gpu,
+            true,
+            "If true, do not allow multiple models on one GPU device");
 #ifdef PADDLE_METRIC_LEARNING
-P_DECLARE_bool(external);
+DECLARE_bool(external);
 #endif
 
 namespace paddle {

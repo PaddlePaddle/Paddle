@@ -1,8 +1,8 @@
-# How to Contribute Code
+# Contribute Code
 
 We sincerely appreciate your contributions. You can use fork and pull request
-workflow to merge your code. 
- 
+workflow to merge your code.
+
 ## Code Requirements
 - Your code must be fully documented by
   [doxygen](http://www.stack.nl/~dimitri/doxygen/) style.
@@ -12,11 +12,11 @@ workflow to merge your code.
 - Pass all unit tests.
 
 The following tutorial guides you into submitting your contibution.
- 
+
 ## [Creating a Fork](https://help.github.com/articles/fork-a-repo/)
- 
+
 Just head over to the GitHub page and click the "Fork" button.
-It's just that simple. 
+It's just that simple.
 
 ## Clone
 
@@ -25,7 +25,7 @@ The **develop** is the main branch, and other user's branches are feature branch
 
 Once you've created a fork, you can use your favorite git client to clone your
 repo or just head straight to the command line:
- 
+
 ```shell
 # Clone your fork to your local machine
 git clone --branch develop https://github.com/USERNAME/Paddle.git
@@ -46,6 +46,22 @@ Then you can start to develop by making a local developement branch
 ```shell
 git checkout -b MY_COOL_STUFF_BRANCH
 ```
+
+## Using `pre-commit` hook
+
+Paddle developers use [pre-commit](http://pre-commit.com/) tool to manage git
+pre-commit hooks. It can help us format source codes (cpp, python), check some
+basic thing before commit (only one EOL for each file, do not add a huge file
+in git). `pre-commit` tests is a part of unit tests in Travis-CI now, every
+PR doesn't fit hook can not be merged into Paddle.
+
+To use [pre-commit](http://pre-commit.com/), you should install it by
+`pip install pre-commit`, and currently, Paddle uses `clang-format` to format
+c/cpp sources. Please make sure clang-format 3.8+ installed.
+
+Then just run `pre-commit install` in your Paddle clone directory. When you
+commit your code, the pre-commit hook will check the local code if there is
+anything not suitable to commit, and so on.
 
 ## Commit
 
@@ -83,7 +99,7 @@ git pull --rebase upstream develop
 
 If there are no unique commits locally, git will simply perform a fast-forward.
 However, if you have been making changes (in the vast majority of cases you
-probably shouldn't be), you may have to deal with conflicts. 
+probably shouldn't be), you may have to deal with conflicts.
 
 Now, your local master branch is up-to-date with everything modified upstream.
 

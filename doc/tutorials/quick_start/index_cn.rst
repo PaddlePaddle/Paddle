@@ -1,5 +1,6 @@
-PaddlePaddle快速入门教程
-========================
+=============
+快速入门教程
+=============
 
 我们将以 `文本分类问题 <https://en.wikipedia.org/wiki/Document_classification>`_ 为例,
 介绍PaddlePaddle的基本使用方法。
