@@ -15,12 +15,12 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <set>
 #include <vector>
-#include "paddle/utils/Logging.h"
 #include "paddle/utils/CommandLineParser.h"
-#include "paddle/utils/Util.h"
 #include "paddle/utils/Locks.h"
+#include "paddle/utils/Logging.h"
+#include "paddle/utils/Util.h"
 
-P_DEFINE_int32(test_thread_num, 100, "testing thread number");
+DEFINE_int32(test_thread_num, 100, "testing thread number");
 
 void testNormalImpl(
     size_t thread_num,

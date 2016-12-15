@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <cstddef>
-#include "Matrix.h"
 #include "CpuSparseMatrix.h"
+#include "Matrix.h"
 
 namespace paddle {
 

@@ -47,17 +47,20 @@ if [ $? -eq 0 ]; then
 fi
 set -e
 
-# Commit
-git add .
-git config user.name "Travis CI"
-git config user.email "paddle-dev@baidu.com"
-git commit -m "Deploy to GitHub Pages: ${SHA}"
+if [ -n $SSL_KEY ]; then  # Only push updated docs for github.com/PaddlePaddle/Paddle.
+  # Commit
+  git add .
+  git config user.name "Travis CI"
+  git config user.email "paddle-dev@baidu.com"
+  git commit -m "Deploy to GitHub Pages: ${SHA}"
 
-# Set ssh private key
-openssl aes-256-cbc -K $SSL_KEY -iv $SSL_IV -in ../../paddle/scripts/travis/deploy_key.enc -out deploy_key -d
-chmod 600 deploy_key
-eval `ssh-agent -s`
-ssh-add deploy_key
+  # Set ssh private key
+  openssl aes-256-cbc -K $SSL_KEY -iv $SSL_IV -in ../../paddle/scripts/travis/deploy_key.enc -out deploy_key -d
+  chmod 600 deploy_key
+  eval `ssh-agent -s`
+  ssh-add deploy_key
 
-# Push
-git push $SSH_REPO $TARGET_BRANCH
+  # Push
+  git push $SSH_REPO $TARGET_BRANCH
+
+fi

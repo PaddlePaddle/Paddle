@@ -17,22 +17,22 @@ limitations under the License. */
 #include <fenv.h>
 #include <stdio.h>
 
-#include <iostream>
 #include <iomanip>
-#include <sstream>
+#include <iostream>
 #include <limits>
+#include <sstream>
 
 #include <google/protobuf/text_format.h>
 
+#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
+#include "paddle/gserver/layers/ValidationLayer.h"
+#include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
-#include "paddle/utils/GlobalConstants.h"
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
-#include "paddle/gserver/layers/ValidationLayer.h"
 
-#include "ThreadParameterUpdater.h"
 #include "RemoteParameterUpdater.h"
+#include "ThreadParameterUpdater.h"
 
 namespace paddle {
 

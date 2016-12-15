@@ -16,20 +16,20 @@ limitations under the License. */
 #include "PaddleAPIPrivate.h"
 
 #include <stdlib.h>
-#include <memory>
 #include <atomic>
+#include <memory>
 
+#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/trainer/ParamUtil.h"
 #include "paddle/trainer/Trainer.h"
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/trainer/TrainerInternal.h"
 #include "paddle/utils/Flags.h"
 
 using paddle::real;
 
-P_DECLARE_string(config);
-P_DECLARE_string(init_model_path);
-P_DECLARE_int32(start_pass);
+DECLARE_string(config);
+DECLARE_string(init_model_path);
+DECLARE_int32(start_pass);
 
 struct TrainerPrivate : public paddle::Trainer {
   bool _trainOneBatch(size_t batchSize);

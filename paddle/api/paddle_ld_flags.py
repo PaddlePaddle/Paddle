@@ -47,10 +47,8 @@ try:
             self.with_python = PaddleLDFlag.cmake_bool(WITH_PYTHON)
             self.python_libs = PYTHON_LIBRARIES
 
-            self.with_glog = PaddleLDFlag.cmake_bool(WITH_GLOG)
             self.glog_libs = LIBGLOG_LIBRARY
 
-            self.with_gflags = PaddleLDFlag.cmake_bool(WITH_GFLAGS)
             self.with_coverage = PaddleLDFlag.cmake_bool(WITH_COVERALLS)
             self.gflags_libs = GFLAGS_LIBRARIES
             self.gflags_location = GFLAGS_LOCATION
@@ -88,6 +86,8 @@ try:
                 "-lpaddle_cuda",
                 "-lpaddle_api",
                 self.normalize_flag(self.protolib),
+                self.normalize_flag(self.glog_libs),
+                self.normalize_flag(self.gflags_libs),
                 self.normalize_flag(self.zlib),
                 self.normalize_flag(self.thread),
                 self.normalize_flag(self.dl_libs),
@@ -96,10 +96,6 @@ try:
 
             if self.with_python:
                 libs.append(self.normalize_flag(self.python_libs))
-            if self.with_glog:
-                libs.append(self.normalize_flag(self.glog_libs))
-            if self.with_gflags:
-                libs.append(self.normalize_flag(self.gflags_libs))
             if self.with_gpu:
                 libs.append(self.normalize_flag(self.curt))
             if self.with_coverage:

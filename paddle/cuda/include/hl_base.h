@@ -223,9 +223,9 @@ typedef struct {
 
 #ifdef __NVCC__
 
-#include "paddle/utils/Logging.h"
-#include "hl_cuda.h"
 #include "cuda_runtime.h"
+#include "hl_cuda.h"
+#include "paddle/utils/Logging.h"
 
 extern __thread bool g_sync_flag;
 extern __thread cudaStream_t default_stream;

@@ -71,9 +71,7 @@ class SentimentPrediction():
         transform word into integer index according to the dictionary.
         """
         words = data.strip().split()
-        word_slot = [
-            self.word_dict[w] for w in words if w in self.word_dict
-        ]
+        word_slot = [self.word_dict[w] for w in words if w in self.word_dict]
         return word_slot
 
     def batch_predict(self, data_batch):
@@ -85,8 +83,8 @@ class SentimentPrediction():
             if self.label is None:
                 print("predicting label is %d" % (lab[0]))
             else:
-                print("predicting label is %s" %
-                      (self.label[lab[0]]))
+                print("predicting label is %s" % (self.label[lab[0]]))
+
 
 def option_parser():
     usage = "python predict.py -n config -w model_dir -d dictionary -i input_file "
@@ -143,9 +141,10 @@ def main():
         batch.append([predict.get_index(line)])
         if len(batch) == batch_size:
             predict.batch_predict(batch)
-            batch=[]
+            batch = []
     if len(batch) > 0:
         predict.batch_predict(batch)
+
 
 if __name__ == '__main__':
     main()

@@ -14,13 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include <algorithm>
 #include <string.h>
-#include "paddle/utils/CommandLineParser.h"
+#include <algorithm>
 #include "Matrix.h"
+#include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Util.h"
 
-P_DECLARE_bool(allow_inefficient_sparse_update);
+DECLARE_bool(allow_inefficient_sparse_update);
 
 namespace paddle {
 

@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <chrono>
-#include <stdlib.h>
-#include <iostream>
 #include "hl_time.h"
+#include <stdlib.h>
+#include <chrono>
+#include <cstdint>
+#include <iostream>
 
 using std::chrono::high_resolution_clock;
 

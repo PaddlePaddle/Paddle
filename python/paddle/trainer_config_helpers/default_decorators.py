@@ -84,11 +84,14 @@ class DefaultNameFactory(object):
 
 _name_factories = []
 
+
 def reset_hook():
     for factory in _name_factories:
         factory.reset()
 
+
 register_parse_config_hook(reset_hook)
+
 
 def wrap_name_default(name_prefix=None):
     """

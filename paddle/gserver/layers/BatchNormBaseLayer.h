@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/utils/Stat.h"
 #include "Layer.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 

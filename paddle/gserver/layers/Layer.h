@@ -14,18 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
-#include <functional>
 #include <paddle/parameter/Argument.h>
-#include "paddle/utils/ClassRegistrar.h"
+#include <functional>
+#include <memory>
+#include "ModelConfig.pb.h"
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/parameter/Parameter.h"
+#include "paddle/utils/ClassRegistrar.h"
 #include "paddle/utils/Util.h"
-#include "ModelConfig.pb.h"
 
-#include "paddle/gserver/activations/ActivationFunction.h"
 #include <paddle/parameter/ParallelParameter.h>
 #include <paddle/parameter/Weight.h>
+#include "paddle/gserver/activations/ActivationFunction.h"
 
 /// Macro for registering a layer type.
 /// Example: REGISTER_LAYER(crf_error, CRFDecodingErrorLayer);

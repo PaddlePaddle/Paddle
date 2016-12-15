@@ -99,11 +99,3 @@ In PaddlePaddle, training is just to get a collection of model parameters, which
 Although starts from a random guess, you can see that value of ``w`` changes quickly towards 2 and ``b`` changes quickly towards 0.3. In the end, the predicted line is almost identical with real answer.
 
 There, you have recovered the underlying pattern between ``X`` and ``Y`` only from observed data.
-
-
-5. Where to Go from Here
--------------------------
-
-- `Install and Build <../build_and_install/index.html>`_
-- `Tutorials <../demo/quick_start/index_en.html>`_
-- `Example and Demo <../demo/index.html>`_

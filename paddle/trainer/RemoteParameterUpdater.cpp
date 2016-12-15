@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "RemoteParameterUpdater.h"
 #include "Trainer.h"
-#include "paddle/utils/Stat.h"
 #include "paddle/utils/GlobalConstants.h"
+#include "paddle/utils/Stat.h"
 
-P_DECLARE_int32(trainer_id);
-P_DECLARE_string(save_dir);
+DECLARE_int32(trainer_id);
+DECLARE_string(save_dir);
 
 namespace paddle {
 

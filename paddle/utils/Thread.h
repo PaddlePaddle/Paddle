@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "Util.h"
-#include "Logging.h"
 #include <thread>
+#include "Logging.h"
+#include "Util.h"
 
 #include "Queue.h"
 #include "ThreadLocal.h"
