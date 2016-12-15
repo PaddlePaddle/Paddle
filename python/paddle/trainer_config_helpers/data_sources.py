@@ -192,6 +192,7 @@ def define_py_data_sources2(train_list, test_list, module, obj, args=None):
     :return: None
     :rtype: None
     """
+
     def py_data2(files, load_data_module, load_data_object, load_data_args,
                  **kwargs):
         data = DataBase()
