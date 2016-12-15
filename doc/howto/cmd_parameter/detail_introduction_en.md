@@ -1,5 +1,5 @@
 ```eval_rst
-..  _cmd_detail_introduction_en:
+..  _cmd_detail_introduction:
 ```
 
 # Detail Description

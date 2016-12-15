@@ -25,10 +25,10 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_int32(gpu_id);
-P_DECLARE_double(checkgrad_eps);
-P_DEFINE_bool(use_label, true, "input label or sequence label");
-P_DEFINE_bool(static_para, false, "static parameter");
+DECLARE_int32(gpu_id);
+DECLARE_double(checkgrad_eps);
+DEFINE_bool(use_label, true, "input label or sequence label");
+DEFINE_bool(static_para, false, "static parameter");
 
 struct DataIn {
   std::vector<Argument> inArgs;
@@ -267,8 +267,8 @@ TEST(Compare, img_conv2) {
 }
 #endif
 
-P_DEFINE_string(config_file_a, "", "config of one network to compare");
-P_DEFINE_string(config_file_b, "", "config of another network to compare");
+DEFINE_string(config_file_a, "", "config of one network to compare");
+DEFINE_string(config_file_b, "", "config of another network to compare");
 TEST(Compare, network) {
   if (FLAGS_config_file_a != "" && FLAGS_config_file_b != "") {
     compareNetwork(FLAGS_config_file_a, FLAGS_config_file_b);

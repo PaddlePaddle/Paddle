@@ -186,7 +186,7 @@ def define_py_data_sources2(train_list, test_list, module, obj, args=None):
                                 obj="process", 
                                 args={"dictionary": dict_name})
 
-    The related data provider can refer to :ref:`api_pydataprovider2_en_sequential_model` .
+    The related data provider can refer to :ref:`api_pydataprovider2_sequential_model` .
 
     :param train_list: Train list name.
     :type train_list: basestring

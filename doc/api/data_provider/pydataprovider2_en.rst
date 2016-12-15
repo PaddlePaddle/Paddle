@@ -1,4 +1,4 @@
-..  _api_pydataprovider2_en:
+..  _api_pydataprovider2:
 
 PyDataProvider2
 ===============
@@ -104,7 +104,7 @@ And PaddlePadle will do all of the rest things\:
 
 Is this cool?
 
-..  _api_pydataprovider2_en_sequential_model:
+..  _api_pydataprovider2_sequential_model:
 
 DataProvider for the sequential model
 -------------------------------------

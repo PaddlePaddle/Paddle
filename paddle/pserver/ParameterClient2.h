@@ -34,7 +34,7 @@ limitations under the License. */
 #include "ProtoServer.h"
 #include "SparseParameterDistribution.h"
 
-P_DECLARE_int32(parallel_thread_num);
+DECLARE_int32(parallel_thread_num);
 
 namespace paddle {
 

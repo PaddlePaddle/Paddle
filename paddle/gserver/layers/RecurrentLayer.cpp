@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Stat.h"
 
-P_DEFINE_bool(rnn_use_batch, false, "Using the batch method for calculation.");
+DEFINE_bool(rnn_use_batch, false, "Using the batch method for calculation.");
 
 namespace paddle {
 

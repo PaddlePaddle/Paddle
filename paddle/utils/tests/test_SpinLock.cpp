@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Util.h"
 
-P_DEFINE_int32(test_thread_num, 100, "testing thread number");
+DEFINE_int32(test_thread_num, 100, "testing thread number");
 
 void testNormalImpl(
     size_t thread_num,
