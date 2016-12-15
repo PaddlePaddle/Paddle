@@ -1,81 +1,84 @@
-Profiling on PaddlePaddle
-=========================
+PaddlePaddle 中的性能分析
+=====================================
 
-This tutorial will guide you step-by-step through how to conduct profiling and performance tuning using built-in timer, **nvprof** and **nvvp**.
+此教程将向您分步介绍如何使用内置的定时工具、 **nvprof** 或 **nvvp** 来运行性能分析和调优。
 
-- What is profiling?
-- Why we need profiling?
-- How to do profiling?
-- Profile tools
-- Hands-on Tutorial
-- Profiling tips
+- 什么是性能分析？
+- 为什么需要性能分析？
+- 如何进行性能分析？
+- 性能分析工具介绍
+- 详细教程
+- 性能分析小技巧
 
-What's profiling?
-=================
-In software engineering, profiling is a form of dynamic program analysis that measures the space (memory) or time
-complexity of a program, the usage of particular instructions, or the frequency and duration of function calls.
-Most commonly, profiling information serves to aid program optimization.
+什么是性能分析？
+================
+在软件工程的范畴里，性能分析（Profiling）是一个动态程序分析的术语，它可以指测量一个程序的空间（内存）复杂度或时间复杂度，
+也可以说是某些特定指令的使用情况，或者是函数调用的频率和耗时等。通常情况下，分析得到的信息用于协助进行程序的优化。
 
-Briefly, profiler is used to measure application performance. Program analysis tools are extremely important for
-understanding program behavior. Simple profiling can tell you that how long does an operation take? For advanced
-profiling, it can interpret why does an operation take a long time?
+简单来说，性能分析工具是用于给应用程序的性能做定量分析的。如果想很好的理解程序的行为，那程序分析工具是必不可少的利器。简单的性能分析，可以告诉您某个操作到底花了多长时间？而更深入的分析，甚至能解释为什么某个操作花了很长时间？
 
-Why we need profiling?
-======================
-Since training deep neural network typically take a very long time to get over, performance is gradually becoming
-the most important thing in deep learning field. The first step to improve performance is to understand what parts
-are slow.  There is no point in improving performance of a region which doesn’t take much time!
+为什么需要性能分析？
+============================
+训练好一个深层神经网络通常要耗费非常长的时间，所以性能也就逐步变成了深度学习领域最重要的指标。
+而优化性能的首要任务，是需要了解哪些步骤拖慢了整体。
+如果某一块根本就不怎么耗时，那也就不需要急着优化性能啦！
 
+如何进行性能分析？
+========================
+为了达到性能最优，您可以采用下面五个步骤：
 
-How to do profiling?
-====================
-To achieve maximum performance, there are five steps you can take to reach your goals.
-
-- Profile the code
-- Find the slow parts
-- Work out why they’re slow
-- Make them fast
-- Profile the code again
+- 对代码进行性能分析
+- 找到运行慢的部分
+- 找到运行慢的原因
+- 修改成更快的版本
+- 再次对代码进行性能分析
 
 Usually, processor has two key performance limits include float point throughput and
 memory throughput. For GPU,  it also need more parallelism to fulfill its potential.
 This is why they can be so fast.
 
-Profiler Tools
-==============
-For general GPU profiling, a bunch of tools are provided from both NVIDIA and third party.
+通常情况下，处理器有两个关键性能限制：一个是浮点计算量，另一个是内存操作量。
+GPU则还需要高并行性，才能发挥其全部能力。这正是它们速度快的原因。
 
-**nvprof** is Nvidia profiler and **nvvp** is (GUI based) Nvidia visual profiler.
-In this tutorial, we will focus on nvprof and nvvp.
+性能分析工具介绍
+======================
+就通常的GPU性能分析来说，市面上已经有NVIDIA或第三方提供的众多工具。
+
+**nvprof** 是Nvidia性能分析工具， **nvvp** 则是带GUI的Nvidia可视化性能分析工具。
+在这个教程中，我们主要会介绍nvprof和nvvp。
 
 :code:`test_GpuProfiler` from :code:`paddle/math/tests` directory will be used to evaluate
 above profilers.
 
+:code:`paddle/math/test` 目录中的 :code:`test_GpuProfiler` 就是用于展示上述分析工具的用法。
+
 .. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
    :language: c++
-   :lines: 111-124
+   :lines: 137-151
    :linenos:
 
-The above code snippet includes two methods, you can use any of them to profile the regions of interest.
+上述的代码片段包含了两种方法，您可以任意使用一个或两个来对感兴趣的代码段做性能分析。
 
-1. :code:`REGISTER_TIMER_INFO` is a built-in timer wrapper which can calculate the time overhead of both cpu functions and cuda kernels.
+1. :code:`REGISTER_TIMER_INFO` 是一个内置的定时器封装，可以用来计算CPU函数或cuda内核的时间消耗。
 
 2. :code:`REGISTER_GPU_PROFILER` is a general purpose wrapper object of :code:`cudaProfilerStart` and :code:`cudaProfilerStop` to avoid
 program crashes when CPU version of PaddlePaddle invokes them.
 
-You can find more details about how to use both of them in the next session.
+3. :code:`REGISTER_GPU_PROFILER` 是一个封装对象，封装了 :code:`cudaProfilerStart` 和 :code:`cudaProfileStop` 两个操作；同时其内部实现可以避免纯CPU版本PaddlePaddle在执行本语句时发生崩溃。
 
-Hands-on Approach
-=================
+您会在接下来的部分中获得更多的细节介绍。
 
-Built-in Timer
---------------
+详细教程
+============
 
-To enable built-in timer in PaddlePaddle, first you have to add :code:`REGISTER_TIMER_INFO` into the regions of you interest.
-Then, all information could be stamped in the console via :code:`printStatus` or :code:`printAllStatus` function.
-As a simple example, consider the following:
+内置定时器
+------------
 
-1. Add :code:`REGISTER_TIMER_INFO` and :code:`printAllStatus` functions (see the emphasize-lines).
+如果想要启用PaddlePaddle的内置定时器，您首先需要在相关代码段中加入 :code:`REGISTER_TIMER_INFO`。
+接下来就可以使用 :code:`printStatus` 或者 :code:`printAllStatus` 函数来将信息输出到界面中。
+下面举个简单的例子：
+
+1. 加入 :code:`REGISTER_TIMER_INFO` 和 :code:`printAllStatus` 函数（如高亮部分）。
 
     .. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
         :language: c++
@@ -83,14 +86,14 @@ As a simple example, consider the following:
         :emphasize-lines: 8-12,14
         :linenos:
 
-2. Configure cmake with **WITH_TIMER** and recompile PaddlePaddle.
+2. cmake配置中将 **WITH_TIMER** 打开，重新编译PaddlePaddle。
 
     .. code-block:: bash
 
         cmake .. -DWITH_TIMER=ON
         make
 
-3. Execute your code and observe the results (see the emphasize-lines).
+3. 执行您的代码，并观察结果(如高亮部分）。
 
     .. code-block:: bash
         :emphasize-lines: 1,12-15
@@ -117,12 +120,12 @@ As a simple example, consider the following:
         [==========] 1 test from 1 test case ran. (136 ms total)
         [  PASSED  ] 1 test.
 
-nvprof profiler
----------------
+nvprof 工具
+----------------
 
-To use this command line profiler **nvprof**, you can simply issue the following command:
+要使用命令行分析工具 **nvprof**，您按如下步骤操作即可：
 
-1. Add :code:`REGISTER_GPU_PROFILER` function (see the emphasize-lines).
+1. 将 :code:`REGISTER_GPU_PROFILER` 函数加到代码中（参考强调部分）。
 
     .. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
         :language: c++
@@ -130,20 +133,20 @@ To use this command line profiler **nvprof**, you can simply issue the following
         :emphasize-lines: 6-7
         :linenos:
 
-2. Configure cmake with **WITH_PROFILER** and recompile PaddlePaddle.
+2. cmake中将 **WITH_PROFILER** 配置打开，重新编译PaddlePaddle。
 
     .. code-block:: bash
 
         cmake .. -DWITH_PROFILER=ON
         make
 
-3. Use Nvidia profiler **nvprof** to profile the binary.
+3. 使用 **nvprof** 来分析执行文件。
 
     .. code-block:: bash
 
         nvprof  ./paddle/math/tests/test_GpuProfiler
 
-Then, you can get the following profiling result:
+然后，您就能获得如下的分析结果：
 
 .. code-block:: bash
 
@@ -186,28 +189,27 @@ Then, you can get the following profiling result:
     0.00%      830ns         1     830ns     830ns     830ns  cudaRuntimeGetVersion
 
 
-nvvp profiler
--------------
+nvvp 工具
+--------------
 
-For visual profiler **nvvp**, you can either import the output of :code:`nvprof –o ...` or
-run application through GUI.
+如果想使用可视化的分析器 **nvvp**，您可以导入 :code:`nvprof -o ...` 的输出，或者从工具的界面里运行您的应用。
 
-**Note: nvvp also support CPU profiling** (Click the box in nvvp to enable profile execution on CPU).
+**备注: nvvp 也支持CPU的性能分析** (需在nvvp界面中选上才能开启）
 
 ..  image:: nvvp1.png
     :align: center
     :scale: 33%
 
-From the perspective of kernel functions, **nvvp** can even illustrate why does an operation take a long time?
-As shown in the following figure, kernel's block usage, register usage and shared memory usage from :code:`nvvp`
-allow us to fully utilize all warps on the GPU.
+从内核函数的角度， **nvvp** 可以精确说明一个长耗时操作的具体原因。
+同时，如下图所示， **nvvp** 的内核block使用情况、register使用情况和共享内存使用情况能让我们对GPU的整体使用有更好的理解。
+
 
 ..  image:: nvvp2.png
     :align: center
     :scale: 33%
 
-From the perspective of application, **nvvp** can give you some suggestions to address performance bottleneck.
-For instance, some advice in data movement and compute utilization from the below figure can guide you to tune performance.
+而从应用的角度， **nvvp** 可以帮您提供一些定位性能瓶颈的建议。
+例如，下图中就展示了一些关于data movement和compute utilization的建议，为您做性能调优提供了方向。
 
 ..  image:: nvvp3.png
     :align: center
@@ -217,21 +219,21 @@ For instance, some advice in data movement and compute utilization from the belo
     :align: center
     :scale: 33%
 
-Profiling tips
-==============
+性能分析小技巧
+==================
 
-- The **nvprof** and **nvvp** output is a very good place to start.
-- The timeline is a good place to go next.
-- Only dig deep into a kernel if it’s taking a significant amount of your time.
-- Where possible, try to match profiler output with theory.
-    1) For example, if I know I’m moving 1GB, and my kernel takes 10ms, I expect the profiler to report 100GB/s.
-    2) Discrepancies are likely to mean your application isn’t doing what you thought it was.
-- Know your hardware: If your GPU can do 6 TFLOPs, and you’re already doing 5.5 TFLOPs, you won’t go much faster!
+- 开始阶段，从 **nvprof** 和 **nvvp** 的输出信息入手是个不错的选择。
+- 接下来可以考虑下时间线的分析。
+- 如果真想挖掘内核深处的某个秘密，您最好先确认：这一块的耗时比例真的太高，值得深入分析。
+- 可能的情况下，试着让输出的分析数据和理论值对应。
 
+    1) 例如，如果我知道内核花了10ms来移动1GB数据，那我会期望分析工具统计到速度是100GB/s。
+    2) 若有不一致之处，很有可能实际应用就是没有按照您的预期情况运行。
+- 了解您的硬件：如果您的GPU理论可以达到6 TFLOPs（6万亿次浮点运算每秒），而当前已经有5.5 TFLOPs了，那估计这里的潜力就没啥好挖的了……
 
-Profiling is a key step in optimization. Sometimes quite simple changes can lead to big improvements in performance.
-Your mileage may vary!
+性能分析是性能优化的关键一步。有的时候简简单单的改变就能在性能上产生明显的优化效果！
+当然，具体情况因人而异。
 
-Reference
-=========
+参考资料
+===========
 Jeremy Appleyard, `GPU Profiling for Deep Learning <http://www.robots.ox.ac.uk/~seminars/seminars/Extra/2015_10_08_JeremyAppleyard.pdf>`_, 2015
