@@ -15,7 +15,7 @@ MovieLens数据集评分回归模型
 ```````
 下载并解压数据集
 ''''''''''''''
-这里我们使用 :ref:`demo_ml_dataset_en` 。
+这里我们使用 :ref:`demo_ml_dataset` 。
 要下载和解压数据集，只需要简单的运行下面的命令即可。
 
 .. code-block:: bash
@@ -225,7 +225,7 @@ meta文件 :code:`meta.bin` 的结构如下：
     :language: python
     :lines: 15-
 
-在文件 :code:`trainer_config.py` 中，我们仅仅是讲每个特征种类映射到一个特征向量中，以下
+在文件 :code:`trainer_config.py` 中，我们仅仅是将每个特征种类映射到一个特征向量中，以下
 展示了如何将每个特征映射到一个向量。
 
 * :code:`id` \: 仅仅是简单的嵌入，然后添加一个全连接层。
@@ -280,7 +280,7 @@ meta文件 :code:`meta.bin` 的结构如下：
 该脚本仅仅是开始一个paddle训练过程，将日志写入文件 :code:`log.txt` ，然后
 打印在屏幕上。
 
-脚本 :code:`run.sh` 中的每一行命令，请参考页面 :ref:`cmd_line_index_en` 。
+脚本 :code:`run.sh` 中的每一行命令，请参考页面 :ref:`cmd_line_index` 。
 这些参数的简短介绍如下：
 
 *  config\: 告诉paddle哪个文件是神经网络的配置文件。
