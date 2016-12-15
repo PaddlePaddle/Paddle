@@ -1,10 +1,10 @@
 # 如何贡献代码
 
-我们真诚地感谢您的贡献。你能使用 fork 和 pull request 的工作流来合并（merge）代码。
+我们真诚地感谢您的贡献，欢迎通过 GitHub 的 fork 和 pull request 流程来提交代码。。
  
 ## 代码要求
 - 你的代码必须完全遵守 [doxygen](http://www.stack.nl/~dimitri/doxygen/) 的样式。
-- 确保编译器选项 WITH\_STYLE\_CHECK 已打开，并且编译器通过代码样式检查。
+- 确保编译器选项 WITH\_STYLE\_CHECK 已打开，并且编译能通过代码样式检查。
 - 所有代码必须具有单元测试。
 - 通过所有单元测试。
 
@@ -12,12 +12,11 @@
  
 ## [Fork](https://help.github.com/articles/fork-a-repo/)
  
-转到GitHub页面，然后单击“Fork”按钮。
-这就是这么简单。
+跳转到[PaddlePaddle](https://github.com/PaddlePaddle/Paddle) GitHub首页，然后单击 `Fork` 按钮。
 
 ## 克隆（Clone）
 
-Paddle 目前使用[git流分支模型](http://nvie.com/posts/a-successful-git-branching-model/)。
+Paddle 目前使用[git流分支模型](http://nvie.com/posts/a-successful-git-branching-model/)进行开发，测试，发行和维护。
 **develop** 是主分支，其他用户分支是特征分支（feature branches）。
 
 一旦你创建了一个fork，你可以使用你最喜欢的 git 客户端克隆你的仓库（repo）或只是直接在命令行输入：
@@ -42,6 +41,19 @@ git submodule update --init --recursive
 ```shell
 git checkout -b MY_COOL_STUFF_BRANCH
 ```
+
+## 使用 `pre-commit` 钩子
+
+Paddle 开发人员使用 [pre-commit](http://pre-commit.com/) 工具来管理git预提交钩子。 它可以帮助我们格式化源代码（cpp，python），在提交前检查一些基本事宜（每个文件只有一个 EOL 
+，git 中不要添加大文件）。 `pre-commit`测试是 Travis-CI 中单元测试的一部分，不满足钩子
+的 PR 不能提交代码到 Paddle。
+
+你可以通过 `pip install pre-commit` 安装 [pre-commit](http://pre-commit.com/)，
+目前 Paddle 使用 `clang-format` 来格式化 c/cpp 资源。请确保 clang-format 版本在3.8以上。
+
+然后只需在 Paddle clone 目录中运行 `pre-commit install` 。当你
+提交你的代码时，pre-commit 钩子会检查本地代码是否存在
+不适合提交的东西，等等。
 
 ## 提交（Commit）
 
