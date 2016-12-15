@@ -330,8 +330,7 @@ def chunk_evaluator(
         label,
         chunk_scheme,
         num_chunk_types,
-        name=None,
-        ):
+        name=None, ):
     """
     Chunk evaluator is used to evaluate segment labelling accuracy for a
     sequence. It calculates the chunk detection F1 score.
