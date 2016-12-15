@@ -21,9 +21,9 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_int32(num_gradient_servers);
-P_DEFINE_string(server_addr, "127.0.0.1", "assign server address");
-P_DEFINE_int32(server_cpu, 0, "assign server cpu");
+DECLARE_int32(num_gradient_servers);
+DEFINE_string(server_addr, "127.0.0.1", "assign server address");
+DEFINE_int32(server_cpu, 0, "assign server cpu");
 
 class ParameterServer2Tester : public ParameterServer2 {
 public:

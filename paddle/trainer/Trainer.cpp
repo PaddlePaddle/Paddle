@@ -38,60 +38,56 @@ limitations under the License. */
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/gserver/layers/ValidationLayer.h"
 
-P_DEFINE_string(config, "", "Trainer config file");
+DEFINE_string(config, "", "Trainer config file");
 
-P_DEFINE_int32(test_period,
-               0,
-               "if equal 0, do test on all test data at the end of "
-               "each pass. While if equal non-zero, do test on all test "
-               "data every test_period batches");
-P_DEFINE_bool(test_all_data_in_one_period,
-              false,
-              "This option was deprecated, since we will always do "
-              "test on all test set ");
+DEFINE_int32(test_period,
+             0,
+             "if equal 0, do test on all test data at the end of "
+             "each pass. While if equal non-zero, do test on all test "
+             "data every test_period batches");
+DEFINE_bool(test_all_data_in_one_period,
+            false,
+            "This option was deprecated, since we will always do "
+            "test on all test set ");
 
-P_DEFINE_bool(local, true, "Train in local mode or not");
+DEFINE_bool(local, true, "Train in local mode or not");
 
-P_DEFINE_int32(average_test_period,
-               0,
-               "Do test on average parameter every so"
-               " many batches. MUST be devided by FLAGS_log_period."
-               " Default 0 means do not test average parameter");
+DEFINE_int32(average_test_period,
+             0,
+             "Do test on average parameter every so"
+             " many batches. MUST be devided by FLAGS_log_period."
+             " Default 0 means do not test average parameter");
 
-P_DEFINE_int32(saving_period, 1, "Save parameteres every so many passes");
-P_DEFINE_int64(saving_period_by_batches,
-               0,
-               "Save parameters every so many batches in one pass");
-P_DEFINE_string(save_dir, "", "Directory for saving model parameter");
-P_DEFINE_int32(start_pass,
-               0,
-               "Start training from this pass. "
-               "Will load parameter from the previous pass");
-P_DEFINE_int32(test_pass,
-               -1,
-               "Will load parameter start from this pass to test");
-P_DEFINE_int32(test_wait, 0, "Waiting for pass parameter if not exist");
-P_DEFINE_bool(with_cost, true, "enable cost layer or not");
-P_DEFINE_bool(distribute_test, false, "test in distribute mode");
+DEFINE_int32(saving_period, 1, "Save parameteres every so many passes");
+DEFINE_int64(saving_period_by_batches,
+             0,
+             "Save parameters every so many batches in one pass");
+DEFINE_string(save_dir, "", "Directory for saving model parameter");
+DEFINE_int32(start_pass,
+             0,
+             "Start training from this pass. "
+             "Will load parameter from the previous pass");
+DEFINE_int32(test_pass, -1, "Will load parameter start from this pass to test");
+DEFINE_int32(test_wait, 0, "Waiting for pass parameter if not exist");
+DEFINE_bool(with_cost, true, "enable cost layer or not");
+DEFINE_bool(distribute_test, false, "test in distribute mode");
 
-P_DEFINE_int32(num_passes, 100, "train for so many passes");
+DEFINE_int32(num_passes, 100, "train for so many passes");
 
-P_DEFINE_string(config_args,
-                "",
-                "arguments passed to config file."
-                "Format: key1=value1,key2=value2");
+DEFINE_string(config_args,
+              "",
+              "arguments passed to config file."
+              "Format: key1=value1,key2=value2");
 
-P_DEFINE_bool(save_only_one,
-              false,
-              "Save only parameters in last pass, remove previous.");
+DEFINE_bool(save_only_one,
+            false,
+            "Save only parameters in last pass, remove previous.");
 
-P_DEFINE_string(feat_file, "", "File name of extracted feature.");
-P_DEFINE_string(predict_output_dir,
-                "",
-                "Directory that saves the predicted results of output layers");
-P_DEFINE_string(model_list,
-                "",
-                "File that saves the model list when evaluation");
+DEFINE_string(feat_file, "", "File name of extracted feature.");
+DEFINE_string(predict_output_dir,
+              "",
+              "Directory that saves the predicted results of output layers");
+DEFINE_string(model_list, "", "File that saves the model list when evaluation");
 
 namespace paddle {
 

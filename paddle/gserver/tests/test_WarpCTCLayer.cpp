@@ -25,7 +25,7 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
+DECLARE_bool(use_gpu);
 
 const real* getData(const Matrix& matrix) {
   if (matrix.useGpu()) {

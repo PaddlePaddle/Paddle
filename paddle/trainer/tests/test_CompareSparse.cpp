@@ -25,22 +25,22 @@ using namespace std;     // NOLINT
 static const string& configFile1 =
     "trainer/tests/sample_trainer_config_qb_rnn.conf";
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_string(config);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_int32(seed);
-P_DECLARE_int32(num_passes);
-P_DECLARE_int32(saving_period);
+DECLARE_bool(use_gpu);
+DECLARE_string(config);
+DECLARE_int32(gpu_id);
+DECLARE_int32(seed);
+DECLARE_int32(num_passes);
+DECLARE_int32(saving_period);
 
-P_DECLARE_int32(num_gradient_servers);
-P_DECLARE_int32(port);
-P_DECLARE_bool(local);
-P_DECLARE_bool(use_old_updater);
-P_DECLARE_bool(parallel_nn);
-P_DECLARE_string(config_args);
-P_DEFINE_double(max_diff_ratio,
-                0.0f,
-                "max diff ratio allowed for parameters value");
+DECLARE_int32(num_gradient_servers);
+DECLARE_int32(port);
+DECLARE_bool(local);
+DECLARE_bool(use_old_updater);
+DECLARE_bool(parallel_nn);
+DECLARE_string(config_args);
+DEFINE_double(max_diff_ratio,
+              0.0f,
+              "max diff ratio allowed for parameters value");
 
 int gNumDevices = 0;
 
