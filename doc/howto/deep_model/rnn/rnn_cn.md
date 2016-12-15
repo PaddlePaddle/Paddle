@@ -32,25 +32,25 @@ yield src_ids, trg_ids, trg_ids_next
 配置循环神经网络架构
 -----------------------------------------------
 
-### 简单门控(Simple Gated)循环神经网络
+### 简单门控循环神经网络(Gated Recurrent Neural Network)
 
 循环神经网络在每个时间步骤顺序地处理序列。下面列出了 LSTM 的架构的示例。
 
 ![image](../../../tutorials/sentiment_analysis/bi_lstm.jpg)
 
-一般来说，循环网络从 *t* = 1 到 *t* = *T* 或者相反从 *t* = *T* 到 *t* = 1 执行以下操作。
+一般来说，循环网络从 *t* = 1 到 *t* = *T* 或者反向地从 *t* = *T* 到 *t* = 1 执行以下操作。
 
 *x*<sub>*t* + 1</sub> = *f*<sub>*x*</sub>(*x*<sub>*t*</sub>),*y*<sub>*t*</sub> = *f*<sub>*y*</sub>(*x*<sub>*t*</sub>)
 
-其中 *f*<sub>*x*</sub>(.) 称为**阶跃函数**，而 *f*<sub>*y*</sub>(.) 称为**输出函数**。在 vanilla 循环神经网络中，阶跃函数和输出函数都非常简单。然而，PaddlePaddle 支持通过修改这两个函数来配置非常复杂的架构。 我们将使用 sequence to sequence 模型演示如何配置复杂的循环神经网络模型。在本节中，我们将使用简单的 vanilla 循环神经网络作为使用`recurrent_group`配置简单循环神经网络的例子。 注意，如果你只需要使用简单的RNN，GRU或LSTM，那么推荐使用`grumemory`和`lstmemory`，因为它们的计算效率比`recurrent_group`更高。
+其中 *f*<sub>*x*</sub>(.) 称为**单步函数**（即单时间步执行的函数，step function），而 *f*<sub>*y*</sub>(.) 称为**输出函数**。在 vanilla 循环神经网络中，单步函数和输出函数都非常简单。然而，PaddlePaddle 可以通过修改这两个函数来实现复杂的网络配置。我们将使用 sequence to sequence 模型演示如何配置复杂的循环神经网络模型。在本节中，我们将使用简单的 vanilla 循环神经网络作为使用`recurrent_group`配置简单循环神经网络的例子。 注意，如果你只需要使用简单的RNN，GRU或LSTM，那么推荐使用`grumemory`和`lstmemory`，因为它们的计算效率比`recurrent_group`更高。
 
-对于 vanilla RNN，在每个时间步长，**阶跃函数**为：
+对于 vanilla RNN，在每个时间步长，**单步函数**为：
 
 *x*<sub>*t* + 1</sub> = *W*<sub>*x*</sub>*x*<sub>*t*</sub> + *W*<sub>*i*</sub>*I*<sub>*t*</sub> + *b*
 
 其中 *x*<sub>*t*</sub> 是RNN状态，并且 *I*<sub>*t*</sub> 是输入，*W*<sub>*x*</sub> 和 *W*<sub>*i*</sub> 分别是RNN状态和输入的变换矩阵。*b* 是偏差。它的**输出函数**只需要*x*<sub>*t*</sub>作为输出。
 
-`recurrent_group`是构建循环神经网络的最重要的工具。 它定义了**阶跃函数**，**输出函数**和循环神经网络的输入。注意，这个函数的`step`参数执行了`step function`（阶跃函数）和`output function`（输出函数）：
+`recurrent_group`是构建循环神经网络的最重要的工具。 它定义了**单步函数**，**输出函数**和循环神经网络的输入。注意，这个函数的`step`参数需要实现`step function`（单步函数）和`output function`（输出函数）：
 
 
 ``` sourceCode
@@ -77,9 +77,9 @@ def simple_rnn(input,
                            input=input)
 ```
 
-PaddlePaddle 使用“记忆”构造阶跃函数。**记忆（Memory）**是在PaddlePaddle中构造循环神经网络时最重要的概念。 记忆是在阶跃函数中循环使用的状态，例如*x*<sub>*t* + 1</sub> = *f*<sub>*x*</sub>(*x*<sub>*t*</sub>)。 一个记忆包含**输出**和**输入**。当前时间步处的记忆的输出作为下一时间步记忆的输入。记忆也可以具有**引导层**，其输出被用作记忆的初始值。 在我们的例子中，门控循环单元的输出被用作输出记忆。请注意，`rnn_out`层的名称与`out_mem`的名称相同。这意味着`rnn_out` (*x*<sub>*t* + 1</sub>)的输出被用作`out_mem`记忆的**输出**。
+PaddlePaddle 使用“Memory”（记忆模块）实现单步函数。**Memory**是在PaddlePaddle中构造循环神经网络时最重要的概念。 Memory是在单步函数中循环使用的状态，例如*x*<sub>*t* + 1</sub> = *f*<sub>*x*</sub>(*x*<sub>*t*</sub>)。 一个Memory包含**输出**和**输入**。当前时间步处的Memory的输出作为下一时间步Memory的输入。Memory也可以具有**boot layer(引导层)**，其输出被用作Memory的初始值。 在我们的例子中，门控循环单元的输出被用作输出Memory。请注意，`rnn_out`层的名称与`out_mem`的名称相同。这意味着`rnn_out` (*x*<sub>*t* + 1</sub>)的输出被用作`out_mem`Memory的**输出**。
 
-记忆也可以是序列。在这种情况下，在每个时间步中，我们有一个序列作为循环神经网络的状态。这在构造非常复杂的循环神经网络时是有用的。 其他高级功能包括定义多个记忆，以及使用子序列来定义分级循环神经网络架构。
+Memory也可以是序列。在这种情况下，在每个时间步中，我们有一个序列作为循环神经网络的状态。这在构造非常复杂的循环神经网络时是有用的。 其他高级功能包括定义多个Memory，以及使用子序列来定义分级循环神经网络架构。
 
 我们在函数的结尾返回`rnn_out`。 这意味着 `rnn_out` 层的输出被用作门控循环神经网络的**输出**函数。
 
@@ -89,11 +89,11 @@ PaddlePaddle 使用“记忆”构造阶跃函数。**记忆（Memory）**是在
 
 ![image](../../../tutorials/text_generation/encoder-decoder-attention-model.png)
 
-在这个模型中，源序列 *S* = {*s*<sub>1</sub>, …, *s*<sub>*T*</sub>} 用双向门控循环神经网络编码。双向门控循环神经网络的隐藏状态 *H*<sub>*S*</sub> = {*H*<sub>1</sub>, …, *H*<sub>*T*</sub>} 被称为 *编码向量*。解码器是门控循环神经网络。当解读每一个*y*<sub>*t*</sub>时, 这个门控循环神经网络生成一系列权重 *W*<sub>*S*</sub><sup>*t*</sup> = {*W*<sub>1</sub><sup>*t*</sup>, …, *W*<sub>*T*</sub><sup>*t*</sup>}, 用于计算编码向量的加权和。加权和用来鉴定符号 *y*<sub>*t*</sub> 的生成。
+在这个模型中，源序列 *S* = {*s*<sub>1</sub>, …, *s*<sub>*T*</sub>} 用双向门控循环神经网络编码。双向门控循环神经网络的隐藏状态 *H*<sub>*S*</sub> = {*H*<sub>1</sub>, …, *H*<sub>*T*</sub>} 被称为 *编码向量*。解码器是门控循环神经网络。当解读每一个*y*<sub>*t*</sub>时, 这个门控循环神经网络生成一系列权重 *W*<sub>*S*</sub><sup>*t*</sup> = {*W*<sub>1</sub><sup>*t*</sup>, …, *W*<sub>*T*</sub><sup>*t*</sup>}, 用于计算编码向量的加权和。加权和用来生成*y*<sub>*t*</sub>。
 
 模型的编码器部分如下所示。它叫做`grumemory`来表示门控循环神经网络。如果网络架构简单，那么推荐使用循环神经网络的方法，因为它比 `recurrent_group` 更快。我们已经实现了大多数常用的循环神经网络架构，可以参考 [Layers](../../ui/api/trainer_config_helpers/layers_index.html) 了解更多细节。
 
-我们还将编码向量投射到`decoder_size`维空间，获得反向循环网络的第一个实例，并将其投射到`decoder_size`维空间：
+我们还将编码向量投射到 `decoder_size` 维空间。这通过获得反向循环网络的第一个实例，并将其投射到 `decoder_size` 维空间完成：
 
 ``` sourceCode
 # 定义源语句的数据层
@@ -123,7 +123,7 @@ backward_first = first_seq(input=src_backward)
 decoder_boot = mixed_layer(input=[full_matrix_projection(backward_first)], size=decoder_size, act=TanhActivation())
 ```
 
-解码器使用 `recurrent_group` 来定义循环神经网络。阶跃函数和输出函数在 `gru_decoder_with_attention` 中定义：
+解码器使用 `recurrent_group` 来定义循环神经网络。单步函数和输出函数在 `gru_decoder_with_attention` 中定义：
 
 ``` sourceCode
 group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
@@ -137,22 +137,22 @@ group_inputs.append(trg_embedding)
 
 # 对于配备有注意力机制的解码器，在训练中，
 # 目标向量（groudtruth）是数据输入，
-# 而编码源序列作为无界存储器被访问。
-# StaticInput 意味着不同时间步的相同值，
-# 否则它是一个序列的输入，不同时间步的输入是不同的。
+# 而源序列的编码向量可以被无边界的memory访问
+# StaticInput 意味着不同时间步的输入都是相同的值，
+# 否则它以一个序列输入，不同时间步的输入是不同的。
 # 所有输入序列应该有相同的长度。
 decoder = recurrent_group(name=decoder_group_name,
                           step=gru_decoder_with_attention,
                           input=group_inputs)
 ```
 
-阶跃函数的实现如下所示。首先，它定义解码网络的**记忆**。然后定义 attention，门控循环单元阶跃函数和输出函数：
+单步函数的实现如下所示。首先，它定义解码网络的**Memory**。然后定义 attention，门控循环单元单步函数和输出函数：
 
 ``` sourceCode
 def gru_decoder_with_attention(enc_vec, enc_proj, current_word):
-    # 定义解码器的记忆
-    # 记忆的输出定义在 gru_step 内
-    # 注意 gru_step 应该与它的记忆名字相同
+    # 定义解码器的Memory
+    # Memory的输出定义在 gru_step 内
+    # 注意 gru_step 应该与它的Memory名字相同
     decoder_mem = memory(name='gru_decoder',
                          size=decoder_size,
                          boot_layer=decoder_boot)
@@ -164,7 +164,7 @@ def gru_decoder_with_attention(enc_vec, enc_proj, current_word):
     decoder_inputs = mixed_layer(inputs = [full_matrix_projection(context),
                                            full_matrix_projection(current_word)],
                                  size = decoder_size * 3)
-    # 定义门控循环单元循环神经网络阶跃函数
+    # 定义门控循环单元循环神经网络单步函数
     gru_step = gru_step_layer(name='gru_decoder',
                               input=decoder_inputs,
                               output_mem=decoder_mem,
@@ -180,13 +180,13 @@ def gru_decoder_with_attention(enc_vec, enc_proj, current_word):
 生成序列
 -----------------
 
-训练模型后，我们可以使用它来生成序列。通常的做法是使用**柱搜索（beam search** 生成序列。以下代码片段定义柱搜索算法。注意，`beam_search`函数假设`step`的输出函数返回下一个标志的 softmax 归一化概率向量。我们对模型进行了以下更改。
+训练模型后，我们可以使用它来生成序列。通常的做法是使用**beam search** 生成序列。以下代码片段定义柱搜索算法。注意，`beam_search` 函数假设 `step` 的输出函数返回的是下一个时刻输出词的 softmax 归一化概率向量。我们对模型进行了以下更改。
 
--   使用 `GeneratedInput` 来 trg\_embedding。 `GeneratedInput` 计算上一次时间步生成的标记的向量来作为当前时间步的输入。
+-   使用 `GeneratedInput` 来表示 trg\_embedding。 `GeneratedInput` 将上一时间步所生成的词的向量来作为当前时间步的输入。
 -   使用 `beam_search` 函数。这个函数需要设置：
     -   `bos_id`: 开始标记。每个句子都以开始标记开头。
     -   `eos_id`: 结束标记。每个句子都以结束标记结尾。
-    -   `beam_size`: 柱搜索算法中的柱大小。
+    -   `beam_size`: beam search 算法中的beam大小。
     -   `max_length`: 生成序列的最大长度。
 -   使用 `seqtext_printer_evaluator` 根据索引矩阵和字典打印文本。这个函数需要设置：
     -   `id_input`: 数据的整数ID，用于标识生成的文件中的相应输出。
@@ -198,9 +198,9 @@ def gru_decoder_with_attention(enc_vec, enc_proj, current_word):
 ``` sourceCode
 group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
               StaticInput(input=encoded_proj,is_seq=True)]
-# 在一代中，解码器预测下一目标词基于编码源序列和最后生成的目标词。
-# 编码源序列（编码器输出）必须由只读记忆的 StaticInput 指定。
-# 这里， GeneratedInputs 自动获取上一个被一个开始符号初始化的生成词，例如 <s>。
+# 在生成时，解码器基于编码源序列和最后生成的目标词预测下一目标词。
+# 编码源序列（编码器输出）必须由只读Memory的 StaticInput 指定。
+# 这里， GeneratedInputs 自动获取上一个生成的词，并在最开始初始化为起始词，如 <s>。
 trg_embedding = GeneratedInput(
     size=target_dict_dim,
     embedding_name='_target_language_embedding',
