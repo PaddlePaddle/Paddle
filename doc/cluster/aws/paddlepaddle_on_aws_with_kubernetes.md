@@ -1,8 +1,14 @@
-ddlePaddle on AWS with Kubernetes
+#PaddlePaddle on AWS with Kubernetes
 
 ##Prerequisites
 
-You need an Amazon account and your user account needs the following privileges to continue:
+First, you need an AWS account, please check out [this](http://docs.aws.amazon.com/lambda/latest/dg/setting-up.html) for how to setup an AWS account. 
+
+And then you can create an user by following [this](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) instruction, you shall create an user group with following privileges, and then add the user to that group: 
+
+<img src="managed_policy.png" width="800">
+
+Those previleges are:
 
 * AmazonEC2FullAccess
 * AmazonS3FullAccess
@@ -15,24 +21,28 @@ You need an Amazon account and your user account needs the following privileges 
 * NetworkAdministrator
 
 
-![managed_policy](managed_policy.png =800x))
-
-If you are not in Unites States, we also recommend creating a jump server VM instance with default amazon AMI in the same available zone as your cluster and login to jump server for the following operations, otherwise there will be some issues related to account authentication.
+If you located in China, we also recommend creating a tunnel server VM instance with default amazon AMI in the same available zone as your cluster and login to tunnel server for the following steps, otherwise there will be some issues related to account authentication.
 
 
 ##PaddlePaddle on AWS
 
-If you are new to Kubernetes or AWS and just want to run PaddlePaddle, you can follow these steps to start up a new cluster.
+Here we will show you step by step on how to run PaddlePaddle training on AWS cluster.
 
 ###AWS Login
 
-First configure your AWS account information:
+First check out [this](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) for installing the AWS command line interface, if you use ec2 instance with default amazon AMI, the cli tool has already been installed on your machine.
+
+
+And then configure your AWS account information:
 
 ```
 aws configure
 
 ```
-Fill in the required fields:
+
+
+Fill in the required fields (You can get your AWS aceess key id and AWS secrete access key by following [this](http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSGettingStartedGuide/AWSCredentials.html) instruction):
+
 
 ```
 AWS Access Key ID: YOUR_ACCESS_KEY_ID
@@ -43,14 +53,19 @@ Default output format: json
 ```
 
 ###Kubernetes Cluster Start Up
-And then type the following command:
+
+
+And then execute the following command after your aws login:
 
 ```
 export KUBERNETES_PROVIDER=aws; curl -sS https://get.k8s.io | bash
 
 ```
 
-By default, the script will provision a new VPC and a 4 node k8s cluster in us-west-2a (Oregon) with EC2 instances running on Debian. You can override the variables defined in `<path/to/kubernetes-directory>/cluster/config-default.sh` to change this behavior as follows:
+By default, this command will download and unzip the latest Kubernetes release package and execute the script inside to provision a new VPC (virtual private cloud) and a four t2.micro node cluster in us-west-2a (Oregon) under that VPC. 
+
+
+You can override the variables defined in `<path/to/kubernetes-directory>/cluster/config-default.sh` as follows:
 
 ```
 export KUBE_AWS_ZONE=us-west-2a 
@@ -60,7 +75,6 @@ export NODE_SIZE=m3.large
 export AWS_S3_REGION=us-west-2a 
 export AWS_S3_BUCKET=mycompany-kubernetes-artifacts 
 export KUBE_AWS_INSTANCE_PREFIX=k8s 
-...
 
 ```
 
@@ -224,8 +238,8 @@ export PATH=<path/to/kubernetes-directory>/platforms/linux/amd64:$PATH
 ```
 
 
-Now you can use administration tool `kubectl` to operate the cluster.
-By default, `kubectl` will use the kubeconfig file generated during the cluster startup for authenticating against the API, the location is in `~/.kube/config`.
+Now you can use Kubernetes administration tool `kubectl` to operate the cluster, let's give `kubectl get nodes` a try.
+
 
 
 ###Setup PaddlePaddle Environment on AWS
@@ -244,17 +258,18 @@ Now, we've created a cluster with following network capability:
 For sharing the training data across all the Kubernetes nodes, we use EFS (Elastic File System) in AWS. Ceph might be a better solution, but it requires high version of Linux kernel that might not be stable enough at this moment. We haven't automated the EFS setup at this moment, so please do the following steps:
 
 
-1. Make sure you add the AmazonElasticFileSystemFullAccess policy into your AWS account.
+1. Make sure you added AmazonElasticFileSystemFullAccess policy in your group.
 
 1. Create the Elastic File System in AWS console, and attach the Kubernetes VPC with it.
-![create_efs](create_efs.png =800x)
+<img src="create_efs.png" width="800">
+
 
 1. Modify the Kubernetes security group under ec2/Security Groups, add additional inbound policy "All TCP TCP 0 - 65535 0.0.0.0/0" for Kubernetes default VPC security group. 
-![add_security_group](add_security_group.png =800x)
+<img src="add_security_group.png" width="800">
 
 
 1. Follow the EC2 mount instruction to mount the disk onto all the Kubernetes nodes, we recommend to mount EFS disk onto ~/efs.
-![efs_mount](efs_mount.png =800x)
+<img src="efs_mount.png" width="800">
 
 
 Before starting the training, you should place your user config and divided training data onto EFS. When the training start, each task will copy related files from EFS into container, and it will also write the training results back onto EFS, we will show you how to place the data later in this article.
@@ -552,13 +567,13 @@ I1116 09:10:18.019716    50 ParameterClient2.cpp:122] pserver 4 192.168.129.71:7
 I1116 09:10:18.019836    50 ParameterClient2.cpp:122] pserver 5 192.168.129.71:7165
 ```
 
-It'll take around 8 hours to run this PaddlePaddle recommendation training demo on three 2 core 8 GB EC2 machine (m3.large), and the results will be 8 trained models.
+It'll take around 8 hours to run this PaddlePaddle recommendation training demo on three 2 core 8 GB EC2 machine (m3.large), and the results will be 10 trained models.
 
 
 ###Kubernetes Cluster Tear Down
 
 
-If you want to tear down the running cluster, make sure to *delete* the EFS volume first, and then use the following command:
+If you want to tear down the whole Kubernetes cluster, make sure to *delete* the EFS volume first (otherwise, you will get stucked on following steps), and then use the following command:
 
 
 ```
@@ -616,13 +631,13 @@ Sometimes we might need to create or manage the cluster on AWS manually with lim
 * Instances run on Debian, the official IAM, and the filesystem is aufs instead of ext4.
 * Kubernetes node use instance storage, no EBS get mounted.  Master use a persistent volume for etcd.
 * Nodes are running in an Auto Scaling Group on AWS, auto-scaling itself is disabled, but if some node get terminated, it will launch another node instead.
-* For networking, we use ip-per-pod model here, each pod get assigned a /24 CIDR. And the whole vpc is a /16 CIDR, No overlay network at this moment, we will add Calico solution later on.
+* For networking, we use ip-per-pod model here, each pod get assigned a /24 CIDR. And the whole vpc is a /16 CIDR, No overlay network at this moment, we will use Calico solution later on.
 * When you create a service with Type=LoadBalancer, Kubernetes will create and ELB, and create a security group for the ELB.
 * Kube-proxy sets up two IAM roles, one for master called kubernetes-master, one for nodes called kubernetes-node.
 * All AWS resources are tagged with a tag named "KubernetesCluster", with a value that is the unique cluster-id.
 
 
-###Script Details
+###Script Detailed Steps
 
 * Create an s3 bucket for binaries and scripts.
 * Create two iam roles: kubernetes-master, kubernetes-node.
@@ -633,7 +648,6 @@ Sometimes we might need to create or manage the cluster on AWS manually with lim
 * Create an EBS for master, it will be attached after the master node get up.
 * Launch the master with fixed ip address 172.20.0.9, and the node is initialized with Salt script, all the components get started as docker containers.
 * Create an auto-scaling group, it has the min and max size, it can be changed by using aws api or console, it will auto launch the kubernetes node and configure itself, connect to master, assign an internal CIDR, and the master configures the route table with the assigned CIDR.
-
 
 
 

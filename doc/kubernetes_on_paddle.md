@@ -18,6 +18,7 @@ $ docker run --name quick_start_data -it paddledev/paddle:cpu-demo-latest
 ### Download Training Data
 
 Getting into `/root/paddle/demo/quick_start/data` Directory，using `get_data.sh` to download training data.
+Then getting into `/root/paddle/demo/quick_start` Directory, using `preprocess.sh` to pre-process training data.
 
 ```
 $ root@fbd1f2bb71f4:~/paddle/demo/quick_start/data# ./get_data.sh
@@ -198,3 +199,4 @@ drwxr-xr-x 2 root root 4096 Oct 31 11:21 pass-00012
 drwxr-xr-x 2 root root 4096 Oct 31 11:21 pass-00013
 drwxr-xr-x 2 root root 4096 Oct 31 11:21 pass-00014
 ```
+
