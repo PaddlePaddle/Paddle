@@ -1,6 +1,6 @@
 # 如何贡献代码
 
-我们真诚地感谢您的贡献，欢迎通过 GitHub 的 fork 和 pull request 流程来提交代码。。
+我们真诚地感谢您的贡献，欢迎通过 GitHub 的 fork 和 pull request 流程来提交代码。
  
 ## 代码要求
 - 你的代码必须完全遵守 [doxygen](http://www.stack.nl/~dimitri/doxygen/) 的样式。
@@ -49,7 +49,7 @@ Paddle 开发人员使用 [pre-commit](http://pre-commit.com/) 工具来管理gi
 的 PR 不能提交代码到 Paddle。
 
 你可以通过 `pip install pre-commit` 安装 [pre-commit](http://pre-commit.com/)，
-目前 Paddle 使用 `clang-format` 来格式化 c/cpp 资源。请确保 clang-format 版本在3.8以上。
+目前 Paddle 使用 `clang-format` 来调整C/C++源代码格式。请确保 clang-format 版本在3.8以上。
 
 然后只需在 Paddle clone 目录中运行 `pre-commit install` 。当你
 提交你的代码时，pre-commit 钩子会检查本地代码是否存在
@@ -87,7 +87,7 @@ git remote -v
 ```shell
 git pull --rebase upstream develop
 ```
-如果本地没有唯一提交，git 将简单地执行快进。但是，如果你一直在做一些改变（绝大多数情况下不应该），你可能要处理冲突。
+如果本地没有提交，git 将简单地执行快进。但是，如果你一直在做一些改变（绝大多数情况下不应该），你可能要处理冲突。
 
 现在，你的本地主分支与上游修改的一致并是最新的。
 
@@ -104,7 +104,7 @@ git push -u origin MY_COOL_STUFF_BRANCH  # 创建远程分支 MY_COOL_STUFF_BRAN
 
 ## 使用最新版本更新你的 pull 请求
 
-在代码审查（code review）期间，由于 baidu/Paddle 中新的提交导致你的 pull 请求可能会失效。如果没有冲突，GitHub允许自动更新。 你可以点击 pull request 页面中的“更新分支（Update Branch）”按钮。 但是在这种冲突情况下，你需要手动进行更新。你需要在本地仓库执行如下命令：
+在代码审查（code review）期间，由于 baidu/Paddle 中新的提交导致你的 pull 请求可能会失效。如果没有冲突，GitHub允许自动更新。 你可以点击 pull request 页面中的“更新分支（Update Branch）”按钮。 但是如果存在代码冲突，你需要手动进行更新。你需要在本地仓库执行如下命令：
 
 ```shell
 git checkout MY_COOL_STUFF_BRANCH
