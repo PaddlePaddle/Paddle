@@ -43,13 +43,13 @@ def extract_dict_features(pair_file, feature_file):
             mark[verb_index] = 1
             ctx_0 = sentence_list[verb_index]
 
-            if verb_index < len(labels_list) - 2:
+            if verb_index < len(labels_list) - 1:
                 mark[verb_index + 1] = 1
                 ctx_p1 = sentence_list[verb_index + 1]
             else:
                 ctx_p1 = 'eos'
 
-            if verb_index < len(labels_list) - 3:
+            if verb_index < len(labels_list) - 2:
                 mark[verb_index + 2] = 1
                 ctx_p2 = sentence_list[verb_index + 2]
             else:

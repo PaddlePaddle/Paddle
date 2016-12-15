@@ -20,7 +20,7 @@ limitations under the License. */
 #include <paddle/utils/Util.h>
 #include <paddle/utils/Version.h>
 
-P_DECLARE_int32(seed);
+DECLARE_int32(seed);
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

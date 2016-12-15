@@ -49,10 +49,8 @@ PaddlePaddle supports some build options. To enable it, first you need to instal
 <tbody>
 <tr><td class="left">WITH_GPU</td><td class="left">Compile with GPU mode.</td></tr>
 <tr><td class="left">WITH_DOUBLE</td><td class="left">Compile with double precision floating-point, default: single precision.</td></tr>
-<tr><td class="left">WITH_GLOG</td><td class="left">Compile with glog. If not found, default: an internal log implementation.</td></tr>
-<tr><td class="left">WITH_GFLAGS</td><td class="left">Compile with gflags. If not found, default: an internal flag implementation.</td></tr>
 <tr><td class="left">WITH_TESTING</td><td class="left">Compile with gtest for PaddlePaddle's unit testing.</td></tr>
-<tr><td class="left">WITH_DOC</td><td class="left">	Compile to generate PaddlePaddle's docs, default: disabled (OFF).</td></tr>
+<tr><td class="left">WITH_DOC</td><td class="left">    Compile to generate PaddlePaddle's docs, default: disabled (OFF).</td></tr>
 <tr><td class="left">WITH_SWIG_PY</td><td class="left">Compile with python predict API, default: disabled (OFF).</td></tr>
 <tr><td class="left">WITH_STYLE_CHECK</td><td class="left">Compile with code style check, default: enabled (ON).</td></tr>
 </tbody>

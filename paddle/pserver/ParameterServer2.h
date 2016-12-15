@@ -38,7 +38,7 @@ limitations under the License. */
 
 #include "ProtoServer.h"
 
-P_DECLARE_int32(port);
+DECLARE_int32(port);
 
 namespace paddle {
 

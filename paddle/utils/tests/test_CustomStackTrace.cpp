@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Util.h"
 
-P_DEFINE_int32(test_thread_num, 10, "testing thread number");
+DEFINE_int32(test_thread_num, 10, "testing thread number");
 
 void testNormalImpl(
     const std::function<void(paddle::CustomStackTrace<std::string>&,

@@ -1,5 +1,5 @@
 cc_library(
-    name="main",
+    name="gtest",
     srcs=glob(
         ["src/*.cc"], exclude=["src/gtest-all.cc"]),
     hdrs=glob(["include/**/*.h", "src/*.h"]),

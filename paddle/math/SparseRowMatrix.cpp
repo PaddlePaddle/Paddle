@@ -24,9 +24,9 @@ limitations under the License. */
 #include "paddle/utils/Thread.h"
 #include "paddle/utils/Util.h"
 
-P_DEFINE_bool(allow_inefficient_sparse_update,
-              false,
-              "Whether to allow inefficient sparse update");
+DEFINE_bool(allow_inefficient_sparse_update,
+            false,
+            "Whether to allow inefficient sparse update");
 
 namespace paddle {
 

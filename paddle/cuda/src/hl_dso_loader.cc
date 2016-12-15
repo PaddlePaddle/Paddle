@@ -16,21 +16,21 @@ limitations under the License. */
 #include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Logging.h"
 
-P_DEFINE_string(cudnn_dir,
-                "",
-                "Specify path for loading libcudnn.so. For instance, "
-                "/usr/local/cudnn/lib. If empty [default], dlopen "
-                "will search cudnn from LD_LIBRARY_PATH");
+DEFINE_string(cudnn_dir,
+              "",
+              "Specify path for loading libcudnn.so. For instance, "
+              "/usr/local/cudnn/lib. If empty [default], dlopen "
+              "will search cudnn from LD_LIBRARY_PATH");
 
-P_DEFINE_string(cuda_dir,
-                "",
-                "Specify path for loading cuda library, such as libcublas, "
-                "libcurand. For instance, /usr/local/cuda/lib64. (Note: "
-                "libcudart can not be specified by cuda_dir, since some "
-                "build-in function in cudart already ran before main entry). "
-                "If default, dlopen will search cuda from LD_LIBRARY_PATH");
+DEFINE_string(cuda_dir,
+              "",
+              "Specify path for loading cuda library, such as libcublas, "
+              "libcurand. For instance, /usr/local/cuda/lib64. (Note: "
+              "libcudart can not be specified by cuda_dir, since some "
+              "build-in function in cudart already ran before main entry). "
+              "If default, dlopen will search cuda from LD_LIBRARY_PATH");
 
-P_DEFINE_string(warpctc_dir, "", "Specify path for loading libwarpctc.so.");
+DEFINE_string(warpctc_dir, "", "Specify path for loading libwarpctc.so.");
 
 static inline std::string join(const std::string& part1,
                                const std::string& part2) {
