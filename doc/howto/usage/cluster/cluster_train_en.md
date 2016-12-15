@@ -1,4 +1,4 @@
-# How to Run Distributed Training
+# Run Distributed Training
 
 In this article, we explain how to run distributed Paddle training jobs on clusters.  We will create the distributed version of the single-process training example, [recommendation](https://github.com/baidu/Paddle/tree/develop/demo/recommendation).
 

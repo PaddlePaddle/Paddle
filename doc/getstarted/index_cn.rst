@@ -1,4 +1,4 @@
-GET STARTED
+新手入门
 ============
 
 ..  toctree::

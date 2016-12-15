@@ -1,5 +1,8 @@
-Profiling on PaddlePaddle
-=========================
+====================
+Tune GPU Performance 
+====================
+
+..  contents::
 
 This tutorial will guide you step-by-step through how to conduct profiling and performance tuning using built-in timer, **nvprof** and **nvvp**.
 

@@ -17,7 +17,6 @@ There are several examples and demos here.
 
 ## Recommendation
 
-* [MovieLens Dataset](rec/ml_dataset_en.md)
 * [MovieLens Regression](rec/ml_regression_en.rst)
 
 ## Model Zoo
