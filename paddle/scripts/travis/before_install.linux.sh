@@ -6,7 +6,7 @@ wget https://github.com/google/protobuf/archive/v3.0.2.tar.gz -O protobuf.tar.gz
 tar xf protobuf.tar.gz
 cd protobuf*
 ./autogen.sh
-./configure
+./configure --prefix=/usr/
 make -j 2 install
 cd ..
 rm -rf protobuf*
