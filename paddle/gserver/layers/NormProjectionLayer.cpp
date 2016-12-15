@@ -110,34 +110,5 @@ void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
                    Tensor(denoms_->getData(), dims_)},
                   {Tensor(preOutGrad->getData(), dims_)},
                   {});
-#if 0
-  if (useGpu_) {
-    CrossMapNormalGrad<DEVICE_TYPE_GPU> crossGrad;
-    crossGrad(dynamic_cast<GpuMatrix&>(*preOutGrad),
-              dynamic_cast<GpuMatrix&>(*preOutV),
-              dynamic_cast<GpuMatrix&>(*localGrad),
-              dynamic_cast<GpuMatrix&>(*localOutV),
-              dynamic_cast<GpuMatrix&>(*denoms_),
-              channels_,
-              imgSizeH_,
-              imgSizeW_,
-              size_,
-              scale_,
-              pow_);
-  } else {
-    CrossMapNormalGrad<DEVICE_TYPE_CPU> crossGrad;
-    crossGrad(dynamic_cast<CpuMatrix&>(*preOutGrad),
-              dynamic_cast<CpuMatrix&>(*preOutV),
-              dynamic_cast<CpuMatrix&>(*localGrad),
-              dynamic_cast<CpuMatrix&>(*localOutV),
-              dynamic_cast<CpuMatrix&>(*denoms_),
-              channels_,
-              imgSizeH_,
-              imgSizeW_,
-              size_,
-              scale_,
-              pow_);
-  }
-#endif
 }
 }  // namespace paddle

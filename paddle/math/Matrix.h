@@ -952,31 +952,6 @@ public:
     LOG(FATAL) << "Not implemeted";
   }
 
-  /// normalize-operation.
-  virtual void crossMapNormalFwd(Matrix& input,
-                                 size_t imgSizeH,
-                                 size_t imgSizeW,
-                                 Matrix& denoms,
-                                 size_t channels,
-                                 size_t sizeX,
-                                 float scale,
-                                 float pow) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void crossMapNormalBwd(Matrix& localGrad,
-                                 Matrix& denoms,
-                                 Matrix& preOutV,
-                                 Matrix& localOutV,
-                                 size_t channels,
-                                 size_t imgSizeH,
-                                 size_t imgSizeW,
-                                 size_t size,
-                                 float scale,
-                                 float pow) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
   /**
    * Input: one or more sequences. Each sequence contains some instances.
    *
@@ -1459,26 +1434,6 @@ public:
                        size_t paddingH,
                        size_t paddingW);
 
-  void crossMapNormalFwd(Matrix& input,
-                         size_t imgSizeH,
-                         size_t imgSizeW,
-                         Matrix& denoms,
-                         size_t channels,
-                         size_t sizeX,
-                         float scale,
-                         float pow);
-
-  void crossMapNormalBwd(Matrix& localGrad,
-                         Matrix& denoms,
-                         Matrix& preOutV,
-                         Matrix& localOutV,
-                         size_t channels,
-                         size_t imgSizeH,
-                         size_t imgSizeW,
-                         size_t sizeX,
-                         float scale,
-                         float pow);
-
   void maxSequenceForward(Matrix& input,
                           const IVector& sequence,
                           IVector& index);
@@ -1684,26 +1639,6 @@ public:
                        real scaleOutput,
                        size_t paddingH,
                        size_t paddingW);
-
-  void crossMapNormalFwd(Matrix& input,
-                         size_t imgSizeH,
-                         size_t imgSizeW,
-                         Matrix& denoms,
-                         size_t channels,
-                         size_t sizeX,
-                         float scale,
-                         float pow);
-
-  void crossMapNormalBwd(Matrix& localGrad,
-                         Matrix& denoms,
-                         Matrix& preOutV,
-                         Matrix& localOutV,
-                         size_t channels,
-                         size_t imgSizeH,
-                         size_t imgSizeW,
-                         size_t sizeX,
-                         float scale,
-                         float pow);
 
   void maxSequenceForward(Matrix& input,
                           const IVector& sequence,

@@ -1385,33 +1385,6 @@ void testCrossMapNormalBwd(
              Tensor(denomsGpu.getData(), dims)},
             {Tensor(inputsGradGpu.getData(), dims)},
             {});
-#if 0
-  CrossMapNormalGrad<DEVICE_TYPE_CPU> cpuCross;
-  cpuCross(inputsGrad,
-           inputsValue,
-           outputsGrad,
-           outputsValue,
-           denoms,
-           channels,
-           imgSizeH,
-           imgSizeW,
-           sizeX,
-           scale,
-           pow);
-
-  CrossMapNormalGrad<DEVICE_TYPE_GPU> gpuCross;
-  gpuCross(inputsGradGpu,
-           inputsValueGpu,
-           outputsGradGpu,
-           outputsValueGpu,
-           denomsGpu,
-           channels,
-           imgSizeH,
-           imgSizeW,
-           sizeX,
-           scale,
-           pow);
-#endif
 
   TensorCheckErr(inputsGrad, inputsGradGpu);
 }
