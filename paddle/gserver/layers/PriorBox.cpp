@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Layer.h"
-#include "paddle/math/Matrix.h"
 #include "paddle/math/BaseMatrix.h"
+#include "paddle/math/Matrix.h"
 
 namespace paddle {
 /**
@@ -100,6 +100,8 @@ void PriorBoxLayer::forward(PassType passType) {
         tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
         tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
         tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
+        // set the variance.
+        for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
 
         if (maxSize_.size() > 0) {
           CHECK_EQ(minSize_.size(), maxSize_.size());
@@ -111,6 +113,8 @@ void PriorBoxLayer::forward(PassType passType) {
             tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
             tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
             tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
+            // set the variance.
+            for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
           }
         }
       }
@@ -124,17 +128,15 @@ void PriorBoxLayer::forward(PassType passType) {
         tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
         tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
         tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
+        // set the variance.
+        for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
       }
     }
   }
   // clip the prior's coordidate such that it is within [0, 1]
-  for (int d = 0; d < dim; ++d)
-    tmpPtr[d] = std::min(std::max(tmpPtr[d], (float)0.), (float)1.);
-  // set the variance.
-  for (int h = 0; h < layerHeight; h++)
-    for (int w = 0; w < layerWidth; w++)
-      for (int i = 0; i < numPriors_; i++)
-        for (int j = 0; j < 4; j++) tmpPtr[idx++] = variance_[j];
+  for (int d = 0; d < dim * 2; ++d)
+    if ((d % 8) < 4)
+      tmpPtr[d] = std::min(std::max(tmpPtr[d], (float)0.), (float)1.);
   MatrixPtr outV = getOutputValue();
   outV->copyFrom(buffer_->data_, dim * 2);
 }
