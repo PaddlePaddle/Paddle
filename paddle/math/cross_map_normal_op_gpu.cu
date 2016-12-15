@@ -131,48 +131,26 @@ __global__ void KeCMRNormDiff(size_t imageSize, const real* bottom_data,
 }
 
 template <>
-void CrossMapNormalGrad<DEVICE_TYPE_GPU>::operator()(GpuMatrix& inputsGrad,
-                                                     GpuMatrix& inputsValue,
-                                                     GpuMatrix& outputsGrad,
-                                                     GpuMatrix& outputsValue,
-                                                     GpuMatrix& denoms,
-                                                     size_t channels,
-                                                     size_t imgSizeH,
-                                                     size_t imgSizeW,
-                                                     size_t sizeX,
-                                                     real scale,
-                                                     real pow) {
-  CHECK(inputsGrad.isContiguous());
-  CHECK(outputsGrad.isContiguous());
-  CHECK(denoms.isContiguous());
-  CHECK(inputsValue.isContiguous());
-  CHECK(outputsValue.isContiguous());
-  CHECK_EQ(inputsGrad.getHeight(), outputsGrad.getHeight());
-  CHECK_EQ(inputsGrad.getWidth(), outputsGrad.getWidth());
-  CHECK_EQ(inputsGrad.getHeight(), denoms.getHeight());
-  CHECK_EQ(inputsGrad.getWidth(), denoms.getWidth());
-  CHECK_EQ(inputsGrad.getHeight(), inputsValue.getHeight());
-  CHECK_EQ(inputsGrad.getWidth(), inputsValue.getWidth());
-  CHECK_EQ(inputsGrad.getHeight(), outputsValue.getHeight());
-  CHECK_EQ(inputsGrad.getWidth(), outputsValue.getWidth());
-
-  size_t numSample = inputsGrad.getHeight();
-  size_t numCols = inputsGrad.getWidth();
-  CHECK(imgSizeH * imgSizeW * channels == numCols);
-
-  size_t imageSize = numSample * imgSizeH * imgSizeW;
-  real* inputsGradData = inputsGrad.getData();
-  real* inputsData = inputsValue.getData();
-  real* denomsData = denoms.getData();
-  real* outputsGradData = outputsGrad.getData();
-  real* outputsData = outputsValue.getData();
+void CrossMapNormalGrad<DEVICE_TYPE_GPU>(real* inputsGrad,
+                                         real* inputsValue,
+                                         real* outputsValue,
+                                         real* outputsGrad,
+                                         real* denoms,
+                                         size_t numSamples,
+                                         size_t channels,
+                                         size_t height,
+                                         size_t width,
+                                         size_t size,
+                                         real scale,
+                                         real pow) {
+  size_t imageSize = numSamples * height * width;
 
   int blockSize = 1024;
   int gridSize = (imageSize + 1024 - 1) / 1024;
   KeCMRNormDiff <<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (imageSize, inputsData, outputsData, denomsData, outputsGradData, channels,
-      imgSizeH, imgSizeW, sizeX, -pow, 2.0f * pow * scale, inputsGradData);
-  CHECK_SYNC("KeCMRNormDiff");
+    (imageSize, inputsValue, outputsValue, denoms, outputsGrad, channels,
+      height, width, size, -pow, 2.0f * pow * scale, inputsGrad);
+  CHECK_SYNC("CrossMapNormalGrad");
 }
 
 }  // namespace paddle

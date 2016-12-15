@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <map>
 #include <vector>
-#include "paddle/utils/ClassRegistrar.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/ClassRegistrar.h"
 
 namespace paddle {
 

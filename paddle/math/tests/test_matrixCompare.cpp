@@ -19,12 +19,11 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "TensorCheck.h"
 #include "paddle/gserver/tests/TestUtil.h"
+#include "paddle/math/Function.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
-#include "paddle/utils/Stat.h"
-#include "TensorCheck.h"
 #include "paddle/math/cross_map_normal_op.h"
-#include "paddle/math/Function.h"
+#include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
 
 using namespace paddle;  // NOLINT
@@ -1282,12 +1281,6 @@ void testCrossMapNormalFwd(
   inputsGpu.copyFrom(inputs);
   outputsGpu.copyFrom(outputs);
 
-#if 0
-  FuncConfig config;
-  config.set("size", (size_t)sizeX);
-  config.set("scale", scale);
-  config.set("pow", pow);
-#endif
   FunctionBase* cpu =
       FunctionBase::funcRegistrar_.createByType(FUNC_NAME(CrossMapNormal, CPU));
   FunctionBase* gpu =
@@ -1311,22 +1304,6 @@ void testCrossMapNormalFwd(
       {Tensor(inputsGpu.getData(), dims)},
       {Tensor(outputsGpu.getData(), dims), Tensor(denomsGpu.getData(), dims)},
       {});
-#if 0
-  CrossMapNormal<DEVICE_TYPE_CPU> cpuCross;
-  cpuCross(
-      outputs, denoms, inputs, channels, imgSizeH, imgSizeW, sizeX, scale, pow);
-
-  CrossMapNormal<DEVICE_TYPE_GPU> gpuCross;
-  gpuCross(outputsGpu,
-           denomsGpu,
-           inputsGpu,
-           channels,
-           imgSizeH,
-           imgSizeW,
-           sizeX,
-           scale,
-           pow);
-#endif
 
   TensorCheckErr(outputs, outputsGpu);
   TensorCheckErr(denoms, denomsGpu);
@@ -1381,6 +1358,35 @@ void testCrossMapNormalBwd(
   outputsValueGpu.copyFrom(outputsValue);
   inputsGradGpu.copyFrom(inputsGrad);
 
+  FunctionBase* cpu = FunctionBase::funcRegistrar_.createByType(
+      FUNC_NAME(CrossMapNormalGrad, CPU));
+  FunctionBase* gpu = FunctionBase::funcRegistrar_.createByType(
+      FUNC_NAME(CrossMapNormalGrad, GPU));
+  cpu->init(FuncConfig()
+                .set("size", (size_t)sizeX)
+                .set("scale", scale)
+                .set("pow", pow));
+  gpu->init(FuncConfig()
+                .set("size", (size_t)sizeX)
+                .set("scale", scale)
+                .set("pow", pow));
+
+  Dims dims{
+      (size_t)numSamples, (size_t)channels, (size_t)imgSizeH, (size_t)imgSizeW};
+  cpu->calc({Tensor(inputsValue.getData(), dims),
+             Tensor(outputsValue.getData(), dims),
+             Tensor(outputsGrad.getData(), dims),
+             Tensor(denoms.getData(), dims)},
+            {Tensor(inputsGrad.getData(), dims)},
+            {});
+
+  gpu->calc({Tensor(inputsValueGpu.getData(), dims),
+             Tensor(outputsValueGpu.getData(), dims),
+             Tensor(outputsGradGpu.getData(), dims),
+             Tensor(denomsGpu.getData(), dims)},
+            {Tensor(inputsGradGpu.getData(), dims)},
+            {});
+#if 0
   CrossMapNormalGrad<DEVICE_TYPE_CPU> cpuCross;
   cpuCross(inputsGrad,
            inputsValue,
@@ -1406,6 +1412,7 @@ void testCrossMapNormalBwd(
            sizeX,
            scale,
            pow);
+#endif
 
   TensorCheckErr(inputsGrad, inputsGradGpu);
 }

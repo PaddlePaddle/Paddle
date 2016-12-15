@@ -13,10 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "NormProjectionLayer.h"
+#include "paddle/math/cross_map_normal_op.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
-#include "paddle/math/cross_map_normal_op.h"
-#include "NormProjectionLayer.h"
 
 namespace paddle {
 size_t CMRProjectionNormLayer::getSize() {
@@ -48,13 +47,23 @@ bool CMRProjectionNormLayer::init(const LayerMap& layerMap,
   CHECK_EQ(config_.inputs_size(), 1);
 
   if (useGpu_) {
-    normal_ = FunctionBase::funcRegistrar_.createByType(
+    forward_ = FunctionBase::funcRegistrar_.createByType(
         FUNC_NAME(CrossMapNormal, GPU));
   } else {
-    normal_ = FunctionBase::funcRegistrar_.createByType(
+    forward_ = FunctionBase::funcRegistrar_.createByType(
         FUNC_NAME(CrossMapNormal, CPU));
   }
-  normal_->init(
+  forward_->init(
+      FuncConfig().set("size", size_).set("scale", scale_).set("pow", pow_));
+
+  if (useGpu_) {
+    backward_ = FunctionBase::funcRegistrar_.createByType(
+        FUNC_NAME(CrossMapNormalGrad, GPU));
+  } else {
+    backward_ = FunctionBase::funcRegistrar_.createByType(
+        FUNC_NAME(CrossMapNormalGrad, CPU));
+  }
+  backward_->init(
       FuncConfig().set("size", size_).set("scale", scale_).set("pow", pow_));
 
   return true;
@@ -74,13 +83,13 @@ void CMRProjectionNormLayer::forward(PassType passType) {
 
   Matrix::resizeOrCreate(denoms_, batchSize, size, /* trans */ false, useGpu_);
 
-  Dims dims{(size_t)batchSize,
-            (size_t)channels_,
-            (size_t)imgSizeH_,
-            (size_t)imgSizeW_};
-  normal_->calc(
-      {Tensor(input->getData(), dims)},
-      {Tensor(outV->getData(), dims), Tensor(denoms_->getData(), dims)},
+  dims_ = {(size_t)batchSize,
+           (size_t)channels_,
+           (size_t)imgSizeH_,
+           (size_t)imgSizeW_};
+  forward_->calc(
+      {Tensor(input->getData(), dims_)},
+      {Tensor(outV->getData(), dims_), Tensor(denoms_->getData(), dims_)},
       {});
 }
 
@@ -96,6 +105,13 @@ void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
   MatrixPtr localOutV = getOutputValue();
   MatrixPtr preOutV = inputLayers_[0]->getOutputValue();
 
+  backward_->calc({Tensor(preOutV->getData(), dims_),
+                   Tensor(localOutV->getData(), dims_),
+                   Tensor(localGrad->getData(), dims_),
+                   Tensor(denoms_->getData(), dims_)},
+                  {Tensor(preOutGrad->getData(), dims_)},
+                  {});
+#if 0
   if (useGpu_) {
     CrossMapNormalGrad<DEVICE_TYPE_GPU> crossGrad;
     crossGrad(dynamic_cast<GpuMatrix&>(*preOutGrad),
@@ -123,5 +139,6 @@ void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
               scale_,
               pow_);
   }
+#endif
 }
 }  // namespace paddle

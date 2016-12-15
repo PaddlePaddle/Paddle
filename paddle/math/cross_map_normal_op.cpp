@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "cross_map_normal_op.h"
+#include "paddle/math/Vector.h"
 
 namespace paddle {
 
@@ -56,66 +57,49 @@ void CrossMapNormal<DEVICE_TYPE_CPU>(real* outputs,
 }
 
 template <>
-void CrossMapNormalGrad<DEVICE_TYPE_CPU>::operator()(CpuMatrix& inputsGrad,
-                                                     CpuMatrix& inputsValue,
-                                                     CpuMatrix& outputsGrad,
-                                                     CpuMatrix& outputsValue,
-                                                     CpuMatrix& denoms,
-                                                     size_t channels,
-                                                     size_t imgSizeH,
-                                                     size_t imgSizeW,
-                                                     size_t sizeX,
-                                                     real scale,
-                                                     real pow) {
-  CHECK(inputsGrad.isContiguous());
-  CHECK(outputsGrad.isContiguous());
-  CHECK(denoms.isContiguous());
-  CHECK(inputsValue.isContiguous());
-  CHECK(outputsValue.isContiguous());
-  CHECK_EQ(inputsGrad.getHeight(), outputsGrad.getHeight());
-  CHECK_EQ(inputsGrad.getWidth(), outputsGrad.getWidth());
-  CHECK_EQ(inputsGrad.getHeight(), denoms.getHeight());
-  CHECK_EQ(inputsGrad.getWidth(), denoms.getWidth());
-  CHECK_EQ(inputsGrad.getHeight(), inputsValue.getHeight());
-  CHECK_EQ(inputsGrad.getWidth(), inputsValue.getWidth());
-  CHECK_EQ(inputsGrad.getHeight(), outputsValue.getHeight());
-  CHECK_EQ(inputsGrad.getWidth(), outputsValue.getWidth());
-
-  size_t numSample = inputsGrad.getHeight();
-  size_t numCols = inputsGrad.getWidth();
-  size_t imageSize = imgSizeH * imgSizeW;
-  CHECK(imageSize * channels == numCols);
-
+void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
+                                         real* inputsValue,
+                                         real* outputsValue,
+                                         real* outputsGrad,
+                                         real* denoms,
+                                         size_t numSamples,
+                                         size_t channels,
+                                         size_t height,
+                                         size_t width,
+                                         size_t size,
+                                         real scale,
+                                         real pow) {
+  size_t oneSample = channels * height * width;
   std::function<CpuVector(real*, size_t)> oneImage = [=](real* data,
                                                          size_t offset) {
-    return CpuVector(imageSize, data + offset);
+    return CpuVector(height * width, data + offset);
   };
 
-  const int start = -((int)sizeX) / 2;
-  const int end = (int)sizeX + start;
+  const int start = -((int)size) / 2;
+  const int end = (int)size + start;
   const real ratio = -(real)2 * scale * pow;
-  for (size_t i = 0; i < numSample; i++) {
-    size_t sOffset = i * numCols;
-    real* inputGradData = inputsGrad.getData() + sOffset;
-    real* inputData = inputsValue.getData() + sOffset;
-    real* denomData = denoms.getData() + sOffset;
-    real* outputGradData = outputsGrad.getData() + sOffset;
-    real* outputData = outputsValue.getData() + sOffset;
+  for (size_t i = 0; i < numSamples; i++) {
+    size_t sOffset = i * oneSample;
+    real* oneInputGrad = inputsGrad + sOffset;
+    real* oneInputValue = inputsValue + sOffset;
+    real* oneDenom = denoms + sOffset;
+    real* oneOutputGrad = outputsGrad + sOffset;
+    real* oneOutputValue = outputsValue + sOffset;
 
     for (int c = 0; c < (int)channels; c++) {
-      size_t cOffset = c * imageSize;
-      CpuVector inputGrad = oneImage(inputGradData, cOffset);
-      CpuVector inputValue = oneImage(inputData, cOffset);
-      CpuVector denom = oneImage(denomData, cOffset);
-      CpuVector outputGrad = oneImage(outputGradData, cOffset);
+      size_t cOffset = c * height * width;
+      CpuVector inputGrad = oneImage(oneInputGrad, cOffset);
+      CpuVector inputValue = oneImage(oneInputValue, cOffset);
+      CpuVector denom = oneImage(oneDenom, cOffset);
+      CpuVector outputGrad = oneImage(oneOutputGrad, cOffset);
 
       inputGrad = inputGrad + denom.pow(-pow) * outputGrad;
       for (int s = start; s < end; s++) {
         if (c + s >= 0 && c + s < (int)channels) {
-          size_t offset = (c + s) * imageSize;
-          CpuVector output = oneImage(outputData, offset);
-          CpuVector outputGrad = oneImage(outputGradData, offset);
-          CpuVector denom = oneImage(denomData, offset);
+          size_t offset = (c + s) * height * width;
+          CpuVector output = oneImage(oneOutputValue, offset);
+          CpuVector outputGrad = oneImage(oneOutputGrad, offset);
+          CpuVector denom = oneImage(oneDenom, offset);
 
           inputGrad += ((outputGrad * output * ratio) / denom) * inputValue;
         }
@@ -124,6 +108,11 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>::operator()(CpuMatrix& inputsGrad,
   }
 }
 
+/**
+ * \param inputs[0] input value.
+ * \param outputs[0] output value.
+ * \param outputs[1] denoms.
+ */
 template <DeviceType Device>
 class CrossMapNormalFunc : public FunctionBase {
 public:
@@ -169,7 +158,65 @@ private:
   real pow_;
 };
 
+/**
+ * \param inputs[0] input value.
+ * \param inputs[1] output value.
+ * \param inputs[2] output grad.
+ * \param inputs[3] denoms.
+ * \param outputs[0] input grad.
+ */
+template <DeviceType Device>
+class CrossMapNormalGradFunc : public FunctionBase {
+public:
+  void init(const FuncConfig& config) override {
+    size_ = config.get<size_t>("size");
+    scale_ = config.get<real>("scale");
+    pow_ = config.get<real>("pow");
+  }
+
+  void calc(const Arguments& inputs,
+            const Arguments& outputs,
+            const Arguments& inouts) override {
+    CHECK_EQ(4, inputs.size());
+    CHECK_EQ(1, outputs.size());
+    CHECK_EQ(0, inouts.size());
+
+    CHECK_EQ(inputs[0].dims_.size(), 4);
+    for (size_t i = 0; i < inputs[0].dims_.size(); i++) {
+      CHECK_EQ(inputs[0].dims_[i], inputs[1].dims_[i]);
+      CHECK_EQ(inputs[0].dims_[i], inputs[2].dims_[i]);
+      CHECK_EQ(inputs[0].dims_[i], inputs[3].dims_[i]);
+      CHECK_EQ(inputs[0].dims_[i], outputs[0].dims_[i]);
+    }
+
+    size_t samples = inputs[0].dims_[0];
+    size_t channels = inputs[0].dims_[1];
+    size_t height = inputs[0].dims_[2];
+    size_t width = inputs[0].dims_[3];
+
+    CrossMapNormalGrad<Device>(outputs[0].getData(),
+                               inputs[0].getData(),
+                               inputs[1].getData(),
+                               inputs[2].getData(),
+                               inputs[3].getData(),
+                               samples,
+                               channels,
+                               height,
+                               width,
+                               size_,
+                               scale_,
+                               pow_);
+  }
+
+private:
+  size_t size_;
+  real scale_;
+  real pow_;
+};
+
 REGISTER_TYPED_FUNC(CrossMapNormal, CPU, CrossMapNormalFunc);
 REGISTER_TYPED_FUNC(CrossMapNormal, GPU, CrossMapNormalFunc);
+REGISTER_TYPED_FUNC(CrossMapNormalGrad, CPU, CrossMapNormalGradFunc);
+REGISTER_TYPED_FUNC(CrossMapNormalGrad, GPU, CrossMapNormalGradFunc);
 
 }  // namespace paddle

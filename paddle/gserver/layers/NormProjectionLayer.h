@@ -16,9 +16,8 @@ limitations under the License. */
 
 #include <vector>
 #include "NormLayer.h"
-#include "paddle/math/Matrix.h"
 #include "paddle/math/Function.h"
-#include <vector>
+#include "paddle/math/Matrix.h"
 
 namespace paddle {
 
@@ -43,6 +42,8 @@ public:
   void backward(const UpdateCallback& callback = nullptr);
 
 protected:
-  FunctionBase* normal_;
+  Dims dims_;
+  FunctionBase* forward_;
+  FunctionBase* backward_;
 };
 }  // namespace paddle

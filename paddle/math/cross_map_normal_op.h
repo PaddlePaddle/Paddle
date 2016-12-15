@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "Function.h"
-#include "paddle/math/Matrix.h"
 
 namespace paddle {
 
@@ -30,34 +29,19 @@ void CrossMapNormal(real* outputs,
                     size_t size,
                     real scale,
                     real pow);
-#if 0
-template <DeviceType Device>
-struct CrossMapNormal {
-  void operator()(typename MatrixT<Device>::type& outputs,
-                  typename MatrixT<Device>::type& denoms,
-                  typename MatrixT<Device>::type& inputs,
-                  size_t channels,
-                  size_t imgSizeH,
-                  size_t imgSizeW,
-                  size_t sizeX,
-                  real scale,
-                  real pow);
-};
-#endif
 
 template <DeviceType Device>
-struct CrossMapNormalGrad {
-  void operator()(typename MatrixT<Device>::type& inputsGrad,
-                  typename MatrixT<Device>::type& inputsValue,
-                  typename MatrixT<Device>::type& outputsGrad,
-                  typename MatrixT<Device>::type& outputsValue,
-                  typename MatrixT<Device>::type& denoms,
-                  size_t channels,
-                  size_t imgSizeH,
-                  size_t imgSizeW,
-                  size_t sizeX,
-                  real scale,
-                  real pow);
-};
+void CrossMapNormalGrad(real* inputsGrad,
+                        real* inputsValue,
+                        real* outputsValue,
+                        real* outputsGrad,
+                        real* denoms,
+                        size_t numSamples,
+                        size_t channels,
+                        size_t height,
+                        size_t width,
+                        size_t size,
+                        real scale,
+                        real pow);
 
 }  // namespace paddle
