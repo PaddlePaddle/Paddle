@@ -18,12 +18,11 @@ from optparse import OptionParser
 from py_paddle import swig_paddle, DataProviderConverter
 from paddle.trainer.PyDataProvider2 import sparse_binary_vector
 from paddle.trainer.config_parser import parse_config
-
-
 """
 Usage: run following command to show help message.
   python api_predict.py -h
 """
+
 
 class QuickStartPrediction():
     def __init__(self, train_conf, dict_file, model_dir=None, label_file=None):
@@ -72,9 +71,7 @@ class QuickStartPrediction():
         transform word into integer index according to the dictionary.
         """
         words = data.strip().split()
-        word_slot = [
-            self.word_dict[w] for w in words if w in self.word_dict
-        ]
+        word_slot = [self.word_dict[w] for w in words if w in self.word_dict]
         return word_slot
 
     def batch_predict(self, data_batch):
@@ -83,6 +80,7 @@ class QuickStartPrediction():
         prob = output[0]["id"].tolist()
         print("predicting labels is:")
         print prob
+
 
 def option_parser():
     usage = "python predict.py -n config -w model_dir -d dictionary -i input_file "
@@ -143,6 +141,7 @@ def main():
     print("lables is:")
     print labels
     predict.batch_predict(batch)
+
 
 if __name__ == '__main__':
     main()
