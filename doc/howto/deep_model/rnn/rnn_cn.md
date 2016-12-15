@@ -180,7 +180,7 @@ def gru_decoder_with_attention(enc_vec, enc_proj, current_word):
 生成序列
 -----------------
 
-训练模型后，我们可以使用它来生成序列。通常的做法是使用**beam search** 生成序列。以下代码片段定义柱搜索算法。注意，`beam_search` 函数假设 `step` 的输出函数返回的是下一个时刻输出词的 softmax 归一化概率向量。我们对模型进行了以下更改。
+训练模型后，我们可以使用它来生成序列。通常的做法是使用**beam search** 生成序列。以下代码片段定义 beam search 算法。注意，`beam_search` 函数假设 `step` 的输出函数返回的是下一个时刻输出词的 softmax 归一化概率向量。我们对模型进行了以下更改。
 
 -   使用 `GeneratedInput` 来表示 trg\_embedding。 `GeneratedInput` 将上一时间步所生成的词的向量来作为当前时间步的输入。
 -   使用 `beam_search` 函数。这个函数需要设置：
