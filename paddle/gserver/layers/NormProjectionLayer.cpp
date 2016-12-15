@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "NormProjectionLayer.h"
-#include "paddle/math/cross_map_normal_op.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
