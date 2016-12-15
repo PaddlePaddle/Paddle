@@ -17,7 +17,6 @@ limitations under the License. */
 
 namespace paddle {
 
-// NCHW
 template <>
 void CrossMapNormal<DEVICE_TYPE_CPU>(real* outputs,
                                      real* denoms,
@@ -36,6 +35,10 @@ void CrossMapNormal<DEVICE_TYPE_CPU>(real* outputs,
   CpuVector inputsV(numSamples * oneSample, inputs);
   CpuVector denomsV(numSamples * oneSample, denoms);
 
+  // f(x) = x * ( 1 + scale * SUM((x)^2) )^(-pow)
+  // x represents inputs
+  // f(x) represents outputs
+  // denoms save the intermediate result for backward
   denomsV = denomsV.constant(1.0);
   const int start = -((int)size - 1) / 2;
   const int end = (int)size + start;

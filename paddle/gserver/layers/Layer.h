@@ -18,6 +18,7 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 #include "ModelConfig.pb.h"
+#include "paddle/function/Function.h"
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/utils/ClassRegistrar.h"
@@ -99,6 +100,11 @@ protected:
 
   /// Mark input grad in(true) or out(false) of backward function.
   std::vector<bool> markInBackward_;
+
+  /// Layer forward function
+  FunctionBase* forward_;
+  /// Layer backward function
+  FunctionBase* backward_;
 
 public:
   /**

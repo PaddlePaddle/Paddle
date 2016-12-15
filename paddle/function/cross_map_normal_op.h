@@ -18,6 +18,22 @@ limitations under the License. */
 
 namespace paddle {
 
+/**
+ * \brief   Cross map respose normalize forward.
+ *          The data structure of image data is NCHW.
+ *
+ * \param[out]  outputs     output data.
+ * \param[in]   denoms      denoms buffer.
+ * \param[in]   inputs      input data.
+ * \param[in]   numSamples  batch size of input image.
+ * \param[in]   channels    number of channel.
+ * \param[in]   height      image height.
+ * \param[in]   width       image width.
+ * \param[in]   size        size.
+ * \param[in]   scale       scale.
+ * \param[in]   pow         scale.
+ *
+ */
 template <DeviceType Device>
 void CrossMapNormal(real* outputs,
                     real* denoms,
@@ -30,6 +46,24 @@ void CrossMapNormal(real* outputs,
                     real scale,
                     real pow);
 
+/**
+ * \brief   Cross map respose normalize backward.
+ *          The data structure of image data is NCHW.
+ *
+ * \param[out]  inputsGrad      input grad.
+ * \param[in]   inputsValue     input value.
+ * \param[out]  outputsValue    output value.
+ * \param[out]  outputsGrad     output grad.
+ * \param[in]   denoms          denoms buffer.
+ * \param[in]   numSamples      batch size of input image.
+ * \param[in]   channels        number of channel.
+ * \param[in]   height          image height.
+ * \param[in]   width           image width.
+ * \param[in]   size            size.
+ * \param[in]   scale           scale.
+ * \param[in]   pow             scale.
+ *
+ */
 template <DeviceType Device>
 void CrossMapNormalGrad(real* inputsGrad,
                         real* inputsValue,

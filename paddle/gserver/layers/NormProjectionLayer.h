@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <vector>
 #include "NormLayer.h"
-#include "paddle/function/Function.h"
 #include "paddle/math/Matrix.h"
 
 namespace paddle {
@@ -43,7 +42,5 @@ public:
 
 protected:
   Dims dims_;
-  FunctionBase* forward_;
-  FunctionBase* backward_;
 };
 }  // namespace paddle
