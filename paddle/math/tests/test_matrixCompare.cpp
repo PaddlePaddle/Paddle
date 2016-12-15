@@ -1288,12 +1288,17 @@ void testCrossMapNormalFwd(
   FunctionBase* cpu =
       FunctionBase::funcRegistrar_.createByType(FUNC_NAME(CrossMapNormal, CPU));
   cpu->init(config);
-  // cpu->calc();
 
+  Dims dims{
+      (size_t)numSamples, (size_t)channels, (size_t)imgSizeH, (size_t)imgSizeW};
+  cpu->calc({Tensor(inputs.getData(), dims)},
+            {Tensor(outputs.getData(), dims), Tensor(denoms.getData(), dims)},
+            {});
+#if 0
   CrossMapNormal<DEVICE_TYPE_CPU> cpuCross;
   cpuCross(
       outputs, denoms, inputs, channels, imgSizeH, imgSizeW, sizeX, scale, pow);
-
+#endif
   CrossMapNormal<DEVICE_TYPE_GPU> gpuCross;
   gpuCross(outputsGpu,
            denomsGpu,

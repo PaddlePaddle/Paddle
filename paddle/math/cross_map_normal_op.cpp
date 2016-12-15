@@ -144,26 +144,23 @@ public:
     CHECK_EQ(2, outputs.size());
     CHECK_EQ(0, inouts.size());
 
-    auto input = dynamic_cast<const typename MatrixT<Device>::type&>(inputs[0]);
-    auto output =
-        dynamic_cast<const typename MatrixT<Device>::type&>(outputs[0]);
-    auto denom =
-        dynamic_cast<const typename MatrixT<Device>::type&>(outputs[1]);
+    CHECK_EQ(inputs[0].dims_.size(), 4);
+    for (size_t i = 0; i < inputs[0].dims_.size(); i++) {
+      CHECK_EQ(inputs[0].dims_[i], outputs[0].dims_[i]);
+      CHECK_EQ(inputs[0].dims_[i], outputs[1].dims_[i]);
+    }
 
-    CHECK(input.isContiguous());
-    CHECK(output.isContiguous());
-    CHECK(denom.isContiguous());
-    CHECK_EQ(output.getHeight(), input.getHeight());
-    CHECK_EQ(output.getWidth(), input.getWidth());
-    CHECK_EQ(output.getHeight(), denom.getHeight());
-    CHECK_EQ(output.getWidth(), denom.getWidth());
+    size_t samples = inputs[0].dims_[0];
+    size_t channels = inputs[0].dims_[1];
+    size_t height = inputs[0].dims_[2];
+    size_t width = inputs[0].dims_[3];
+    size_t imageSize = channels * height * width;
+    CpuMatrix input(inputs[0].buf_, samples, imageSize);
+    CpuMatrix output(outputs[0].buf_, samples, imageSize);
+    CpuMatrix denom(outputs[1].buf_, samples, imageSize);
 
-    // CrossMapNormal<Device> cross;
-    // need:
-    // size_t channels,
-    // size_t imgSizeH,
-    // size_t imgSizeW,
-    // cross(output, denom, input, );
+    CrossMapNormal<Device> cross;
+    cross(output, denom, input, channels, height, width, size_, scale_, pow_);
   }
 
 private:

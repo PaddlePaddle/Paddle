@@ -40,7 +40,17 @@ struct MatrixT<DEVICE_TYPE_GPU> {
   using type = GpuMatrix;
 };
 
-typedef std::vector<Matrix> Arguments;
+typedef std::vector<size_t> Dims;
+
+class Tensor {
+public:
+  Tensor(real* data, const Dims& dim) : buf_(data), dims_(dim) {}
+
+  real* buf_;
+  Dims dims_;
+};
+
+typedef std::vector<Tensor> Arguments;
 
 class FuncConfig {
 public:
