@@ -22,9 +22,9 @@ limitations under the License. */
 #include "DataProviderGroup.h"
 #include "paddle/utils/Logging.h"
 
-P_DEFINE_double(memory_threshold_on_load_data,
-                1.0,
-                "stop loading data when memory is not sufficient");
+DEFINE_double(memory_threshold_on_load_data,
+              1.0,
+              "stop loading data when memory is not sufficient");
 
 namespace paddle {
 

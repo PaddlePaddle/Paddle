@@ -245,7 +245,7 @@ message ImageConfig {
 
   // The size of input feature map.
   required uint32 img_size = 8;
-  required uint32 img_size_y = 9;
+  optional uint32 img_size_y = 9;
 }
 
 message LayerInputConfig {

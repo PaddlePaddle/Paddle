@@ -19,7 +19,7 @@ limitations under the License. */
 
 #include <cmath>
 
-P_DEFINE_bool(log_clipping, false, "enable log clipping or not");
+DEFINE_bool(log_clipping, false, "enable log clipping or not");
 
 namespace paddle {
 

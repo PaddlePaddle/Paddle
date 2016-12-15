@@ -13,7 +13,7 @@ Here is a sample python script that shows the typical prediction process for the
 MNIST classification problem. A complete sample code could be found at
 :code:`src_root/doc/ui/predict/predict_sample.py`.
 
-..  literalinclude:: ./predict_sample.py
+..  literalinclude:: src/predict_sample.py
     :language: python
     :lines: 15-18,90-100,101-104
 
@@ -23,7 +23,7 @@ python's :code:`help()` function. Let's walk through the above python script:
 
 * At the beginning, use :code:`swig_paddle.initPaddle()` to initialize
   PaddlePaddle with command line arguments, for more about command line arguments
-  see :ref:`cmd_detail_introduction_en` .
+  see :ref:`cmd_detail_introduction` .
 * Parse the configuration file that is used in training with :code:`parse_config()`.
   Because data to predict with always have no label, and output of prediction work
   normally is the output layer rather than the cost layer, so you should modify
@@ -36,7 +36,7 @@ python's :code:`help()` function. Let's walk through the above python script:
     - Note: As swig_paddle can only accept C++ matrices, we offer a utility
       class DataProviderConverter that can accept the same input data with
       PyDataProvider2, for more information please refer to document
-      of :ref:`api_pydataprovider2_en` .
+      of :ref:`api_pydataprovider2` .
 * Do the prediction with :code:`forwardTest()`, which takes the converted
   input data and outputs the activations of the output layer.
 

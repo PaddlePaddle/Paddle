@@ -29,11 +29,11 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_int32(num_passes);
-P_DECLARE_string(config);
-P_DECLARE_string(init_model_path);
-P_DECLARE_string(config_args);
+DECLARE_bool(use_gpu);
+DECLARE_int32(num_passes);
+DECLARE_string(config);
+DECLARE_string(init_model_path);
+DECLARE_string(config_args);
 
 size_t fcLayerWidth = 1024;
 

@@ -1,4 +1,4 @@
-..  _api_pydataprovider2_en:
+..  _api_pydataprovider2:
 
 PyDataProvider2
 ===============
@@ -24,18 +24,18 @@ of 28 x 28 pixels.
 
 A small part of the original data as an example is shown as below:
 
-.. literalinclude:: ../../../doc_cn/ui/data_provider/mnist_train.txt
+.. literalinclude:: src/mnist_train.txt
 
 Each line of the data contains two parts, separated by :code:`;`. The first part is
 label of an image. The second part contains 28x28 pixel float values.
 
 Just write path of the above data into train.list. It looks like this:
 
-.. literalinclude:: ../../../doc_cn/ui/data_provider/train.list
+.. literalinclude:: src/train.list
 
 The corresponding dataprovider is shown as below:
 
-.. literalinclude:: ../../../doc_cn/ui/data_provider/mnist_provider.py
+.. literalinclude:: src/mnist_provider.dict.py
 
 The first line imports PyDataProvider2 package.
 The main function is the process function, that has two parameters.
@@ -74,7 +74,7 @@ sample by using keywords :code:`yield`.
 Only a few lines of codes need to be added into the training configuration file,
 you can take this as an example.
 
-.. literalinclude:: ../../../doc_cn/ui/data_provider/mnist_config.py
+.. literalinclude:: src/mnist_config.py
 
 Here we specify training data by :code:`train.list`, and no testing data is specified.
 The method which actually provide data is :code:`process`.
@@ -83,7 +83,7 @@ User also can use another style to provide data, which defines the
 :code:`data_layer`'s name explicitly when `yield`. For example,
 the :code:`dataprovider` is shown as below.
 
-.. literalinclude:: ../../../doc_cn/ui/data_provider/mnist_provider.dict.py
+.. literalinclude:: src/mnist_provider.dict.py
    :linenos:
 
 If user did't give the :code:`data_layer`'s name, PaddlePaddle will use
@@ -104,7 +104,7 @@ And PaddlePadle will do all of the rest things\:
 
 Is this cool?
 
-..  _api_pydataprovider2_en_sequential_model:
+..  _api_pydataprovider2_sequential_model:
 
 DataProvider for the sequential model
 -------------------------------------
@@ -121,11 +121,11 @@ negative sentiment (marked by 0 and 1 respectively).
 
 A small part of the original data as an example can be found in the path below:
 
-.. literalinclude:: ../../../doc_cn/ui/data_provider/sentimental_train.txt
+.. literalinclude:: src/sentimental_train.txt
 
 The corresponding data provider can be found in the path below:
 
-.. literalinclude:: ../../../doc_cn/ui/data_provider/sentimental_provider.py
+.. literalinclude:: src/sentimental_provider.py
 
 This data provider for sequential model is a little more complex than that
 for MINST dataset.
@@ -143,7 +143,7 @@ initialized. The :code:`on_init` function has the following parameters:
 To pass these parameters into DataProvider, the following lines should be added
 into trainer configuration file.
 
-.. literalinclude:: ../../../doc_cn/ui/data_provider/sentimental_config.py
+.. literalinclude:: src/sentimental_config.py
 
 The definition is basically same as MNIST example, except:
 * Load dictionary in this configuration

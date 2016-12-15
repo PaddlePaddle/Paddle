@@ -16,9 +16,9 @@ limitations under the License. */
 #include "Allocator.h"
 #include "paddle/utils/Util.h"
 
-P_DEFINE_int32(pool_limit_size,
-               536870912,
-               "maximum memory size managed by a memory pool, default is 512M");
+DEFINE_int32(pool_limit_size,
+             536870912,
+             "maximum memory size managed by a memory pool, default is 512M");
 
 namespace paddle {
 

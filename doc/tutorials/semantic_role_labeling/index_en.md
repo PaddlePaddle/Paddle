@@ -1,5 +1,5 @@
 ```eval_rst
-..  _semantic_role_labeling_en:
+..  _semantic_role_labeling:
 ```
 
 # Semantic Role labeling Tutorial #
@@ -45,13 +45,13 @@ Unlike Bidirectional-LSTM that used in Sentiment Analysis demo,  the DB-LSTM ado
 
 The following figure shows a temporal expanded 2-layer DB-LSTM network.
 <center>
-![pic](./network_arch.png)
+![pic](./src/network_arch.png)
 </center>
 
 ### Features
 Two input features play an essential role in this pipeline: predicate (pred) and argument (argu). Two other features: predicate context (ctx-p) and region mark (mr) are also adopted. Because a single predicate word can not exactly describe the predicate information, especially when the same words appear more than one times in a sentence. With the predicate context, the ambiguity can be largely eliminated. Similarly, we use region mark m<sub>r</sub> = 1 to denote the argument position if it locates in the predicate context region, or m<sub>r</sub> = 0 if does not. These four simple features are all we need for our SRL system. Features of one sample with context size set to 1 is showed as following[2]:
 <center>
-![pic](./feature.jpg)
+![pic](./src/feature.jpg)
 </center>
 
 In this sample, the coresponding labelled sentence is:
@@ -152,7 +152,7 @@ paddle train \
 
 After training, the models  will be saved in directory `output`. Our training curve is as following:
 <center>
-![pic](./curve.jpg)
+![pic](./src/curve.jpg)
 </center>
 
 ### Run testing
