@@ -27,6 +27,9 @@ static const string& configFile1 = "trainer/tests/sample_trainer_config.conf";
 static const string& configFile2 =
     "trainer/tests/sample_trainer_config_parallel.conf";
 
+static const string& configFileSimpleSparse =
+    "trainer/tests/simple_sparse_neural_network.py";
+
 DECLARE_bool(use_gpu);
 DECLARE_string(config);
 DECLARE_int32(gpu_id);
@@ -298,11 +301,15 @@ TEST(checkRemoteUpdater, cpuDeltaTrainerOldUpdater) {
   checkRemoteParameterUpdaterTest(configFile1, false, false, 1, true, 10);
 }
 
+TEST(SgdThreadUpdater, simpleSparseNN) {
+  trainerOnePassTest(configFileSimpleSparse, false, false, 1, 0.5, true);
+}
+
 int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);
   initPython(argc, argv);
   gNumDevices = hl_get_device_count();
-  testing::InitGoogleTest(&argc, argv);
 
   FLAGS_num_passes = 1;          // train one pass
   FLAGS_saving_period = 100000;  // do not save parameteres
