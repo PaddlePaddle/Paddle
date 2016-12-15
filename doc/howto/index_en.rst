@@ -33,4 +33,4 @@ Optimization
 ..  toctree::
   :maxdepth: 1
 
-  optimization/index_en.rst
+  optimization/gpu_profiling_en.rst
