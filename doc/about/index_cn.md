@@ -8,4 +8,4 @@ PaddlePaddle目前已经开放源码, 但是远未完善，我们希望能在这
 致谢
 --------
 
-在此，特别感谢PaddlePaddle的所有贡献者<https://github.com/PaddlePaddle/Paddle/blob/develop/authors>。
+在此，特别感谢PaddlePaddle的[所有贡献者](https://github.com/PaddlePaddle/Paddle/graphs/contributors)。
