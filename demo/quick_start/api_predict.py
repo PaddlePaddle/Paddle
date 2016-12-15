@@ -138,7 +138,7 @@ def main():
         [label, text] = line.split("\t")
         labels.append(int(label))
         batch.append([predict.get_index(text)])
-    print("lables is:")
+    print("labels is:")
     print labels
     predict.batch_predict(batch)
 
