@@ -17,6 +17,15 @@ limitations under the License. */
 #include "paddle/math/BaseMatrix.h"
 
 namespace paddle {
+/**
+ * @brief A layer for generate prior box locations and variances.
+ * - Input: Two and only two input layer are accepted. The input layer must be
+ *        be a data output layer and a convolution output layer.
+ * - Output: The prior box locations and variances of the input data.
+ * Reference:
+ *    Wei Liu, Dragomir Anguelov, Dumitru Erhan, Christian Szegedy, Scott Reed,
+ *    Cheng-Yang Fu, Alexander C. Berg. SSD: Single Shot MultiBox Detector
+ */
 
 class PriorBoxLayer : public Layer {
 public:
@@ -24,106 +33,84 @@ public:
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
   void forward(PassType passType);
   void backward(const UpdateCallback& callback) {}
-  void forwardImp(const Argument& featureMap, const Argument& imageShape);
   int numPriors_;
   std::vector<int> minSize_;
   std::vector<int> maxSize_;
   std::vector<float> aspectRatio_;
   std::vector<float> variance_;
-  std::vector<Argument> tmpCpuInput_;
   MatrixPtr buffer_;
 };
 
 bool PriorBoxLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
   Layer::init(layerMap, parameterMap);
-  auto pb_conf = config_.inputs(0).priorbox_conf();
-  std::copy(pb_conf.min_size().begin(),
-            pb_conf.min_size().end(),
+  auto pbConf = config_.inputs(0).priorbox_conf();
+  std::copy(pbConf.min_size().begin(),
+            pbConf.min_size().end(),
             std::back_inserter(minSize_));
-  std::copy(pb_conf.max_size().begin(),
-            pb_conf.max_size().end(),
+  std::copy(pbConf.max_size().begin(),
+            pbConf.max_size().end(),
             std::back_inserter(maxSize_));
-  std::copy(pb_conf.aspect_ratio().begin(),
-            pb_conf.aspect_ratio().end(),
+  std::copy(pbConf.aspect_ratio().begin(),
+            pbConf.aspect_ratio().end(),
             std::back_inserter(aspectRatio_));
-  std::copy(pb_conf.variance().begin(),
-            pb_conf.variance().end(),
+  std::copy(pbConf.variance().begin(),
+            pbConf.variance().end(),
             std::back_inserter(variance_));
   // flip
-  int input_ratio_length = aspectRatio_.size();
-  for (int index = 0; index < input_ratio_length; index++)
+  int inputRatioLength = aspectRatio_.size();
+  for (int index = 0; index < inputRatioLength; index++)
     aspectRatio_.push_back(1 / aspectRatio_[index]);
   aspectRatio_.push_back(1.);
   numPriors_ = aspectRatio_.size();
   if (maxSize_.size() > 0) numPriors_++;
-  buffer_ = Matrix::create(1, 1, false, false);
-  if (useGpu_) {
-    tmpCpuInput_.reserve(inputLayers_.size());
-    for (size_t i = 0; i < inputLayers_.size(); i++) {
-      tmpCpuInput_.push_back(Argument());
-    }
-  }
   return true;
 }
 
 void PriorBoxLayer::forward(PassType passType) {
   Layer::forward(passType);
-  if (useGpu_) {
-    for (size_t i = 0; i < inputLayers_.size(); i++) {
-      tmpCpuInput_[i].resizeAndCopyFrom(
-          getInput(i), false, HPPL_STREAM_DEFAULT);
-      hl_stream_synchronize(HPPL_STREAM_DEFAULT);
-      forwardImp(tmpCpuInput_[0], tmpCpuInput_[1]);
-    }
-  } else {
-    forwardImp(getInput(0), getInput(1));
-  }
-}
+  auto input = getInput(0);
+  int layerWidth = input.getFrameWidth();
+  int layerHeight = input.getFrameHeight();
 
-void PriorBoxLayer::forwardImp(const Argument& featureMap,
-                               const Argument& imageShape) {
-  int layer_width = featureMap.getFrameWidth();
-  int layer_height = featureMap.getFrameHeight();
-
-  MatrixPtr inV1 = imageShape.value;
-  int image_width = inV1->getElement(0, 0);
-  int image_height = inV1->getElement(0, 1);
-  float step_w = static_cast<float>(image_width) / layer_width;
-  float step_h = static_cast<float>(image_height) / layer_height;
-  int dim = layer_height * layer_width * numPriors_ * 4;
+  auto image = getInput(1);
+  int imageWidth = image.getFrameWidth();
+  int imageHeight = image.getFrameHeight();
+  float stepW = static_cast<float>(imageWidth) / layerWidth;
+  float stepH = static_cast<float>(imageHeight) / layerHeight;
+  int dim = layerHeight * layerWidth * numPriors_ * 4;
   reserveOutput(1, dim * 2);
   // use a cpu buffer to compute
   Matrix::resizeOrCreate(buffer_, 1, dim * 2, false, false);
-  auto* tmp_ptr = buffer_->getData();
+  auto* tmpPtr = buffer_->getData();
 
   int idx = 0;
-  for (int h = 0; h < layer_height; ++h) {
-    for (int w = 0; w < layer_width; ++w) {
-      float center_x = (w + 0.5) * step_w;
-      float center_y = (h + 0.5) * step_h;
-      int min_size = 0;
+  for (int h = 0; h < layerHeight; ++h) {
+    for (int w = 0; w < layerWidth; ++w) {
+      float centerX = (w + 0.5) * stepW;
+      float centerY = (h + 0.5) * stepH;
+      int minSize = 0;
       for (size_t s = 0; s < minSize_.size(); s++) {
         // first prior.
-        min_size = minSize_[s];
-        int box_width = min_size;
-        int box_height = min_size;
+        minSize = minSize_[s];
+        int boxWidth = minSize;
+        int boxHeight = minSize;
         // xmin, ymin, xmax, ymax.
-        tmp_ptr[idx++] = (center_x - box_width / 2.) / image_width;
-        tmp_ptr[idx++] = (center_y - box_height / 2.) / image_height;
-        tmp_ptr[idx++] = (center_x + box_width / 2.) / image_width;
-        tmp_ptr[idx++] = (center_y + box_height / 2.) / image_height;
+        tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
+        tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
+        tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
+        tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
 
         if (maxSize_.size() > 0) {
           CHECK_EQ(minSize_.size(), maxSize_.size());
           // second prior.
           for (size_t s = 0; s < maxSize_.size(); s++) {
-            int max_size = maxSize_[s];
-            box_width = box_height = sqrt(min_size * max_size);
-            tmp_ptr[idx++] = (center_x - box_width / 2.) / image_width;
-            tmp_ptr[idx++] = (center_y - box_height / 2.) / image_height;
-            tmp_ptr[idx++] = (center_x + box_width / 2.) / image_width;
-            tmp_ptr[idx++] = (center_y + box_height / 2.) / image_height;
+            int maxSize = maxSize_[s];
+            boxWidth = boxHeight = sqrt(minSize * maxSize);
+            tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
+            tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
+            tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
+            tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
           }
         }
       }
@@ -131,27 +118,26 @@ void PriorBoxLayer::forwardImp(const Argument& featureMap,
       for (size_t r = 0; r < aspectRatio_.size(); r++) {
         float ar = aspectRatio_[r];
         if (fabs(ar - 1.) < 1e-6) continue;
-        float box_width = min_size * sqrt(ar);
-        float box_height = min_size / sqrt(ar);
-        tmp_ptr[idx++] = (center_x - box_width / 2.) / image_width;
-        tmp_ptr[idx++] = (center_y - box_height / 2.) / image_height;
-        tmp_ptr[idx++] = (center_x + box_width / 2.) / image_width;
-        tmp_ptr[idx++] = (center_y + box_height / 2.) / image_height;
+        float boxWidth = minSize * sqrt(ar);
+        float boxHeight = minSize / sqrt(ar);
+        tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
+        tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
+        tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
+        tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
       }
     }
   }
   // clip the prior's coordidate such that it is within [0, 1]
   for (int d = 0; d < dim; ++d)
-    tmp_ptr[d] = std::min(std::max(tmp_ptr[d], (float)0.), (float)1.);
+    tmpPtr[d] = std::min(std::max(tmpPtr[d], (float)0.), (float)1.);
   // set the variance.
-  for (int h = 0; h < layer_height; h++)
-    for (int w = 0; w < layer_width; w++)
+  for (int h = 0; h < layerHeight; h++)
+    for (int w = 0; w < layerWidth; w++)
       for (int i = 0; i < numPriors_; i++)
-        for (int j = 0; j < 4; j++) tmp_ptr[idx++] = variance_[j];
+        for (int j = 0; j < 4; j++) tmpPtr[idx++] = variance_[j];
   MatrixPtr outV = getOutputValue();
   outV->copyFrom(buffer_->data_, dim * 2);
 }
-
 REGISTER_LAYER(priorbox, PriorBoxLayer);
 
 }  // namespace paddle

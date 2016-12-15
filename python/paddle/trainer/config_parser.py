@@ -1589,8 +1589,6 @@ class PriorBoxLayer(LayerBase):
         self.config.inputs[0].priorbox_conf.aspect_ratio.extend(aspect_ratio)
         self.config.inputs[0].priorbox_conf.variance.extend(variance)
         self.config.size = size
-        input_layer0 = self.get_input_layer(0)
-        input_layer1 = self.get_input_layer(1)
 
 
 @config_layer('data')

@@ -938,7 +938,7 @@ def print_layer(input, name=None):
 
 @wrap_name_default("priorbox")
 def priorbox_layer(input,
-                   img_shape,
+                   image,
                    aspect_ratio,
                    variance,
                    min_size,
@@ -951,8 +951,8 @@ def priorbox_layer(input,
     :type name: basestring
     :param input: The input layer.
     :type input: LayerOutput
-    :param img_shape: The width and height of the network input image.
-    :type img_shape: LayerOutput
+    :param image: The network input image.
+    :type image: LayerOutput
     :param aspect_ratio: The aspect ratio.
     :type aspect_ratio: list
     :param variance: The bounding box variance.
@@ -968,7 +968,7 @@ def priorbox_layer(input,
     Layer(
         name=name,
         type=LayerType.PRIORBOX_LAYER,
-        inputs=[input.name, img_shape.name],
+        inputs=[input.name, image.name],
         size=size,
         min_size=min_size,
         max_size=max_size,
@@ -977,7 +977,7 @@ def priorbox_layer(input,
     return LayerOutput(
         name,
         LayerType.PRIORBOX_LAYER,
-        parents=[input, img_shape],
+        parents=[input, image],
         num_filters=num_filters,
         size=size)
 
