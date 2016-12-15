@@ -53,7 +53,7 @@ above profilers.
 
 .. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
    :language: c++
-   :lines: 111-124
+   :lines: 137-151
    :linenos:
 
 The above code snippet includes two methods, you can use any of them to profile the regions of interest.
