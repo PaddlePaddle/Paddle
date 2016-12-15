@@ -18,45 +18,41 @@ namespace paddle {
 
 // NCHW
 template <>
-void CrossMapNormal<DEVICE_TYPE_CPU>::operator()(CpuMatrix& outputs,
-                                                 CpuMatrix& denoms,
-                                                 CpuMatrix& inputs,
-                                                 size_t channels,
-                                                 size_t imgSizeH,
-                                                 size_t imgSizeW,
-                                                 size_t sizeX,
-                                                 real scale,
-                                                 real pow) {
-  CHECK(outputs.isContiguous());
-  CHECK(inputs.isContiguous());
-  CHECK(denoms.isContiguous());
-  CHECK_EQ(outputs.getHeight(), inputs.getHeight());
-  CHECK_EQ(outputs.getWidth(), inputs.getWidth());
-  CHECK_EQ(outputs.getHeight(), denoms.getHeight());
-  CHECK_EQ(outputs.getWidth(), denoms.getWidth());
+void CrossMapNormal<DEVICE_TYPE_CPU>(real* outputs,
+                                     real* denoms,
+                                     real* inputs,
+                                     size_t numSamples,
+                                     size_t channels,
+                                     size_t height,
+                                     size_t width,
+                                     size_t size,
+                                     real scale,
+                                     real pow) {
+  size_t oneImage = height * width;
+  size_t oneSample = channels * oneImage;
 
-  size_t numSample = inputs.getHeight();
-  size_t numCols = inputs.getWidth();
-  size_t imageSize = imgSizeH * imgSizeW;
-  CHECK(imageSize * channels == numCols);
+  CpuVector outputsV(numSamples * oneSample, outputs);
+  CpuVector inputsV(numSamples * oneSample, inputs);
+  CpuVector denomsV(numSamples * oneSample, denoms);
 
-  denoms = denoms.constant(1.0);
-  const int start = -((int)sizeX - 1) / 2;
-  const int end = (int)sizeX + start;
-  for (size_t i = 0; i < numSample; i++) {
-    real* denomsData = denoms.getData() + i * numCols;
-    real* inputData = inputs.getData() + i * numCols;
+  denomsV = denomsV.constant(1.0);
+  const int start = -((int)size - 1) / 2;
+  const int end = (int)size + start;
+  for (size_t i = 0; i < numSamples; i++) {
+    real* oneDenom = denoms + i * oneSample;
+    real* oneInput = inputs + i * oneSample;
     for (int c = 0; c < (int)channels; c++) {
-      CpuVector denom(imageSize, denomsData + c * imageSize);
+      CpuVector denom(oneImage, oneDenom + c * oneImage);
       for (int s = start; s < end; s++) {
         if (c + s >= 0 && c + s < (int)channels) {
-          CpuVector input(imageSize, inputData + (c + s) * imageSize);
+          CpuVector input(oneImage, oneInput + (c + s) * oneImage);
           denom += input.square() * scale;
         }
       }
     }
   }
-  outputs = inputs * denoms.pow(-pow);
+
+  outputsV = inputsV * denomsV.pow(-pow);
 }
 
 template <>
@@ -154,13 +150,17 @@ public:
     size_t channels = inputs[0].dims_[1];
     size_t height = inputs[0].dims_[2];
     size_t width = inputs[0].dims_[3];
-    size_t imageSize = channels * height * width;
-    CpuMatrix input(inputs[0].buf_, samples, imageSize);
-    CpuMatrix output(outputs[0].buf_, samples, imageSize);
-    CpuMatrix denom(outputs[1].buf_, samples, imageSize);
 
-    CrossMapNormal<Device> cross;
-    cross(output, denom, input, channels, height, width, size_, scale_, pow_);
+    CrossMapNormal<Device>(outputs[0].getData(),
+                           outputs[1].getData(),
+                           inputs[0].getData(),
+                           samples,
+                           channels,
+                           height,
+                           width,
+                           size_,
+                           scale_,
+                           pow_);
   }
 
 private:
@@ -170,5 +170,6 @@ private:
 };
 
 REGISTER_TYPED_FUNC(CrossMapNormal, CPU, CrossMapNormalFunc);
+REGISTER_TYPED_FUNC(CrossMapNormal, GPU, CrossMapNormalFunc);
 
 }  // namespace paddle

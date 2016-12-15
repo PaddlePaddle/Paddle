@@ -31,15 +31,17 @@ real FuncConfig::get<real>(const std::string& key) const {
 }
 
 template <>
-void FuncConfig::set<size_t>(const std::string& key, size_t v) {
+FuncConfig& FuncConfig::set<size_t>(const std::string& key, size_t v) {
   CHECK(valueMap_.count(key) == 0) << "Duplicated value: " << key;
   valueMap_[key].s = v;
+  return *this;
 }
 
 template <>
-void FuncConfig::set<real>(const std::string& key, real v) {
+FuncConfig& FuncConfig::set<real>(const std::string& key, real v) {
   CHECK(valueMap_.count(key) == 0) << "Duplicated value: " << key;
   valueMap_[key].r = v;
+  return *this;
 }
 
 ClassRegistrar<FunctionBase> FunctionBase::funcRegistrar_;

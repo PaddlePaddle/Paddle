@@ -46,6 +46,8 @@ class Tensor {
 public:
   Tensor(real* data, const Dims& dim) : buf_(data), dims_(dim) {}
 
+  real* getData() const { return buf_; }
+
   real* buf_;
   Dims dims_;
 };
@@ -63,7 +65,7 @@ public:
   T get(const std::string& key) const;
 
   template <typename T>
-  void set(const std::string& key, T v);
+  FuncConfig& set(const std::string& key, T v);
 
 protected:
   std::map<std::string, value> valueMap_;
@@ -84,11 +86,11 @@ public:
 
 #define FUNC_NAME(typeName, deviceName) #typeName "-" #deviceName
 
-#define REGISTER_TYPED_FUNC(typeName, deviceName, className) \
-  static InitFunction __reg_type_##typeName([]() {           \
-    FunctionBase::funcRegistrar_                             \
-        .registerClass<className<DEVICE_TYPE_##deviceName>>( \
-            FUNC_NAME(typeName, deviceName));                \
+#define REGISTER_TYPED_FUNC(typeName, deviceName, className)   \
+  static InitFunction __reg_type_##typeName##deviceName([]() { \
+    FunctionBase::funcRegistrar_                               \
+        .registerClass<className<DEVICE_TYPE_##deviceName>>(   \
+            FUNC_NAME(typeName, deviceName));                  \
   })
 
 }  // namespace paddle

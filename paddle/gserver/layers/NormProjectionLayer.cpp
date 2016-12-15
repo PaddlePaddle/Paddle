@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
+#include "paddle/math/cross_map_normal_op.h"
 #include "NormProjectionLayer.h"
 
 namespace paddle {
@@ -45,6 +46,16 @@ bool CMRProjectionNormLayer::init(const LayerMap& layerMap,
   /* the size of inputs for norm-layer is 1 */
   CHECK_EQ(config_.inputs_size(), 1);
 
+  if (useGpu_) {
+    normal_ = FunctionBase::funcRegistrar_.createByType(
+        FUNC_NAME(CrossMapNormal, GPU));
+  } else {
+    normal_ = FunctionBase::funcRegistrar_.createByType(
+        FUNC_NAME(CrossMapNormal, CPU));
+  }
+  normal_->init(
+      FuncConfig().set("size", size_).set("scale", scale_).set("pow", pow_));
+
   return true;
 }
 
@@ -62,10 +73,14 @@ void CMRProjectionNormLayer::forward(PassType passType) {
 
   Matrix::resizeOrCreate(denoms_, batchSize, size, /* trans */ false, useGpu_);
 
-  denoms_->zeroMem();
-
-  outV->crossMapNormalFwd(
-      *input, imgSizeH_, imgSizeW_, *denoms_, channels_, size_, scale_, pow_);
+  Dims dims{(size_t)batchSize,
+            (size_t)channels_,
+            (size_t)imgSizeH_,
+            (size_t)imgSizeW_};
+  normal_->calc(
+      {Tensor(input->getData(), dims)},
+      {Tensor(outV->getData(), dims), Tensor(denoms_->getData(), dims)},
+      {});
 }
 
 void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
@@ -80,15 +95,32 @@ void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
   MatrixPtr localOutV = getOutputValue();
   MatrixPtr preOutV = inputLayers_[0]->getOutputValue();
 
-  preOutGrad->crossMapNormalBwd(*localGrad,
-                                *denoms_,
-                                *preOutV,
-                                *localOutV,
-                                channels_,
-                                imgSizeH_,
-                                imgSizeW_,
-                                size_,
-                                scale_,
-                                pow_);
+  if (useGpu_) {
+    CrossMapNormalGrad<DEVICE_TYPE_GPU> crossGrad;
+    crossGrad(dynamic_cast<GpuMatrix&>(*preOutGrad),
+              dynamic_cast<GpuMatrix&>(*preOutV),
+              dynamic_cast<GpuMatrix&>(*localGrad),
+              dynamic_cast<GpuMatrix&>(*localOutV),
+              dynamic_cast<GpuMatrix&>(*denoms_),
+              channels_,
+              imgSizeH_,
+              imgSizeW_,
+              size_,
+              scale_,
+              pow_);
+  } else {
+    CrossMapNormalGrad<DEVICE_TYPE_CPU> crossGrad;
+    crossGrad(dynamic_cast<CpuMatrix&>(*preOutGrad),
+              dynamic_cast<CpuMatrix&>(*preOutV),
+              dynamic_cast<CpuMatrix&>(*localGrad),
+              dynamic_cast<CpuMatrix&>(*localOutV),
+              dynamic_cast<CpuMatrix&>(*denoms_),
+              channels_,
+              imgSizeH_,
+              imgSizeW_,
+              size_,
+              scale_,
+              pow_);
+  }
 }
 }  // namespace paddle

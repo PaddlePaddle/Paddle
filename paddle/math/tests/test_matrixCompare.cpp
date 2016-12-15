@@ -1281,24 +1281,40 @@ void testCrossMapNormalFwd(
   inputsGpu.copyFrom(inputs);
   outputsGpu.copyFrom(outputs);
 
+#if 0
   FuncConfig config;
   config.set("size", (size_t)sizeX);
   config.set("scale", scale);
   config.set("pow", pow);
+#endif
   FunctionBase* cpu =
       FunctionBase::funcRegistrar_.createByType(FUNC_NAME(CrossMapNormal, CPU));
-  cpu->init(config);
+  FunctionBase* gpu =
+      FunctionBase::funcRegistrar_.createByType(FUNC_NAME(CrossMapNormal, GPU));
+  cpu->init(FuncConfig()
+                .set("size", (size_t)sizeX)
+                .set("scale", scale)
+                .set("pow", pow));
+  gpu->init(FuncConfig()
+                .set("size", (size_t)sizeX)
+                .set("scale", scale)
+                .set("pow", pow));
 
   Dims dims{
       (size_t)numSamples, (size_t)channels, (size_t)imgSizeH, (size_t)imgSizeW};
   cpu->calc({Tensor(inputs.getData(), dims)},
             {Tensor(outputs.getData(), dims), Tensor(denoms.getData(), dims)},
             {});
+
+  gpu->calc(
+      {Tensor(inputsGpu.getData(), dims)},
+      {Tensor(outputsGpu.getData(), dims), Tensor(denomsGpu.getData(), dims)},
+      {});
 #if 0
   CrossMapNormal<DEVICE_TYPE_CPU> cpuCross;
   cpuCross(
       outputs, denoms, inputs, channels, imgSizeH, imgSizeW, sizeX, scale, pow);
-#endif
+
   CrossMapNormal<DEVICE_TYPE_GPU> gpuCross;
   gpuCross(outputsGpu,
            denomsGpu,
@@ -1309,6 +1325,7 @@ void testCrossMapNormalFwd(
            sizeX,
            scale,
            pow);
+#endif
 
   TensorCheckErr(outputs, outputsGpu);
   TensorCheckErr(denoms, denomsGpu);

@@ -61,45 +61,29 @@ __global__ void KeCMRNormOutput(size_t inputSize, const real* in,
 }
 
 template <>
-void CrossMapNormal<DEVICE_TYPE_GPU>::operator()(GpuMatrix& outputs,
-                                                 GpuMatrix& denoms,
-                                                 GpuMatrix& inputs,
-                                                 size_t channels,
-                                                 size_t imgSizeH,
-                                                 size_t imgSizeW,
-                                                 size_t sizeX,
-                                                 real scale,
-                                                 real pow) {
-  CHECK(outputs.isContiguous());
-  CHECK(inputs.isContiguous());
-  CHECK(denoms.isContiguous());
-  CHECK_EQ(outputs.getHeight(), inputs.getHeight());
-  CHECK_EQ(outputs.getWidth(), inputs.getWidth());
-  CHECK_EQ(outputs.getHeight(), denoms.getHeight());
-  CHECK_EQ(outputs.getWidth(), denoms.getWidth());
-
-  size_t numSample = inputs.getHeight();
-  size_t numCols = inputs.getWidth();
-  CHECK(imgSizeH * imgSizeW * channels == numCols);
-
-  real* inputsData = inputs.getData();
-  real* denomsData = denoms.getData();
-  real* outputsData = outputs.getData();
-
-  size_t imageSize = numSample * imgSizeH * imgSizeW;
+void CrossMapNormal<DEVICE_TYPE_GPU>(real* outputs,
+                                     real* denoms,
+                                     real* inputs,
+                                     size_t numSamples,
+                                     size_t channels,
+                                     size_t height,
+                                     size_t width,
+                                     size_t size,
+                                     real scale,
+                                     real pow) {
+  size_t imageSize = numSamples * height * width;
   int blockSize = 1024;
   int gridSize = (imageSize + 1024 - 1) / 1024;
   KeCMRNormFillScale<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (imageSize, inputsData, denomsData,
-    channels, imgSizeH, imgSizeW, sizeX, scale);
+    (imageSize, inputs, denoms, channels, height, width, size, scale);
 
-  size_t inputSize = numSample * imgSizeH * imgSizeW *channels;
+  size_t inputSize = numSamples * height * width *channels;
   blockSize = 1024;
   gridSize = (inputSize + 1024 - 1) / 1024;
   KeCMRNormOutput<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (inputSize, inputsData, denomsData, -pow, outputsData);
+    (inputSize, inputs, denoms, -pow, outputs);
 
-  CHECK_SYNC("CrossMapNormalFwd");
+  CHECK_SYNC("CrossMapNormal");
 }
 
 __global__ void KeCMRNormDiff(size_t imageSize, const real* bottom_data,

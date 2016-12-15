@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "NormLayer.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/math/Function.h"
 #include <vector>
 
 namespace paddle {
@@ -39,5 +40,8 @@ public:
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
   void forward(PassType passType);
   void backward(const UpdateCallback& callback = nullptr);
+
+protected:
+  FunctionBase* normal_;
 };
 }  // namespace paddle

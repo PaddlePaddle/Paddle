@@ -20,6 +20,18 @@ limitations under the License. */
 namespace paddle {
 
 template <DeviceType Device>
+void CrossMapNormal(real* outputs,
+                    real* denoms,
+                    real* inputs,
+                    size_t numSamples,
+                    size_t channels,
+                    size_t height,
+                    size_t width,
+                    size_t size,
+                    real scale,
+                    real pow);
+#if 0
+template <DeviceType Device>
 struct CrossMapNormal {
   void operator()(typename MatrixT<Device>::type& outputs,
                   typename MatrixT<Device>::type& denoms,
@@ -31,6 +43,7 @@ struct CrossMapNormal {
                   real scale,
                   real pow);
 };
+#endif
 
 template <DeviceType Device>
 struct CrossMapNormalGrad {
