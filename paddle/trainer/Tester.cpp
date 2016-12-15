@@ -46,6 +46,12 @@ Tester::Tester(const std::shared_ptr<TrainerConfigHelper>& config,
       gradientMachine_(gradientMachine),
       parameterUpdater_(parameterUpdater),
       testDataProvider_(testDataProvider) {
+  if (config_->getOptConfig().use_sparse_remote_updater()) {
+    LOG(FATAL) << "It's prohibited to set sparse_remote_update "
+               << "in some layers if testing will be under going "
+               << "in the middle of training. You can do testing "
+               << "within separate process.";
+  }
   testEvaluator_.reset(gradientMachine_->makeEvaluator());
   if (intconfig_->distributeTest) {
     testParameterClient_.reset(new ParameterClient2(true));
