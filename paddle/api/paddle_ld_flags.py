@@ -30,8 +30,8 @@ try:
         whole_end = ""
 
     LIB_DIRS = [
-        "math", 'utils', 'parameter', "gserver", "api", "cuda", "pserver",
-        "trainer"
+        "math", 'function', 'utils', 'parameter', "gserver", "api", "cuda",
+        "pserver", "trainer"
     ]
     PARENT_LIB_DIRS = ['proto']
 
@@ -75,6 +75,7 @@ try:
             libs = [
                 whole_start,
                 "-lpaddle_gserver",
+                "-lpaddle_function",
                 whole_end,
                 "-lpaddle_pserver",
                 "-lpaddle_trainer_lib",
