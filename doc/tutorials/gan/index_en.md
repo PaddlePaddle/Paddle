@@ -8,7 +8,8 @@ The high-level structure of GAN is shown in Figure. 1 below. It is composed of t
     <img src="./gan.png" width="500" height="300"> 
 </p>
 <p align="center">
-    Figure 1. GAN-Model-Structure [figure credit](https://ishmaelbelghazi.github.io/ALI/)
+    Figure 1. GAN-Model-Structure
+    <a href="https://ishmaelbelghazi.github.io/ALI/">figure credit</a>
 </p>
 
 The generator and discriminator take turn to be trained using SGD. The objective function of the generator is for its generated images being classified as real by the discriminator, and the objective function of the discriminator is to correctly classify real and fake images. When the GAN model is trained to converge to the equilibrium state, the generator will transform the given noise distribution to the distribution of real images, and the discriminator will not be able to distinguish between real and fake images at all. 
