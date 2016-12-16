@@ -55,16 +55,16 @@
 ```
 虽然这些文件并非都需要集群训练，但是也没有必要删除无用的文件。
 
-```trainer_config.py```
+`trainer_config.py`
 表示模型配置文件。
 
-```train.list``` 和 ```test.list```
+`train.list` 和 `test.list`
 文件索引。它存储当前节点所有训练/测试数据的所有相对或绝对文件路径。
 
-```dataprovider.py```
+`dataprovider.py`
 用于读取训练/测试样本。这与本地训练相同。
 
-```data```
+`data`
 数据目录中的所有文件被 train.list/test.list 引用。
 
 
@@ -138,16 +138,16 @@ sh run.sh
 ### 检查集群训练结果
 详细信息请检查 $workspace/log 里的日志，每一个节点都有相同的日志结构。
 
-```paddle_trainer.INFO```
+`paddle_trainer.INFO`
 提供几乎所有训练的内部输出日志，与本地训练相同。这里检验运行时间模型的收敛。
 
-```paddle_pserver2.INFO```
+`paddle_pserver2.INFO`
 提供 pserver 运行日志，有助于诊断分布式错误。
 
-```server.log```
+`server.log`
 提供 pserver 进程的 stderr 和 stdout。训练失败时可以检查错误日志。
 
-```train.log```
+`train.log`
 提供训练过程的 stderr 和 stdout。训练失败时可以检查错误日志。
 
 ### 检查模型输出
