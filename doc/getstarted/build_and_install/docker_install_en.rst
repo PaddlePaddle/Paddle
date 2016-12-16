@@ -39,11 +39,17 @@ The general development workflow with Docker and Bazel is as follows:
    code.  This image contains all the development tools and
    dependencies of PaddlePaddle.
 
-
    .. code-block:: bash
 
       cd paddle
       docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile .
+
+   Apt-get source errors may occur when building paddle docker image.
+   **You can specify the UBUNTU MIRROR with :code:`--build-arg UBUNTU_MIRROR` like the example below.**
+
+   .. code-block:: bash
+
+      docker build --build-arg UBUNTU_MIRROR="http://mirrors.163.com" -t paddle:dev -f paddle/scripts/docker/Dockerfile .
 
 
 3. Run the image as a container and mounting local source code
@@ -141,22 +147,6 @@ to install CUDA driver and let Docker knows about it:
     export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
     export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
     docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:gpu-latest
-
-    
-UBUNTU MIRROR
--------------
-
-Building Paddle Docker image hits some wrong with apt-get update, you
-can use other UBUNTU MIRROR instead of the default
-
-.. code-block:: bash
-
-    cd ~
-    git clone https://github.com/PaddlePaddle/Paddle.git
-    cd Paddle
-    git submodule update --init --recursive
-    docker build --build-arg UBUNTU_MIRROR="http://mirrors.163.com" -t paddle:cpu-avx -f paddle/scripts/docker/Dockerfile .
-    docker build --build-arg UBUNTU_MIRROR="http://mirrors.163.com" -t paddle:gpu-avx -f paddle/scripts/docker/Dockerfile.gpu .
 
 
 Non-AVX Images
