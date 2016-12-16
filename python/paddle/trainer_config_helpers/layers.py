@@ -970,7 +970,7 @@ def pooling_layer(input,
     :param layer_attr: The Extra Attributes for layer, such as dropout.
     :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
-    :rtype: LayerType
+    :rtype: LayerOutput
     """
     extra_dict = dict()
     # noinspection PyUnresolvedReferences
