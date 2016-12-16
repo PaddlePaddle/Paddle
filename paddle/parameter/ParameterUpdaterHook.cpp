@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@ limitations under the License. */
 
 #include "ParameterUpdaterHook.h"
 
-#include <fstream>
-#include <unordered_map>
-#include <mutex>
 #include <atomic>
+#include <fstream>
+#include <mutex>
 #include <thread>
+#include <unordered_map>
 
 #include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
-#include "paddle/utils/Util.h"
 #include "paddle/utils/Flags.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
@@ -156,7 +156,8 @@ private:
 
 static WeakKVCache<std::pair<std::string, int>,
                    IParameterUpdaterHook,
-                   StringIntPairHasher> g_hookCache_;
+                   StringIntPairHasher>
+    g_hookCache_;
 
 /**
  * ParameterUpdaterHook actually factory method.

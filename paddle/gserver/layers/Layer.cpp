@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@ limitations under the License. */
 
 #include "paddle/utils/Util.h"
 
-#include "paddle/utils/Logging.h"
 #include "paddle/math/SparseMatrix.h"
+#include "paddle/utils/Logging.h"
 
 #include "AddtoLayer.h"
+#include "CRFLayer.h"
 #include "CosSimLayer.h"
 #include "CostLayer.h"
-#include "ExpandConvLayer.h"
-#include "CRFLayer.h"
 #include "DataLayer.h"
+#include "ExpandConvLayer.h"
 #include "FullyConnectedLayer.h"
 #include "HierarchicalSigmoidLayer.h"
 #include "MaxLayer.h"
@@ -33,7 +33,7 @@ limitations under the License. */
 #include "TransLayer.h"
 #include "ValidationLayer.h"
 
-P_DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
+DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
 
 namespace paddle {
 
@@ -316,12 +316,12 @@ void Layer::showOutputStats() {
     auto tmpMat = dynamic_cast<CpuSparseMatrix*>(outSquare.get());
     min = tmpMat->getMin();
     max = tmpMat->getMax();
-    tmpMat->square();
+    tmpMat->square2();
     LOG(INFO) << "show statistics of [none zero values] in sparse matrix";
   } else {
     min = outSquare->getMin();
     max = outSquare->getMax();
-    outSquare->square();
+    outSquare->square2();
   }
   real std = (outSquare->getSum() / outSquare->getElementCnt()) - mean * mean;
   std = std > 0 ? std : 0;

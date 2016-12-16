@@ -1,3 +1,5 @@
+..  _api_trainer_config_helpers_layers:
+
 ======
 Layers
 ======
@@ -20,6 +22,8 @@ LayerOutput
 Data layer
 ===========
 
+..  _api_trainer_config_helpers_layers_data_layer:
+
 data_layer
 ----------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -28,6 +32,8 @@ data_layer
 
 Fully Connected Layers
 ======================
+
+..  _api_trainer_config_helpers_layers_fc_layer:
 
 fc_layer
 --------
@@ -67,6 +73,8 @@ img_conv_layer
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: img_conv_layer
     :noindex:
+
+..  _api_trainer_config_helpers_layers_context_projection:
 
 context_projection 
 ------------------
@@ -185,6 +193,8 @@ mixed_layer
     :members: mixed_layer
     :noindex:
 
+..  _api_trainer_config_helpers_layers_embedding_layer:
+
 embedding_layer
 ---------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -236,6 +246,8 @@ trans_full_matrix_projection
     
 Aggregate Layers
 ================
+
+..  _api_trainer_config_helpers_layers_pooling_layer:
 
 pooling_layer
 -------------
@@ -332,6 +344,8 @@ tensor_layer
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: tensor_layer
     :noindex:
+
+..  _api_trainer_config_helpers_layers_cos_sim:
 
 cos_sim
 -------

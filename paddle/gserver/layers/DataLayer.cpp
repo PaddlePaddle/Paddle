@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ void DataLayer::copyDataToOutput(Argument& output) {
     output.setFrameWidth(config_.width());
   } else {
     output.setFrameHeight(data_.getFrameHeight());
-    output.setFrameHeight(data_.getFrameHeight());
+    output.setFrameWidth(data_.getFrameWidth());
   }
   output.cpuSequenceDims = data_.cpuSequenceDims;
   output.sequenceStartPositions = data_.sequenceStartPositions;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@ limitations under the License. */
 #include <vector>
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/trainer/Trainer.h"
 #include "paddle/math/MathUtils.h"
+#include "paddle/trainer/Trainer.h"
 
 #include "LayerGradUtil.h"
 #include "TestUtil.h"
@@ -26,11 +26,11 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_double(checkgrad_eps);
-P_DECLARE_bool(thread_local_rand_use_global_seed);
-P_DECLARE_bool(prev_batch_state);
+DECLARE_bool(use_gpu);
+DECLARE_int32(gpu_id);
+DECLARE_double(checkgrad_eps);
+DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(prev_batch_state);
 
 TEST(Operator, dot_mul) {
   TestConfig config;

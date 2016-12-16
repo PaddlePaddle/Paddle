@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,22 +17,22 @@ limitations under the License. */
 #include <fenv.h>
 #include <stdio.h>
 
-#include <iostream>
 #include <iomanip>
-#include <sstream>
+#include <iostream>
 #include <limits>
+#include <sstream>
 
 #include <google/protobuf/text_format.h>
 
+#include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
-#include "paddle/utils/GlobalConstants.h"
 
+#include "TesterConfig.h"
+#include "paddle/gserver/gradientmachines/GradientMachineMode.h"
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/gserver/layers/ValidationLayer.h"
-#include "paddle/gserver/gradientmachines/GradientMachineMode.h"
-#include "TesterConfig.h"
 
 namespace paddle {
 
@@ -46,6 +46,12 @@ Tester::Tester(const std::shared_ptr<TrainerConfigHelper>& config,
       gradientMachine_(gradientMachine),
       parameterUpdater_(parameterUpdater),
       testDataProvider_(testDataProvider) {
+  if (config_->getOptConfig().use_sparse_remote_updater()) {
+    LOG(FATAL) << "It's prohibited to set sparse_remote_update "
+               << "when doing train and test jobs in the same "
+               << "process. You could run paddle --job=test in "
+               << "a separate process.";
+  }
   testEvaluator_.reset(gradientMachine_->makeEvaluator());
   if (intconfig_->distributeTest) {
     testParameterClient_.reset(new ParameterClient2(true));
@@ -66,6 +72,9 @@ Tester::Tester(const std::shared_ptr<TrainerConfigHelper>& config,
 }
 
 void Tester::startTestPeriod() {
+  if (testDataProvider_) {
+    testDataProvider_->reset();
+  }
   testEvaluator_->start();
   testContext_.cost = 0;
   testContext_.numSamples = 0;
@@ -87,33 +96,18 @@ void Tester::testOneDataBatch(const DataBatch& dataBatch,
 void Tester::testOnePeriod() {
   DataBatch dataBatch;
   int64_t batchSize = config_->getOptConfig().batch_size();
-  bool testAllData =
-      intconfig_->testPeriod == 0 || intconfig_->testAllDataInOnePeriod;
-  int batches =
-      testAllData ? std::numeric_limits<int>::max() : intconfig_->testPeriod;
-
   std::vector<Argument> outArgs;
-
   startTestPeriod();
-  for (int i = 0; i < batches; ++i) {
-    int num = testDataProvider_->getNextBatch(batchSize, &dataBatch);
-    if (num == 0) {
-      testDataProvider_->reset();
-      if (intconfig_->prevBatchState) {
-        gradientMachine_->resetState();
-      }
-      if (testAllData) {
-        break;
-      } else {
-        num = testDataProvider_->getNextBatch(batchSize, &dataBatch);
-      }
-    }
+  while (testDataProvider_->getNextBatch(batchSize, &dataBatch) != 0) {
     testOneDataBatch(dataBatch, &outArgs);
   }
   finishTestPeriod();
 }
 
 void Tester::finishTestPeriod() {
+  if (intconfig_->prevBatchState) {
+    gradientMachine_->resetState();
+  }
   testEvaluator_->finish();
   CHECK_GT(testContext_.numSamples, 0)
       << "There is no samples in your test batch. Possibly "

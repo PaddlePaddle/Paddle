@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -141,9 +141,9 @@ def init_config_environment(
         g_add_submodel_suffix=False,
 
         # Whether current layer needs to pass the image height and width.
-        # Default value is true, but if it encounters recurrent_layer_group, 
-        # it will be false. The reason is that image is converted to be sequence, 
-        # image height will be sequence length, and image width will be feature 
+        # Default value is true, but if it encounters recurrent_layer_group,
+        # it will be false. The reason is that image is converted to be sequence,
+        # image height will be sequence length, and image width will be feature
         # length of each timestep.
         g_pass_height_width=True, ):
 
@@ -1067,7 +1067,7 @@ def cnn_output_size(img_size, filter_size, padding, stride, caffe_mode):
         return 1 + int(math.ceil(output))
 
 
-#calcualte image_size based on output_size for de-convolution (ConvTransLayer). 
+#calcualte image_size based on output_size for de-convolution (ConvTransLayer).
 #It is the reverse function of cnn_output_size
 def cnn_image_size(output_size, filter_size, padding, stride, caffe_mode):
     img_size = (output_size - 1) * stride + filter_size - 2 * padding
@@ -1872,7 +1872,7 @@ class BatchNormLayer(LayerBase):
         image_conf = self.config.inputs[0].image_conf
         parse_image(self.inputs[0].image, input_layer.name, image_conf)
         self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                           image_conf.channels)
+                           image_conf.channels, False)
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
@@ -2987,6 +2987,27 @@ class CTCLayer(LayerBase):
         config_assert(len(self.inputs) == 2, 'CTCLayer must have 2 inputs')
 
 
+@config_layer('warp_ctc')
+class WarpCTCLayer(LayerBase):
+    def __init__(self,
+                 name,
+                 size,
+                 inputs,
+                 blank=0,
+                 norm_by_times=False,
+                 device=None):
+        super(WarpCTCLayer, self).__init__(
+            name, 'warp_ctc', size=size, inputs=inputs, device=device)
+        self.config.blank = blank
+        self.config.norm_by_times = norm_by_times
+        config_assert(len(self.inputs) == 2, 'WarpCTCLayer must have 2 inputs')
+        input_layer = self.get_input_layer(0)
+        config_assert(
+            (input_layer.active_type == '' or
+             input_layer.active_type == 'linear'),
+            "Expecting the active_type of input layer to be linear or null")
+
+
 @config_layer('recurrent_layer_group')
 class RecurrentLayerGroup(LayerBase):
     def __init__(self, name, device=None):
@@ -3344,12 +3365,26 @@ def my_fatal(s):
     raise Exception()
 
 
+_parse_config_hooks = set()
+
+
+def register_parse_config_hook(f):
+    """
+    Register a hook function for parse_config. parse_config will invoke the hook
+    at the beginning of parse. This make it possible to reset global state for
+    for constructing the model.
+    """
+    _parse_config_hooks.add(f)
+
+
 def parse_config(config_file, config_arg_str):
     '''
     @param config_arg_str: a string of the form var1=val1,var2=val2. It will be
     passed to config script as a dictionary CONFIG_ARGS
     '''
     init_config_environment()
+    for hook in _parse_config_hooks:
+        hook()
 
     config_args = {}
 
@@ -3377,7 +3412,21 @@ def parse_config(config_file, config_arg_str):
     g_root_submodel.is_recurrent_layer_group = False
     g_current_submodel = g_root_submodel
 
-    execfile(config_file, make_config_environment(config_file, config_args))
+    # for paddle on spark, need support non-file config.
+    # you can use parse_config like below:
+    #
+    # from paddle.trainer.config_parser import parse_config
+    # def configs():
+    #    #your paddle config code, which is same as config file.
+    #
+    # config = parse_config(configs, "is_predict=1")
+    # # then you get config proto object.
+    if hasattr(config_file, '__call__'):
+        config_file.func_globals.update(
+            make_config_environment("", config_args))
+        config_file()
+    else:
+        execfile(config_file, make_config_environment(config_file, config_args))
     for k, v in settings.iteritems():
         if v is None:
             continue

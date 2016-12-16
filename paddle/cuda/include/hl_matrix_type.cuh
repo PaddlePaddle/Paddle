@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,14 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #ifndef HL_MATRIX_TYPE_CUH_
 #define HL_MATRIX_TYPE_CUH_
 
 #include "hl_base.h"
 
 #ifdef __CUDA_ARCH__
-// typedef void*  vecType;
 #include <vector_types.h>
 #ifndef PADDLE_TYPE_DOUBLE
 typedef float4 vecType;
@@ -37,4 +35,10 @@ typedef __m128d vecType;
 #endif
 #endif
 
-#endif /* HL_MATRIX_TYPE_CUH_ */
+#ifdef __CUDA_ARCH__
+#define INLINE   __device__ inline
+#else
+#define INLINE   inline
+#endif
+
+#endif  // HL_MATRIX_TYPE_CUH_

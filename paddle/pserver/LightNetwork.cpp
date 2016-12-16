@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,42 +12,42 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <sys/types.h>
-#include <sys/socket.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <arpa/inet.h>
-#include <sys/ioctl.h>
 #include <net/if.h>
 #include <net/if_arp.h>
+#include <sys/ioctl.h>
 #include <sstream>
 
 #include "LightNetwork.h"
-#include "paddle/utils/Util.h"
-#include "paddle/utils/StringUtil.h"
 #include "RDMANetwork.h"
+#include "paddle/utils/StringUtil.h"
+#include "paddle/utils/Util.h"
 
 /// quick ack can reduce the latency of small message
-P_DEFINE_bool(small_messages,
-              false,
-              "if message size is small, recommend set it True to enable quick "
-              "ack and no delay");
+DEFINE_bool(small_messages,
+            false,
+            "if message size is small, recommend set it True to enable quick "
+            "ack and no delay");
 
 /// reasonable sock_send_buf_size can control the traffic injected into switch
 /// network. Injecting too many data into traffic could cause packets loss which
 /// cause long latency and degrade the efficiency of communication.
-P_DEFINE_int32(sock_send_buf_size,
-               1024 * 1024 * 40,
-               "restrict sock send buff size, can reduce network congestion if "
-               "set carefully");
+DEFINE_int32(sock_send_buf_size,
+             1024 * 1024 * 40,
+             "restrict sock send buff size, can reduce network congestion if "
+             "set carefully");
 
 /// reasonable size can hold bursted packets and reduce packets loss
-P_DEFINE_int32(sock_recv_buf_size,
-               1024 * 1024 * 40,
-               "restrict sock recv buff size");
+DEFINE_int32(sock_recv_buf_size,
+             1024 * 1024 * 40,
+             "restrict sock recv buff size");
 
 namespace paddle {
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -91,6 +91,7 @@ __all__ = [
     'linear_comb_layer',
     'convex_comb_layer',
     'ctc_layer',
+    'warp_ctc_layer',
     'crf_layer',
     'crf_decoding_layer',
     'nce_layer',
@@ -172,6 +173,7 @@ class LayerType(object):
     PRINT_LAYER = "print"
 
     CTC_LAYER = "ctc"
+    WARP_CTC_LAYER = "warp_ctc"
     CRF_LAYER = "crf"
     CRF_DECODING_LAYER = "crf_decoding"
     NCE_LAYER = 'nce'
@@ -4094,6 +4096,83 @@ def ctc_layer(input,
         inputs=[input.name, label.name],
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(name, LayerType.CTC_LAYER, [input, label], size=size)
+
+
+@wrap_name_default()
+@layer_support()
+def warp_ctc_layer(input,
+                   label,
+                   size=None,
+                   name=None,
+                   blank=0,
+                   norm_by_times=False,
+                   layer_attr=None):
+    """
+    A layer intergrating the open-source `warp-ctc
+    <https://github.com/baidu-research/warp-ctc>` library, which is used in
+    `Deep Speech 2: End-toEnd Speech Recognition in English and Mandarin
+    <https://arxiv.org/pdf/1512.02595v1.pdf>`, to compute Connectionist Temporal
+    Classification (CTC) loss.
+
+    More details of CTC can be found by referring to `Connectionist Temporal
+    Classification: Labelling Unsegmented Sequence Data with Recurrent
+    Neural Networks <http://machinelearning.wustl.edu/mlpapers/paper_files/
+    icml2006_GravesFGS06.pdf>`_
+
+    Note:
+        - Let num_classes represent the category number. Considering the 'blank'
+          label needed by CTC, you need to use (num_classes + 1) as the input
+          size. Thus, the size of both warp_ctc_layer and 'input' layer should
+          be set to num_classes + 1.
+        - You can set 'blank' to any value ranged in [0, num_classes], which
+          should be consistent as that used in your labels.
+        - As a native 'softmax' activation is interated to the warp-ctc library,
+         'linear' activation is expected instead in the 'input' layer.
+
+    The simple usage:
+
+    .. code-block:: python
+
+      ctc = warp_ctc_layer(input=input,
+                           label=label,
+                           size=1001,
+                           blank=1000,
+                           norm_by_times=False)
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param label: The data layer of label with variable length.
+    :type label: LayerOutput
+    :param size: category numbers + 1.
+    :type size: int
+    :param name: The name of this layer, which can not specify.
+    :type name: basestring|None
+    :param blank: the 'blank' label used in ctc
+    :type blank: int
+    :param norm_by_times: Whether to normalization by times. False by default.
+    :type norm_by_times: bool
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    assert isinstance(label, LayerOutput)
+    if label.size is not None:
+        if size is not None:
+            assert size == label.size + 1
+        else:
+            size = label.size + 1
+    Layer(
+        name=name,
+        type=LayerType.WARP_CTC_LAYER,
+        size=size,
+        blank=blank,
+        norm_by_times=norm_by_times,
+        inputs=[input.name, label.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.WARP_CTC_LAYER, parents=[input, label], size=size)
 
 
 @wrap_name_default()

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ limitations under the License. */
  */
 
 #include <gtest/gtest.h>
-#include "paddle/math/BaseMatrix.h"
 #include "TestUtils.h"
+#include "paddle/math/BaseMatrix.h"
 
 using paddle::BaseMatrix;
 using paddle::Matrix;
@@ -37,13 +37,13 @@ TEST(BaseMatrix, void) {
       };
 
       compare(&BaseMatrix::neg);
-      compare(&BaseMatrix::exp);
-      compare(&BaseMatrix::log);
-      compare(&BaseMatrix::sqrt);
-      compare(&BaseMatrix::square);
-      compare(&BaseMatrix::reciprocal);
-      compare(&BaseMatrix::abs);
-      compare(&BaseMatrix::sign);
+      compare(&BaseMatrix::exp2);
+      compare(&BaseMatrix::log2);
+      compare(&BaseMatrix::sqrt2);
+      compare(&BaseMatrix::square2);
+      compare(&BaseMatrix::reciprocal2);
+      compare(&BaseMatrix::abs2);
+      compare(&BaseMatrix::sign2);
       compare(&BaseMatrix::zero);
       compare(&BaseMatrix::one);
     }
@@ -59,7 +59,7 @@ TEST(BaseMatrix, real) {
         test.cmpWithoutArg<0>(f, height, width);
       };
 
-      compare(&BaseMatrix::pow);
+      compare(&BaseMatrix::pow2);
       compare(&BaseMatrix::subScalar);
       compare(&BaseMatrix::mulScalar);
       compare(&BaseMatrix::divScalar);
@@ -88,21 +88,21 @@ TEST(BaseMatrix, BaseMatrix) {
       compare(&BaseMatrix::softreluDerivative);
       compare(&BaseMatrix::brelu);
       compare(&BaseMatrix::breluDerivative);
-      compare(&BaseMatrix::square);
+      compare(&BaseMatrix::square2);
       compare(&BaseMatrix::squareDerivative);
       compare(&BaseMatrix::tanh);
       compare(&BaseMatrix::tanhDerivative);
-      compare(&BaseMatrix::reciprocal);
+      compare(&BaseMatrix::reciprocal2);
       compare(&BaseMatrix::reciprocalDerivative);
-      compare(&BaseMatrix::abs);
+      compare(&BaseMatrix::abs2);
       compare(&BaseMatrix::absDerivative);
       compare(&BaseMatrix::sigmoid);
       compare(&BaseMatrix::sigmoidDerivative);
       compare(&BaseMatrix::expDerivative);
-      compare(&BaseMatrix::sign);
-      compare(&BaseMatrix::exp);
-      compare(&BaseMatrix::log);
-      compare(&BaseMatrix::sqrt);
+      compare(&BaseMatrix::sign2);
+      compare(&BaseMatrix::exp2);
+      compare(&BaseMatrix::log2);
+      compare(&BaseMatrix::sqrt2);
       compare(&BaseMatrix::dotMul);
       compare(&BaseMatrix::dotMulSquare);
       compare(&BaseMatrix::dotSquareMul);
@@ -143,7 +143,7 @@ TEST(BaseMatrix, BaseMatrix_real) {
       compare(&BaseMatrix::addBias);
       compare(&BaseMatrix::add);
       compare(&BaseMatrix::sub);
-      compare(&BaseMatrix::pow);
+      compare(&BaseMatrix::pow2);
       compare(&BaseMatrix::addScalar);
       compare(&BaseMatrix::subScalar);
       compare(&BaseMatrix::mulScalar);
@@ -176,7 +176,7 @@ TEST(BaseMatrix, BaseMatrix_BaseMatrix) {
       compare(&BaseMatrix::logisticRegressionLoss);
       compare(&BaseMatrix::logisticRegressionLossBp);
       compare(&BaseMatrix::biggerThan);
-      compare(&BaseMatrix::max);
+      compare(&BaseMatrix::max2);
       compare(&BaseMatrix::dotMulSquare);
       compare(&BaseMatrix::dotSquareSquare);
     }

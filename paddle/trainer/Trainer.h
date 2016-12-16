@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,19 +22,19 @@ limitations under the License. */
 #include "paddle/gserver/dataproviders/DataProvider.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 
-#include "TrainerConfigHelper.h"
-#include "ParameterUpdater.h"
-#include "TrainerInternal.h"
-#include "Tester.h"
-#include "ParamUtil.h"
-#include <fstream>
 #include <stdlib.h>
+#include <fstream>
+#include "ParamUtil.h"
+#include "ParameterUpdater.h"
+#include "Tester.h"
+#include "TrainerConfigHelper.h"
+#include "TrainerInternal.h"
 
 #ifdef PADDLE_METRIC_LEARNING
 #include "paddle/internals/metric_learning/MetricTrainer.h"
 #endif
 
-P_DECLARE_int32(num_passes);
+DECLARE_int32(num_passes);
 
 namespace paddle {
 

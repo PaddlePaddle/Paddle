@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/utils/Locks.h"
-#include "paddle/utils/Logging.h"
 #include <dispatch/dispatch.h>
-#include <atomic>
 #include <libkern/OSAtomic.h>
+#include <atomic>
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
 

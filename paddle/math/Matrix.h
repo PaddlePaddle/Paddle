@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,20 +14,20 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <memory>
 #include <thread>
-#include <stdint.h>
 
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/ThreadLocal.h"
 
 #include <hl_gpu.h>
 
+#include "BaseMatrix.h"
 #include "MemoryHandle.h"
-#include "paddle/utils/TypeDefs.h"
 #include "Vector.h"
 #include "paddle/utils/ThreadLocal.h"
-#include "BaseMatrix.h"
+#include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
 
@@ -408,7 +408,7 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  virtual void addBias(Matrix& b, real scale, bool sharedBias) {
+  void addBias(Matrix& b, real scale, bool sharedBias) {
     if (!sharedBias) {
       addBias(b, scale);
     } else {
@@ -425,7 +425,7 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  virtual void collectBias(Matrix& a, real scale, bool sharedBias) {
+  void collectBias(Matrix& a, real scale, bool sharedBias) {
     if (!sharedBias) {
       collectBias(a, scale);
     } else {
@@ -1122,6 +1122,7 @@ public:
   virtual void paramReluBackwardDiff(Matrix& oGrad, Matrix& data, Matrix& W) {
     LOG(FATAL) << "Not implemented";
   }
+
   virtual void bilinearForward(const Matrix& in,
                                const size_t inImgH,
                                const size_t inImgW,
@@ -1141,6 +1142,15 @@ public:
                                 const real ratioH,
                                 const real ratioW) {
     LOG(FATAL) << "Not implemented";
+  }
+
+  template <typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    if (useGpu_) {
+      TensorGpuApply<real>(*this, expr);
+    } else {
+      TensorCpuApply<real>(*this, expr);
+    }
   }
 };
 
@@ -1518,6 +1528,11 @@ public:
   void multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label);
 
   void multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label);
+
+  template <typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    TensorGpuApply<real>(*this, expr);
+  }
 };
 
 class CpuMatrix : public Matrix {
@@ -1917,6 +1932,11 @@ public:
                         const size_t numChannels,
                         const real ratioH,
                         const real ratioW);
+
+  template <typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    TensorCpuApply<real>(*this, expr);
+  }
 };
 
 class SharedCpuMatrix : public CpuMatrix {
@@ -1957,6 +1977,7 @@ public:
   void add(real p1, real p2);
 
 private:
+  using Matrix::mul;
   void initShared(int blockNum);
   void initBlock(int blockNum);
 

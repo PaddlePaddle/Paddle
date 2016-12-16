@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// clang-format off
+// Because clang-format 4.X and clang-format 3.8+ format
+// following lines in different. So disable clang-format.
+#include "hl_cuda.h"
 #include <cuda_profiler_api.h>
 #include <string.h>
 #include <sys/syscall.h>
@@ -23,6 +27,7 @@ limitations under the License. */
 #include "hl_dso_loader.h"
 #include "hl_thread.ph"
 #include "paddle/utils/Logging.h"
+// clang-format on
 
 namespace dynload {
 
