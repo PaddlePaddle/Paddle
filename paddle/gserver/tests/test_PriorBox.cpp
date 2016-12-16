@@ -12,8 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gtest/gtest.h>
 #include <string>
 #include <vector>
+#include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
+#include "paddle/math/MathUtils.h"
+#include "paddle/trainer/Trainer.h"
+#include "paddle/utils/GlobalConstants.h"
 
 #include "LayerGradUtil.h"
 #include "TestUtil.h"
