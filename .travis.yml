@@ -29,10 +29,6 @@ addons:
       - python-pip
       - python2.7-dev
       - m4
-      - libprotobuf-dev
-      - doxygen
-      - protobuf-compiler
-      - python-protobuf
       - python-numpy
       - python-wheel
       - libgoogle-glog-dev
@@ -43,6 +39,8 @@ addons:
       - graphviz
       - swig
       - clang-format-3.8
+      - automake
+      - libtool
 before_install:
   - |
     if [ ${JOB} == "BUILD_AND_TEST" ]; then
