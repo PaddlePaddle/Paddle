@@ -156,7 +156,7 @@ can use other UBUNTU MIRROR instead of the default
     cd Paddle
     git submodule update --init --recursive
     docker build --build-arg UBUNTU_MIRROR="http://mirrors.163.com" -t paddle:cpu-avx -f paddle/scripts/docker/Dockerfile .
-    docker build --build-arg UBUNTU_MIRROR="http://mirrors.163.com" -t paddle:cpu-avx -f paddle/scripts/docker/Dockerfile.gpu .
+    docker build --build-arg UBUNTU_MIRROR="http://mirrors.163.com" -t paddle:gpu-avx -f paddle/scripts/docker/Dockerfile.gpu .
 
 
 Non-AVX Images
