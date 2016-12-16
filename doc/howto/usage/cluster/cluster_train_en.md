@@ -55,16 +55,16 @@ At last your workspace should look like as follow:
 ```
 Not all of these files are needed for cluster training, but it's not necessary to remove useless files.
 
-```trainer_config.py```
+`trainer_config.py`
 Indicates the model config file.
 
-```train.list``` and ```test.list```
+`train.list` and `test.list`
 File index. It stores all relative or absolute file paths of all train/test data at current node.
 
-```dataprovider.py```
+`dataprovider.py`
 used to read train/test samples. It's same as local training.
 
-```data```
+`data`
 all files in data directory are refered by train.list/test.list which are refered by data provider.
 
 
@@ -139,16 +139,16 @@ The cluster Job will start in several seconds.
 ### Check Cluster Training Result
 Check log in $workspace/log for details, each node owns same log structure.
 
-```paddle_trainer.INFO```
+`paddle_trainer.INFO`
 It provides almost all interal output log for training,  same as local training. Check runtime model convergence here.
 
-```paddle_pserver2.INFO```
+`paddle_pserver2.INFO`
 It provides pserver running log, which could help to diagnose distributed error.
 
-```server.log```
+`server.log`
 It provides stderr and stdout of pserver process. Check error log if training crashs.
 
-```train.log```
+`train.log`
 It provides stderr and stdout of trainer process. Check error log if training crashs.
 
 ### Check Model Output
