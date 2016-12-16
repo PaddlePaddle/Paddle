@@ -12,7 +12,7 @@ The generator and discriminator take turn to be trained using SGD. The objective
 ## Implementation of GAN Model Structure
 Since GAN model involves multiple neural networks, it requires to use paddle python API. So the code walk-through below can also partially serve as an introduction to the usage of Paddle Python API.
 
-There are three networks defined in gan_conf.py, namely generator_training, discriminator_training and generator. The relationship to the model structure we defined above is that discriminator_training is the discriminator, generator is the generator, and the generator_training combined the generator and discriminator since training generator would require the discriminator to provide loss function. This relationship is described in the following code
+There are three networks defined in gan_conf.py, namely **generator_training**, **discriminator_training** and **generator**. The relationship to the model structure we defined above is that **discriminator_training** is the discriminator, **generator** is the generator, and the **generator_training** combined the generator and discriminator since training generator would require the discriminator to provide loss function. This relationship is described in the following code
 ```python
 if is_generator_training:
     noise = data_layer(name="noise", size=noise_dim)
