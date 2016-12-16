@@ -34,8 +34,8 @@ if __name__ == '__main__':
     network.loadParameters(model_path)
     with open('./data/meta.bin', 'rb') as f:
         meta = pickle.load(f)
-        headers = list(meta_to_header(meta, 'movie'))
-        headers.extend(list(meta_to_header(meta, 'user')))
+        headers = [h[1] for h in meta_to_header(meta, 'movie')]
+        headers.extend([h[1] for h in meta_to_header(meta, 'user')])
         cvt = DataProviderConverter(headers)
         while True:
             movie_id = int(raw_input("Input movie_id: "))
