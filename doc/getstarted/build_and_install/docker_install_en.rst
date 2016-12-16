@@ -12,7 +12,7 @@ of your hardware resource on Mac OS X and Windows.
 Development Using Docker
 ------------------------
 
-Develpers can work on PaddlePaddle using Docker.  This allows
+Developers can work on PaddlePaddle using Docker.  This allows
 developers to work on different platforms -- Linux, Mac OS X, and
 Windows -- in a consistent way.
 
@@ -22,10 +22,18 @@ The general development workflow with Docker and Bazel is as follows:
 
    .. code-block:: bash
 
-      git clone --recursive https://github.com/paddlepaddle/paddle
+      git clone --recursive https://github.com/PaddlePaddle/Paddle.git
 
    
    Here **git clone --recursive is required** as we have a submodule `warp-ctc <https://github.com/baidu-research/warp-ctc>`_.
+
+   If you have used :code:`git clone https://github.com/PaddlePaddle/Paddle` and find that the directory :code:`warp-ctc` is
+   empty, please use the following command to get the submodule.
+
+   .. code-block:: bash
+
+      git submodule update --init --recursive
+
 
 2. Build a development Docker image :code:`paddle:dev` from the source
    code.  This image contains all the development tools and
@@ -154,7 +162,7 @@ source code:
 .. code-block:: bash
 
    cd ~
-   git clone github.com/PaddlePaddle/Paddle
+   git clone https://github.com/PaddlePaddle/Paddle.git
    cd Paddle
    git submodule update --init --recursive
    docker build --build-arg WITH_AVX=OFF -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
@@ -170,7 +178,7 @@ generated using `woboq code browser
 for users to browse and understand the C++ source code.
 
 As long as we give the Paddle Docker container a name, we can run an
-additional nginx Docker container to serve the volume from the Paddle
+additional Nginx Docker container to serve the volume from the Paddle
 container:
 
 .. code-block:: bash
