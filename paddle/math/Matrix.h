@@ -835,7 +835,7 @@ public:
    *
    * output[i] = 0 if row i is correct.
    */
-  virtual void classificationError(MatrixPtr output, IVectorPtr label) {
+  virtual void classificationError(Matrix& output, IVector& label) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -997,8 +997,8 @@ public:
     LOG(FATAL) << "Not implemeted";
   }
 
-  virtual void contextProjectionForward(MatrixPtr input,
-                                        MatrixPtr weight,
+  virtual void contextProjectionForward(Matrix& input,
+                                        Matrix* weight,
                                         const IVector& sequence,
                                         int contextLength,
                                         int contextStart,
@@ -1007,8 +1007,8 @@ public:
     LOG(FATAL) << "Not implemeted";
   }
 
-  virtual void contextProjectionBackward(MatrixPtr inputGrad,
-                                         MatrixPtr weightGrad,
+  virtual void contextProjectionBackward(Matrix* inputGrad,
+                                         Matrix* weightGrad,
                                          const IVector& sequence,
                                          int contextLength,
                                          int contextStart,
@@ -1017,14 +1017,14 @@ public:
     LOG(FATAL) << "Not implemeted";
   }
 
-  virtual void contextProjectionBackwardData(MatrixPtr inputGrad,
+  virtual void contextProjectionBackwardData(Matrix& inputGrad,
                                              const IVector& sequence,
                                              int contextLength,
                                              int contextStart) {
     LOG(FATAL) << "Not implemeted";
   }
 
-  virtual void contextProjectionBackwardWeight(MatrixPtr weightGrad,
+  virtual void contextProjectionBackwardWeight(Matrix& weightGrad,
                                                const IVector& sequence,
                                                int contextLength,
                                                int contextStart,
@@ -1373,7 +1373,7 @@ public:
   void check(std::ostream& os, Matrix& refMat, bool printDiff = true);
   void randomizeUniform();
 
-  void classificationError(MatrixPtr output, IVectorPtr label);
+  void classificationError(Matrix& output, IVector& label);
 
   void convExpand(Matrix& feature,
                   int feaImgHeight,
@@ -1487,20 +1487,20 @@ public:
                            const IVector& sequence,
                            IVector& index);
 
-  void contextProjectionForward(MatrixPtr input,
-                                MatrixPtr weight,
+  void contextProjectionForward(Matrix& input,
+                                Matrix* weight,
                                 const IVector& sequence,
                                 int contextLength,
                                 int contextStart,
                                 size_t beginPad,
                                 bool isPadding);
 
-  void contextProjectionBackwardData(MatrixPtr inputGrad,
+  void contextProjectionBackwardData(Matrix& inputGrad,
                                      const IVector& sequence,
                                      int contextLength,
                                      int contextStart);
 
-  void contextProjectionBackwardWeight(MatrixPtr weightGrad,
+  void contextProjectionBackwardWeight(Matrix& weightGrad,
                                        const IVector& sequence,
                                        int contextLength,
                                        int contextStart,
@@ -1713,16 +1713,16 @@ public:
                            const IVector& sequence,
                            IVector& index);
 
-  void contextProjectionForward(MatrixPtr input,
-                                MatrixPtr weight,
+  void contextProjectionForward(Matrix& input,
+                                Matrix* weight,
                                 const IVector& sequence,
                                 int contextLength,
                                 int contextStart,
                                 size_t beginPad,
                                 bool isPadding);
 
-  void contextProjectionBackward(MatrixPtr inputGrad,
-                                 MatrixPtr weightGrad,
+  void contextProjectionBackward(Matrix* inputGrad,
+                                 Matrix* weightGrad,
                                  const IVector& sequence,
                                  int contextLength,
                                  int contextStart,
@@ -1881,7 +1881,7 @@ public:
 
   void randomizeUniform();
 
-  void classificationError(MatrixPtr output, IVectorPtr label);
+  void classificationError(Matrix& output, IVector& label);
 
   void addByBitCode(size_t numClasses, const IVector& codes, const Matrix& vec);
 
