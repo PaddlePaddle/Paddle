@@ -159,7 +159,7 @@ define_py_data_sources2(train_list='data/train.list',
 You can refer to the following link for more detailed examples and data formats: <a href = "../../api/data_provider/pydataprovider2_en.html">PyDataProvider2</a>.
 
 ## Network Architecture
-You will describe four kinds of network architectures in this section.
+We will describe four kinds of network architectures in this section.
 <center> ![](./src/PipelineNetwork_en.jpg) </center>
 
 First, you will build a logistic regression model. Later, you will also get chance to build other more powerful network architectures.
