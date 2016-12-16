@@ -289,7 +289,7 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 ---------------------------------------------------
 
 目前Paddle使用\ :code:`git submodule`\ 来引用一些第三方模块。简单的\
-:code:`git clone`\ 命令不能完全得到Paddle和第三方模块的代码。需要使用\:
+:code:`git clone`\ 命令不能得到第三方模块的代码。需要使用\:
 
 ..  code-block:: bash
 
