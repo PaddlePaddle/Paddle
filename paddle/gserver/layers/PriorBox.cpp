@@ -76,6 +76,7 @@ void PriorBoxLayer::forward(PassType passType) {
   auto image = getInput(1);
   int imageWidth = image.getFrameWidth();
   int imageHeight = image.getFrameHeight();
+
   float stepW = static_cast<float>(imageWidth) / layerWidth;
   float stepH = static_cast<float>(imageHeight) / layerHeight;
   int dim = layerHeight * layerWidth * numPriors_ * 4;
