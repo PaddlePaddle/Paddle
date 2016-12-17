@@ -18,16 +18,16 @@ limitations under the License. */
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/PythonUtil.h"
 
-P_DECLARE_string(config);
-P_DECLARE_string(init_model_path);
-P_DECLARE_int32(start_pass);
-P_DECLARE_string(save_dir);
-P_DECLARE_int32(trainer_id);
-P_DECLARE_bool(local);
-P_DECLARE_bool(with_cost);
-P_DECLARE_bool(with_gpu);
-P_DECLARE_bool(parallel_nn);
-P_DECLARE_string(config_args);
+DECLARE_string(config);
+DECLARE_string(init_model_path);
+DECLARE_int32(start_pass);
+DECLARE_string(save_dir);
+DECLARE_int32(trainer_id);
+DECLARE_bool(local);
+DECLARE_bool(with_cost);
+DECLARE_bool(with_gpu);
+DECLARE_bool(parallel_nn);
+DECLARE_string(config_args);
 
 const char *kConfigParserModuleName = "paddle.trainer.config_parser";
 const char *kConfigParserFuncName = "parse_config_and_serialize";

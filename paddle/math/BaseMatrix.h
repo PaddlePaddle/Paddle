@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <cstddef>
 #include <stdint.h>
-#include "paddle/utils/TypeDefs.h"
+#include <cstddef>
 #include "TensorExpression.h"
+#include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
 

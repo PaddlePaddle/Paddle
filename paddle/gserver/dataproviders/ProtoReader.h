@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include <memory>
 
-#include <google/protobuf/message_lite.h>
 #include <google/protobuf/io/coded_stream.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/io/gzip_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/message_lite.h>
 
 namespace paddle {
 

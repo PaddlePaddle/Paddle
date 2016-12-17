@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/utils/TypeDefs.h"
 #include "ModelConfig.pb.h"
 #include "hl_gpu.h"
+#include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
 

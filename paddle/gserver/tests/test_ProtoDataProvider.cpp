@@ -17,8 +17,8 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include "paddle/utils/Util.h"
 #include "paddle/gserver/dataproviders/ProtoDataProvider.h"
+#include "paddle/utils/Util.h"
 
 #include "TestUtil.h"
 

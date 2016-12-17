@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <stddef.h>
-#include "TypeDefs.h"
 #include <iostream>
+#include "TypeDefs.h"
 
 namespace paddle {
 

@@ -18,9 +18,9 @@ limitations under the License. */
 
 #include "paddle/math/Matrix.h"
 #include "paddle/math/Vector.h"
+#include "paddle/parameter/Parameter.h"
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Util.h"
-#include "paddle/parameter/Parameter.h"
 
 namespace paddle {
 

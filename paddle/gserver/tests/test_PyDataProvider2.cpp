@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Util.h"
 
-P_DEFINE_string(train_list, "unittest.list", "file list for unittest");
+DEFINE_string(train_list, "unittest.list", "file list for unittest");
 
 namespace paddle {
 namespace unittest {

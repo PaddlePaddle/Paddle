@@ -15,13 +15,13 @@ limitations under the License. */
 #include "ActivationFunction.h"
 
 #include <algorithm>
-#include <memory>
 #include <iostream>
-#include <type_traits>
+#include <memory>
 #include <string>
 #include <thread>
-#include "paddle/utils/ClassRegistrar.h"
+#include <type_traits>
 #include "paddle/parameter/Argument.h"
+#include "paddle/utils/ClassRegistrar.h"
 
 #include "paddle/utils/Logging.h"
 

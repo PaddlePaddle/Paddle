@@ -14,6 +14,13 @@ cd paddle
 git submodule update --init --recursive
 ```
 
+If you already have a local PaddlePaddle repo and have not initialized the submodule, your local submodule folder will be empty. You can simply run the last line of the above codes in your PaddlePaddle home directory to initialize your submodule folder.
+
+If you have already initialized your submodule and you would like to sync with the upstream submodule repo, you can run the following command
+```
+git submodule update --remote
+```
+
 ## <span id="requirements">Requirements</span>
 
 To compile the source code, your computer must be equipped with the following dependencies.
@@ -42,10 +49,8 @@ PaddlePaddle supports some build options. To enable it, first you need to instal
 <tbody>
 <tr><td class="left">WITH_GPU</td><td class="left">Compile with GPU mode.</td></tr>
 <tr><td class="left">WITH_DOUBLE</td><td class="left">Compile with double precision floating-point, default: single precision.</td></tr>
-<tr><td class="left">WITH_GLOG</td><td class="left">Compile with glog. If not found, default: an internal log implementation.</td></tr>
-<tr><td class="left">WITH_GFLAGS</td><td class="left">Compile with gflags. If not found, default: an internal flag implementation.</td></tr>
 <tr><td class="left">WITH_TESTING</td><td class="left">Compile with gtest for PaddlePaddle's unit testing.</td></tr>
-<tr><td class="left">WITH_DOC</td><td class="left">	Compile to generate PaddlePaddle's docs, default: disabled (OFF).</td></tr>
+<tr><td class="left">WITH_DOC</td><td class="left">    Compile to generate PaddlePaddle's docs, default: disabled (OFF).</td></tr>
 <tr><td class="left">WITH_SWIG_PY</td><td class="left">Compile with python predict API, default: disabled (OFF).</td></tr>
 <tr><td class="left">WITH_STYLE_CHECK</td><td class="left">Compile with code style check, default: enabled (ON).</td></tr>
 </tbody>
@@ -79,7 +84,7 @@ As a simple example, consider the following:
 
     ```bash
     pip install 'sphinx>=1.4.0'
-    pip install sphinx_rtd_theme breathe recommonmark
+    pip install sphinx_rtd_theme recommonmark
 
     # install doxygen on Ubuntu
     sudo apt-get install doxygen 

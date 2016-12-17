@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "MathUtils.h"
 #include <algorithm>
-#include "paddle/utils/Logging.h"
 #include "Vector.h"
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
 

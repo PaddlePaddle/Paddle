@@ -14,8 +14,8 @@ limitations under the License. */
 
 #ifdef PADDLE_USE_DSO
 
-#include <mutex>
 #include <cuda_runtime.h>
+#include <mutex>
 #include "hl_dso_loader.h"
 
 /**

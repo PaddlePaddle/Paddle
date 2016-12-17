@@ -52,7 +52,7 @@ See ```demo/model_zoo/resnet/resnet.py```. This config contains network of 50, 1
 
 ### Network Visualization
 
-You can get a diagram of ResNet network by running the following commands. The script generates dot file and then converts dot file to PNG file, which uses installed draw_dot tool in our server. If you can not access the server, just install graphviz to convert dot file.
+You can get a diagram of ResNet network by running the following commands. The script generates dot file and then converts dot file to PNG file, which needs to install graphviz to convert.
 
 ```
 cd demo/model_zoo/resnet
@@ -138,7 +138,7 @@ There are four parameters in this layer. In fact, only .w0 and .wbias are the le
 
 ### Parameter Observation
 
-Users who want to observe the parameters can use python to read:
+Users who want to observe the parameters can use Python to read:
 
 ```
 import sys
@@ -209,7 +209,7 @@ If successful, features are saved in `fea_output/rank-00000` as follows. And you
 
 ### Python Interface
 
-`demo/model_zoo/resnet/classify.py` is an example to show how to use python to extract features. Following example still uses data of `./example/test.list`. Command is as follows:
+`demo/model_zoo/resnet/classify.py` is an example to show how to use Python to extract features. Following example still uses data of `./example/test.list`. Command is as follows:
 
 ```
 cd demo/model_zoo/resnet
@@ -237,8 +237,6 @@ python classify.py \
 * \--data=./example/test.list: data list.
 * \--output_layer="xxx,xxx":   specify layers to extract features.
 * \--output_dir=features:      output diretcoty.
-
-Note, since the convolution layer in these ResNet models is suitable for the cudnn implementation which only support GPU. It not support CPU mode because of compatibility issue and we will fix later.
 
 If run successfully, you will see features saved in `features/batch_0`, this file is produced with cPickle. You can use `load_feature_py` interface in `load_feature.py` to open the file, and it returns a dictionary as follows:
 

@@ -327,9 +327,10 @@ def ctc_error_evaluator(
 @wrap_name_default()
 def chunk_evaluator(
         input,
-        name=None,
-        chunk_scheme=None,
-        num_chunk_types=None, ):
+        label,
+        chunk_scheme,
+        num_chunk_types,
+        name=None, ):
     """
     Chunk evaluator is used to evaluate segment labelling accuracy for a
     sequence. It calculates the chunk detection F1 score.
@@ -363,22 +364,24 @@ def chunk_evaluator(
 
     .. code-block:: python
 
-       eval = chunk_evaluator(input)
+       eval = chunk_evaluator(input, label, chunk_scheme, num_chunk_types)
 
     :param input: The input layers.
     :type input: LayerOutput
-    :param name: The Evaluator name, it is not necessary.
-    :type name: basename|None
+    :param label: An input layer containing the ground truth label.
+    :type label: LayerOutput
     :param chunk_scheme: The labelling schemes support 4 types. It is one of
-                         "IOB", "IOE", "IOBES", "plain".This Evaluator must
-                         contain this chunk_scheme.
+                         "IOB", "IOE", "IOBES", "plain". It is required.
     :type chunk_scheme: basestring
     :param num_chunk_types: number of chunk types other than "other"
+    :param name: The Evaluator name, it is optional.
+    :type name: basename|None
     """
     evaluator_base(
         name=name,
         type="chunk",
         input=input,
+        label=label,
         chunk_scheme=chunk_scheme,
         num_chunk_types=num_chunk_types)
 

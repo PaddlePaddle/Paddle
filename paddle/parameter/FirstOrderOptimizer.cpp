@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Util.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/math/TrainingAlgorithmOp.h"
 #include "FirstOrderOptimizer.h"
+#include "paddle/math/TrainingAlgorithmOp.h"
+#include "paddle/utils/Flags.h"
+#include "paddle/utils/Util.h"
 
 #include <cmath>
 
-P_DEFINE_bool(log_clipping, false, "enable log clipping or not");
+DEFINE_bool(log_clipping, false, "enable log clipping or not");
 
 namespace paddle {
 

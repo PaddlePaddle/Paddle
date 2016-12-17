@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Stat.h"
 #include "ConvProjection.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 
@@ -130,6 +130,10 @@ void ConvProjection::reshapeTensorDesc(int batchSize) {
 void ConvProjection::reshape(int batchSize) {
   size_t width = calOutputSize();
   CHECK_EQ(width, out_->value->getWidth());
+  CHECK_EQ(channels_ * imageH_ * imageW_, in_->value->getWidth())
+      << "Wrong input size for convolution"
+      << " channels=" << channels_ << " imageH=" << imageH_
+      << " imageW=" << imageW_ << " inputSize=" << in_->value->getWidth();
 
   isSelectAlgo_ = (batchSize == batchNum_);
   batchNum_ = batchSize;

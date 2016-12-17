@@ -14,15 +14,15 @@ limitations under the License. */
 
 #include "paddle/utils/Util.h"
 
-#include "paddle/utils/Logging.h"
 #include "paddle/math/SparseMatrix.h"
+#include "paddle/utils/Logging.h"
 
 #include "AddtoLayer.h"
+#include "CRFLayer.h"
 #include "CosSimLayer.h"
 #include "CostLayer.h"
-#include "ExpandConvLayer.h"
-#include "CRFLayer.h"
 #include "DataLayer.h"
+#include "ExpandConvLayer.h"
 #include "FullyConnectedLayer.h"
 #include "HierarchicalSigmoidLayer.h"
 #include "MaxLayer.h"
@@ -33,7 +33,7 @@ limitations under the License. */
 #include "TransLayer.h"
 #include "ValidationLayer.h"
 
-P_DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
+DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
 
 namespace paddle {
 

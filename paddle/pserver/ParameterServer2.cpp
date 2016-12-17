@@ -21,20 +21,20 @@ limitations under the License. */
 
 #include "paddle/parameter/AverageOptimizer.h"
 #include "paddle/parameter/FirstOrderOptimizer.h"
-#include "paddle/utils/Flags.h"
 #include "paddle/parameter/OptimizerFunctions.h"
 #include "paddle/parameter/OptimizerWithRegularizer.h"
-#include "paddle/parameter/ParameterUpdateFunctions.h"
 #include "paddle/parameter/ParameterOptimizer.h"
+#include "paddle/parameter/ParameterUpdateFunctions.h"
 #include "paddle/parameter/Regularizer.h"
-#include "paddle/utils/Stat.h"
+#include "paddle/utils/Flags.h"
 #include "paddle/utils/GlobalConstants.h"
+#include "paddle/utils/Stat.h"
 
-P_DEFINE_int32(pserver_num_threads, 1, "number of threads for sync op exec");
-P_DEFINE_double(async_lagged_ratio_min,
-                1.0,
-                "control config_.async_lagged_grad_discard_ratio() min value");
-P_DEFINE_double(
+DEFINE_int32(pserver_num_threads, 1, "number of threads for sync op exec");
+DEFINE_double(async_lagged_ratio_min,
+              1.0,
+              "control config_.async_lagged_grad_discard_ratio() min value");
+DEFINE_double(
     async_lagged_ratio_default,
     1.5,
     "if async_lagged_grad_discard_ratio is not set in trainer_config.conf"

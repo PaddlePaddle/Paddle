@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/trainer/Trainer.h"
-#include "paddle/gserver/layers/DataLayer.h"
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
+#include "paddle/trainer/Trainer.h"
 
 #include "TestUtil.h"
 using namespace std;  // NOLINT

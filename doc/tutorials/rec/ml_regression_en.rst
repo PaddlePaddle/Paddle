@@ -16,7 +16,7 @@ Data Preparation
 ````````````````
 Download and extract dataset
 ''''''''''''''''''''''''''''
-We use `movielens 1m dataset <ml_dataset.html>`_ here. 
+We use :ref:`demo_ml_dataset` here. 
 To download and unzip the dataset, simply run the following commands.
 
 ..  code-block:: bash
@@ -36,7 +36,7 @@ And the directory structure of :code:`demo/recommendation/data/ml-1m` is:
 
 Field config file
 '''''''''''''''''
-**Field config file** is used to specific the fields dataset and file format,
+**Field config file** is used to specify the fields of the dataset and the file format,
 i.e, specific **WHAT** type it is in each feature file.
 
 The field config file of ml-1m shows in :code:`demo/recommendation/data/config.json`.
@@ -188,7 +188,7 @@ Split Training/Testing files
 We split :code:`ml-1m/ratings.dat` into a training and testing file. The way to split file is for each user, we split the
 rating by two parts. So each user in testing file will have some rating information in training file.
 
-Use separate.py to separate the training and testing file.
+Use :code:`separate.py` to separate the training and testing file.
 
 ..  code-block:: bash
 
@@ -217,7 +217,7 @@ The network structure shows below.
     :align: center
     :alt: rec_regression_network
 
-The demo's neural network config file "trainer_config.py" show as below.
+The demo's neural network config file :code:`trainer_config.py` show as below.
 
 ..  literalinclude:: ../../../demo/recommendation/trainer_config.py
     :language: python
@@ -239,26 +239,16 @@ Then we combine each features of movie into one movie feature by a
 get one user feature. Then we calculate the cosine similarity of these two
 features.
 
-In these network, we use several api in `trainer_config_helpers
-<../../ui/api/trainer_config_helpers/index.html>`_. There are
+In these networks, we use several APIs in :ref:`api_trainer_config` . There are
 
-*  Data Layer, `data_layer 
-   <../../ui/api/trainer_config_helpers/layers.html#id1>`_
-*  Fully Connected Layer, `fc_layer
-   <../../ui/api/trainer_config_helpers/layers.html#fc-layer>`_
-*  Embedding Layer, `embedding_layer
-   <../../ui/api/trainer_config_helpers/layers.html#embedding-layer>`_
-*  Context Projection Layer, `context_projection
-   <../../ui/api/trainer_config_helpers/layers.html#context-projection>`_
-*  Pooling Layer, `pooling_layer
-   <../../ui/api/trainer_config_helpers/layers.html#pooling-layer>`_
-*  Cosine Similarity Layer, `cos_sim
-   <../../ui/api/trainer_config_helpers/layers.html#cos-sim>`_
-*  Text Convolution Pooling Layer, `text_conv_pool
-   <../../ui/api/trainer_config_helpers/networks.html
-   #trainer_config_helpers.networks.text_conv_pool>`_
-*  Declare Python Data Sources, `define_py_data_sources2
-   <../../ui/api/trainer_config_helpers/data_sources.html>`_
+*  Data Layer, :ref:`api_trainer_config_helpers_layers_data_layer`
+*  Fully Connected Layer, :ref:`api_trainer_config_helpers_layers_fc_layer`
+*  Embedding Layer, :ref:`api_trainer_config_helpers_layers_embedding_layer`
+*  Context Projection Layer, :ref:`api_trainer_config_helpers_layers_context_projection`
+*  Pooling Layer, :ref:`api_trainer_config_helpers_layers_pooling_layer`
+*  Cosine Similarity Layer, :ref:`api_trainer_config_helpers_layers_cos_sim`
+*  Text Convolution Pooling Layer, :ref:`api_trainer_config_helpers_network_text_conv_pool`
+*  Declare Python Data Sources :ref:`api_trainer_config_helpers_data_sources`.
 
 Data Provider
 '''''''''''''
@@ -274,27 +264,26 @@ In this :code:`dataprovider.py`, we should set\:
 * use_seq\: Whether this :code:`dataprovider.py` in sequence mode or not.
 * process\: Return each sample of data to :code:`paddle`.
 
-The data provider details document see `there <../../ui/data_provider/pydataprovider2.html>`_.
+The data provider details document see :ref:`api_pydataprovider2`.
 
 Train
 `````
 
 After prepare data, config network, writting data provider, now we can run paddle training.
 
-The run.sh is shown as follow:
+The :code:`run.sh` is shown as follow:
 
 ..  literalinclude:: ../../../demo/recommendation/run.sh
     :language: bash
     :lines: 16-
 
-It just start a paddle training process, write the log to `log.txt`,
+It just start a paddle training process, write the log to :code:`log.txt`,
 then print it on screen.
 
-Each command line argument in :code:`run.sh`, please refer to the `command line
-arguments <../../ui/index.html#command-line-argument>`_ page. The short description of these arguments is shown as follow.
+Each command line argument in :code:`run.sh`, please refer to the :ref:`cmd_line_index` page. The short description of these arguments is shown as follow.
 
 *  config\: Tell paddle which file is neural network configuration.
-*  save_dir\: Tell paddle save model into './output'
+*  save_dir\: Tell paddle save model into :code:`./output`.
 *  use_gpu\: Use gpu or not. Default is false.
 *  trainer_count\: The compute thread in one machine.
 *  test_all_data_in_one_period\: Test All Data during one test period. Otherwise,

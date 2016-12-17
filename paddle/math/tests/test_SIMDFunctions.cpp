@@ -17,10 +17,10 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include <random>
-#include <functional>
 #include <algorithm>
+#include <functional>
 #include <memory>
+#include <random>
 
 #include <stdlib.h>
 #include <time.h>

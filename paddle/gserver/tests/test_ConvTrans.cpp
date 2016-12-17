@@ -13,26 +13,26 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <string>
-#include "paddle/gserver/layers/DataLayer.h"
+#include <vector>
 #include "ModelConfig.pb.h"
-#include "paddle/trainer/Trainer.h"
-#include "paddle/utils/GlobalConstants.h"
+#include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/gserver/layers/ExpandConvTransLayer.h"
 #include "paddle/math/MathUtils.h"
+#include "paddle/trainer/Trainer.h"
+#include "paddle/utils/GlobalConstants.h"
 
-#include "TestUtil.h"
 #include "LayerGradUtil.h"
+#include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_double(checkgrad_eps);
-P_DECLARE_bool(thread_local_rand_use_global_seed);
-P_DECLARE_bool(prev_batch_state);
+DECLARE_bool(use_gpu);
+DECLARE_int32(gpu_id);
+DECLARE_double(checkgrad_eps);
+DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(prev_batch_state);
 
 // Test that the convTrans forward is the same as conv backward
 TEST(Layer, convTransLayerFwd) {
