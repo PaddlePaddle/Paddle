@@ -1,6 +1,6 @@
 # 文本生成教程 #
 
-在语言生成领域中，“序列到序列”（sequence to sequence）的方法已被证明是一种强大的模型。它可以被应用于进行机器翻译（machine translation）、请求改写（query rewriting）、图像字幕（image captioning）等等。
+在语言生成领域中，“序列到序列”（sequence to sequence）的方法已被证明是一种强大的模型。它可以被应用于进行机器翻译（machine translation）、query改写（query rewriting）、图像描述（image captioning）等等。
 
 本篇教程将会指导你通过训练一个“序列到序列”的神经网络机器翻译（NMT）模型来将法语翻译成英语。
 
@@ -101,8 +101,8 @@ cd demo/seqToseq/data
 - 将每个源语言到目标语言的平行语料库文件合并为一个文件：
   - 合并每个 **XXX.src** 和 **XXX.trg** 文件为 **XXX**
   - **XXX** 中的第i行 = **XXX.src** 中的第i行 + '\t' + **XXX.trg**中的第i行
-- 创建训练数据的“源字典”和“目标字典”，每个字典都有DICTSIZE个单词：
-  - 频率最高的单词（DICTSIZE - 3 个）
+- 创建训练数据的“源字典”和“目标字典”，每个字典都有DICTSIZE个单词，包括：
+  - 词频最高的（DICTSIZE - 3）个单词
   - 3个特殊符号
   - `<s>`：序列的开始
   - `<e>`：序列的结束
@@ -133,7 +133,7 @@ python preprocess.py -i INPUT [-d DICTSIZE] [-m]
 python preprocess.py -i data/wmt14 -d 30000
 ```
 
-这将花费数分钟的时间，并且将预处理好的数据集存放在`demo/seqToseq/data/pre-wmt14`目录下。字典具有以下结构。
+这将花费数分钟的时间，并且将预处理好的数据集存放在`demo/seqToseq/data/pre-wmt14`目录下。目录结构如下：
 
     train test gen train.list test.list gen.list src.dict trg.dict# Text generation Tutorial #
 
@@ -146,7 +146,7 @@ python preprocess.py -i data/wmt14 -d 30000
 
 神经网络机器翻译（NMT）旨在建立一个可以被协同调至最优翻译效果的单神经元网络。近期提出的NMT模型通常都属于编解码模型（encoder–decoder models）的一种。编解码模型将一个源语句编码为一个定长的向量，然后解码器通过这个向量生成一个目标语句。
 
-在这个任务中，我们使用了一个编解码模型的扩展，它联合地学习了排列与翻译。每当模型在翻译过程中生成了一个单词，它就会在源语句中搜索出最相关信息的位置的集合。解码器根据上下文向量预测出一个目标单词，这个向量与源中搜索出的位置和所有之前生成的目标单词有关。如想了解更多详细的解释，可以参考 [Neural Machine Translation by Jointly Learning to Align and Translate](http://arxiv.org/abs/1409.0473)。
+在这个任务中，我们使用了一个编解码模型的扩展，它同时学习排列(align)与翻译。每当模型在翻译过程中生成了一个单词，它就会在源语句中搜索出最相关信息的位置的集合。解码器根据上下文向量预测出一个目标单词，这个向量与源中搜索出的位置和所有之前生成的目标单词有关。如想了解更多详细的解释，可以参考 [Neural Machine Translation by Jointly Learning to Align and Translate](http://arxiv.org/abs/1409.0473)。
 
 这个模型对于编解码模型来说，最不同的特色是它并没有将输入语句编码为一个单独的定长向量。相反，它将输入语句编码为向量的序列，其中每个向量对应输入语句中的一个元素。然后在解码被翻译的语句时，会自适应地从这些向量中选择一个子集出来。这使得NMT模型得以解放出来，不必再将任意长度源语句中的所有信息压缩至一个定长的向量中。该模型在长语句翻译的场景下效果提升更加明显，在任意长度语句翻译的场景下都可以观察到其效果的提升。
 <center>![](./encoder-decoder-attention-model.png)</center>
@@ -215,10 +215,10 @@ paddle train \
     I0719 19:16:45.952062 15563 TrainerInternal.cpp:160]  Batch=10 samples=500 AvgCost=198.475 CurrentCost=198.475 Eval: classification_error_evaluator=0.737155  CurrentEval: classification_error_evaluator=0.737155
     I0719 19:17:56.707319 15563 TrainerInternal.cpp:160]  Batch=20 samples=1000 AvgCost=157.479 CurrentCost=116.483 Eval: classification_error_evaluator=0.698392  CurrentEval: classification_error_evaluator=0.659065
     .....
-- AvgCost：从第0个batch到当前batch的平均花销
-- CurrentCost:：当前batch的花销
-- classification\_error\_evaluator(Eval)：从第0个评估到当前评估中，每个单词的失败预测率
-- classification\_error\_evaluator(CurrentEval)：当前评估中，每个单词的失败预测率
+- AvgCost：从第0个batch到当前batch的平均cost
+- CurrentCost:：当前batch的cost
+- classification\_error\_evaluator(Eval)：从第0个评估到当前评估中，每个单词的预测错误率
+- classification\_error\_evaluator(CurrentEval)：当前评估中，每个单词的预测错误率
 
 当classification\_error\_evaluator的值低于0.35时，模型就训练成功了。
 
@@ -227,10 +227,10 @@ paddle train \
 
 一般而言，NMT模型受制于源语句的编码，并且通过给出当前目标单词来预测下一个目标单词。在训练过程中，当前单词在相比之下总是被当作真值（ground truth）。在生成过程中，当前单词是解码器最后一步的输出，这来自于PaddlePaddle的内存中。
 
-而且，我们使用集束搜索（Beam Search）来生成序列。集束搜索使用广度优先搜索来构建搜索树。对于树的每一层，生成当前层的所有后继状态，并将它们按照启发成本（heuristic cost）升序排列。但是这种方法在每层只保存预设数量的最优状态（这个数量称为beam size）。
+而且，我们使用集束搜索（Beam Search）来生成序列。集束搜索使用广度优先搜索来构建搜索树。对于树的每一层，生成当前层的所有后继状态，并将它们按照启发代价（heuristic cost）升序排列。但是这种方法在每层只保存预设数量的最优状态（这个数量称为beam size）。
 
 ### 预训练的模型 ###
-我们在拥有50个节点的集群中训练模型，每个节点有两个6核CPU。我们在5天里训练了16条pass，其中每条pass花费了7个小时。model_dir中有16个子目录，每个里面都包含202MB的全部的模型参数。然后我们发现pass-00012的模型有着最高的BLEU值27.77（参考文献[BLEU: a Method for Automatic Evaluation of Machine Translation](http://www.aclweb.org/anthology/P02-1040.pdf)）。要下载解压这个模型，只需在linux下运行如下命令：
+我们在拥有50个节点的集群中训练模型，每个节点有两个6核CPU。我们在5天里训练了16个pass，其中每条pass花费了7个小时。model_dir中有16个子目录，每个里面都包含202MB的全部的模型参数。然后我们发现pass-00012的模型有着最高的BLEU值27.77（参考文献[BLEU: a Method for Automatic Evaluation of Machine Translation](http://www.aclweb.org/anthology/P02-1040.pdf)）。要下载解压这个模型，只需在linux下运行如下命令：
 
 ```bash
 cd demo/seqToseq/data
@@ -261,8 +261,8 @@ gru_encoder_decoder(gen_conf, is_generating)
 
 1. **Data Definiation**：在示例中我们定义了一个序列到序列的生成数据。它返回gen_conf作为配置，其输入参数如下：
   - data_dir：生成数据的目录
-  - is_generating：这个配置是否用来生成，这里设置为False
-  - gen_result：保存生成结果的文件
+  - is_generating：这个配置是否用来生成，这里设置为True
+  - gen_result：保存生成结果的文件
 2. **Algorithm Configuration**：在生成过程中我们使用SGD训练算法，并指定batch_size为1（每次生成1个序列），learning_rate为0
 3. **Network Architecture**：本质上与训练模型一样
 
@@ -336,4 +336,4 @@ cd demo/seqToseq/translation
 ```
 
 - FILE：生成的结果文件
-- BEAMSIZE：扩展集束搜索的广度
+- BEAMSIZE：集束搜索中的扩展广度
