@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,17 +29,19 @@ bool ExpandConvBaseLayer::init(const LayerMap &layerMap,
    * meaning as in conv, we need to swap channels_ and numFilters here for
    * convTrans, and in other functions too.
    * */
-  int channel;
-  int numFilters;
+
   /* Initialize the projection */
   for (auto &inputConfig : config_.inputs()) {
     const ConvConfig &conf = inputConfig.conv_conf();
-    numFilters = isDeconv_ ? conf.channels() : numFilters_;
+    int numFilters = isDeconv_ ? conf.channels() : numFilters_;
     subM_.push_back(numFilters / conf.groups());
-    subN_.push_back(conf.output_x() * conf.output_x());
-    channel = isDeconv_ ? numFilters_ : conf.channels();
-    subK_.push_back(channel * conf.filter_size() * conf.filter_size() /
-                    conf.groups());
+    subN_.push_back(conf.output_x() *
+                    (conf.has_output_y() ? conf.output_y() : conf.output_x()));
+    int channel = isDeconv_ ? numFilters_ : conf.channels();
+    subK_.push_back(
+        channel * conf.filter_size() *
+        (conf.has_filter_size_y() ? conf.filter_size_y() : conf.filter_size()) /
+        conf.groups());
     /* Consistent caffe mode for multiple input */
     caffeMode_ = conf.caffe_mode();
   }
@@ -116,11 +118,11 @@ void ExpandConvBaseLayer::expandOneFrame(MatrixPtr image,
                            imgSizeH_[inIdx],
                            imgSizeW_[inIdx],
                            channel,
+                           filterSizeY_[inIdx],
                            filterSize_[inIdx],
-                           filterSize_[inIdx],
+                           strideY_[inIdx],
                            stride_[inIdx],
-                           stride_[inIdx],
-                           padding_[inIdx],
+                           paddingY_[inIdx],
                            padding_[inIdx],
                            outputH_[inIdx],
                            outputW_[inIdx]);
@@ -145,7 +147,7 @@ void ExpandConvBaseLayer::expandFwdOnce(MatrixPtr image,
   real *expInData = expandInput_->getData();
   for (int g = 0; g < groups_[inIdx]; ++g) {
     MatrixPtr A =
-        Matrix::create(wgtData, subK, subM, true, useGpu_);  // mark transpose
+        Matrix::create(wgtData, subM, subK, false, useGpu_);  // mark transpose
     MatrixPtr B = Matrix::create(expInData, subK, subN, false, useGpu_);
     MatrixPtr C = Matrix::create(outData, subM, subN, false, useGpu_);
     C->mul(A, B, 1, 1);
@@ -182,7 +184,7 @@ void ExpandConvBaseLayer::bpropActs(MatrixPtr out,
       // create temporary matrix
       MatrixPtr C = Matrix::create(expandInData, subK, subN, false, useGpu_);
       MatrixPtr B = Matrix::create(localGradData, subM, subN, false, useGpu_);
-      MatrixPtr A = Matrix::create(wgtData, subK, subM, false, useGpu_);
+      MatrixPtr A = Matrix::create(wgtData, subM, subK, true, useGpu_);
       C->mul(A, B);  // mul
 
       // clear the temporary matrix
@@ -208,11 +210,11 @@ void ExpandConvBaseLayer::bpropActs(MatrixPtr out,
                      imgSizeH_[inpIdx],
                      imgSizeW_[inpIdx],
                      channel,
+                     filterSizeY_[inpIdx],
                      filterSize_[inpIdx],
-                     filterSize_[inpIdx],
+                     strideY_[inpIdx],
                      stride_[inpIdx],
-                     stride_[inpIdx],
-                     padding_[inpIdx],
+                     paddingY_[inpIdx],
                      padding_[inpIdx],
                      outputH_[inpIdx],
                      outputW_[inpIdx],
@@ -247,10 +249,10 @@ void ExpandConvBaseLayer::bpropWeights(MatrixPtr image,
 
     // expand-mul one-group by one
     for (int g = 0; g < groups_[inpIdx]; g++) {
-      MatrixPtr A = Matrix::create(expandInData, subK, subN, false, useGpu_);
-      MatrixPtr B = Matrix::create(gradData, subM, subN, true, useGpu_);
-      MatrixPtr C = Matrix::create(wGradData, subK, subM, false, useGpu_);
-      C->mul(A, B, 1, 1);
+      MatrixPtr A = Matrix::create(expandInData, subK, subN, true, useGpu_);
+      MatrixPtr B = Matrix::create(gradData, subM, subN, false, useGpu_);
+      MatrixPtr C = Matrix::create(wGradData, subM, subK, false, useGpu_);
+      C->mul(B, A, 1, 1);
 
       A->clear();
       B->clear();

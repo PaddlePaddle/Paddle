@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,15 +26,15 @@ size_t BilinearInterpLayer::getSize() {
 
   const BilinearInterpConfig& conf = config_.inputs(0).bilinear_interp_conf();
   if (inImgH_ == 0) {
-    inImgH_ = conf.img_size_y();
+    inImgH_ = conf.image_conf().img_size_y();
   }
   if (inImgW_ == 0) {
-    inImgW_ = conf.img_size_x();
+    inImgW_ = conf.image_conf().img_size();
   }
 
   outImgH_ = conf.out_size_y();
   outImgW_ = conf.out_size_x();
-  numChannels_ = conf.num_channels();
+  numChannels_ = conf.image_conf().channels();
 
   CHECK(outImgH_ > 0 && outImgW_ > 0);
   CHECK(inImgH_ > 0 && inImgW_ > 0);

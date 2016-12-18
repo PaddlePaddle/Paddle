@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,13 +15,13 @@ limitations under the License. */
 #include "ActivationFunction.h"
 
 #include <algorithm>
-#include <memory>
 #include <iostream>
-#include <type_traits>
+#include <memory>
 #include <string>
 #include <thread>
-#include "paddle/utils/ClassRegistrar.h"
+#include <type_traits>
 #include "paddle/parameter/Argument.h"
+#include "paddle/utils/ClassRegistrar.h"
 
 #include "paddle/utils/Logging.h"
 
@@ -289,7 +289,7 @@ void forward(Argument& act) {
                          useGpu(act.deviceId));
 
   act.in->copyFrom(*act.value);
-  act.value->abs(*act.value);
+  act.value->abs2(*act.value);
 }
 
 void backward(Argument& act) { act.grad->absDerivative(*act.in); }
@@ -311,7 +311,7 @@ void forward(Argument& act) {
                          useGpu(act.deviceId));
 
   act.in->copyFrom(*act.value);
-  act.value->square(*act.value);
+  act.value->square2(*act.value);
 }
 
 void backward(Argument& act) { act.grad->squareDerivative(*act.in); }
@@ -324,7 +324,7 @@ END_DEFINE_ACTIVATION(square)
  * \f]
  */
 BEGIN_DEFINE_ACTIVATION(exponential)
-void forward(Argument& act) { act.value->exp(*act.value); }
+void forward(Argument& act) { act.value->exp2(*act.value); }
 
 void backward(Argument& act) { act.grad->expDerivative(*act.value); }
 END_DEFINE_ACTIVATION(exponential)
@@ -345,7 +345,7 @@ void forward(Argument& act) {
                          useGpu(act.deviceId));
 
   act.in->copyFrom(*act.value);
-  act.value->log(*act.value);
+  act.value->log2(*act.value);
 }
 
 void backward(Argument& act) { act.grad->dotDiv(*act.grad, *act.in); }

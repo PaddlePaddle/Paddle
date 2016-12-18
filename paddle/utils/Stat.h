@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,19 +15,19 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
-#include <string>
 #include <sys/time.h>
-#include <memory>
 #include <iostream>
-#include <mutex>
-#include <unordered_map>
 #include <list>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
-#include "Logging.h"
 #include "BarrierStat.h"
 #include "Locks.h"
+#include "Logging.h"
 #include "ThreadLocal.h"
-#include "BarrierStat.h"
+#include "hl_gpu.h"
 
 namespace paddle {
 
@@ -282,5 +282,25 @@ inline StatSet& registerTimerArg2(uint64_t threshold = -1,
   TimerOnce __timerOnce(__stat.get(), info, 10 * 1000000LU /*threshold*/);
 
 #endif  // DISABLE_TIMER
+
+class GpuProfiler final {
+public:
+  GpuProfiler(std::string statName, std::string info);
+  ~GpuProfiler();
+
+private:
+  std::lock_guard<std::recursive_mutex> guard_;
+};
+
+#ifdef PADDLE_DISABLE_PROFILER
+
+#define REGISTER_GPU_PROFILER(statName, ...)
+
+#else
+
+#define REGISTER_GPU_PROFILER(statName, ...) \
+  GpuProfiler __gpuProfiler(statName, #__VA_ARGS__);
+
+#endif  // DISABLE_PROFILER
 
 }  // namespace paddle

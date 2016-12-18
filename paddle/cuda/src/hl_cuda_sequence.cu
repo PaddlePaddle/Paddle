@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -445,6 +445,112 @@ void hl_sequence2batch_add(real *batch,
       (batch, sequence, batchIndex, seqWidth, batchCount);
   }
   CHECK_SYNC("hl_sequence2batch_add failed");
+}
+
+template<bool normByTimes, bool seq2batch>
+__global__
+void KeSequence2BatchPadding(real* batch,
+                             real* sequence,
+                             const int* sequenceStartPositions,
+                             const size_t sequenceWidth,
+                             const size_t maxSequenceLength,
+                             const size_t numSequences) {
+  int batchIdx = blockIdx.y;
+  int sequenceStart = sequenceStartPositions[batchIdx];
+  int sequenceLength = sequenceStartPositions[batchIdx + 1] - sequenceStart;
+
+  int sequenceIdx = blockIdx.x * blockDim.y + threadIdx.y;
+  int batchBaseIdx = (sequenceIdx * numSequences + batchIdx) * sequenceWidth;
+  int sequenceBaseIdx = (sequenceStart + sequenceIdx) * sequenceWidth;
+
+  real scale = normByTimes ? (1.0f / (real)sequenceLength) : 1.0f;
+
+  if (sequenceIdx < sequenceLength) {
+    if (seq2batch) {
+      /* sequence -> batch */
+      for (int i = threadIdx.x; i < sequenceWidth; i += blockDim.x) {
+        batch[batchBaseIdx + i] = scale * sequence[sequenceBaseIdx + i];
+      }
+    } else {
+      /* batch -> sequence */
+      for (int i = threadIdx.x; i < sequenceWidth; i += blockDim.x) {
+        sequence[sequenceBaseIdx + i] = scale * batch[batchBaseIdx + i];
+      }
+    }
+  } else if (sequenceIdx < maxSequenceLength) {
+    if (seq2batch) {
+      /* sequence -> batch */
+      for (int i = threadIdx.x; i < sequenceWidth; i += blockDim.x) {
+        batch[batchBaseIdx + i] = 0;
+      }
+    }
+  }
+}
+
+void hl_sequence2batch_copy_padding(real* batch,
+                                    real* sequence,
+                                    const int* sequenceStartPositions,
+                                    const size_t sequenceWidth,
+                                    const size_t maxSequenceLength,
+                                    const size_t numSequences,
+                                    bool normByTimes,
+                                    bool seq2batch) {
+  CHECK_NOTNULL(batch);
+  CHECK_NOTNULL(sequence);
+  CHECK_NOTNULL(sequenceStartPositions);
+
+  if (!normByTimes && numSequences == 1) {
+    size_t elementCount = maxSequenceLength * sequenceWidth;
+    if (seq2batch) {
+      /* sequence -> batch */
+      hl_memcpy_device2device(batch, sequence, sizeof(real) * elementCount);
+    } else {
+      /* batch -> sequence */
+      hl_memcpy_device2device(sequence, batch, sizeof(real) * elementCount);
+    }
+    return;
+  }
+
+  const int CUDA_BLOCK_SIZE = 512;
+
+  /* At least use 32 threads to copy sequenceWidth elements,
+     and at least 8 elements for each thread. */
+  int blockDimX = ((((sequenceWidth + 7) >> 3) + 31) >> 5) << 5;
+  blockDimX = (blockDimX < CUDA_BLOCK_SIZE) ? blockDimX : CUDA_BLOCK_SIZE;
+
+  int blockDimY = CUDA_BLOCK_SIZE / blockDimX;
+  dim3 threads(blockDimX, blockDimY);
+
+  int gridDimX = (maxSequenceLength * blockDimX + CUDA_BLOCK_SIZE - 1) /
+      CUDA_BLOCK_SIZE;
+  int gridDimY = numSequences;
+  dim3 grid(gridDimX, gridDimY);
+
+  if (seq2batch) {
+    /* sequence -> batch */
+    if (normByTimes) {
+      KeSequence2BatchPadding<1, 1><<< grid, threads, 0, STREAM_DEFAULT >>>(
+              batch, sequence, sequenceStartPositions,
+              sequenceWidth, maxSequenceLength, numSequences);
+    } else {
+      KeSequence2BatchPadding<0, 1><<< grid, threads, 0, STREAM_DEFAULT >>>(
+              batch, sequence, sequenceStartPositions,
+              sequenceWidth, maxSequenceLength, numSequences);
+    }
+  } else {
+    /* batch -> sequence */
+    if (normByTimes) {
+      KeSequence2BatchPadding<1, 0><<< grid, threads, 0, STREAM_DEFAULT >>>(
+              batch, sequence, sequenceStartPositions,
+              sequenceWidth, maxSequenceLength, numSequences);
+    } else {
+      KeSequence2BatchPadding<0, 0><<< grid, threads, 0, STREAM_DEFAULT >>>(
+              batch, sequence, sequenceStartPositions,
+              sequenceWidth, maxSequenceLength, numSequences);
+    }
+  }
+
+  CHECK_SYNC("hl_sequence2batch_copy_padding failed");
 }
 
 __device__ inline float my_rsqrt(float x) {

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,18 +16,18 @@ limitations under the License. */
 
 #include "paddle/trainer/Trainer.h"
 
-#include <cstdlib>
 #include <gtest/gtest.h>
+#include <cstdlib>
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
 static const string& configFile = "trainer/tests/sample_trainer_config.conf";
 
-P_DECLARE_int32(gpu_id);
-P_DECLARE_bool(use_gpu);
-P_DECLARE_string(config);
-P_DECLARE_string(config_args);
+DECLARE_int32(gpu_id);
+DECLARE_bool(use_gpu);
+DECLARE_string(config);
+DECLARE_string(config_args);
 
 struct comData {
   vector<Argument> outArgs;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/utils/PythonUtil.h"
-#include "paddle/pserver/ParameterServer2.h"
 #include "ParamUtil.h"
 #include "Trainer.h"
+#include "paddle/pserver/ParameterServer2.h"
+#include "paddle/utils/PythonUtil.h"
 
-P_DEFINE_string(model_dir, "", "Directory for separated model files");
-P_DEFINE_string(model_file, "", "File for merged model file");
+DEFINE_string(model_dir, "", "Directory for separated model files");
+DEFINE_string(model_file, "", "File for merged model file");
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

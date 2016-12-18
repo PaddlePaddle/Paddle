@@ -34,7 +34,22 @@ add_unittest_without_exec(test_ConvTrans
 
 add_test(NAME test_ConvTrans
     COMMAND test_ConvTrans)
+################# test_ConvUnify #######################
+add_unittest_without_exec(test_ConvUnify
+    test_ConvUnify.cpp
+    LayerGradUtil.cpp
+    TestUtil.cpp)
+    
+add_test(NAME test_ConvUnify
+    COMMAND test_ConvUnify)
+################# test_BatchNorm #######################
+add_unittest_without_exec(test_BatchNorm
+    test_BatchNorm.cpp
+    LayerGradUtil.cpp
+    TestUtil.cpp)
 
+add_test(NAME test_BatchNorm
+    COMMAND test_BatchNorm)
 ################## test_Evaluator #######################
 add_unittest(test_Evaluator
     test_Evaluator.cpp
@@ -61,6 +76,17 @@ endif()
 add_unittest(test_RecurrentLayer
     test_RecurrentLayer.cpp
     TestUtil.cpp)
+
+############### test_WarpCTCLayer #######################
+if(NOT WITH_DOUBLE)
+    add_unittest_without_exec(test_WarpCTCLayer
+        test_WarpCTCLayer.cpp
+        TestUtil.cpp)
+
+    add_test(NAME test_WarpCTCLayer
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_WarpCTCLayer --warpctc_dir=${PROJ_ROOT}/warp-ctc/build
+        WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
+endif()
 
 ############### test_RecurrentGradientMachine ###############
 # TODO(yuyang18): There is some bug in test_RecurrentGradientMachine

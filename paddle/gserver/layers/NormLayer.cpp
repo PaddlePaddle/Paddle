@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Logging.h"
 #include "NormLayer.h"
 #include "NormProjectionLayer.h"
+#include "paddle/utils/Logging.h"
 namespace paddle {
 
 REGISTER_LAYER_CREATE_FUNC(norm, &NormLayer::create);
@@ -48,6 +48,9 @@ bool ResponseNormLayer::init(const LayerMap& layerMap,
   outputX_ = conf.output_x();
   imgSize_ = conf.img_size();
   denoms_ = NULL;
+
+  outputY_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
+  imgSizeY_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
   return true;
 }
 

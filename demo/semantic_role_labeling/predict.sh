@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ set -e
 function get_best_pass() {
   cat $1  | grep -Pzo 'Test .*\n.*pass-.*' | \
   sed  -r 'N;s/Test.* cost=([0-9]+\.[0-9]+).*\n.*pass-([0-9]+)/\1 \2/g' | \
-  sort | head -n 1
+  sort -n | head -n 1
 }   
 
 log=train.log

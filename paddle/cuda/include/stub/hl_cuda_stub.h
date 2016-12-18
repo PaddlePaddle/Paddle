@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -89,5 +89,9 @@ inline const char *hl_get_device_error_string(size_t err) { return NULL; }
 inline bool hl_cuda_event_is_ready(hl_event_t event) { return true; }
 
 inline void hl_device_synchronize() {}
+
+inline void hl_profiler_start() {}
+
+inline void hl_profiler_end() {}
 
 #endif  // HL_CUDA_STUB_H_

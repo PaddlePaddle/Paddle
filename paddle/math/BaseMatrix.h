@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <cstddef>
 #include <stdint.h>
+#include <cstddef>
+#include "TensorExpression.h"
 #include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
@@ -70,7 +71,7 @@ public:
 };
 
 template <class T>
-class BaseMatrixT {
+class BaseMatrixT : public TensorExpression<BaseMatrixT<T>, T> {
 public:
   size_t height_, width_;
   size_t stride_;
@@ -427,14 +428,14 @@ public:
    *
    */
   void neg();
-  void exp();
-  void pow(T p);
-  void log();
-  void sqrt();
-  void square();
-  void reciprocal();
-  void abs();
-  void sign();
+  void exp2();
+  void pow2(T p);
+  void log2();
+  void sqrt2();
+  void square2();
+  void reciprocal2();
+  void abs2();
+  void sign2();
   void zero();
 
   /**
@@ -454,6 +455,17 @@ public:
    * @endcode
    */
   void assign(T p);
+
+  /**
+   * @code
+   * swap(this, b)
+   * example: swap two Matrices
+   * MatrixPtr cpuA = std::make_shared<CpuMatrix>(height, width);
+   * MatrixPtr cpuB = std::make_shared<CpuMatrix>(height, width);
+   * cpuA->deepSwap(*cpuB);
+   * @endcode
+   */
+  void deepSwap(BaseMatrixT& b);
 
   /**
    * @code
@@ -592,7 +604,7 @@ public:
    * b = this * this
    * @endcode
    */
-  void square(BaseMatrixT& b);
+  void square2(BaseMatrixT& b);
   void squareDerivative(BaseMatrixT& b);
 
   /**
@@ -616,7 +628,7 @@ public:
    * b = 1.0f / this
    * @endcode
    */
-  void reciprocal(BaseMatrixT& b);
+  void reciprocal2(BaseMatrixT& b);
   void reciprocalDerivative(BaseMatrixT& b);
 
   /**
@@ -624,7 +636,7 @@ public:
    * b = this > 0.0f ? this : -this
    * @endcode
    */
-  void abs(BaseMatrixT& b);
+  void abs2(BaseMatrixT& b);
   void absDerivative(BaseMatrixT& b);
 
   /**
@@ -642,12 +654,12 @@ public:
    */
   void expDerivative(BaseMatrixT& b);
 
-  void sign(BaseMatrixT& b);
+  void sign2(BaseMatrixT& b);
 
-  void exp(BaseMatrixT& b);
-  void pow(BaseMatrixT& b, T p);
-  void log(BaseMatrixT& b);
-  void sqrt(BaseMatrixT& b);
+  void exp2(BaseMatrixT& b);
+  void pow2(BaseMatrixT& b, T p);
+  void log2(BaseMatrixT& b);
+  void sqrt2(BaseMatrixT& b);
   void addScalar(BaseMatrixT& b, T p);
   void subScalar(BaseMatrixT& b, T p);
   void mulScalar(BaseMatrixT& b, T p);
@@ -817,7 +829,7 @@ public:
    * this = b>c ? b : c
    * @endcode
    */
-  void max(BaseMatrixT& b, BaseMatrixT& c);  //  NOLINT
+  void max2(BaseMatrixT& b, BaseMatrixT& c);
 
   /**
    * @code
@@ -916,7 +928,7 @@ public:
    * this = 1 / (p1 * b + p2)
    * @endcode
    */
-  void reciprocal(BaseMatrixT& b, T p1, T p2);
+  void reciprocal2(BaseMatrixT& b, T p1, T p2);
 
   /**
    * @code
@@ -1007,8 +1019,6 @@ public:
   /// calculate the minimum value of each row of the matrix b.
   void minRows(BaseMatrixT& b);
 
-  /// calculate the sum of each column of the matrix b.
-  void sumCols(BaseMatrixT& b);
   /// calculate the maximum value of each column of the matrix b.
   void maxCols(BaseMatrixT& b);
   /// calculate the minimum value of each column of the matrix b.
@@ -1041,6 +1051,32 @@ public:
   void rowPow(size_t cCol, BaseMatrixT& b, BaseMatrixT& c);
 
   virtual bool isSparse() const { return false; }
+
+  template <typename ExpressionType>
+  void operator=(const ExpressionType& expr) {
+    if (useGpu_) {
+      TensorGpuApply<T>(*this, expr);
+    } else {
+      TensorCpuApply<T>(*this, expr);
+    }
+  }
+
+  template <typename ExpressionType>
+  void operator+=(const ExpressionType& expr) {
+    (*this) = (*this) + expr;
+  }
+  template <typename ExpressionType>
+  void operator-=(const ExpressionType& expr) {
+    (*this) = (*this) - expr;
+  }
+  template <typename ExpressionType>
+  void operator*=(const ExpressionType& expr) {
+    (*this) = (*this) * expr;
+  }
+  template <typename ExpressionType>
+  void operator/=(const ExpressionType& expr) {
+    (*this) = (*this) / expr;
+  }
 };
 
 typedef BaseMatrixT<real> BaseMatrix;

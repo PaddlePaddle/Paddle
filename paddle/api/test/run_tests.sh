@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,11 +20,7 @@ popd > /dev/null
 
 cd $SCRIPTPATH
 
-if [ ! -f ../../dist/*.whl ] ; then  # Swig not compiled.
-  exit 0
-fi
-
-rm .test_env -rf
+rm -rf .test_env
 virtualenv .test_env
 source .test_env/bin/activate
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
 #include "LinearChainCRF.h"
+#include <algorithm>
 
 namespace paddle {
 
@@ -60,7 +60,7 @@ real LinearChainCRF::forward(real* x, int* s, int length) {
   expX_->assign(*matX);
   // subtract max to avoid overflow or underflow
   expX_->mul(maxX_, ones_, (real)-1, (real)1);
-  expX_->exp();
+  expX_->exp2();
 
   real* a = a_->getData();
   real* b = b_->getData();
@@ -69,7 +69,7 @@ real LinearChainCRF::forward(real* x, int* s, int length) {
   real* expX = expX_->getData();
   real* maxX = maxX_->getData();
 
-  expW_->exp(*w_);
+  expW_->exp2(*w_);
   real* expW = expW_->getData();
 
   for (int i = 0; i < numClasses_; ++i) {

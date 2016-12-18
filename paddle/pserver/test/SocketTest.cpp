@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "paddle/utils/Util.h"
 
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <thread>
 
@@ -195,9 +195,9 @@ SocketClient::SocketClient(const std::string& serverAddr, int serverPort) {
   channel_.reset(new SocketChannel(sockfd));
 }
 
-P_DEFINE_string(server_addr, "127.0.0.1", "Server address");
-P_DEFINE_int64(dim, 10000000, "Data size");
-P_DEFINE_int32(loop_time, 100000, "test loop time");
+DEFINE_string(server_addr, "127.0.0.1", "Server address");
+DEFINE_int64(dim, 10000000, "Data size");
+DEFINE_int32(loop_time, 100000, "test loop time");
 
 using namespace paddle;  // NOLINT
 

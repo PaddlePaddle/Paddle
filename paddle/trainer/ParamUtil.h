@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@ limitations under the License. */
 #include "paddle/gserver/dataproviders/DataProvider.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 
+#include <stdlib.h>
+#include <fstream>
+#include "ParameterUpdater.h"
 #include "TrainerConfig.pb.h"
 #include "TrainerConfigHelper.h"
-#include "ParameterUpdater.h"
-#include <fstream>
-#include <stdlib.h>
 
 namespace paddle {
 

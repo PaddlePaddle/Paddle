@@ -8,3 +8,7 @@ build/
 .cproject
 .pydevproject
 Makefile
+.test_env/
+
+*~
+bazel-*

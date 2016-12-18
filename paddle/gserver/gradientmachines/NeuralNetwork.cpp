@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@ limitations under the License. */
 
 #include "paddle/utils/Util.h"
 
-#include "paddle/utils/Logging.h"
 #include "paddle/utils/CustomStackTrace.h"
+#include "paddle/utils/Logging.h"
 
-#include "paddle/utils/Stat.h"
-#include "hl_gpu.h"
+#include "MultiNetwork.h"
 #include "NeuralNetwork.h"
 #include "RecurrentGradientMachine.h"
-#include "MultiNetwork.h"
+#include "hl_gpu.h"
 #include "paddle/gserver/layers/AgentLayer.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 void parameterInitNN(int paramId,

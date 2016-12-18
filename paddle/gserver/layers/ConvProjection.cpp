@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Stat.h"
 #include "ConvProjection.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 
@@ -46,7 +46,7 @@ void ConvProjection::getConvParams() {
   filterH_ = conf.filter_size_y();
   filterW_ = conf.filter_size();
 
-  configImgH_ = conf.img_size();
+  configImgH_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
   configImgW_ = conf.img_size();
 
   channels_ = conf.channels();
@@ -58,8 +58,11 @@ void ConvProjection::getConvParams() {
 }
 
 void ConvProjection::initCudnn() {
-  hl_create_filter_descriptor(
-      &filterDesc_, channels_, numFilters_, filterH_, filterW_);
+  hl_create_filter_descriptor(&filterDesc_,
+                              channels_ / groups_,
+                              numFilters_ / groups_,
+                              filterH_,
+                              filterW_);
   hl_create_tensor_descriptor(&inputDesc_);
   hl_create_tensor_descriptor(&outputDesc_);
   hl_create_convolution_descriptor(&convDesc_,
@@ -86,7 +89,7 @@ void ConvProjection::initCudnn() {
 void ConvProjection::reshapeTensorDesc(int batchSize) {
   hl_tensor_reshape(inputDesc_,
                     batchSize,
-                    channels_,
+                    channels_ / groups_,
                     imageH_,
                     imageW_,
                     channels_ * imageH_ * imageW_,
@@ -115,7 +118,7 @@ void ConvProjection::reshapeTensorDesc(int batchSize) {
 
   hl_tensor_reshape(outputDesc_,
                     batchSize,
-                    numFilters_,
+                    numFilters_ / groups_,
                     outputH_,
                     outputW_,
                     nStride,
@@ -127,6 +130,10 @@ void ConvProjection::reshapeTensorDesc(int batchSize) {
 void ConvProjection::reshape(int batchSize) {
   size_t width = calOutputSize();
   CHECK_EQ(width, out_->value->getWidth());
+  CHECK_EQ(channels_ * imageH_ * imageW_, in_->value->getWidth())
+      << "Wrong input size for convolution"
+      << " channels=" << channels_ << " imageH=" << imageH_
+      << " imageW=" << imageW_ << " inputSize=" << in_->value->getWidth();
 
   isSelectAlgo_ = (batchSize == batchNum_);
   batchNum_ = batchSize;

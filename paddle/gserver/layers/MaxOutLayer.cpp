@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "MaxOutLayer.h"
-#include "hl_gpu.h"
 #include "hl_cnn.h"
+#include "hl_gpu.h"
 
 namespace paddle {
 
@@ -25,10 +25,10 @@ size_t MaxOutLayer::getSize() {
   imgSizeH_ = inputLayers_[0]->getOutput().getFrameHeight();
   imgSizeW_ = inputLayers_[0]->getOutput().getFrameWidth();
   if (imgSizeH_ == 0) {
-    imgSizeH_ = maxoutConf.img_size_y();
+    imgSizeH_ = maxoutConf.image_conf().img_size_y();
   }
   if (imgSizeW_ == 0) {
-    imgSizeW_ = maxoutConf.img_size_x();
+    imgSizeW_ = maxoutConf.image_conf().img_size();
   }
 
   featLen_ = imgSizeH_ * imgSizeW_;
@@ -50,7 +50,7 @@ bool MaxOutLayer::init(const LayerMap& layerMap,
 
   const MaxOutConfig& conf = config_.inputs(0).maxout_conf();
   groups_ = conf.groups();
-  channels_ = conf.channels();
+  channels_ = conf.image_conf().channels();
   CHECK_EQ(channels_ % groups_, 0UL);
   outputChannels_ = channels_ / groups_;
 

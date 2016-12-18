@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/utils/Util.h>
-#include <paddle/utils/Version.h>
-#include <paddle/utils/PythonUtil.h>
+#include <paddle/gserver/gradientmachines/GradientMachine.h>
 #include <paddle/trainer/Trainer.h>
 #include <paddle/trainer/TrainerInternal.h>
-#include <paddle/gserver/gradientmachines/GradientMachine.h>
+#include <paddle/utils/PythonUtil.h>
+#include <paddle/utils/Util.h>
+#include <paddle/utils/Version.h>
 
-P_DECLARE_int32(seed);
+DECLARE_int32(seed);
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -45,10 +45,9 @@ public:
     auto p = const_cast<TrainerForTest*>(this);
     auto& params = p->getGradientMachine()->getParameters();
     return std::accumulate(
-        params.begin(),
-        params.end(),
-        0UL,
-        [](size_t a, const ParameterPtr& p) { return a + p->getSize(); });
+        params.begin(), params.end(), 0UL, [](size_t a, const ParameterPtr& p) {
+          return a + p->getSize();
+        });
   }
 };
 
@@ -128,7 +127,7 @@ TEST(RecurrentGradientMachine, HasSubSequence) {
   }
 }
 
-TEST(RecurrentGradientMachine, rnn) {
+TEST(RecurrentGradientMachine, DISABLED_rnn) {
   for (bool useGpu : {false, true}) {
     test("gserver/tests/sequence_rnn.conf",
          "gserver/tests/sequence_nest_rnn.conf",
@@ -137,7 +136,7 @@ TEST(RecurrentGradientMachine, rnn) {
   }
 }
 
-TEST(RecurrentGradientMachine, rnn_multi_input) {
+TEST(RecurrentGradientMachine, DISABLED_rnn_multi_input) {
   for (bool useGpu : {false, true}) {
     test("gserver/tests/sequence_rnn_multi_input.conf",
          "gserver/tests/sequence_nest_rnn_multi_input.conf",
@@ -146,23 +145,24 @@ TEST(RecurrentGradientMachine, rnn_multi_input) {
   }
 }
 
-TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
+TEST(RecurrentGradientMachine, DISABLED_rnn_multi_unequalength_input) {
   for (bool useGpu : {false, true}) {
-    test("gserver/tests/sequence_rnn_multi_unequalength_inputs.conf",
-         "gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.conf",
+    test("gserver/tests/sequence_rnn_multi_unequalength_inputs.py",
+         "gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py",
          1e-6,
          useGpu);
   }
 }
 
 int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+
   if (paddle::version::isWithPyDataProvider()) {
     if (!paddle::version::isWithGpu()) {
       FLAGS_use_gpu = false;
     }
     initMain(argc, argv);
     initPython(argc, argv);
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
   } else {
     return 0;

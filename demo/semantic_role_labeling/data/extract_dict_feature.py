@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ def extract_dict_features(pair_file, feature_file):
                 ctx_n1 = sentence_list[verb_index - 1]
             else:
                 ctx_n1 = 'bos'
-            
+
             if verb_index > 1:
                 mark[verb_index - 2] = 1
                 ctx_n2 = sentence_list[verb_index - 2]
@@ -43,13 +43,13 @@ def extract_dict_features(pair_file, feature_file):
             mark[verb_index] = 1
             ctx_0 = sentence_list[verb_index]
 
-            if verb_index < len(labels_list) - 2:
+            if verb_index < len(labels_list) - 1:
                 mark[verb_index + 1] = 1
                 ctx_p1 = sentence_list[verb_index + 1]
             else:
                 ctx_p1 = 'eos'
-            
-            if verb_index < len(labels_list) - 3:
+
+            if verb_index < len(labels_list) - 2:
                 mark[verb_index + 2] = 1
                 ctx_p2 = sentence_list[verb_index + 2]
             else:
@@ -67,7 +67,6 @@ def extract_dict_features(pair_file, feature_file):
                            + labels
 
             feature_out.write(feature_str + '\n')
-
 
 
 if __name__ == '__main__':

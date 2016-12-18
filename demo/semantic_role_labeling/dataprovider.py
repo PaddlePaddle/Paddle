@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,32 +21,36 @@ def hook(settings, word_dict, label_dict, predicate_dict, **kwargs):
     settings.word_dict = word_dict
     settings.label_dict = label_dict
     settings.predicate_dict = predicate_dict
-   
+
     #all inputs are integral and sequential type
     settings.slots = [
         integer_value_sequence(len(word_dict)),
-        integer_value_sequence(len(predicate_dict)),
         integer_value_sequence(len(word_dict)),
         integer_value_sequence(len(word_dict)),
         integer_value_sequence(len(word_dict)),
         integer_value_sequence(len(word_dict)),
-        integer_value_sequence(len(word_dict)), integer_value_sequence(2),
+        integer_value_sequence(len(word_dict)),
+        integer_value_sequence(len(predicate_dict)), integer_value_sequence(2),
         integer_value_sequence(len(label_dict))
     ]
 
 
 def get_batch_size(yeild_data):
     return len(yeild_data[0])
-    
 
-@provider(init_hook=hook, should_shuffle=True, calc_batch_size=get_batch_size, 
-          can_over_batch_size=False, cache=CacheType.CACHE_PASS_IN_MEM)
+
+@provider(
+    init_hook=hook,
+    should_shuffle=True,
+    calc_batch_size=get_batch_size,
+    can_over_batch_size=False,
+    cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, file_name):
     with open(file_name, 'r') as fdata:
         for line in fdata:
             sentence, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2,  mark, label = \
                 line.strip().split('\t')
-           
+
             words = sentence.split()
             sen_len = len(words)
             word_slot = [settings.word_dict.get(w, UNK_IDX) for w in words]
@@ -63,5 +67,5 @@ def process(settings, file_name):
 
             label_list = label.split()
             label_slot = [settings.label_dict.get(w) for w in label_list]
-            yield word_slot, predicate_slot, ctx_n2_slot, ctx_n1_slot, \
-                  ctx_0_slot, ctx_p1_slot, ctx_p2_slot, mark_slot, label_slot
+            yield word_slot, ctx_n2_slot, ctx_n1_slot, \
+                  ctx_0_slot, ctx_p1_slot, ctx_p2_slot, predicate_slot, mark_slot, label_slot

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/utils/Stat.h"
 #include "Layer.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 
@@ -77,9 +77,8 @@ protected:
   MatrixPtr savedMean_;
   MatrixPtr savedInvVar_;
 
-  /// Height or width of input image feature, now height is equal to width.
-  /// imgSize is 1 if the input is fully-connected layer.
-  int imgSize_;
+  /// Height or width of input image feature.
+  /// Both of them are 1 if the input is fully-connected layer.
   int imageH_;
   int imageW_;
   /// Height * Width.

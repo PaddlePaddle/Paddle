@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,16 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <sys/time.h>
+// clang-format off
+// Because clang-format 4.X and clang-format 3.8+ format
+// following lines in different. So disable clang-format.
+#include "hl_cuda.h"
+#include <cuda_profiler_api.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/syscall.h>
+#include <sys/time.h>
+#include <unistd.h>
 #include <mutex>
 #include "hl_cuda.h"
 #include "hl_cuda.ph"
-#include "hl_thread.ph"
 #include "hl_dso_loader.h"
+#include "hl_thread.ph"
 #include "paddle/utils/Logging.h"
+// clang-format on
 
 namespace dynload {
 
@@ -133,7 +139,9 @@ void *cudart_dso_handle = nullptr;
   __macro(cudaGetLastError)               \
   __macro(cudaFuncSetCacheConfig)         \
   __macro(cudaRuntimeGetVersion)          \
-  __macro(cudaGetErrorString)
+  __macro(cudaGetErrorString)             \
+  __macro(cudaProfilerStart)              \
+  __macro(cudaProfilerStop)
 // clang-format on
 
 CUDA_ROUTINE_EACH(DYNAMIC_LOAD_CUDART_WRAP)
@@ -742,3 +750,7 @@ bool hl_cuda_event_is_ready(hl_event_t event) {
   }
   return true;
 }
+
+void hl_profiler_start() { CHECK_CUDA(dynload::cudaProfilerStart()); }
+
+void hl_profiler_end() { CHECK_CUDA(dynload::cudaProfilerStop()); }

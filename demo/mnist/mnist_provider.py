@@ -1,10 +1,12 @@
 from paddle.trainer.PyDataProvider2 import *
+import numpy
 
 
 # Define a py data provider
 @provider(
     input_types={'pixel': dense_vector(28 * 28),
-                 'label': integer_value(10)})
+                 'label': integer_value(10)},
+    cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, filename):  # settings is not used currently.
     imgf = filename + "-images-idx3-ubyte"
     labelf = filename + "-labels-idx1-ubyte"
@@ -20,12 +22,13 @@ def process(settings, filename):  # settings is not used currently.
     else:
         n = 10000
 
-    for i in range(n):
-        label = ord(l.read(1))
-        pixels = []
-        for j in range(28 * 28):
-            pixels.append(float(ord(f.read(1))) / 255.0)
-        yield {"pixel": pixels, 'label': label}
+    images = numpy.fromfile(
+        f, 'ubyte', count=n * 28 * 28).reshape((n, 28 * 28)).astype('float32')
+    images = images / 255.0 * 2.0 - 1.0
+    labels = numpy.fromfile(l, 'ubyte', count=n).astype("int")
+
+    for i in xrange(n):
+        yield {"pixel": images[i, :], 'label': labels[i]}
 
     f.close()
     l.close()

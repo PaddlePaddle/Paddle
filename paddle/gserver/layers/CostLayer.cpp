@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-#include <algorithm>
-#include "paddle/utils/Logging.h"
-#include <cmath>
 #include "CostLayer.h"
+#include <algorithm>
+#include <cmath>
+#include <memory>
+#include "paddle/utils/Logging.h"
 
 #include "paddle/math/SparseMatrix.h"
 
@@ -115,12 +115,12 @@ void MultiClassCrossEntropyWithSelfNorm::forwardImp(Matrix& output,
                                                     Matrix& target) {
   Matrix::resizeOrCreate(sftMaxSum_, output.getHeight(), 1, false, useGpu_);
   output.rowSum(*sftMaxSum_);
-  sftMaxSum_->log();
+  sftMaxSum_->log2();
 
   target.oneHotCrossEntropy(output, *label.ids);
   target.add(*sftMaxSum_);
 
-  sftMaxSum_->square();
+  sftMaxSum_->square2();
   target.add(*sftMaxSum_, config_.softmax_selfnorm_alpha());
 }
 
@@ -131,12 +131,12 @@ void MultiClassCrossEntropyWithSelfNorm::backwardImp(Matrix& output,
   output.rowSum(*sftMaxSum_);
 
   Matrix::resizeOrCreate(sumInv_, output.getHeight(), 1, false, useGpu_);
-  sftMaxSum_->reciprocal(*sumInv_);
+  sftMaxSum_->reciprocal2(*sumInv_);
 
   outputG.oneHotCrossEntropyBp(output, *label.ids);
   outputG.addColumnVector(*sumInv_);
 
-  sftMaxSum_->log();
+  sftMaxSum_->log2();
   sumInv_->dotMul(*sumInv_, *sftMaxSum_);
   sumInv_->mulScalar(2 * config_.softmax_selfnorm_alpha());
 

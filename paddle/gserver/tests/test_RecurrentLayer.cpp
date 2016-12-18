@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,19 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <paddle/utils/Version.h>
+#include <vector>
+#include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/gserver/layers/Layer.h"
-#include "ModelConfig.pb.h"
 
 #include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
-P_DECLARE_bool(use_gpu);
-P_DECLARE_bool(rnn_use_batch);
-P_DECLARE_int32(fixed_seq_length);
+DECLARE_bool(use_gpu);
+DECLARE_bool(rnn_use_batch);
+DECLARE_int32(fixed_seq_length);
 
 void checkError(const Matrix& matrix1, const Matrix& matrix2) {
   CHECK(matrix1.getHeight() == matrix2.getHeight());
@@ -220,8 +220,8 @@ TEST(Layer, RecurrentLayer) {
 }
 
 #define protected public
-#include "paddle/gserver/layers/LstmLayer.h"
 #include "paddle/gserver/layers/GatedRecurrentLayer.h"
+#include "paddle/gserver/layers/LstmLayer.h"
 template <class T>
 class TestRecurrentLayer {
 public:
