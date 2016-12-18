@@ -648,6 +648,3 @@ Sometimes we might need to create or manage the cluster on AWS manually with lim
 * Create an EBS for master, it will be attached after the master node get up.
 * Launch the master with fixed ip address 172.20.0.9, and the node is initialized with Salt script, all the components get started as docker containers.
 * Create an auto-scaling group, it has the min and max size, it can be changed by using aws api or console, it will auto launch the kubernetes node and configure itself, connect to master, assign an internal CIDR, and the master configures the route table with the assigned CIDR.
-
-
-
