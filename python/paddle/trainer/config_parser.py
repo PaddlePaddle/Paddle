@@ -1871,8 +1871,14 @@ class BatchNormLayer(LayerBase):
         input_layer = self.get_input_layer(0)
         image_conf = self.config.inputs[0].image_conf
         parse_image(self.inputs[0].image, input_layer.name, image_conf)
-        self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                           image_conf.channels, False)
+
+        # Only pass the width and height of input to batch_norm layer 
+        # when either of it is non-zero. 
+        if input_layer.width != 0 or input_layer.height != 0:
+            self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
+                               image_conf.channels, True)
+        else:
+            self.set_layer_size(input_layer.size)
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
