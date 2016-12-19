@@ -15,25 +15,12 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>
-#include "./paddle/utils/CommandLineParser.h"
-#include "ModelConfig.pb.h"
-#include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/gserver/layers/ExpandConvTransLayer.h"
-#include "paddle/math/MathUtils.h"
-#include "paddle/trainer/Trainer.h"
-#include "paddle/utils/GlobalConstants.h"
 
 #include "LayerGradUtil.h"
 #include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
-
-P_DECLARE_bool(use_gpu);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_double(checkgrad_eps);
-P_DECLARE_bool(thread_local_rand_use_global_seed);
-P_DECLARE_bool(prev_batch_state);
 
 // Do one forward pass of priorBox layer and check to see if its output
 // matches the given result
@@ -164,7 +151,5 @@ TEST(Layer, priorBoxLayerFwd) {
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);
-  FLAGS_thread_local_rand_use_global_seed = true;
-  srand(1);
   return RUN_ALL_TESTS();
 }
