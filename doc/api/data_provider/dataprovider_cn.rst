@@ -1,3 +1,5 @@
+.. _api_dataprovider:
+
 DataProvider的介绍
 ==================
 

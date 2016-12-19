@@ -110,7 +110,9 @@ PaddlePaddle支持Sparse的训练，sparse训练需要训练特征是 :code:`spa
   * 使用显卡训练。设置命令行参数 :code:`use_gpu`。
   * 使用多块显卡训练。设置命令行参数 :code:`use_gpu` 和 :code:`trainer_count` 。
 
-* 多机训练（文档待补充）
+* 多机训练
+
+  * 请参考 :ref:`cluster_train` 。
 
 
 3. 遇到“非法指令”或者是“illegal instruction”
