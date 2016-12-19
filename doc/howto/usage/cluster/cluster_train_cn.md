@@ -24,7 +24,7 @@
 
 通常，你可以使用本地训练中的相同模型文件进行集群训练。 你应该知道，在模型文件的 `setting`函数中设置的 `batch_size` 表示在集群作业**每个**节点中的 batch 大小，而不是使用同步 SGD 的总 batch 大小。
 
-以下步骤基于 demo 目录中的 demo/recommendation。
+以下步骤基于 demo 目录中的 [demo/recommendation](https://github.com/PaddlePaddle/Paddle/tree/develop/demo/recommendation)。
 
 你只需完成 demo/recommendation 教程文档到 `Train` 的部分，之后你会得到训练/测试数据和模型配置文件。最后，只需使用 demo/recommendation 作为集群训练的工作空间。
 
