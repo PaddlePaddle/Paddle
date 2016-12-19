@@ -1,30 +1,47 @@
-#PaddlePaddle on AWS with Kubernetes
+# PaddlePaddle on AWS with Kubernetes
 
-##Prerequisites
+## Create AWS Account and IAM Account
 
-First, you need an AWS account, please check out [this](http://docs.aws.amazon.com/lambda/latest/dg/setting-up.html) for how to setup an AWS account. 
+To use AWS, we need to sign up an AWS account on Amazon's Web site.
+An AWS account allows us to login to the AWS Console Web interface to
+create IAM users and user groups.  Usually, we create a user group with
+privileges required to run PaddlePaddle, and we create users for
+those who are going to run PaddlePaddle and add these users into the
+group.  IAM users can identify themselves using password and tokens,
+where passwords allows users to log in to the AWS Console, and tokens
+make it easy for users to submit and inspect jobs from the command
+line.
 
-And then you can create an user by following [this](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) instruction, you shall create an user group with following privileges, and then add the user to that group: 
+To sign up an AWS account, please
+follow
+[this guide](http://docs.aws.amazon.com/lambda/latest/dg/setting-up.html).
+To create users and user groups under an AWS account, please
+follow
+[this guide](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html).
 
-<img src="managed_policy.png" width="800">
+Please be aware that this tutorial needs the following privileges in
+the user group:
 
-Those previleges are:
-
-* AmazonEC2FullAccess
-* AmazonS3FullAccess
-* AmazonRoute53FullAccess
-* AmazonRoute53DomainsFullAccess
-* AmazonElasticFileSystemFullAccess
-* AmazonVPCFullAccess
-* IAMUserSSHKeys
-* IAMFullAccess
-* NetworkAdministrator
-
-
-If you located in China, we also recommend creating a tunnel server VM instance with default amazon AMI in the same available zone as your cluster and login to tunnel server for the following steps, otherwise there will be some issues related to account authentication.
+- AmazonEC2FullAccess
+- AmazonS3FullAccess
+- AmazonRoute53FullAccess
+- AmazonRoute53DomainsFullAccess
+- AmazonElasticFileSystemFullAccess
+- AmazonVPCFullAccess
+- IAMUserSSHKeys
+- IAMFullAccess
+- NetworkAdministrator
 
 
-##PaddlePaddle on AWS
+By the time we write this tutorial, we noticed that Chinese AWS users
+might suffer from authentication problems when running this tutorial.
+Our solution is that we create a VM instance with the default Amazon
+AMI and in the same zone as our cluster runs, so we can SSH to this VM
+instance as a tunneling server and control our cluster and jobs from
+it.
+
+
+## PaddlePaddle on AWS
 
 Here we will show you step by step on how to run PaddlePaddle training on AWS cluster.
 
