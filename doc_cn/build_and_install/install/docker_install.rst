@@ -67,7 +67,7 @@ mac osx或者是windows机器，请参考
 
 ..  code-block:: bash
     
-    $ docker run -it paddledev/paddlepaddle:cpu-latest
+    $ docker run -it paddledev/paddle:cpu-latest
 
 即可启动和进入PaddlePaddle的container。如果运行GPU版本的PaddlePaddle，则需要先将
 cuda相关的Driver和设备映射进container中，脚本类似于
