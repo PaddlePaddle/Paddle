@@ -53,7 +53,7 @@ void doOnePriorBoxTest(size_t featureMapWidth,
   LayerMap layerMap;
   vector<Argument> datas;
   initDataLayer(
-      configt, &dataLayers, &datas, &layerMap, "priorbox", 1, false, true);
+      configt, &dataLayers, &datas, &layerMap, "priorbox", 1, false, false);
   dataLayers[0]->getOutput().setFrameHeight(featureMapHeight);
   dataLayers[0]->getOutput().setFrameWidth(featureMapWidth);
   dataLayers[1]->getOutput().setFrameHeight(imageHeight);
