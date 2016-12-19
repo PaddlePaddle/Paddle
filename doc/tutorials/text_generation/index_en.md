@@ -260,8 +260,8 @@ gru_encoder_decoder(gen_conf, is_generating)
 
 1. **Data Definiation**: We defines an SeqToSeq gen data in our example. It returns gen_conf as the configuration, following is its input arguments:
    - data\_dir: directory of gen data
-   - is\_generating: whether this config is used for generating, here is false
-   - gen\_result: file to store the generation result
+   - is\_generating: whether this config is used for generating, here is true
+   - gen\_result: file to store the generation result
 2. **Algorithm Configuration**: We use SGD traing algorithm in generation, and specify batch_size as 1 (each time generate one sequence), and learning rate as 0.
 3. **Network Architecture**: Essentially the same as the training model.
 
