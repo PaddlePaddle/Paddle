@@ -1973,8 +1973,8 @@ public:
 
 public:
   virtual void mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB, real scaleT);
-  void add(Matrix& b, real p1, real p2);
-  void add(real p1, real p2);
+  virtual void add(Matrix& b, real p1, real p2);
+  virtual void add(real p1, real p2);
 
 private:
   using Matrix::mul;
