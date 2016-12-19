@@ -1,3 +1,5 @@
+.. _api_swig_py_paddle:
+
 基于Python的预测
 ================
 

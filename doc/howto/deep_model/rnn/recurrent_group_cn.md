@@ -12,7 +12,7 @@
 
 更进一步，`recurrent_group`同样可以扩展到双层序列的处理上。通过两个嵌套的`recurrent_group`分别定义子句级别和词语级别上需要完成的运算，最终实现一个层次化的复杂RNN。
 
-目前，在PaddlePaddle中，能够对双向序列进行处理的有`recurrent_group`和部分Layer，具体可参考文档：<a href = "hierarchical-layer.html">支持双层序列作为输入的Layer</a>。
+目前，在PaddlePaddle中，能够对双向序列进行处理的有`recurrent_group`和部分Layer，具体可参考文档：<a href = "hierarchical_layer_cn.html">支持双层序列作为输入的Layer</a>。
  
 ## 相关概念
 

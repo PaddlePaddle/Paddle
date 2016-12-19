@@ -1,3 +1,7 @@
+```eval_rst
+.. _cluster_train:
+```
+
 # 运行分布式训练
 
 在本文中，我们将阐释如何在集群上运行分布式 Paddle 训练作业。我们将以[推荐系统](https://github.com/baidu/Paddle/tree/develop/demo/recommendation)为例创建分布式的单进程训练。

@@ -82,7 +82,7 @@ COPY start_paddle.py /root/
 CMD ["bash"," -c","/root/start.sh"]
 ```
 
-[`start.sh`](start.sh)文件拷贝训练文件到容器内，然后执行[`start_paddle.py`](start_paddle.py)脚本启动训练，前文提到的获取其他节点IP地址，分配`trainer_id`等都在`start_paddle.py`脚本中完成。
+[start.sh](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/k8s/start.sh)文件拷贝训练文件到容器内，然后执行[start_paddle.py](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/k8s/start_paddle.py)脚本启动训练，前文提到的获取其他节点IP地址，分配`trainer_id`等都在`start_paddle.py`脚本中完成。
 
 `start_paddle.py`脚本开始时，会先进行参数的初始化与解析。
 
