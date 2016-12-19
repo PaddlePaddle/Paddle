@@ -22,7 +22,7 @@
 pooling_layer
 ==============
 
-pooling_layer 的使用示例如下，详细见 `pooling_layer`_ 配置API。
+pooling_layer 的使用示例如下，详细见 :ref:`api_trainer_config_helpers_layers_pooling_layer` 配置API。
 
 ..	code-block:: bash
 
@@ -47,7 +47,7 @@ pooling_layer 的使用示例如下，详细见 `pooling_layer`_ 配置API。
 last_seq 和 first_seq
 =====================
 
-last_seq 的使用示例如下（ `first_seq`_ 类似），详细见 `last_seq`_ 配置API。
+last_seq 的使用示例如下（ :ref:`api_trainer_config_helpers_layers_first_seq` 类似），详细见 :ref:`api_trainer_config_helpers_layers_last_seq` 配置API。
 
 ..	code-block:: bash
 
@@ -68,7 +68,7 @@ last_seq 的使用示例如下（ `first_seq`_ 类似），详细见 `last_seq`_
 expand_layer
 ============
 
-expand_layer 的使用示例如下，详细见 `expand_layer`_ 配置API。
+expand_layer 的使用示例如下，详细见 :ref:`api_trainer_config_helpers_layers_expand_layer` 配置API。
 
 ..	code-block:: bash
 
@@ -87,9 +87,3 @@ expand_layer 的使用示例如下，详细见 `expand_layer`_ 配置API。
   - 作用：一个单层序列经过运算扩展成一个双层序列
   - 输入：layer1必须是一个单层序列，是待扩展的数据；layer2 必须是一个双层序列，提供扩展的长度信息
   - 输出：一个双层序列，序列中含有元素的数目同 layer2 一致。要求单层序列含有元素的数目（0层序列）和双层序列含有subseq 的数目一致。单层序列第i个元素（0层序列），被扩展为一个单层序列，构成了输出双层序列的第i个 subseq 。
-
-
-.. _pooling_layer: ../../../doc/ui/api/trainer_config_helpers/layers.html#pooling-layer
-.. _last_seq: ../../../doc/ui/api/trainer_config_helpers/layers.html#last-seq
-.. _first_seq: ../../../doc/ui/api/trainer_config_helpers/layers.html#first-seq
-.. _expand_layer: ../../../doc/ui/api/trainer_config_helpers/layers.html#expand-layer

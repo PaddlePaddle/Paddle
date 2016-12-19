@@ -391,7 +391,7 @@ paddle train \
 --use_gpu=false
 ```
 
-We do not provide examples on how to train on clusters here. If you want to train on clusters, please follow the <a href = "../../howto/cluster/cluster_train_en.html">distributed training</a> documentation or other demos for more details.
+We do not provide examples on how to train on clusters here. If you want to train on clusters, please follow the <a href = "../../howto/usage/cluster/cluster_train_en.html">distributed training</a> documentation or other demos for more details.
 
 ## Inference
 You can use the trained model to perform prediction on the dataset with no labels. You can also evaluate the model on dataset with labels to obtain its test accuracy.
@@ -509,7 +509,7 @@ The scripts of data downloading, network configurations, and training scrips are
 * \--config_args：Other configuration arguments.
 * \--init_model_path：The path of the initial model parameter.
 
-By default, the trainer will save model every pass. You can also specify `saving_period_by_batches` to set the frequency of batch saving. You can use `show_parameter_stats_period` to print the statistics of the parameters, which are very useful for tuning parameters. Other command line arguments can be found in <a href = "../../howto/cmd_parameter/index_en.html">command line argument documentation</a>。
+By default, the trainer will save model every pass. You can also specify `saving_period_by_batches` to set the frequency of batch saving. You can use `show_parameter_stats_period` to print the statistics of the parameters, which are very useful for tuning parameters. Other command line arguments can be found in <a href = "../../howto/usage/cmd_parameter/index_en.html">command line argument documentation</a>。
 
 ### Log
 

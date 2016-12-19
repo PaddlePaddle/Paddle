@@ -35,7 +35,7 @@ PyDataProvider使用的是异步加载，同时在内存里直接随即选取数
 
 ..  literalinclude:: src/reduce_min_pool_size.py
 
-这样做可以极大的减少内存占用，并且可能会加速训练过程，详细文档参考 `这里 <../ui/data_provider/pydataprovider2.html#provider>`_ 。
+这样做可以极大的减少内存占用，并且可能会加速训练过程，详细文档参考 :ref:`api_pydataprovider2` 。
 
 神经元激活内存
 ++++++++++++++
@@ -95,7 +95,6 @@ PaddlePaddle支持Sparse的训练，sparse训练需要训练特征是 :code:`spa
 
 ..  literalinclude:: src/word2vec_config.py
 
-更多关于sparse训练的内容请参考 `sparse训练的文档 <TBD>`_
 
 利用更多的计算资源
 ++++++++++++++++++
@@ -103,14 +102,15 @@ PaddlePaddle支持Sparse的训练，sparse训练需要训练特征是 :code:`spa
 利用更多的计算资源可以分为一下几个方式来进行\:
 
 * 单机CPU训练
+
   * 使用多线程训练。设置命令行参数 :code:`trainer_count`。
 
 * 单机GPU训练
+
   * 使用显卡训练。设置命令行参数 :code:`use_gpu`。
   * 使用多块显卡训练。设置命令行参数 :code:`use_gpu` 和 :code:`trainer_count` 。
 
-* 多机训练
-  * 具体的多机训练方法参考  `多机训练文档 <../ui/data_provider/pydataprovider2.html#provider>`_ 。
+* 多机训练（文档待补充）
 
 
 3. 遇到“非法指令”或者是“illegal instruction”
