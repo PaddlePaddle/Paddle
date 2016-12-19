@@ -1,6 +1,6 @@
 # 运行分布式训练
 
-在本文中，我们将阐释如何在集群上运行分布式 Paddle 训练作业。我们将创建分布式的单进程训练示例，[推荐](https://github.com/baidu/Paddle/tree/develop/demo/recommendation)。
+在本文中，我们将阐释如何在集群上运行分布式 Paddle 训练作业。我们将以[推荐系统](https://github.com/baidu/Paddle/tree/develop/demo/recommendation)为例创建分布式的单进程训练。
 
 在本文中使用的[脚本](https://github.com/baidu/Paddle/tree/develop/paddle/scripts/cluster_train)通过 SSH 运行分布式作业。 它们还可以供那些运行更复杂的集群管理系统（如 MPI 和 Kubernetes ）的用户参考。
 
@@ -14,15 +14,15 @@
 
 2. 我们需要在集群的所有节点上安装 PaddlePaddle。 如果要启用GPU，需要在 `/usr/local/cuda` 中安装 CUDA; 否则 Paddle 将在运行时报错。
 
-3. 在所有节点上的[`cluster_train/conf.py`]中设置 `ROOT_DIR` 变量。 为了方便起见，我们通常在所有节点上创建一个 Unix 用户 `paddle`，并设置 `ROOT_DIR=/home/paddle`。这样，我们可以将 SSH 公钥写入 `/home/paddle/.ssh/authorized_keys`，以便用户 `paddle` 可以 SSH 到所有节点而不用密码。
+3. 在 [`cluster_train/conf.py`] 中设置 `ROOT_DIR`， 该 ROOT_DIR 要在所有节点上存在。为了方便起见，我们通常在所有节点上创建一个 Unix 用户 `paddle`，并设置 `ROOT_DIR=/home/paddle`。这样，我们可以将 SSH 公钥写入 `/home/paddle/.ssh/authorized_keys`，以便用户 `paddle` 可以 SSH 到所有节点而不用密码。
 
 ## 准备工作空间
 
 我们将放置依赖库、配置等文件的目录视为 *工作空间（workspace）*。
 
-这些 `train/test` 数据应该在启动集群作业之前准备好。 为了满足训练/测试数据放置在工作空间中不同目录的要求，PADDLE 根据在模型配置文件中使用的名为 `train.list/test.list` 的索引文件引用训练/测试数据。所以训练/测试数据也包含 train.list/test.list 两个列表文件。所有本地训练 demo 已经提供了脚本来帮助您创建这两个文件，并且集群作业中的所有节点将在正常情况下处理具有相同逻辑代码的文件。
+这些 `train/test` 数据应该在启动集群作业之前准备好。 为了满足训练/测试数据放置在工作空间中不同目录的要求，PADDLE 根据在模型配置文件中使用的名为 `train.list/test.list` 的索引文件引用训练/测试数据，所以训练/测试数据也包含 train.list/test.list 两个列表文件。所有本地训练 demo 已经提供了脚本来帮助您创建这两个文件，并且集群作业中的所有节点将在正常情况下处理具有相同逻辑代码的文件。
 
-通常，你可以使用本地训练中的相同模型文件进行集群训练。 你应该知道，在模型文件的 `setting`函数中设置的 `batch_size` 表示在集群作业**每个**节点中的 batch 大小，而不是使用同步 SGD 的总 batch 大小。
+通常，你可以使用本地训练中的相同模型文件进行集群训练。请记住，在模型文件的 `setting`函数中设置的 `batch_size` 表示在集群作业**每个**节点中的 batch 大小，而不是使用同步 SGD 的总 batch 大小。
 
 以下步骤基于 demo 目录中的 [demo/recommendation](https://github.com/PaddlePaddle/Paddle/tree/develop/demo/recommendation)。
 
@@ -82,7 +82,7 @@
 
 `PADDLE_PORTS_NUM` 用于集群通信通道的端口数。 如果集群节点数量少（少于5〜6个节点），建议将其设置为较大，如2〜8，以获得更好的网络性能。
 
-`PADDLE_PORTS_NUM_FOR_SPARSE` 用于稀疏更新器集群通信信道的端口数。如果使用稀疏远程更新，则可以像 ```PADDLE_PORTS_NUM``` 一样设置。
+`PADDLE_PORTS_NUM_FOR_SPARSE` 用于 sparse remote updater 集群通信信道的端口数。如果使用 sparse remote update，则可以像 `PADDLE_PORTS_NUM` 一样设置。
 
 `LD_LIBRARY_PATH` 为集群作业设置额外的 LD_LIBRARY_PATH。你可以使用它来设置 CUDA 库的路径。
 
@@ -118,11 +118,11 @@ LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib64"
 ```
 
 ### 启动集群作业
-`paddle.py` 提供了自动化脚本来启动不同节点中的所有 PaddlePaddle 集群进程。默认情况下，所有命令行选项可以设置为```paddle.py``` 命令选项并且 `paddle.py` 将透明、自动地将这些选项应用到 PaddlePaddle 低级进程。
+`paddle.py` 提供了自动化脚本来启动不同节点中的所有 PaddlePaddle 集群进程。默认情况下，所有命令行选项可以设置为```paddle.py``` 命令选项并且 `paddle.py` 将透明、自动地将这些选项应用到 PaddlePaddle 底层进程。
 
 `paddle.py` 为方便作业启动提供了两个独特的命令选项。
 
-`job_dispatch_package`  设为本地 `workspace` 目录，它将被分发到 conf.py 中设置的所有节点。 这有助于频繁的修改、访问工作区文件，否则频繁的多节点工作空间部署可能会很麻烦。
+`job_dispatch_package`  设为本地 `workspace` 目录，它将被分发到 conf.py 中设置的所有节点。  它有助于帮助频繁修改和访问工作区文件的用户减少负担，否则频繁的多节点工作空间部署可能会很麻烦。
 `job_workspace`  设为已部署的工作空间目录，`paddle.py` 将跳过分发阶段直接启动所有节点的集群作业。它可以帮助减少分发延迟。
 
 `cluster_train/run.sh` 提供了命令样例来运行 `demo/recommendation` 集群工作，只需用你定义的目录修改 `job_dispatch_package` 和 `job_workspace`，然后：
