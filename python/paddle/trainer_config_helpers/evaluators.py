@@ -57,19 +57,21 @@ def evaluator(*attrs):
     return impl
 
 
-def evaluator_base(input,
-                   type,
-                   label=None,
-                   weight=None,
-                   name=None,
-                   chunk_scheme=None,
-                   num_chunk_types=None,
-                   classification_threshold=None,
-                   positive_label=None,
-                   dict_file=None,
-                   result_file=None,
-                   num_results=None,
-                   delimited=None):
+def evaluator_base(
+        input,
+        type,
+        label=None,
+        weight=None,
+        name=None,
+        chunk_scheme=None,
+        num_chunk_types=None,
+        classification_threshold=None,
+        positive_label=None,
+        dict_file=None,
+        result_file=None,
+        num_results=None,
+        delimited=None,
+        excluded_chunk_types=None, ):
     """
     Evaluator will evaluate the network status while training/testing.
 
@@ -127,7 +129,8 @@ def evaluator_base(input,
         positive_label=positive_label,
         dict_file=dict_file,
         result_file=result_file,
-        delimited=delimited)
+        delimited=delimited,
+        excluded_chunk_types=excluded_chunk_types, )
 
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
@@ -330,7 +333,8 @@ def chunk_evaluator(
         label,
         chunk_scheme,
         num_chunk_types,
-        name=None, ):
+        name=None,
+        excluded_chunk_types=None, ):
     """
     Chunk evaluator is used to evaluate segment labelling accuracy for a
     sequence. It calculates the chunk detection F1 score.
@@ -376,6 +380,8 @@ def chunk_evaluator(
     :param num_chunk_types: number of chunk types other than "other"
     :param name: The Evaluator name, it is optional.
     :type name: basename|None
+    :param excluded_chunk_types: chunks of these types are not considered
+    :type excluded_chunk_types: list of integer|[]
     """
     evaluator_base(
         name=name,
@@ -383,7 +389,8 @@ def chunk_evaluator(
         input=input,
         label=label,
         chunk_scheme=chunk_scheme,
-        num_chunk_types=num_chunk_types)
+        num_chunk_types=num_chunk_types,
+        excluded_chunk_types=excluded_chunk_types, )
 
 
 @evaluator(EvaluatorAttribute.FOR_UTILS)

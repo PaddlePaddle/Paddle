@@ -433,8 +433,12 @@ message EvaluatorConfig {
   repeated string input_layers = 3;
 
   // Used by ChunkEvaluator
-  optional string chunk_scheme = 4; // one of "IOB", "IOE", "IOBES"
-  optional int32 num_chunk_types = 5; // number of chunk types other than "other"
+  // one of "IOB", "IOE", "IOBES"
+  optional string chunk_scheme = 4;
+  // number of chunk types other than "other"
+  optional int32 num_chunk_types = 5;
+  // chunk of these types are not counted
+  repeated int32 excluded_chunk_types = 12;
 
   // Used by PrecisionRecallEvaluator and ClassificationErrorEvaluator
   // For multi binary labels: true if output > classification_threshold
@@ -453,6 +457,8 @@ message EvaluatorConfig {
 
   // whether to delimit the sequence in the seq_text_printer
   optional bool delimited = 11 [default = true];
+
+  // NOTE: 12 has been occupied by excluded_chunk_types
 }
 
 message LinkConfig {
