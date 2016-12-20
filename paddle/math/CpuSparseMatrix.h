@@ -203,7 +203,7 @@ public:
   /// mem MUST be alloced outside (memAlloc=false)
   void transpose(MatrixPtr matTrans, bool memAlloc);
 
-  void mul(MatrixPtr A, MatrixPtr B, real alpha, real beta);
+  void mul(const Matrix& A, const Matrix& B, real alpha, real beta);
 
   /**
    * @brief sparseMatrix += denseMatrix

@@ -582,18 +582,16 @@ void GpuMatrix::mul(const GpuMatrix& a,
 }
 
 /* this = a*b */
-void GpuMatrix::mul(const MatrixPtr a, const MatrixPtr b) {
-  mul(a, b, 1.0, 0.0);
-}
+void GpuMatrix::mul(const Matrix& a, const Matrix& b) { mul(a, b, 1.0, 0.0); }
 
-void GpuMatrix::mul(const MatrixPtr a,
-                    const MatrixPtr b,
+void GpuMatrix::mul(const Matrix& a,
+                    const Matrix& b,
                     real scaleAB,
                     real scaleT) {
-  GpuMatrixPtr a_ptr = std::dynamic_pointer_cast<GpuMatrix>(a);
-  GpuMatrixPtr b_ptr = std::dynamic_pointer_cast<GpuMatrix>(b);
-  GpuSparseMatrixPtr a_ptr_s = std::dynamic_pointer_cast<GpuSparseMatrix>(a);
-  GpuSparseMatrixPtr b_ptr_s = std::dynamic_pointer_cast<GpuSparseMatrix>(b);
+  const auto a_ptr = dynamic_cast<const GpuMatrix*>(&a);
+  const auto b_ptr = dynamic_cast<const GpuMatrix*>(&b);
+  const auto a_ptr_s = dynamic_cast<const GpuSparseMatrix*>(&a);
+  const auto b_ptr_s = dynamic_cast<const GpuSparseMatrix*>(&b);
 
   if (a_ptr && b_ptr) {
     mul(*a_ptr, *b_ptr, scaleAB, scaleT);
@@ -2598,29 +2596,22 @@ void CpuMatrix::sequenceAvgForward(Matrix& a,
 }
 
 /* this = scaleAB*(a*b) + scaleT*this*/
-void CpuMatrix::mul(const MatrixPtr a,
-                    const MatrixPtr b,
+void CpuMatrix::mul(const Matrix& a,
+                    const Matrix& b,
                     real scaleAB,
                     real scaleT) {
   CHECK(!isTransposed()) << "Not supported";
+  const auto a_ptr = dynamic_cast<const CpuMatrix*>(&a);
+  const auto b_ptr = dynamic_cast<const CpuMatrix*>(&b);
+  const auto a_ptr_s = dynamic_cast<const CpuSparseMatrix*>(&a);
+  const auto b_ptr_s = dynamic_cast<const CpuSparseMatrix*>(&b);
 
-  if (dynamic_cast<CpuMatrix*>(a.get()) && dynamic_cast<CpuMatrix*>(b.get())) {
-    mul(dynamic_cast<CpuMatrix*>(a.get()),
-        dynamic_cast<CpuMatrix*>(b.get()),
-        scaleAB,
-        scaleT);
-  } else if (dynamic_cast<CpuSparseMatrix*>(a.get()) &&
-             dynamic_cast<CpuMatrix*>(b.get())) {
-    mul(dynamic_cast<CpuSparseMatrix*>(a.get()),
-        dynamic_cast<CpuMatrix*>(b.get()),
-        scaleAB,
-        scaleT);
-  } else if (dynamic_cast<CpuMatrix*>(a.get()) &&
-             dynamic_cast<CpuSparseMatrix*>(b.get())) {
-    mul(dynamic_cast<CpuMatrix*>(a.get()),
-        dynamic_cast<CpuSparseMatrix*>(b.get()),
-        scaleAB,
-        scaleT);
+  if (a_ptr && b_ptr) {
+    mul((CpuMatrix*)a_ptr, (CpuMatrix*)b_ptr, scaleAB, scaleT);
+  } else if (a_ptr_s && b_ptr) {
+    mul((CpuSparseMatrix*)a_ptr_s, (CpuMatrix*)b_ptr, scaleAB, scaleT);
+  } else if (a_ptr && b_ptr_s) {
+    mul((CpuMatrix*)a_ptr, (CpuSparseMatrix*)b_ptr_s, scaleAB, scaleT);
   } else {
     LOG(FATAL) << "Not supported";
   }
@@ -3289,7 +3280,7 @@ void CpuMatrix::addColumnVector(const Matrix& b) {
 }
 
 /* this = a*b */
-void CpuMatrix::mul(const MatrixPtr a, const MatrixPtr b) {
+void CpuMatrix::mul(const Matrix& a, const Matrix& b) {
   return mul(a, b, 1.0, 0.0);
 }
 

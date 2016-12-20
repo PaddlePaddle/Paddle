@@ -444,8 +444,8 @@ public:
    * this = scaleAB*(a*b) + scaleT*this
    * @endcode
    */
-  virtual void mul(const MatrixPtr a,
-                   const MatrixPtr b,
+  virtual void mul(const Matrix& a,
+                   const Matrix& b,
                    real scaleAB,
                    real scaleT) {
     LOG(FATAL) << "Not implemented";
@@ -643,7 +643,7 @@ public:
    *  this = a*b
    * @endcode
    */
-  virtual void mul(const MatrixPtr a, const MatrixPtr b) {
+  virtual void mul(const Matrix& a, const Matrix& b) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -1272,14 +1272,14 @@ public:
    * this = scaleAB*(a*b) + scaleT*this
    * @endcode
    */
-  void mul(const MatrixPtr a, const MatrixPtr b, real scaleAB, real scaleT);
+  void mul(const Matrix& a, const Matrix& b, real scaleAB, real scaleT);
 
   /**
    * @code
    * this = a*b
    * @endcode
    */
-  void mul(const MatrixPtr a, const MatrixPtr b);
+  void mul(const Matrix& a, const Matrix& b);
 
   void mul(const GpuMatrix& a, const GpuMatrix& b, real scaleAB, real scaleT);
 
@@ -1784,7 +1784,7 @@ public:
 
   void addColumnVector(const Matrix& b);
 
-  void mul(const MatrixPtr a, const MatrixPtr b, real scaleAB, real scaleT);
+  void mul(const Matrix& a, const Matrix& b, real scaleAB, real scaleT);
   void mul(CpuMatrix* a, CpuMatrix* b, real scaleAB, real scaleT);
 
   void mul(CpuMatrix* a, CpuSparseMatrix* b, real scaleAB, real scaleT);
@@ -1807,7 +1807,7 @@ public:
 
   virtual void mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB, real scaleT);
 
-  void mul(const MatrixPtr a, const MatrixPtr b);
+  void mul(const Matrix& a, const Matrix& b);
 
   void rightMul(Matrix& b, real scaleAB, real scaleT);
   void rightMul(Matrix& b);

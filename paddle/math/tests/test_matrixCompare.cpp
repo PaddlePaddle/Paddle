@@ -318,7 +318,7 @@ void testMatrixInverse(int height) {
   cpu->randomizeUniform();
   MatrixPtr cpuT = cpu->getTranspose();
   MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, height);
-  outputCheck->mul(cpu, cpuT);
+  outputCheck->mul(*cpu, *cpuT);
   cpu->setDiag(1.0);
   cpu->add(*outputCheck);
 
@@ -328,7 +328,7 @@ void testMatrixInverse(int height) {
 
   TensorCheckErr(*cpuI, *gpuI);
 
-  outputCheck->mul(cpu, cpuI);
+  outputCheck->mul(*cpu, *cpuI);
   cpu->setDiag(1.0);
   TensorCheckErr(*cpu, *outputCheck);
 }
@@ -509,8 +509,8 @@ void testMatrixMul(bool transa, bool transb, int dimM, int dimN, int dimK) {
   gpuB->copyFrom(*cpuB);
   gpuC->copyFrom(*cpuC);
 
-  cpuC->mul(cpuA, cpuB, alpha, beta);
-  gpuC->mul(gpuA, gpuB, alpha, beta);
+  cpuC->mul(*cpuA, *cpuB, alpha, beta);
+  gpuC->mul(*gpuA, *gpuB, alpha, beta);
 
   TensorCheckErr(*cpuC, *gpuC);
 }
@@ -581,8 +581,8 @@ void testSubMatrixMul(bool transa, bool transb, int dimM, int dimN, int dimK) {
   MatrixPtr subCpuC = cpuC->subMatrix(startM, endM, startN, endN);
   MatrixPtr subGpuC = gpuC->subMatrix(startM, endM, startN, endN);
 
-  subCpuC->mul(subCpuA, subCpuB, alpha, beta);
-  subGpuC->mul(subGpuA, subGpuB, alpha, beta);
+  subCpuC->mul(*subCpuA, *subCpuB, alpha, beta);
+  subGpuC->mul(*subGpuA, *subGpuB, alpha, beta);
 
   TensorCheckErr(*cpuC, *gpuC);
 }

@@ -316,7 +316,7 @@ void LstmLayer::forwardSequence(int batchSize,
     }
     if (prevOutput_) {
       frameGate->setData(lstmValue.gateValue);
-      frameGate->mul(prevOutput_, weight_->getW(), 1, 1);
+      frameGate->mul(*prevOutput_, *weight_->getW(), 1, 1);
     }
   }
   AsyncGpuBlock asyncGpuBlock;
@@ -338,7 +338,7 @@ void LstmLayer::forwardSequence(int batchSize,
         frameOutput->setData(lstmValue.outputValue);
         nextFrame(reversed_, getSize());
         frameGate->setData(lstmValue.gateValue);
-        frameGate->mul(frameOutput, weight_->getW(), 1, 1);
+        frameGate->mul(*frameOutput, *weight_->getW(), 1, 1);
       }
     }
     if (n != numSequences - 1) {
@@ -348,7 +348,7 @@ void LstmLayer::forwardSequence(int batchSize,
       if (!reversed_) {
         if (!prevState_) lstmValue.prevStateValue = nullptr;
         if (prevOutput_) {
-          frameGate->mul(frameOutput, weight_->getW(), 1, 1);
+          frameGate->mul(*frameOutput, *weight_->getW(), 1, 1);
         }
       } else {
         lstmValue.prevStateValue = nullptr;
@@ -470,7 +470,7 @@ void LstmLayer::backwardSequence(int batchSize,
           frameGate->setData(lstmGrad.gateGrad);
           nextFrame(reversed_, getSize());
           frameOutput->setData(lstmGrad.outputGrad);
-          frameOutput->mul(frameGate, weightT, 1, 1);
+          frameOutput->mul(*frameGate, *weightT, 1, 1);
         } else {
           nextFrame(reversed_, getSize());
         }
@@ -479,14 +479,14 @@ void LstmLayer::backwardSequence(int batchSize,
       if (weight_->getWGrad()) {
         if (!reversed_) {
           weight_->getWGrad()->mul(
-              output_.value->subMatrix(start, length - 1)->getTranspose(),
-              gate_.grad->subMatrix(start + 1, length - 1),
+              *output_.value->subMatrix(start, length - 1)->getTranspose(),
+              *gate_.grad->subMatrix(start + 1, length - 1),
               1,
               1);
         } else {
           weight_->getWGrad()->mul(
-              output_.value->subMatrix(start + 1, length - 1)->getTranspose(),
-              gate_.grad->subMatrix(start, length - 1),
+              *output_.value->subMatrix(start + 1, length - 1)->getTranspose(),
+              *gate_.grad->subMatrix(start, length - 1),
               1,
               1);
         }
@@ -541,7 +541,7 @@ void LstmLayer::forwardBatch(int batchSize,
 
       if (n != 0) {
         MatrixPtr batch1 = batchValue_->getBatchValue(n - 1, batchSize);
-        gateValue->mul(batch1, weight_->getW(), 1, 1);
+        gateValue->mul(*batch1, *weight_->getW(), 1, 1);
       } else if (prevOutput_) {
         Matrix::resizeOrCreate(prevBatchOutput2_,
                                gateValue->getHeight(),
@@ -549,7 +549,7 @@ void LstmLayer::forwardBatch(int batchSize,
                                false,
                                useGpu_);
         batchValue_->prevOutput2Batch(*prevOutput_, *prevBatchOutput2_);
-        gateValue->mul(prevBatchOutput2_, weight_->getW(), 1, 1);
+        gateValue->mul(*prevBatchOutput2_, *weight_->getW(), 1, 1);
 
         batchValue_->prevOutput2Batch(*prevState_,
                                       *totalState_->subMatrix(0, numSequences));
@@ -672,16 +672,16 @@ void LstmLayer::backwardBatch(int batchSize,
 
       if (n != 0) {
         MatrixPtr tmp = batchGrad_->getBatchValue(n - 1, batchSize);
-        tmp->mul(gateGrad, weightT, 1, 1);
+        tmp->mul(*gateGrad, *weightT, 1, 1);
       }
 
       if (n != 0 && weight_->getWGrad()) {
         /* backward weight */
         MatrixPtr outputValue = batchValue_->getBatchValue(n - 1, batchSize);
-        weight_->getWGrad()->mul(outputValue->getTranspose(), gateGrad, 1, 1);
+        weight_->getWGrad()->mul(*outputValue->getTranspose(), *gateGrad, 1, 1);
       } else if (prevOutput_ && weight_->getWGrad()) {
         weight_->getWGrad()->mul(
-            prevBatchOutput2_->getTranspose(), gateGrad, 1, 1);
+            *prevBatchOutput2_->getTranspose(), *gateGrad, 1, 1);
       }
     }
   }
