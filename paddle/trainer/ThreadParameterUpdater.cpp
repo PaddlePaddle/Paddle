@@ -55,6 +55,9 @@ void SgdThreadUpdater::init(std::vector<ParameterPtr>& parameters) {
       // not create parameter buf for PARAMETER_GRADIENT for sparse update in
       // Parameter::enableType(). But gradient parameter buf is still used
       // in SgdThreadUpdater. We need to explicitly create it.
+      //
+      // The AverageOptimizer::restore/apply method will use PARAMETER_GRADIENT
+      // as a temp buffer.
       para->enableBufType(PARAMETER_GRADIENT);
     }
   }

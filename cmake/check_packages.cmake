@@ -24,7 +24,6 @@ endif()
 
 if(WITH_DOC)
   find_package(Sphinx REQUIRED)
-  find_package(Doxygen REQUIRED)
   find_python_module(recommonmark REQUIRED)
 endif()
 

@@ -1,5 +1,4 @@
-
-# PaddlePaddle on Kubernetes：分布式训练
+# Kubernetes 分布式训练
 
 前一篇文章介绍了如何在Kubernetes集群上启动一个单机PaddlePaddle训练作业 (Job)。在这篇文章里，我们介绍如何在Kubernetes集群上进行分布式PaddlePaddle训练作业。关于PaddlePaddle的分布式训练，文章 [Cluster Training](https://github.com/baidu/Paddle/blob/develop/doc/cluster/opensource/cluster_train.md)介绍了一种通过SSH远程分发任务，进行分布式训练的方法，与此不同的是，本文将介绍在Kubernetes容器管理平台上快速构建PaddlePaddle容器集群，进行分布式训练的方案。
 
@@ -83,7 +82,7 @@ COPY start_paddle.py /root/
 CMD ["bash"," -c","/root/start.sh"]
 ```
 
-[`start.sh`](start.sh)文件拷贝训练文件到容器内，然后执行[`start_paddle.py`](start_paddle.py)脚本启动训练，前文提到的获取其他节点IP地址，分配`trainer_id`等都在`start_paddle.py`脚本中完成。
+[start.sh](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/k8s/start.sh)文件拷贝训练文件到容器内，然后执行[start_paddle.py](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/k8s/start_paddle.py)脚本启动训练，前文提到的获取其他节点IP地址，分配`trainer_id`等都在`start_paddle.py`脚本中完成。
 
 `start_paddle.py`脚本开始时，会先进行参数的初始化与解析。
 

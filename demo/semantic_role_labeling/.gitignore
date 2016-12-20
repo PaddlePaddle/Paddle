@@ -8,3 +8,7 @@ data/test.wsj.seq_pair
 data/test.wsj.words
 data/tgt.dict
 output
+data/emb
+data/targetDict.txt
+data/verbDict.txt
+data/wordDict.txt

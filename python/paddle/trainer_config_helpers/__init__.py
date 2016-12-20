@@ -22,4 +22,4 @@ from optimizers import *
 from attrs import *
 
 # This will enable operator overload for LayerOutput
-import math
+import math as layer_math

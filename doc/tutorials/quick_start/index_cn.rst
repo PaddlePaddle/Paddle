@@ -1,5 +1,6 @@
-PaddlePaddle快速入门教程
-========================
+=============
+快速入门教程
+=============
 
 我们将以 `文本分类问题 <https://en.wikipedia.org/wiki/Document_classification>`_ 为例,
 介绍PaddlePaddle的基本使用方法。
@@ -7,7 +8,7 @@ PaddlePaddle快速入门教程
 安装
 ====
 
-请参考 `安装教程 <../../build_and_install/index.html>`_ 安装PaddlePaddle。
+请参考 :ref:`install_steps` 安装PaddlePaddle。
 
 使用概述
 ========
@@ -59,7 +60,7 @@ PaddlePaddle快速入门教程
 Python脚本读取数据
 ------------------
 
-`DataProvider <../../ui/data_provider/index.html>`_ 是PaddlePaddle负责提供数据的模块。``DataProvider`` 主要职责在于将训练数据传入内存或者显存，让模型能够得到训练更新，其包括两个函数：
+`DataProvider` 是PaddlePaddle负责提供数据的模块，主要职责在于将训练数据传入内存或者显存，让模型能够得到训练更新，其包括两个函数：
 
 * initializer：PaddlePaddle会在调用读取数据的Python脚本之前，先调用initializer函数。在下面例子里，我们在initialzier函数里初始化词表，并且在随后的读取数据过程中填充词表。
 * process：PaddlePaddle调用process函数来读取数据。每次读取一条数据后，process函数会用yield语句输出这条数据，从而能够被PaddlePaddle 捕获 (harvest)。
@@ -72,6 +73,7 @@ Python脚本读取数据
      :linenos:
      :emphasize-lines: 8,33
 
+详细内容请参见 :ref:`api_dataprovider` 。
 
 配置中的数据加载定义
 --------------------
@@ -92,7 +94,7 @@ Python脚本读取数据
 - obj="process": 指定生成数据的函数
 - args={"dictionary": word_dict}: 额外的参数，这里指定词典
 
-更详细数据格式和用例请参考 `PyDataProvider2 <../../ui/data_provider/pydataprovider2.html>`_ 。
+更详细数据格式和用例请参考 :ref:`api_pydataprovider2` 。
 
 模型网络结构
 ============
@@ -104,7 +106,7 @@ Python脚本读取数据
         :scale: 80%
 
 
-我们将以最基本的逻辑回归网络作为起点，并逐渐展示更加深入的功能。更详细的网络配置连接请参考 `Layer文档 <../../../doc/layer.html>`_ 。
+我们将以最基本的逻辑回归网络作为起点，并逐渐展示更加深入的功能。更详细的网络配置连接请参考 :ref:`api_trainer_config_helpers_layers` 。
 所有配置都能在 `源代码 <https://github.com/PaddlePaddle/Paddle>`_ 的 ``demo/quick_start`` 目录下找到。
 
 逻辑回归模型
@@ -305,7 +307,7 @@ Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优�
         --num_passes=15 \
         --use_gpu=false
 
-这里只简单介绍了单机训练，如何进行分布式训练，可以参考教程 `分布式训练 <../../cluster/index.html>`_ 。
+这里只简单介绍了单机训练，如何进行分布式训练，请参考 :ref:`cluster_train` 。
 
 预测
 =====
@@ -317,7 +319,7 @@ Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优�
     :scale: 80%
 
 之前配置文件中 ``test.list`` 指定的数据将会被测试，这里直接通过预测脚本 ``predict.sh`` 进行预测,
-更详细的说明，可以参考 `Python API预测 <../../ui/predict/swig_py_paddle.html>`_ 教程。
+更详细的说明，请参考 :ref:`api_swig_py_paddle` 。
 
     .. code-block:: bash
 
@@ -372,7 +374,7 @@ Momentum, RMSProp，AdaDelta，AdaGrad，ADAM，Adamax等，这里采用Adam优�
 
 默认一个pass保存一次模型，也可以通过saving_period_by_batches设置每隔多少batch保存一次模型。
 可以通过show_parameter_stats_period设置打印参数信息等。
-其他参数请参考 `命令行参数文档 <../../ui/index.html#command-line-argument>`_ 。
+其他参数请参考 命令行参数文档（链接待补充）。
 
 输出日志
 ---------

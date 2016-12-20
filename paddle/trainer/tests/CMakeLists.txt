@@ -27,7 +27,8 @@ add_test(NAME test_Trainer
 add_unittest_without_exec(test_TrainerOnePass
     test_TrainerOnePass.cpp)
 add_test(NAME test_TrainerOnePass
-  COMMAND  ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python/
+  COMMAND  ${PROJ_ROOT}/paddle/.set_python_path.sh -d
+        ${PROJ_ROOT}/python/:${PROJ_ROOT}/paddle/trainer/tests
         ${PROJ_ROOT}/paddle/.set_port.sh -p port ${CMAKE_CURRENT_BINARY_DIR}/test_TrainerOnePass
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle/)
 

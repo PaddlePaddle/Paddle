@@ -1,23 +1,11 @@
-# TUTORIALS
-There are several examples and demos here.
+# 完整教程
 
-## Quick Start
+* [快速入门](quick_start/index_cn.rst)
+* [个性化推荐](rec/ml_regression_cn.rst)
+* [情感分析](sentiment_analysis/index_cn.md)
+* [语义角色标注](semantic_role_labeling/index_cn.md)
+* [机器翻译](text_generation/index_cn.md)
 
-* [Quick Start](quick_start/index_cn.rst)
+## 常用模型
 
-## Image
-
-* TBD
-
-## NLP
-
-* [Sentiment Analysis](sentiment_analysis/index_cn.md)
-* [Semantic Role Labeling](semantic_role_labeling/index_cn.rst)
-
-## Recommendation
-
-* TBD
-
-## Model Zoo
-
-* TBD
+* [ResNet模型](imagenet_model/resnet_model_cn.md)

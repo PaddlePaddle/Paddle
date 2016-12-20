@@ -970,7 +970,7 @@ def pooling_layer(input,
     :param layer_attr: The Extra Attributes for layer, such as dropout.
     :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
-    :rtype: LayerType
+    :rtype: LayerOutput
     """
     extra_dict = dict()
     # noinspection PyUnresolvedReferences
@@ -1776,15 +1776,15 @@ def img_conv_layer(input,
                    trans=False,
                    layer_type=None):
     """
-    Convolution layer for image. Paddle only support square input currently and
-    thus input image's width equals height.
+    Convolution layer for image. Paddle can support both square and non-square 
+    input currently.
 
     The details of convolution layer, please refer UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/
     FeatureExtractionUsingConvolution/>`_ .
 
-    Convolution Transpose (deconv) layer for image. Paddle only support square
-    input currently and thus input image's width equals height.
+    Convolution Transpose (deconv) layer for image. Paddle can support both square 
+    and non-square input currently.
 
     The details of convolution transpose layer,
     please refer to the following explanation and references therein

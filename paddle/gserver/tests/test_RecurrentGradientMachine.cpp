@@ -155,13 +155,14 @@ TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
 }
 
 int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+
   if (paddle::version::isWithPyDataProvider()) {
     if (!paddle::version::isWithGpu()) {
       FLAGS_use_gpu = false;
     }
     initMain(argc, argv);
     initPython(argc, argv);
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
   } else {
     return 0;

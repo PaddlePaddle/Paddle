@@ -35,7 +35,7 @@ PyDataProvider使用的是异步加载，同时在内存里直接随即选取数
 
 ..  literalinclude:: src/reduce_min_pool_size.py
 
-这样做可以极大的减少内存占用，并且可能会加速训练过程，详细文档参考 `这里 <../ui/data_provider/pydataprovider2.html#provider>`_ 。
+这样做可以极大的减少内存占用，并且可能会加速训练过程，详细文档参考 :ref:`api_pydataprovider2` 。
 
 神经元激活内存
 ++++++++++++++
@@ -95,7 +95,6 @@ PaddlePaddle支持Sparse的训练，sparse训练需要训练特征是 :code:`spa
 
 ..  literalinclude:: src/word2vec_config.py
 
-更多关于sparse训练的内容请参考 `sparse训练的文档 <TBD>`_
 
 利用更多的计算资源
 ++++++++++++++++++
@@ -103,17 +102,20 @@ PaddlePaddle支持Sparse的训练，sparse训练需要训练特征是 :code:`spa
 利用更多的计算资源可以分为一下几个方式来进行\:
 
 * 单机CPU训练
+
   * 使用多线程训练。设置命令行参数 :code:`trainer_count`。
 
 * 单机GPU训练
+
   * 使用显卡训练。设置命令行参数 :code:`use_gpu`。
   * 使用多块显卡训练。设置命令行参数 :code:`use_gpu` 和 :code:`trainer_count` 。
 
 * 多机训练
-  * 具体的多机训练方法参考  `多机训练文档 <../ui/data_provider/pydataprovider2.html#provider>`_ 。
+
+  * 请参考 :ref:`cluster_train` 。
 
 
-3. 遇到“非法指令”或者是“illegal instruction” 
+3. 遇到“非法指令”或者是“illegal instruction”
 --------------------------------------------
 
 PaddlePaddle使用avx SIMD指令提高cpu执行效率，因此错误的使用二进制发行版可能会导致这种错误，请选择正确的版本。
@@ -140,7 +142,7 @@ PaddlePaddle使用avx SIMD指令提高cpu执行效率，因此错误的使用二
 
 ..  code-block:: python
 
-    hidden = fc_layer(input=ipt, param_attr=ParamAttr(initial_max=1.0, initial_min=-1.0), 
+    hidden = fc_layer(input=ipt, param_attr=ParamAttr(initial_max=1.0, initial_min=-1.0),
                       bias_attr=ParamAttr(initial_mean=1.0, initial_std=0.0))
 
 上述代码将bias全部初始化为1.0, 同时将参数初始化为 :code:`[1.0, -1.0]` 的均匀分布。
@@ -156,8 +158,8 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 
 这里 :code:`hidden_a` 和 :code:`hidden_b` 使用了同样的parameter和bias。并且softmax层的两个输入也使用了同样的参数 :code:`softmax_param`。
 
-7. *-cp27mu-linux_x86_64.whl is not a supported wheel on this platform.
----------------------------------------------------------------------------
+7. \*-cp27mu-linux_x86_64.whl is not a supported wheel on this platform.
+------------------------------------------------------------------------
 
 出现这个问题的主要原因是，系统编译wheel包的时候，使用的 :code:`wheel` 包是最新的，
 而系统中的 :code:`pip` 包比较老。具体的解决方法是，更新 :code:`pip` 包并重新编译PaddlePaddle。
@@ -190,14 +192,14 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
     41 - test_config_parser (Failed)
     42 - test_swig_api (Failed)
     43 - layers_test (Failed)
-    
+
 并且查询PaddlePaddle单元测试的日志，提示：
 
 ..  code-block:: bash
-    
+
     paddle package is already in your PYTHONPATH. But unittest need a clean environment.
     Please uninstall paddle package before start unittest. Try to 'pip uninstall paddle'.
-    
+
 解决办法是：
 
 * 卸载PaddlePaddle包 :code:`pip uninstall paddle`, 清理掉老旧的PaddlePaddle安装包，使得单元测试有一个干净的环境。如果PaddlePaddle包已经在python的site-packages里面，单元测试会引用site-packages里面的python包，而不是源码目录里 :code:`/python` 目录下的python包。同时，即便设置 :code:`PYTHONPATH` 到 :code:`/python` 也没用，因为python的搜索路径是优先已经安装的python包。
@@ -225,7 +227,7 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 用户强制指定特定的Python版本，具体操作如下：
 
     ..  code-block:: bash
-        
+
         cmake .. -DPYTHON_EXECUTABLE=<exc_path> -DPYTHON_LIBRARY=<lib_path>  -DPYTHON_INCLUDE_DIR=<inc_path>
 
 用户需要指定本机上Python的路径：``<exc_path>``, ``<lib_path>``, ``<inc_path>``
@@ -238,7 +240,7 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 ..  code-block:: bash
 
     [libprotobuf ERROR google/protobuf/io/coded_stream.cc:171] A protocol message was rejected because it was too big (more than 67108864 bytes).  To increase the limit (or to disable these warnings), see CodedInputStream::SetTotalBytesLimit() in google/protobuf/io/coded_stream.h.
-    F1205 14:59:50.295174 14703 TrainerConfigHelper.cpp:59] Check failed: m->conf.ParseFromString(configProtoStr) 
+    F1205 14:59:50.295174 14703 TrainerConfigHelper.cpp:59] Check failed: m->conf.ParseFromString(configProtoStr)
 
 可能的原因是：传给dataprovider的某一个args过大，一般是由于直接传递大字典导致的。错误的define_py_data_sources2类似：
 
@@ -284,3 +286,22 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 ..      code-block:: bash
 
         paddle train --use_gpu=true --trainer_count=2 --gpu_id=2
+
+12. 编译源码提示warp-ctc/include/ctc.h 找不到的情况
+---------------------------------------------------
+
+目前Paddle使用\ :code:`git submodule`\ 来引用一些第三方模块。简单的\
+:code:`git clone`\ 命令不能得到第三方模块的代码。需要使用\:
+
+..  code-block:: bash
+
+    git clone --recursive https://github.com/PaddlePaddle/Paddle.git
+
+来获取所有源码。对于已经clone的git版本库，可以在Paddle的源码目录中执行\:
+
+..  code-block:: bash
+
+    git submodule init
+    git submodule update
+
+来获得所有第三方模块。
