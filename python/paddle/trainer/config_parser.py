@@ -498,9 +498,12 @@ class Input(Cfg):
             is_static=None,
             is_shared=None,
             update_hooks=None,
-            input_layer_argument=None, ):
+            input_layer_argument=None,
+            not_make_layer_name_in_submodel=None, ):
         self.add_keys(locals())
         self.input_layer_name = MakeLayerNameInSubmodel(input_layer_name)
+        if not_make_layer_name_in_submodel:
+            self.input_layer_name = input_layer_name
 
 
 # Define a projection for iexed layer
@@ -1848,7 +1851,8 @@ class BatchNormLayer(LayerBase):
                     initial_std=0.0,
                     initial_mean=0.0,
                     is_static=True,
-                    is_shared=is_shared, ))
+                    is_shared=is_shared,
+                    not_make_layer_name_in_submodel=True, ))
 
         parallel_nn = bool(int(g_command_config_args.get("parallel_nn", 0)))
         cudnn_version = int(g_command_config_args.get("cudnn_version", 0))
