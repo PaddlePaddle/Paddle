@@ -193,6 +193,14 @@ public:
    */
   static std::shared_ptr<TrainerConfigHelper> createFromFlagConfig();
 
+  /**
+   * @brief Create TrainerConfigHelper from configi file.
+   * @param configFilename config file path.
+   * @return nullptr if cannot load, otherwise return a TrainerConfigHelper.
+   */
+  static std::shared_ptr<TrainerConfigHelper> create(
+      const std::string& configFilename);
+
 private:
   static std::string getConfigNameFromPassId(int passId,
                                              const std::string& modelPath);

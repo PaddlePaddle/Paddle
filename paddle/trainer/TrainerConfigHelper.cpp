@@ -193,7 +193,12 @@ std::shared_ptr<TrainerConfigHelper> TrainerConfigHelper::createFromFlags() {
 std::shared_ptr<TrainerConfigHelper>
 TrainerConfigHelper::createFromFlagConfig() {
   CHECK(!FLAGS_config.empty());
-  return std::make_shared<TrainerConfigHelper>(FLAGS_config);
+  return create(FLAGS_config);
+}
+
+std::shared_ptr<TrainerConfigHelper> TrainerConfigHelper::create(
+    const std::string &configFilename) {
+  return std::make_shared<TrainerConfigHelper>(configFilename);
 }
 
 }  // namespace paddle
