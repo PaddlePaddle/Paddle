@@ -106,8 +106,8 @@ TEST(Layer, convParaUnified) {
 #ifndef PADDLE_ONLY_CPU
   MatrixPtr input, resultCpu, resultGpu;
   input = Matrix::create(1, 4 * 4, false, false);
-  float inputData[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-  float param[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+  real inputData[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  real param[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 8, 7, 6, 5, 4, 3, 2, 1};
 
   input->setData(inputData);
 
@@ -137,26 +137,26 @@ TEST(Layer, convParaUnified) {
   checkMatrixEqual(resultCpu, resultGpu);
 
   input = Matrix::create(1, 3 * 3 * 2, false, false);
-  float inputData2[] = {1,
-                        2,
-                        3,
-                        4,
-                        5,
-                        6,
-                        7,
-                        8,
-                        9,
+  real inputData2[] = {1,
+                       2,
+                       3,
+                       4,
+                       5,
+                       6,
+                       7,
+                       8,
+                       9,
 
-                        10,
-                        11,
-                        12,
-                        13,
-                        14,
-                        15,
-                        16,
-                        17,
-                        18};
-  float param2[] = {1, 2, 3, 4, 5, 6, 7, 8, 8, 7, 6, 5, 4, 3, 2, 1};
+                       10,
+                       11,
+                       12,
+                       13,
+                       14,
+                       15,
+                       16,
+                       17,
+                       18};
+  real param2[] = {1, 2, 3, 4, 5, 6, 7, 8, 8, 7, 6, 5, 4, 3, 2, 1};
 
   input->setData(inputData2);
 
@@ -185,7 +185,7 @@ TEST(Layer, convParaUnified) {
                             true);
   checkMatrixEqual(resultCpu, resultGpu);
 
-  float param3[] = {1, 2, 3, 4, 4, 3, 2, 1};
+  real param3[] = {1, 2, 3, 4, 4, 3, 2, 1};
 
   resultCpu = doOneConvTest(/* imgSize */ 3,
                             /* output_x */ 2,
