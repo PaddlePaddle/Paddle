@@ -381,7 +381,7 @@ def chunk_evaluator(
     :param name: The Evaluator name, it is optional.
     :type name: basename|None
     :param excluded_chunk_types: chunks of these types are not considered
-    :type excluded_chunk_types: list of integer|[]
+    :type excluded_chunk_types: list of integer|None
     """
     evaluator_base(
         name=name,

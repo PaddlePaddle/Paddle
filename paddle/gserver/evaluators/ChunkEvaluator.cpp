@@ -162,9 +162,9 @@ public:
     getSegments(label, length, labelSegments_);
     size_t i = 0, j = 0;
     while (i < outputSegments_.size() && j < labelSegments_.size()) {
-      if (outputSegments_[i] == labelSegments_[j]) {
-        if (excludedChunkTypes_.count(outputSegments_[i].type) != 1)
-          ++numCorrect_;
+      if (outputSegments_[i] == labelSegments_[j] &&
+          excludedChunkTypes_.count(outputSegments_[i].type) != 1) {
+        ++numCorrect_;
       }
       if (outputSegments_[i].end < labelSegments_[j].end) {
         ++i;
