@@ -107,6 +107,7 @@ function(link_paddle_exe TARGET_NAME)
         paddle_parameter
         paddle_proto
         paddle_cuda
+        paddle_test_main
         ${METRIC_LIBS}
         ${PROTOBUF_LIBRARY}
         ${LIBGLOG_LIBRARY}
