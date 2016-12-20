@@ -37,7 +37,7 @@ namespace paddle {
 template <DeviceType Device>
 void CrossMapNormal(real* outputs,
                     real* denoms,
-                    real* inputs,
+                    const real* inputs,
                     size_t numSamples,
                     size_t channels,
                     size_t height,
@@ -66,10 +66,10 @@ void CrossMapNormal(real* outputs,
  */
 template <DeviceType Device>
 void CrossMapNormalGrad(real* inputsGrad,
-                        real* inputsValue,
-                        real* outputsValue,
-                        real* outputsGrad,
-                        real* denoms,
+                        const real* inputsValue,
+                        const real* outputsValue,
+                        const real* outputsGrad,
+                        const real* denoms,
                         size_t numSamples,
                         size_t channels,
                         size_t height,

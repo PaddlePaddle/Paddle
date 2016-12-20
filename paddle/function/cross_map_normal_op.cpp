@@ -20,7 +20,7 @@ namespace paddle {
 template <>
 void CrossMapNormal<DEVICE_TYPE_CPU>(real* outputs,
                                      real* denoms,
-                                     real* inputs,
+                                     const real* inputs,
                                      size_t numSamples,
                                      size_t channels,
                                      size_t height,
@@ -32,7 +32,7 @@ void CrossMapNormal<DEVICE_TYPE_CPU>(real* outputs,
   size_t oneSample = channels * oneImage;
 
   CpuVector outputsV(numSamples * oneSample, outputs);
-  CpuVector inputsV(numSamples * oneSample, inputs);
+  CpuVector inputsV(numSamples * oneSample, const_cast<real*>(inputs));
   CpuVector denomsV(numSamples * oneSample, denoms);
 
   // f(x) = x * ( 1 + scale * SUM((x)^2) )^(-pow)
@@ -44,7 +44,7 @@ void CrossMapNormal<DEVICE_TYPE_CPU>(real* outputs,
   const int end = (int)size + start;
   for (size_t i = 0; i < numSamples; i++) {
     real* oneDenom = denoms + i * oneSample;
-    real* oneInput = inputs + i * oneSample;
+    real* oneInput = const_cast<real*>(inputs) + i * oneSample;
     for (int c = 0; c < (int)channels; c++) {
       CpuVector denom(oneImage, oneDenom + c * oneImage);
       for (int s = start; s < end; s++) {
@@ -61,10 +61,10 @@ void CrossMapNormal<DEVICE_TYPE_CPU>(real* outputs,
 
 template <>
 void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
-                                         real* inputsValue,
-                                         real* outputsValue,
-                                         real* outputsGrad,
-                                         real* denoms,
+                                         const real* inputsValue,
+                                         const real* outputsValue,
+                                         const real* outputsGrad,
+                                         const real* denoms,
                                          size_t numSamples,
                                          size_t channels,
                                          size_t height,
@@ -84,10 +84,10 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
   for (size_t i = 0; i < numSamples; i++) {
     size_t sOffset = i * oneSample;
     real* oneInputGrad = inputsGrad + sOffset;
-    real* oneInputValue = inputsValue + sOffset;
-    real* oneDenom = denoms + sOffset;
-    real* oneOutputGrad = outputsGrad + sOffset;
-    real* oneOutputValue = outputsValue + sOffset;
+    real* oneInputValue = const_cast<real*>(inputsValue) + sOffset;
+    real* oneDenom = const_cast<real*>(denoms) + sOffset;
+    real* oneOutputGrad = const_cast<real*>(outputsGrad) + sOffset;
+    real* oneOutputValue = const_cast<real*>(outputsValue) + sOffset;
 
     for (int c = 0; c < (int)channels; c++) {
       size_t cOffset = c * height * width;

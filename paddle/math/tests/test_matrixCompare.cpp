@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include "TensorCheck.h"
-#include "paddle/function/Function.h"
 #include "paddle/gserver/tests/TestUtil.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
