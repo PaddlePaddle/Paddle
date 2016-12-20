@@ -19,3 +19,6 @@ There are serveral examples and demos here.
 ## Model Zoo
 * [ImageNet: ResNet](imagenet_model/resnet_model.md)
 * [Embedding: Chinese Word](embedding_model/index.md)
+
+## Sparse Training
+* [Sparse Training](sparse_train/sparse_train.md)
