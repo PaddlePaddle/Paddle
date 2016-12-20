@@ -8,6 +8,7 @@
   :maxdepth: 1
 
   usage/concepts/use_concepts_cn.rst
+  usage/cluster/cluster_train_cn.md
   usage/cluster/k8s/k8s_cn.md
   usage/cluster/k8s/k8s_distributed_cn.md
 

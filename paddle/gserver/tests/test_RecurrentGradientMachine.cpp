@@ -127,7 +127,7 @@ TEST(RecurrentGradientMachine, HasSubSequence) {
   }
 }
 
-TEST(RecurrentGradientMachine, DISABLED_rnn) {
+TEST(RecurrentGradientMachine, rnn) {
   for (bool useGpu : {false, true}) {
     test("gserver/tests/sequence_rnn.conf",
          "gserver/tests/sequence_nest_rnn.conf",
@@ -136,7 +136,7 @@ TEST(RecurrentGradientMachine, DISABLED_rnn) {
   }
 }
 
-TEST(RecurrentGradientMachine, DISABLED_rnn_multi_input) {
+TEST(RecurrentGradientMachine, rnn_multi_input) {
   for (bool useGpu : {false, true}) {
     test("gserver/tests/sequence_rnn_multi_input.conf",
          "gserver/tests/sequence_nest_rnn_multi_input.conf",
@@ -145,7 +145,7 @@ TEST(RecurrentGradientMachine, DISABLED_rnn_multi_input) {
   }
 }
 
-TEST(RecurrentGradientMachine, DISABLED_rnn_multi_unequalength_input) {
+TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
   for (bool useGpu : {false, true}) {
     test("gserver/tests/sequence_rnn_multi_unequalength_inputs.py",
          "gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py",

@@ -1,7 +1,9 @@
+.. _api_dataprovider:
+
 DataProvider的介绍
 ==================
 
-DataProvider是PaddlePaddle负责提供数据的模块。其作用是将数据传入内存或显存，让神经网络可以进行训练或预测。用户可以通过简单使用Python接口 `PyDataProvider2 <pydataprovider2.html>`_ ，来自定义传数据的过程。如果有更复杂的使用，或者需要更高的效率，用户也可以在C++端自定义一个 ``DataProvider`` 。
+DataProvider是PaddlePaddle负责提供数据的模块。其作用是将数据传入内存或显存，让神经网络可以进行训练或预测。用户可以通过简单使用Python接口 :ref:`api_pydataprovider2` ，来自定义传数据的过程。如果有更复杂的使用，或者需要更高的效率，用户也可以在C++端自定义一个 ``DataProvider`` 。
 
 PaddlePaddle需要用户在网络配置（trainer_config.py）中定义使用哪种DataProvider，并且在DataProvider中实现如何访问训练文件列表（train.list）或测试文件列表（test.list）。
 

@@ -78,21 +78,6 @@ def define_py_data_source(file_list,
     if not isinstance(args, basestring) and args is not None:
         args = pickle.dumps(args, 0)
 
-    if data_cls is None:
-
-        def py_data2(files, load_data_module, load_data_object, load_data_args,
-                     **kwargs):
-            data = DataBase()
-            data.type = 'py2'
-            data.files = files
-            data.load_data_module = load_data_module
-            data.load_data_object = load_data_object
-            data.load_data_args = load_data_args
-            data.async_load_data = True
-            return data
-
-        data_cls = py_data2
-
     cls(
         data_cls(
             files=file_list,
@@ -207,10 +192,22 @@ def define_py_data_sources2(train_list, test_list, module, obj, args=None):
     :return: None
     :rtype: None
     """
+
+    def py_data2(files, load_data_module, load_data_object, load_data_args,
+                 **kwargs):
+        data = DataBase()
+        data.type = 'py2'
+        data.files = files
+        data.load_data_module = load_data_module
+        data.load_data_object = load_data_object
+        data.load_data_args = load_data_args
+        data.async_load_data = True
+        return data
+
     define_py_data_sources(
         train_list=train_list,
         test_list=test_list,
         module=module,
         obj=obj,
         args=args,
-        data_cls=None)
+        data_cls=py_data2)
