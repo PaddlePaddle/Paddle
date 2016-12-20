@@ -12,13 +12,13 @@ set +e
 linkchecker doc/cn/html/index.html > doc_cn.out
 linkchecker doc/en/html/index.html > doc_en.out
 for i in doc_cn.out doc_en.out; do
-  echo $i
   grep " 0 errors found" $i
   if [ $? -ne 0 ]; then
     cat $i
     exit 1
   fi
 done
+set -e
 
 # Parse Github URL
 REPO=`git config remote.origin.url`
