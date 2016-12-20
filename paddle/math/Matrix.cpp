@@ -582,18 +582,16 @@ void GpuMatrix::mul(const GpuMatrix& a,
 }
 
 /* this = a*b */
-void GpuMatrix::mul(const MatrixPtr a, const MatrixPtr b) {
-  mul(a, b, 1.0, 0.0);
-}
+void GpuMatrix::mul(const Matrix& a, const Matrix& b) { mul(a, b, 1.0, 0.0); }
 
-void GpuMatrix::mul(const MatrixPtr a,
-                    const MatrixPtr b,
+void GpuMatrix::mul(const Matrix& a,
+                    const Matrix& b,
                     real scaleAB,
                     real scaleT) {
-  GpuMatrixPtr a_ptr = std::dynamic_pointer_cast<GpuMatrix>(a);
-  GpuMatrixPtr b_ptr = std::dynamic_pointer_cast<GpuMatrix>(b);
-  GpuSparseMatrixPtr a_ptr_s = std::dynamic_pointer_cast<GpuSparseMatrix>(a);
-  GpuSparseMatrixPtr b_ptr_s = std::dynamic_pointer_cast<GpuSparseMatrix>(b);
+  const auto a_ptr = dynamic_cast<const GpuMatrix*>(&a);
+  const auto b_ptr = dynamic_cast<const GpuMatrix*>(&b);
+  const auto a_ptr_s = dynamic_cast<const GpuSparseMatrix*>(&a);
+  const auto b_ptr_s = dynamic_cast<const GpuSparseMatrix*>(&b);
 
   if (a_ptr && b_ptr) {
     mul(*a_ptr, *b_ptr, scaleAB, scaleT);
@@ -766,20 +764,19 @@ void GpuMatrix::maxoutBackward(Matrix& a,
 }
 
 /*calulate the error of classification */
-void GpuMatrix::classificationError(MatrixPtr output, IVectorPtr label) {
-  GpuMatrixPtr output_ptr = std::dynamic_pointer_cast<GpuMatrix>(output);
-  GpuIVectorPtr label_ptr = std::dynamic_pointer_cast<GpuIVector>(label);
-
+void GpuMatrix::classificationError(Matrix& output, IVector& label) {
+  auto output_ptr = dynamic_cast<const GpuMatrix*>(&output);
+  auto label_ptr = dynamic_cast<const GpuIVector*>(&label);
   CHECK(output_ptr && label_ptr) << "Invalid argument pointer";
 
   CHECK(height_ == output_ptr->height_ && width_ == 1)
       << "Matrix dimensions are not equal";
-  real* output_d = output_ptr->data_;
-  real* recResult_d = data_;
-  int* label_d = label_ptr->getData();
 
-  hl_matrix_classification_error(
-      output_d, label_d, recResult_d, height_, output_ptr->width_);
+  hl_matrix_classification_error((real*)output_ptr->data_,
+                                 (int*)label_ptr->getData(),
+                                 data_,
+                                 height_,
+                                 output_ptr->width_);
 }
 
 /* copy -log(output[i * width + label]) to this->data[i] */
@@ -1370,86 +1367,62 @@ void GpuMatrix::maxSequenceBackward(Matrix& outputGrad,
   hl_max_sequence_backward(outGrad, maxIndex, inputGrad, numSequences, dim);
 }
 
-void GpuMatrix::contextProjectionForward(MatrixPtr input,
-                                         MatrixPtr weight,
+void GpuMatrix::contextProjectionForward(Matrix& input,
+                                         Matrix* weight,
                                          const IVector& sequence,
                                          int contextLength,
                                          int contextStart,
                                          size_t beginPad,
                                          bool isPadding) {
-  CHECK(dynamic_cast<GpuMatrix*>(input.get()));
+  CHECK(dynamic_cast<GpuMatrix*>(&input));
   CHECK(dynamic_cast<const GpuIVector*>(&sequence));
-  if (weight) CHECK(dynamic_cast<GpuMatrix*>(weight.get()));
+  if (weight) CHECK(dynamic_cast<GpuMatrix*>(weight));
+  CHECK_EQ(getWidth(), input.getWidth() * contextLength);
 
-  size_t numSequences = sequence.getSize() - 1;
-  int64_t inputDim = input->getWidth();
-  int64_t dim = getWidth();
-  CHECK_EQ(dim, inputDim * contextLength);
-
-  real* outData = getData();
-  real* inputData = input->getData();
-  const int* starts = sequence.getData();
-
-  hl_context_projection_forward(inputData,
-                                starts,
+  hl_context_projection_forward(input.getData(),
+                                sequence.getData(),
                                 isPadding ? weight->getData() : NULL,
-                                outData,
-                                numSequences,
-                                inputDim,
+                                getData(),
+                                sequence.getSize() - 1,
+                                input.getWidth(),
                                 contextLength,
                                 contextStart,
                                 beginPad,
                                 isPadding);
 }
 
-void GpuMatrix::contextProjectionBackwardData(MatrixPtr inputGrad,
+void GpuMatrix::contextProjectionBackwardData(Matrix& inputGrad,
                                               const IVector& sequence,
                                               int contextLength,
                                               int contextStart) {
-  CHECK(dynamic_cast<GpuMatrix*>(inputGrad.get()));
+  CHECK(dynamic_cast<GpuMatrix*>(&inputGrad));
   CHECK(dynamic_cast<const GpuIVector*>(&sequence));
+  CHECK_EQ(getWidth(), inputGrad.getWidth() * contextLength);
 
-  size_t numSequences = sequence.getSize() - 1;
-  int64_t inputDim = inputGrad->getWidth();
-  int64_t dim = getWidth();
-  CHECK_EQ(dim, inputDim * contextLength);
-
-  real* outGrad = getData();
-  real* inGrad = inputGrad->getData();
-  const int* starts = sequence.getData();
-
-  hl_context_projection_backward_data(outGrad,
-                                      starts,
-                                      inGrad,
-                                      numSequences,
-                                      inputDim,
+  hl_context_projection_backward_data(getData(),
+                                      sequence.getData(),
+                                      inputGrad.getData(),
+                                      sequence.getSize() - 1,
+                                      inputGrad.getWidth(),
                                       contextLength,
                                       contextStart);
 }
 
-void GpuMatrix::contextProjectionBackwardWeight(MatrixPtr weightGrad,
+void GpuMatrix::contextProjectionBackwardWeight(Matrix& weightGrad,
                                                 const IVector& sequence,
                                                 int contextLength,
                                                 int contextStart,
                                                 int totalPad,
                                                 size_t beginPad) {
-  CHECK(dynamic_cast<GpuMatrix*>(weightGrad.get()));
+  CHECK(dynamic_cast<GpuMatrix*>(&weightGrad));
   CHECK(dynamic_cast<const GpuIVector*>(&sequence));
+  CHECK_EQ(getWidth(), weightGrad.getWidth() * contextLength);
 
-  size_t numSequences = sequence.getSize() - 1;
-  int64_t weightDim = weightGrad->getWidth();
-  int64_t dim = getWidth();
-  CHECK_EQ(dim, weightDim * contextLength);
-
-  real* outGrad = getData();
-  real* wtGrad = weightGrad->getData();
-  const int* starts = sequence.getData();
-
-  hl_context_projection_backward_weight(outGrad,
-                                        starts,
-                                        wtGrad,
-                                        numSequences,
-                                        weightDim,
+  hl_context_projection_backward_weight(getData(),
+                                        sequence.getData(),
+                                        weightGrad.getData(),
+                                        sequence.getSize() - 1,
+                                        weightGrad.getWidth(),
                                         totalPad,
                                         contextLength,
                                         contextStart,
@@ -2371,23 +2344,21 @@ void CpuMatrix::maxSequenceBackward(Matrix& outputGrad,
   }
 }
 
-void CpuMatrix::contextProjectionForward(MatrixPtr input,
-                                         MatrixPtr weight,
+void CpuMatrix::contextProjectionForward(Matrix& input,
+                                         Matrix* weight,
                                          const IVector& sequence,
                                          int contextLength,
                                          int contextStart,
                                          size_t beginPad,
                                          bool isPadding) {
-  CHECK(dynamic_cast<CpuMatrix*>(input.get()));
-  CHECK(dynamic_cast<const CpuIVector*>(&sequence));
-  if (weight) CHECK(dynamic_cast<CpuMatrix*>(weight.get()));
+  auto input_ptr = dynamic_cast<CpuMatrix*>(&input);
+  auto seq_ptr = dynamic_cast<const CpuIVector*>(&sequence);
+  CHECK(input_ptr && seq_ptr);
+  if (weight) CHECK(dynamic_cast<CpuMatrix*>(weight));
+  CHECK_EQ(getWidth(), input_ptr->getWidth() * contextLength);
 
-  size_t numSequences = sequence.getSize() - 1;
-  int64_t inputDim = input->getWidth();
-  int64_t dim = getWidth();
-  CHECK_EQ(dim, inputDim * contextLength);
-  const int* starts = sequence.getData();
-
+  const int* starts = seq_ptr->getData();
+  size_t numSequences = seq_ptr->getSize() - 1;
   for (size_t i = 0; i < numSequences; ++i) {
     for (int j = 0; j < contextLength; ++j) {
       int begin = starts[i] + contextStart + j;
@@ -2400,7 +2371,7 @@ void CpuMatrix::contextProjectionForward(MatrixPtr input,
         MatrixPtr mat = this->subMatrix(starts[i], padSize);
         if (isPadding) {
           MatrixPtr sub = weight->subMatrix(j, padSize);
-          mat->addAtOffset(*sub, j * inputDim);
+          mat->addAtOffset(*sub, j * input_ptr->getWidth());
         }
         dstBegin = starts[i] + padSize;
         begin = starts[i];
@@ -2412,41 +2383,36 @@ void CpuMatrix::contextProjectionForward(MatrixPtr input,
         if (isPadding) {
           MatrixPtr sub =
               weight->subMatrix(beginPad + contextStart + j - padSize, padSize);
-          mat->addAtOffset(*sub, j * inputDim);
+          mat->addAtOffset(*sub, j * input_ptr->getWidth());
         }
         dstEnd = starts[i + 1] - padSize;
         end = starts[i + 1];
       }
       if (end <= begin) continue;
-      MatrixPtr src = input->subMatrix(begin, end - begin);
+      MatrixPtr src = input_ptr->subMatrix(begin, end - begin);
       MatrixPtr dst = this->subMatrix(dstBegin, dstEnd - dstBegin);
-      dst->addAtOffset(*src, j * inputDim);
+      dst->addAtOffset(*src, j * input_ptr->getWidth());
     }
   }
 }
 
-void CpuMatrix::contextProjectionBackward(MatrixPtr inputGrad,
-                                          MatrixPtr weightGrad,
+void CpuMatrix::contextProjectionBackward(Matrix* inputGrad,
+                                          Matrix* weightGrad,
                                           const IVector& sequence,
                                           int contextLength,
                                           int contextStart,
                                           size_t beginPad,
                                           bool isPadding) {
-  if (inputGrad) CHECK(dynamic_cast<CpuMatrix*>(inputGrad.get()));
-  if (weightGrad) CHECK(dynamic_cast<CpuMatrix*>(weightGrad.get()));
+  if (inputGrad) CHECK(dynamic_cast<CpuMatrix*>(inputGrad));
+  if (weightGrad) CHECK(dynamic_cast<CpuMatrix*>(weightGrad));
   CHECK(dynamic_cast<const CpuIVector*>(&sequence));
 
-  int64_t inputDim = 0;
-  int64_t dim = getWidth();
-  size_t numSequences = sequence.getSize() - 1;
-  const int* starts = sequence.getData();
-  if (inputGrad) {
-    inputDim = inputGrad->getWidth();
-  } else {
-    inputDim = weightGrad->getWidth();
-  }
-  CHECK_EQ(dim, inputDim * contextLength);
+  int64_t inputDim = inputGrad ? inputGrad->getWidth()
+                               : weightGrad ? weightGrad->getWidth() : 0;
+  CHECK_EQ(getWidth(), inputDim * contextLength);
 
+  const int* starts = sequence.getData();
+  size_t numSequences = sequence.getSize() - 1;
   for (size_t i = 0; i < numSequences; ++i) {
     for (int j = 0; j < contextLength; ++j) {
       int begin = starts[i] + contextStart + j;
@@ -2630,29 +2596,22 @@ void CpuMatrix::sequenceAvgForward(Matrix& a,
 }
 
 /* this = scaleAB*(a*b) + scaleT*this*/
-void CpuMatrix::mul(const MatrixPtr a,
-                    const MatrixPtr b,
+void CpuMatrix::mul(const Matrix& a,
+                    const Matrix& b,
                     real scaleAB,
                     real scaleT) {
   CHECK(!isTransposed()) << "Not supported";
+  const auto a_ptr = dynamic_cast<const CpuMatrix*>(&a);
+  const auto b_ptr = dynamic_cast<const CpuMatrix*>(&b);
+  const auto a_ptr_s = dynamic_cast<const CpuSparseMatrix*>(&a);
+  const auto b_ptr_s = dynamic_cast<const CpuSparseMatrix*>(&b);
 
-  if (dynamic_cast<CpuMatrix*>(a.get()) && dynamic_cast<CpuMatrix*>(b.get())) {
-    mul(dynamic_cast<CpuMatrix*>(a.get()),
-        dynamic_cast<CpuMatrix*>(b.get()),
-        scaleAB,
-        scaleT);
-  } else if (dynamic_cast<CpuSparseMatrix*>(a.get()) &&
-             dynamic_cast<CpuMatrix*>(b.get())) {
-    mul(dynamic_cast<CpuSparseMatrix*>(a.get()),
-        dynamic_cast<CpuMatrix*>(b.get()),
-        scaleAB,
-        scaleT);
-  } else if (dynamic_cast<CpuMatrix*>(a.get()) &&
-             dynamic_cast<CpuSparseMatrix*>(b.get())) {
-    mul(dynamic_cast<CpuMatrix*>(a.get()),
-        dynamic_cast<CpuSparseMatrix*>(b.get()),
-        scaleAB,
-        scaleT);
+  if (a_ptr && b_ptr) {
+    mul((CpuMatrix*)a_ptr, (CpuMatrix*)b_ptr, scaleAB, scaleT);
+  } else if (a_ptr_s && b_ptr) {
+    mul((CpuSparseMatrix*)a_ptr_s, (CpuMatrix*)b_ptr, scaleAB, scaleT);
+  } else if (a_ptr && b_ptr_s) {
+    mul((CpuMatrix*)a_ptr, (CpuSparseMatrix*)b_ptr_s, scaleAB, scaleT);
   } else {
     LOG(FATAL) << "Not supported";
   }
@@ -3321,7 +3280,7 @@ void CpuMatrix::addColumnVector(const Matrix& b) {
 }
 
 /* this = a*b */
-void CpuMatrix::mul(const MatrixPtr a, const MatrixPtr b) {
+void CpuMatrix::mul(const Matrix& a, const Matrix& b) {
   return mul(a, b, 1.0, 0.0);
 }
 
@@ -3544,21 +3503,20 @@ void CpuMatrix::rowNormalizeL1(Matrix& out) {
 }
 
 /* calulate classification error */
-void CpuMatrix::classificationError(MatrixPtr output, IVectorPtr label) {
-  CHECK(dynamic_cast<CpuMatrix*>(output.get()));
-  CHECK(dynamic_cast<CpuIVector*>(label.get()));
+void CpuMatrix::classificationError(Matrix& output, IVector& label) {
+  CHECK(dynamic_cast<const CpuMatrix*>(&output));
+  CHECK(dynamic_cast<const CpuIVector*>(&label));
 
-  size_t numSamples = getHeight();
-  size_t dim = output->getWidth();
-  CHECK_EQ(label->getSize(), numSamples);
-  CHECK_EQ(output->getHeight(), numSamples);
   CHECK_EQ(getWidth(), (size_t)1);
+  size_t numSamples = getHeight();
+  CHECK_EQ(label.getSize(), numSamples);
+  CHECK_EQ(output.getHeight(), numSamples);
 
-  real* out = output->getData();
-  real* result = getData();
-  int* lbl = label->getData();
-  real maxData;
-  int maxIndex;
+  size_t dim = output.getWidth();
+  real* out = output.getData();
+  int* lbl = label.getData();
+  real maxData = 0.0;
+  int maxIndex = -1;
   for (size_t i = 0; i < numSamples; ++i) {
     CHECK_GE(lbl[i], 0);
     CHECK_LT((size_t)lbl[i], dim);
@@ -3570,7 +3528,7 @@ void CpuMatrix::classificationError(MatrixPtr output, IVectorPtr label) {
         maxData = out[i * dim + j];
       }
     }
-    result[i] = (maxIndex != lbl[i]);
+    getData()[i] = (maxIndex != lbl[i]);
   }
 }
 
