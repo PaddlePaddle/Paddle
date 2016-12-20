@@ -14,21 +14,7 @@ limitations under the License. */
 
 #include "paddle/parameter/Parameter.h"
 #include "PaddleAPI.h"
-
-struct ParameterPrivate {
-  std::shared_ptr<paddle::Parameter> sharedPtr;
-  paddle::Parameter* rawPtr;
-
-  ParameterPrivate() : sharedPtr(nullptr), rawPtr(nullptr) {}
-
-  paddle::Parameter* getPtr() {
-    if (sharedPtr) {
-      return sharedPtr.get();
-    } else {
-      return rawPtr;
-    }
-  }
-};
+#include "PaddleAPIPrivate.h"
 
 Parameter::Parameter() : m(new ParameterPrivate()) {}
 

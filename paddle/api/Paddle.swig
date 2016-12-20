@@ -174,6 +174,7 @@ namespace std {
 %newobject Parameter::getConfig;
 %newobject ParameterOptimizer::create;
 %newobject ParameterOptimizer::needSpecialTraversal;
+%newobject ParameterUpdater::createLocalUpdater;
 
 %feature("director") UpdateCallback;
 %feature("autodoc", 1); // To generate method stub, for code hint in ide

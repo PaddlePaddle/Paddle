@@ -5,6 +5,7 @@ set(API_SOURCES
     Matrix.cpp
     Parameter.cpp
     ParameterOptimizer.cpp
+    ParameterUpdater.cpp
     SequenceGenerator.cpp
     Trainer.cpp
     Util.cpp

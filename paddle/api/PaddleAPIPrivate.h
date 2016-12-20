@@ -11,11 +11,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
+#pragma once
+#include <memory>
+#include "PaddleAPI.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/trainer/TrainerConfigHelper.h"
 
-#pragma once
+#include "paddle/parameter/ParameterUpdaterBase.h"
 
 struct GradientMachinePrivate {
   std::shared_ptr<paddle::GradientMachine> machine;
@@ -63,5 +65,26 @@ struct ArgumentsPrivate {
   template <typename T>
   std::shared_ptr<T>& cast(void* rawPtr) const {
     return *(std::shared_ptr<T>*)(rawPtr);
+  }
+};
+
+struct ParameterUpdaterPrivate {
+  std::unique_ptr<paddle::ParameterUpdater> updater;
+};
+
+struct ParameterPrivate {
+  std::shared_ptr<paddle::Parameter> sharedPtr;
+  paddle::Parameter* rawPtr;  // rawPtr only used in ParameterUpdater,
+                              // in other situation sharedPtr should
+                              // contains value.
+
+  ParameterPrivate() : sharedPtr(nullptr), rawPtr(nullptr) {}
+
+  paddle::Parameter* getPtr() {
+    if (sharedPtr) {
+      return sharedPtr.get();
+    } else {
+      return rawPtr;
+    }
   }
 };

@@ -519,6 +519,7 @@ private:
 
   friend class TrainerConfig;
   friend class ParameterOptimizer;
+  friend class ParameterUpdater;
   friend class Trainer;
 };
 
@@ -557,6 +558,7 @@ private:
   ParameterPrivate* m;
   friend class UpdateCallbackWrapper;
   friend class GradientMachine;
+  friend class ParameterUpdater;
 };
 
 struct ModelConfigPrivate;
@@ -772,6 +774,24 @@ private:
   // Not to use c++ 11 init-list, so we use static var as function default arg.
   static std::vector<int> defaultParamTypes;
   friend class Trainer;
+  friend class ParameterUpdater;
+};
+
+struct ParameterUpdaterPrivate;
+class ParameterUpdater {
+private:
+  ParameterUpdater();
+
+public:
+  static ParameterUpdater* createLocalUpdater(OptimizationConfig* config);
+  ~ParameterUpdater();
+
+  void init(const GradientMachine& gm);
+
+  void startPass();
+
+private:
+  ParameterUpdaterPrivate* m;
 };
 
 struct TrainerPrivate;
