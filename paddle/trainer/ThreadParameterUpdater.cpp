@@ -32,7 +32,7 @@ SgdThreadUpdater::SgdThreadUpdater(const OptimizationConfig& optConfig)
   }
 }
 
-void SgdThreadUpdater::init(std::vector<ParameterPtr>& parameters) {
+void SgdThreadUpdater::init(const std::vector<ParameterPtr>& parameters) {
   ParameterUpdater::init(parameters);
 
   // calc max parameter id

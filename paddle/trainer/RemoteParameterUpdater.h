@@ -67,7 +67,7 @@ public:
   /**
    * initialize the internal parameter client and itself.
    */
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
   /**
    * @brief start batch
    *
@@ -274,7 +274,7 @@ public:
   }
 
   /// initialization
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
 
   /// stateful batch control
   virtual PassType startBatch(int64_t batchSize);
@@ -360,7 +360,7 @@ public:
   }
 
   /// initialization of dense and sparse updaters
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
 };
 
 class ParameterUpdaterCreators {
