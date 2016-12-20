@@ -717,6 +717,13 @@ public:
       const std::vector<int>& parameterTypes = defaultParamTypes);
 
   /**
+   * @brief finish
+   */
+  void finish();
+
+  void start();
+
+  /**
    * The forward stage of GradientMachine.
    *
    * @note  the outArgs could be zero length arguemnts.
@@ -789,6 +796,8 @@ public:
   void init(const GradientMachine& gm);
 
   void startPass();
+
+  void finishPass();
 
 private:
   ParameterUpdaterPrivate* m;

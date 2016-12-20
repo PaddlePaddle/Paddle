@@ -30,7 +30,12 @@ def main():
     updater = api.ParameterUpdater.createLocalUpdater(opt_config)
     assert isinstance(updater, api.ParameterUpdater)
     updater.init(m)
-    updater.startPass()
+    m.start()
+
+    for _ in xrange(100):
+        updater.startPass()
+
+    m.finish()
 
 
 if __name__ == '__main__':

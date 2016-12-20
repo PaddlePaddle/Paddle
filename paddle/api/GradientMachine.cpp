@@ -64,6 +64,10 @@ GradientMachine* GradientMachine::createByModelConfig(
   return GradientMachine::createFromPaddleModelPtr(confPtr, mode, types);
 }
 
+void GradientMachine::start() { m->machine->start(); }
+
+void GradientMachine::finish() { m->machine->finish(); }
+
 void GradientMachine::forward(const Arguments& inArgs,
                               Arguments* outArgs,
                               PassType passType) {
