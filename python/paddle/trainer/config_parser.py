@@ -1240,7 +1240,8 @@ def Evaluator(
         dict_file=None,
         result_file=None,
         num_results=None,
-        delimited=None, ):
+        delimited=None,
+        excluded_chunk_types=None, ):
     evaluator = g_config.model_config.evaluators.add()
     evaluator.type = type
     evaluator.name = MakeLayerNameInSubmodel(name)
@@ -1268,6 +1269,9 @@ def Evaluator(
         evaluator.num_results = num_results
     if delimited is not None:
         evaluator.delimited = delimited
+
+    if excluded_chunk_types:
+        evaluator.excluded_chunk_types.extend(excluded_chunk_types)
 
 
 class LayerBase(object):

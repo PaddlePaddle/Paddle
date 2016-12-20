@@ -109,10 +109,9 @@ void MultiNetwork::onPassEnd() {
   }
 }
 
-void MultiNetwork::start(const TrainerConfig& config,
-                         DataProviderPtr dataProvider) {
+void MultiNetwork::start() {
   for (auto& subNetwork : subNetworks_) {
-    subNetwork->start(config, dataProvider);
+    subNetwork->start();
   }
 }
 

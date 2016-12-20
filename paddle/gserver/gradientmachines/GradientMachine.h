@@ -212,11 +212,7 @@ public:
    * @note    This function will only been implemented and used in a
    *          multithreaded environment.
    */
-  virtual void start(const TrainerConfig& config,
-                     DataProviderPtr dataProvider) {
-    (void)config;
-    (void)dataProvider;
-  }
+  virtual void start() {}
 
   /**
    * @brief   check  each work-thread whether is failed/error/finish,
