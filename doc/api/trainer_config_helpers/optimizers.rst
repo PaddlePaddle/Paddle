@@ -1,3 +1,5 @@
+..  _api_trainer_config_helpers_optimizers:
+
 ==========
 Optimizers
 ==========
@@ -49,6 +51,8 @@ RMSPropOptimizer
 ..  automodule:: paddle.trainer_config_helpers.optimizers
     :members: RMSPropOptimizer
     :noindex:
+
+..  _api_trainer_config_helpers_optimizers_settings:
 
 settings
 ========

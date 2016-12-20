@@ -1,3 +1,5 @@
+..  _api_pydataprovider2:
+
 PyDataProvider2的使用
 =====================
 

@@ -187,6 +187,8 @@ get_output_layer
 Mixed Layer
 ===========
 
+..  _api_trainer_config_helpers_layers_mixed_layer:
+
 mixed_layer
 -----------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -255,11 +257,15 @@ pooling_layer
     :members: pooling_layer
     :noindex:
 
+..  _api_trainer_config_helpers_layers_last_seq:
+
 last_seq
 --------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: last_seq
     :noindex:
+
+..  _api_trainer_config_helpers_layers_first_seq:
 
 first_seq
 ---------
@@ -281,6 +287,8 @@ block_expand_layer
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: block_expand_layer
     :noindex:
+
+..  _api_trainer_config_helpers_layers_expand_layer:
 
 expand_layer
 ------------
@@ -373,6 +381,8 @@ sampling_id_layer
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: sampling_id_layer
     :noindex:
+
+..  _api_trainer_config_helpers_layers_cost_layers:
 
 Cost Layers
 ===========
