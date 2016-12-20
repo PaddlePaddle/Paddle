@@ -1,3 +1,5 @@
+..  _api_trainer_config_helpers_layers:
+
 ======
 Layers
 ======
@@ -20,6 +22,8 @@ LayerOutput
 Data layer
 ===========
 
+..  _api_trainer_config_helpers_layers_data_layer:
+
 data_layer
 ----------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -28,6 +32,8 @@ data_layer
 
 Fully Connected Layers
 ======================
+
+..  _api_trainer_config_helpers_layers_fc_layer:
 
 fc_layer
 --------
@@ -67,6 +73,8 @@ img_conv_layer
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: img_conv_layer
     :noindex:
+
+..  _api_trainer_config_helpers_layers_context_projection:
 
 context_projection 
 ------------------
@@ -179,11 +187,15 @@ get_output_layer
 Mixed Layer
 ===========
 
+..  _api_trainer_config_helpers_layers_mixed_layer:
+
 mixed_layer
 -----------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: mixed_layer
     :noindex:
+
+..  _api_trainer_config_helpers_layers_embedding_layer:
 
 embedding_layer
 ---------------
@@ -237,17 +249,23 @@ trans_full_matrix_projection
 Aggregate Layers
 ================
 
+..  _api_trainer_config_helpers_layers_pooling_layer:
+
 pooling_layer
 -------------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: pooling_layer
     :noindex:
 
+..  _api_trainer_config_helpers_layers_last_seq:
+
 last_seq
 --------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: last_seq
     :noindex:
+
+..  _api_trainer_config_helpers_layers_first_seq:
 
 first_seq
 ---------
@@ -269,6 +287,8 @@ block_expand_layer
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: block_expand_layer
     :noindex:
+
+..  _api_trainer_config_helpers_layers_expand_layer:
 
 expand_layer
 ------------
@@ -333,6 +353,8 @@ tensor_layer
     :members: tensor_layer
     :noindex:
 
+..  _api_trainer_config_helpers_layers_cos_sim:
+
 cos_sim
 -------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -359,6 +381,8 @@ sampling_id_layer
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: sampling_id_layer
     :noindex:
+
+..  _api_trainer_config_helpers_layers_cost_layers:
 
 Cost Layers
 ===========

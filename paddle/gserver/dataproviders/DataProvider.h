@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,28 +14,28 @@ limitations under the License. */
 
 #pragma once
 
-#include <vector>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fstream>
+#include <iostream>
 #include <memory>
 #include <mutex>
-#include <iostream>
-#include <fstream>
-#include <stdint.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <vector>
 
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/Queue.h"
-#include "paddle/utils/Locks.h"
-#include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/TypeDefs.h"
+#include "DataConfig.pb.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
-#include "paddle/utils/Util.h"
 #include "paddle/math/Vector.h"
-#include "DataConfig.pb.h"
-#include "paddle/utils/ClassRegistrar.h"
 #include "paddle/parameter/Argument.h"
+#include "paddle/utils/ClassRegistrar.h"
+#include "paddle/utils/Locks.h"
+#include "paddle/utils/Logging.h"
+#include "paddle/utils/Queue.h"
+#include "paddle/utils/ThreadLocal.h"
+#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 /**
@@ -271,7 +271,9 @@ public:
   void finishAsyncLoad() {
     stopping_ = true;
     taskReadySem_.post();
-    asyncLoader_->join();
+    if (asyncLoader_) {
+      asyncLoader_->join();
+    }
   }
 
   void setPending(bool pending) { pending_ = pending; }

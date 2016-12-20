@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,11 +27,6 @@ Arguments* Arguments::createArguments(size_t slotNum) {
 
 void Arguments::resize(size_t slotNum) { m->outputs.resize(slotNum); }
 
-Matrix* Arguments::getSlotValue(size_t idx) const throw(RangeError) {
-  auto& a = m->getArg(idx);
-  return Matrix::createByPaddleMatrixPtr(&a.value);
-}
-
 Arguments::Arguments() : m(new ArgumentsPrivate()) {}
 
 Arguments::~Arguments() { delete m; }
@@ -41,6 +36,16 @@ Arguments* Arguments::createByPaddleArgumentVector(void* ptr) {
   auto args = new Arguments();
   args->m->outputs = *p;
   return args;
+}
+
+Matrix* Arguments::getSlotValue(size_t idx) const throw(RangeError) {
+  auto& a = m->getArg(idx);
+  return Matrix::createByPaddleMatrixPtr(&a.value);
+}
+
+Matrix* Arguments::getSlotGrad(size_t idx) const throw(RangeError) {
+  auto& a = m->getArg(idx);
+  return Matrix::createByPaddleMatrixPtr(&a.grad);
 }
 
 IVector* Arguments::getSlotIds(size_t idx) const throw(RangeError) {
@@ -56,6 +61,11 @@ Matrix* Arguments::getSlotIn(size_t idx) const throw(RangeError) {
 void Arguments::setSlotValue(size_t idx, Matrix* mat) throw(RangeError) {
   auto& a = m->getArg(idx);
   a.value = m->cast<paddle::Matrix>(mat->getSharedPtr());
+}
+
+void Arguments::setSlotGrad(size_t idx, Matrix* mat) throw(RangeError) {
+  auto& a = m->getArg(idx);
+  a.grad = m->cast<paddle::Matrix>(mat->getSharedPtr());
 }
 
 void Arguments::setSlotIn(size_t idx, Matrix* mat) throw(RangeError) {

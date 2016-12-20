@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "LstmLayer.h"
-#include "paddle/math/Matrix.h"
 #include "paddle/math/BaseMatrix.h"
+#include "paddle/math/Matrix.h"
 
 namespace paddle {
 
@@ -318,7 +318,7 @@ void MDLstmLayer::forward(PassType passType) {
   CHECK_EQ(starts[numSequences], batchSize);
 
   int* dimsData = input.cpuSequenceDims->getData();
-  CHECK_EQ(int(input.cpuSequenceDims->getSize()), numDims_ * numSequences);
+  CHECK_EQ(int(input.cpuSequenceDims->getSize()), numDims_* numSequences);
 
   for (int i = 0; i < numSequences; i++) {
     std::vector<int> dims;

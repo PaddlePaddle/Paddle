@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -223,9 +223,9 @@ typedef struct {
 
 #ifdef __NVCC__
 
-#include "paddle/utils/Logging.h"
-#include "hl_cuda.h"
 #include "cuda_runtime.h"
+#include "hl_cuda.h"
+#include "paddle/utils/Logging.h"
 
 extern __thread bool g_sync_flag;
 extern __thread cudaStream_t default_stream;

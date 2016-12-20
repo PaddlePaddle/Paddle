@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -99,8 +99,8 @@ public:
 
     if (config_.neg_sampling_dist_size()) {
       CHECK_EQ(numClasses_, config_.neg_sampling_dist_size());
-      sampler_.reset(new MultinomialSampler(config_.neg_sampling_dist().data(),
-                                            numClasses_));
+      sampler_.reset(MultinomialSampler::create(
+          config_.neg_sampling_dist().data(), numClasses_));
     }
 
     return true;

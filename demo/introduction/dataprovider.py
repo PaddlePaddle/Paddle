@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ import random
 
 
 # define data types of input: 2 real numbers
-@provider(input_types=[dense_vector(1), dense_vector(1)], use_seq=False)
+@provider(
+    input_types={'x': dense_vector(1),
+                 'y': dense_vector(1)}, use_seq=False)
 def process(settings, input_file):
     for i in xrange(2000):
         x = random.random()
-        yield [x], [2 * x + 0.3]
+        yield {'x': [x], 'y': [2 * x + 0.3]}

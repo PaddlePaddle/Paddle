@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -225,6 +225,8 @@ void Argument::resizeAndCopyFrom(const Argument& src,
   }
   resizeAndCopy(udp, src.udp, useGpu, stream);
   resizeAndCopy(strs, src.strs, useGpu, stream);
+  frameWidth = src.frameWidth;
+  frameHeight = src.frameHeight;
 }
 
 int32_t Argument::resizeAndCopyFrom(const Argument& src,
@@ -243,6 +245,8 @@ int32_t Argument::resizeAndCopyFrom(const Argument& src,
                                     bool useGpu,
                                     hl_stream_t stream) {
   dataId = src.dataId;
+  frameWidth = src.frameWidth;
+  frameHeight = src.frameHeight;
 
   if (!src.sequenceStartPositions) {
     // non-sequence input, copy samples directly
@@ -549,11 +553,10 @@ void Argument::getSeqInfo(std::vector<SeqInfo>* seqInfo) const {
     }
     seqInfo->push_back(info);
   }
-  std::sort(seqInfo->begin(),
-            seqInfo->end(),
-            [](const SeqInfo& a, const SeqInfo& b) {
-              return a.topLevelLength > b.topLevelLength;
-            });
+  std::sort(
+      seqInfo->begin(), seqInfo->end(), [](const SeqInfo& a, const SeqInfo& b) {
+        return a.topLevelLength > b.topLevelLength;
+      });
 }
 
 void Argument::checkSubset() const {

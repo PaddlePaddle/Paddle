@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,25 +14,25 @@ limitations under the License. */
 
 #pragma once
 
-#include <algorithm>
-#include <cmath>
-#include <string>
-#include <vector>
-#include <memory>
-#include <thread>
-#include <unordered_map>
-#include <mutex>
-#include <functional>
 #include <sys/syscall.h>  // for syscall()
 #include <sys/types.h>
+#include <algorithm>
+#include <cmath>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
 
 #include "CommandLineParser.h"
+#include "DisableCopy.h"
 #include "Logging.h"
 #include "TrainerConfig.pb.h"
-#include "DisableCopy.h"
 
-#include "TypeDefs.h"
 #include "Flags.h"
+#include "TypeDefs.h"
 #include "hl_gpu.h"
 
 /**

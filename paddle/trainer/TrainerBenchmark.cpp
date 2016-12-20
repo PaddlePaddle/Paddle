@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@ limitations under the License. */
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
 
-P_DECLARE_int32(test_period);
+DECLARE_int32(test_period);
 
-P_DEFINE_bool(feed_data, false, "Wether to read data from DataProvider.");
+DEFINE_bool(feed_data, false, "Wether to read data from DataProvider.");
 
 namespace paddle {
 

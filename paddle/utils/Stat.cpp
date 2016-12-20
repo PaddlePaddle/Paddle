@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Stat.h"
-#include "Util.h"
-#include <iomanip>
 #include <algorithm>
+#include <iomanip>
+#include "Util.h"
 
 namespace paddle {
 
@@ -207,10 +207,9 @@ static unsigned g_profileCount = 0;
 static std::recursive_mutex g_profileMutex;
 
 GpuProfiler::GpuProfiler(std::string statName, std::string info)
-  : guard_(g_profileMutex)  {
+    : guard_(g_profileMutex) {
   if (++g_profileCount == 1) {
-    LOG(INFO) << "Enable GPU Profiler Stat: ["
-              << statName << "] " << info;
+    LOG(INFO) << "Enable GPU Profiler Stat: [" << statName << "] " << info;
     hl_profiler_start();
   }
 }
