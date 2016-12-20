@@ -49,7 +49,7 @@ public:
   // Use the finishPass() function of the base optimizer.
   virtual bool finishPass(real cost);
 
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
   virtual PassType startBatch(int64_t batchSize);
   // Call finishBatch for each optimizer.
   virtual void finishBatch(real cost);
