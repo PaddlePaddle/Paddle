@@ -72,7 +72,7 @@ void calcGradient(ComData& data, const string configFile) {
   CHECK(dataBatch.getSize()) << "No data from data provider";
   vector<Argument>& inArgs = dataBatch.getStreams();
 
-  trainer.getGradientMachine()->start(trainer.getConfig(), nullptr);
+  trainer.getGradientMachine()->start();
   trainer.getGradientMachine()->forwardBackward(
       inArgs, &data.outArgs, PASS_TRAIN);
 

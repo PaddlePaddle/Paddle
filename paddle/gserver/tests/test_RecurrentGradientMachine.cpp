@@ -28,7 +28,7 @@ class TrainerForTest : public paddle::Trainer {
 public:
   void startTrain() {
     GradientMachine& gm = *this->trainerInternal_.getGradientMachine();
-    gm.start(this->getConfig(), dataProvider_);
+    gm.start();
   }
 
   void finishTrain() {

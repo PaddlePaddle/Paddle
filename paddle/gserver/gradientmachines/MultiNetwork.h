@@ -54,7 +54,7 @@ public:
     return subNetworks_;
   }
 
-  virtual void start(const TrainerConfig& config, DataProviderPtr dataProvider);
+  virtual void start();
 
   virtual void finish();
 
