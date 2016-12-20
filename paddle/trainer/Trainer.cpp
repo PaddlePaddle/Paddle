@@ -537,7 +537,7 @@ void Trainer::trainOnePassBatch(int passId) {
 
   trainerInternal_.getGradientMachine()->onPassEnd();
 
-  bool accepted = trainerInternal_.getParameterUpdater()->finishPass(cost);
+  bool accepted = trainerInternal_.getParameterUpdater()->finishPass();
 
   globalStat.setThreadInfo(true);
   globalStat.printAllStatus();
