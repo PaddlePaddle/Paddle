@@ -44,8 +44,7 @@ The general development workflow with Docker and Bazel is as follows:
       cd paddle
       docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile .
 
-   Apt-get source errors may occur when building paddle docker image.
-   **You can specify the UBUNTU MIRROR with** :code:`--build-arg UBUNTU_MIRROR` **like the example below.**
+   Sometimes docker build might suffer from a slow network connection to the official Ubuntu apt-source servers. In such case, we can specify an apt-source mirror server that is geologically nearer to us. In the following example, we specified an apt-source server that responds fast in China.You can specify the UBUNTU MIRROR with :code:`--build-arg UBUNTU_MIRROR` like the example below.
 
    .. code-block:: bash
 
