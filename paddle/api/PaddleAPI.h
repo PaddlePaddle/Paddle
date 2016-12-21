@@ -799,6 +799,12 @@ public:
 
   void finishPass();
 
+  PassType startBatch(int64_t batchSize);
+
+  void finishBatch(float cost);
+
+  void update(Parameter* param);
+
 private:
   ParameterUpdaterPrivate* m;
 };

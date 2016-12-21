@@ -35,3 +35,16 @@ void ParameterUpdater::init(const GradientMachine &gm) {
 void ParameterUpdater::startPass() { m->updater->startPass(); }
 
 void ParameterUpdater::finishPass() { m->updater->finishPass(); }
+
+PassType ParameterUpdater::startBatch(int64_t batchSize) {
+  return m->updater->startBatch(batchSize);
+}
+
+void ParameterUpdater::finishBatch(float cost) {
+  m->updater->finishBatch(cost);
+}
+
+void ParameterUpdater::update(Parameter *param) {
+  auto paddleParam = param->m->getPtr();
+  m->updater->update(paddleParam);
+}
