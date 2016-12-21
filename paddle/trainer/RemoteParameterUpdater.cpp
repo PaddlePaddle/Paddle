@@ -309,7 +309,7 @@ void RemoteParameterUpdater::startPass() {
   }
 }
 
-bool RemoteParameterUpdater::finishPass(real cost) {
+bool RemoteParameterUpdater::finishPass() {
   if (localUpdater_) {
     localUpdater_->finishPass();
   }
@@ -712,7 +712,7 @@ void SparseRemoteParameterUpdater::startPass() {
   }
 }
 
-bool SparseRemoteParameterUpdater::finishPass(real cost) {
+bool SparseRemoteParameterUpdater::finishPass() {
   if (config_.algorithm() == TrainAlgorithm::SGD) {
     parameterClient_->waitPassFinish();
   } else {
