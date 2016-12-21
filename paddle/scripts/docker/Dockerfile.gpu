@@ -2,6 +2,8 @@ FROM nvidia/cuda:7.5-cudnn5-devel-ubuntu14.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG UBUNTU_MIRROR
+RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
 RUN apt-get update \
     && apt-get install -y cmake libprotobuf-dev protobuf-compiler git \
     libgoogle-glog-dev libgflags-dev libgtest-dev \

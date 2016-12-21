@@ -44,7 +44,7 @@ RemoteParameterUpdater::RemoteParameterUpdater(
   addParameterType(PARAMETER_MOMENTUM);
 }
 
-void RemoteParameterUpdater::init(std::vector<ParameterPtr>& parameters) {
+void RemoteParameterUpdater::init(const std::vector<ParameterPtr>& parameters) {
   ParameterUpdater::init(parameters);
 
   if (localUpdater_) {
@@ -595,7 +595,8 @@ SparseRemoteParameterUpdater::SparseRemoteParameterUpdater(
       testing_(testing),
       useApplyInPserver_(false) {}
 
-void SparseRemoteParameterUpdater::init(std::vector<ParameterPtr>& parameters) {
+void SparseRemoteParameterUpdater::init(
+    const std::vector<ParameterPtr>& parameters) {
   ParameterUpdater::init(parameters);
 
   parameterClient_.reset(new ParameterClient2(
@@ -809,7 +810,7 @@ void SparseRemoteParameterUpdater::saveParametersRemote(
 }
 
 void SparseRemoteParameterUpdaterComposite::init(
-    std::vector<ParameterPtr>& parameters) {
+    const std::vector<ParameterPtr>& parameters) {
   parameters_ = parameters;
 
   std::vector<ParameterPtr> parametersArray[NUMBER_UPDATERS];

@@ -571,49 +571,48 @@ void GpuSparseMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   hl_stream_synchronize(stream);
 }
 
-void GpuSparseMatrix::mul(const GpuMatrixPtr a,
-                          const GpuMatrixPtr b,
+void GpuSparseMatrix::mul(const GpuMatrix& a,
+                          const GpuMatrix& b,
                           real scaleAB,
                           real scaleT) {
-  CHECK(a->useGpu_ && b->useGpu_) << "type not match";
+  CHECK(a.useGpu_ && b.useGpu_) << "type not match";
   CHECK(!trans_) << "trans not supported";
-  real* A_d = a->getData();
-  real* B_d = b->getData();
+  real* A_d = (real*)a.getData();
+  real* B_d = (real*)b.getData();
   hl_sparse_matrix_s C_d = sMatrix_.get();
-  hl_trans_op_t a_trans = a->trans_ ? HPPL_OP_T : HPPL_OP_N;
-  hl_trans_op_t b_trans = b->trans_ ? HPPL_OP_T : HPPL_OP_N;
+  hl_trans_op_t a_trans = a.trans_ ? HPPL_OP_T : HPPL_OP_N;
+  hl_trans_op_t b_trans = b.trans_ ? HPPL_OP_T : HPPL_OP_N;
 
-  if (!a->trans_ && !b->trans_) {
-    CHECK(height_ == a->getHeight());
-    CHECK(width_ == b->getWidth());
-    CHECK(a->getWidth() == b->getHeight());
-  } else if (a->trans_ && !b->trans_) {
-    CHECK(height_ == a->getWidth());
-    CHECK(width_ == b->getWidth());
-    CHECK(a->getHeight() == b->getHeight());
-  } else if (!a->trans_ && b->trans_) {
-    CHECK(height_ == a->getHeight());
-    CHECK(width_ == b->getHeight());
-    CHECK(a->getWidth() == b->getWidth());
+  if (!a.trans_ && !b.trans_) {
+    CHECK(height_ == a.getHeight());
+    CHECK(width_ == b.getWidth());
+    CHECK(a.getWidth() == b.getHeight());
+  } else if (a.trans_ && !b.trans_) {
+    CHECK(height_ == a.getWidth());
+    CHECK(width_ == b.getWidth());
+    CHECK(a.getHeight() == b.getHeight());
+  } else if (!a.trans_ && b.trans_) {
+    CHECK(height_ == a.getHeight());
+    CHECK(width_ == b.getHeight());
+    CHECK(a.getWidth() == b.getWidth());
   } else {
     LOG(INFO) << "Not support";
   }
   int dimM = height_;
   int dimN = width_;
-  int dimK = !b->trans_ ? b->getHeight() : b->getWidth();
+  int dimK = !b.trans_ ? b.getHeight() : b.getWidth();
   hl_sparse_matrix_mul(
       A_d, a_trans, B_d, b_trans, C_d, dimM, dimN, dimK, scaleAB, scaleT);
 }
 
-void GpuSparseMatrix::mul(const MatrixPtr a,
-                          const MatrixPtr b,
+void GpuSparseMatrix::mul(const Matrix& a,
+                          const Matrix& b,
                           real scaleAB,
                           real scaleT) {
-  if (std::dynamic_pointer_cast<GpuMatrix>(a) &&
-      std::dynamic_pointer_cast<GpuMatrix>(b)) {
-    GpuMatrixPtr a_ptr = std::dynamic_pointer_cast<GpuMatrix>(a);
-    GpuMatrixPtr b_ptr = std::dynamic_pointer_cast<GpuMatrix>(b);
-    mul(a_ptr, b_ptr, scaleAB, scaleT);
+  const auto a_ptr = dynamic_cast<const GpuMatrix*>(&a);
+  const auto b_ptr = dynamic_cast<const GpuMatrix*>(&b);
+  if (a_ptr && b_ptr) {
+    mul(*a_ptr, *b_ptr, scaleAB, scaleT);
   } else {
     LOG(FATAL) << "not supported";
   }

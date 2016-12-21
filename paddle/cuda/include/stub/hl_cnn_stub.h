@@ -117,30 +117,6 @@ inline void hl_avgpool_backward(const int frameCnt,
                                 real* backGrad,
                                 const int outStride) {}
 
-inline void hl_CMRNorm_forward(size_t frameCnt,
-                               const real* in,
-                               real* scale,
-                               real* out,
-                               size_t channels,
-                               size_t height,
-                               size_t width,
-                               size_t sizeX,
-                               real alpha,
-                               real beta) {}
-
-inline void hl_CMRNorm_backward(size_t frameCnt,
-                                const real* inV,
-                                const real* scale,
-                                const real* outV,
-                                const real* outDiff,
-                                real* inDiff,
-                                size_t channels,
-                                size_t height,
-                                size_t width,
-                                size_t sizeX,
-                                real alpha,
-                                real beta) {}
-
 inline void hl_bilinear_forward(const real* inData,
                                 const size_t inImgH,
                                 const size_t inImgW,

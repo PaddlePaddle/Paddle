@@ -113,7 +113,7 @@ void ConvexCombinationLayer::forward(PassType passType) {
     tmpRow0->setData(inV0->getData() + i * weightDim);
     tmpRow1->setData(outV->getData() + i * dataDim);
 
-    tmpRow1->mul(tmpRow0, tmpMtx0, 1, 0);
+    tmpRow1->mul(*tmpRow0, *tmpMtx0, 1, 0);
   }
 }
 
@@ -136,7 +136,7 @@ void ConvexCombinationLayer::backward(const UpdateCallback& callback) {
       tmpRow1->setData(outG->getData() + i * dataDim);
       tmpMtx0->setData(inV1->getData() + i * weightDim * dataDim);
 
-      tmpRow0->mul(tmpRow1, tmpMtx0->getTranspose(), 1, 1);
+      tmpRow0->mul(*tmpRow1, *(tmpMtx0->getTranspose()), 1, 1);
     }
   }
 
@@ -146,7 +146,7 @@ void ConvexCombinationLayer::backward(const UpdateCallback& callback) {
       tmpRow1->setData(outG->getData() + i * dataDim);
       tmpMtx0->setData(inG1->getData() + i * weightDim * dataDim);
 
-      tmpMtx0->mul(tmpRow0->getTranspose(), tmpRow1, 1, 1);
+      tmpMtx0->mul(*(tmpRow0->getTranspose()), *tmpRow1, 1, 1);
     }
   }
 }

@@ -1021,11 +1021,10 @@ void testNormLayer(const string& normType, bool trans, bool useGpu) {
   testLayerGrad(config, "norm", 100, trans, useGpu);
 }
 
-#ifndef PADDLE_ONLY_CPU
 TEST(Layer, NormLayer) {
   testNormLayer("cmrnorm-projection", /* trans= */ false, /* useGpu= */ true);
+  testNormLayer("cmrnorm-projection", /* trans= */ false, /* useGpu= */ false);
 }
-#endif
 
 void setPoolConfig(TestConfig* config,
                    PoolConfig* pool,

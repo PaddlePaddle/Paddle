@@ -32,7 +32,7 @@ public:
     parameterTypes_.push_back(type);
   }
 
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
 
   // called by Trainer when starting a new pass
   virtual void startPass() {}
@@ -105,7 +105,7 @@ public:
   ParameterUpdaterComposite() {}
   virtual ~ParameterUpdaterComposite() {}
 
-  virtual void init(std::vector<ParameterPtr>& parameters) = 0;
+  virtual void init(const std::vector<ParameterPtr>& parameters) = 0;
 
   virtual void startPass() {
     syncThreadPool_->execPlusOwner(
