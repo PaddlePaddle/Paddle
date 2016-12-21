@@ -193,7 +193,7 @@ public:
 
   virtual void finish();
 
-  virtual Evaluator* makeEvaluator();
+  virtual Evaluator* makeEvaluator() const;
 
   virtual void eval(Evaluator* evaluator) const;
 

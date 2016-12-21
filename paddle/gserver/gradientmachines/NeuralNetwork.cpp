@@ -348,7 +348,7 @@ protected:
   std::vector<std::unique_ptr<Evaluator>> evaluators_;
 };
 
-Evaluator* NeuralNetwork::makeEvaluator() {
+Evaluator* NeuralNetwork::makeEvaluator() const {
   CombinedEvaluator* combinedEvaluator = new CombinedEvaluator();
   auto subModelConfig = std::find_if(config_.sub_models().begin(),
                                      config_.sub_models().end(),

@@ -181,7 +181,7 @@ public:
   /**
    * Create an evaluator which can be used for eval()
    */
-  virtual Evaluator* makeEvaluator() = 0;
+  virtual Evaluator* makeEvaluator() const = 0;
 
   /**
    * evaluate using the given evaluator

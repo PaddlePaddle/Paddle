@@ -327,7 +327,7 @@ void MultiGradientMachine::finish() {
   }
 }
 
-Evaluator* MultiGradientMachine::makeEvaluator() {
+Evaluator* MultiGradientMachine::makeEvaluator() const {
   return threads_[0]->getGradientMachine()->makeEvaluator();
 }
 

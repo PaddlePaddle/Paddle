@@ -96,7 +96,7 @@ public:
 
   virtual void onPassEnd();
 
-  virtual Evaluator* makeEvaluator();
+  virtual Evaluator* makeEvaluator() const;
 
   virtual void eval(Evaluator* evaluator) const;
   virtual void resetState();
