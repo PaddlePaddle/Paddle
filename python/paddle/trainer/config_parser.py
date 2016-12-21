@@ -499,11 +499,15 @@ class Input(Cfg):
             is_shared=None,
             update_hooks=None,
             input_layer_argument=None,
-            not_make_layer_name_in_submodel=None, ):
+            make_layer_name_in_submodel=True, ):
+        """
+        @param make_layer_name_in_submodel True by defalut, you might need to
+        set it carefully when adding Input in config_parser.py.
+        """
         self.add_keys(locals())
-        self.input_layer_name = MakeLayerNameInSubmodel(input_layer_name)
-        if not_make_layer_name_in_submodel:
-            self.input_layer_name = input_layer_name
+        self.input_layer_name = MakeLayerNameInSubmodel(
+            input_layer_name
+        ) if make_layer_name_in_submodel else input_layer_name
 
 
 # Define a projection for iexed layer
@@ -1852,7 +1856,7 @@ class BatchNormLayer(LayerBase):
                     initial_mean=0.0,
                     is_static=True,
                     is_shared=is_shared,
-                    not_make_layer_name_in_submodel=True, ))
+                    make_layer_name_in_submodel=False, ))
 
         parallel_nn = bool(int(g_command_config_args.get("parallel_nn", 0)))
         cudnn_version = int(g_command_config_args.get("cudnn_version", 0))
