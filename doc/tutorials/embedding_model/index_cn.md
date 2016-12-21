@@ -46,7 +46,7 @@
 
 - `--preModel PREMODEL`: 预训练词向量字典模型的路径
 - `--preDict PREDICT`:  预训练模型使用的字典的路径
-- `--usrModel USRMODEL`: （抽取出的新词表的保存路径
+- `--usrModel USRMODEL`: 抽取出的新词表的保存路径
 - `--usrDict USRDICT`: 用户指定新的字典的路径，用于构成新的词表
 - `-d DIM`: 参数（词向量）的维度
 
