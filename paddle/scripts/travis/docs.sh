@@ -9,12 +9,9 @@ make paddle_docs paddle_docs_cn
 
 # check websites for broken links
 set +e
-linkchecker doc/cn/html/index.html > doc_cn.out
-linkchecker doc/en/html/index.html > doc_en.out
-for i in doc_cn.out doc_en.out; do
-  grep " 0 errors found" $i
+for i in cn en; do
+  linkchecker doc/$i/html/index.html
   if [ $? -ne 0 ]; then
-    cat $i
     exit 1
   fi
 done
