@@ -9,10 +9,28 @@ The user api could be simpler and carefully designed.
 import py_paddle.swig_paddle as api
 from py_paddle import DataProviderConverter
 import paddle.trainer.PyDataProvider2 as dp
-import paddle.trainer.config_parser
 import numpy as np
 import random
 from mnist_util import read_from_mnist
+
+import paddle.trainer_config_helpers.config_parser as config_parser
+from paddle.trainer_config_helpers import *
+
+
+def optimizer_config():
+    settings(
+        learning_rate=1e-4, learning_method=AdamOptimizer(), batch_size=1000)
+
+
+def network_config():
+    imgs = data_layer(name='pixel', size=784)
+    hidden1 = fc_layer(input=imgs, size=200)
+    hidden2 = fc_layer(input=hidden1, size=200)
+    inference = fc_layer(input=hidden2, size=10, act=SoftmaxActivation())
+    cost = classification_cost(
+        input=inference, label=data_layer(
+            name='label', size=10))
+    outputs(cost)
 
 
 def init_parameter(network):
@@ -54,20 +72,20 @@ def input_order_converter(generator):
 
 def main():
     api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
-    config = paddle.trainer.config_parser.parse_config(
-        'simple_mnist_network.py', '')
 
     # get enable_types for each optimizer.
     # enable_types = [value, gradient, momentum, etc]
     # For each optimizer(SGD, Adam), GradientMachine should enable different
     # buffers.
-    opt_config = api.OptimizationConfig.createFromProto(config.opt_config)
+    opt_config_proto = config_parser.parse_optimizer_config(optimizer_config)
+    opt_config = api.OptimizationConfig.createFromProto(opt_config_proto)
     _temp_optimizer_ = api.ParameterOptimizer.create(opt_config)
     enable_types = _temp_optimizer_.getParameterTypes()
 
     # Create Simple Gradient Machine.
+    model_config = config_parser.parse_network_config(network_config)
     m = api.GradientMachine.createFromConfigProto(
-        config.model_config, api.CREATE_MODE_NORMAL, enable_types)
+        model_config, api.CREATE_MODE_NORMAL, enable_types)
 
     # This type check is not useful. Only enable type hint in IDE.
     # Such as PyCharm
