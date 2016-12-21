@@ -66,6 +66,7 @@ struct InputDef {
   bool isStatic;
   std::vector<int> labelInitValue;
   std::vector<int> labelSeqStartPositions;
+
   InputDef(InputType type, string nameIn, size_t dimIn, size_t sizeIn) {
     inputType = type;
     name = nameIn;
@@ -79,8 +80,8 @@ struct InputDef {
            string nameIn,
            size_t dimIn,
            size_t sizeIn,
-           std::vector<int> labelInitValue,
-           std::vector<int> labelSeqStartPositions)
+           const std::vector<int>& labelInitValue,
+           const std::vector<int>& labelSeqStartPositions)
       : labelInitValue(labelInitValue),
         labelSeqStartPositions(labelSeqStartPositions) {
     inputType = type;
