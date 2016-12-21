@@ -318,17 +318,6 @@ def provider(input_types=None,
                 self.logger = logging.getLogger("")
                 self.logger.setLevel(logging.INFO)
                 self.input_types = None
-                if 'slots' in outter_kwargs:
-                    self.logger.warning('setting slots value is deprecated, '
-                                        'please use input_types instead.')
-                    self.slots = outter_kwargs['slots']
-
-                if input_types is not None:
-                    self.slots = input_types
-
-                assert self.slots is not None, \
-                    "Data Provider's input_types must be set"
-
                 self.should_shuffle = should_shuffle
 
                 true_table = [1, 't', 'true', 'on']
@@ -364,9 +353,19 @@ def provider(input_types=None,
                 self.check = check
                 if init_hook is not None:
                     init_hook(self, file_list=file_list, **kwargs)
+
+                if 'slots' in outter_kwargs:
+                    self.logger.warning('setting slots value is deprecated, '
+                                        'please use input_types instead.')
+                    self.slots = outter_kwargs['slots']
+                if input_types is not None:
+                    self.slots = input_types
+
                 if self.input_types is not None:
                     self.slots = self.input_types
-                assert self.slots is not None
+
+                assert self.slots is not None, \
+                    "Data Provider's input_types must be set"
                 assert self.generator is not None
 
                 use_dynamic_order = False
