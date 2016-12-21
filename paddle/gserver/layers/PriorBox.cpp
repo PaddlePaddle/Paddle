@@ -18,10 +18,10 @@ limitations under the License. */
 
 namespace paddle {
 /**
- * @brief A layer for generate prior box locations and variances.
+ * @brief A layer for generating priorbox locations and variances.
  * - Input: Two and only two input layer are accepted. The input layer must be
  *        be a data output layer and a convolution output layer.
- * - Output: The prior box locations and variances of the input data.
+ * - Output: The priorbox locations and variances of the input data.
  * Reference:
  *    Wei Liu, Dragomir Anguelov, Dumitru Erhan, Christian Szegedy, Scott Reed,
  *    Cheng-Yang Fu, Alexander C. Berg. SSD: Single Shot MultiBox Detector
@@ -31,8 +31,11 @@ class PriorBoxLayer : public Layer {
 public:
   explicit PriorBoxLayer(const LayerConfig& config) : Layer(config) {}
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+
   void forward(PassType passType);
   void backward(const UpdateCallback& callback) {}
+
+protected:
   int numPriors_;
   std::vector<int> minSize_;
   std::vector<int> maxSize_;
