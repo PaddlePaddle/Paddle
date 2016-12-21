@@ -8,14 +8,8 @@ cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=ON
 make paddle_docs paddle_docs_cn
 
 # check websites for broken links
-set +e
-for i in cn en; do
-  linkchecker doc/$i/html/index.html
-  if [ $? -ne 0 ]; then
-    exit 1
-  fi
-done
-set -e
+linkchecker doc/en/html/index.html
+linkchecker doc/cn/html/index.html
 
 # Parse Github URL
 REPO=`git config remote.origin.url`
