@@ -40,7 +40,7 @@
 
 
 ### 使用用户指定的词向量字典 ###
-使用如下命令，从预训练模型中，根据用户指定的字典，抽取对应的词向量构成新的词表
+使用如下命令，从预训练模型中，根据用户指定的字典，抽取对应的词向量构成新的词表:
     cd $PADDLE_ROOT/demo/model_zoo/embedding
     python extract_para.py --preModel PREMODEL --preDict PREDICT --usrModel USRMODEL--usrDict USRDICT -d DIM
 
