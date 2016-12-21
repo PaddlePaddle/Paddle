@@ -1884,7 +1884,7 @@ class BatchNormLayer(LayerBase):
         # when either of it is non-zero. 
         if input_layer.width != 0 or input_layer.height != 0:
             self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                               image_conf.channels, True)
+                               image_conf.channels, False)
         else:
             self.set_layer_size(input_layer.size)
 
