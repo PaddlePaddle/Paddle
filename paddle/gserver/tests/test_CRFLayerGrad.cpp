@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/trainer/Trainer.h"
-#include "paddle/gserver/layers/LinearChainCRF.h"
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/layers/DataLayer.h"
+#include "paddle/gserver/layers/LinearChainCRF.h"
+#include "paddle/trainer/Trainer.h"
 
-#include "TestUtil.h"
 #include "LayerGradUtil.h"
+#include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 
