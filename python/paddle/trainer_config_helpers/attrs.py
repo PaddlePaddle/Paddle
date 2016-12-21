@@ -19,34 +19,34 @@ __all__ = [
 
 
 def convert_and_compare(x, Type):
-    """                                                                                                                                                                                                
-    Convert x to be the same type as Type and then convert back to                                                                                                                                      
-    check whether there is a loss of information                                                                                                                                                        
-    :param x: object to be checked                                                                                                                                                                      
-    :param Type: target type to check x over                                                                                                                                                           
-    
+    """
+    Convert x to be the same type as Type and then convert back to
+    check whether there is a loss of information
+    :param x: object to be checked
+    :param Type: target type to check x over
+
     """
     return type(x)(Type(x)) == x
 
 
 def is_compatible_with(x, Type):
-    """                                                                                                                                                                                                
-    Check if x has a type compatible with Type                                                                                                                                                         
-    :param x: object to be checked                                                                                                                                                                     
-    :param Type: target type to check x over                                                                                                                                                           
-    
+    """
+    Check if x has a type compatible with Type
+    :param x: object to be checked
+    :param Type: target type to check x over
+
     """
     if type(x) == Type:
         return True
     try:
         if float == Type or int == Type:
-            # avoid those types that can be converted to float/int but not very                                                                                                                            
-            # meaningful and  could potentially lead to error                                                                                                                                              
-            # i.e., str and bool typed value should not be used for initializing float/int variable                                                                                                        
+            # avoid those types that can be converted to float/int but not very
+            # meaningful and  could potentially lead to error
+            # i.e., str and bool typed value should not be used for initializing float/int variable
             if not isinstance(x, str) and not isinstance(x, bool):
                 return convert_and_compare(x, Type)
         elif bool == Type:
-            # should not use string type to initialize bool variable                                                                                                                                   
+            # should not use string type to initialize bool variable
             if not isinstance(x, str):
                 return convert_and_compare(x, Type)
         else:
@@ -91,6 +91,9 @@ class ParameterAttribute(object):
     :param sparse_update: Enable sparse update for this parameter. It will
                           enable both local and remote sparse update.
     :type sparse_update: bool
+    :param sparse_weight: enable weight sparse. The parameter value will be
+                          stored as sparse format.
+    :type sparse_weight: bool
     """
 
     def __init__(self,
@@ -104,7 +107,8 @@ class ParameterAttribute(object):
                  l2_rate=None,
                  learning_rate=None,
                  momentum=None,
-                 sparse_update=False):
+                 sparse_update=False,
+                 sparse_weight=False):
         # initialize strategy.
         if is_static:
             self.attr = {'is_static': True}
@@ -151,6 +155,10 @@ class ParameterAttribute(object):
         if sparse_update:
             self.attr['sparse_update'] = True
             self.attr['sparse_remote_update'] = True
+
+        if sparse_weight:
+            self.attr['format'] = 'csr'
+            self.attr['nnz'] = 4
 
     def set_default_parameter_name(self, name):
         """
