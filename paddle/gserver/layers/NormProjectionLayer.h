@@ -39,5 +39,8 @@ public:
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
   void forward(PassType passType);
   void backward(const UpdateCallback& callback = nullptr);
+
+protected:
+  Dims dims_;
 };
 }  // namespace paddle

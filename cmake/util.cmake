@@ -96,6 +96,7 @@ function(link_paddle_exe TARGET_NAME)
     target_circle_link_libraries(${TARGET_NAME}
         ARCHIVE_START
         paddle_gserver
+        paddle_function
         ${METRIC_LIBS}
         ARCHIVE_END
         paddle_pserver
@@ -106,6 +107,7 @@ function(link_paddle_exe TARGET_NAME)
         paddle_parameter
         paddle_proto
         paddle_cuda
+        paddle_test_main
         ${METRIC_LIBS}
         ${PROTOBUF_LIBRARY}
         ${LIBGLOG_LIBRARY}

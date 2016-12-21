@@ -39,11 +39,19 @@ The general development workflow with Docker and Bazel is as follows:
    code.  This image contains all the development tools and
    dependencies of PaddlePaddle.
 
-
    .. code-block:: bash
 
       cd paddle
       docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile .
+
+   Sometimes docker build might suffer from a slow network connection to the official Ubuntu apt-source servers. In such case, we can specify an apt-source mirror server that is geologically nearer to us. In the following example, we specified an apt-source server that responds fast in China.You can specify the UBUNTU MIRROR with :code:`--build-arg UBUNTU_MIRROR` like the example below.
+
+   .. code-block:: bash
+
+      docker build \
+       --build-arg UBUNTU_MIRROR="http://mirrors.163.com" \
+       -t paddle:dev \
+       -f paddle/scripts/docker/Dockerfile .
 
 
 3. Run the image as a container and mounting local source code
