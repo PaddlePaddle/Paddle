@@ -35,6 +35,8 @@ def main():
     for _ in xrange(100):
         updater.startPass()
 
+        updater.finishPass()
+
     m.finish()
 
 

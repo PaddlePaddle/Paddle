@@ -34,4 +34,4 @@ void ParameterUpdater::init(const GradientMachine &gm) {
 
 void ParameterUpdater::startPass() { m->updater->startPass(); }
 
-void ParameterUpdater::finishPass() {}
+void ParameterUpdater::finishPass() { m->updater->finishPass(); }
