@@ -322,7 +322,13 @@ def provider(input_types=None,
                     self.logger.warning('setting slots value is deprecated, '
                                         'please use input_types instead.')
                     self.slots = outter_kwargs['slots']
-                self.slots = input_types
+
+                if input_types is not None:
+                    self.slots = input_types
+
+                assert self.slots is not None, \
+                    "Data Provider's input_types must be set"
+
                 self.should_shuffle = should_shuffle
 
                 true_table = [1, 't', 'true', 'on']
