@@ -70,7 +70,7 @@ void SgdThreadUpdater::startPass() {
   }
 }
 
-bool SgdThreadUpdater::finishPass(real cost) {
+bool SgdThreadUpdater::finishPass() {
   catchUpWith();
 
   for (auto& para : parameters_) {

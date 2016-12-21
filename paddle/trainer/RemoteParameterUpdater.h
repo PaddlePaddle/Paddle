@@ -90,7 +90,7 @@ public:
    */
   virtual void finishBatch(real cost);
   virtual void startPass();
-  virtual bool finishPass(real cost);
+  virtual bool finishPass();
 
 #ifndef PADDLE_DISABLE_TIMER
   virtual void setForwardbackwardTime(uint64_t delta) {
@@ -281,7 +281,7 @@ public:
   /// send all sparse related parameters to all pservers
   virtual void finishBatch(real cost);
   virtual void startPass();
-  virtual bool finishPass(real cost);
+  virtual bool finishPass();
 
   virtual void apply();
   virtual void restore();
