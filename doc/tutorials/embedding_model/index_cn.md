@@ -90,7 +90,7 @@
 其中，`train.sh` 与`demo/seqToseq/translation/train.sh` 基本相同，只有2个配置不一样:
 
 - `--init_model_path`: 初始化模型的路径配置为`data/paraphrase_modeldata/paraphrase_model`
-- `--load_missing_parameter_strategy`:除词向量模型外的参数将使用正态分布” 改为 “除词向量模型外的参数将使用正态分布随机初始化
+- `--load_missing_parameter_strategy`：如果参数模型文件缺失，除词向量模型外的参数将使用正态分布随机初始化
 
 如果用户想要了解详细的数据集的格式、模型的结构和训练过程，请查看 [Text generation Tutorial](../text_generation/text_generation.md).
 
