@@ -21,13 +21,10 @@ limitations under the License. */
 #include "TestUtil.h"
 #include "LayerGradUtil.h"
 
-using namespace paddle; // NOLINT
+using namespace paddle;  // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_double(checkgrad_eps);
-P_DECLARE_bool(thread_local_rand_use_global_seed);
-P_DECLARE_bool(prev_batch_state);
+DECLARE_int32(gpu_id);
+DECLARE_bool(thread_local_rand_use_global_seed);
 
 static inline bool getNextSequence(std::vector<int>& seq, int numClasses) {
   for (auto& v : seq) {
@@ -96,8 +93,8 @@ TEST(CRFLayer, cost) {
 
       real diff = fabs(trueCost - cost);
       diff /= fabs(cost) < fabs(trueCost) ? fabs(cost) : fabs(trueCost);
-      VLOG(1) << "cost=" << cost << " trueCost=" << trueCost
-        << " diff=" << diff << std::endl;
+      VLOG(1) << "cost=" << cost << " trueCost=" << trueCost << " diff=" << diff
+              << std::endl;
       if (typeid(real) == typeid(double)) {  // NOLINT
         EXPECT_LE(diff, 1e-10);
       } else {
@@ -107,9 +104,7 @@ TEST(CRFLayer, cost) {
   }
 }
 
-inline real epsilon() {
-  return typeid(real) == typeid(double) ? 1e-10 : 0.06;
-}
+inline real epsilon() { return typeid(real) == typeid(double) ? 1e-10 : 0.06; }
 
 TestConfig initTestConfig(size_t numClasses, bool withWeight) {
   TestConfig config;
@@ -117,16 +112,17 @@ TestConfig initTestConfig(size_t numClasses, bool withWeight) {
   config.layerConfig.set_size(numClasses);
   config.biasSize = 0;
 
-  config.inputDefs.push_back({INPUT_SEQUENCE_DATA, "layer_0",
-      numClasses, numClasses * (numClasses + 2)});
+  config.inputDefs.push_back({INPUT_SEQUENCE_DATA,
+                              "layer_0",
+                              numClasses,
+                              numClasses * (numClasses + 2)});
   config.layerConfig.add_inputs();
-  config.inputDefs.push_back({INPUT_SEQUENCE_LABEL, "layer_label",
-      numClasses, 0});
+  config.inputDefs.push_back(
+      {INPUT_SEQUENCE_LABEL, "layer_label", numClasses, 0});
   config.layerConfig.add_inputs();
 
   if (withWeight) {
-    config.inputDefs.push_back({INPUT_DENSE_DIM_DATA, "layer_weight",
-        1, 0});
+    config.inputDefs.push_back({INPUT_DENSE_DIM_DATA, "layer_weight", 1, 0});
     config.layerConfig.add_inputs();
   }
 

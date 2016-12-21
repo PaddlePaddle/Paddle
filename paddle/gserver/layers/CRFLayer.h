@@ -37,9 +37,9 @@ protected:
   size_t numClasses_;
   ParameterPtr parameter_;
   std::vector<LinearChainCRF> crfs_;
-  LayerPtr weightLayer_;  // weight for each sequence
+  LayerPtr weightLayer_;            // weight for each sequence
   std::unique_ptr<Weight> weight_;  // parameters
-  real coeff_;            // weight for the layer
+  real coeff_;                      // weight for the layer
 };
 
 }  // namespace paddle
