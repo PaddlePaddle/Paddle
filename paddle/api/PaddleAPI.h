@@ -799,7 +799,7 @@ public:
 
   void finishPass();
 
-  PassType startBatch(int64_t batchSize);
+  PassType startBatch(size_t batchSize);
 
   void finishBatch(float cost);
 

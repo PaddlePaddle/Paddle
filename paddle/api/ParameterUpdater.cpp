@@ -36,8 +36,8 @@ void ParameterUpdater::startPass() { m->updater->startPass(); }
 
 void ParameterUpdater::finishPass() { m->updater->finishPass(); }
 
-PassType ParameterUpdater::startBatch(int64_t batchSize) {
-  return m->updater->startBatch(batchSize);
+PassType ParameterUpdater::startBatch(size_t batchSize) {
+  return m->updater->startBatch((int64_t)batchSize);
 }
 
 void ParameterUpdater::finishBatch(float cost) {
