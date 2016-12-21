@@ -29,7 +29,7 @@ ParameterUpdater *ParameterUpdater::createLocalUpdater(
 ParameterUpdater::~ParameterUpdater() { delete m; }
 
 void ParameterUpdater::init(const GradientMachine &gm) {
-  m->updater->init(gm.m->machine->getParameters());
+  m->updater->init(gm.m->machine->getNonStaticParameters());
 }
 
 void ParameterUpdater::startPass() { m->updater->startPass(); }

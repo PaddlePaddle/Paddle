@@ -14,10 +14,10 @@ limitations under the License. */
 #pragma once
 #include <memory>
 #include "PaddleAPI.h"
+#include "paddle/gserver/evaluators/Evaluator.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
-#include "paddle/trainer/TrainerConfigHelper.h"
-
 #include "paddle/parameter/ParameterUpdaterBase.h"
+#include "paddle/trainer/TrainerConfigHelper.h"
 
 struct GradientMachinePrivate {
   std::shared_ptr<paddle::GradientMachine> machine;
@@ -87,4 +87,11 @@ struct ParameterPrivate {
       return rawPtr;
     }
   }
+};
+
+struct EvaluatorPrivate {
+  paddle::Evaluator* rawPtr;
+
+  EvaluatorPrivate() : rawPtr(nullptr) {}
+  ~EvaluatorPrivate() { delete rawPtr; }
 };

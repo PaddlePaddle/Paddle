@@ -162,3 +162,13 @@ SequenceGenerator* GradientMachine::asSequenceGenerator(
   r->setBeamSize(beam_size);
   return r;
 }
+
+Evaluator* GradientMachine::makeEvaluator() {
+  auto ev = new Evaluator();
+  ev->m->rawPtr = m->machine->makeEvaluator();
+  return ev;
+}
+
+void GradientMachine::eval(Evaluator* evaluator) {
+  m->machine->eval(evaluator->m->rawPtr);
+}

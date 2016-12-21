@@ -1,6 +1,7 @@
 set(API_SOURCES
     Arguments.cpp
     ConfigParser.cpp
+    Evaluator.cpp
     GradientMachine.cpp
     Matrix.cpp
     Parameter.cpp
@@ -63,6 +64,15 @@ install(DIRECTORY ${PROJ_ROOT}/paddle/dist/
 
 add_custom_target(python_api_wheel ALL DEPENDS
   ${PROJ_ROOT}/paddle/dist/.timestamp)
+add_dependencies(python_api_wheel python_swig_sources
+  paddle_parameter
+  paddle_math
+  paddle_utils
+  paddle_gserver
+  paddle_pserver
+  paddle_trainer
+  paddle_api
+  paddle_cuda)
 
 if(WITH_TESTING)
     add_subdirectory(test)

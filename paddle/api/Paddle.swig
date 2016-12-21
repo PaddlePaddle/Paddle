@@ -97,6 +97,7 @@ namespace std {
 %rename(__setitem__) Vector::set;
 %rename(__len__) Vector::getSize;
 %rename(__call__) ParameterTraverseCallback::apply;
+%rename(__repr__) Evaluator::toString;
 
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) { 
   (float* data, int dim1, int dim2) 
@@ -167,6 +168,7 @@ namespace std {
 %newobject GradientMachine::asSequenceGenerator;
 %newobject GradientMachine::getParameter;
 %newobject GradientMachine::getLayerOutput;
+%newobject GradientMachine::makeEvaluator;
 %newobject TrainerConfig::createFromTrainerConfigFile;
 %newobject TrainerConfig::getModelConfig;
 %newobject TrainerConfig::getOptimizationConfig;

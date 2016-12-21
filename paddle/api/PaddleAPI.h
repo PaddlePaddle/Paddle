@@ -685,7 +685,7 @@ private:
 };
 
 class SequenceGenerator;
-
+class Evaluator;
 struct GradientMachinePrivate;
 class GradientMachine {
 private:
@@ -770,6 +770,10 @@ public:
       size_t max_length = 100UL,
       size_t beam_size = -1UL);
 
+  Evaluator* makeEvaluator();
+
+  void eval(Evaluator* evaluator);
+
 private:
   GradientMachinePrivate* m;
 
@@ -807,6 +811,27 @@ public:
 
 private:
   ParameterUpdaterPrivate* m;
+};
+
+struct EvaluatorPrivate;
+class Evaluator {
+private:
+  Evaluator();
+  DISABLE_COPY_AND_ASSIGN(Evaluator);
+
+public:
+  ~Evaluator();
+
+  void start();
+
+  void finish();
+
+  std::string toString();
+
+private:
+  EvaluatorPrivate* m;
+
+  friend class GradientMachine;
 };
 
 struct TrainerPrivate;

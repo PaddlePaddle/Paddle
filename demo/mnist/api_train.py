@@ -62,14 +62,14 @@ def main():
         train_data_generator = input_order_converter(
             read_from_mnist(train_file))
         for batch_id, data_batch in enumerate(
-                generator_to_batch(train_data_generator, 256)):
+                generator_to_batch(train_data_generator, 2048)):
             trainRole = updater.startBatch(len(data_batch))
 
-            def update_callback(param):
+            def updater_callback(param):
                 updater.update(param)
 
             m.forwardBackward(
-                converter(data_batch), outArgs, trainRole, update_callback)
+                converter(data_batch), outArgs, trainRole, updater_callback)
 
             cost_vec = outArgs.getSlotValue(0)
             cost_vec = cost_vec.copyToNumpyMat()
