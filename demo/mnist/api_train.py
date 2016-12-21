@@ -1,6 +1,9 @@
 import py_paddle.swig_paddle as api
+from py_paddle import DataProviderConverter
+import paddle.trainer.PyDataProvider2 as dp
 import paddle.trainer.config_parser
 import numpy as np
+from mnist_util import read_from_mnist
 
 
 def init_parameter(network):
@@ -11,6 +14,22 @@ def init_parameter(network):
         assert isinstance(array, np.ndarray)
         for i in xrange(len(array)):
             array[i] = np.random.uniform(-1.0, 1.0)
+
+
+def generator_to_batch(generator, batch_size):
+    ret_val = list()
+    for each_item in generator:
+        ret_val.append(each_item)
+        if len(ret_val) == batch_size:
+            yield ret_val
+            ret_val = list()
+    if len(ret_val) != 0:
+        yield ret_val
+
+
+def input_order_converter(generator):
+    for each_item in generator:
+        yield each_item['pixel'], each_item['label']
 
 
 def main():
@@ -30,10 +49,20 @@ def main():
     updater = api.ParameterUpdater.createLocalUpdater(opt_config)
     assert isinstance(updater, api.ParameterUpdater)
     updater.init(m)
+
+    converter = DataProviderConverter(
+        input_types=[dp.dense_vector(784), dp.integer_value(10)])
+
+    train_file = './data/raw_data/train'
+
     m.start()
 
     for _ in xrange(100):
         updater.startPass()
+        train_data_generator = input_order_converter(
+            read_from_mnist(train_file))
+        for data_batch in generator_to_batch(train_data_generator, 128):
+            inArgs = converter(data_batch)
 
         updater.finishPass()
 
