@@ -232,7 +232,7 @@ def provider(input_types=None,
              check=False,
              check_fail_continue=False,
              init_hook=None,
-             **kwargs):
+             **outter_kwargs):
     """
     Provider decorator. Use it to make a function into PyDataProvider2 object.
     In this function, user only need to get each sample for some train/test
@@ -318,11 +318,15 @@ def provider(input_types=None,
                 self.logger = logging.getLogger("")
                 self.logger.setLevel(logging.INFO)
                 self.input_types = None
-                if 'slots' in kwargs:
+                if 'slots' in outter_kwargs:
                     self.logger.warning('setting slots value is deprecated, '
                                         'please use input_types instead.')
-                    self.slots = kwargs['slots']
-                self.slots = input_types
+                    self.slots = outter_kwargs['slots']
+                if input_types is not None:
+                    self.slots = input_types
+
+                assert self.slots is not None, \
+                    "Data Provider's input_types must be set"
                 self.should_shuffle = should_shuffle
 
                 true_table = [1, 't', 'true', 'on']
