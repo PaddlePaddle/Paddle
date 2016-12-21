@@ -36,8 +36,8 @@ public:
   int numPriors_;
   std::vector<int> minSize_;
   std::vector<int> maxSize_;
-  std::vector<float> aspectRatio_;
-  std::vector<float> variance_;
+  std::vector<real> aspectRatio_;
+  std::vector<real> variance_;
   MatrixPtr buffer_;
 };
 
@@ -77,8 +77,8 @@ void PriorBoxLayer::forward(PassType passType) {
   int imageWidth = image.getFrameWidth();
   int imageHeight = image.getFrameHeight();
 
-  float stepW = static_cast<float>(imageWidth) / layerWidth;
-  float stepH = static_cast<float>(imageHeight) / layerHeight;
+  real stepW = static_cast<real>(imageWidth) / layerWidth;
+  real stepH = static_cast<real>(imageHeight) / layerHeight;
   int dim = layerHeight * layerWidth * numPriors_ * 4;
   reserveOutput(1, dim * 2);
   // use a cpu buffer to compute
@@ -88,8 +88,8 @@ void PriorBoxLayer::forward(PassType passType) {
   int idx = 0;
   for (int h = 0; h < layerHeight; ++h) {
     for (int w = 0; w < layerWidth; ++w) {
-      float centerX = (w + 0.5) * stepW;
-      float centerY = (h + 0.5) * stepH;
+      real centerX = (w + 0.5) * stepW;
+      real centerY = (h + 0.5) * stepH;
       int minSize = 0;
       for (size_t s = 0; s < minSize_.size(); s++) {
         // first prior.
@@ -121,10 +121,10 @@ void PriorBoxLayer::forward(PassType passType) {
       }
       // rest of priors.
       for (size_t r = 0; r < aspectRatio_.size(); r++) {
-        float ar = aspectRatio_[r];
+        real ar = aspectRatio_[r];
         if (fabs(ar - 1.) < 1e-6) continue;
-        float boxWidth = minSize * sqrt(ar);
-        float boxHeight = minSize / sqrt(ar);
+        real boxWidth = minSize * sqrt(ar);
+        real boxHeight = minSize / sqrt(ar);
         tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
         tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
         tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
@@ -137,7 +137,7 @@ void PriorBoxLayer::forward(PassType passType) {
   // clip the prior's coordidate such that it is within [0, 1]
   for (int d = 0; d < dim * 2; ++d)
     if ((d % 8) < 4)
-      tmpPtr[d] = std::min(std::max(tmpPtr[d], (float)0.), (float)1.);
+      tmpPtr[d] = std::min(std::max(tmpPtr[d], (real)0.), (real)1.);
   MatrixPtr outV = getOutputValue();
   outV->copyFrom(buffer_->data_, dim * 2);
 }

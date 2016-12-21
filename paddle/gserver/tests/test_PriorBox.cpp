@@ -30,8 +30,8 @@ void doOnePriorBoxTest(size_t feature_map_width,
                        size_t image_height,
                        vector<int> min_size,
                        vector<int> max_size,
-                       vector<float> aspect_ratio,
-                       vector<float> variance,
+                       vector<real> aspect_ratio,
+                       vector<real> variance,
                        bool use_gpu,
                        MatrixPtr& result) {
   // Setting up the priorbox layer
@@ -71,8 +71,8 @@ void doOnePriorBoxTest(size_t feature_map_width,
 TEST(Layer, priorBoxLayerFwd) {
   vector<int> minSize;
   vector<int> maxSize;
-  vector<float> aspectRatio;
-  vector<float> variance;
+  vector<real> aspectRatio;
+  vector<real> variance;
   bool useGpu = false;
 
   minSize.push_back(276);
@@ -84,22 +84,22 @@ TEST(Layer, priorBoxLayerFwd) {
 
   // CPU case 1.
   MatrixPtr result;
-  float resultData[] = {0.04,
-                        0.04,
-                        0.96,
-                        0.96,
-                        0.1,
-                        0.1,
-                        0.2,
-                        0.2,
-                        0,
-                        0,
-                        1,
-                        1,
-                        0.1,
-                        0.1,
-                        0.2,
-                        0.2};
+  real resultData[] = {0.04,
+                       0.04,
+                       0.96,
+                       0.96,
+                       0.1,
+                       0.1,
+                       0.2,
+                       0.2,
+                       0,
+                       0,
+                       1,
+                       1,
+                       0.1,
+                       0.1,
+                       0.2,
+                       0.2};
   result = Matrix::create(1, 2 * 8, false, useGpu);
   result->setData(resultData);
   doOnePriorBoxTest(/* feature_map_width */ 1,
@@ -116,10 +116,10 @@ TEST(Layer, priorBoxLayerFwd) {
   variance[1] = 0.2;
   variance[3] = 0.1;
   maxSize.pop_back();
-  float resultData2[] = {0,     0,     0.595, 0.595, 0.1, 0.2, 0.2, 0.1,
-                         0.405, 0,     1,     0.595, 0.1, 0.2, 0.2, 0.1,
-                         0,     0.405, 0.595, 1,     0.1, 0.2, 0.2, 0.1,
-                         0.405, 0.405, 1,     1,     0.1, 0.2, 0.2, 0.1};
+  real resultData2[] = {0,     0,     0.595, 0.595, 0.1, 0.2, 0.2, 0.1,
+                        0.405, 0,     1,     0.595, 0.1, 0.2, 0.2, 0.1,
+                        0,     0.405, 0.595, 1,     0.1, 0.2, 0.2, 0.1,
+                        0.405, 0.405, 1,     1,     0.1, 0.2, 0.2, 0.1};
   Matrix::resizeOrCreate(result, 1, 4 * 8, false, useGpu);
   result->setData(resultData2);
   doOnePriorBoxTest(/* feature_map_width */ 2,
@@ -134,10 +134,10 @@ TEST(Layer, priorBoxLayerFwd) {
                     result);
   // CPU case 3.
   aspectRatio.push_back(2);
-  float resultData3[] = {0.04,     0.04, 0.96, 0.96,       0.1,        0.2,
-                         0.2,      0.1,  0,    0.17473088, 1,          0.825269,
-                         0.1,      0.2,  0.2,  0.1,        0.17473088, 0,
-                         0.825269, 1,    0.1,  0.2,        0.2,        0.1};
+  real resultData3[] = {0.04,     0.04, 0.96, 0.96,       0.1,        0.2,
+                        0.2,      0.1,  0,    0.17473088, 1,          0.825269,
+                        0.1,      0.2,  0.2,  0.1,        0.17473088, 0,
+                        0.825269, 1,    0.1,  0.2,        0.2,        0.1};
   Matrix::resizeOrCreate(result, 1, 3 * 8, false, useGpu);
   result->setData(resultData3);
   doOnePriorBoxTest(/* feature_map_width */ 1,
