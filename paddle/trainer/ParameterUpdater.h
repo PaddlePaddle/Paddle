@@ -102,9 +102,9 @@ public:
    * @param cost sum cost during one pass.
    * @return true if accept (used for owlqn).
    */
-  virtual bool finishPass(real cost) {
+  virtual bool finishPass() {
     optimizer_->finishPass();
-    return ParameterUpdater::finishPass(cost);
+    return ParameterUpdater::finishPass();
   }
 
   /**
@@ -220,9 +220,9 @@ public:
     averager_->startPass();
     SgdLocalUpdater::startPass();
   }
-  virtual bool finishPass(real cost) {
+  virtual bool finishPass() {
     averager_->finishPass();
-    return SgdLocalUpdater::finishPass(cost);
+    return SgdLocalUpdater::finishPass();
   }
 
   /// apply the averaged parameter to PARAMETER_VALUE
