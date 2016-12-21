@@ -195,7 +195,7 @@ public:
 
   virtual Evaluator* makeEvaluator();
 
-  virtual void eval(Evaluator* evaluator);
+  virtual void eval(Evaluator* evaluator) const;
 
   bool useGpu() const { return useGpu_; }
 

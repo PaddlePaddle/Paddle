@@ -186,7 +186,7 @@ public:
   /**
    * evaluate using the given evaluator
    */
-  virtual void eval(Evaluator* evaluator) = 0;
+  virtual void eval(Evaluator* evaluator) const = 0;
 
   std::vector<ParameterPtr>& getParameters() { return parameters_; }
 

@@ -383,7 +383,7 @@ Evaluator* NeuralNetwork::makeEvaluator() {
   return combinedEvaluator;
 }
 
-void NeuralNetwork::eval(Evaluator* evaluator) { evaluator->eval(*this); }
+void NeuralNetwork::eval(Evaluator* evaluator) const { evaluator->eval(*this); }
 
 void NeuralNetwork::setOutputGrad(const std::vector<Argument>& args) {
   CHECK_GE(outputLayers_.size(), args.size());

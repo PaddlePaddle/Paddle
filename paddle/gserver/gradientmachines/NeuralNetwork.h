@@ -98,7 +98,7 @@ public:
 
   virtual Evaluator* makeEvaluator();
 
-  virtual void eval(Evaluator* evaluator);
+  virtual void eval(Evaluator* evaluator) const;
   virtual void resetState();
   virtual void setOutputGrad(const std::vector<Argument>& args);
 

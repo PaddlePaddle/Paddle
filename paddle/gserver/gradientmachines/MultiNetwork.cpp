@@ -181,6 +181,6 @@ Evaluator* MultiNetwork::makeEvaluator() {
   return multiCombinedEvaluator;
 }
 
-void MultiNetwork::eval(Evaluator* evaluator) { evaluator->eval(*this); }
+void MultiNetwork::eval(Evaluator* evaluator) const { evaluator->eval(*this); }
 
 }  // namespace paddle
