@@ -46,6 +46,7 @@ add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/dist/.timestamp
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle
     DEPENDS python_swig_sources
             paddle_parameter
+            paddle_function
             paddle_math
             paddle_utils
             paddle_gserver

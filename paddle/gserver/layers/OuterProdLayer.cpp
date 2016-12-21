@@ -96,7 +96,7 @@ void OuterProdLayer::forward(PassType passType) {
       tmpRow0->setData(inV0->getData() + i * dim0);
       tmpRow1->setData(inV1->getData() + i * dim1);
 
-      tmpMtx0->mul(tmpRow0->getTranspose(), tmpRow1);
+      tmpMtx0->mul(*tmpRow0->getTranspose(), *tmpRow1);
     }
   }
 }
@@ -121,7 +121,7 @@ void OuterProdLayer::backward(const UpdateCallback& callback) {
         tmpRow0->setData(inG0->getData() + i * dim0);
         tmpRow1->setData(inV1->getData() + i * dim1);
 
-        tmpRow0->mul(tmpRow1, tmpMtx0->getTranspose(), 1, 1);
+        tmpRow0->mul(*tmpRow1, *tmpMtx0->getTranspose(), 1, 1);
       }
     }
 
@@ -131,7 +131,7 @@ void OuterProdLayer::backward(const UpdateCallback& callback) {
         tmpRow0->setData(inV0->getData() + i * dim0);
         tmpRow1->setData(inG1->getData() + i * dim1);
 
-        tmpRow1->mul(tmpRow0, tmpMtx0, 1, 1);
+        tmpRow1->mul(*tmpRow0, *tmpMtx0, 1, 1);
       }
     }
   }

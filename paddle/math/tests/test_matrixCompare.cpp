@@ -65,16 +65,16 @@ void testMatrixProjectionForward(int contextStart,
 
   // calculate
   int beginPad = std::max(0, -contextStart);
-  cpuOutput->contextProjectionForward(cpuInput,
-                                      cpuWeight,
+  cpuOutput->contextProjectionForward(*cpuInput,
+                                      cpuWeight.get(),
                                       *cpuSequence,
                                       contextLength,
                                       contextStart,
                                       beginPad,
                                       padding);
 
-  gpuOutput->contextProjectionForward(gpuInput,
-                                      gpuWeight,
+  gpuOutput->contextProjectionForward(*gpuInput,
+                                      gpuWeight.get(),
                                       *gpuSequence,
                                       contextLength,
                                       contextStart,
@@ -120,17 +120,17 @@ void testMatrixProjectionBackward(int contextStart,
 
   // calculate
   int beginPad = std::max(0, -contextStart);
-  cpuOutputGrad->contextProjectionBackward(cpuInputGrad,
-                                           cpuWeightGrad,
+  cpuOutputGrad->contextProjectionBackward(cpuInputGrad.get(),
+                                           cpuWeightGrad.get(),
                                            *cpuSequence,
                                            contextLength,
                                            contextStart,
                                            beginPad,
                                            padding);
   gpuOutputGrad->contextProjectionBackwardData(
-      gpuInputGrad, *gpuSequence, contextLength, contextStart);
+      *gpuInputGrad, *gpuSequence, contextLength, contextStart);
   if (padding) {
-    gpuOutputGrad->contextProjectionBackwardWeight(gpuWeightGrad,
+    gpuOutputGrad->contextProjectionBackwardWeight(*gpuWeightGrad,
                                                    *gpuSequence,
                                                    contextLength,
                                                    contextStart,
@@ -318,7 +318,7 @@ void testMatrixInverse(int height) {
   cpu->randomizeUniform();
   MatrixPtr cpuT = cpu->getTranspose();
   MatrixPtr outputCheck = std::make_shared<CpuMatrix>(height, height);
-  outputCheck->mul(cpu, cpuT);
+  outputCheck->mul(*cpu, *cpuT);
   cpu->setDiag(1.0);
   cpu->add(*outputCheck);
 
@@ -328,7 +328,7 @@ void testMatrixInverse(int height) {
 
   TensorCheckErr(*cpuI, *gpuI);
 
-  outputCheck->mul(cpu, cpuI);
+  outputCheck->mul(*cpu, *cpuI);
   cpu->setDiag(1.0);
   TensorCheckErr(*cpu, *outputCheck);
 }
@@ -509,8 +509,8 @@ void testMatrixMul(bool transa, bool transb, int dimM, int dimN, int dimK) {
   gpuB->copyFrom(*cpuB);
   gpuC->copyFrom(*cpuC);
 
-  cpuC->mul(cpuA, cpuB, alpha, beta);
-  gpuC->mul(gpuA, gpuB, alpha, beta);
+  cpuC->mul(*cpuA, *cpuB, alpha, beta);
+  gpuC->mul(*gpuA, *gpuB, alpha, beta);
 
   TensorCheckErr(*cpuC, *gpuC);
 }
@@ -581,8 +581,8 @@ void testSubMatrixMul(bool transa, bool transb, int dimM, int dimN, int dimK) {
   MatrixPtr subCpuC = cpuC->subMatrix(startM, endM, startN, endN);
   MatrixPtr subGpuC = gpuC->subMatrix(startM, endM, startN, endN);
 
-  subCpuC->mul(subCpuA, subCpuB, alpha, beta);
-  subGpuC->mul(subGpuA, subGpuB, alpha, beta);
+  subCpuC->mul(*subCpuA, *subCpuB, alpha, beta);
+  subGpuC->mul(*subGpuA, *subGpuB, alpha, beta);
 
   TensorCheckErr(*cpuC, *gpuC);
 }
@@ -939,8 +939,8 @@ void testClassificationError(int numSamples, int dim) {
   gpuOutput->copyFrom(*cpuOutput);
   gpuLabel->copyFrom(*cpuLabel);
 
-  cpuError->classificationError(cpuOutput, cpuLabel);
-  gpuError->classificationError(gpuOutput, gpuLabel);
+  cpuError->classificationError(*cpuOutput, *cpuLabel);
+  gpuError->classificationError(*gpuOutput, *gpuLabel);
 
   TensorCheckEqual(*cpuError, *gpuError);
 }

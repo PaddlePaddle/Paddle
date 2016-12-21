@@ -64,7 +64,7 @@ public:
    *           be initialized.
    * @param parameters The parameter need to be initialized.
    */
-  virtual void init(std::vector<ParameterPtr>& parameters) {
+  virtual void init(const std::vector<ParameterPtr>& parameters) {
     ParameterUpdater::init(parameters);
     optimizer_->init(parameters_.size(), nullptr);
     // check no L1 decay in parameter configs
@@ -208,7 +208,7 @@ public:
    * @brief init. Initialize cpu parameters, model average optimizer.
    * @param parameters
    */
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
 
   virtual PassType startBatch(int64_t batchSize) {
     averager_->startBatch(-1UL);

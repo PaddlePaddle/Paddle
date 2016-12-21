@@ -547,7 +547,7 @@ void MDLstmLayer::forwardOneSequence(int start, CoordIterator& coordIter) {
       if (coordIter.getPrePos(delays_, i, prePos)) {
         int preOffset = coordIter.offset(prePos);
         frameGate_[start + offset].value->mul(
-            frameOutput_[start + preOffset].value, weight_->getW(), 1.0, 1.0);
+            *frameOutput_[start + preOffset].value, *weight_->getW(), 1.0, 1.0);
       }
     }
     forwardGate2OutputSequence(start, coordIter);
@@ -747,11 +747,11 @@ void MDLstmLayer::backwardOneSequence(int start, CoordIterator& coordIter) {
       if (coordIter.getPrePos(delays_, i, prePos)) {
         int preOffset = coordIter.offset(prePos);
         frameOutput_[start + preOffset].grad->mul(
-            frameGate_[start + offset].grad, weightT, 1.0, 1.0);
+            *frameGate_[start + offset].grad, *weightT, 1.0, 1.0);
         if (weight_->getWGrad()) {
           weight_->getWGrad()->mul(
-              frameOutput_[start + preOffset].value->getTranspose(),
-              frameGate_[start + offset].grad,
+              *frameOutput_[start + preOffset].value->getTranspose(),
+              *frameGate_[start + offset].grad,
               1.0,
               1.0);
         }
