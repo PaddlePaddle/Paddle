@@ -257,7 +257,7 @@ void Tester::test() {
   CHECK(testDataProvider_) << "TestData is not specified";
   testDataProvider_->setSkipShuffle();
   testDataProvider_->reset();
-  gradientMachine_->start(*config_, testDataProvider_);
+  gradientMachine_->start();
 
   // For evaluation
   std::vector<std::string> modelList;

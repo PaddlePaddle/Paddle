@@ -441,7 +441,7 @@ TrainerThread::TrainerThread(const ModelConfig& config,
 TrainerThread::~TrainerThread() { stop(); }
 
 void TrainerThread::start() {
-  gradientMachine_->start(*(TrainerConfig*)nullptr, (DataProviderPtr) nullptr);
+  gradientMachine_->start();
 
   computeThread_.reset(new std::thread([this]() { computeThread(); }));
 
