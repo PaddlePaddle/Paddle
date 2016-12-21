@@ -348,7 +348,7 @@ protected:
   std::vector<std::unique_ptr<Evaluator>> evaluators_;
 };
 
-Evaluator* NeuralNetwork::makeEvaluator() {
+Evaluator* NeuralNetwork::makeEvaluator() const {
   CombinedEvaluator* combinedEvaluator = new CombinedEvaluator();
   auto subModelConfig = std::find_if(config_.sub_models().begin(),
                                      config_.sub_models().end(),
@@ -383,7 +383,7 @@ Evaluator* NeuralNetwork::makeEvaluator() {
   return combinedEvaluator;
 }
 
-void NeuralNetwork::eval(Evaluator* evaluator) { evaluator->eval(*this); }
+void NeuralNetwork::eval(Evaluator* evaluator) const { evaluator->eval(*this); }
 
 void NeuralNetwork::setOutputGrad(const std::vector<Argument>& args) {
   CHECK_GE(outputLayers_.size(), args.size());

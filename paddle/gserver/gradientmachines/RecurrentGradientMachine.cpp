@@ -593,7 +593,7 @@ void RecurrentGradientMachine::forwardBackward(
   LOG(FATAL) << "should not use this function";
 }
 
-void RecurrentGradientMachine::eval(Evaluator* evaluator) {
+void RecurrentGradientMachine::eval(Evaluator* evaluator) const {
   // call printers frame by frame
   for (int i = 0; i < maxSequenceLength_; ++i) {
     LOG(INFO) << "Recurrent Layer Group eval frame " << i << " begin";

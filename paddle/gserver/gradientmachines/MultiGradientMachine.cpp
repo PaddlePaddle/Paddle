@@ -327,11 +327,11 @@ void MultiGradientMachine::finish() {
   }
 }
 
-Evaluator* MultiGradientMachine::makeEvaluator() {
+Evaluator* MultiGradientMachine::makeEvaluator() const {
   return threads_[0]->getGradientMachine()->makeEvaluator();
 }
 
-void MultiGradientMachine::eval(Evaluator* evaluator) {
+void MultiGradientMachine::eval(Evaluator* evaluator) const {
   for (auto& thread : threads_) {
     SetDevice device(thread->getDeviceId());
     thread->getGradientMachine()->eval(evaluator);
