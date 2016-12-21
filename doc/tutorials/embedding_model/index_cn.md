@@ -6,13 +6,13 @@
 
 ## 介绍 ###
 ### 中文字典 ###
-我们的字典采用内部的分词工具对百度知道和百度百科的语料进行分词后产生。分词风格如下： "《红楼梦》"将被分为 "《"，"红楼梦"，"》"，和 "《红楼梦》"。字典采用UTF8编码，输出有2列：词本身和词频。字典共包含 3206325个词和3个特殊标记：
+我们的字典使用内部的分词工具对百度知道和百度百科的语料进行分词后产生。分词风格如下： "《红楼梦》"将被分为 "《"，"红楼梦"，"》"，和 "《红楼梦》"。字典采用UTF8编码，输出有2列：词本身和词频。字典共包含 3206325个词和3个特殊标记：
   - `<s>`: 分词序列的开始
   - `<e>`: 分词序列的结束
   - `<unk>`: 未知词
 
 ### 中文词向量的预训练模型 ###
-如下图,遵循文章 [A Neural Probabilistic Language Model](http://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf)中介绍的方法，我们的词向量模型的结构采用：6元上下文作为输入层->全连接层->softmax层 。我们的字典包含4个维度的词向量编码，分别为：32维、64维、128维和256维。
+遵循文章 [A Neural Probabilistic Language Model](http://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf)中介绍的方法，模型采用 n-gram 语言模型，结构如下图：6元上下文作为输入层->全连接层->softmax层 。对应于字典，我们预训练得到4种不同维度的词向量，分别为：32维、64维、128维和256维。
 <center>![](./neural-n-gram-model.png)</center>
 <center>Figure 1. neural-n-gram-model</center>
 
@@ -23,7 +23,7 @@
     ./pre_DictAndModel.sh
 
 ## 中文短语改写的例子 ##
-以下示范如何使用预训练的中文字典和词向量模型进行短语改写。
+以下示范如何使用预训练的中文字典和词向量进行短语改写。
 
 ### 数据的准备和预处理 ###
 首先，运行以下的命令下载数据集。该数据集（utf8编码）包含20个训练样例，5个测试样例和2个生成式样例。
@@ -40,15 +40,14 @@
 
 
 ### 使用用户指定的词向量字典 ###
-从用户指定的词向量字典中抽取模型的命令如下:
-
+使用如下命令，从预训练模型中，根据用户指定的字典，抽取对应的词向量构成新的词表
     cd $PADDLE_ROOT/demo/model_zoo/embedding
     python extract_para.py --preModel PREMODEL --preDict PREDICT --usrModel USRMODEL--usrDict USRDICT -d DIM
 
-- `--preModel PREMODEL`: 预训练词向量字典模型的名字
-- `--preDict PREDICT`:  预训练（词向量）字典的名字
-- `--usrModel USRMODEL`: （用户指定的）待抽取的词向量模型的名字
-- `--usrDict USRDICT`: 用户指定的字典的名字
+- `--preModel PREMODEL`: 预训练词向量字典模型的路径
+- `--preDict PREDICT`:  预训练模型使用的字典的路径
+- `--usrModel USRMODEL`: （抽取出的新词表的保存路径
+- `--usrDict USRDICT`: 用户指定新的字典的路径，用于构成新的词表
 - `-d DIM`: 参数（词向量）的维度
 
 此处，你也可以简单的运行以下的命令：
@@ -91,7 +90,7 @@
 其中，`train.sh` 与`demo/seqToseq/translation/train.sh` 基本相同，只有2个配置不一样:
 
 - `--init_model_path`: 初始化模型的路径配置为`data/paraphrase_modeldata/paraphrase_model`
-- `--load_missing_parameter_strategy`: 如果参数模型文件缺失，初始化时，除词向量模型外的参数将使用正态分布
+- `--load_missing_parameter_strategy`:除词向量模型外的参数将使用正态分布” 改为 “除词向量模型外的参数将使用正态分布随机初始化
 
 如果用户想要了解详细的数据集的格式、模型的结构和训练过程，请查看 [Text generation Tutorial](../text_generation/text_generation.md).
 
