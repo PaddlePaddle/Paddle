@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "hl_dso_loader.h"
-#include "paddle/utils/CommandLineParser.h"
+#include <gflags/gflags.h>
 #include "paddle/utils/Logging.h"
 
 DEFINE_string(cudnn_dir,
