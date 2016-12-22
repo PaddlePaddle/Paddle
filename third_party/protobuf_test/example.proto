@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-package third_party.protobuf_test;
-
-message Greeting {
-  string name = 1;
-}
