@@ -50,9 +50,9 @@ DEFINE_int32(sock_recv_buf_size,
              1024 * 1024 * 40,
              "restrict sock recv buff size");
 
-P_DEFINE_int32(connrefused_retries_second,
-               10,
-               "retry connrefused_retries_second if ECONNREFUSED occurs");
+DEFINE_int32(connrefused_retries_second,
+             10,
+             "retry connrefused_retries_second if ECONNREFUSED occurs");
 
 namespace paddle {
 
