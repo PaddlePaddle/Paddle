@@ -152,6 +152,11 @@ void initMain(int argc, char** argv) {
     line += ' ';
   }
   LOG(INFO) << "commandline: " << line;
+
+#ifndef GFLAGS_GFLAGS_H_
+  namespace gflags = google;
+#endif
+
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 1) << "Unknown commandline argument: " << argv[1];
 
