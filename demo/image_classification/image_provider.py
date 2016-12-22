@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ from paddle.trainer.PyDataProvider2 import *
 
 #
 # {'img_size': 32,
-# 'settings': <paddle.trainer.PyDataProviderWrapper.Cls instance at 0x7fea27cb6050>,
+# 'settings': a global object,
 # 'color': True,
 # 'mean_img_size': 32,
 # 'meta': './data/cifar-out/batches/batches.meta',
@@ -50,10 +50,10 @@ def hook(settings, img_size, mean_img_size, num_classes, color, meta, use_jpeg,
 
     settings.logger.info('Image size: %s', settings.img_size)
     settings.logger.info('Meta path: %s', settings.meta_path)
-    settings.input_types = [
-        dense_vector(settings.img_raw_size),  # image feature
-        integer_value(settings.num_classes)
-    ]  # labels
+    settings.input_types = {
+        'image': dense_vector(settings.img_raw_size),
+        'label': integer_value(settings.num_classes)
+    }
 
     settings.logger.info('DataProvider Initialization finished')
 
@@ -83,4 +83,7 @@ def processData(settings, file_list):
                         img, settings.img_mean, settings.img_size,
                         settings.is_train, settings.color)
                     label = data['labels'][i]
-                    yield img_feat.astype('float32'), int(label)
+                    yield {
+                        'image': img_feat.astype('float32'),
+                        'label': int(label)
+                    }

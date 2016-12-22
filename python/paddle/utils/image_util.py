@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -186,29 +186,32 @@ class ImageTransformer:
                  channel_swap=None,
                  mean=None,
                  is_color=True):
-        self.transpose = transpose
-        self.channel_swap = None
-        self.mean = None
         self.is_color = is_color
+        self.set_transpose(transpose)
+        self.set_channel_swap(channel_swap)
+        self.set_mean(mean)
 
     def set_transpose(self, order):
-        if self.is_color:
-            assert 3 == len(order)
+        if order is not None:
+            if self.is_color:
+                assert 3 == len(order)
         self.transpose = order
 
     def set_channel_swap(self, order):
-        if self.is_color:
-            assert 3 == len(order)
+        if order is not None:
+            if self.is_color:
+                assert 3 == len(order)
         self.channel_swap = order
 
     def set_mean(self, mean):
-        # mean value, may be one value per channel 
-        if mean.ndim == 1:
-            mean = mean[:, np.newaxis, np.newaxis]
-        else:
-            # elementwise mean
-            if self.is_color:
-                assert len(mean.shape) == 3
+        if mean is not None:
+            # mean value, may be one value per channel 
+            if mean.ndim == 1:
+                mean = mean[:, np.newaxis, np.newaxis]
+            else:
+                # elementwise mean
+                if self.is_color:
+                    assert len(mean.shape) == 3
         self.mean = mean
 
     def transformer(self, data):

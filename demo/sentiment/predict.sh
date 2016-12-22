@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@ set -e
 model=model_output/pass-00002/
 config=trainer_config.py
 label=data/pre-imdb/labels.list
-python predict.py \
-     -n $config\
-     -w $model \
-     -b $label \
-     -d ./data/pre-imdb/dict.txt \
-     -i ./data/aclImdb/test/pos/10007_10.txt 
+cat ./data/aclImdb/test/pos/10007_10.txt | python predict.py \
+     --tconf=$config\
+     --model=$model \
+     --label=$label \
+     --dict=./data/pre-imdb/dict.txt \
+     --batch_size=1

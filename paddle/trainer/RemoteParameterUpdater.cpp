@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "RemoteParameterUpdater.h"
 #include "Trainer.h"
-#include "paddle/utils/Stat.h"
 #include "paddle/utils/GlobalConstants.h"
+#include "paddle/utils/Stat.h"
 
-P_DECLARE_int32(trainer_id);
-P_DECLARE_string(save_dir);
+DECLARE_int32(trainer_id);
+DECLARE_string(save_dir);
 
 namespace paddle {
 
@@ -44,7 +44,7 @@ RemoteParameterUpdater::RemoteParameterUpdater(
   addParameterType(PARAMETER_MOMENTUM);
 }
 
-void RemoteParameterUpdater::init(std::vector<ParameterPtr>& parameters) {
+void RemoteParameterUpdater::init(const std::vector<ParameterPtr>& parameters) {
   ParameterUpdater::init(parameters);
 
   if (localUpdater_) {
@@ -309,7 +309,7 @@ void RemoteParameterUpdater::startPass() {
   }
 }
 
-bool RemoteParameterUpdater::finishPass(real cost) {
+bool RemoteParameterUpdater::finishPass() {
   if (localUpdater_) {
     localUpdater_->finishPass();
   }
@@ -595,7 +595,8 @@ SparseRemoteParameterUpdater::SparseRemoteParameterUpdater(
       testing_(testing),
       useApplyInPserver_(false) {}
 
-void SparseRemoteParameterUpdater::init(std::vector<ParameterPtr>& parameters) {
+void SparseRemoteParameterUpdater::init(
+    const std::vector<ParameterPtr>& parameters) {
   ParameterUpdater::init(parameters);
 
   parameterClient_.reset(new ParameterClient2(
@@ -711,7 +712,7 @@ void SparseRemoteParameterUpdater::startPass() {
   }
 }
 
-bool SparseRemoteParameterUpdater::finishPass(real cost) {
+bool SparseRemoteParameterUpdater::finishPass() {
   if (config_.algorithm() == TrainAlgorithm::SGD) {
     parameterClient_->waitPassFinish();
   } else {
@@ -809,7 +810,7 @@ void SparseRemoteParameterUpdater::saveParametersRemote(
 }
 
 void SparseRemoteParameterUpdaterComposite::init(
-    std::vector<ParameterPtr>& parameters) {
+    const std::vector<ParameterPtr>& parameters) {
   parameters_ = parameters;
 
   std::vector<ParameterPtr> parametersArray[NUMBER_UPDATERS];

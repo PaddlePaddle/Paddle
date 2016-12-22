@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-P_DECLARE_string(config);
-P_DECLARE_string(config_args);
-P_DEFINE_string(merger,
-                "./paddle_merge_model",
-                "path to paddle_merge_model binary");
+DECLARE_string(config);
+DECLARE_string(config_args);
+DEFINE_string(merger,
+              "./paddle_merge_model",
+              "path to paddle_merge_model binary");
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

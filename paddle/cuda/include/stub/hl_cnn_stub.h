@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -116,30 +116,6 @@ inline void hl_avgpool_backward(const int frameCnt,
                                 real scaleB,
                                 real* backGrad,
                                 const int outStride) {}
-
-inline void hl_CMRNorm_forward(size_t frameCnt,
-                               const real* in,
-                               real* scale,
-                               real* out,
-                               size_t channels,
-                               size_t height,
-                               size_t width,
-                               size_t sizeX,
-                               real alpha,
-                               real beta) {}
-
-inline void hl_CMRNorm_backward(size_t frameCnt,
-                                const real* inV,
-                                const real* scale,
-                                const real* outV,
-                                const real* outDiff,
-                                real* inDiff,
-                                size_t channels,
-                                size_t height,
-                                size_t width,
-                                size_t sizeX,
-                                real alpha,
-                                real beta) {}
 
 inline void hl_bilinear_forward(const real* inData,
                                 const size_t inImgH,

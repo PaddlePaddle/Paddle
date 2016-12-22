@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,18 +15,17 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
-#include <string>
 #include <sys/time.h>
-#include <memory>
 #include <iostream>
-#include <mutex>
-#include <unordered_map>
 #include <list>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
-#include "Logging.h"
 #include "Locks.h"
+#include "Logging.h"
 #include "ThreadLocal.h"
-#include "Stat.h"
 
 namespace paddle {
 

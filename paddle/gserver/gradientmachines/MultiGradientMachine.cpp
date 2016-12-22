@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,11 +21,11 @@ limitations under the License. */
 #include "NeuralNetwork.h"
 #include "ParallelNeuralNetwork.h"
 
-P_DEFINE_bool(allow_only_one_model_on_one_gpu,
-              true,
-              "If true, do not allow multiple models on one GPU device");
+DEFINE_bool(allow_only_one_model_on_one_gpu,
+            true,
+            "If true, do not allow multiple models on one GPU device");
 #ifdef PADDLE_METRIC_LEARNING
-P_DECLARE_bool(external);
+DECLARE_bool(external);
 #endif
 
 namespace paddle {
@@ -327,11 +327,11 @@ void MultiGradientMachine::finish() {
   }
 }
 
-Evaluator* MultiGradientMachine::makeEvaluator() {
+Evaluator* MultiGradientMachine::makeEvaluator() const {
   return threads_[0]->getGradientMachine()->makeEvaluator();
 }
 
-void MultiGradientMachine::eval(Evaluator* evaluator) {
+void MultiGradientMachine::eval(Evaluator* evaluator) const {
   for (auto& thread : threads_) {
     SetDevice device(thread->getDeviceId());
     thread->getGradientMachine()->eval(evaluator);
@@ -441,7 +441,7 @@ TrainerThread::TrainerThread(const ModelConfig& config,
 TrainerThread::~TrainerThread() { stop(); }
 
 void TrainerThread::start() {
-  gradientMachine_->start(*(TrainerConfig*)nullptr, (DataProviderPtr) nullptr);
+  gradientMachine_->start();
 
   computeThread_.reset(new std::thread([this]() { computeThread(); }));
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,18 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
-#include <functional>
 #include <paddle/parameter/Argument.h>
-#include "paddle/utils/ClassRegistrar.h"
+#include <functional>
+#include <memory>
+#include "ModelConfig.pb.h"
+#include "paddle/function/Function.h"
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/parameter/Parameter.h"
+#include "paddle/utils/ClassRegistrar.h"
 #include "paddle/utils/Util.h"
-#include "ModelConfig.pb.h"
 
-#include "paddle/gserver/activations/ActivationFunction.h"
 #include <paddle/parameter/ParallelParameter.h>
 #include <paddle/parameter/Weight.h>
+#include "paddle/gserver/activations/ActivationFunction.h"
 
 /// Macro for registering a layer type.
 /// Example: REGISTER_LAYER(crf_error, CRFDecodingErrorLayer);
@@ -100,6 +101,11 @@ protected:
   /// Mark input grad in(true) or out(false) of backward function.
   std::vector<bool> markInBackward_;
 
+  /// Layer forward function
+  std::vector<std::shared_ptr<FunctionBase>> forward_;
+  /// Layer backward function
+  std::vector<std::shared_ptr<FunctionBase>> backward_;
+
 public:
   /**
     * Wait until all input value ready.
@@ -126,6 +132,26 @@ public:
   virtual void markAllInputGrad();
 
 protected:
+  /**
+   * Create layer function. Function is called in forward or backward.
+   * \param function, Layer::forward_ or Layer::backward_
+   * \param name, function name
+   * \param config, initialization configuration for the function
+   */
+  void createFunction(std::vector<std::shared_ptr<FunctionBase>>& function,
+                      const std::string& name,
+                      const FuncConfig& config) {
+    if (useGpu_) {
+      function.emplace_back(
+          FunctionBase::funcRegistrar_.createByType(name + "-GPU"));
+    } else {
+      function.emplace_back(
+          FunctionBase::funcRegistrar_.createByType(name + "-CPU"));
+    }
+    auto& func = function.back();
+    func->init(config);
+  }
+
   /**
    * Notify specified layer the output grad ready.
    * Called in the backward function.

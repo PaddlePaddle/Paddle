@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include <thread>
 #include <functional>
-#include "paddle/pserver/ParameterClient2.h"
+#include <thread>
 #include "ParameterUpdater.h"
-#include "paddle/utils/Util.h"
+#include "paddle/pserver/ParameterClient2.h"
 #include "paddle/utils/Queue.h"
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
@@ -67,7 +67,7 @@ public:
   /**
    * initialize the internal parameter client and itself.
    */
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
   /**
    * @brief start batch
    *
@@ -90,7 +90,7 @@ public:
    */
   virtual void finishBatch(real cost);
   virtual void startPass();
-  virtual bool finishPass(real cost);
+  virtual bool finishPass();
 
 #ifndef PADDLE_DISABLE_TIMER
   virtual void setForwardbackwardTime(uint64_t delta) {
@@ -274,14 +274,14 @@ public:
   }
 
   /// initialization
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
 
   /// stateful batch control
   virtual PassType startBatch(int64_t batchSize);
   /// send all sparse related parameters to all pservers
   virtual void finishBatch(real cost);
   virtual void startPass();
-  virtual bool finishPass(real cost);
+  virtual bool finishPass();
 
   virtual void apply();
   virtual void restore();
@@ -360,7 +360,7 @@ public:
   }
 
   /// initialization of dense and sparse updaters
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
 };
 
 class ParameterUpdaterCreators {

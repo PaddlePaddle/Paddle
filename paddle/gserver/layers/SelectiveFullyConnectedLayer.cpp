@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "SelectiveFullyConnectedLayer.h"
+#include <algorithm>
+#include <vector>
+#include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
-#include "paddle/math/SparseMatrix.h"
-#include <vector>
-#include <algorithm>
 
 namespace paddle {
 
@@ -155,20 +155,20 @@ void SelectiveFullyConnectedLayer::forward(PassType passType) {
       // manully compute the multiplication of
       // the input vector and the selected rows.
       REGISTER_TIMER("selective.plain");
-      interOutput_->mul(input, weight->getTranspose(), 1, scaleT);
+      interOutput_->mul(*input, *weight->getTranspose(), 1, scaleT);
     } else {
       // if the indecies is not sparse enough,
       // use full mul instead
       REGISTER_TIMER("selective.mul");
       if (fullOutput_) {
-        interOutput_->mul(input, weight->getTranspose(), 1, scaleT);
+        interOutput_->mul(*input, *weight->getTranspose(), 1, scaleT);
       } else {
         Matrix::resizeOrCreate(mmat_,
                                hsize,
                                wsize,
                                /*trans=*/false,
                                /*useGpu=*/useGpu_);
-        mmat_->mul(input, weight->getTranspose());
+        mmat_->mul(*input, *weight->getTranspose());
         interOutput_->add3(mmat_);
       }
     }
@@ -242,14 +242,14 @@ void SelectiveFullyConnectedLayer::backward(const UpdateCallback& callback) {
     MatrixPtr preGrad = getInputGrad(i);
     if (preGrad) {
       REGISTER_TIMER_INFO("BpMulTimer", getName().c_str());
-      preGrad->mul(interOutGrad_, weights_[i]->getW(), 1, 1);
+      preGrad->mul(*interOutGrad_, *weights_[i]->getW(), 1, 1);
     }
 
     MatrixPtr wGrad = weights_[i]->getWGrad();
     if (wGrad) {
       REGISTER_TIMER_INFO("GradMulTimer", getName().c_str());
       MatrixPtr input = getInputValue(i);
-      wGrad->mul(interOutGrad_->getTranspose(), input, 1, 1);
+      wGrad->mul(*interOutGrad_->getTranspose(), *input, 1, 1);
     }
 
     {

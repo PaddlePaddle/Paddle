@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@ limitations under the License. */
 
 #ifndef PADDLE_ONLY_CPU
 
-#include <cmath>
-#include <gtest/gtest.h>
-#include <vector>
 #include <cuda_runtime.h>
+#include <gtest/gtest.h>
+#include <cmath>
+#include <vector>
 #include "hl_cuda.h"
 #include "hl_perturbation_util.cuh"
 

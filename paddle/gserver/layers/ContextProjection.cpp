@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Stat.h"
 #include "ContextProjection.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 
@@ -90,8 +90,8 @@ void ContextProjection::forward() {
   REGISTER_TIMER_INFO("ContextProjectionForward", getName().c_str());
   bool isPadding = config_.trainable_padding();
   out_->value->contextProjectionForward(
-      in_->value,
-      state_ ? state_ : isPadding ? weight_->getW() : nullptr,
+      *(in_->value),
+      state_ ? state_.get() : isPadding ? weight_->getW().get() : nullptr,
       *startPositions,
       config_.context_length(),
       config_.context_start(),
@@ -128,8 +128,8 @@ void ContextProjection::backward(const UpdateCallback& callback) {
   bool isPadding = config_.trainable_padding();
   if (!out_->grad->useGpu()) {
     out_->grad->contextProjectionBackward(
-        in_->grad,
-        isPadding ? weight_->getWGrad() : nullptr,
+        in_->grad.get(),
+        isPadding ? weight_->getWGrad().get() : nullptr,
         *startPositions,
         config_.context_length(),
         config_.context_start(),
@@ -137,7 +137,7 @@ void ContextProjection::backward(const UpdateCallback& callback) {
         isPadding);
   } else {
     if (in_->grad) {
-      out_->grad->contextProjectionBackwardData(in_->grad,
+      out_->grad->contextProjectionBackwardData(*(in_->grad),
                                                 *startPositions,
                                                 config_.context_length(),
                                                 config_.context_start());
@@ -145,7 +145,7 @@ void ContextProjection::backward(const UpdateCallback& callback) {
 
     if (isPadding && weight_->getWGrad()) {
       out_->grad->contextProjectionBackwardWeight(
-          weight_->getWGrad(),
+          *(weight_->getWGrad()),
           *startPositions,
           config_.context_length(),
           config_.context_start(),

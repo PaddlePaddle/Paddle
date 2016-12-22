@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,15 +17,15 @@ limitations under the License. */
 #include <iostream>
 #include <vector>
 
+#include "ModelConfig.pb.h"
+#include "TrainerConfig.pb.h"
+#include "paddle/gserver/dataproviders/DataProvider.h"
+#include "paddle/gserver/evaluators/Evaluator.h"
+#include "paddle/gserver/layers/Layer.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/ParameterUpdaterBase.h"
 #include "paddle/utils/Thread.h"
-#include "TrainerConfig.pb.h"
-#include "ModelConfig.pb.h"
-#include "paddle/gserver/dataproviders/DataProvider.h"
-#include "paddle/gserver/evaluators/Evaluator.h"
-#include "paddle/gserver/layers/Layer.h"
 
 namespace paddle {
 /**
@@ -181,12 +181,12 @@ public:
   /**
    * Create an evaluator which can be used for eval()
    */
-  virtual Evaluator* makeEvaluator() = 0;
+  virtual Evaluator* makeEvaluator() const = 0;
 
   /**
    * evaluate using the given evaluator
    */
-  virtual void eval(Evaluator* evaluator) = 0;
+  virtual void eval(Evaluator* evaluator) const = 0;
 
   std::vector<ParameterPtr>& getParameters() { return parameters_; }
 
@@ -212,11 +212,7 @@ public:
    * @note    This function will only been implemented and used in a
    *          multithreaded environment.
    */
-  virtual void start(const TrainerConfig& config,
-                     DataProviderPtr dataProvider) {
-    (void)config;
-    (void)dataProvider;
-  }
+  virtual void start() {}
 
   /**
    * @brief   check  each work-thread whether is failed/error/finish,

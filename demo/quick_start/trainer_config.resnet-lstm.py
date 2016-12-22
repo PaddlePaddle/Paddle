@@ -1,6 +1,6 @@
 # edit-mode: -*- python -*-
 
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 This configuration is a demonstration of how to implement the stacked LSTM
 with residual connections, i.e. an LSTM layer takes the sum of the hidden states
@@ -46,11 +45,12 @@ is_predict = get_config_arg('is_predict', bool, False)
 trn = 'data/train.list' if not is_predict else None
 tst = 'data/test.list' if not is_predict else 'data/pred.list'
 process = 'process' if not is_predict else 'process_predict'
-define_py_data_sources2(train_list=trn,
-                        test_list=tst,
-                        module="dataprovider_emb",
-                        obj=process,
-                        args={"dictionary": word_dict})
+define_py_data_sources2(
+    train_list=trn,
+    test_list=tst,
+    module="dataprovider_emb",
+    obj=process,
+    args={"dictionary": word_dict})
 
 batch_size = 128 if not is_predict else 1
 settings(
@@ -58,10 +58,9 @@ settings(
     learning_rate=2e-3,
     learning_method=AdamOptimizer(),
     regularization=L2Regularization(8e-4),
-    gradient_clipping_threshold=25
-)
+    gradient_clipping_threshold=25)
 
-bias_attr = ParamAttr(initial_std=0.,l2_rate=0.)
+bias_attr = ParamAttr(initial_std=0., l2_rate=0.)
 
 data = data_layer(name="word", size=len(word_dict))
 emb = embedding_layer(input=data, size=128)
@@ -73,17 +72,15 @@ for i in range(3):
     # The input to the current layer is the sum of the hidden state
     # and input of the previous layer.
     current_input = addto_layer(input=[previous_input, previous_hidden_state])
-    hidden_state = simple_lstm(input=current_input, size=128,
-                               lstm_cell_attr=ExtraAttr(drop_rate=0.1))
+    hidden_state = simple_lstm(
+        input=current_input, size=128, lstm_cell_attr=ExtraAttr(drop_rate=0.1))
     previous_input, previous_hidden_state = current_input, hidden_state
 
 lstm = previous_hidden_state
 
 lstm_last = pooling_layer(input=lstm, pooling_type=MaxPooling())
-output = fc_layer(input=lstm_last, size=2,
-                  bias_attr=bias_attr,
-                  act=SoftmaxActivation())
-
+output = fc_layer(
+    input=lstm_last, size=2, bias_attr=bias_attr, act=SoftmaxActivation())
 
 if is_predict:
     maxid = maxid_layer(output)

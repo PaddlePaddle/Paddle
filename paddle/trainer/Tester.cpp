@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,6 +46,12 @@ Tester::Tester(const std::shared_ptr<TrainerConfigHelper>& config,
       gradientMachine_(gradientMachine),
       parameterUpdater_(parameterUpdater),
       testDataProvider_(testDataProvider) {
+  if (config_->getOptConfig().use_sparse_remote_updater()) {
+    LOG(FATAL) << "It's prohibited to set sparse_remote_update "
+               << "when doing train and test jobs in the same "
+               << "process. You could run paddle --job=test in "
+               << "a separate process.";
+  }
   testEvaluator_.reset(gradientMachine_->makeEvaluator());
   if (intconfig_->distributeTest) {
     testParameterClient_.reset(new ParameterClient2(true));
@@ -251,7 +257,7 @@ void Tester::test() {
   CHECK(testDataProvider_) << "TestData is not specified";
   testDataProvider_->setSkipShuffle();
   testDataProvider_->reset();
-  gradientMachine_->start(*config_, testDataProvider_);
+  gradientMachine_->start();
 
   // For evaluation
   std::vector<std::string> modelList;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,15 +46,15 @@ public:
 
   virtual void onPassEnd();
 
-  virtual Evaluator* makeEvaluator();
+  virtual Evaluator* makeEvaluator() const;
 
-  virtual void eval(Evaluator* evaluator);
+  virtual void eval(Evaluator* evaluator) const;
 
   const std::vector<std::unique_ptr<NeuralNetwork>>& getSubNetworks() const {
     return subNetworks_;
   }
 
-  virtual void start(const TrainerConfig& config, DataProviderPtr dataProvider);
+  virtual void start();
 
   virtual void finish();
 

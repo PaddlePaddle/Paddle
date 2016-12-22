@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "SparseMatrix.h"
 #include <algorithm>
+#include <iostream>
 #include <vector>
 #include "hl_gpu.h"
-#include "SparseMatrix.h"
-#include "paddle/utils/Util.h"
 #include "hl_top_k.h"
-#include <iostream>
+#include "paddle/utils/Util.h"
 
 namespace paddle {
 
@@ -537,11 +537,9 @@ void GpuSparseMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
     dataVec.emplace_back(
         rows.getData()[i], cols_full.getData()[i], value.getData()[i]);
   }
-  std::sort(dataVec.begin(),
-            dataVec.end(),
-            [](Element a, Element b) {
-              return a.row < b.row || (a.row == b.row && a.col < b.col);
-            });
+  std::sort(dataVec.begin(), dataVec.end(), [](Element a, Element b) {
+    return a.row < b.row || (a.row == b.row && a.col < b.col);
+  });
 
   /*get sorted data, row index, and col index, put them in the right place*/
   cols.resize(height_ + 1);
@@ -573,49 +571,48 @@ void GpuSparseMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   hl_stream_synchronize(stream);
 }
 
-void GpuSparseMatrix::mul(const GpuMatrixPtr a,
-                          const GpuMatrixPtr b,
+void GpuSparseMatrix::mul(const GpuMatrix& a,
+                          const GpuMatrix& b,
                           real scaleAB,
                           real scaleT) {
-  CHECK(a->useGpu_ && b->useGpu_) << "type not match";
+  CHECK(a.useGpu_ && b.useGpu_) << "type not match";
   CHECK(!trans_) << "trans not supported";
-  real* A_d = a->getData();
-  real* B_d = b->getData();
+  real* A_d = (real*)a.getData();
+  real* B_d = (real*)b.getData();
   hl_sparse_matrix_s C_d = sMatrix_.get();
-  hl_trans_op_t a_trans = a->trans_ ? HPPL_OP_T : HPPL_OP_N;
-  hl_trans_op_t b_trans = b->trans_ ? HPPL_OP_T : HPPL_OP_N;
+  hl_trans_op_t a_trans = a.trans_ ? HPPL_OP_T : HPPL_OP_N;
+  hl_trans_op_t b_trans = b.trans_ ? HPPL_OP_T : HPPL_OP_N;
 
-  if (!a->trans_ && !b->trans_) {
-    CHECK(height_ == a->getHeight());
-    CHECK(width_ == b->getWidth());
-    CHECK(a->getWidth() == b->getHeight());
-  } else if (a->trans_ && !b->trans_) {
-    CHECK(height_ == a->getWidth());
-    CHECK(width_ == b->getWidth());
-    CHECK(a->getHeight() == b->getHeight());
-  } else if (!a->trans_ && b->trans_) {
-    CHECK(height_ == a->getHeight());
-    CHECK(width_ == b->getHeight());
-    CHECK(a->getWidth() == b->getWidth());
+  if (!a.trans_ && !b.trans_) {
+    CHECK(height_ == a.getHeight());
+    CHECK(width_ == b.getWidth());
+    CHECK(a.getWidth() == b.getHeight());
+  } else if (a.trans_ && !b.trans_) {
+    CHECK(height_ == a.getWidth());
+    CHECK(width_ == b.getWidth());
+    CHECK(a.getHeight() == b.getHeight());
+  } else if (!a.trans_ && b.trans_) {
+    CHECK(height_ == a.getHeight());
+    CHECK(width_ == b.getHeight());
+    CHECK(a.getWidth() == b.getWidth());
   } else {
     LOG(INFO) << "Not support";
   }
   int dimM = height_;
   int dimN = width_;
-  int dimK = !b->trans_ ? b->getHeight() : b->getWidth();
+  int dimK = !b.trans_ ? b.getHeight() : b.getWidth();
   hl_sparse_matrix_mul(
       A_d, a_trans, B_d, b_trans, C_d, dimM, dimN, dimK, scaleAB, scaleT);
 }
 
-void GpuSparseMatrix::mul(const MatrixPtr a,
-                          const MatrixPtr b,
+void GpuSparseMatrix::mul(const Matrix& a,
+                          const Matrix& b,
                           real scaleAB,
                           real scaleT) {
-  if (std::dynamic_pointer_cast<GpuMatrix>(a) &&
-      std::dynamic_pointer_cast<GpuMatrix>(b)) {
-    GpuMatrixPtr a_ptr = std::dynamic_pointer_cast<GpuMatrix>(a);
-    GpuMatrixPtr b_ptr = std::dynamic_pointer_cast<GpuMatrix>(b);
-    mul(a_ptr, b_ptr, scaleAB, scaleT);
+  const auto a_ptr = dynamic_cast<const GpuMatrix*>(&a);
+  const auto b_ptr = dynamic_cast<const GpuMatrix*>(&b);
+  if (a_ptr && b_ptr) {
+    mul(*a_ptr, *b_ptr, scaleAB, scaleT);
   } else {
     LOG(FATAL) << "not supported";
   }

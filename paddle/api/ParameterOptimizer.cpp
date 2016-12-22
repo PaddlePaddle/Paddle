@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/parameter/ParameterOptimizer.h"
+#include <algorithm>
+#include "Internal.h"
 #include "PaddleAPI.h"
 #include "PaddleAPIPrivate.h"
-#include "paddle/parameter/ParameterOptimizer.h"
-#include "Internal.h"
-#include <algorithm>
 
 struct ParameterOptimizerPrivate {
   std::unique_ptr<paddle::ParameterOptimizer> optimizer;
@@ -36,16 +36,13 @@ struct ParameterTraverseCallbackPrivate {
              size_t sparseId) {
     std::vector<paddle::VectorPtr> real_vecs;
     real_vecs.resize(vecs.size());
-    std::transform(vecs.begin(),
-                   vecs.end(),
-                   real_vecs.begin(),
-                   [](Vector* v) {
-                     if (v) {
-                       return *(paddle::VectorPtr*)(v->getSharedPtr());
-                     } else {
-                       return paddle::VectorPtr();
-                     }
-                   });
+    std::transform(vecs.begin(), vecs.end(), real_vecs.begin(), [](Vector* v) {
+      if (v) {
+        return *(paddle::VectorPtr*)(v->getSharedPtr());
+      } else {
+        return paddle::VectorPtr();
+      }
+    });
 
     paddle::ParameterConfig& real_conf =
         *(paddle::ParameterConfig*)(const_cast<ParameterConfig&>(conf)

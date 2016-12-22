@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -141,9 +141,9 @@ def init_config_environment(
         g_add_submodel_suffix=False,
 
         # Whether current layer needs to pass the image height and width.
-        # Default value is true, but if it encounters recurrent_layer_group, 
-        # it will be false. The reason is that image is converted to be sequence, 
-        # image height will be sequence length, and image width will be feature 
+        # Default value is true, but if it encounters recurrent_layer_group,
+        # it will be false. The reason is that image is converted to be sequence,
+        # image height will be sequence length, and image width will be feature
         # length of each timestep.
         g_pass_height_width=True, ):
 
@@ -498,9 +498,16 @@ class Input(Cfg):
             is_static=None,
             is_shared=None,
             update_hooks=None,
-            input_layer_argument=None, ):
+            input_layer_argument=None,
+            make_layer_name_in_submodel=True, ):
+        """
+        @param make_layer_name_in_submodel True by defalut, you might need to
+        set it carefully when adding Input in config_parser.py.
+        """
         self.add_keys(locals())
-        self.input_layer_name = MakeLayerNameInSubmodel(input_layer_name)
+        self.input_layer_name = MakeLayerNameInSubmodel(
+            input_layer_name
+        ) if make_layer_name_in_submodel else input_layer_name
 
 
 # Define a projection for iexed layer
@@ -1067,7 +1074,7 @@ def cnn_output_size(img_size, filter_size, padding, stride, caffe_mode):
         return 1 + int(math.ceil(output))
 
 
-#calcualte image_size based on output_size for de-convolution (ConvTransLayer). 
+#calcualte image_size based on output_size for de-convolution (ConvTransLayer).
 #It is the reverse function of cnn_output_size
 def cnn_image_size(output_size, filter_size, padding, stride, caffe_mode):
     img_size = (output_size - 1) * stride + filter_size - 2 * padding
@@ -1240,7 +1247,8 @@ def Evaluator(
         dict_file=None,
         result_file=None,
         num_results=None,
-        delimited=None, ):
+        delimited=None,
+        excluded_chunk_types=None, ):
     evaluator = g_config.model_config.evaluators.add()
     evaluator.type = type
     evaluator.name = MakeLayerNameInSubmodel(name)
@@ -1268,6 +1276,9 @@ def Evaluator(
         evaluator.num_results = num_results
     if delimited is not None:
         evaluator.delimited = delimited
+
+    if excluded_chunk_types:
+        evaluator.excluded_chunk_types.extend(excluded_chunk_types)
 
 
 class LayerBase(object):
@@ -1578,6 +1589,27 @@ class PrintLayer(LayerBase):
         super(PrintLayer, self).__init__(name, 'print', 0, inputs)
 
 
+@config_layer('priorbox')
+class PriorBoxLayer(LayerBase):
+    def __init__(self, name, inputs, size, min_size, max_size, aspect_ratio,
+                 variance):
+        super(PriorBoxLayer, self).__init__(name, 'priorbox', 0, inputs)
+        config_assert(len(inputs) == 2, 'PriorBoxLayer must have 2 inputs')
+        input_layer = self.get_input_layer(1)
+        config_assert(
+            input_layer.type == 'data',
+            'Expecting the second input layer of an priorbox layer to be '
+            'a data layer')
+        config_assert(input_layer.width > 0, 'The data layer must set width')
+        config_assert(input_layer.height > 0, 'The data layer must set height')
+        config_assert(len(variance) == 4, 'The variance must have 4 inputs')
+        self.config.inputs[0].priorbox_conf.min_size.extend(min_size)
+        self.config.inputs[0].priorbox_conf.max_size.extend(max_size)
+        self.config.inputs[0].priorbox_conf.aspect_ratio.extend(aspect_ratio)
+        self.config.inputs[0].priorbox_conf.variance.extend(variance)
+        self.config.size = size
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):
@@ -1844,7 +1876,8 @@ class BatchNormLayer(LayerBase):
                     initial_std=0.0,
                     initial_mean=0.0,
                     is_static=True,
-                    is_shared=is_shared, ))
+                    is_shared=is_shared,
+                    make_layer_name_in_submodel=False, ))
 
         parallel_nn = bool(int(g_command_config_args.get("parallel_nn", 0)))
         cudnn_version = int(g_command_config_args.get("cudnn_version", 0))
@@ -1871,8 +1904,14 @@ class BatchNormLayer(LayerBase):
         input_layer = self.get_input_layer(0)
         image_conf = self.config.inputs[0].image_conf
         parse_image(self.inputs[0].image, input_layer.name, image_conf)
-        self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                           image_conf.channels, False)
+
+        # Only pass the width and height of input to batch_norm layer 
+        # when either of it is non-zero. 
+        if input_layer.width != 0 or input_layer.height != 0:
+            self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
+                               image_conf.channels, False)
+        else:
+            self.set_layer_size(input_layer.size)
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
@@ -2987,6 +3026,27 @@ class CTCLayer(LayerBase):
         config_assert(len(self.inputs) == 2, 'CTCLayer must have 2 inputs')
 
 
+@config_layer('warp_ctc')
+class WarpCTCLayer(LayerBase):
+    def __init__(self,
+                 name,
+                 size,
+                 inputs,
+                 blank=0,
+                 norm_by_times=False,
+                 device=None):
+        super(WarpCTCLayer, self).__init__(
+            name, 'warp_ctc', size=size, inputs=inputs, device=device)
+        self.config.blank = blank
+        self.config.norm_by_times = norm_by_times
+        config_assert(len(self.inputs) == 2, 'WarpCTCLayer must have 2 inputs')
+        input_layer = self.get_input_layer(0)
+        config_assert(
+            (input_layer.active_type == '' or
+             input_layer.active_type == 'linear'),
+            "Expecting the active_type of input layer to be linear or null")
+
+
 @config_layer('recurrent_layer_group')
 class RecurrentLayerGroup(LayerBase):
     def __init__(self, name, device=None):
@@ -3344,12 +3404,26 @@ def my_fatal(s):
     raise Exception()
 
 
+_parse_config_hooks = set()
+
+
+def register_parse_config_hook(f):
+    """
+    Register a hook function for parse_config. parse_config will invoke the hook
+    at the beginning of parse. This make it possible to reset global state for
+    for constructing the model.
+    """
+    _parse_config_hooks.add(f)
+
+
 def parse_config(config_file, config_arg_str):
     '''
     @param config_arg_str: a string of the form var1=val1,var2=val2. It will be
     passed to config script as a dictionary CONFIG_ARGS
     '''
     init_config_environment()
+    for hook in _parse_config_hooks:
+        hook()
 
     config_args = {}
 

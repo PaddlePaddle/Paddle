@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,7 +69,7 @@ def define_py_data_source(file_list,
     """
     if isinstance(file_list, list):
         file_list_name = 'train.list'
-        if isinstance(cls, TestData):
+        if cls == TestData:
             file_list_name = 'test.list'
         with open(file_list_name, 'w') as f:
             f.writelines(file_list)
@@ -77,21 +77,6 @@ def define_py_data_source(file_list,
 
     if not isinstance(args, basestring) and args is not None:
         args = pickle.dumps(args, 0)
-
-    if data_cls is None:
-
-        def py_data2(files, load_data_module, load_data_object, load_data_args,
-                     **kwargs):
-            data = DataBase()
-            data.type = 'py2'
-            data.files = files
-            data.load_data_module = load_data_module
-            data.load_data_object = load_data_object
-            data.load_data_args = load_data_args
-            data.async_load_data = True
-            return data
-
-        data_cls = py_data2
 
     cls(
         data_cls(
@@ -186,8 +171,7 @@ def define_py_data_sources2(train_list, test_list, module, obj, args=None):
                                 obj="process", 
                                 args={"dictionary": dict_name})
 
-    The related data provider can refer to 
-    `here <../../data_provider/pydataprovider2.html#dataprovider-for-the-sequential-model>`__.
+    The related data provider can refer to :ref:`api_pydataprovider2_sequential_model` .
 
     :param train_list: Train list name.
     :type train_list: basestring
@@ -208,10 +192,22 @@ def define_py_data_sources2(train_list, test_list, module, obj, args=None):
     :return: None
     :rtype: None
     """
+
+    def py_data2(files, load_data_module, load_data_object, load_data_args,
+                 **kwargs):
+        data = DataBase()
+        data.type = 'py2'
+        data.files = files
+        data.load_data_module = load_data_module
+        data.load_data_object = load_data_object
+        data.load_data_args = load_data_args
+        data.async_load_data = True
+        return data
+
     define_py_data_sources(
         train_list=train_list,
         test_list=test_list,
         module=module,
         obj=obj,
         args=args,
-        data_cls=None)
+        data_cls=py_data2)

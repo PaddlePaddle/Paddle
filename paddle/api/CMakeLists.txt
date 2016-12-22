@@ -17,21 +17,17 @@ add_library(paddle_api STATIC
         ${API_SOURCES})
 add_dependencies(paddle_api gen_proto_cpp)
 
+list(LENGTH "${GFLAGS_LIBRARIES}" GFLAGS_LIBRARIES_LENGTH)
 
-if(WITH_GFLAGS)
-  list(LENGTH "${GFLAGS_LIBRARIES}" GFLAGS_LIBRARIES_LENGTH)
-
-  if(${GFLAGS_LIBRARIES_LENGTH} EQUAL 0 AND TARGET "${GFLAGS_LIBRARIES}")
-    # Because gflags compiled by cmake, so it is imported by cmake target,
-    # not a real library path. Get the real library path here.
-    message(STATUS "GFLAGS Libraries is ${GFLAGS_LIBRARIES}")
-    get_target_property(GFLAGS_LOCATION ${GFLAGS_LIBRARIES} LOCATION)
-    message(STATUS "GFLAGS Target location is ${GFLAGS_LOCATION}")
-  else()
-    set(GFLAGS_LOCATION ${GFLAGS_LIBRARIES})
-  endif()
+if(${GFLAGS_LIBRARIES_LENGTH} EQUAL 0 AND TARGET "${GFLAGS_LIBRARIES}")
+# Because gflags compiled by cmake, so it is imported by cmake target,
+# not a real library path. Get the real library path here.
+message(STATUS "GFLAGS Libraries is ${GFLAGS_LIBRARIES}")
+get_target_property(GFLAGS_LOCATION ${GFLAGS_LIBRARIES} LOCATION)
+message(STATUS "GFLAGS Target location is ${GFLAGS_LOCATION}")
+else()
+set(GFLAGS_LOCATION ${GFLAGS_LIBRARIES})
 endif()
-
 
 configure_file(
     paddle_api_config.py.in
@@ -50,6 +46,7 @@ add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/dist/.timestamp
     WORKING_DIRECTORY ${PROJ_ROOT}/paddle
     DEPENDS python_swig_sources
             paddle_parameter
+            paddle_function
             paddle_math
             paddle_utils
             paddle_gserver
@@ -57,7 +54,7 @@ add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/dist/.timestamp
             paddle_trainer
             paddle_api
             paddle_cuda
-	    ${PY_PADDLE_PYTHON_FILES}
+        ${PY_PADDLE_PYTHON_FILES}
 )
 
 install(DIRECTORY ${PROJ_ROOT}/paddle/dist/

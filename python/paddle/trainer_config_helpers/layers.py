@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -91,6 +91,7 @@ __all__ = [
     'linear_comb_layer',
     'convex_comb_layer',
     'ctc_layer',
+    'warp_ctc_layer',
     'crf_layer',
     'crf_decoding_layer',
     'nce_layer',
@@ -105,6 +106,7 @@ __all__ = [
     'maxout_layer',
     'out_prod_layer',
     'print_layer',
+    'priorbox_layer',
     'spp_layer',
 ]
 
@@ -170,8 +172,10 @@ class LayerType(object):
     SPP_LAYER = "spp"
 
     PRINT_LAYER = "print"
+    PRIORBOX_LAYER = "priorbox"
 
     CTC_LAYER = "ctc"
+    WARP_CTC_LAYER = "warp_ctc"
     CRF_LAYER = "crf"
     CRF_DECODING_LAYER = "crf_decoding"
     NCE_LAYER = 'nce'
@@ -932,6 +936,52 @@ def print_layer(input, name=None):
     # this layer don't return anything, can not be input of other layer.
 
 
+@wrap_name_default("priorbox")
+def priorbox_layer(input,
+                   image,
+                   aspect_ratio,
+                   variance,
+                   min_size,
+                   max_size=[],
+                   name=None):
+    """
+    Compute the priorbox and set the variance. This layer is necessary for ssd.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param image: The network input image.
+    :type image: LayerOutput
+    :param aspect_ratio: The aspect ratio.
+    :type aspect_ratio: list
+    :param variance: The bounding box variance.
+    :type min_size: The min size of the priorbox width/height.
+    :param min_size: list
+    :type max_size: The max size of the priorbox width/height. Could be NULL.
+    :param max_size: list
+    :return: LayerOutput
+    """
+    # plus one for ratio 1.
+    num_filters = (len(aspect_ratio) * 2 + 1 + len(max_size)) * 4
+    size = (input.size / input.num_filters) * num_filters * 2
+    Layer(
+        name=name,
+        type=LayerType.PRIORBOX_LAYER,
+        inputs=[input.name, image.name],
+        size=size,
+        min_size=min_size,
+        max_size=max_size,
+        aspect_ratio=aspect_ratio,
+        variance=variance)
+    return LayerOutput(
+        name,
+        LayerType.PRIORBOX_LAYER,
+        parents=[input, image],
+        num_filters=num_filters,
+        size=size)
+
+
 @wrap_name_default("seq_pooling")
 @wrap_bias_attr_default(has_bias=False)
 @wrap_param_default(['pooling_type'], default_factory=lambda _: MaxPooling())
@@ -968,7 +1018,7 @@ def pooling_layer(input,
     :param layer_attr: The Extra Attributes for layer, such as dropout.
     :type layer_attr: ExtraLayerAttribute|None
     :return: LayerOutput object.
-    :rtype: LayerType
+    :rtype: LayerOutput
     """
     extra_dict = dict()
     # noinspection PyUnresolvedReferences
@@ -1774,15 +1824,15 @@ def img_conv_layer(input,
                    trans=False,
                    layer_type=None):
     """
-    Convolution layer for image. Paddle only support square input currently and
-    thus input image's width equals height.
+    Convolution layer for image. Paddle can support both square and non-square 
+    input currently.
 
     The details of convolution layer, please refer UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/
     FeatureExtractionUsingConvolution/>`_ .
 
-    Convolution Transpose (deconv) layer for image. Paddle only support square
-    input currently and thus input image's width equals height.
+    Convolution Transpose (deconv) layer for image. Paddle can support both square 
+    and non-square input currently.
 
     The details of convolution transpose layer,
     please refer to the following explanation and references therein
@@ -4094,6 +4144,83 @@ def ctc_layer(input,
         inputs=[input.name, label.name],
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(name, LayerType.CTC_LAYER, [input, label], size=size)
+
+
+@wrap_name_default()
+@layer_support()
+def warp_ctc_layer(input,
+                   label,
+                   size=None,
+                   name=None,
+                   blank=0,
+                   norm_by_times=False,
+                   layer_attr=None):
+    """
+    A layer intergrating the open-source `warp-ctc
+    <https://github.com/baidu-research/warp-ctc>` library, which is used in
+    `Deep Speech 2: End-toEnd Speech Recognition in English and Mandarin
+    <https://arxiv.org/pdf/1512.02595v1.pdf>`, to compute Connectionist Temporal
+    Classification (CTC) loss.
+
+    More details of CTC can be found by referring to `Connectionist Temporal
+    Classification: Labelling Unsegmented Sequence Data with Recurrent
+    Neural Networks <http://machinelearning.wustl.edu/mlpapers/paper_files/
+    icml2006_GravesFGS06.pdf>`_
+
+    Note:
+        - Let num_classes represent the category number. Considering the 'blank'
+          label needed by CTC, you need to use (num_classes + 1) as the input
+          size. Thus, the size of both warp_ctc_layer and 'input' layer should
+          be set to num_classes + 1.
+        - You can set 'blank' to any value ranged in [0, num_classes], which
+          should be consistent as that used in your labels.
+        - As a native 'softmax' activation is interated to the warp-ctc library,
+         'linear' activation is expected instead in the 'input' layer.
+
+    The simple usage:
+
+    .. code-block:: python
+
+      ctc = warp_ctc_layer(input=input,
+                           label=label,
+                           size=1001,
+                           blank=1000,
+                           norm_by_times=False)
+
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param label: The data layer of label with variable length.
+    :type label: LayerOutput
+    :param size: category numbers + 1.
+    :type size: int
+    :param name: The name of this layer, which can not specify.
+    :type name: basestring|None
+    :param blank: the 'blank' label used in ctc
+    :type blank: int
+    :param norm_by_times: Whether to normalization by times. False by default.
+    :type norm_by_times: bool
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    assert isinstance(label, LayerOutput)
+    if label.size is not None:
+        if size is not None:
+            assert size == label.size + 1
+        else:
+            size = label.size + 1
+    Layer(
+        name=name,
+        type=LayerType.WARP_CTC_LAYER,
+        size=size,
+        blank=blank,
+        norm_by_times=norm_by_times,
+        inputs=[input.name, label.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.WARP_CTC_LAYER, parents=[input, label], size=size)
 
 
 @wrap_name_default()

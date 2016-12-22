@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -111,3 +111,13 @@ def test_check(settings, filename):
             if i < 10:
                 yield_good_value = True
             yield i
+
+
+@provider(
+    input_types=[index_slot(10)],
+    min_pool_size=1000,
+    cache=CacheType.CACHE_PASS_IN_MEM, )
+def test_min_pool_size_with_cache(settings, filename):
+    import random
+    for _ in xrange(2**20):
+        yield random.randint(0, 9)

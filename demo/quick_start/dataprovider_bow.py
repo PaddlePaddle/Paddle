@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,16 +31,16 @@ def initializer(settings, dictionary, **kwargs):
 
     # setting.input_types specifies what the data types the data provider
     # generates.
-    settings.input_types = [
+    settings.input_types = {
         # The first input is a sparse_binary_vector,
         # which means each dimension of the vector is either 0 or 1. It is the
         # bag-of-words (BOW) representation of the texts.
-        sparse_binary_vector(len(dictionary)),
+        'word': sparse_binary_vector(len(dictionary)),
         # The second input is an integer. It represents the category id of the
         # sample. 2 means there are two labels in the dataset.
         # (1 for positive and 0 for negative)
-        integer_value(2)
-    ]
+        'label': integer_value(2)
+    }
 
 
 # Delaring a data provider. It has an initializer 'data_initialzer'.
@@ -67,12 +67,12 @@ def process(settings, file_name):
             # Return the features for the current comment. The first is a list
             # of ids representing a 0-1 binary sparse vector of the text,
             # the second is the integer id of the label.
-            yield word_vector, int(label)
+            yield {'word': word_vector, 'label': int(label)}
 
 
 def predict_initializer(settings, dictionary, **kwargs):
     settings.word_dict = dictionary
-    settings.input_types = [sparse_binary_vector(len(dictionary))]
+    settings.input_types = {'word': sparse_binary_vector(len(dictionary))}
 
 
 # Declaring a data provider for prediction. The difference with process
@@ -83,4 +83,4 @@ def process_predict(settings, file_name):
         for line in f:
             comment = line.strip().split()
             word_vector = [settings.word_dict.get(w, UNK_IDX) for w in comment]
-            yield word_vector
+            yield {'word': word_vector}

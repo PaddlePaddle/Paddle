@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -78,6 +78,20 @@ class DefaultNameFactory(object):
         """
         pass
 
+    def reset(self):
+        self.__counter__ = 0
+
+
+_name_factories = []
+
+
+def reset_hook():
+    for factory in _name_factories:
+        factory.reset()
+
+
+register_parse_config_hook(reset_hook)
+
 
 def wrap_name_default(name_prefix=None):
     """
@@ -95,7 +109,9 @@ def wrap_name_default(name_prefix=None):
     :return: a decorator to set default name
     :rtype: callable
     """
-    return wrap_param_default(["name"], DefaultNameFactory(name_prefix))
+    factory = DefaultNameFactory(name_prefix)
+    _name_factories.append(factory)
+    return wrap_param_default(["name"], factory)
 
 
 def wrap_param_attr_default(param_names=None, default_factory=None):

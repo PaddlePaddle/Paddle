@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
-#include <algorithm>
 
 #include "MultiNetwork.h"
 
@@ -109,10 +109,9 @@ void MultiNetwork::onPassEnd() {
   }
 }
 
-void MultiNetwork::start(const TrainerConfig& config,
-                         DataProviderPtr dataProvider) {
+void MultiNetwork::start() {
   for (auto& subNetwork : subNetworks_) {
-    subNetwork->start(config, dataProvider);
+    subNetwork->start();
   }
 }
 
@@ -172,7 +171,7 @@ protected:
   std::vector<std::unique_ptr<Evaluator>> evaluators_;
 };
 
-Evaluator* MultiNetwork::makeEvaluator() {
+Evaluator* MultiNetwork::makeEvaluator() const {
   MultiCombinedEvaluator* multiCombinedEvaluator = new MultiCombinedEvaluator();
   for (size_t i = 0; i < subNetworks_.size(); i++) {
     std::unique_ptr<Evaluator> evaluator(subNetworks_[i]->makeEvaluator());
@@ -181,6 +180,6 @@ Evaluator* MultiNetwork::makeEvaluator() {
   return multiCombinedEvaluator;
 }
 
-void MultiNetwork::eval(Evaluator* evaluator) { evaluator->eval(*this); }
+void MultiNetwork::eval(Evaluator* evaluator) const { evaluator->eval(*this); }
 
 }  // namespace paddle

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,18 +15,18 @@ limitations under the License. */
 #ifndef PADDLE_NO_PYTHON
 
 #include <Python.h>
+#include <numpy/numpyconfig.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unordered_set>
 #include <list>
-#include <numpy/numpyconfig.h>
+#include <unordered_set>
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/ndarrayobject.h>
 
 #include "DataProvider.h"
 
-#include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Locks.h"
+#include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -252,19 +252,9 @@ private:
     // only for instance will make python reference-count error.
     //
     // So here, we increase reference count manually.
-    if (gModuleClsPtrs_.find((uintptr_t)module.get()) !=
-        gModuleClsPtrs_.end()) {
-      // Multi instance use same module
-      Py_XINCREF(module.get());
-      Py_XINCREF(moduleDict.get());
-    } else {
-      gModuleClsPtrs_.insert((uintptr_t)module.get());
-    }
-    if (gModuleClsPtrs_.find((uintptr_t)cls.get()) != gModuleClsPtrs_.end()) {
-      Py_XINCREF(cls.get());
-    } else {
-      gModuleClsPtrs_.insert((uintptr_t)cls.get());
-    }
+    Py_XINCREF(module.get());
+    Py_XINCREF(moduleDict.get());
+    Py_XINCREF(cls.get());
 
     PyObjectPtr fileListInPy = loadPyFileLists(fileListName);
     PyDict_SetItemString(kwargs.get(), "file_list", fileListInPy.get());
@@ -400,10 +390,9 @@ private:
 
       if (this->loadThread_) {  // wait poolActualSize < poolSize;
         std::unique_lock<std::mutex> l(mtx_);
-        pushCV_.wait(l,
-                     [this, additionalBatchSize] {
-                       return this->poolActualSize_ < poolSize_;
-                     });
+        pushCV_.wait(l, [this, additionalBatchSize] {
+          return this->poolActualSize_ < poolSize_;
+        });
       }
 
       {
@@ -472,7 +461,6 @@ private:
   std::vector<std::string> fileLists_;
   std::vector<SlotHeader> headers_;
   static PyObjectPtr zeroTuple_;
-  static std::unordered_set<uintptr_t> gModuleClsPtrs_;
 
   class PositionRandom {
   public:
@@ -529,12 +517,10 @@ public:
                         // but, loading from cache, cache object should ensure
                         // data pool ready.
       std::unique_lock<std::mutex> l(mtx_);
-      pullCV_.wait(l,
-                   [this, &size] {
-                     return this->poolActualSize_ >=
-                                std::max(size, this->minPoolSize_) ||
-                            callingContexts_.empty();
-                   });
+      pullCV_.wait(l, [this, &size] {
+        return this->poolActualSize_ >= std::max(size, this->minPoolSize_) ||
+               callingContexts_.empty();
+      });
 
       if (unittest::OnPoolFilled) {
         (*unittest::OnPoolFilled)(this->poolActualSize_);
@@ -674,7 +660,6 @@ public:
   }
 };
 
-std::unordered_set<uintptr_t> PyDataProvider2::gModuleClsPtrs_;
 PyObjectPtr PyDataProvider2::zeroTuple_(PyTuple_New(0));
 
 REGISTER_DATA_PROVIDER_EX(py2, PyDataProvider2);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/math/SparseRowMatrix.h"
 #include "paddle/utils/Thread.h"
 
-P_DECLARE_int32(trainer_count);
+DECLARE_int32(trainer_count);
 
 namespace paddle {
 
@@ -32,7 +32,7 @@ SgdThreadUpdater::SgdThreadUpdater(const OptimizationConfig& optConfig)
   }
 }
 
-void SgdThreadUpdater::init(std::vector<ParameterPtr>& parameters) {
+void SgdThreadUpdater::init(const std::vector<ParameterPtr>& parameters) {
   ParameterUpdater::init(parameters);
 
   // calc max parameter id
@@ -55,6 +55,9 @@ void SgdThreadUpdater::init(std::vector<ParameterPtr>& parameters) {
       // not create parameter buf for PARAMETER_GRADIENT for sparse update in
       // Parameter::enableType(). But gradient parameter buf is still used
       // in SgdThreadUpdater. We need to explicitly create it.
+      //
+      // The AverageOptimizer::restore/apply method will use PARAMETER_GRADIENT
+      // as a temp buffer.
       para->enableBufType(PARAMETER_GRADIENT);
     }
   }
@@ -67,7 +70,7 @@ void SgdThreadUpdater::startPass() {
   }
 }
 
-bool SgdThreadUpdater::finishPass(real cost) {
+bool SgdThreadUpdater::finishPass() {
   catchUpWith();
 
   for (auto& para : parameters_) {

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <cstddef>
-#include "Matrix.h"
 #include "CpuSparseMatrix.h"
+#include "Matrix.h"
 
 namespace paddle {
 
@@ -104,10 +104,7 @@ public:
                  size_t newNnz,
                  SparseValueType valueType);
 
-  void mul(const GpuMatrixPtr a,
-           const GpuMatrixPtr b,
-           real scaleAB,
-           real scaleT);
+  void mul(const GpuMatrix& a, const GpuMatrix& b, real scaleAB, real scaleT);
   /// B = A , B.trans = !A.trans
   MatrixPtr getTranspose();
 
@@ -218,7 +215,7 @@ protected:
   void copyRow(int offsets, size_t colNum, const sparse_float_value_t* row);
 
 public:
-  void mul(const MatrixPtr a, const MatrixPtr b, real scaleAB, real scaleT);
+  void mul(const Matrix& a, const Matrix& b, real scaleAB, real scaleT);
 
   void copyFrom(CpuSparseMatrix& src, hl_stream_t stream);
   void copyFrom(GpuSparseMatrix& src, hl_stream_t stream);

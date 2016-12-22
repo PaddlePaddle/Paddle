@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/utils/Util.h"
 #include "paddle/parameter/AverageOptimizer.h"
 #include "paddle/parameter/FirstOrderOptimizer.h"
 #include "paddle/parameter/OptimizerFunctions.h"
 #include "paddle/parameter/OptimizerWithRegularizer.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/Regularizer.h"
+#include "paddle/utils/Util.h"
 
 #include <memory>
 #include <vector>
@@ -47,9 +47,9 @@ public:
   virtual void startPass();
 
   // Use the finishPass() function of the base optimizer.
-  virtual bool finishPass(real cost);
+  virtual bool finishPass();
 
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
   virtual PassType startBatch(int64_t batchSize);
   // Call finishBatch for each optimizer.
   virtual void finishBatch(real cost);

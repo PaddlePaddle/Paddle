@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "hl_gpu.h"
 #include "CpuSparseMatrix.h"
 #include "SparseMatrix.h"
+#include "float.h"
+#include "hl_gpu.h"
 #include "paddle/math/MathUtils.h"
 #include "paddle/utils/Util.h"
-#include "float.h"
 
 namespace paddle {
 
@@ -163,15 +163,16 @@ MatrixPtr CpuSparseMatrix::getTranspose() {
 
 SparseValueType CpuSparseMatrix::getValueType() { return valueType_; }
 
-void CpuSparseMatrix::mul(MatrixPtr a, MatrixPtr b, real scaleAB, real scaleT) {
+void CpuSparseMatrix::mul(const Matrix& a,
+                          const Matrix& b,
+                          real scaleAB,
+                          real scaleT) {
   CHECK(!isTransposed()) << "Not supported";
+  const auto a_ptr = dynamic_cast<const CpuMatrix*>(&a);
+  const auto b_ptr = dynamic_cast<const CpuMatrix*>(&b);
 
-  if (dynamic_cast<CpuMatrix*>(a.get()) && dynamic_cast<CpuMatrix*>(b.get())) {
-    CpuMatrix::mul(dynamic_cast<CpuMatrix*>(a.get()),
-                   dynamic_cast<CpuMatrix*>(b.get()),
-                   this,
-                   scaleAB,
-                   scaleT);
+  if (a_ptr && b_ptr) {
+    CpuMatrix::mul((CpuMatrix*)a_ptr, (CpuMatrix*)b_ptr, this, scaleAB, scaleT);
   } else {
     LOG(FATAL) << "not supported";
   }
@@ -656,9 +657,9 @@ void CpuSparseMatrix::trimFrom(const CpuSparseMatrix& src) {
   if (format_ == SPARSE_CSR) {
     int* srcCols = src.getCols();
     size_t numLessWidth =
-        std::count_if(srcCols,
-                      srcCols + src.getElementCnt(),
-                      [this](size_t n) { return n < this->width_; });
+        std::count_if(srcCols, srcCols + src.getElementCnt(), [this](size_t n) {
+          return n < this->width_;
+        });
     resize(height_, width_, numLessWidth, valueType_, format_);
     rows_[0] = 0;
     size_t index = 0;

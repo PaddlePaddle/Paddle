@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,26 +13,26 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <string>
-#include "paddle/gserver/layers/DataLayer.h"
+#include <vector>
 #include "ModelConfig.pb.h"
-#include "paddle/trainer/Trainer.h"
-#include "paddle/utils/GlobalConstants.h"
+#include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/gserver/layers/ExpandConvTransLayer.h"
 #include "paddle/math/MathUtils.h"
+#include "paddle/trainer/Trainer.h"
+#include "paddle/utils/GlobalConstants.h"
 
-#include "TestUtil.h"
 #include "LayerGradUtil.h"
+#include "TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_double(checkgrad_eps);
-P_DECLARE_bool(thread_local_rand_use_global_seed);
-P_DECLARE_bool(prev_batch_state);
+DECLARE_bool(use_gpu);
+DECLARE_int32(gpu_id);
+DECLARE_double(checkgrad_eps);
+DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(prev_batch_state);
 
 // Test that the convTrans forward is the same as conv backward
 TEST(Layer, convTransLayerFwd) {
@@ -206,8 +206,8 @@ TEST(Layer, convTransLayerFwd2) {
                  /* filter_size */ 5,
                  result);
 
-  float resultData[] = {1, 2, 2, 2, 1, 2, 4, 4, 4, 2, 2, 4, 4,
-                        4, 2, 2, 4, 4, 4, 2, 1, 2, 2, 2, 1};
+  real resultData[] = {1, 2, 2, 2, 1, 2, 4, 4, 4, 2, 2, 4, 4,
+                       4, 2, 2, 4, 4, 4, 2, 1, 2, 2, 2, 1};
   result->setData(resultData);
   doOneConvtTest(/* imgSize */ 5,
                  /* output_x */ 2,
@@ -216,8 +216,8 @@ TEST(Layer, convTransLayerFwd2) {
                  /* filter_size */ 4,
                  result);
 
-  float resultData2[] = {1, 2, 2, 2, 1, 2, 4, 4, 4, 2, 2, 4, 4,
-                         4, 2, 2, 4, 4, 4, 2, 1, 2, 2, 2, 1};
+  real resultData2[] = {1, 2, 2, 2, 1, 2, 4, 4, 4, 2, 2, 4, 4,
+                        4, 2, 2, 4, 4, 4, 2, 1, 2, 2, 2, 1};
   result->setData(resultData2);
   doOneConvtTest(/* imgSize */ 5,
                  /* output_x */ 2,
@@ -226,8 +226,8 @@ TEST(Layer, convTransLayerFwd2) {
                  /* filter_size */ 5,
                  result);
 
-  float resultData3[] = {1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 2, 2, 4,
-                         2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1};
+  real resultData3[] = {1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 2, 2, 4,
+                        2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1};
   result->setData(resultData3);
   doOneConvtTest(/* imgSize */ 5,
                  /* output_x */ 2,

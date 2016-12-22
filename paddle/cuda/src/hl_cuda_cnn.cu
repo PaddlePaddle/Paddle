@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ limitations under the License. */
 #include <float.h>
 #include "hl_base.h"
 #include "hl_cnn.h"
+#include "hl_device_functions.cuh"
 
 __global__ void KeFeature2col(size_t n, size_t height, const real* data_im,
                               size_t blockH, size_t blockW, size_t width,
@@ -380,164 +381,6 @@ void hl_avgpool_backward(const int frameCnt, const real* outGrad,
   CHECK_SYNC("hl_avgpool_backward failed");
 }
 
-__global__ void KeCMRNormFillScale(size_t nthreads, const real* in,
-                                   real* scale, size_t channels,
-                                   size_t height, size_t width, size_t size,
-                                   real alpha) {
-  size_t index = threadIdx.x + blockIdx.x * blockDim.x;
-  if (index < nthreads) {
-    // find out the local offset
-    size_t w = index % width;
-    size_t h = (index / width) % height;
-    size_t n = index / width / height;
-    size_t offset = (n * channels * height + h) * width + w;
-    size_t step = height * width;
-    in += offset;
-    scale += offset;
-    size_t head = 0;
-    size_t pre_pad = (size - 1) / 2;
-    size_t post_pad = size - pre_pad - 1;
-    real accum_scale = 0;
-    // fill the scale at [n, :, h, w]
-    // accumulate values
-    while (head < post_pad) {
-      accum_scale += in[head * step] * in[head * step];
-      ++head;
-    }
-    // until we reach size, nothing needs to be subtracted
-    while (head < size) {
-      accum_scale += in[head * step] * in[head * step];
-      scale[(head - post_pad) * step] = 1. + accum_scale * alpha;
-      ++head;
-    }
-    // both add and subtract
-    while (head < channels) {
-      accum_scale += in[head * step] * in[head * step];
-      accum_scale -= in[(head - size) * step] * in[(head - size) * step];
-      scale[(head - post_pad) * step] = 1. + accum_scale * alpha;
-      ++head;
-    }
-    // subtract only
-    while (head < channels + post_pad) {
-      accum_scale -= in[(head - size) * step] * in[(head - size) * step];
-      scale[(head - post_pad) * step] = 1. + accum_scale * alpha;
-      ++head;
-    }
-  }
-}
-
- __global__ void KeCMRNormOutput(size_t nthreads, const real* in,
-                                 const real* scale, real negative_beta,
-                                 real* out) {
-  size_t index = threadIdx.x + blockIdx.x * blockDim.x;
-  if (index < nthreads) {
-    out[index] = in[index] * pow(scale[index], negative_beta);
-  }
-}
-
-void hl_CMRNorm_forward(size_t frameCnt, const real* in, real* scale,
-                        real* out, size_t channels,
-                        size_t height, size_t width, size_t sizeX,
-                        real alpha, real beta) {
-  size_t threadsNum = frameCnt * height * width;
-  size_t blocksX = (threadsNum + 1024 - 1) / 1024;
-  size_t blocksY = 1;
-  dim3 threads(1024, 1);
-  dim3 grid(blocksX, blocksY);
-
-  KeCMRNormFillScale<<<grid, threads, 0, STREAM_DEFAULT>>>
-      (threadsNum, in, scale, channels, height, width, sizeX, alpha);
-
-  threadsNum = frameCnt * height * width *channels;
-  blocksX = (threadsNum + 1024 -1) / 1024;
-  dim3 threads2(1024, 1);
-  dim3 grid2(blocksX, blocksY);
-  KeCMRNormOutput<<<grid2, threads2, 0, STREAM_DEFAULT>>>
-           (threadsNum, in, scale, beta, out);
-  CHECK_SYNC("hl_CMRNorm_forward");
-}
-
-__global__ void KeCMRNormDiff(size_t nthreads, const real* bottom_data,
-                              const real* top_data, const real* scale,
-                              const real* top_diff, size_t channels,
-                              size_t height, size_t width, size_t size,
-                              real negative_beta, real cache_ratio,
-                              real* bottom_diff ) {
-  int index = threadIdx.x + blockIdx.x * blockDim.x;
-  if (index < nthreads) {
-    // find out the local offset
-    size_t w = index % width;
-    size_t h = (index / width) % height;
-    size_t n = index / width / height;
-    size_t offset = (n * channels * height + h) * width + w;
-    size_t step = height * width;
-    bottom_data += offset;
-    top_data += offset;
-    scale += offset;
-    top_diff += offset;
-    bottom_diff += offset;
-    int head = 0;
-    int pre_pad = size - (size + 1) / 2;
-    int post_pad = size - pre_pad - 1;
-    real accum_ratio = 0;
-    // accumulate values
-    while (head < post_pad) {
-      accum_ratio += top_diff[head * step] *
-        top_data[head * step] / scale[head * step];
-      ++head;
-    }
-    // until we reach size, nothing needs to be subtracted
-    while (head < size) {
-      accum_ratio += top_diff[head * step] *
-        top_data[head * step] / scale[head * step];
-      bottom_diff[(head - post_pad) * step] +=
-        top_diff[(head - post_pad) * step] *
-        pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
-        bottom_data[(head - post_pad) * step] * accum_ratio;
-      ++head;
-    }
-    // both add and subtract
-    while (head < channels) {
-      accum_ratio += top_diff[head * step] * top_data[head * step] /
-          scale[head * step];
-      accum_ratio -= top_diff[(head - size) * step] *
-          top_data[(head - size) * step] / scale[(head - size) * step];
-      bottom_diff[(head - post_pad) * step] +=
-        top_diff[(head - post_pad) * step] *
-        pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
-        bottom_data[(head - post_pad) * step] * accum_ratio;
-      ++head;
-    }
-    // subtract only
-    while (head < channels + post_pad) {
-      accum_ratio -= top_diff[(head - size) * step] *
-          top_data[(head - size) * step] / scale[(head - size) * step];
-      bottom_diff[(head - post_pad) * step] +=
-        top_diff[(head - post_pad) * step] *
-        pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
-        bottom_data[(head - post_pad) * step] * accum_ratio;
-      ++head;
-    }
-  }
-}
-
-void hl_CMRNorm_backward(size_t frameCnt, const real* inV,
-                         const real* scale,
-                         const real* outV, const real* outDiff,
-                         real *inDiff, size_t channels,
-                         size_t height, size_t width, size_t sizeX,
-                         real alpha, real beta) {
-  size_t threadsNum = frameCnt * height * width;
-  size_t blocksX = (threadsNum + 1024 - 1) / 1024;
-  size_t blocksY = 1;
-  dim3 threads(1024, 1);
-  dim3 grid(blocksX, blocksY);
-  KeCMRNormDiff <<<grid, threads, 0, STREAM_DEFAULT>>>
-           (threadsNum, inV, outV, scale, outDiff, channels,
-           height, width, sizeX, alpha, beta, inDiff);
-  CHECK_SYNC("hl_CMRNorm_backward");
-}
-
 __global__ void KeBilinearInterpFw(const real* in,
                                    const size_t inImgH,
                                    const size_t inImgW,
@@ -641,10 +484,10 @@ __global__ void KeBilinearInterpBw(real* in,
     real* inPos =
       &in[outIdH * inputW + channelId * inImgSize + inImgIdy * inImgW + inImgIdx];
     const real* outPos = &out[outIdH * outputW + outIdW];
-    atomicAdd(&inPos[0], h2lambda * w2lambda * outPos[0]);
-    atomicAdd(&inPos[wId], h2lambda * w1lambda * outPos[0]);
-    atomicAdd(&inPos[hId * inImgW], h1lambda * w2lambda * outPos[0]);
-    atomicAdd(&inPos[hId * inImgW + wId], h1lambda * w1lambda * outPos[0]);
+    paddle::paddleAtomicAdd(&inPos[0], h2lambda * w2lambda * outPos[0]);
+    paddle::paddleAtomicAdd(&inPos[wId], h2lambda * w1lambda * outPos[0]);
+    paddle::paddleAtomicAdd(&inPos[hId * inImgW], h1lambda * w2lambda * outPos[0]);
+    paddle::paddleAtomicAdd(&inPos[hId * inImgW + wId], h1lambda * w1lambda * outPos[0]);
   }
 }
 

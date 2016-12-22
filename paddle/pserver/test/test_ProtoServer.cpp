@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include "paddle/utils/Stat.h"
+#include "ParameterService.pb.h"
 #include "paddle/math/Vector.h"
 #include "paddle/pserver/ProtoServer.h"
-#include "ParameterService.pb.h"
+#include "paddle/utils/Stat.h"
 
-P_DEFINE_string(server_addr, "127.0.0.1", "Server address");
-P_DEFINE_int64(dim, 50000000, "Data size");
-P_DEFINE_bool(test_proto_server, true, "whether to test ProtoServer");
-P_DEFINE_bool(benchmark, false, "Do benchmark. Skip some tests");
+DEFINE_string(server_addr, "127.0.0.1", "Server address");
+DEFINE_int64(dim, 50000000, "Data size");
+DEFINE_bool(test_proto_server, true, "whether to test ProtoServer");
+DEFINE_bool(benchmark, false, "Do benchmark. Skip some tests");
 
 using namespace paddle;  // NOLINT
 

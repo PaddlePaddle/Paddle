@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -59,24 +59,14 @@ void BatchNormalizationLayer::calMeanAndStd(const MatrixPtr& mat) {
 
 void BatchNormalizationLayer::calMovingMeanAndVar() {
   // calculating and saving moving mean and variance
-  MatrixPtr movingMean = movingMean_->getW();
-  MatrixPtr movingVar = movingVar_->getW();
-
-  if (!useGpu_ && FLAGS_trainer_count > 1) {
-    auto mvMean = std::dynamic_pointer_cast<SharedCpuMatrix>(movingMean);
-    auto mvVar = std::dynamic_pointer_cast<SharedCpuMatrix>(movingVar);
-    CHECK(mvMean && mvVar);
-
-    mvMean->add(*savedMean_, movingAvgFraction_, 1.0 - movingAvgFraction_);
-    mvVar->add(*savedInvVar_, movingAvgFraction_, 1.0 - movingAvgFraction_);
-  } else {
-    // movingMean =  movingMean * movingAvgFraction_
-    //            + savedMean_ * (1 - movingAvgFraction_)
-    movingMean->add(*savedMean_, movingAvgFraction_, 1.0 - movingAvgFraction_);
-    // movingVar =  movingVar * movingAvgFraction_
-    //           + savedInvVar_ * (1 - movingAvgFraction_)
-    movingVar->add(*savedInvVar_, movingAvgFraction_, 1.0 - movingAvgFraction_);
-  }
+  auto& movingMean = movingMean_->getW();
+  auto& movingVar = movingVar_->getW();
+  // movingMean =  movingMean * movingAvgFraction_
+  //            + savedMean_ * (1 - movingAvgFraction_)
+  movingMean->add(*savedMean_, movingAvgFraction_, 1.0 - movingAvgFraction_);
+  // movingVar =  movingVar * movingAvgFraction_
+  //           + savedInvVar_ * (1 - movingAvgFraction_)
+  movingVar->add(*savedInvVar_, movingAvgFraction_, 1.0 - movingAvgFraction_);
 }
 
 void BatchNormalizationLayer::setMeanAndStd() {

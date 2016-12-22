@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +34,8 @@ SgdUpdaterWithCpuAverager::SgdUpdaterWithCpuAverager(
   updateWorker_.addJob([]() { hl_set_device(FLAGS_gpu_id); });
 }
 
-void SgdUpdaterWithCpuAverager::init(std::vector<ParameterPtr>& parameters) {
+void SgdUpdaterWithCpuAverager::init(
+    const std::vector<ParameterPtr>& parameters) {
   SgdLocalUpdater::init(parameters);
   averager_->init(parameters_.size(), nullptr);
   copyEvents_.resize(parameters_.size());
