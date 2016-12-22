@@ -54,7 +54,7 @@ def input_order_converter(generator):
 
 
 def main():
-    api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
+    api.initPaddle("-use_gpu=true", "-trainer_count=4")  # use 4 cpu cores
     config = paddle.trainer.config_parser.parse_config(
         'simple_mnist_network.py', '')
 
