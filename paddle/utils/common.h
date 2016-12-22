@@ -14,20 +14,20 @@ limitations under the License. */
 
 #pragma once
 
+namespace paddle {
+
 /**
  * Disable copy macro.
  */
-#define DISABLE_COPY(CLASS_NAME)                \
-  CLASS_NAME(CLASS_NAME &&) = delete;           \
-  CLASS_NAME(const CLASS_NAME &other) = delete; \
-  CLASS_NAME &operator=(const CLASS_NAME &other) = delete
+#define DISABLE_COPY(class_name)                \
+  class_name(class_name &&) = delete;           \
+  class_name(const class_name &other) = delete; \
+  class_name &operator=(const class_name &other) = delete
 
-namespace paddle {
 #ifdef PADDLE_TYPE_DOUBLE
-typedef double real;
+using real = double;
 #else
-typedef float real;
+using real = float;
 #endif
-}  // namespace paddle
 
-using paddle::real;
+}  // namespace paddle
