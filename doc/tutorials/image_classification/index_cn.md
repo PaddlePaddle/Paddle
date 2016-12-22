@@ -9,7 +9,7 @@
 
 <https://www.cs.toronto.edu/~kriz/cifar.html>
 
-我们准备了一个脚本，可以用于从官方网站上下载CIFAR-10数据集，并将之转化为jpeg文件，存入我们为本文中的实验所设计的目录中。使用这个脚本前请确认已经安装了pillow及相关依赖模块。可以参照下面的命令进行安装和下载：
+我们准备了一个脚本，可以用于从官方网站上下载CIFAR-10数据集，转为jpeg文件并存入特定的目录。使用这个脚本前请确认已经安装了pillow及相关依赖模块。可以参照下面的命令进行安装：
 
 1. 安装pillow
 
@@ -25,9 +25,9 @@ cd demo/image_classification/data/
 sh download_cifar.sh
 ```
 
-CIFAR-10数据集包含60000张32x32的彩色图片。图片分为10类，每个类包含6000张。其中50000张图片用于组成训练集，10000张组成测试集。
+CIFAR-10数据集包含60000张32x32的彩色图片。图片分为10类，每个类包含6000张。其中50000张图片作为训练集，10000张作为测试集。
 
-下图展示了所有的照片分类，并从每个分类中随机抽取了10张图片：
+下图展示了所有的图片类别，每个类别中随机抽取了10张图片。
 <center>![Image Classification](./cifar.png)</center>
 
 脚本运行完成后，我们应当会得到一个名为cifar-out的文件夹，其下子文件夹的结构如下
@@ -58,7 +58,7 @@ test
 ---truck
 ```
 
-cifar-out下包含`train`和`test`两个文件夹，其中分别包含了CIFAR-10中的训练数据和测试数据。这两个文件夹下各自有10个子文件夹，每个子文件夹下存储相应分类的图片。将图片按照上述结构存储好之后，我们就可以着手对分类模型进行训练了。
+cifar-out下包含`train`和`test`两个文件夹，其中分别包含了CIFAR-10中的训练集和测试集。这两个文件夹下各自有10个子文件夹，每个子文件夹下存储相应分类的图片。将图片按照上述结构存储好之后，我们就可以着手对分类模型进行训练了。
 
 ## 预处理
 数据下载之后，还需要进行预处理，将数据转换为Paddle的格式。我们可以通过如下命令进行预处理工作：
@@ -82,7 +82,7 @@ python preprocess.py -i $data_dir -s 32 -c 1
 - `-c` 或 `--color` 标示图片是彩色图或灰度图
 
 ## 模型训练
-在开始训练之前，我们需要先创建一个配置文件。下面我们给出了一个配置文件的示例（vgg_16_cifar.py）。**注意**，这里的列出的和`vgg_16_cifar.py`中有着细微的差别。
+在开始训练之前，我们需要先创建一个模型配置文件。下面我们给出了一个配置示例。**注意**，这里的列出的和`vgg_16_cifar.py`文件稍有差别，因为该文件可适用于预测。
 
 ```python
 from paddle.trainer_config_helpers import *
@@ -114,15 +114,15 @@ outputs(classification_cost(input=predict, label=lbl))
 from paddle.trainer_config_helpers import *
 ```
 
-之后定义的`define_py_data_sources2`使用python data provider接口，其中 `args`将在`image_provider.py`进行使用，后者负责将图片数据传递给Paddle
+之后定义的`define_py_data_sources2`使用Python数据提供器，其中 `args`将在`image_provider.py`进行使用，该文件负责产生图片数据并传递给Paddle系统
  - `meta`: 训练集平均值。
- - `mean_img_size`: 特征图的平均高度及宽度。
+ - `mean_img_size`: 平均特征图的高度及宽度。
  - `img_size`：输入图片的高度及宽度。
- - `num_classes`：分类的个数。
- - `use_jpeg`：处理过程中数据存储格式
- - `color`标示是否为彩色图片
+ - `num_classes`：类别个数。
+ - `use_jpeg`：处理过程中数据存储格式。
+ - `color`：标示是否为彩色图片。
  
- `settings`用于设置训练算法。在下面的例子中，learning rate被设置为0.1除以每批图片数（batch size），而weight decay则为0.0005乘以每批图片数。
+ `settings`用于设置训练算法。在下面的例子中，learning rate被设置为0.1除以batch size，而weight decay则为0.0005乘以batch size。
  
  ```python
 settings(
@@ -133,12 +133,12 @@ settings(
 )
 ```
 
-`small_vgg`定义了网络结构。这里我们使用了VGG卷积神经网络的一个小型版本。关于VGG卷积神经网络的描述可以参考：[http://www.robots.ox.ac.uk/~vgg/research/very_deep/](http://www.robots.ox.ac.uk/~vgg/research/very_deep/)。
+`small_vgg`定义了网络结构。这里我们使用的是一个小的VGG网络。关于VGG卷积神经网络的描述可以参考：[http://www.robots.ox.ac.uk/~vgg/research/very_deep/](http://www.robots.ox.ac.uk/~vgg/research/very_deep/)。
 ```python
 # small_vgg is predined in trainer_config_helpers.network
 predict = small_vgg(input_image=img, num_channels=3)
 ```
-生成配置之后，我们就可以运行脚本train.sh来训练模型。请注意下面的脚本中假设该脚本放置是在路径`./demo/image_classification`下的。如果要从其它路径运行，你需要修改下面的脚本中的路径，以及配置文件中的相应内容。
+配置创建完毕后，可以运行脚本train.sh来训练模型。
 
 ```bash
 config=vgg_16_cifar.py
@@ -157,15 +157,14 @@ paddle train \
 python -m paddle.utils.plotcurve -i $log > plot.png
 ```
 - 这里我们使用的是GPU模式进行训练。如果你没有GPU环境，可以设置`use_gpu=0`。
-- `./demo/image_classification/vgg_16_cifar.py`是网络和数据配置文件。各项参数的详细说明可以在命令行参数相关文档中找到
-- 脚本`plotcurve.py`依赖于python的`matplotlib`模块。因此如果这个脚本运行失败，也许是因为需要安装`matplotlib`
-
+- `./demo/image_classification/vgg_16_cifar.py`是网络和数据配置文件。各项参数的详细说明可以在命令行参数相关文档中找到。
+- 脚本`plotcurve.py`依赖于python的`matplotlib`模块。因此如果这个脚本运行失败，也许是因为需要安装`matplotlib`。
 在训练完成后，训练及测试误差曲线图会被`plotcurve.py`脚本保存在 `plot.png`中。下面是一个误差曲线图的示例：
 
 <center>![Training and testing curves.](./plot.png)</center>
 
 ## 预测
-在训练完成后，模型及参数会被保存在路径`./cifar_vgg_model/pass-%05d`下。例如第300次训练所得的模型会被保存在`./cifar_vgg_model/pass-00299`。
+在训练完成后，模型及参数会被保存在路径`./cifar_vgg_model/pass-%05d`下。例如第300个pass的模型会被保存在`./cifar_vgg_model/pass-00299`。
 
 要对一个图片的进行分类预测，我们可以使用`predict.sh`，该脚本将输出预测分类的标签：
 
@@ -197,10 +196,10 @@ python prediction.py $model $image $use_gpu
 
 一个卷积神经网络包含如下层：
 
-- 卷基层：通过卷积操作从图片或特征图中提取特征
-- 池化层：使用max-pooling方式进行特征压缩
-- 全连接层：使用全连接，从特征中生成分类结果
+- 卷积层：通过卷积操作从图片或特征图中提取特征
+- 池化层：使用max-pooling对特征图下采样
+- 全连接层：使输入层到隐藏层的神经元是全部连接的。
 
-卷积神经网络在图片分类上有着优异的表现，这是因为它发掘出了图片的两类重要信息：局部关联性质和空间不变性质。通过交替使用卷基和池化处理，卷积神经网络能够使得图片的这两类信息稳定地得到保持
+卷积神经网络在图片分类上有着惊人的性能，这是因为它发掘出了图片的两类重要信息：局部关联性质和空间不变性质。通过交替使用卷积和池化处理， 卷积神经网络能够很好的表示这两类信息。
 
-关于如何定义网络中的层，以及如何在层之间进行连接，请参考文档中关于网络层的相关内容。
+关于如何定义网络中的层，以及如何在层之间进行连接，请参考Layer文档。
