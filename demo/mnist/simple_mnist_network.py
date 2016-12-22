@@ -1,6 +1,11 @@
 from paddle.trainer_config_helpers import *
 
-settings(learning_rate=1e-4, learning_method=AdamOptimizer(), batch_size=1000)
+settings(
+    learning_rate=1e-4,
+    learning_method=AdamOptimizer(),
+    batch_size=1000,
+    model_average=ModelAverage(average_window=0.5),
+    regularization=L2Regularization(rate=0.5))
 
 imgs = data_layer(name='pixel', size=784)
 

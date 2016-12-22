@@ -809,6 +809,12 @@ public:
 
   void update(Parameter* param);
 
+  void restore();
+
+  void apply();
+
+  void catchUpWith();
+
 private:
   ParameterUpdaterPrivate* m;
 };

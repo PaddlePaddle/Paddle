@@ -48,3 +48,9 @@ void ParameterUpdater::update(Parameter *param) {
   auto paddleParam = param->m->getPtr();
   m->updater->update(paddleParam);
 }
+
+void ParameterUpdater::restore() { m->updater->restore(); }
+
+void ParameterUpdater::apply() { m->updater->apply(); }
+
+void ParameterUpdater::catchUpWith() { m->updater->catchUpWith(); }
