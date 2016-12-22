@@ -45,7 +45,64 @@ it.
 
 Here we will show you step by step on how to run PaddlePaddle training on AWS cluster.
 
-###AWS Login
+
+###Download kube-aws and kubectl
+
+####kube-aws
+
+Import the CoreOS Application Signing Public Key:
+
+```
+gpg2 --keyserver pgp.mit.edu --recv-key FC8A365E
+```
+
+Validate the key fingerprint:
+
+```
+gpg2 --fingerprint FC8A365E
+```
+The correct key fingerprint is `18AD 5014 C99E F7E3 BA5F 6CE9 50BD D3E0 FC8A 365E`
+
+Go to the [releases](https://github.com/coreos/kube-aws/releases) and download the latest release tarball and detached signature (.sig) for your architecture.
+
+Validate the tarball's GPG signature:
+
+```
+PLATFORM=linux-amd64
+ # Or
+PLATFORM=darwin-amd64
+
+gpg2 --verify kube-aws-${PLATFORM}.tar.gz.sig kube-aws-${PLATFORM}.tar.gz
+```
+
+Extract the binary:
+
+```
+tar zxvf kube-aws-${PLATFORM}.tar.gz
+```
+
+Add kube-aws to your path:
+
+```
+mv ${PLATFORM}/kube-aws /usr/local/bin
+```
+
+
+####kubectl
+
+Go to the [releases](https://github.com/kubernetes/kubernetes/releases) and download the latest release tarball.
+
+Extract the tarball and then concate the kubernetes binaries directory into PATH:
+
+```
+export PATH=<path/to/kubernetes-directory>/platforms/linux/amd64:$PATH
+
+```
+
+User credentials and security tokens will be generated later in user directory, not in `~/.kube/config`, they will be necessary to use the CLI or the HTTP Basic Auth.
+
+
+###Configure AWS Credentials
 
 First check out [this](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) for installing the AWS command line interface, if you use ec2 instance with default amazon AMI, the cli tool has already been installed on your machine.
 
@@ -58,7 +115,7 @@ aws configure
 ```
 
 
-Fill in the required fields (You can get your AWS aceess key id and AWS secrete access key by following [this](http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSGettingStartedGuide/AWSCredentials.html) instruction):
+Fill in the required fields (You can get your AWS aceess key id and AWS secrete access key by following [this](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) instruction):
 
 
 ```
@@ -69,194 +126,190 @@ Default output format: json
 
 ```
 
+Test that your credentials work by describing any instances you may already have running on your account:
+
+```
+aws ec2 describe-instances
+```
+
+###Define Cluster Parameters
+
+####EC2 key pair
+
+The keypair that will authenticate SSH access to your EC2 instances. The public half of this key pair will be configured on each CoreOS node.
+
+After creating a key pair, you will use the name you gave the keys to configure the cluster. Key pairs are only available to EC2 instances in the same region. More info in the [EC2 Keypair docs](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html).
+
+####KMS key
+
+Amazon KMS keys are used to encrypt and decrypt cluster TLS assets. If you already have a KMS Key that you would like to use, you can skip creating a new key and provide the Arn string for your existing key.
+
+You can create a KMS key in the AWS console, or with the aws command line tool:
+
+```
+$ aws kms --region=us-west-2 create-key --description="kube-aws assets"
+{
+    "KeyMetadata": {
+        "CreationDate": 1458235139.724,
+        "KeyState": "Enabled",
+        "Arn": "arn:aws:kms:us-west-2:xxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx",
+        "AWSAccountId": "xxxxxxxxxxxxx",
+        "Enabled": true,
+        "KeyUsage": "ENCRYPT_DECRYPT",
+        "KeyId": "xxxxxxxxx",
+        "Description": "kube-aws assets"
+    }
+}
+```
+
+You will use the `KeyMetadata.Arn` string to identify your KMS key in the init step.
+
+And then you need to add several inline policies in your user permission.
+
+kms inline policy:
+
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Stmt1482205552000",
+            "Effect": "Allow",
+            "Action": [
+                "kms:Decrypt",
+                "kms:Encrypt"
+            ],
+            "Resource": [
+                "arn:aws:kms:*:xxxxxxxxx:key/*"
+            ]
+        }
+    ]
+}
+```
+cloudformation inline policy:
+
+```
+"Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Stmt1482205746000",
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:CreateStack",
+                "cloudformation:UpdateStack",
+                "cloudformation:DeleteStack",
+                "cloudformation:DescribeStacks",
+                "cloudformation:DescribeStackResource",
+                "cloudformation:GetTemplate"
+            ],
+            "Resource": [
+                "arn:aws:cloudformation:us-west-2:xxxxxxxxx:stack/YOUR_CLUSTER_NAME/*"
+            ]
+        }
+    ]
+}
+```
+
+
+####External DNS name
+
+When the cluster is created, the controller will expose the TLS-secured API on a public IP address. You will need to create an A record for the external DNS hostname you want to point to this IP address. You can find the API external IP address after the cluster is created by invoking kube-aws status.
+
+####S3 bucket
+
+You need to create an S3 bucket before startup the Kubernetes cluster.
+
+####Initialize an asset directory
+
+Create a directory on your local machine to hold the generated assets:
+
+```
+$ mkdir my-cluster
+$ cd my-cluster
+```
+
+Initialize the cluster CloudFormation stack with the KMS Arn, key pair name, and DNS name from the previous step:
+
+```
+$ kube-aws init \
+--cluster-name=my-cluster-name \
+--external-dns-name=my-cluster-endpoint \
+--region=us-west-1 \
+--availability-zone=us-west-1c \
+--key-name=key-pair-name \
+--kms-key-arn="arn:aws:kms:us-west-2:xxxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx"
+```
+
+There will now be a cluster.yaml file in the asset directory. This is the main configuration file for your cluster.
+
+####Render contents of the asset directory
+
+In the simplest case, you can have kube-aws generate both your TLS identities and certificate authority for you.
+
+```
+$ kube-aws render credentials --generate-ca
+```
+
+The next command generates the default set of cluster assets in your asset directory.
+
+```
+sh $ kube-aws render stack
+```
+
+Here's what the directory structure looks like:
+
+```
+$ tree
+.
+├── cluster.yaml
+├── credentials
+│   ├── admin-key.pem
+│   ├── admin.pem
+│   ├── apiserver-key.pem
+│   ├── apiserver.pem
+│   ├── ca-key.pem
+│   ├── ca.pem
+│   ├── worker-key.pem
+│   └── worker.pem
+│   ├── etcd-key.pem
+│   └── etcd.pem
+│   ├── etcd-client-key.pem
+│   └── etcd-client.pem
+├── kubeconfig
+├── stack-template.json
+└── userdata
+    ├── cloud-config-controller
+    └── cloud-config-worker
+```
+
+These assets (templates and credentials) are used to create, update and interact with your Kubernetes cluster.
+
+
 ###Kubernetes Cluster Start Up
 
+####Create the instances defined in the CloudFormation template
 
-And then execute the following command after your aws login:
-
-```
-export KUBERNETES_PROVIDER=aws; curl -sS https://get.k8s.io | bash
+Now for the exciting part, creating your cluster:
 
 ```
-
-By default, this command will download and unzip the latest Kubernetes release package and execute the script inside to provision a new VPC (virtual private cloud) and a four t2.micro node cluster in us-west-2a (Oregon) under that VPC. 
-
-
-You can override the variables defined in `<path/to/kubernetes-directory>/cluster/config-default.sh` as follows:
-
-```
-export KUBE_AWS_ZONE=us-west-2a 
-export NUM_NODES=3
-export MASTER_SIZE=m3.medium 
-export NODE_SIZE=m3.large 
-export AWS_S3_REGION=us-west-2a 
-export AWS_S3_BUCKET=mycompany-kubernetes-artifacts 
-export KUBE_AWS_INSTANCE_PREFIX=k8s 
-
+$ kube-aws up --s3-uri s3://<your-bucket-name>/<prefix>
 ```
 
+####Configure DNS
 
-This process takes about 5 to 10 minutes. 
+You can invoke `kube-aws status` to get the cluster API endpoint after cluster creation, if necessary. This command can take a while. And then dig the load balancer hostname to get the ip address, use this ip to setup an A record for your external dns name.
 
-```
-[ec2-user@ip-172-31-27-229 ~]$ export KUBERNETES_PROVIDER=aws; curl -sS https://get.k8s.io | bash
-'kubernetes' directory already exist. Should we skip download step and start to create cluster based on it? [Y]/n
-Skipping download step.
-Creating a kubernetes on aws...
-... Starting cluster in us-west-2a using provider aws
-... calling verify-prereqs
-... calling kube-up
-Starting cluster using os distro: jessie
-Uploading to Amazon S3
-+++ Staging server tars to S3 Storage: kubernetes-staging-9996f910edd9ec30ed3f8e3a9db7466c/devel
-upload: ../../../tmp/kubernetes.KsacFg/s3/bootstrap-script to s3://kubernetes-staging-9996f910edd9ec30ed3f8e3a9db7466c/devel/bootstrap-script
-Uploaded server tars:
-  SERVER_BINARY_TAR_URL: https://s3.amazonaws.com/kubernetes-staging-9996f910edd9ec30ed3f8e3a9db7466c/devel/kubernetes-server-linux-amd64.tar.gz
-  SALT_TAR_URL: https://s3.amazonaws.com/kubernetes-staging-9996f910edd9ec30ed3f8e3a9db7466c/devel/kubernetes-salt.tar.gz
-  BOOTSTRAP_SCRIPT_URL: https://s3.amazonaws.com/kubernetes-staging-9996f910edd9ec30ed3f8e3a9db7466c/devel/bootstrap-script
-INSTANCEPROFILE	arn:aws:iam::330323714104:instance-profile/kubernetes-master	2016-12-01T03:19:54Z	AIPAIQDDLSMLWJ2QDXM6I	kubernetes-master	/
-ROLES	arn:aws:iam::330323714104:role/kubernetes-master	2016-12-01T03:19:52Z	/	AROAJDKKDIYHJTTEJM73M	kubernetes-master
-ASSUMEROLEPOLICYDOCUMENT	2012-10-17
-STATEMENT	sts:AssumeRole	Allow
-PRINCIPAL	ec2.amazonaws.com
-INSTANCEPROFILE	arn:aws:iam::330323714104:instance-profile/kubernetes-minion	2016-12-01T03:19:57Z	AIPAJGNG4GYTNVP3UQU4S	kubernetes-minion	/
-ROLES	arn:aws:iam::330323714104:role/kubernetes-minion	2016-12-01T03:19:55Z	/	AROAIZVAWWBIVUENE5XB4	kubernetes-minion
-ASSUMEROLEPOLICYDOCUMENT	2012-10-17
-STATEMENT	sts:AssumeRole	Allow
-PRINCIPAL	ec2.amazonaws.com
-Using SSH key with (AWS) fingerprint: 70:66:c6:3d:53:3b:e5:3d:1d:7f:cd:c9:d1:87:35:81
-Creating vpc.
-Adding tag to vpc-e01fc087: Name=kubernetes-vpc
-Adding tag to vpc-e01fc087: KubernetesCluster=kubernetes
-Using VPC vpc-e01fc087
-Adding tag to dopt-807151e4: Name=kubernetes-dhcp-option-set
-Adding tag to dopt-807151e4: KubernetesCluster=kubernetes
-Using DHCP option set dopt-807151e4
-Creating subnet.
-Adding tag to subnet-4a9a642d: KubernetesCluster=kubernetes
-Using subnet subnet-4a9a642d
-Creating Internet Gateway.
-Using Internet Gateway igw-821a73e6
-Associating route table.
-Creating route table
-Adding tag to rtb-0d96fa6a: KubernetesCluster=kubernetes
-Associating route table rtb-0d96fa6a to subnet subnet-4a9a642d
-Adding route to route table rtb-0d96fa6a
-Using Route Table rtb-0d96fa6a
-Creating master security group.
-Creating security group kubernetes-master-kubernetes.
-Adding tag to sg-a47564dd: KubernetesCluster=kubernetes
-Creating minion security group.
-Creating security group kubernetes-minion-kubernetes.
-Adding tag to sg-9a7564e3: KubernetesCluster=kubernetes
-Using master security group: kubernetes-master-kubernetes sg-a47564dd
-Using minion security group: kubernetes-minion-kubernetes sg-9a7564e3
-Creating master disk: size 20GB, type gp2
-Adding tag to vol-0eba023cc1874c790: Name=kubernetes-master-pd
-Adding tag to vol-0eba023cc1874c790: KubernetesCluster=kubernetes
-Allocated Elastic IP for master: 35.165.155.60
-Adding tag to vol-0eba023cc1874c790: kubernetes.io/master-ip=35.165.155.60
-Generating certs for alternate-names: IP:35.165.155.60,IP:172.20.0.9,IP:10.0.0.1,DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.cluster.local,DNS:kubernetes-master
-Starting Master
-Adding tag to i-097f358631739e01c: Name=kubernetes-master
-Adding tag to i-097f358631739e01c: Role=kubernetes-master
-Adding tag to i-097f358631739e01c: KubernetesCluster=kubernetes
-Waiting for master to be ready
-Attempt 1 to check for master nodeWaiting for instance i-097f358631739e01c to be running (currently pending)
-Sleeping for 3 seconds...
-Waiting for instance i-097f358631739e01c to be running (currently pending)
-Sleeping for 3 seconds...
-Waiting for instance i-097f358631739e01c to be running (currently pending)
-Sleeping for 3 seconds...
-Waiting for instance i-097f358631739e01c to be running (currently pending)
-Sleeping for 3 seconds...
- [master running]
-Attaching IP 35.165.155.60 to instance i-097f358631739e01c
-Attaching persistent data volume (vol-0eba023cc1874c790) to master
-2016-12-13T10:56:50.378Z	/dev/sdb	i-097f358631739e01c	attaching	vol-0eba023cc1874c790
-cluster "aws_kubernetes" set.
-user "aws_kubernetes" set.
-context "aws_kubernetes" set.
-switched to context "aws_kubernetes".
-user "aws_kubernetes-basic-auth" set.
-Wrote config for aws_kubernetes to /home/ec2-user/.kube/config
-Creating minion configuration
-Creating autoscaling group
- 0 minions started; waiting
- 0 minions started; waiting
- 0 minions started; waiting
- 0 minions started; waiting
- 0 minions started; waiting
- 3 minions started; ready
-Waiting for cluster initialization.
+####Access the cluster
 
-  This will continually check to see if the API for kubernetes is reachable.
-  This might loop forever if there was some uncaught error during start
-  up.
-
-...........................................................................................................................................................................Kubernetes cluster created.
-Sanity checking cluster...
-Attempt 1 to check Docker on node @ 35.165.35.181 ...working
-Attempt 1 to check Docker on node @ 35.165.79.208 ...working
-Attempt 1 to check Docker on node @ 35.163.90.67 ...working
-
-Kubernetes cluster is running.  The master is running at:
-
-  https://35.165.155.60
-
-The user name and password to use is located in /home/ec2-user/.kube/config.
-
-... calling validate-cluster
-Waiting for 3 ready nodes. 0 ready nodes, 3 registered. Retrying.
-Waiting for 3 ready nodes. 0 ready nodes, 3 registered. Retrying.
-Found 3 node(s).
-NAME                                         STATUS    AGE
-ip-172-20-0-186.us-west-2.compute.internal   Ready     33s
-ip-172-20-0-187.us-west-2.compute.internal   Ready     34s
-ip-172-20-0-188.us-west-2.compute.internal   Ready     34s
-Validate output:
-NAME                 STATUS    MESSAGE              ERROR
-scheduler            Healthy   ok
-controller-manager   Healthy   ok
-etcd-1               Healthy   {"health": "true"}
-etcd-0               Healthy   {"health": "true"}
-Cluster validation succeeded
-Done, listing cluster services:
-
-Kubernetes master is running at https://35.165.155.60
-Elasticsearch is running at https://35.165.155.60/api/v1/proxy/namespaces/kube-system/services/elasticsearch-logging
-Heapster is running at https://35.165.155.60/api/v1/proxy/namespaces/kube-system/services/heapster
-Kibana is running at https://35.165.155.60/api/v1/proxy/namespaces/kube-system/services/kibana-logging
-KubeDNS is running at https://35.165.155.60/api/v1/proxy/namespaces/kube-system/services/kube-dns
-kubernetes-dashboard is running at https://35.165.155.60/api/v1/proxy/namespaces/kube-system/services/kubernetes-dashboard
-Grafana is running at https://35.165.155.60/api/v1/proxy/namespaces/kube-system/services/monitoring-grafana
-InfluxDB is running at https://35.165.155.60/api/v1/proxy/namespaces/kube-system/services/monitoring-influxdb
-
-To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
-
-Kubernetes binaries at /home/ec2-user/kubernetes/cluster/
-You may want to add this directory to your PATH in $HOME/.profile
-Installation successful!
-```
-
-
-Once the cluster is up, the IP addresses of your master and node(s) will be printed, as well as information about the default services running in the cluster (monitoring, logging, dns). 
-
-User credentials and security tokens are written in `~/.kube/config`, they will be necessary to use the CLI or the HTTP Basic Auth.
-
-
-
-And then concate the kubernetes binaries directory into PATH:
-
+Once the API server is running, you should see:
 
 ```
-export PATH=<path/to/kubernetes-directory>/platforms/linux/amd64:$PATH
-
+$ kubectl --kubeconfig=kubeconfig get nodes
+NAME                                       STATUS                     AGE
+ip-10-0-0-xxx.us-west-1.compute.internal   Ready                      5m
+ip-10-0-0-xxx.us-west-1.compute.internal   Ready                      5m
+ip-10-0-0-xx.us-west-1.compute.internal    Ready,SchedulingDisabled   5m
 ```
-
-
-Now you can use Kubernetes administration tool `kubectl` to operate the cluster, let's give `kubectl get nodes` a try.
-
 
 
 ###Setup PaddlePaddle Environment on AWS
@@ -277,7 +330,7 @@ For sharing the training data across all the Kubernetes nodes, we use EFS (Elast
 
 1. Make sure you added AmazonElasticFileSystemFullAccess policy in your group.
 
-1. Create the Elastic File System in AWS console, and attach the Kubernetes VPC with it.
+1. Create the Elastic File System in AWS console, and attach the new VPC with it.
 <img src="create_efs.png" width="800">
 
 
@@ -295,7 +348,7 @@ Before starting the training, you should place your user config and divided trai
 
 ###Core Concept of PaddlePaddle Training on AWS
 
-Now we've already setup a 3 node distributed training cluster, and on each node we've attached the EFS volume, in this training demo, we will create three Kubernetes pod and scheduling them on 3 node. Each pod contains a PaddlePaddle container. When container gets created, it will start pserver and trainer process, load the training data from EFS volume and start the distributed training task.
+Now we've already setup a 3 nodes distributed Kubernetes cluster, and on each node we've attached the EFS volume, in this training demo, we will create three Kubernetes pod and scheduling them on 3 node. Each pod contains a PaddlePaddle container. When container gets created, it will start pserver and trainer process, load the training data from EFS volume and start the distributed training task.
 
 ####Use Kubernetes Job
 
@@ -307,7 +360,7 @@ In one time of distributed training, user will confirm the PaddlePaddle node num
 
 ####Create PaddlePaddle Node
 
-After Kubernetes master gets the request, it will parse the yaml file and create several pods (PaddlePaddle's node number)， Kubernetes will allocate these pods onto cluster's node. A pod represents a PaddlePaddle node, when pod is successfully allocated onto one physical/virtual machine, Kubernetes will startup the container in the pod, and this container will use the environment variables in yaml file and start up `paddle pserver` and `paddle trainer` processes.
+After Kubernetes master gets the request, it will parse the yaml file and create several pods (defined by PaddlePaddle's node number)， Kubernetes will allocate these pods onto cluster's node. A pod represents a PaddlePaddle node, when pod is successfully allocated onto one physical/virtual machine, Kubernetes will startup the container in the pod, and this container will use the environment variables in yaml file and start up `paddle pserver` and `paddle trainer` processes.
 
 
 ####Start up Training
@@ -584,7 +637,7 @@ I1116 09:10:18.019716    50 ParameterClient2.cpp:122] pserver 4 192.168.129.71:7
 I1116 09:10:18.019836    50 ParameterClient2.cpp:122] pserver 5 192.168.129.71:7165
 ```
 
-It'll take around 8 hours to run this PaddlePaddle recommendation training demo on three 2 core 8 GB EC2 machine (m3.large), and the results will be 10 trained models.
+It'll take around 8 hours to finish this PaddlePaddle recommendation training demo on three 2 core 8 GB EC2 machine (m3.large).
 
 
 ###Kubernetes Cluster Tear Down
@@ -592,51 +645,13 @@ It'll take around 8 hours to run this PaddlePaddle recommendation training demo 
 
 If you want to tear down the whole Kubernetes cluster, make sure to *delete* the EFS volume first (otherwise, you will get stucked on following steps), and then use the following command:
 
+```
+kube-aws destroy
+```
+It's an async call, it might take 5 min to tear down the whole cluster.
 
-```
-export KUBERNETES_PROVIDER=aws; <path/to/kubernetes-directory>/cluster/kube-down.sh
-```
+If you created any Kubernetes Services of type LoadBalancer, you must delete these first, as the CloudFormation cannot be fully destroyed if any externally-managed resources still exist.
 
-This process takes about 2 to 5 minutes.
-
-```
-ec2-user@ip-172-31-27-229 ~]$ export KUBERNETES_PROVIDER=aws; ./kubernetes/cluster/kube-down.sh
-Bringing down cluster using provider: aws
-Deleting instances in VPC: vpc-e01fc087
-Deleting auto-scaling group: kubernetes-minion-group-us-west-2a
-Deleting auto-scaling launch configuration: kubernetes-minion-group-us-west-2a
-Deleting auto-scaling group: kubernetes-minion-group-us-west-2a
-Deleting auto-scaling group: kubernetes-minion-group-us-west-2a
-Waiting for instances to be deleted
-Waiting for instance i-04e973f1d6d56d580 to be terminated (currently shutting-down)
-Sleeping for 3 seconds...
-Waiting for instance i-04e973f1d6d56d580 to be terminated (currently shutting-down)
-Sleeping for 3 seconds...
-Waiting for instance i-04e973f1d6d56d580 to be terminated (currently shutting-down)
-Sleeping for 3 seconds...
-Waiting for instance i-04e973f1d6d56d580 to be terminated (currently shutting-down)
-Sleeping for 3 seconds...
-Waiting for instance i-04e973f1d6d56d580 to be terminated (currently shutting-down)
-Sleeping for 3 seconds...
-Waiting for instance i-04e973f1d6d56d580 to be terminated (currently shutting-down)
-Sleeping for 3 seconds...
-Waiting for instance i-04e973f1d6d56d580 to be terminated (currently shutting-down)
-Sleeping for 3 seconds...
-Waiting for instance i-04e973f1d6d56d580 to be terminated (currently shutting-down)
-Sleeping for 3 seconds...
-Waiting for instance i-04e973f1d6d56d580 to be terminated (currently shutting-down)
-Sleeping for 3 seconds...
-All instances deleted
-Releasing Elastic IP: 35.165.155.60
-Deleting volume vol-0eba023cc1874c790
-Cleaning up resources in VPC: vpc-e01fc087
-Cleaning up security group: sg-9a7564e3
-Cleaning up security group: sg-a47564dd
-Deleting security group: sg-9a7564e3
-Deleting security group: sg-a47564dd
-Deleting VPC: vpc-e01fc087
-Done
-```
 
 
 ## For Experts with Kubernetes and AWS
@@ -645,23 +660,7 @@ Sometimes we might need to create or manage the cluster on AWS manually with lim
 
 ### Some Presumptions
 
-* Instances run on Debian, the official IAM, and the filesystem is aufs instead of ext4.
-* Kubernetes node use instance storage, no EBS get mounted.  Master use a persistent volume for etcd.
-* Nodes are running in an Auto Scaling Group on AWS, auto-scaling itself is disabled, but if some node get terminated, it will launch another node instead.
-* For networking, we use ip-per-pod model here, each pod get assigned a /24 CIDR. And the whole vpc is a /16 CIDR, No overlay network at this moment, we will use Calico solution later on.
+* Instances run on CoreOS, the official IAM.
+* Kubernetes node use instance storage, no EBS get mounted.  Etcd is running on additional node.
+* For networking, we use Flannel network at this moment, we will use Calico solution later on.
 * When you create a service with Type=LoadBalancer, Kubernetes will create and ELB, and create a security group for the ELB.
-* Kube-proxy sets up two IAM roles, one for master called kubernetes-master, one for nodes called kubernetes-node.
-* All AWS resources are tagged with a tag named "KubernetesCluster", with a value that is the unique cluster-id.
-
-
-###Script Detailed Steps
-
-* Create an s3 bucket for binaries and scripts.
-* Create two iam roles: kubernetes-master, kubernetes-node.
-* Create an AWS SSH key named kubernetes-YOUR_RSA_FINGERPRINT.
-* Create a vpc with 172.20.0.0/16 CIDR, and enables dns-support and dns-hostnames options in vpc settings.
-* Create Internet gateway, route table, a subnet with CIDR of 172.20.0.0/24, and associate the subnet to the route table.
-* Create and configure security group for master and nodes.
-* Create an EBS for master, it will be attached after the master node get up.
-* Launch the master with fixed ip address 172.20.0.9, and the node is initialized with Salt script, all the components get started as docker containers.
-* Create an auto-scaling group, it has the min and max size, it can be changed by using aws api or console, it will auto launch the kubernetes node and configure itself, connect to master, assign an internal CIDR, and the master configures the route table with the assigned CIDR.
