@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "BaseClient.h"
+#include <gflags/gflags.h>
 #include <string.h>
 #include <vector>
-#include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Stat.h"
 
 DECLARE_string(pservers);

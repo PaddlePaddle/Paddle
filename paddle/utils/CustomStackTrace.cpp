@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "CustomStackTrace.h"
+#include <gflags/gflags.h>
 #include <iostream>
-#include "CommandLineParser.h"
 
 DEFINE_bool(
     layer_stack_error_only_current_thread,

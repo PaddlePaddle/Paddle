@@ -24,10 +24,10 @@ limitations under the License. */
 #include <fstream>
 #include <mutex>
 
-#include "paddle/utils/Logging.h"
+#include <gflags/gflags.h>
 
-#include "CommandLineParser.h"
 #include "CustomStackTrace.h"
+#include "Logging.h"
 #include "StringUtil.h"
 #include "Thread.h"
 #include "ThreadLocal.h"
@@ -152,7 +152,12 @@ void initMain(int argc, char** argv) {
     line += ' ';
   }
   LOG(INFO) << "commandline: " << line;
-  ParseCommandLineFlags(&argc, argv, true);
+
+#ifndef GFLAGS_GFLAGS_H_
+  namespace gflags = google;
+#endif
+
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 1) << "Unknown commandline argument: " << argv[1];
 
   installProfilerSwitch();
