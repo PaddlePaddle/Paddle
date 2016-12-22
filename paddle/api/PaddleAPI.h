@@ -550,6 +550,8 @@ public:
   ParameterConfig* getConfig();
   void setValueUpdated();
 
+  size_t getSize() const;
+
 private:
   static Parameter* createFromRawPtr(void* ptr);
   static Parameter* createFromSharedPtr(void* ptr);

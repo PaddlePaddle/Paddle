@@ -96,6 +96,7 @@ namespace std {
 %rename(__getitem__) Vector::get;
 %rename(__setitem__) Vector::set;
 %rename(__len__) Vector::getSize;
+%rename(__len__) Parameter::getSize;
 %rename(__call__) ParameterTraverseCallback::apply;
 %rename(__repr__) Evaluator::toString;
 

@@ -19,10 +19,9 @@ def init_parameter(network):
     assert isinstance(network, api.GradientMachine)
     for each_param in network.getParameters():
         assert isinstance(each_param, api.Parameter)
-        array = each_param.getBuf(api.PARAMETER_VALUE).toNumpyArrayInplace()
-        assert isinstance(array, np.ndarray)
-        for i in xrange(len(array)):
-            array[i] = np.random.uniform(-1.0, 1.0)
+        array_size = len(each_param)
+        array = np.random.uniform(-1.0, 1.0, array_size).astype('float32')
+        each_param.getBuf(api.PARAMETER_VALUE).copyFromNumpyArray(array)
 
 
 def generator_to_batch(generator, batch_size):
@@ -175,7 +174,7 @@ def main():
         for each_param in params:
             assert isinstance(each_param, api.Parameter)
             value = each_param.getBuf(api.PARAMETER_VALUE)
-            value = value.toNumpyArrayInplace()
+            value = value.copyToNumpyArray()
 
             # Here, we could save parameter to every where you want
             print each_param.getName(), value
