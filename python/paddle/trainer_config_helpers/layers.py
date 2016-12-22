@@ -106,6 +106,7 @@ __all__ = [
     'maxout_layer',
     'out_prod_layer',
     'print_layer',
+    'priorbox_layer',
     'spp_layer',
 ]
 
@@ -171,6 +172,7 @@ class LayerType(object):
     SPP_LAYER = "spp"
 
     PRINT_LAYER = "print"
+    PRIORBOX_LAYER = "priorbox"
 
     CTC_LAYER = "ctc"
     WARP_CTC_LAYER = "warp_ctc"
@@ -932,6 +934,52 @@ def print_layer(input, name=None):
         type=LayerType.PRINT_LAYER,
         inputs=[l.name for l in input], )
     # this layer don't return anything, can not be input of other layer.
+
+
+@wrap_name_default("priorbox")
+def priorbox_layer(input,
+                   image,
+                   aspect_ratio,
+                   variance,
+                   min_size,
+                   max_size=[],
+                   name=None):
+    """
+    Compute the priorbox and set the variance. This layer is necessary for ssd.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param image: The network input image.
+    :type image: LayerOutput
+    :param aspect_ratio: The aspect ratio.
+    :type aspect_ratio: list
+    :param variance: The bounding box variance.
+    :type min_size: The min size of the priorbox width/height.
+    :param min_size: list
+    :type max_size: The max size of the priorbox width/height. Could be NULL.
+    :param max_size: list
+    :return: LayerOutput
+    """
+    # plus one for ratio 1.
+    num_filters = (len(aspect_ratio) * 2 + 1 + len(max_size)) * 4
+    size = (input.size / input.num_filters) * num_filters * 2
+    Layer(
+        name=name,
+        type=LayerType.PRIORBOX_LAYER,
+        inputs=[input.name, image.name],
+        size=size,
+        min_size=min_size,
+        max_size=max_size,
+        aspect_ratio=aspect_ratio,
+        variance=variance)
+    return LayerOutput(
+        name,
+        LayerType.PRIORBOX_LAYER,
+        parents=[input, image],
+        num_filters=num_filters,
+        size=size)
 
 
 @wrap_name_default("seq_pooling")

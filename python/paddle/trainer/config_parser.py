@@ -1589,6 +1589,27 @@ class PrintLayer(LayerBase):
         super(PrintLayer, self).__init__(name, 'print', 0, inputs)
 
 
+@config_layer('priorbox')
+class PriorBoxLayer(LayerBase):
+    def __init__(self, name, inputs, size, min_size, max_size, aspect_ratio,
+                 variance):
+        super(PriorBoxLayer, self).__init__(name, 'priorbox', 0, inputs)
+        config_assert(len(inputs) == 2, 'PriorBoxLayer must have 2 inputs')
+        input_layer = self.get_input_layer(1)
+        config_assert(
+            input_layer.type == 'data',
+            'Expecting the second input layer of an priorbox layer to be '
+            'a data layer')
+        config_assert(input_layer.width > 0, 'The data layer must set width')
+        config_assert(input_layer.height > 0, 'The data layer must set height')
+        config_assert(len(variance) == 4, 'The variance must have 4 inputs')
+        self.config.inputs[0].priorbox_conf.min_size.extend(min_size)
+        self.config.inputs[0].priorbox_conf.max_size.extend(max_size)
+        self.config.inputs[0].priorbox_conf.aspect_ratio.extend(aspect_ratio)
+        self.config.inputs[0].priorbox_conf.variance.extend(variance)
+        self.config.size = size
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):
