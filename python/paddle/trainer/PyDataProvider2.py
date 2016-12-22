@@ -232,7 +232,7 @@ def provider(input_types=None,
              check=False,
              check_fail_continue=False,
              init_hook=None,
-             **kwargs):
+             **outter_kwargs):
     """
     Provider decorator. Use it to make a function into PyDataProvider2 object.
     In this function, user only need to get each sample for some train/test
@@ -278,7 +278,7 @@ def provider(input_types=None,
                                 custom calculate one sample's batch_size.
 
                                 It is very danger to set it to false and use
-                                calc_batch_size together. Default is false.
+                                calc_batch_size together. Default is true.
     :type can_over_batch_size: bool
 
     :param calc_batch_size: a method to calculate each sample's batch size.
@@ -318,11 +318,6 @@ def provider(input_types=None,
                 self.logger = logging.getLogger("")
                 self.logger.setLevel(logging.INFO)
                 self.input_types = None
-                if 'slots' in kwargs:
-                    self.logger.warning('setting slots value is deprecated, '
-                                        'please use input_types instead.')
-                    self.slots = kwargs['slots']
-                self.slots = input_types
                 self.should_shuffle = should_shuffle
 
                 true_table = [1, 't', 'true', 'on']
@@ -358,9 +353,19 @@ def provider(input_types=None,
                 self.check = check
                 if init_hook is not None:
                     init_hook(self, file_list=file_list, **kwargs)
+
+                if 'slots' in outter_kwargs:
+                    self.logger.warning('setting slots value is deprecated, '
+                                        'please use input_types instead.')
+                    self.slots = outter_kwargs['slots']
+                if input_types is not None:
+                    self.slots = input_types
+
                 if self.input_types is not None:
                     self.slots = self.input_types
-                assert self.slots is not None
+
+                assert self.slots is not None, \
+                    "Data Provider's input_types must be set"
                 assert self.generator is not None
 
                 use_dynamic_order = False

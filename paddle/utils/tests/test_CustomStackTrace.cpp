@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
 #include <chrono>
 
-#include "paddle/utils/CommandLineParser.h"
+#include <gflags/gflags.h>
+#include <gtest/gtest.h>
+
 #include "paddle/utils/CustomStackTrace.h"
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Util.h"

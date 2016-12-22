@@ -43,7 +43,7 @@ def get_batch_size(yeild_data):
     init_hook=hook,
     should_shuffle=True,
     calc_batch_size=get_batch_size,
-    can_over_batch_size=False,
+    can_over_batch_size=True,
     cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, file_name):
     with open(file_name, 'r') as fdata:

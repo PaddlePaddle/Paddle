@@ -26,7 +26,6 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "CommandLineParser.h"
 #include "Logging.h"
 #include "TrainerConfig.pb.h"
 #include "common.h"
