@@ -11,7 +11,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "DisableCopy.h"
+#include "common.h"
 
 namespace paddle {
 

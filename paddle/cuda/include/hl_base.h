@@ -16,7 +16,7 @@ limitations under the License. */
 #define HL_BASE_H_
 
 #include <cstddef>
-#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/common.h"
 
 /**
  * HPPL is an internal high performance parallel computing library

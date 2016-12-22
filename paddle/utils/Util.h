@@ -27,12 +27,11 @@ limitations under the License. */
 #include <vector>
 
 #include "CommandLineParser.h"
-#include "DisableCopy.h"
 #include "Logging.h"
 #include "TrainerConfig.pb.h"
+#include "common.h"
 
 #include "Flags.h"
-#include "TypeDefs.h"
 #include "hl_gpu.h"
 
 /**

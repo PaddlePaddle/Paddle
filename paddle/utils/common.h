@@ -21,3 +21,13 @@ limitations under the License. */
   CLASS_NAME(CLASS_NAME &&) = delete;           \
   CLASS_NAME(const CLASS_NAME &other) = delete; \
   CLASS_NAME &operator=(const CLASS_NAME &other) = delete
+
+namespace paddle {
+#ifdef PADDLE_TYPE_DOUBLE
+typedef double real;
+#else
+typedef float real;
+#endif
+}  // namespace paddle
+
+using paddle::real;
