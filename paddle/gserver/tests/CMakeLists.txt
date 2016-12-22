@@ -34,6 +34,14 @@ add_unittest_without_exec(test_ConvTrans
 
 add_test(NAME test_ConvTrans
     COMMAND test_ConvTrans)
+################# test_PriorBox #######################
+add_unittest_without_exec(test_PriorBox
+    test_PriorBox.cpp
+    LayerGradUtil.cpp
+    TestUtil.cpp)
+
+add_test(NAME test_PriorBox
+    COMMAND test_PriorBox)
 ################# test_ConvUnify #######################
 add_unittest_without_exec(test_ConvUnify
     test_ConvUnify.cpp

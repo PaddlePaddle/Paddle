@@ -498,9 +498,16 @@ class Input(Cfg):
             is_static=None,
             is_shared=None,
             update_hooks=None,
-            input_layer_argument=None, ):
+            input_layer_argument=None,
+            make_layer_name_in_submodel=True, ):
+        """
+        @param make_layer_name_in_submodel True by defalut, you might need to
+        set it carefully when adding Input in config_parser.py.
+        """
         self.add_keys(locals())
-        self.input_layer_name = MakeLayerNameInSubmodel(input_layer_name)
+        self.input_layer_name = MakeLayerNameInSubmodel(
+            input_layer_name
+        ) if make_layer_name_in_submodel else input_layer_name
 
 
 # Define a projection for iexed layer
@@ -1582,6 +1589,27 @@ class PrintLayer(LayerBase):
         super(PrintLayer, self).__init__(name, 'print', 0, inputs)
 
 
+@config_layer('priorbox')
+class PriorBoxLayer(LayerBase):
+    def __init__(self, name, inputs, size, min_size, max_size, aspect_ratio,
+                 variance):
+        super(PriorBoxLayer, self).__init__(name, 'priorbox', 0, inputs)
+        config_assert(len(inputs) == 2, 'PriorBoxLayer must have 2 inputs')
+        input_layer = self.get_input_layer(1)
+        config_assert(
+            input_layer.type == 'data',
+            'Expecting the second input layer of an priorbox layer to be '
+            'a data layer')
+        config_assert(input_layer.width > 0, 'The data layer must set width')
+        config_assert(input_layer.height > 0, 'The data layer must set height')
+        config_assert(len(variance) == 4, 'The variance must have 4 inputs')
+        self.config.inputs[0].priorbox_conf.min_size.extend(min_size)
+        self.config.inputs[0].priorbox_conf.max_size.extend(max_size)
+        self.config.inputs[0].priorbox_conf.aspect_ratio.extend(aspect_ratio)
+        self.config.inputs[0].priorbox_conf.variance.extend(variance)
+        self.config.size = size
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):
@@ -1848,7 +1876,8 @@ class BatchNormLayer(LayerBase):
                     initial_std=0.0,
                     initial_mean=0.0,
                     is_static=True,
-                    is_shared=is_shared, ))
+                    is_shared=is_shared,
+                    make_layer_name_in_submodel=False, ))
 
         parallel_nn = bool(int(g_command_config_args.get("parallel_nn", 0)))
         cudnn_version = int(g_command_config_args.get("cudnn_version", 0))
@@ -1880,7 +1909,7 @@ class BatchNormLayer(LayerBase):
         # when either of it is non-zero. 
         if input_layer.width != 0 or input_layer.height != 0:
             self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                               image_conf.channels, True)
+                               image_conf.channels, False)
         else:
             self.set_layer_size(input_layer.size)
 

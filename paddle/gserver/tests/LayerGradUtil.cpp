@@ -303,13 +303,31 @@ void initDataLayer(TestConfig testConf,
   ICpuGpuVectorPtr sequenceStartPositions;
   ICpuGpuVectorPtr subSequenceStartPositions;
   IVectorPtr cpuSequenceDims;
-  for (size_t i = 0; i < testConf.inputDefs.size(); i++) {
+  for (size_t i = 0; i < testConf.inputDefs.size(); ++i) {
+    if (testConf.inputDefs[i].inputType != INPUT_SEQUENCE_LABEL) continue;
+
+    const std::vector<int>& labelSeqStartPositions =
+        testConf.inputDefs[i].labelSeqStartPositions;
+    if (labelSeqStartPositions.size() != 0) {
+      CHECK(!sequenceStartPositions);
+      CHECK_GE(labelSeqStartPositions.size(), 2);
+
+      sequenceStartPositions =
+          ICpuGpuVector::create(labelSeqStartPositions.size(), useGpu);
+      sequenceStartPositions->copyFrom(
+          labelSeqStartPositions.data(), labelSeqStartPositions.size(), useGpu);
+    }
+  }
+
+  for (size_t i = 0; i < testConf.inputDefs.size(); ++i) {
     LayerConfig config;
     config.set_name(testConf.inputDefs[i].name);
     config.set_type("data");
     config.set_size(testConf.inputDefs[i].dim);
     LayerPtr layer = LayerPtr(new DataLayer(config));
-    size_t numSequence = batchSize / 10 + 1;
+    size_t numSequence = sequenceStartPositions
+                             ? sequenceStartPositions->getSize() - 1
+                             : batchSize / 10 + 1;
 
     Argument data;
     auto fillData = [&](bool trans, int height, int width) {
@@ -336,9 +354,17 @@ void initDataLayer(TestConfig testConf,
         break;
       case INPUT_LABEL:
       case INPUT_SEQUENCE_LABEL:
-        data.ids = VectorT<int>::create(batchSize, useGpu);
-        // now rand number can be 0 to inputDefs[i].dim
-        data.ids->rand(testConf.inputDefs[i].dim);
+        if (testConf.inputDefs[i].labelInitValue.size() != 0) {
+          const std::vector<int>& labelInitValue =
+              testConf.inputDefs[i].labelInitValue;
+          CHECK_EQ(labelInitValue.size(), batchSize);
+          data.ids = VectorT<int>::create(batchSize, useGpu);
+          data.ids->copyFrom(labelInitValue.data(), batchSize);
+        } else {
+          data.ids = VectorT<int>::create(batchSize, useGpu);
+          // now rand number can be 0 to inputDefs[i].dim
+          data.ids->rand(testConf.inputDefs[i].dim);
+        }
         break;
       case INPUT_SPARSE_NON_VALUE_DATA:
         data.value = makeRandomSparseMatrix(

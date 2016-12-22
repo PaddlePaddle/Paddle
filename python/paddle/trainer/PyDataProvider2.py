@@ -278,7 +278,7 @@ def provider(input_types=None,
                                 custom calculate one sample's batch_size.
 
                                 It is very danger to set it to false and use
-                                calc_batch_size together. Default is false.
+                                calc_batch_size together. Default is true.
     :type can_over_batch_size: bool
 
     :param calc_batch_size: a method to calculate each sample's batch size.

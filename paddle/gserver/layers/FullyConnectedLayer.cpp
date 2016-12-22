@@ -84,8 +84,8 @@ void FullyConnectedLayer::forward(PassType passType) {
     auto input = getInput(i);
     CHECK(input.value) << "The input of 'fc' layer must be matrix";
     REGISTER_TIMER_INFO("FwMulTimer", getName().c_str());
-    i == 0 ? outV->mul(input.value, weights_[i]->getW(), 1, 0)
-           : outV->mul(input.value, weights_[i]->getW(), 1, 1);
+    i == 0 ? outV->mul(*input.value, *weights_[i]->getW(), 1, 0)
+           : outV->mul(*input.value, *weights_[i]->getW(), 1, 1);
   }
 
   /* add the bias-vector */
@@ -123,7 +123,7 @@ void FullyConnectedLayer::backward(const UpdateCallback& callback) {
       MatrixPtr oGrad = getOutputGrad();
       {
         REGISTER_TIMER_INFO("GradMulTimer", getName().c_str());
-        weights_[i]->getWGrad()->mul(input_T, oGrad, 1, 1);
+        weights_[i]->getWGrad()->mul(*input_T, *oGrad, 1, 1);
       }
     }
 
@@ -136,7 +136,7 @@ void FullyConnectedLayer::backward(const UpdateCallback& callback) {
     if (NULL != preGrad) {
       MatrixPtr weights_T = weights_[i]->getW()->getTranspose();
       REGISTER_TIMER_INFO("BpMulTimer", getName().c_str());
-      preGrad->mul(getOutputGrad(), weights_T, 1, 1);
+      preGrad->mul(*getOutputGrad(), *weights_T, 1, 1);
     }
 
     hl_set_sync_flag(syncFlag);
