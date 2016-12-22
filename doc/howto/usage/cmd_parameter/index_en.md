@@ -1,7 +1,4 @@
-```eval_rst
-..  _cmd_line_index:
-```
-# Set Command-line Parameters
+# How to Set Command-line Parameters
 
 * [Use Case](use_case_en.md)
 * [Arguments](arguments_en.md)

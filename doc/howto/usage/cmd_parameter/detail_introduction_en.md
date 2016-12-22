@@ -1,7 +1,3 @@
-```eval_rst
-..  _cmd_detail_introduction:
-```
-
 # Detail Description
 
 ## Common
@@ -73,7 +69,7 @@
   - type: bool (default: 0).
 
 * `--load_missing_parameter_strategy`
-  - Specify the loading operation when model file is missing. Now support fail/rand/zere three operations.
+  - Specify the loading operation when model file is missing. Now support fail/rand/zero three operations.
     - `fail`: program will exit.
     - `rand`: uniform or normal distribution according to **initial\_strategy** in network config. Uniform range is: **[mean - std, mean + std]**, where mean and std are configures in trainer config.
     - `zero`: all parameters are zero.
