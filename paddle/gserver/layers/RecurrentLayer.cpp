@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gflags/gflags.h>
 #include "Layer.h"
 #include "SequenceToBatch.h"
-#include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Stat.h"
 
 DEFINE_bool(rnn_use_batch, false, "Using the batch method for calculation.");

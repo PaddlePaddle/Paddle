@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Parameter.h"
+#include <gflags/gflags.h>
 #include <fstream>
 #include "AverageOptimizer.h"
 #include "FirstOrderOptimizer.h"
@@ -23,7 +24,6 @@ limitations under the License. */
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/math/MathUtils.h"
 #include "paddle/math/SparseRowMatrix.h"
-#include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Logging.h"
 
 DEFINE_int32(enable_grad_share,
