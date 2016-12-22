@@ -107,6 +107,7 @@ __all__ = [
     'out_prod_layer',
     'print_layer',
     'priorbox_layer',
+    'multibox_loss_layer',
     'spp_layer',
 ]
 
@@ -173,6 +174,7 @@ class LayerType(object):
 
     PRINT_LAYER = "print"
     PRIORBOX_LAYER = "priorbox"
+    MULTIBOX_LOSS_LAYER = "multibox_loss"
 
     CTC_LAYER = "ctc"
     WARP_CTC_LAYER = "warp_ctc"
@@ -980,6 +982,86 @@ def priorbox_layer(input,
         parents=[input, image],
         num_filters=num_filters,
         size=size)
+
+
+@wrap_name_default("multibox_loss")
+def multibox_loss_layer(input_loc,
+                        input_conf,
+                        priorbox,
+                        label,
+                        num_classes=21,
+                        loc_weight=1.0,
+                        overlap_threshold=0.5,
+                        neg_pos_ratio=3.0,
+                        neg_overlap=0.5,
+                        background_id=0,
+                        name=None):
+    """
+    Compute the location loss and the confidence loss for ssd.
+    
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input_loc: The input predict location.
+    :type input_loc: LayerOutput 
+    :param input_conf: The input priorbox confidence.
+    :type input_conf: LayerOutput 
+    :param priorbox: The input priorbox location and the variance.
+    :type priorbox: LayerOutput 
+    :param label: The input label.
+    :type label: LayerOutput 
+    :param num_classes: The number of the classification.
+    :type num_classes: int
+    :param loc_weight: The weight of the location loss.
+    :type loc_weight: float
+    :param overlap_threshold: The threshold of the overlap.
+    :type overlap_threshold: float
+    :param neg_pos_ratio: The ratio of the negative bbox to the positive bbox.
+    :type neg_pos_ratio: float
+    :param neg_overlap: The negative bbox overlap threshold.
+    :type neg_overlap: float
+    :param background_id: The background class index.
+    :type background_id: int
+    :return: LayerOutput
+    """
+    input_loc_num = 0
+    input_conf_num = 0
+
+    if isinstance(input_loc, LayerOutput):
+        input_loc = [input_loc]
+    assert isinstance(input_loc, collections.Sequence)  # list or tuple
+    for each in input_loc:
+        assert isinstance(each, LayerOutput)
+        input_loc_num += 1
+
+    if isinstance(input_conf, LayerOutput):
+        input_conf = [input_conf]
+    assert isinstance(input_conf, collections.Sequence)  # list or tuple
+    for each in input_conf:
+        assert isinstance(each, LayerOutput)
+        input_conf_num += 1
+    # Check the input layer number.
+    assert input_loc_num == input_conf_num
+
+    inputs = [priorbox.name, label.name]
+    inputs.extend([l.name for l in input_loc])
+    inputs.extend([l.name for l in input_conf])
+    parents = [priorbox, label]
+    parents.extend(input_loc)
+    parents.extend(input_conf)
+
+    Layer(
+        name=name,
+        type=LayerType.MULTIBOX_LOSS_LAYER,
+        inputs=inputs,
+        input_num=input_loc_num,
+        num_classes=num_classes,
+        loc_weight=loc_weight,
+        overlap_threshold=overlap_threshold,
+        neg_pos_ratio=neg_pos_ratio,
+        neg_overlap=neg_overlap,
+        background_id=background_id)
+    return LayerOutput(
+        name, LayerType.MULTIBOX_LOSS_LAYER, parents=parents, size=1)
 
 
 @wrap_name_default("seq_pooling")
