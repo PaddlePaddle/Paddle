@@ -53,7 +53,7 @@ def input_order_converter(generator):
 
 
 def main():
-    api.initPaddle("-use_gpu=true", "-trainer_count=4")  # use 4 cpu cores
+    api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
     config = paddle.trainer.config_parser.parse_config(
         'simple_mnist_network.py', '')
 
@@ -106,7 +106,7 @@ def main():
     # TrainData will stored in a data pool. Currently implementation is not care
     # about memory, speed. Just a very naive implementation.
     train_data_generator = input_order_converter(read_from_mnist(train_file))
-    train_data = BatchPool(train_data_generator, 128)
+    train_data = BatchPool(train_data_generator, 512)
 
     # outArgs is Neural Network forward result. Here is not useful, just passed
     # to gradient_machine.forward
@@ -126,16 +126,13 @@ def main():
             # batch_evaluator can be used between start/finish.
             batch_evaluator.start()
 
-            # A callback when backward.
-            # It is used for updating weight values vy calculated Gradient.
-            def updater_callback(param):
-                updater.update(param)
-
             # forwardBackward is a shortcut for forward and backward.
             # It is sometimes faster than invoke forward/backward separately,
             # because in GradientMachine, it may be async.
-            m.forwardBackward(
-                converter(data_batch), outArgs, pass_type, updater_callback)
+            m.forwardBackward(converter(data_batch), outArgs, pass_type)
+
+            for each_param in m.getParameters():
+                updater.update(each_param)
 
             # Get cost. We use numpy to calculate total cost for this batch.
             cost_vec = outArgs.getSlotValue(0)
@@ -159,7 +156,7 @@ def main():
         updater.apply()
         test_evaluator.start()
         test_data_generator = input_order_converter(read_from_mnist(test_file))
-        for data_batch in generator_to_batch(test_data_generator, 128):
+        for data_batch in generator_to_batch(test_data_generator, 512):
             # in testing stage, only forward is needed.
             m.forward(converter(data_batch), outArgs, api.PASS_TEST)
             m.eval(test_evaluator)
