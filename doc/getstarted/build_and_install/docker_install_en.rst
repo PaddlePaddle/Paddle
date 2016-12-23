@@ -65,16 +65,13 @@ The general development workflow with Docker and Bazel is as follows:
        --name paddle   \
        -p 2022:22      \
        -v $PWD:/paddle \
-       -v $HOME/.cache/bazel:/root/.cache/bazel \
        paddle:dev
 
    where :code:`-d` makes the container running in background,
    :code:`--name paddle` allows us to run a nginx container to serve
    documents in this container, :code:`-p 2022:22` allows us to SSH
    into this container, :code:`-v $PWD:/paddle` shares the source code
-   on the host with the container, :code:`-v
-   $HOME/.cache/bazel:/root/.cache/bazel` shares Bazel cache on the
-   host with the container.
+   on the host with the container.
 
 4. SSH into the container:
 
@@ -93,13 +90,6 @@ The general development workflow with Docker and Bazel is as follows:
       cmake -DWITH_TESTING=ON ..
       make -j `nproc`
       CTEST_OUTPUT_ON_FAILURE=1 ctest
-
-   or Bazel in the container:
-
-   .. code-block:: bash
-
-      cd /paddle
-      bazel test ...
 
 
 CPU-only and GPU Images
