@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "cross_map_normal_op.h"
+#include "CrossMapNormalOp.h"
 #include "paddle/math/Vector.h"
 
 namespace paddle {
