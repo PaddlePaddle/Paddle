@@ -118,11 +118,11 @@
   - type: int32 (default: 0).
 
 * `--test_wait`
-  - Whether to wait for parameter per pass if not exist. If set test_data_path in submitting environment of cluster, it will launch one process to perfom testing, so we need to set test_wait=1. Note that in the cluster submitting environment, this argument has been set True by default.
+  - Whether to wait for parameter per pass if not exist. It can be used when user launch another process to perfom testing during the training process.
   - type: bool (default: 0).
 
 * `--model_list`
-  - File that saves the model list when testing. It was set automatically when using cluster submitting environment after setting model_path.
+  - File that saves the model list when testing. 
   - type: string (default: "", null).
 
 * `--predict_output_dir`
@@ -212,7 +212,7 @@
   - type: bool (default: 0).
 
 * `--pservers`
-  - Comma separated IP addresses of pservers. It is set automatically in cluster submitting environment.
+  - Comma separated IP addresses of pservers.
   - type: string (default: "127.0.0.1").
 
 * `--port`
