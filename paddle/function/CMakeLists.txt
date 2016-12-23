@@ -11,8 +11,6 @@ endif()
 
 add_library(paddle_function STATIC ${cpp_files} ${cu_objs})
 
-add_library(paddle_test_main STATIC TestMain.cpp)
-
 if(WITH_GPU)
     # TODO:
     # file(GLOB test_files . *_op_test.cpp)
