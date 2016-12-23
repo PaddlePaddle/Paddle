@@ -34,8 +34,8 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Queue.h"
 #include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/TypeDefs.h"
 #include "paddle/utils/Util.h"
+#include "paddle/utils/common.h"
 
 namespace paddle {
 /**

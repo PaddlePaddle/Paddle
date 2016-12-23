@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/math/Matrix.h"
 #include "paddle/pserver/ProtoServer.h"
 #include "paddle/utils/Queue.h"
-#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/common.h"
 
 namespace paddle {
 

@@ -27,7 +27,7 @@ limitations under the License. */
 #include "MemoryHandle.h"
 #include "Vector.h"
 #include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/common.h"
 
 namespace paddle {
 
