@@ -50,10 +50,6 @@ DEFINE_int32(sock_recv_buf_size,
              1024 * 1024 * 40,
              "restrict sock recv buff size");
 
-DEFINE_int32(connrefused_retries_second,
-             10,
-             "retry connrefused_retries_second if ECONNREFUSED occurs");
-
 namespace paddle {
 
 /**
@@ -393,7 +389,7 @@ void SocketClient::TcpClient(const std::string &serverAddr, int serverPort) {
     error = connect(sockfd, (sockaddr *)&serv_addr, sizeof(serv_addr));
     if (error == ECONNREFUSED) {
       LOG(WARNING) << "connection refused by pserver, try again!";
-      if (retry_second++ >= FLAGS_connrefused_retries_second) {
+      if (retry_second++ >= 7) {
         LOG(FATAL) << "connection refused by pserver, maybe pserver failed!";
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
