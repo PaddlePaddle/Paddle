@@ -53,9 +53,3 @@ TEST(MatrixBatchTransTest, test_batch_matrix_transpose) {
   checkMatrixEqual(cBatchTransMat, cMat_d2h);
 }
 #endif
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

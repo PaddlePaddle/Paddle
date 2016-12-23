@@ -459,11 +459,3 @@ void testSparseMomentum(size_t size, bool useGpu) {
 }
 
 TEST(Training, SparseMomentum) { testCase(testSparseMomentum); }
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  initMain(argc, argv);
-  hl_start();
-  hl_init(FLAGS_gpu_id);
-  return RUN_ALL_TESTS();
-}
