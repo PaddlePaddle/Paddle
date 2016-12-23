@@ -32,14 +32,14 @@ real FuncConfig::get<real>(const std::string& key) const {
 
 template <>
 FuncConfig& FuncConfig::set<size_t>(const std::string& key, size_t v) {
-  CHECK(valueMap_.count(key) == 0) << "Duplicated value: " << key;
+  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
   valueMap_[key].s = v;
   return *this;
 }
 
 template <>
 FuncConfig& FuncConfig::set<real>(const std::string& key, real v) {
-  CHECK(valueMap_.count(key) == 0) << "Duplicated value: " << key;
+  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
   valueMap_[key].r = v;
   return *this;
 }
