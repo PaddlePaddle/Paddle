@@ -244,7 +244,7 @@
 </tr>
 
 <tr>
-<td class="left" rowspan = "16">参数服务(PServer)</td><td class="left">start_pserver</td>
+<td class="left" rowspan = "16">参数服务器(PServer)</td><td class="left">start_pserver</td>
 <td class="left"></td><td class="left">√</td><td class="left"></td><td class="left">√</td>
 </tr>
 
@@ -379,7 +379,7 @@
 </tr>
 
 <tr>
-<td class="left">数据提供(Data Provider)</td><td class="left">memory_threshold_on_load_data</td>
+<td class="left">数据提供器(Data Provider)</td><td class="left">memory_threshold_on_load_data</td>
 <td class="left">√</td><td class="left">√</td><td class="left"></td><td class="left"></td>
 </tr>
 
