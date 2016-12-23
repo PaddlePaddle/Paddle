@@ -715,6 +715,16 @@ public:
       const std::vector<int>& parameterTypes = defaultParamTypes);
 
   /**
+   * Prefetch row ids of sparse parameter.
+   */
+  void prefetch(const Arguments& inArgs);
+
+  /**
+   * Do some thing when train pass ended.
+   */
+  void onPassEnd();
+
+  /**
    * The forward stage of GradientMachine.
    *
    * @note  the outArgs could be zero length arguemnts.
