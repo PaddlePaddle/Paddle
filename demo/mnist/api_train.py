@@ -14,6 +14,8 @@ import random
 from mnist_util import read_from_mnist
 from paddle.trainer_config_helpers import *
 
+from trainer import *
+
 
 def optimizer_config():
     settings(
@@ -72,122 +74,132 @@ def input_order_converter(generator):
         yield each_item['pixel'], each_item['label']
 
 
-def main():
-    api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
+class MonolithicChainItem(RunnerChainItem):
+    def finalize(self, context, next_callback):
+        context.gradient_machine.finish()
 
-    # get enable_types for each optimizer.
-    # enable_types = [value, gradient, momentum, etc]
-    # For each optimizer(SGD, Adam), GradientMachine should enable different
-    # buffers.
-    opt_config_proto = parse_optimizer_config(optimizer_config)
-    opt_config = api.OptimizationConfig.createFromProto(opt_config_proto)
-    _temp_optimizer_ = api.ParameterOptimizer.create(opt_config)
-    enable_types = _temp_optimizer_.getParameterTypes()
+    def initialize(self, context, next_callback):
+        api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
 
-    # Create Simple Gradient Machine.
-    model_config = parse_network_config(network_config)
-    m = api.GradientMachine.createFromConfigProto(
-        model_config, api.CREATE_MODE_NORMAL, enable_types)
+        # get enable_types for each optimizer.
+        # enable_types = [value, gradient, momentum, etc]
+        # For each optimizer(SGD, Adam), GradientMachine should enable different
+        # buffers.
+        opt_config_proto = parse_optimizer_config(optimizer_config)
+        opt_config = api.OptimizationConfig.createFromProto(opt_config_proto)
+        _temp_optimizer_ = api.ParameterOptimizer.create(opt_config)
+        enable_types = _temp_optimizer_.getParameterTypes()
 
-    # This type check is not useful. Only enable type hint in IDE.
-    # Such as PyCharm
-    assert isinstance(m, api.GradientMachine)
+        # Create Simple Gradient Machine.
+        model_config = parse_network_config(network_config)
+        context.gradient_machine = api.GradientMachine.createFromConfigProto(
+            model_config, api.CREATE_MODE_NORMAL, enable_types)
 
-    # Initialize Parameter by numpy.
-    init_parameter(network=m)
+        # This type check is not useful. Only enable type hint in IDE.
+        # Such as PyCharm
+        assert isinstance(context.gradient_machine, api.GradientMachine)
 
-    # Create Local Updater. Local means not run in cluster.
-    # For a cluster training, here we can change to createRemoteUpdater
-    # in future.
-    updater = api.ParameterUpdater.createLocalUpdater(opt_config)
-    assert isinstance(updater, api.ParameterUpdater)
+        # Initialize Parameter by numpy.
+        init_parameter(network=context.gradient_machine)
 
-    # Initialize ParameterUpdater.
-    updater.init(m)
+        # Create Local Updater. Local means not run in cluster.
+        # For a cluster training, here we can change to createRemoteUpdater
+        # in future.
+        context.updater = api.ParameterUpdater.createLocalUpdater(opt_config)
+        assert isinstance(context.updater, api.ParameterUpdater)
+        context.updater.init(context.gradient_machine)
 
-    # DataProvider Converter is a utility convert Python Object to Paddle C++
-    # Input. The input format is as same as Paddle's DataProvider.
-    converter = DataProviderConverter(
-        input_types=[dp.dense_vector(784), dp.integer_value(10)])
+        # DataProvider Converter is a utility convert Python Object to Paddle C++
+        # Input. The input format is as same as Paddle's DataProvider.
+        context.data_converter = DataProviderConverter(
+            input_types=[dp.dense_vector(784), dp.integer_value(10)])
 
-    train_file = './data/raw_data/train'
-    test_file = './data/raw_data/t10k'
+        train_file = './data/raw_data/train'
+        test_file = './data/raw_data/t10k'
 
-    # start gradient machine.
-    # the gradient machine must be started before invoke forward/backward.
-    # not just for training, but also for inference.
-    m.start()
+        context.gradient_machine.start()
 
-    # evaluator can print error rate, etc. It is a C++ class.
-    batch_evaluator = m.makeEvaluator()
-    test_evaluator = m.makeEvaluator()
+        # Get Train Data.
+        # TrainData will stored in a data pool. Currently implementation is not care
+        # about memory, speed. Just a very naive implementation.
+        train_data_generator = input_order_converter(
+            read_from_mnist(train_file))
+        train_data = BatchPool(train_data_generator, 512)
+        context.train_data_callback = train_data
+        context.test_file = test_file
 
-    # Get Train Data.
-    # TrainData will stored in a data pool. Currently implementation is not care
-    # about memory, speed. Just a very naive implementation.
-    train_data_generator = input_order_converter(read_from_mnist(train_file))
-    train_data = BatchPool(train_data_generator, 512)
+        next_callback(context)
 
-    # outArgs is Neural Network forward result. Here is not useful, just passed
-    # to gradient_machine.forward
-    outArgs = api.Arguments.createArguments(0)
+    def on_batch_begin(self, context, next_callback):
+        batch_evaluator = context.gradient_machine.makeEvaluator()
+        # outArgs is Neural Network forward result. Here is not useful, just passed
+        # to gradient_machine.forward
+        outArgs = api.Arguments.createArguments(0)
 
-    for pass_id in xrange(2):  # we train 2 passes.
-        updater.startPass()
+        try:
+            data_batch = next(context.train_data)
+        except StopIteration:
+            return True
 
-        for batch_id, data_batch in enumerate(train_data()):
-            # data_batch is input images.
-            # here, for online learning, we could get data_batch from network.
+        # data_batch is input images.
+        # here, for online learning, we could get data_batch from network.
 
-            # Start update one batch.
-            pass_type = updater.startBatch(len(data_batch))
+        # Start update one batch.
+        pass_type = context.updater.startBatch(len(data_batch))
 
-            # Start BatchEvaluator.
-            # batch_evaluator can be used between start/finish.
-            batch_evaluator.start()
+        # Start BatchEvaluator.
+        # batch_evaluator can be used between start/finish.
+        batch_evaluator.start()
 
-            # forwardBackward is a shortcut for forward and backward.
-            # It is sometimes faster than invoke forward/backward separately,
-            # because in GradientMachine, it may be async.
-            m.forwardBackward(converter(data_batch), outArgs, pass_type)
+        # forwardBackward is a shortcut for forward and backward.
+        # It is sometimes faster than invoke forward/backward separately,
+        # because in GradientMachine, it may be async.
+        context.gradient_machine.forwardBackward(
+            context.data_converter(data_batch), outArgs, pass_type)
 
-            for each_param in m.getParameters():
-                updater.update(each_param)
+        for each_param in context.gradient_machine.getParameters():
+            context.updater.update(each_param)
 
-            # Get cost. We use numpy to calculate total cost for this batch.
-            cost_vec = outArgs.getSlotValue(0)
-            cost_vec = cost_vec.copyToNumpyMat()
-            cost = cost_vec.sum() / len(data_batch)
+        # Get cost. We use numpy to calculate total cost for this batch.
+        cost_vec = outArgs.getSlotValue(0)
+        cost_vec = cost_vec.copyToNumpyMat()
+        cost = cost_vec.sum() / len(data_batch)
 
-            # Make evaluator works.
-            m.eval(batch_evaluator)
+        # Make evaluator works.
+        context.gradient_machine.eval(batch_evaluator)
 
-            # Print logs.
-            print 'Pass id', pass_id, 'Batch id', batch_id, 'with cost=', \
-                cost, batch_evaluator
+        # Print logs.
+        print 'batch with cost=', cost, batch_evaluator
 
-            batch_evaluator.finish()
-            # Finish batch.
-            #  * will clear gradient.
-            #  * ensure all values should be updated.
-            updater.finishBatch(cost)
+        batch_evaluator.finish()
+        context.cost = cost
+        return False
 
+    def on_pass_begin(self, context, next_callback):
+        context.updater.startPass()
+        context.train_data = context.train_data_callback()
+
+    def on_pass_end(self, context, next_callback):
         # testing stage. use test data set to test current network.
-        updater.apply()
+        outArgs = api.Arguments.createArguments(0)
+        context.updater.apply()
+        test_evaluator = context.gradient_machine.makeEvaluator()
         test_evaluator.start()
-        test_data_generator = input_order_converter(read_from_mnist(test_file))
+        test_data_generator = input_order_converter(
+            read_from_mnist(context.test_file))
         for data_batch in generator_to_batch(test_data_generator, 512):
             # in testing stage, only forward is needed.
-            m.forward(converter(data_batch), outArgs, api.PASS_TEST)
-            m.eval(test_evaluator)
+            context.gradient_machine.forward(
+                context.data_converter(data_batch), outArgs, api.PASS_TEST)
+            context.gradient_machine.eval(test_evaluator)
 
         # print error rate for test data set
-        print 'Pass', pass_id, ' test evaluator: ', test_evaluator
+        print 'Test evaluator: ', test_evaluator
         test_evaluator.finish()
-        updater.restore()
+        context.updater.restore()
 
-        updater.catchUpWith()
-        params = m.getParameters()
+        context.updater.catchUpWith()
+        params = context.gradient_machine.getParameters()
         for each_param in params:
             assert isinstance(each_param, api.Parameter)
             value = each_param.getBuf(api.PARAMETER_VALUE)
@@ -196,9 +208,25 @@ def main():
             # Here, we could save parameter to every where you want
             print each_param.getName(), value
 
-        updater.finishPass()
+        context.updater.finishPass()
 
-    m.finish()
+    def on_batch_end(self, context, next_callback):
+        # Finish batch.
+        #  * will clear gradient.
+        #  * ensure all values should be updated.
+        context.updater.finishBatch(context.cost)
+        return False
+
+    def __init__(self):
+        RunnerChainItem.__init__(self)
+
+
+def main():
+    runner = Runner()
+    runner.add_chain_item(MonolithicChainItem())
+    with runner.use():
+        for _ in xrange(2):
+            runner.run_one_pass()
 
 
 if __name__ == '__main__':
