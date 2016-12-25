@@ -14,17 +14,15 @@
 # limitations under the License.
 set -e
 
-#Note the default model is pass-00002, you shold make sure the model path
-#exists or change the mode path.
-#only test on trainer_config.lr.py
-model=output/model/pass-00001/
-config=trainer_config.lr.py
-label=data/labels.list
-dict=data/dict.txt
-batch_size=20
-head -n$batch_size data/test.txt | python api_predict.py \
-     --tconf=$config\
-     --model=$model \
-     --label=$label \
-     --dict=$dict \
-     --batch_size=$batch_size
+function get_nics() {
+  machine=`uname -s`
+  local nics=""
+  if [ "$machine" == "Linux" ]; then
+    nics="lo"
+  elif [ "$machine" == "Darwin" ]; then
+    nics="lo0"
+  else
+    nics="unsupport"
+  fi
+  echo $nics
+}
