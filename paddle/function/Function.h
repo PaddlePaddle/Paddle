@@ -59,6 +59,8 @@ public:
   union value {
     size_t s;
     real r;
+    int i;
+    bool b;
   };
 
   template <typename T>

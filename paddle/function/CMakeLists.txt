@@ -17,6 +17,10 @@ if(WITH_TESTING)
     # file(GLOB test_files . *OpTest.cpp)
     # add_executable(${test_bin} EXCLUDE_FROM_ALL ${test_files})
     add_simple_unittest(CrossMapNormalOpTest)
+    add_unittest(ContextProjectionOpTest
+        ContextProjectionOpTest.cpp
+        ContextProjectionOpGpu.cu
+        ../gserver/tests/TestUtil.cpp)
 endif()
 endif()
 
