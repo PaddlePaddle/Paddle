@@ -8,7 +8,9 @@ import random
 __all__ = [
     'RunnerChainItem', 'Runner', 'DeviceChainItem', 'CreateGradientMachine',
     'RandomInitializeParams', 'BasicLocalParameterUpdater', 'network',
-    'BasicTrainerDataProvider', 'BasicDataProviderOps'
+    'BasicTrainerDataProvider', 'BasicDataProviderOps',
+    'BasicGradientMachineTrainOps', 'Counter', 'BatchEvaluate',
+    'BasicTestDataProvider', 'TestOnPassEnd'
 ]
 
 
@@ -145,7 +147,7 @@ class Runner(object):
         assert isinstance(item, RunnerChainItem)
         self.chains.append(item)
 
-    def initialize(self):
+    def initialize(self, parent=None):
         if None not in [
                 self.begin_pass, self.end_pass, self.begin_batch,
                 self.end_batch, self.finalize
@@ -175,10 +177,16 @@ class Runner(object):
                 self.finalize = functools.partial(
                     chain.finalize, next_callback=self.finalize)
 
+            if parent is not None:
+                self.context.parent = parent
+
             actual_init(self.context)
             return True
 
-    def run_one_pass(self):
+    def run_one_pass(self, parent=None):
+        if parent is not None:
+            self.context.parent = parent
+
         self.begin_pass(self.context)
         exit_flag = False
         while not exit_flag:
@@ -327,7 +335,143 @@ class BasicGradientMachineTrainOps(RunnerChainItem):
         for each_param in context.gradient_machine.getParameters():
             context.updater_callback(each_param)
 
+        context.current_cost = self.__out_args__.sumCosts(
+        ) / context.current_batch_size
+
         return next_callback(context)
+
+
+class Counter(RunnerChainItem):
+    def __init__(self):
+        RunnerChainItem.__init__(self)
+
+    def initialize(self, context, next_callback):
+        context.current_pass_id = 0
+        context.current_batch_id = 0
+        next_callback(context)
+
+    def on_batch_end(self, context, next_callback):
+        ret = next_callback(context)
+        context.current_batch_id += 1
+        return ret
+
+    def on_pass_end(self, context, next_callback):
+        next_callback(context)
+        context.current_pass_id += 1
+
+
+class BaseEvaluate(RunnerChainItem):
+    def __init__(self, prefix=None):
+        RunnerChainItem.__init__(self)
+        self.__evaluator__ = None
+        if prefix is None:
+            prefix = ''
+        self.__prefix__ = prefix
+
+    def initialize(self, context, next_callback):
+        next_callback(context)
+        assert isinstance(context.gradient_machine, api.GradientMachine)
+        self.__evaluator__ = context.gradient_machine.makeEvaluator()
+
+    def finalize(self, context, next_callback):
+        next_callback(context)
+        self.__evaluator__ = None
+
+
+class BatchEvaluate(BaseEvaluate):
+    def __init__(self, prefix=None):
+        BaseEvaluate.__init__(self, prefix)
+
+    def on_batch_end(self, context, next_callback):
+        assert isinstance(context.gradient_machine, api.GradientMachine)
+        self.__evaluator__.start()
+        context.gradient_machine.eval(self.__evaluator__)
+        retv = next_callback(context)
+        print '%sPass=%d, Batch=%d Cost=%f, Eval:' % (self.__prefix__,
+                                                      context.current_pass_id,
+                                                      context.current_batch_id,
+                                                      context.current_cost), \
+            self.__evaluator__
+        self.__evaluator__.finish()
+        return retv
+
+
+class PassEvaluate(BaseEvaluate):
+    def __init__(self, prefix=None):
+        BaseEvaluate.__init__(self, prefix)
+
+    def on_pass_begin(self, context, next_callback):
+        next_callback(context)
+        self.__evaluator__.start()
+
+    def on_batch_end(self, context, next_callback):
+        retv = next_callback(context)
+        context.gradient_machine.eval(self.__evaluator__)
+        return retv
+
+    def on_pass_end(self, context, next_callback):
+        next_callback(context)
+        print '%sPass=%d Eval:' % (self.__prefix__, context.current_pass_id), \
+            self.__evaluator__
+        self.__evaluator__.finish()
+
+
+class BasicGradientMachineTestOps(RunnerChainItem):
+    def __init__(self):
+        RunnerChainItem.__init__(self)
+        self.__out_args__ = api.Arguments.createArguments(0)
+
+    def on_pass_begin(self, context, next_callback):
+        context.updater.apply()
+        next_callback(context)
+
+    def on_batch_begin(self, context, next_callback):
+        context.gradient_machine.forward(context.in_args, self.__out_args__,
+                                         api.PASS_TEST)
+        return next_callback(context)
+
+    def on_pass_end(self, context, next_callback):
+        context.updater.restore()
+        next_callback(context)
+
+
+class InheritGradientMachineUpdater(RunnerChainItem):
+    def __init__(self):
+        RunnerChainItem.__init__(self)
+
+    def initialize(self, context, next_callback):
+        if context.parent is not None:
+            context.gradient_machine = context.parent.gradient_machine
+            context.updater = context.parent.updater
+        next_callback(context)
+
+    def on_pass_begin(self, context, next_callback):
+        if context.parent is not None:
+            context.current_pass_id = context.parent.current_pass_id
+        next_callback(context)
+
+    def on_batch_begin(self, context, next_callback):
+        if context.parent is not None:
+            context.current_batch_id = context.parent.current_batch_id
+        return next_callback(context)
+
+
+class TestOnPassEnd(RunnerChainItem):
+    def __init__(self, **kwargs):
+        RunnerChainItem.__init__(self)
+        self.__test_runner__ = Runner()
+        self.__test_runner__.add_chain_item(InheritGradientMachineUpdater())
+        self.__test_runner__.add_chain_item(BasicTestDataProvider(**kwargs))
+        self.__test_runner__.add_chain_item(BasicGradientMachineTestOps())
+        self.__test_runner__.add_chain_item(PassEvaluate(prefix='Test: '))
+
+    def initialize(self, context, next_callback):
+        next_callback(context)
+        self.__test_runner__.initialize(context)
+
+    def on_pass_end(self, context, next_callback):
+        self.__test_runner__.run_one_pass(parent=context)
+        next_callback(context)
 
 
 class DataProvider(object):
@@ -407,23 +551,32 @@ class BasicDataProviderOps(RunnerChainItem):
         return next_callback(context)
 
 
-class BasicTrainerDataProvider(BasicDataProviderOps):
-    def __init__(self, network, method, file_list, batch_size, **kwargs):
-        BasicDataProviderOps.__init__(self)
-        assert isinstance(network, NetworkConfig)
-        self.__dataprovider__ = method(
-            file_list=file_list,
-            input_order=network.input_order,
-            is_train=True,
-            **kwargs)
-        self.__input_types__ = []
-        for data_layer_name in network.input_order:
-            self.__input_types__.append(network.input_types[data_layer_name])
-        self.__batch_size__ = batch_size
+def data_provider_creator(is_train):
+    class __cls__(BasicDataProviderOps):
+        def __init__(self, network, method, file_list, batch_size, **kwargs):
+            BasicDataProviderOps.__init__(self)
+            assert isinstance(network, NetworkConfig)
+            self.__dataprovider__ = method(
+                file_list=file_list,
+                input_order=network.input_order,
+                is_train=is_train,
+                **kwargs)
+            self.__input_types__ = []
+            for data_layer_name in network.input_order:
+                self.__input_types__.append(network.input_types[
+                    data_layer_name])
+            self.__batch_size__ = batch_size
 
-    def initialize(self, context, next_callback):
-        context.data_provider = NaiveDataProvider(
-            provider=self.__dataprovider__,
-            input_types=self.__input_types__,
-            batch_size=self.__batch_size__)
-        next_callback(context)
+        def initialize(self, context, next_callback):
+            context.data_provider = NaiveDataProvider(
+                provider=self.__dataprovider__,
+                input_types=self.__input_types__,
+                batch_size=self.__batch_size__,
+                should_shuffle=True if is_train else False)
+            next_callback(context)
+
+    return __cls__
+
+
+BasicTrainerDataProvider = data_provider_creator(True)
+BasicTestDataProvider = data_provider_creator(False)
