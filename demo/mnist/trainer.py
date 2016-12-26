@@ -10,7 +10,7 @@ __all__ = [
     'RandomInitializeParams', 'BasicLocalParameterUpdater', 'network',
     'BasicTrainerDataProvider', 'BasicDataProviderOps',
     'BasicGradientMachineTrainOps', 'Counter', 'BatchEvaluate',
-    'BasicTestDataProvider', 'TestOnPassEnd'
+    'BasicTestDataProvider', 'TestOnPassEnd', 'SaveParamsOnPassEnd'
 ]
 
 
@@ -580,3 +580,17 @@ def data_provider_creator(is_train):
 
 BasicTrainerDataProvider = data_provider_creator(True)
 BasicTestDataProvider = data_provider_creator(False)
+
+
+class SaveParamsOnPassEnd(RunnerChainItem):
+    def __init__(self):
+        RunnerChainItem.__init__(self)
+
+    def on_pass_end(self, context, next_callback):
+
+        context.updater.catchUpWith()
+        params = context.gradient_machine.getParameters()
+        for param in params:
+            param.save(param.getName())
+
+        next_callback(context)
