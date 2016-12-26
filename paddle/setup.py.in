@@ -30,6 +30,8 @@ is_lin = (system == 'linux')
 # The extra links will passed from COMAKE
 #   because generate paddle LDFLAGS is too complicated to do in setup.py
 #   it just read COMAKE generated LDFLAGS.
+
+extra_comps = []
 extra_links = []
 obj = api.paddle_ld_flags.PaddleLDFlag()
 ldflags = obj.ldflag_str()
@@ -43,11 +45,13 @@ try:
 except:
   pass
 
+extra_comps += ["-std=c++11"]
 if is_lin == True:
     extra_links = ["-Xlinker", '-start-group'] + extra_links + ["-Xlinker", "-end-group"]
 elif is_osx == True:
     os.environ["ARCHFLAGS"] = "-arch x86_64"
     extra_links = ["-Wl,-all_load"] + extra_links
+    extra_comps += ["-stdlib=libc++"]
 
 include_dirs = [np.get_include(), "../"]    # include numpy and paddle.
 
@@ -62,8 +66,10 @@ setup(name="py_paddle",
   ext_modules=[
     Extension('py_paddle._swig_paddle',      # Build SWIG Extension.
        ['Paddle_wrap.cxx'],
+       language = "c++",
        include_dirs = include_dirs,
        extra_link_args = extra_links,
+       extra_compile_args= extra_comps,
        **attr
     )
   ],

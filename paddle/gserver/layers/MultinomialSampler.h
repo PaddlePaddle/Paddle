@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <memory>
 #include <random>
-#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/common.h"
 
 namespace paddle {
 
