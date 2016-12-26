@@ -306,7 +306,28 @@ class BasicLocalParameterUpdater(BasicLocalParameterUpdaterOps):
         context.updater = api.ParameterUpdater.createLocalUpdater(opt_config)
         assert isinstance(context.updater, api.ParameterUpdater)
         context.updater.init(context.gradient_machine)
+        context.updater_callback = context.updater.update
         next_callback(context)
+
+
+class BasicGradientMachineTrainOps(RunnerChainItem):
+    def __init__(self):
+        RunnerChainItem.__init__(self)
+        self.__out_args__ = api.Arguments.createArguments(0)
+
+    def on_batch_begin(self, context, next_callback):
+        # forwardBackward is a shortcut for forward and backward.
+        # It is sometimes faster than invoke forward/backward separately,
+        # because in GradientMachine, it may be async.
+        context.gradient_machine.forwardBackward(
+            context.in_args, self.__out_args__, api.PASS_TRAIN)
+
+        assert isinstance(self.__out_args__, api.Arguments)
+
+        for each_param in context.gradient_machine.getParameters():
+            context.updater_callback(each_param)
+
+        return next_callback(context)
 
 
 class DataProvider(object):
