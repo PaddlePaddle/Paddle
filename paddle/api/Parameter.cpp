@@ -58,3 +58,11 @@ size_t Parameter::getID() const { return m->getPtr()->getID(); }
 void Parameter::setValueUpdated() { m->getPtr()->setValueUpdated(); }
 
 size_t Parameter::getSize() const { return m->getPtr()->getSize(); }
+
+bool Parameter::save(const std::string& filename) const {
+  return m->getPtr()->save(filename);
+}
+
+bool Parameter::load(const std::string& filename) const {
+  return m->getPtr()->load(filename);
+}

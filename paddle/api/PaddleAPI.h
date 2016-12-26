@@ -554,6 +554,10 @@ public:
 
   size_t getSize() const;
 
+  bool save(const std::string& filename) const;
+
+  bool load(const std::string& filename) const;
+
 private:
   static Parameter* createFromRawPtr(void* ptr);
   static Parameter* createFromSharedPtr(void* ptr);
