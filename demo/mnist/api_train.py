@@ -6,44 +6,31 @@ passed to C++ side of Paddle.
 
 The user api could be simpler and carefully designed.
 """
-import py_paddle.swig_paddle as api
-from py_paddle import DataProviderConverter
+
+import mnist_provider
 import paddle.trainer.PyDataProvider2 as dp
-import numpy as np
-import random
+import py_paddle.swig_paddle as api
 from mnist_util import read_from_mnist
 from paddle.trainer_config_helpers import *
-
 from trainer import *
 
 
-def optimizer_config():
-    settings(
-        learning_rate=1e-4,
-        learning_method=AdamOptimizer(),
-        batch_size=1000,
-        model_average=ModelAverage(average_window=0.5),
-        regularization=L2Regularization(rate=0.5))
-
-
-def network_config():
-    imgs = data_layer(name='pixel', size=784)
-    hidden1 = fc_layer(input=imgs, size=200)
+@network(
+    inputs={
+        'pixel': dp.dense_vector(784),
+        'label': dp.integer_value(10),
+    },
+    learning_rate=1e-4,
+    learning_method=AdamOptimizer(),
+    batch_size=1000,
+    model_average=ModelAverage(average_window=0.5),
+    regularization=L2Regularization(rate=0.5))
+def mnist_network(pixel, label):
+    hidden1 = fc_layer(input=pixel, size=200)
     hidden2 = fc_layer(input=hidden1, size=200)
     inference = fc_layer(input=hidden2, size=10, act=SoftmaxActivation())
-    cost = classification_cost(
-        input=inference, label=data_layer(
-            name='label', size=10))
-    outputs(cost)
-
-
-def init_parameter(network):
-    assert isinstance(network, api.GradientMachine)
-    for each_param in network.getParameters():
-        assert isinstance(each_param, api.Parameter)
-        array_size = len(each_param)
-        array = np.random.uniform(-1.0, 1.0, array_size).astype('float32')
-        each_param.getBuf(api.PARAMETER_VALUE).copyFromNumpyArray(array)
+    cost = classification_cost(input=inference, label=label)
+    return cost
 
 
 def generator_to_batch(generator, batch_size):
@@ -57,18 +44,6 @@ def generator_to_batch(generator, batch_size):
         yield ret_val
 
 
-class BatchPool(object):
-    def __init__(self, generator, batch_size):
-        self.data = list(generator)
-        self.batch_size = batch_size
-
-    def __call__(self):
-        random.shuffle(self.data)
-        for offset in xrange(0, len(self.data), self.batch_size):
-            limit = min(offset + self.batch_size, len(self.data))
-            yield self.data[offset:limit]
-
-
 def input_order_converter(generator):
     for each_item in generator:
         yield each_item['pixel'], each_item['label']
@@ -79,53 +54,8 @@ class MonolithicChainItem(RunnerChainItem):
         context.gradient_machine.finish()
 
     def initialize(self, context, next_callback):
-        api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
-
-        # get enable_types for each optimizer.
-        # enable_types = [value, gradient, momentum, etc]
-        # For each optimizer(SGD, Adam), GradientMachine should enable different
-        # buffers.
-        opt_config_proto = parse_optimizer_config(optimizer_config)
-        opt_config = api.OptimizationConfig.createFromProto(opt_config_proto)
-        _temp_optimizer_ = api.ParameterOptimizer.create(opt_config)
-        enable_types = _temp_optimizer_.getParameterTypes()
-
-        # Create Simple Gradient Machine.
-        model_config = parse_network_config(network_config)
-        context.gradient_machine = api.GradientMachine.createFromConfigProto(
-            model_config, api.CREATE_MODE_NORMAL, enable_types)
-
-        # This type check is not useful. Only enable type hint in IDE.
-        # Such as PyCharm
-        assert isinstance(context.gradient_machine, api.GradientMachine)
-
-        # Initialize Parameter by numpy.
-        init_parameter(network=context.gradient_machine)
-
-        # Create Local Updater. Local means not run in cluster.
-        # For a cluster training, here we can change to createRemoteUpdater
-        # in future.
-        context.updater = api.ParameterUpdater.createLocalUpdater(opt_config)
-        assert isinstance(context.updater, api.ParameterUpdater)
-        context.updater.init(context.gradient_machine)
-
-        # DataProvider Converter is a utility convert Python Object to Paddle C++
-        # Input. The input format is as same as Paddle's DataProvider.
-        context.data_converter = DataProviderConverter(
-            input_types=[dp.dense_vector(784), dp.integer_value(10)])
-
-        train_file = './data/raw_data/train'
         test_file = './data/raw_data/t10k'
 
-        context.gradient_machine.start()
-
-        # Get Train Data.
-        # TrainData will stored in a data pool. Currently implementation is not care
-        # about memory, speed. Just a very naive implementation.
-        train_data_generator = input_order_converter(
-            read_from_mnist(train_file))
-        train_data = BatchPool(train_data_generator, 512)
-        context.train_data_callback = train_data
         context.test_file = test_file
 
         next_callback(context)
@@ -136,17 +66,6 @@ class MonolithicChainItem(RunnerChainItem):
         # to gradient_machine.forward
         outArgs = api.Arguments.createArguments(0)
 
-        try:
-            data_batch = next(context.train_data)
-        except StopIteration:
-            return True
-
-        # data_batch is input images.
-        # here, for online learning, we could get data_batch from network.
-
-        # Start update one batch.
-        pass_type = context.updater.startBatch(len(data_batch))
-
         # Start BatchEvaluator.
         # batch_evaluator can be used between start/finish.
         batch_evaluator.start()
@@ -154,8 +73,8 @@ class MonolithicChainItem(RunnerChainItem):
         # forwardBackward is a shortcut for forward and backward.
         # It is sometimes faster than invoke forward/backward separately,
         # because in GradientMachine, it may be async.
-        context.gradient_machine.forwardBackward(
-            context.data_converter(data_batch), outArgs, pass_type)
+        context.gradient_machine.forwardBackward(context.in_args, outArgs,
+                                                 api.PASS_TRAIN)
 
         for each_param in context.gradient_machine.getParameters():
             context.updater.update(each_param)
@@ -163,7 +82,8 @@ class MonolithicChainItem(RunnerChainItem):
         # Get cost. We use numpy to calculate total cost for this batch.
         cost_vec = outArgs.getSlotValue(0)
         cost_vec = cost_vec.copyToNumpyMat()
-        cost = cost_vec.sum() / len(data_batch)
+        cost = cost_vec.sum() / context.current_batch_size
+        context.current_cost = cost
 
         # Make evaluator works.
         context.gradient_machine.eval(batch_evaluator)
@@ -174,10 +94,6 @@ class MonolithicChainItem(RunnerChainItem):
         batch_evaluator.finish()
         context.cost = cost
         return False
-
-    def on_pass_begin(self, context, next_callback):
-        context.updater.startPass()
-        context.train_data = context.train_data_callback()
 
     def on_pass_end(self, context, next_callback):
         # testing stage. use test data set to test current network.
@@ -208,21 +124,26 @@ class MonolithicChainItem(RunnerChainItem):
             # Here, we could save parameter to every where you want
             print each_param.getName(), value
 
-        context.updater.finishPass()
-
-    def on_batch_end(self, context, next_callback):
-        # Finish batch.
-        #  * will clear gradient.
-        #  * ensure all values should be updated.
-        context.updater.finishBatch(context.cost)
-        return False
-
     def __init__(self):
         RunnerChainItem.__init__(self)
 
 
 def main():
+    mnist = mnist_network()
+
     runner = Runner()
+    runner.add_chain_item(DeviceChainItem(use_gpu=False, device_count=4))
+
+    runner.add_chain_item(CreateGradientMachine(network=mnist))
+    runner.add_chain_item(RandomInitializeParams())
+    runner.add_chain_item(
+        BasicTrainerDataProvider(
+            network=mnist,
+            method=mnist_provider.process,
+            file_list=['./data/raw_data/train'],
+            batch_size=256))
+    runner.add_chain_item(BasicLocalParameterUpdater(network=mnist))
+
     runner.add_chain_item(MonolithicChainItem())
     with runner.use():
         for _ in xrange(2):
