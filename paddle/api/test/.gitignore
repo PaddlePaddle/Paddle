@@ -1,6 +1,2 @@
-___fc_layer_0__.w0
-___fc_layer_0__.wbias
-_hidden1.w0
-_hidden1.wbias
-_hidden2.w0
-_hidden2.wbias
+*.w0
+*.wbias
