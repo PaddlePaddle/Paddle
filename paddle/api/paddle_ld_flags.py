@@ -141,9 +141,12 @@ try:
 
         def c_flag(self):
             if self.with_coverage:
-                return ["-fprofile-arcs", "-ftest-coverage", "-O0", "-g"]
+                return [
+                    "-fprofile-arcs", "-ftest-coverage", "-O0", "-g",
+                    "-std=c++11"
+                ]
             else:
-                return None
+                return ["-std=c++11"]
 except ImportError:
 
     class PaddleLDFlag(object):
