@@ -797,6 +797,8 @@ private:
 
 public:
   static ParameterUpdater* createLocalUpdater(OptimizationConfig* config);
+  static ParameterUpdater* createRemoteUpdater(OptimizationConfig* config,
+                                               int passCount);
   ~ParameterUpdater();
 
   /**
