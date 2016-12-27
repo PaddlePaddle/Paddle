@@ -32,8 +32,7 @@ ParameterUpdater *ParameterUpdater::createRemoteUpdater(
     OptimizationConfig *config, int passCount) {
   auto updater = new ParameterUpdater();
   std::unique_ptr<paddle::ParameterUpdater> localUpdater;
-  localUpdater.reset(new paddle::SgdThreadUpdater(config->m->getConfig()));
-  updater->m->updater.reset(new paddle::ConcurrentRemoteParameterUpdater(
+  updater->m->updater.reset(new paddle::RemoteParameterUpdater(
       config->m->getConfig(), passCount, std::move(localUpdater)));
   return updater;
 }
