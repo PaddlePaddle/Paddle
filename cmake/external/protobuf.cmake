@@ -22,7 +22,7 @@ ExternalProject_Add(
     PREFIX          ${PROTOBUF_SOURCES_DIR}
     DEPENDS         zlib
     GIT_REPOSITORY  "https://github.com/google/protobuf.git"
-    GIT_TAG         "v3.0.0"
+#   GIT_TAG         "v3.1.0"
     CONFIGURE_COMMAND
         ${CMAKE_COMMAND} ${PROTOBUF_SOURCES_DIR}/src/protobuf/cmake
         -Dprotobuf_BUILD_TESTS=OFF

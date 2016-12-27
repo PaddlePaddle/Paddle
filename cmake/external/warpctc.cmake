@@ -17,7 +17,7 @@ INCLUDE(ExternalProject)
 SET(WARPCTC_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/warpctc)
 SET(WARPCTC_INSTALL_DIR ${PROJECT_BINARY_DIR}/warpctc)
 
-IF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+IF(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" )
     SET(USE_OMP ON)
 ELSE()
     SET(USE_OMP OFF)
@@ -28,8 +28,9 @@ ExternalProject_Add(
     GIT_REPOSITORY  "https://github.com/gangliao/warp-ctc.git"
     PREFIX          ${WARPCTC_SOURCES_DIR}
     CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
-    CMAKE_ARGS      -DWITH_GPU=${CUDA_FOUND}
+    CMAKE_ARGS      -DWITH_GPU=${WITH_GPU}
     CMAKE_ARGS      -DWITH_OMP=${USE_OMP}
+    UPDATE_COMMAND ""
 )
 
 SET(WARPCTC_INCLUDE_DIR "${WARP_INSTALL_DIR}/include" CACHE PATH "Warp-ctc Directory" FORCE)
@@ -40,7 +41,7 @@ IF(WIN32)
         "${WARPCTC_INSTALL_DIR}/lib/warpctc.dll" CACHE FILEPATH "Warp-ctc Library" FORCE)
 ELSE(WIN32)
     SET(WARPCTC_LIBRARIES
-        "${WARPCTC_INSTALL_DIR}/lib/libwarpctc.so" CACHE FILEPATH "Warp-ctc Library" FORCE)
+        "${WARPCTC_INSTALL_DIR}/lib/libwarpctc.dylib" CACHE FILEPATH "Warp-ctc Library" FORCE)
 ENDIF(WIN32)
 
 LIST(APPEND external_project_dependencies warpctc)
