@@ -70,6 +70,9 @@ IF(NOT ${SWIG_FOUND})
         set(SWIG_DIR ${SWIG_INSTALL_DIR}/share/swig/${SWIG_TARGET_VERSION} CACHE FILEPATH "SWIG Directory" FORCE)
         set(SWIG_EXECUTABLE ${SWIG_INSTALL_DIR}/bin/swig CACHE FILEPATH "SWIG Executable" FORCE)
     ENDIF(WIN32)
+
+    LIST(APPEND external_project_dependencies swig)
+
 ENDIF()
 
 FUNCTION(generate_python_api target_name)
@@ -80,10 +83,12 @@ FUNCTION(generate_python_api target_name)
                 && mv ${PROJ_ROOT}/paddle/swig_paddle.py ${PROJ_ROOT}/paddle/py_paddle/swig_paddle.py
         DEPENDS ${PROJ_ROOT}/paddle/api/Paddle.swig
                 ${PROJ_ROOT}/paddle/api/PaddleAPI.h
+                ${external_project_dependencies}
         WORKING_DIRECTORY ${PROJ_ROOT}/paddle
         COMMENT "Generate Python API from swig")
     ADD_CUSTOM_TARGET(${target_name} ALL DEPENDS
                 ${PROJ_ROOT}/paddle/Paddle_wrap.cxx
                 ${PROJ_ROOT}/paddle/Paddle_wrap.h
-                ${PROJ_ROOT}/paddle/py_paddle/swig_paddle.py)
+                ${PROJ_ROOT}/paddle/py_paddle/swig_paddle.py
+                ${external_project_dependencies})
 ENDFUNCTION(generate_python_api)

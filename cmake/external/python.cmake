@@ -87,6 +87,9 @@ IF((NOT ${PYTHONINTERP_FOUND}) OR (NOT ${PYTHONLIBS_FOUND}))
     MESSAGE(FATAL_ERROR "Unknown system !")
   ENDIF()
 
+LIST(APPEND external_project_dependencies python)
+
 ENDIF()
 
 INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIR})
+

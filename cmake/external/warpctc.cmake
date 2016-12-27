@@ -40,8 +40,14 @@ IF(WIN32)
     SET(WARPCTC_LIBRARIES
         "${WARPCTC_INSTALL_DIR}/lib/warpctc.dll" CACHE FILEPATH "Warp-ctc Library" FORCE)
 ELSE(WIN32)
+    IF(APPLE)
+        SET(_warpctc_SHARED_SUFFIX dylib)
+    ELSE(APPLE)
+        SET(_warpctc_SHARED_SUFFIX so)
+    ENDIF(APPLE)
+
     SET(WARPCTC_LIBRARIES
-        "${WARPCTC_INSTALL_DIR}/lib/libwarpctc.dylib" CACHE FILEPATH "Warp-ctc Library" FORCE)
+        "${WARPCTC_INSTALL_DIR}/lib/libwarpctc.${_warpctc_SHARED_SUFFIX}" CACHE FILEPATH "Warp-ctc Library" FORCE)
 ENDIF(WIN32)
 
 LIST(APPEND external_project_dependencies warpctc)

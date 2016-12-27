@@ -59,6 +59,8 @@ IF(NOT ${NUMPY_FOUND})
         DEPENDS python setuptools cython
     )
 
+    LIST(APPEND external_project_dependencies numpy)
+
     # find numpy include directory
     FILE(WRITE ${PROJECT_BINARY_DIR}/FindNumpyPath.py
         "try: import numpy; print(numpy.get_include())\nexcept:pass\n")
