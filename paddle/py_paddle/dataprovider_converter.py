@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.trainer.PyDataProvider2 as dp2
 import collections
+import itertools
+
+import paddle.trainer.PyDataProvider2 as dp2
+
 import swig_paddle
-import numpy
 
 __all__ = ['DataProviderConverter']
 
@@ -25,6 +27,12 @@ class IScanner(object):
         self.input_type = input_type
         assert isinstance(self.input_type, dp2.InputType)
         self.pos = pos
+
+    def pre_scan_loop(self, dat):
+        pass
+
+    def finish_pre_scan(self, argument):
+        pass
 
     def scan(self, dat):
         pass
@@ -37,18 +45,24 @@ class DenseScanner(IScanner):
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__mat__ = None
+        self.__height__ = 0
+
+    def pre_scan_loop(self, dat):
+        self.__height__ += 1
+
+    def finish_pre_scan(self, argument):
+        self.__mat__ = swig_paddle.Matrix.createZero(self.__height__,
+                                                     self.input_type.dim, False)
+        self.__height__ = 0
 
     def scan(self, dat):
-        if self.__mat__ is None:
-            self.__mat__ = numpy.array([dat], dtype='float32')
-        else:
-            self.__mat__ = numpy.append(self.__mat__, [dat], axis=0)
+        assert isinstance(self.__mat__, swig_paddle.Matrix)
+        a = self.__mat__.toNumpyMatInplace()
+        a[self.__height__, ] = dat
+        self.__height__ += 1
 
     def finish_scan(self, argument):
-        assert isinstance(argument, swig_paddle.Arguments)
-        assert isinstance(self.input_type, dp2.InputType)
-        m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True, False)
-        argument.setSlotValue(self.pos, m)
+        argument.setSlotValue(self.pos, self.__mat__)
 
 
 class SparseBinaryScanner(IScanner):
@@ -146,7 +160,14 @@ class DataProviderConverter(object):
         ]
 
         for each_sample in dat:
-            for each_step, scanner in zip(each_sample, scanners):
+            for each_step, scanner in itertools.izip(each_sample, scanners):
+                scanner.pre_scan_loop(each_step)
+
+        for scanner in scanners:
+            scanner.finish_pre_scan(argument)
+
+        for each_sample in dat:
+            for each_step, scanner in itertools.izip(each_sample, scanners):
                 scanner.scan(each_step)
 
         for scanner in scanners:
