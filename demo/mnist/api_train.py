@@ -11,7 +11,7 @@ import paddle.trainer.PyDataProvider2 as dp
 from paddle.trainer_config_helpers import *
 
 import mnist_provider
-from trainer import *
+from py_paddle.trainer import *
 
 
 @network(
@@ -40,7 +40,7 @@ def main():
             file_list=['./data/raw_data/train']).with_std_tester(
                 method=mnist_provider.process,
                 file_list=['./data/raw_data/t10k']).build()
-    with runner.use():
+    with runner:
         for _ in xrange(2):
             runner.run_one_pass()
 

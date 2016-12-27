@@ -120,17 +120,6 @@ class RunnerContext(object):
     pass
 
 
-class RunnerSection(object):
-    def __init__(self, runner):
-        self.runner = runner
-
-    def __enter__(self):
-        self.runner.initialize()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.runner.finalize(self.runner.context)
-
-
 class Runner(object):
     def __init__(self):
         self.chains = []
@@ -197,8 +186,11 @@ class Runner(object):
             exit_flag = self.end_batch(self.context)
         self.end_pass(self.context)
 
-    def use(self):
-        return RunnerSection(self)
+    def __enter__(self):
+        self.initialize()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.finalize(self.context)
 
 
 class DeviceChainItem(RunnerChainItem):

@@ -19,6 +19,7 @@ __all__ = [
     'paddle',
     'DataProviderConverter',
     'DataProviderWrapperConverter',  # for deprecated usage.
-    'loadParameterFile'
+    'loadParameterFile',
+    'trainer'
 ]
 util.monkeypatches()
