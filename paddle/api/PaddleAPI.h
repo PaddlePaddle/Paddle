@@ -20,14 +20,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/utils/GlobalConstants.h"
-#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/common.h"
 
 /// Import PaddlePaddle's enumeration into global namespace.
 using namespace paddle::enumeration_wrapper;  // NOLINT
-
-#define DISABLE_COPY_AND_ASSIGN(classname) \
-  classname(const classname& other);       \
-  classname& operator=(const classname& other)
 
 /**
  * @brief Initialize paddle.
@@ -102,7 +98,7 @@ const size_t NO_SPARSE_ID = -1UL;
 struct MatrixPrivate;
 class Matrix {
   Matrix();  // User Cannot Create Matrix.
-  DISABLE_COPY_AND_ASSIGN(Matrix);
+  DISABLE_COPY(Matrix);
   static Matrix* createByPaddleMatrixPtr(void* sharedPtr);
 
 public:
@@ -242,7 +238,7 @@ private:
 
 struct VectorPrivate;
 class Vector {
-  DISABLE_COPY_AND_ASSIGN(Vector);
+  DISABLE_COPY(Vector);
   Vector();
   static Vector* createByPaddleVectorPtr(void* ptr);
 
@@ -322,7 +318,7 @@ private:
 struct IVectorPrivate;
 class IVector {
   IVector();
-  DISABLE_COPY_AND_ASSIGN(IVector);
+  DISABLE_COPY(IVector);
   static IVector* createByPaddleVectorPtr(void* ptr);
 
 public:
@@ -402,7 +398,7 @@ struct ArgumentsPrivate;
 class Arguments {
 private:
   Arguments();  // Internal Create.
-  DISABLE_COPY_AND_ASSIGN(Arguments);
+  DISABLE_COPY(Arguments);
 
 public:
   /**
@@ -472,7 +468,7 @@ enum GradientMatchineCreateMode {
 
 struct ParameterConfigPrivate;
 class ParameterConfig {
-  DISABLE_COPY_AND_ASSIGN(ParameterConfig);
+  DISABLE_COPY(ParameterConfig);
   ParameterConfig();
 
   /**
@@ -502,7 +498,7 @@ private:
 
 struct OptimizationConfigPrivate;
 class OptimizationConfig {
-  DISABLE_COPY_AND_ASSIGN(OptimizationConfig);
+  DISABLE_COPY(OptimizationConfig);
   OptimizationConfig();
 
 public:
@@ -526,7 +522,7 @@ struct ParameterPrivate;
 class Parameter {
 private:
   Parameter();
-  DISABLE_COPY_AND_ASSIGN(Parameter);
+  DISABLE_COPY(Parameter);
 
 public:
   virtual ~Parameter();
@@ -568,7 +564,7 @@ struct ModelConfigPrivate;
 class ModelConfig {
 private:
   ModelConfig();
-  DISABLE_COPY_AND_ASSIGN(ModelConfig);
+  DISABLE_COPY(ModelConfig);
 
 public:
   virtual ~ModelConfig();
@@ -589,7 +585,7 @@ struct TrainerConfigPrivate;
 class TrainerConfig {
 private:
   TrainerConfig();
-  DISABLE_COPY_AND_ASSIGN(TrainerConfig);
+  DISABLE_COPY(TrainerConfig);
 
 public:
   virtual ~TrainerConfig();
@@ -629,7 +625,7 @@ public:
 
 struct ParameterTraverseCallbackPrivate;
 class ParameterTraverseCallback {
-  DISABLE_COPY_AND_ASSIGN(ParameterTraverseCallback);
+  DISABLE_COPY(ParameterTraverseCallback);
   ParameterTraverseCallback();
 
 public:
@@ -651,7 +647,7 @@ private:
  */
 struct ParameterOptimizerPrivate;
 class ParameterOptimizer {
-  DISABLE_COPY_AND_ASSIGN(ParameterOptimizer);
+  DISABLE_COPY(ParameterOptimizer);
   ParameterOptimizer();
 
 public:
@@ -688,7 +684,7 @@ struct GradientMachinePrivate;
 class GradientMachine {
 private:
   GradientMachine();
-  DISABLE_COPY_AND_ASSIGN(GradientMachine);
+  DISABLE_COPY(GradientMachine);
 
 public:
   virtual ~GradientMachine();
@@ -790,7 +786,7 @@ private:
   TrainerPrivate* m;
   Trainer();
   Trainer(TrainerConfig* optConfig, GradientMachine* gm);
-  DISABLE_COPY_AND_ASSIGN(Trainer);
+  DISABLE_COPY(Trainer);
 
 public:
   virtual ~Trainer();
@@ -856,7 +852,7 @@ public:
 
 struct SequenceGeneratorPrivate;
 class SequenceGenerator {
-  DISABLE_COPY_AND_ASSIGN(SequenceGenerator);
+  DISABLE_COPY(SequenceGenerator);
   SequenceGenerator();
 
 public:
