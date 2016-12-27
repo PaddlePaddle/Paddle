@@ -1,12 +1,15 @@
+import random
 import functools
-from py_paddle import swig_paddle as api
-from py_paddle import DataProviderConverter
+
 from paddle.trainer_config_helpers import *
 from paddle.trainer_config_helpers import inputs as ipts
-import random
+
+from .base import *
+from .. import DataProviderConverter
+from .. import swig_paddle as api
 
 __all__ = [
-    'RunnerChainItem', 'Runner', 'DeviceChainItem', 'CreateGradientMachine',
+    'RunnerItem', 'Runner', 'DeviceItem', 'CreateGradientMachine',
     'RandomInitializeParams', 'BasicLocalParameterUpdater', 'network',
     'BasicTrainerDataProvider', 'BasicDataProviderOps',
     'BasicGradientMachineTrainOps', 'Counter', 'BatchEvaluate',
@@ -89,113 +92,9 @@ def network(inputs, **opt_kwargs):
     return __impl__
 
 
-class RunnerChainItem(object):
-    def __init__(self):
-        pass
-
-    def initialize(self, context, next_callback):
-        next_callback(context)
-
-    def finalize(self, context, next_callback):
-        next_callback(context)
-
-    def on_pass_begin(self, context, next_callback):
-        next_callback(context)
-
-    def on_pass_end(self, context, next_callback):
-        next_callback(context)
-
-    def on_batch_begin(self, context, next_callback):
-        return next_callback(context)
-
-    def on_batch_end(self, context, next_callback):
-        return next_callback(context)
-
-
-def default_next_callback(*args, **kwargs):
-    return False
-
-
-class RunnerContext(object):
-    pass
-
-
-class Runner(object):
-    def __init__(self):
-        self.chains = []
-
-        self.begin_pass = None
-        self.end_pass = None
-        self.begin_batch = None
-        self.end_batch = None
-        self.finalize = None
-
-        self.context = RunnerContext()
-        self.context.runner = self
-
-    def add_chain_item(self, item):
-        assert isinstance(item, RunnerChainItem)
-        self.chains.append(item)
-
-    def initialize(self, parent=None):
-        if None not in [
-                self.begin_pass, self.end_pass, self.begin_batch,
-                self.end_batch, self.finalize
-        ]:
-            return False
-        else:
-            assert len(self.chains) != 0
-            actual_init = default_next_callback
-            self.begin_pass = default_next_callback
-            self.end_pass = default_next_callback
-            self.begin_batch = default_next_callback
-            self.end_batch = default_next_callback
-            self.finalize = default_next_callback
-
-            for chain in reversed(self.chains):
-                assert isinstance(chain, RunnerChainItem)
-                actual_init = functools.partial(
-                    chain.initialize, next_callback=actual_init)
-                self.begin_pass = functools.partial(
-                    chain.on_pass_begin, next_callback=self.begin_pass)
-                self.end_pass = functools.partial(
-                    chain.on_pass_end, next_callback=self.end_pass)
-                self.begin_batch = functools.partial(
-                    chain.on_batch_begin, next_callback=self.begin_batch)
-                self.end_batch = functools.partial(
-                    chain.on_batch_end, next_callback=self.end_batch)
-                self.finalize = functools.partial(
-                    chain.finalize, next_callback=self.finalize)
-
-            if parent is not None:
-                self.context.parent = parent
-
-            actual_init(self.context)
-            return True
-
-    def run_one_pass(self, parent=None):
-        if parent is not None:
-            self.context.parent = parent
-
-        self.begin_pass(self.context)
-        exit_flag = False
-        while not exit_flag:
-            exit_flag = self.begin_batch(self.context)
-            if exit_flag:
-                break
-            exit_flag = self.end_batch(self.context)
-        self.end_pass(self.context)
-
-    def __enter__(self):
-        self.initialize()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.finalize(self.context)
-
-
-class DeviceChainItem(RunnerChainItem):
+class DeviceItem(RunnerItem):
     def __init__(self, use_gpu=False, device_count=4):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
         self.use_gpu = use_gpu
         self.device_count = device_count
 
@@ -205,9 +104,9 @@ class DeviceChainItem(RunnerChainItem):
         next_callback(context)
 
 
-class CreateGradientMachine(RunnerChainItem):
+class CreateGradientMachine(RunnerItem):
     def __init__(self, network):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
         assert isinstance(network, NetworkConfig)
         self.__network__ = network
 
@@ -237,9 +136,9 @@ class CreateGradientMachine(RunnerChainItem):
         next_callback(context)
 
 
-class RandomInitializeParams(RunnerChainItem):
+class RandomInitializeParams(RunnerItem):
     def __init__(self):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
 
     def initialize(self, context, next_callback):
         assert hasattr(context, 'gradient_machine') and isinstance(
@@ -248,12 +147,12 @@ class RandomInitializeParams(RunnerChainItem):
         next_callback(context)
 
 
-class BasicLocalParameterUpdaterOps(RunnerChainItem):
+class BasicLocalParameterUpdaterOps(RunnerItem):
     def __init__(self,
                  updater_name='updater',
                  batch_size_name='current_batch_size',
                  cost_name='current_cost'):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
         self.__updater_name__ = updater_name
         self.__batch_size_name__ = batch_size_name
         self.__cost_name__ = cost_name
@@ -311,9 +210,9 @@ class BasicLocalParameterUpdater(BasicLocalParameterUpdaterOps):
         next_callback(context)
 
 
-class BasicGradientMachineTrainOps(RunnerChainItem):
+class BasicGradientMachineTrainOps(RunnerItem):
     def __init__(self):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
         self.__out_args__ = api.Arguments.createArguments(0)
 
     def on_batch_begin(self, context, next_callback):
@@ -334,9 +233,9 @@ class BasicGradientMachineTrainOps(RunnerChainItem):
         return next_callback(context)
 
 
-class Counter(RunnerChainItem):
+class Counter(RunnerItem):
     def __init__(self):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
 
     def initialize(self, context, next_callback):
         context.current_pass_id = 0
@@ -353,9 +252,9 @@ class Counter(RunnerChainItem):
         context.current_pass_id += 1
 
 
-class BaseEvaluate(RunnerChainItem):
+class BaseEvaluate(RunnerItem):
     def __init__(self, prefix=None):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
         self.__evaluator__ = None
         if prefix is None:
             prefix = ''
@@ -409,9 +308,9 @@ class PassEvaluate(BaseEvaluate):
         self.__evaluator__.finish()
 
 
-class BasicGradientMachineTestOps(RunnerChainItem):
+class BasicGradientMachineTestOps(RunnerItem):
     def __init__(self):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
         self.__out_args__ = api.Arguments.createArguments(0)
 
     def on_pass_begin(self, context, next_callback):
@@ -428,9 +327,9 @@ class BasicGradientMachineTestOps(RunnerChainItem):
         next_callback(context)
 
 
-class InheritGradientMachineUpdater(RunnerChainItem):
+class InheritGradientMachineUpdater(RunnerItem):
     def __init__(self):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
 
     def initialize(self, context, next_callback):
         if context.parent is not None:
@@ -449,18 +348,18 @@ class InheritGradientMachineUpdater(RunnerChainItem):
         return next_callback(context)
 
 
-class TestOnPassEnd(RunnerChainItem):
+class TestOnPassEnd(RunnerItem):
     def __init__(self, **kwargs):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
         self.__test_runner__ = Runner()
-        self.__test_runner__.add_chain_item(InheritGradientMachineUpdater())
-        self.__test_runner__.add_chain_item(BasicTestDataProvider(**kwargs))
-        self.__test_runner__.add_chain_item(BasicGradientMachineTestOps())
-        self.__test_runner__.add_chain_item(PassEvaluate(prefix='Test: '))
+        self.__test_runner__.add_item(InheritGradientMachineUpdater())
+        self.__test_runner__.add_item(BasicTestDataProvider(**kwargs))
+        self.__test_runner__.add_item(BasicGradientMachineTestOps())
+        self.__test_runner__.add_item(PassEvaluate(prefix='Test: '))
 
     def initialize(self, context, next_callback):
         next_callback(context)
-        self.__test_runner__.initialize(context)
+        self.__test_runner__.__initialize__(context)
 
     def on_pass_end(self, context, next_callback):
         self.__test_runner__.run_one_pass(parent=context)
@@ -515,9 +414,9 @@ class NaiveDataProvider(DataProvider):
             raise StopIteration
 
 
-class BasicDataProviderOps(RunnerChainItem):
+class BasicDataProviderOps(RunnerItem):
     def __init__(self, provider_name='data_provider'):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
         self.__provider_name__ = provider_name
 
     def __get_provider__(self, context):
@@ -575,9 +474,9 @@ BasicTrainerDataProvider = data_provider_creator(True)
 BasicTestDataProvider = data_provider_creator(False)
 
 
-class SaveParamsOnPassEnd(RunnerChainItem):
+class SaveParamsOnPassEnd(RunnerItem):
     def __init__(self):
-        RunnerChainItem.__init__(self)
+        RunnerItem.__init__(self)
 
     def on_pass_end(self, context, next_callback):
         context.updater.catchUpWith()
@@ -591,12 +490,12 @@ class SaveParamsOnPassEnd(RunnerChainItem):
 class RunnerBuilder(object):
     def __init__(self, network, use_gpu=False, device_count=1):
         self.__runner__ = Runner()
-        self.__runner__.add_chain_item(Counter())
+        self.__runner__.add_item(Counter())
         self.__network__ = network
-        self.__runner__.add_chain_item(
-            DeviceChainItem(
+        self.__runner__.add_item(
+            DeviceItem(
                 use_gpu=use_gpu, device_count=device_count))
-        self.__runner__.add_chain_item(
+        self.__runner__.add_item(
             CreateGradientMachine(network=self.__network__))
 
         self.__train_data__ = None
@@ -605,7 +504,7 @@ class RunnerBuilder(object):
         self.__evaluate__ = []
 
     def with_std_random_init_params(self):
-        self.__runner__.add_chain_item(RandomInitializeParams())
+        self.__runner__.add_item(RandomInitializeParams())
         return self
 
     def with_train_data(self, method, file_list, batch_size=None, **kwargs):
@@ -659,9 +558,9 @@ class RunnerBuilder(object):
             ).with_batch_evaluator().with_std_param_saver()
 
     def build(self):
-        self.__runner__.add_chain_item(self.__train_data__)
-        self.__runner__.add_chain_item(self.__updater__)
-        self.__runner__.add_chain_item(self.__gradient_machine__)
+        self.__runner__.add_item(self.__train_data__)
+        self.__runner__.add_item(self.__updater__)
+        self.__runner__.add_item(self.__gradient_machine__)
         for each in self.__evaluate__:
-            self.__runner__.add_chain_item(each)
+            self.__runner__.add_item(each)
         return self.__runner__
