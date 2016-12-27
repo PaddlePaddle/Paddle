@@ -81,18 +81,6 @@ function(link_paddle_exe TARGET_NAME)
         set(METRIC_LIBS "")
     endif()
 
-    if(PADDLE_WITH_INTERNAL)
-        set(INTERAL_LIBS paddle_internal_gserver paddle_internal_parameter)
-        target_circle_link_libraries(${TARGET_NAME}
-            ARCHIVE_START
-            paddle_internal_gserver
-            paddle_internal_owlqn
-            ARCHIVE_END
-            paddle_internal_parameter)
-    else()
-        set(INTERAL_LIBS "")
-    endif()
-
     target_circle_link_libraries(${TARGET_NAME}
         ARCHIVE_START
         paddle_gserver
@@ -109,20 +97,11 @@ function(link_paddle_exe TARGET_NAME)
         paddle_cuda
         paddle_test_main
         ${METRIC_LIBS}
-        ${PROTOBUF_LIBRARY}
-        ${LIBGLOG_LIBRARY}
-        ${GFLAGS_LIBRARIES}
+        ${EXTERNAL_LIBS}
         ${CMAKE_THREAD_LIBS_INIT}
-        ${CBLAS_LIBS}
-        ${ZLIB_LIBRARIES}
-        ${INTERAL_LIBS}
-        ${CMAKE_DL_LIBS})
-
-    if(WITH_RDMA)
-        target_link_libraries(${TARGET_NAME}
-            ${RDMA_LD_FLAGS}
-            ${RDMA_LIBS})
-    endif()
+        ${CMAKE_DL_LIBS}
+        ${RDMA_LD_FLAGS}
+        ${RDMA_LIBS})
 
     if(WITH_PYTHON)
         target_link_libraries(${TARGET_NAME}
@@ -141,11 +120,6 @@ function(link_paddle_exe TARGET_NAME)
         if(HAVE_CLOCK_GETTIME)
             target_link_libraries(${TARGET_NAME} rt)
         endif()
-    endif()
-
-    if(NOT WITH_DSO)
-        target_link_libraries(${TARGET_NAME}
-            ${WARPCTC_LIBRARY})
     endif()
 endfunction()
 
