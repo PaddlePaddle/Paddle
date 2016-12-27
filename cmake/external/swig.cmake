@@ -13,9 +13,9 @@
 # limitations under the License.
 
 # Look for system swig
-# FIND_PACKAGE(SWIG)
+FIND_PACKAGE(SWIG)
 
-#IF(NOT ${SWIG_FOUND})
+IF(NOT ${SWIG_FOUND})
     # build swig as an external project
     INCLUDE(ExternalProject)
     SET(SWIG_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/swig)
@@ -62,14 +62,28 @@
             ./configure
                 --prefix=${SWIG_INSTALL_DIR}
                 --with-pcre-prefix=${SWIG_INSTALL_DIR}/pcre
-                --with-python=${PYTHON_EXECUTABLE}
             BUILD_COMMAND cd ${SWIG_SOURCES_DIR}/src/swig && make
             INSTALL_COMMAND cd ${SWIG_SOURCES_DIR}/src/swig && make install
-            DEPENDS pcre python
+            DEPENDS pcre
         )
 
         set(SWIG_DIR ${SWIG_INSTALL_DIR}/share/swig/${SWIG_TARGET_VERSION} CACHE FILEPATH "SWIG Directory" FORCE)
         set(SWIG_EXECUTABLE ${SWIG_INSTALL_DIR}/bin/swig CACHE FILEPATH "SWIG Executable" FORCE)
     ENDIF(WIN32)
-#ENDIF()
+ENDIF()
 
+FUNCTION(generate_python_api target_name)
+    ADD_CUSTOM_COMMAND(OUTPUT ${PROJ_ROOT}/paddle/py_paddle/swig_paddle.py
+                              ${PROJ_ROOT}/paddle/Paddle_wrap.cxx
+                              ${PROJ_ROOT}/paddle/Paddle_wrap.h
+        COMMAND ${SWIG_EXECUTABLE} -python -c++ -outcurrentdir -I../ api/Paddle.swig
+                && mv ${PROJ_ROOT}/paddle/swig_paddle.py ${PROJ_ROOT}/paddle/py_paddle/swig_paddle.py
+        DEPENDS ${PROJ_ROOT}/paddle/api/Paddle.swig
+                ${PROJ_ROOT}/paddle/api/PaddleAPI.h
+        WORKING_DIRECTORY ${PROJ_ROOT}/paddle
+        COMMENT "Generate Python API from swig")
+    ADD_CUSTOM_TARGET(${target_name} ALL DEPENDS
+                ${PROJ_ROOT}/paddle/Paddle_wrap.cxx
+                ${PROJ_ROOT}/paddle/Paddle_wrap.h
+                ${PROJ_ROOT}/paddle/py_paddle/swig_paddle.py)
+ENDFUNCTION(generate_python_api)
