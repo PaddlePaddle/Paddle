@@ -870,7 +870,7 @@ struct EvaluatorPrivate;
 class Evaluator {
 private:
   Evaluator();
-  DISABLE_COPY_AND_ASSIGN(Evaluator);
+  DISABLE_COPY(Evaluator);
 
 public:
   ~Evaluator();

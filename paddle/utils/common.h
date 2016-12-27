@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-namespace paddle {
-
 /**
  * Disable copy macro.
  */
@@ -23,6 +21,8 @@ namespace paddle {
   class_name(class_name &&) = delete;           \
   class_name(const class_name &other) = delete; \
   class_name &operator=(const class_name &other) = delete
+
+namespace paddle {
 
 #ifdef PADDLE_TYPE_DOUBLE
 using real = double;
