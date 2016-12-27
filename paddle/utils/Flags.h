@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "CommandLineParser.h"
+#include <gflags/gflags.h>
 
 DECLARE_bool(parallel_nn);
 DECLARE_int32(async_count);

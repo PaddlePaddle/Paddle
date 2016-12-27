@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <gflags/gflags.h>
 #include <string.h>
 #include <algorithm>
 #include "Matrix.h"
-#include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Util.h"
 
 DECLARE_bool(allow_inefficient_sparse_update);

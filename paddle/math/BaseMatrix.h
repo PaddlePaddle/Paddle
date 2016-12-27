@@ -16,7 +16,7 @@ limitations under the License. */
 #include <stdint.h>
 #include <cstddef>
 #include "TensorExpression.h"
-#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/common.h"
 
 namespace paddle {
 

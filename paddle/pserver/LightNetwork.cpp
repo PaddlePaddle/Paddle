@@ -18,6 +18,7 @@ limitations under the License. */
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <chrono>
 
 #include <arpa/inet.h>
 #include <net/if.h>
@@ -382,8 +383,20 @@ void SocketClient::TcpClient(const std::string &serverAddr, int serverPort) {
   setOption(sockfd);
 
   /// Now connect to the server
-  PCHECK(connect(sockfd, (sockaddr *)&serv_addr, sizeof(serv_addr)) >= 0)
-      << "ERROR connecting to " << serverAddr;
+  int retry_second = 0;
+  int error = 0;
+  do {
+    error = connect(sockfd, (sockaddr *)&serv_addr, sizeof(serv_addr));
+    if (error == ECONNREFUSED) {
+      LOG(WARNING) << "connection refused by pserver, try again!";
+      if (retry_second++ >= 7) {
+        LOG(FATAL) << "connection refused by pserver, maybe pserver failed!";
+      }
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    } else {
+      PCHECK(error >= 0) << "ERROR connecting to " << serverAddr;
+    }
+  } while (error == ECONNREFUSED);
 
   channel_.reset(new SocketChannel(sockfd, serverAddr));
   tcpRdma_ = F_TCP;

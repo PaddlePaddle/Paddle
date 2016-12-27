@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,15 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+set -e
 
-from activations import *
-from data_sources import *
-from poolings import *
-from evaluators import *
-from layers import *
-from networks import *
-from optimizers import *
-from attrs import *
-from config_parser_utils import *
-# This will enable operator overload for LayerOutput
-import layer_math
+function get_nics() {
+  machine=`uname -s`
+  local nics=""
+  if [ "$machine" == "Linux" ]; then
+    nics="lo"
+  elif [ "$machine" == "Darwin" ]; then
+    nics="lo0"
+  else
+    nics="unsupport"
+  fi
+  echo $nics
+}
