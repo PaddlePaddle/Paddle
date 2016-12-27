@@ -515,6 +515,7 @@ private:
 
   friend class TrainerConfig;
   friend class ParameterOptimizer;
+  friend class ParameterUpdater;
   friend class Trainer;
 };
 
@@ -545,6 +546,8 @@ public:
   ParameterConfig* getConfig();
   void setValueUpdated();
 
+  size_t getSize() const;
+
 private:
   static Parameter* createFromRawPtr(void* ptr);
   static Parameter* createFromSharedPtr(void* ptr);
@@ -553,6 +556,7 @@ private:
   ParameterPrivate* m;
   friend class UpdateCallbackWrapper;
   friend class GradientMachine;
+  friend class ParameterUpdater;
 };
 
 struct ModelConfigPrivate;
@@ -679,7 +683,7 @@ private:
 };
 
 class SequenceGenerator;
-
+class Evaluator;
 struct GradientMachinePrivate;
 class GradientMachine {
 private:
@@ -709,6 +713,13 @@ public:
       ModelConfig* conf,
       GradientMatchineCreateMode mode = CREATE_MODE_NORMAL,
       const std::vector<int>& parameterTypes = defaultParamTypes);
+
+  /**
+   * @brief finish
+   */
+  void finish();
+
+  void start();
 
   /**
    * Prefetch row ids of sparse parameter.
@@ -767,6 +778,10 @@ public:
       size_t max_length = 100UL,
       size_t beam_size = -1UL);
 
+  Evaluator* makeEvaluator();
+
+  void eval(Evaluator* evaluator);
+
 private:
   GradientMachinePrivate* m;
 
@@ -778,6 +793,109 @@ private:
   // Not to use c++ 11 init-list, so we use static var as function default arg.
   static std::vector<int> defaultParamTypes;
   friend class Trainer;
+  friend class ParameterUpdater;
+};
+
+struct ParameterUpdaterPrivate;
+class ParameterUpdater {
+private:
+  ParameterUpdater();
+
+public:
+  static ParameterUpdater* createLocalUpdater(OptimizationConfig* config);
+  ~ParameterUpdater();
+
+  /**
+   * @brief initialize Parameter Updater by GradientMachine.
+   * @param gm
+   */
+  void init(const GradientMachine& gm);
+
+  /**
+   * @brief begin of a training/testing of one pass.
+   */
+  void startPass();
+
+  /**
+   * @brief end of a traning/testing of one pass.
+   */
+  void finishPass();
+
+  /**
+   * @brief begin of a training/testing of one batch.
+   * @param data batch's size
+   * @return PassType, mostly will be training.
+   */
+  PassType startBatch(size_t batchSize);
+
+  /**
+   * @brief end of a traning/testing of one batch
+   * @param cost current batch cost.
+   */
+  void finishBatch(float cost);
+
+  /**
+   * @brief update a parameter (by local optimizer or by cluster pserver)
+   * @param param
+   */
+  void update(Parameter* param);
+
+  /**
+   * @brief restore the average parameter.
+   * @note It is only used in AverageOptimizer. Restore will get the current
+   * PARAMETER_VALUE back.
+   */
+  void restore();
+
+  /**
+   * @brief apply. Store the average parameter.
+   * @note It is only used in AverageOptimizer. Apply will store the current
+   * PARAMETER_VALUE to buffer, calcaualte current Average Parameter, and save
+   * it to PARAMETER_VALUE.
+   */
+  void apply();
+
+  /**
+   * @brief catchUpWith The Regularization will be delayed in many situations(
+   * pserver, local sparse). Catch Up means catch the regularization up, apply
+   * regularization to all params.
+   */
+  void catchUpWith();
+
+private:
+  ParameterUpdaterPrivate* m;
+};
+
+struct EvaluatorPrivate;
+class Evaluator {
+private:
+  Evaluator();
+  DISABLE_COPY(Evaluator);
+
+public:
+  ~Evaluator();
+
+  /**
+   * @brief begin an evaluate stage.
+   */
+  void start();
+
+  /**
+   * @brief end an evaluate stage.
+   */
+  void finish();
+
+  /**
+   * @brief toString will get a evaluate result.
+   *
+   * __repr__ method in python
+   */
+  std::string toString();
+
+private:
+  EvaluatorPrivate* m;
+
+  friend class GradientMachine;
 };
 
 struct TrainerPrivate;

@@ -253,7 +253,7 @@ void Vector::copyToNumpyArray(float** view_m_data, int* dim1) {
   *view_m_data = new float[*dim1];
   if (auto cpuVec = dynamic_cast<paddle::CpuVector*>(m->vec.get())) {
     std::memcpy(*view_m_data, cpuVec->getData(), sizeof(float) * (*dim1));
-  } else if (auto gpuVec = dynamic_cast<paddle::CpuVector*>(m->vec.get())) {
+  } else if (auto gpuVec = dynamic_cast<paddle::GpuVector*>(m->vec.get())) {
     hl_memcpy_device2host(
         *view_m_data, gpuVec->getData(), sizeof(float) * (*dim1));
   } else {

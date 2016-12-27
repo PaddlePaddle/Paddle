@@ -64,6 +64,10 @@ GradientMachine* GradientMachine::createByModelConfig(
   return GradientMachine::createFromPaddleModelPtr(confPtr, mode, types);
 }
 
+void GradientMachine::start() { m->machine->start(); }
+
+void GradientMachine::finish() { m->machine->finish(); }
+
 void GradientMachine::onPassEnd() { m->machine->onPassEnd(); }
 
 void GradientMachine::prefetch(const Arguments& inArgs) {
@@ -165,4 +169,14 @@ SequenceGenerator* GradientMachine::asSequenceGenerator(
   r->setMaxLength(max_length);
   r->setBeamSize(beam_size);
   return r;
+}
+
+Evaluator* GradientMachine::makeEvaluator() {
+  auto ev = new Evaluator();
+  ev->m->rawPtr = m->machine->makeEvaluator();
+  return ev;
+}
+
+void GradientMachine::eval(Evaluator* evaluator) {
+  m->machine->eval(evaluator->m->rawPtr);
 }

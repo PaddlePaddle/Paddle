@@ -11,23 +11,19 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <sstream>
+#include "PaddleAPI.h"
+#include "PaddleAPIPrivate.h"
 
-#pragma once
+Evaluator::Evaluator() : m(new EvaluatorPrivate()) {}
+Evaluator::~Evaluator() { delete m; }
 
-/**
- * Disable copy macro.
- */
-#define DISABLE_COPY(class_name)                \
-  class_name(class_name &&) = delete;           \
-  class_name(const class_name &other) = delete; \
-  class_name &operator=(const class_name &other) = delete
+void Evaluator::start() { m->rawPtr->start(); }
 
-namespace paddle {
+void Evaluator::finish() { m->rawPtr->finish(); }
 
-#ifdef PADDLE_TYPE_DOUBLE
-using real = double;
-#else
-using real = float;
-#endif
-
-}  // namespace paddle
+std::string Evaluator::toString() {
+  std::ostringstream sout;
+  m->rawPtr->printStats(sout);
+  return sout.str();
+}

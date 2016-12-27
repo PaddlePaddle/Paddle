@@ -3416,8 +3416,35 @@ def register_parse_config_hook(f):
     _parse_config_hooks.add(f)
 
 
-def parse_config(config_file, config_arg_str):
+def update_g_config():
     '''
+    Update g_config after execute config_file or config_functions.
+    '''
+    for k, v in settings.iteritems():
+        if v is None:
+            continue
+        g_config.opt_config.__setattr__(k, v)
+
+    for k, v in trainer_settings.iteritems():
+        if v is None:
+            continue
+        g_config.__setattr__(k, v)
+
+    for name in g_config.model_config.input_layer_names:
+        assert name in g_layer_map, \
+            'input name "%s" does not correspond to a layer name' % name
+        assert (g_layer_map[name].type == "data" or g_layer_map[name].type == "data_trim"), \
+            'The type of input layer "%s" is not "data"' % name
+    for name in g_config.model_config.output_layer_names:
+        assert name in g_layer_map, \
+            'input name "%s" does not correspond to a layer name' % name
+    return g_config
+
+
+def parse_config(trainer_config, config_arg_str):
+    '''
+    @param trainer_config: can be a string of config file name or a function name
+    with config logic
     @param config_arg_str: a string of the form var1=val1,var2=val2. It will be
     passed to config script as a dictionary CONFIG_ARGS
     '''
@@ -3451,45 +3478,20 @@ def parse_config(config_file, config_arg_str):
     g_root_submodel.is_recurrent_layer_group = False
     g_current_submodel = g_root_submodel
 
-    # for paddle on spark, need support non-file config.
-    # you can use parse_config like below:
-    #
-    # from paddle.trainer.config_parser import parse_config
-    # def configs():
-    #    #your paddle config code, which is same as config file.
-    #
-    # config = parse_config(configs, "is_predict=1")
-    # # then you get config proto object.
-    if hasattr(config_file, '__call__'):
-        config_file.func_globals.update(
+    if hasattr(trainer_config, '__call__'):
+        trainer_config.func_globals.update(
             make_config_environment("", config_args))
-        config_file()
+        trainer_config()
     else:
-        execfile(config_file, make_config_environment(config_file, config_args))
-    for k, v in settings.iteritems():
-        if v is None:
-            continue
-        g_config.opt_config.__setattr__(k, v)
+        execfile(trainer_config,
+                 make_config_environment(trainer_config, config_args))
 
-    for k, v in trainer_settings.iteritems():
-        if v is None:
-            continue
-        g_config.__setattr__(k, v)
-
-    for name in g_config.model_config.input_layer_names:
-        assert name in g_layer_map, \
-            'input name "%s" does not correspond to a layer name' % name
-        assert (g_layer_map[name].type == "data" or g_layer_map[name].type == "data_trim"), \
-            'The type of input layer "%s" is not "data"' % name
-    for name in g_config.model_config.output_layer_names:
-        assert name in g_layer_map, \
-            'input name "%s" does not correspond to a layer name' % name
-    return g_config
+    return update_g_config()
 
 
-def parse_config_and_serialize(config_file, config_arg_str):
+def parse_config_and_serialize(trainer_config, config_arg_str):
     try:
-        config = parse_config(config_file, config_arg_str)
+        config = parse_config(trainer_config, config_arg_str)
         #logger.info(config)
         return config.SerializeToString()
     except:
