@@ -50,8 +50,9 @@ WORKDIR "/notes"
 EXPOSE 8888
 
 RUN mkdir -p /opt/run
-ADD 00_sshd /opt/run/
-ADD 01_jupyter /opt/run/
-ADD run_all /opt/run/
+COPY ./paddle/scripts/docker/jupyter_notebook_config.py /root/.jupyter/
+COPY ./paddle/scripts/docker/00_sshd /opt/run/
+COPY ./paddle/scripts/docker/01_jupyter /opt/run/
+COPY ./paddle/scripts/docker/run_all /opt/bin/
 
-ENTRYPOINT ["/opt/bin/run_all"]
+CMD ["/opt/bin/run_all"]
