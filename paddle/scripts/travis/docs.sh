@@ -7,6 +7,10 @@ source ./common.sh
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=ON
 make paddle_docs paddle_docs_cn
 
+# check websites for broken links
+linkchecker doc/en/html/index.html
+linkchecker doc/cn/html/index.html
+
 # Parse Github URL
 REPO=`git config remote.origin.url`
 SSH_REPO=${REPO/https:\/\/github.com\//git@github.com:}
@@ -35,8 +39,8 @@ git checkout $TARGET_BRANCH || git checkout --orphan $TARGET_BRANCH
 
 # remove old docs. mv new docs.
 rm -rf doc doc_cn
-mv ../doc_cn/html doc_cn
-mv ../doc/html doc
+mv ../doc/cn/html doc_cn
+mv ../doc/en/html doc
 
 # Check is there anything changed.
 set +e

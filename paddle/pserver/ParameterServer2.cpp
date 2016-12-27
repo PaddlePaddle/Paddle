@@ -30,11 +30,11 @@ limitations under the License. */
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/Stat.h"
 
-P_DEFINE_int32(pserver_num_threads, 1, "number of threads for sync op exec");
-P_DEFINE_double(async_lagged_ratio_min,
-                1.0,
-                "control config_.async_lagged_grad_discard_ratio() min value");
-P_DEFINE_double(
+DEFINE_int32(pserver_num_threads, 1, "number of threads for sync op exec");
+DEFINE_double(async_lagged_ratio_min,
+              1.0,
+              "control config_.async_lagged_grad_discard_ratio() min value");
+DEFINE_double(
     async_lagged_ratio_default,
     1.5,
     "if async_lagged_grad_discard_ratio is not set in trainer_config.conf"

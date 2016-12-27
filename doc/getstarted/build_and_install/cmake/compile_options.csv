@@ -1,0 +1,12 @@
+选项,说明,默认值
+WITH_GPU,是否支持GPU。,取决于是否寻找到CUDA工具链
+WITH_DOUBLE,是否使用双精度浮点数。,否
+WITH_DSO,是否运行时动态加载CUDA动态库，而非静态加载CUDA动态库。,是
+WITH_AVX,是否编译含有AVX指令集的PaddlePaddle二进制文件,是
+WITH_PYTHON,是否内嵌PYTHON解释器。方便今后的嵌入式移植工作。,是
+WITH_STYLE_CHECK,是否编译时进行代码风格检查,是
+WITH_RDMA,是否开启RDMA,否
+WITH_TIMER,是否开启计时功能。如果开启会导致运行略慢，打印的日志变多，但是方便调试和测Benchmark,否
+WITH_TESTING,是否开启单元测试,取决于是否寻找到GTEST
+WITH_DOC,是否编译中英文文档,否
+WITH_SWIG_PY,是否编译PYTHON的SWIG接口，该接口可用于预测和定制化训练,取决于是否寻找到SWIG

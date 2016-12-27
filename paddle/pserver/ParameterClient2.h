@@ -26,15 +26,15 @@ limitations under the License. */
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Queue.h"
-#include "paddle/utils/TypeDefs.h"
 #include "paddle/utils/Util.h"
+#include "paddle/utils/common.h"
 
 #include "ParameterService.pb.h"
 
 #include "ProtoServer.h"
 #include "SparseParameterDistribution.h"
 
-P_DECLARE_int32(parallel_thread_num);
+DECLARE_int32(parallel_thread_num);
 
 namespace paddle {
 

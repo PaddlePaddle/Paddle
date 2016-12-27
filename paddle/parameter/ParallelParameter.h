@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/parameter/ParameterUpdateFunctions.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/Locks.h"
-#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/common.h"
 
 #include "ParameterConfig.pb.h"
 

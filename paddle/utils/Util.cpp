@@ -24,16 +24,16 @@ limitations under the License. */
 #include <fstream>
 #include <mutex>
 
-#include "paddle/utils/Logging.h"
+#include <gflags/gflags.h>
 
-#include "CommandLineParser.h"
 #include "CustomStackTrace.h"
+#include "Logging.h"
 #include "StringUtil.h"
 #include "Thread.h"
 #include "ThreadLocal.h"
 #include "Version.h"
 
-P_DEFINE_int32(seed, 1, "random number seed. 0 for srand(time)");
+DEFINE_int32(seed, 1, "random number seed. 0 for srand(time)");
 
 #ifdef WITH_GOOGLE_PERFTOOLS
 /*
@@ -52,10 +52,8 @@ P_DEFINE_int32(seed, 1, "random number seed. 0 for srand(time)");
 
 #include <gperftools/profiler.h>
 
-P_DEFINE_int32(profile_signal, 12, "signal for switch google profiler");
-P_DEFINE_string(profile_data_file,
-                "gperf.prof",
-                "file for storing profile data");
+DEFINE_int32(profile_signal, 12, "signal for switch google profiler");
+DEFINE_string(profile_data_file, "gperf.prof", "file for storing profile data");
 
 static void profilerSwitch(int signalNumber) {
   bool static started = false;
@@ -154,7 +152,12 @@ void initMain(int argc, char** argv) {
     line += ' ';
   }
   LOG(INFO) << "commandline: " << line;
-  ParseCommandLineFlags(&argc, argv, true);
+
+#ifndef GFLAGS_GFLAGS_H_
+  namespace gflags = google;
+#endif
+
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 1) << "Unknown commandline argument: " << argv[1];
 
   installProfilerSwitch();

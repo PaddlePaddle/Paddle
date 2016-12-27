@@ -361,9 +361,6 @@ def settings(batch_size,
              learning_rate_decay_b=0.,
              learning_rate_schedule='poly',
              learning_rate_args='',
-             average_window=0,
-             do_average_in_cpu=False,
-             max_average_window=None,
              learning_method=None,
              regularization=None,
              is_async=False,
@@ -411,8 +408,7 @@ def settings(batch_size,
 
     args = [
         'batch_size', 'learning_rate', 'learning_rate_decay_a',
-        'learning_rate_decay_b', 'learning_rate_schedule', 'learning_rate_args',
-        'average_window', 'do_average_in_cpu', 'max_average_window'
+        'learning_rate_decay_b', 'learning_rate_schedule', 'learning_rate_args'
     ]
     kwargs = dict()
     kwargs['algorithm'] = algorithm

@@ -58,6 +58,8 @@ protected:
   /// to batch, channels* imagePixels.
   void shrinkMat(const MatrixPtr& in, MatrixPtr& out);
 
+  void onPassEnd() { firstTest_ = true; }
+
   MatrixPtr tmpMat_, tmpGrad_;
   MatrixPtr expandedIn_, expandedOut_;
   MatrixPtr expandedInGrad_, expandedOutGrad_, inGrad_;

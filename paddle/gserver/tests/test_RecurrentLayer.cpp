@@ -23,9 +23,9 @@ limitations under the License. */
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
-P_DECLARE_bool(use_gpu);
-P_DECLARE_bool(rnn_use_batch);
-P_DECLARE_int32(fixed_seq_length);
+DECLARE_bool(use_gpu);
+DECLARE_bool(rnn_use_batch);
+DECLARE_int32(fixed_seq_length);
 
 void checkError(const Matrix& matrix1, const Matrix& matrix2) {
   CHECK(matrix1.getHeight() == matrix2.getHeight());

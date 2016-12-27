@@ -1,0 +1,49 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#include "Function.h"
+
+namespace paddle {
+
+template <>
+size_t FuncConfig::get<size_t>(const std::string& key) const {
+  auto it = valueMap_.find(key);
+  CHECK(it != valueMap_.end()) << "Cannot find value: '" << key << "'";
+  return it->second.s;
+}
+
+template <>
+real FuncConfig::get<real>(const std::string& key) const {
+  auto it = valueMap_.find(key);
+  CHECK(it != valueMap_.end()) << "Cannot find value: '" << key << "'";
+  return it->second.r;
+}
+
+template <>
+FuncConfig& FuncConfig::set<size_t>(const std::string& key, size_t v) {
+  CHECK(valueMap_.count(key) == 0) << "Duplicated value: " << key;
+  valueMap_[key].s = v;
+  return *this;
+}
+
+template <>
+FuncConfig& FuncConfig::set<real>(const std::string& key, real v) {
+  CHECK(valueMap_.count(key) == 0) << "Duplicated value: " << key;
+  valueMap_[key].r = v;
+  return *this;
+}
+
+ClassRegistrar<FunctionBase> FunctionBase::funcRegistrar_;
+
+}  // namespace paddle

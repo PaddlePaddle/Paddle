@@ -14,17 +14,17 @@ limitations under the License. */
 
 #include "TrainerInternalConfig.h"
 
-P_DEFINE_int32(show_parameter_stats_period,
-               0,
-               "Whether to show parameter stats during training");
+DEFINE_int32(show_parameter_stats_period,
+             0,
+             "Whether to show parameter stats during training");
 
-P_DEFINE_int32(dot_period, 1, "Print '.' every so many batches");
+DEFINE_int32(dot_period, 1, "Print '.' every so many batches");
 
-P_DEFINE_bool(use_old_updater, false, "Use the old RemoteParameterUpdater");
+DEFINE_bool(use_old_updater, false, "Use the old RemoteParameterUpdater");
 
-P_DECLARE_int32(num_passes);
+DECLARE_int32(num_passes);
 
-P_DECLARE_bool(local);
+DECLARE_bool(local);
 
 namespace paddle {
 

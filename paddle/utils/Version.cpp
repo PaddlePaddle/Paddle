@@ -18,13 +18,8 @@ limitations under the License. */
 #include <numeric>
 #include "Flags.h"
 #include "Util.h"
-//! TODO(yuyang18) in gflags, version has another define. Use another flag
-//! instead.
-#ifndef PADDLE_USE_GFLAGS
-P_DEFINE_bool(version, false, "print version");
-#else
-P_DECLARE_bool(version);
-#endif
+
+DECLARE_bool(version);
 
 namespace paddle {
 namespace version {

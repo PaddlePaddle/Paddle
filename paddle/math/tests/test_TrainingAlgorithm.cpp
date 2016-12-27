@@ -22,9 +22,9 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 
 #ifndef PADDLE_TYPE_DOUBLE
-P_DEFINE_double(max_diff, 1e-5, "max diff allowed");
+DEFINE_double(max_diff, 1e-5, "max diff allowed");
 #else
-P_DEFINE_double(max_diff, 1e-13, "max diff allowed");
+DEFINE_double(max_diff, 1e-13, "max diff allowed");
 #endif
 
 class SetMaxDiff {

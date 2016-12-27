@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/internals/metric_learning/MetricTrainer.h"
 #endif
 
-P_DECLARE_int32(num_passes);
+DECLARE_int32(num_passes);
 
 namespace paddle {
 

@@ -46,7 +46,7 @@ TransposedFullMatrixProjection::TransposedFullMatrixProjection(
 
 void TransposedFullMatrixProjection::forward() {
   REGISTER_TIMER_INFO("FwMulTimer", getName().c_str());
-  out_->value->mul(in_->value, weight_->getW()->getTranspose(), 1, 1);
+  out_->value->mul(*(in_->value), *(weight_->getW()->getTranspose()), 1, 1);
 }
 
 void TransposedFullMatrixProjection::backward(const UpdateCallback& callback) {
@@ -55,7 +55,8 @@ void TransposedFullMatrixProjection::backward(const UpdateCallback& callback) {
   /* Calculate the W-gradient for the current layer */
   if (weight_->getWGrad()) {
     REGISTER_TIMER_INFO("GradMulTimer", getName().c_str());
-    weight_->getWGrad()->mul(out_->grad->getTranspose(), in_->value, 1, 1);
+    weight_->getWGrad()->mul(
+        *(out_->grad->getTranspose()), *(in_->value), 1, 1);
   }
 
   // If callback does not change value, backprop error asynchronously so that
@@ -69,7 +70,7 @@ void TransposedFullMatrixProjection::backward(const UpdateCallback& callback) {
   /* Calculate the input layers error */
   if (in_->grad) {
     REGISTER_TIMER_INFO("BpMulTimer", getName().c_str());
-    in_->grad->mul(out_->grad, weight_->getW(), 1, 1);
+    in_->grad->mul(*(out_->grad), *(weight_->getW()), 1, 1);
   }
 
   hl_set_sync_flag(syncFlag);

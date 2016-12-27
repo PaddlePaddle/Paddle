@@ -32,13 +32,13 @@ limitations under the License. */
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/common.h"
 
 #include "ParameterService.pb.h"
 
 #include "ProtoServer.h"
 
-P_DECLARE_int32(port);
+DECLARE_int32(port);
 
 namespace paddle {
 

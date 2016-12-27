@@ -20,7 +20,7 @@ limitations under the License. */
 #include <paddle/utils/Util.h>
 #include <paddle/utils/Version.h>
 
-P_DECLARE_int32(seed);
+DECLARE_int32(seed);
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -28,7 +28,7 @@ class TrainerForTest : public paddle::Trainer {
 public:
   void startTrain() {
     GradientMachine& gm = *this->trainerInternal_.getGradientMachine();
-    gm.start(this->getConfig(), dataProvider_);
+    gm.start();
   }
 
   void finishTrain() {
@@ -155,13 +155,14 @@ TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
 }
 
 int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+
   if (paddle::version::isWithPyDataProvider()) {
     if (!paddle::version::isWithGpu()) {
       FLAGS_use_gpu = false;
     }
     initMain(argc, argv);
     initPython(argc, argv);
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
   } else {
     return 0;

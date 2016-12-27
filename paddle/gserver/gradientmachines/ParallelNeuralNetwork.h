@@ -56,7 +56,7 @@ public:
                        PassType passType,
                        const UpdateCallback &callback = NULL);
 
-  virtual void start(const TrainerConfig &config, DataProviderPtr dataProvider);
+  virtual void start();
 
   void addComputeThread(int deviceId);
 

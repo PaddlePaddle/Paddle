@@ -32,13 +32,13 @@ public:
     parameterTypes_.push_back(type);
   }
 
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
 
   // called by Trainer when starting a new pass
   virtual void startPass() {}
 
   // called by Trainer then finishing a pass, ruturn true if pass accepted
-  virtual bool finishPass(real cost = 0) { return true; }
+  virtual bool finishPass() { return true; }
 
   // called by Trainer before backward() of a batch
   // Return the type of pass it needs. This pass type will be passed
@@ -105,16 +105,16 @@ public:
   ParameterUpdaterComposite() {}
   virtual ~ParameterUpdaterComposite() {}
 
-  virtual void init(std::vector<ParameterPtr>& parameters) = 0;
+  virtual void init(const std::vector<ParameterPtr>& parameters) = 0;
 
   virtual void startPass() {
     syncThreadPool_->execPlusOwner(
         [&](int tid, size_t numThreads) { updaters_[tid]->startPass(); });
   }
 
-  virtual bool finishPass(real cost = 0) {
+  virtual bool finishPass() {
     syncThreadPool_->execPlusOwner(
-        [&](int tid, size_t numThreads) { updaters_[tid]->finishPass(cost); });
+        [&](int tid, size_t numThreads) { updaters_[tid]->finishPass(); });
     return true;
   }
 

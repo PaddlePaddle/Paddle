@@ -252,19 +252,9 @@ private:
     // only for instance will make python reference-count error.
     //
     // So here, we increase reference count manually.
-    if (gModuleClsPtrs_.find((uintptr_t)module.get()) !=
-        gModuleClsPtrs_.end()) {
-      // Multi instance use same module
-      Py_XINCREF(module.get());
-      Py_XINCREF(moduleDict.get());
-    } else {
-      gModuleClsPtrs_.insert((uintptr_t)module.get());
-    }
-    if (gModuleClsPtrs_.find((uintptr_t)cls.get()) != gModuleClsPtrs_.end()) {
-      Py_XINCREF(cls.get());
-    } else {
-      gModuleClsPtrs_.insert((uintptr_t)cls.get());
-    }
+    Py_XINCREF(module.get());
+    Py_XINCREF(moduleDict.get());
+    Py_XINCREF(cls.get());
 
     PyObjectPtr fileListInPy = loadPyFileLists(fileListName);
     PyDict_SetItemString(kwargs.get(), "file_list", fileListInPy.get());
@@ -471,7 +461,6 @@ private:
   std::vector<std::string> fileLists_;
   std::vector<SlotHeader> headers_;
   static PyObjectPtr zeroTuple_;
-  static std::unordered_set<uintptr_t> gModuleClsPtrs_;
 
   class PositionRandom {
   public:
@@ -671,7 +660,6 @@ public:
   }
 };
 
-std::unordered_set<uintptr_t> PyDataProvider2::gModuleClsPtrs_;
 PyObjectPtr PyDataProvider2::zeroTuple_(PyTuple_New(0));
 
 REGISTER_DATA_PROVIDER_EX(py2, PyDataProvider2);

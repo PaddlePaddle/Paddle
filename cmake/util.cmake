@@ -65,7 +65,7 @@ endmacro()
 # link_paddle_exe
 # add paddle library for a paddle executable, such as trainer, pserver.
 #
-# It will handle WITH_PYTHON/WITH_GLOG etc.
+# It will handle WITH_PYTHON etc.
 function(link_paddle_exe TARGET_NAME)
     if(WITH_RDMA)
         generate_rdma_links()
@@ -107,6 +107,7 @@ function(link_paddle_exe TARGET_NAME)
     target_circle_link_libraries(${TARGET_NAME}
         ARCHIVE_START
         paddle_gserver
+        paddle_function
         ${METRIC_LIBS}
         ARCHIVE_END
         paddle_pserver
@@ -117,8 +118,11 @@ function(link_paddle_exe TARGET_NAME)
         paddle_parameter
         paddle_proto
         paddle_cuda
+        paddle_test_main
         ${METRIC_LIBS}
         ${PROTOBUF_LIBRARY}
+        ${LIBGLOG_LIBRARY}
+        ${GFLAGS_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT}
         ${CBLAS_LIBS}
         ${ZLIB_LIBRARIES}
@@ -135,16 +139,6 @@ function(link_paddle_exe TARGET_NAME)
     if(WITH_PYTHON)
         target_link_libraries(${TARGET_NAME}
             ${PYTHON_LIBRARIES})
-    endif()
-
-    if(WITH_GLOG)
-        target_link_libraries(${TARGET_NAME}
-            ${LIBGLOG_LIBRARY})
-    endif()
-
-    if(WITH_GFLAGS)
-        target_link_libraries(${TARGET_NAME}
-            ${GFLAGS_LIBRARIES})
     endif()
 
     if(WITH_GPU)

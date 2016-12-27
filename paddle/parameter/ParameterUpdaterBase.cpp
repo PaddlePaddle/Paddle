@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 
-void ParameterUpdater::init(std::vector<ParameterPtr>& parameters) {
+void ParameterUpdater::init(const std::vector<ParameterPtr>& parameters) {
   parameters_ = parameters;
   for (ParameterType type : getParameterTypes()) {
     for (auto& para : parameters) {
