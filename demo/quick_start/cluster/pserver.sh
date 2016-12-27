@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,15 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+set -e
+bin_dir=$(cd `dirname $0`; pwd)
+source "$bin_dir/env.sh"
 
-from activations import *
-from data_sources import *
-from poolings import *
-from evaluators import *
-from layers import *
-from networks import *
-from optimizers import *
-from attrs import *
-from config_parser_utils import *
-# This will enable operator overload for LayerOutput
-import layer_math
+paddle pserver \
+  --nics=`get_nics` \
+  --port=7164 \
+  --ports_num=1 \
+  --ports_num_for_sparse=1 \
+  --num_gradient_servers=1 \
+  --comment="paddle_pserver" \
+  2>&1 | tee 'pserver.log'

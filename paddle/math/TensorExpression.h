@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cstddef>
 #include "hl_tensor_ops.h"
 #include "paddle/utils/Logging.h"
-#include "paddle/utils/TypeDefs.h"
+#include "paddle/utils/common.h"
 
 namespace paddle {
 

@@ -29,8 +29,8 @@ limitations under the License. */
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/TypeDefs.h"
 #include "paddle/utils/Util.h"
+#include "paddle/utils/common.h"
 
 namespace paddle {
 
