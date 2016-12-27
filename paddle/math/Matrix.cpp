@@ -2268,7 +2268,7 @@ void CpuMatrix::contextProjectionBackward(Matrix* inputGrad,
 
   int64_t inputDim = inputGrad ? inputGrad->getWidth()
                                : weightGrad ? weightGrad->getWidth() : 0;
-  CHECK_EQ(getWidth(), inputDim * contextLength);
+  CHECK_EQ(getWidth(), static_cast<size_t>(inputDim * contextLength));
 
   const int* starts = sequence.getData();
   size_t numSequences = sequence.getSize() - 1;
