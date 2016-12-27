@@ -25,9 +25,10 @@ namespace paddle {
  * \param[in]   input             input data.
  * \param[in]   weight            input weight.
  * \param[in]   sequence          input data.
- * \param[in]   context_length     consecutive rows for concatenation.
- * \param[in]   begin_pad          context start position.
- * \param[in]   is_padding         whether padding 0 or not.
+ * \param[in]   context_length    consecutive rows for concatenation.
+ * \param[in]   context_start     context start position.
+ * \param[in]   begin_pad         begining pad position.
+ * \param[in]   is_padding        whether padding 0 or not.
  *
  */
 template <DeviceType Device>
@@ -39,5 +40,44 @@ void ContextProjectionForward(Tensor& output,
                               int context_start,
                               size_t begin_pad,
                               bool is_padding);
+
+/**
+ * \brief   Context Projection Backward.
+ *
+ * \param[out]  outputs           output gradient.
+ * \param[in]   input             input gradient.
+ * \param[in]   weight            input weight gradient.
+ * \param[in]   sequence          input data.
+ * \param[in]   context_length    consecutive rows for concatenation.
+ * \param[in]   context_start     context start position.
+ * \param[in]   begin_pad         begining pad position.
+ * \param[in]   is_padding        whether padding 0 or not.
+ *
+ */
+template <DeviceType Device>
+void ContextProjectionBackward(Tensor& out_grad,
+                               const Tensor& in_grad,
+                               const Tensor& w_grad,
+                               const Tensor& sequence,
+                               size_t context_length,
+                               int context_start,
+                               size_t begin_pad,
+                               bool is_padding);
+
+template <DeviceType Device>
+void ContextProjectionBackwardData(Tensor& out_grad,
+                                   Tensor& in_grad,
+                                   const Tensor& sequence,
+                                   size_t context_length,
+                                   int context_start);
+
+template <DeviceType Device>
+void ContextProjectionBackwardWeight(Tensor& out_grad,
+                                     Tensor& w_grad,
+                                     const Tensor& sequence,
+                                     size_t context_length,
+                                     int context_start,
+                                     size_t total_pad,
+                                     size_t begin_pad);
 
 }  // namespace paddle

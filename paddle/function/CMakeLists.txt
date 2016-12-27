@@ -19,7 +19,6 @@ if(WITH_TESTING)
     add_simple_unittest(CrossMapNormalOpTest)
     add_unittest(ContextProjectionOpTest
         ContextProjectionOpTest.cpp
-        ContextProjectionOpGpu.cu
         ../gserver/tests/TestUtil.cpp)
 endif()
 endif()
