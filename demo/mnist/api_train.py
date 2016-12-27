@@ -34,28 +34,12 @@ def mnist_network(pixel, label):
 
 def main():
     mnist = mnist_network()
-
-    runner = Runner()
-    runner.add_chain_item(Counter())
-    runner.add_chain_item(DeviceChainItem(use_gpu=False, device_count=4))
-    runner.add_chain_item(CreateGradientMachine(network=mnist))
-    runner.add_chain_item(RandomInitializeParams())
-    runner.add_chain_item(
-        BasicTrainerDataProvider(
-            network=mnist,
+    runner = RunnerBuilder(
+        network=mnist, device_count=2).with_std_local_trainer(
             method=mnist_provider.process,
-            file_list=['./data/raw_data/train'],
-            batch_size=256))
-    runner.add_chain_item(BasicLocalParameterUpdater(network=mnist))
-    runner.add_chain_item(BasicGradientMachineTrainOps())
-    runner.add_chain_item(BatchEvaluate())
-    runner.add_chain_item(
-        TestOnPassEnd(
-            network=mnist,
-            method=mnist_provider.process,
-            file_list=['./data/raw_data/t10k'],
-            batch_size=256))
-    runner.add_chain_item(SaveParamsOnPassEnd())
+            file_list=['./data/raw_data/train']).with_std_tester(
+                method=mnist_provider.process,
+                file_list=['./data/raw_data/t10k']).build()
     with runner.use():
         for _ in xrange(2):
             runner.run_one_pass()
