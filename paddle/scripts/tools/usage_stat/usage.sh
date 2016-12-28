@@ -166,7 +166,3 @@ else
     if [ "${v}" = "1" ]; then echo "all urls tried but all failed...exit"; fi
     exit 1
 fi
-
-
-
-
