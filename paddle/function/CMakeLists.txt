@@ -12,10 +12,12 @@ endif()
 add_library(paddle_function STATIC ${cpp_files} ${cu_objs})
 
 if(WITH_GPU)
+if(WITH_TESTING)
     # TODO:
     # file(GLOB test_files . *_op_test.cpp)
     # add_executable(${test_bin} EXCLUDE_FROM_ALL ${test_files})
     add_simple_unittest(cross_map_normal_op_test)
+endif()
 endif()
 
 add_style_check_target(paddle_function ${h_files})
