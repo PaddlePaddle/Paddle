@@ -36,22 +36,25 @@ SET(PROTOBUF_INCLUDE_DIR "${PROTOBUF_INSTALL_DIR}/include" CACHE PATH "protobuf 
 INCLUDE_DIRECTORIES(${PROTOBUF_INCLUDE_DIR})
 
 IF(WIN32)
-  SET(PROTOBUF_LIBRARIES
-        "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite.lib"
-        "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf.lib"
-        "${PROTOBUF_INSTALL_DIR}/lib/libprotoc.lib" CACHE FILEPATH "protobuf libraries." FORCE)
+  SET(PROTOBUF_LITE_LIBRARY
+        "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite.lib" CACHE FILEPATH "protobuf lite library." FORCE)
+  SET(PROTOBUF_LIBRARY
+        "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf.lib" CACHE FILEPATH "protobuf library." FORCE)
+  SET(PROTOBUF_PROTOC_LIBRARY
+        "${PROTOBUF_INSTALL_DIR}/lib/libprotoc.lib" CACHE FILEPATH "protoc library." FORCE)
   SET(PROTOBUF_PROTOC_EXECUTABLE "${PROTOBUF_INSTALL_DIR}/bin/protoc.exe" CACHE FILEPATH "protobuf executable." FORCE)
 ELSE(WIN32)
   FIND_PATH(PROTOBUF_LIBS_DIR libprotoc.a
-      PATHS
-      ${PROTOBUF_INSTALL_DIR}/lib64
       ${PROTOBUF_INSTALL_DIR}/lib
+      ${PROTOBUF_INSTALL_DIR}/lib64
       NO_DEFAULT_PATH
   )
-  SET(PROTOBUF_LIBRARIES
-        "${PROTOBUF_LIBS_DIR}/libprotobuf-lite.a"
-        "${PROTOBUF_LIBS_DIR}/libprotobuf.a"
-        "${PROTOBUF_LIBS_DIR}/libprotoc.a" CACHE FILEPATH "protobuf libraries." FORCE)
+  SET(PROTOBUF_LITE_LIBRARY
+        "${PROTOBUF_LIBS_DIR}/libprotobuf-lite.a" CACHE FILEPATH "protobuf lite library." FORCE)
+  SET(PROTOBUF_LIBRARY
+        "${PROTOBUF_LIBS_DIR}/libprotobuf.a" CACHE FILEPATH "protobuf library." FORCE)
+  SET(PROTOBUF_PROTOC_LIBRARY
+        "${PROTOBUF_LIBS_DIR}/libprotoc.a" CACHE FILEPATH "protoc library." FORCE)
   SET(PROTOBUF_PROTOC_EXECUTABLE "${PROTOBUF_INSTALL_DIR}/bin/protoc" CACHE FILEPATH "protobuf executable." FORCE)
 ENDIF(WIN32)
 

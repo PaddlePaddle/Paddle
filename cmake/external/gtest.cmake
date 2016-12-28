@@ -23,6 +23,7 @@ ExternalProject_Add(
     GIT_TAG         "release-1.8.0"
     PREFIX          ${GTEST_SOURCES_DIR}
     CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${GTEST_INSTALL_DIR}
+    CMAKE_ARGS      -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     CMAKE_ARGS      -DBUILD_GMOCK=ON
     CMAKE_ARGS      -Dgtest_disable_pthreads=ON
     CMAKE_ARGS      -Dgtest_force_shared_crt=ON

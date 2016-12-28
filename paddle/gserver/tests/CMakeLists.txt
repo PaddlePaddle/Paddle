@@ -92,7 +92,7 @@ if(NOT WITH_DOUBLE)
         TestUtil.cpp)
 
     add_test(NAME test_WarpCTCLayer
-        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_WarpCTCLayer --warpctc_dir=${PROJ_ROOT}/warp-ctc/build
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_WarpCTCLayer --warpctc_dir=${WARPCTC_LIB_DIR}
         WORKING_DIRECTORY ${PROJ_ROOT}/paddle)
 endif()
 
