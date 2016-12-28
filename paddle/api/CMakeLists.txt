@@ -38,7 +38,8 @@ configure_file(
 
 generate_python_api(python_swig_sources)
 
-file(GLOB PY_PADDLE_PYTHON_FILES ${PROJ_ROOT}/paddle/py_paddle/*.py)
+file(GLOB PY_PADDLE_PYTHON_FILES ${PROJ_ROOT}/paddle/py_paddle/*.py
+	${PROJ_ROOT}/paddle/py_paddle/trainer/*.py)
 
 # TODO(yuyang18) : make wheel name calculated by cmake
 add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/dist/.timestamp

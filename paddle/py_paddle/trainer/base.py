@@ -32,7 +32,7 @@ and UpdaterOperations. It just like a middleware framework.
 
 import functools
 
-__all__ = ['RunnerItem', 'Runner']
+__all__ = ['RunnerItem', 'Runner', 'RunnerContext']
 
 
 class RunnerContext(object):
@@ -66,74 +66,64 @@ class RunnerItem(object):
         """
         next_callback(context)
 
-    def finalize(self, context, next_callback):
+    def finalize(self, next_callback):
         """
         Finalize method. It will be invoked when Runner complete run, and clean
         some state in RunnerItem.
 
-        :param context: a global object shared by items.
-        :type context: RunnerContext
         :param next_callback: next item's initialize method.
         :type next_callback: callable
         :return: None
         :rtype: None
         """
-        next_callback(context)
+        next_callback()
 
-    def on_pass_begin(self, context, next_callback):
+    def on_pass_begin(self, next_callback):
         """
         Pass Begin Method. Invoked when a pass begins.
 
-        :param context: a global object shared by items.
-        :type context: RunnerContext
         :param next_callback: next item's initialize method.
         :type next_callback: callable
         :return: None
         :rtype: None
         """
 
-        next_callback(context)
+        next_callback()
 
-    def on_pass_end(self, context, next_callback):
+    def on_pass_end(self, next_callback):
         """
         Pass End Method. Invoked when a pass ends.
 
-        :param context: a global object shared by items.
-        :type context: RunnerContext
         :param next_callback: next item's initialize method.
         :type next_callback: callable
         :return: None
         :rtype: None
         """
-        next_callback(context)
+        next_callback()
 
-    def on_batch_begin(self, context, next_callback):
+    def on_batch_begin(self, next_callback):
         """
         Batch Begin Method. Invoked when a batch begins. Return true if there is
         no more batch could be processed.
 
-        :param context: a global object shared by items.
-        :type context: RunnerContext
         :param next_callback: next item's initialize method.
         :type next_callback: callable
         :return: True if no more batch could be processed.
         :rtype: bool
         """
-        return next_callback(context)
+        return next_callback()
 
-    def on_batch_end(self, context, next_callback):
+    def on_batch_end(self, next_callback):
         """
         Batch End Method. Invoked when a batch ends. Return true if there is
         no more batch could be processed.
 
-        :param context: a global object shared by items.
-        :type context: RunnerContext
         :param next_callback: next item's initialize method.
         :type next_callback: callable
         :return: True if no more batch could be processed.
         :rtype: bool
         """
-        return next_callback(context)
+        return next_callback()
 
 
 def default_next_callback(*args, **kwargs):
@@ -221,21 +211,19 @@ class Runner(object):
             actual_init(self.__context__)
             return True
 
-    def run_one_pass(self, parent=None):
+    def run_one_pass(self):
         """
         Run one pass for runner. The parent argument will passed to context.
         """
-        if parent is not None:
-            self.__context__.parent = parent
 
-        self.__begin_pass__(self.__context__)
+        self.__begin_pass__()
         exit_flag = False
         while not exit_flag:
-            exit_flag = self.__begin_batch__(self.__context__)
+            exit_flag = self.__begin_batch__()
             if exit_flag:
                 break
-            exit_flag = self.__end_batch__(self.__context__)
-        self.__end_pass__(self.__context__)
+            exit_flag = self.__end_batch__()
+        self.__end_pass__()
 
     def __enter__(self):
         """
@@ -252,4 +240,4 @@ class Runner(object):
         :param exc_tb:
         :return:
         """
-        self.finalize(self.__context__)
+        self.finalize()
