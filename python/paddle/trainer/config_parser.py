@@ -1803,9 +1803,9 @@ class ConvTransLayer(ConvTransLayerBase):
 
 @config_layer('norm')
 class NormLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, device=None, **xargs):
         super(NormLayer, self).__init__(
-            name, 'norm', 0, inputs=inputs, device=device)
+            name, 'norm', 0, inputs=inputs, device=device, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             norm_conf = self.config.inputs[input_index].norm_conf
@@ -1817,9 +1817,9 @@ class NormLayer(LayerBase):
 
 @config_layer('pool')
 class PoolLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, device=None, **xargs):
         super(PoolLayer, self).__init__(
-            name, 'pool', 0, inputs=inputs, device=device)
+            name, 'pool', 0, inputs=inputs, device=device, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             pool_conf = self.config.inputs[input_index].pool_conf
@@ -1927,9 +1927,9 @@ class BatchNormLayer(LayerBase):
 
 @config_layer('trans')
 class TransLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, device=None, **xargs):
         super(TransLayer, self).__init__(
-            name, 'trans', 0, inputs=inputs, device=device)
+            name, 'trans', 0, inputs=inputs, device=device, **xargs)
         config_assert(
             len(self.inputs) == 1,
             'TransLayer must have one and only one input')
@@ -1938,9 +1938,9 @@ class TransLayer(LayerBase):
 
 @config_layer('resize')
 class ResizeLayer(LayerBase):
-    def __init__(self, name, size, inputs, device=None):
+    def __init__(self, name, size, inputs, device=None, **xargs):
         super(ResizeLayer, self).__init__(
-            name, 'resize', size=size, inputs=inputs, device=device)
+            name, 'resize', size=size, inputs=inputs, device=device, **xargs)
         config_assert(
             len(self.inputs) == 1,
             'ResizeLayer must have one and only one input')
@@ -2270,9 +2270,10 @@ class ExpandLayer(LayerBase):
                  inputs,
                  trans_type='non-seq',
                  device=None,
-                 bias=False):
+                 bias=False,
+                 **xargs):
         super(ExpandLayer, self).__init__(
-            name, 'expand', 0, inputs=inputs, device=device)
+            name, 'expand', 0, inputs=inputs, device=device, **xargs)
         config_assert(
             len(self.inputs) == 2, 'ExpandLayer takes 2 and only 2 inputs')
         self.config.trans_type = trans_type
@@ -2356,14 +2357,16 @@ class SequenceLastInstanceLayer(LayerBase):
                  active_type='linear',
                  trans_type='non-seq',
                  device=None,
-                 bias=False):
+                 bias=False,
+                 **xargs):
         super(SequenceLastInstanceLayer, self).__init__(
             name,
             'seqlastins',
             0,
             inputs=inputs,
             device=device,
-            active_type=active_type)
+            active_type=active_type,
+            **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceLastInstanceLayer must have 1 input')
         self.config.trans_type = trans_type
@@ -2400,14 +2403,16 @@ class SequenceConcatLayer(LayerBase):
                  inputs,
                  active_type='linear',
                  device=None,
-                 bias=False):
+                 bias=False,
+                 **xargs):
         super(SequenceConcatLayer, self).__init__(
             name,
             'seqconcat',
             0,
             inputs=inputs,
             device=device,
-            active_type=active_type)
+            active_type=active_type,
+            **xargs)
         config_assert(
             len(inputs) == 2, 'SequenceConcatLayer must have 2 inputs')
         for input_index in xrange(len(self.inputs)):
@@ -2424,14 +2429,16 @@ class SequenceReshapeLayer(LayerBase):
                  inputs,
                  active_type='linear',
                  device=None,
-                 bias=False):
+                 bias=False,
+                 **xargs):
         super(SequenceReshapeLayer, self).__init__(
             name,
             'seqreshape',
             size,
             inputs=inputs,
             device=device,
-            active_type=active_type)
+            active_type=active_type,
+            **xargs)
         config_assert(
             len(inputs) == 1, 'SequenceReshapeLayer must have 1 inputs')
         self.set_layer_size(size)
@@ -2445,14 +2452,16 @@ class SubSequenceLayer(LayerBase):
                  inputs,
                  active_type='linear',
                  device=None,
-                 bias=False):
+                 bias=False,
+                 **xargs):
         super(SubSequenceLayer, self).__init__(
             name,
             'subseq',
             0,
             inputs=inputs,
             device=device,
-            active_type=active_type)
+            active_type=active_type,
+            **xargs)
         config_assert(len(inputs) == 3, 'SubSequenceLayer must have 3 inputs')
         input_layer0 = self.get_input_layer(0)
         size = input_layer0.size
@@ -2462,9 +2471,9 @@ class SubSequenceLayer(LayerBase):
 
 @config_layer('out_prod')
 class OuterProdLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, device=None, **xargs):
         super(OuterProdLayer, self).__init__(
-            name, 'out_prod', 0, inputs=inputs, device=device)
+            name, 'out_prod', 0, inputs=inputs, device=device, **xargs)
         config_assert(len(inputs) == 2, 'OuterProdLayer must have 2 inputs')
         input_layer0 = self.get_input_layer(0)
         input_layer1 = self.get_input_layer(1)
@@ -2473,9 +2482,9 @@ class OuterProdLayer(LayerBase):
 
 @config_layer('power')
 class PowerLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, device=None, **xargs):
         super(PowerLayer, self).__init__(
-            name, 'power', 0, inputs=inputs, device=device)
+            name, 'power', 0, inputs=inputs, device=device, **xargs)
         config_assert(len(inputs) == 2, 'PowerLayer must have 2 inputs')
         input_layer1 = self.get_input_layer(1)
         self.set_layer_size(input_layer1.size)
@@ -2486,9 +2495,10 @@ class PowerLayer(LayerBase):
 
 @config_layer('slope_intercept')
 class SlopeInterceptLayer(LayerBase):
-    def __init__(self, name, inputs, slope=1.0, intercept=0.0, device=None):
+    def __init__(self, name, inputs, slope=1.0, intercept=0.0,
+                 device=None, **xargs):
         super(SlopeInterceptLayer, self).__init__(
-            name, 'slope_intercept', 0, inputs=inputs, device=device)
+            name, 'slope_intercept', 0, inputs=inputs, device=device, **xargs)
         self.config.slope = slope
         self.config.intercept = intercept
         config_assert(len(inputs) == 1, 'SlopeInterceptLayer must have 1 input')
@@ -2498,9 +2508,9 @@ class SlopeInterceptLayer(LayerBase):
 
 @config_layer('scaling')
 class ScalingLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, device=None, **xargs):
         super(ScalingLayer, self).__init__(
-            name, 'scaling', 0, inputs=inputs, device=device)
+            name, 'scaling', 0, inputs=inputs, device=device, **xargs)
         config_assert(len(inputs) == 2, 'ScalingLayer must have 2 inputs')
         input_layer1 = self.get_input_layer(1)
         self.set_layer_size(input_layer1.size)
@@ -2511,9 +2521,9 @@ class ScalingLayer(LayerBase):
 
 @config_layer('conv_shift')
 class ConvShiftLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, device=None, **xargs):
         super(ConvShiftLayer, self).__init__(
-            name, 'conv_shift', 0, inputs=inputs, device=device)
+            name, 'conv_shift', 0, inputs=inputs, device=device, **xargs)
         config_assert(len(inputs) == 2, 'ConvShiftLayer must have 2 inputs')
         input_layer0 = self.get_input_layer(0)
         self.set_layer_size(input_layer0.size)
@@ -2521,9 +2531,9 @@ class ConvShiftLayer(LayerBase):
 
 @config_layer('convex_comb')
 class ConvexCombinationLayer(LayerBase):
-    def __init__(self, name, size, inputs, device=None):
+    def __init__(self, name, size, inputs, device=None, **xargs):
         super(ConvexCombinationLayer, self).__init__(
-            name, 'convex_comb', size, inputs=inputs, device=device)
+            name, 'convex_comb', size, inputs=inputs, device=device, **xargs)
         config_assert(
             len(self.inputs) == 2, 'ConvexCombinationLayer must have 2 inputs')
         config_assert(
@@ -2562,9 +2572,9 @@ class BilinearInterpLayer(LayerBase):
 
 @config_layer('sum_to_one_norm')
 class SumToOneNormLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, device=None, **xargs):
         super(SumToOneNormLayer, self).__init__(
-            name, 'sum_to_one_norm', 0, inputs=inputs, device=device)
+            name, 'sum_to_one_norm', 0, inputs=inputs, device=device, **xargs)
         config_assert(
             len(self.inputs) == 1, 'SumToOneNormLayer must have 1 input')
         input_layer0 = self.get_input_layer(0)
