@@ -122,6 +122,9 @@ case "$1" in
     "make_diagram")
         python -m paddle.utils.make_model_diagram ${@:2}
         ;;
+    "usage")
+        $MYDIR/../opt/paddle/bin/paddle_feedback ${@:2}
+        ;;
     "version")
         version
         ;;
