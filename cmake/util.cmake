@@ -155,8 +155,8 @@ endfunction()
 function(link_paddle_test TARGET_NAME)
     link_paddle_exe(${TARGET_NAME})
     target_link_libraries(${TARGET_NAME}
-                          ${GTEST_LIBRARIES}
-                          paddle_test_main)
+                          paddle_test_main
+                          ${GTEST_LIBRARIES})
 endfunction()
 
 # add_unittest_without_exec
