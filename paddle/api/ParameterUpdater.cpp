@@ -31,9 +31,8 @@ ParameterUpdater *ParameterUpdater::createLocalUpdater(
 ParameterUpdater *ParameterUpdater::createRemoteUpdater(
     OptimizationConfig *config, int passCount) {
   auto updater = new ParameterUpdater();
-  std::unique_ptr<paddle::ParameterUpdater> localUpdater;
   updater->m->updater.reset(new paddle::RemoteParameterUpdater(
-      config->m->getConfig(), passCount, std::move(localUpdater)));
+      config->m->getConfig(), passCount, nullptr));
   return updater;
 }
 
