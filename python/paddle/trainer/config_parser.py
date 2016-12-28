@@ -2305,9 +2305,10 @@ class MaxLayer(LayerBase):
                  active_type='linear',
                  device=None,
                  bias=False,
-                 output_max_index=None):
+                 output_max_index=None,
+                 **xargs):
         super(MaxLayer, self).__init__(
-            name, 'max', 0, inputs=inputs, device=device)
+            name, 'max', 0, inputs=inputs, device=device, **xargs)
         config_assert(len(self.inputs) == 1, 'MaxLayer must have 1 input')
         self.config.trans_type = trans_type
         self.config.active_type = active_type
@@ -2609,14 +2610,16 @@ class AverageLayer(LayerBase):
                  trans_type='non-seq',
                  active_type='linear',
                  device=None,
-                 bias=False):
+                 bias=False,
+                 **xargs):
         super(AverageLayer, self).__init__(
             name,
             'average',
             0,
             inputs=inputs,
             device=device,
-            active_type=active_type)
+            active_type=active_type,
+            **xargs)
         self.config.average_strategy = average_strategy
         self.config.trans_type = trans_type
         config_assert(len(inputs) == 1, 'AverageLayer must have 1 input')
@@ -3490,7 +3493,7 @@ def parse_config(config_file, config_arg_str):
 def parse_config_and_serialize(config_file, config_arg_str):
     try:
         config = parse_config(config_file, config_arg_str)
-        #logger.info(config)
+        # logger.info(config)
         return config.SerializeToString()
     except:
         traceback.print_exc()
