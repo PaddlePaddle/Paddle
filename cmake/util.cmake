@@ -154,8 +154,9 @@ endfunction()
 # Rest Arguemnts: not used.
 function(link_paddle_test TARGET_NAME)
     link_paddle_exe(${TARGET_NAME})
-    target_link_libraries(${TARGET_NAME} ${GTEST_MAIN_LIBRARIES}
-        ${GTEST_LIBRARIES} paddle_test_main)
+    target_link_libraries(${TARGET_NAME}
+                          ${GTEST_LIBRARIES}
+                          paddle_test_main)
 endfunction()
 
 # add_unittest_without_exec
