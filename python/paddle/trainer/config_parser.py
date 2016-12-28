@@ -2460,15 +2460,9 @@ class PowerLayer(LayerBase):
 
 @config_layer('slope_intercept')
 class SlopeInterceptLayer(LayerBase):
-    def __init__(self,
-                 name,
-                 inputs,
-                 slope=1.0,
-                 intercept=0.0,
-                 device=None,
-                 **xargs):
+    def __init__(self, name, inputs, slope=1.0, intercept=0.0, device=None):
         super(SlopeInterceptLayer, self).__init__(
-            name, 'slope_intercept', 0, inputs=inputs, device=device, **xargs)
+            name, 'slope_intercept', 0, inputs=inputs, device=device)
         self.config.slope = slope
         self.config.intercept = intercept
         config_assert(len(inputs) == 1, 'SlopeInterceptLayer must have 1 input')
