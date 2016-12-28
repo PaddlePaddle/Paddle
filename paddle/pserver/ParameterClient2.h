@@ -26,8 +26,8 @@ limitations under the License. */
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Queue.h"
-#include "paddle/utils/TypeDefs.h"
 #include "paddle/utils/Util.h"
+#include "paddle/utils/common.h"
 
 #include "ParameterService.pb.h"
 

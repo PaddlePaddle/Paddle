@@ -11,16 +11,19 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <sstream>
+#include "PaddleAPI.h"
+#include "PaddleAPIPrivate.h"
 
-#pragma once
+Evaluator::Evaluator() : m(new EvaluatorPrivate()) {}
+Evaluator::~Evaluator() { delete m; }
 
-namespace paddle {
-#ifdef PADDLE_TYPE_DOUBLE
-typedef double real;
-#else
-typedef float real;
-#endif
+void Evaluator::start() { m->rawPtr->start(); }
 
-}  // namespace paddle
+void Evaluator::finish() { m->rawPtr->finish(); }
 
-using paddle::real;
+std::string Evaluator::toString() {
+  std::ostringstream sout;
+  m->rawPtr->printStats(sout);
+  return sout.str();
+}
