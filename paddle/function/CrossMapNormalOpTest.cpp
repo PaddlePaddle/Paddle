@@ -15,6 +15,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "FunctionTest.h"
 
+namespace paddle {
+
 TEST(CrossMapNormal, real) {
   for (size_t numSamples : {5, 32}) {
     for (size_t channels : {1, 5, 32}) {
@@ -69,3 +71,5 @@ TEST(CrossMapNormalGrad, real) {
     }
   }
 }
+
+}  // namespace paddle

@@ -95,8 +95,3 @@ protected:
 };
 
 }  // namespace paddle
-
-using paddle::FunctionCompare;
-using paddle::FuncConfig;
-using paddle::Dims;
-using paddle::Tensor;
