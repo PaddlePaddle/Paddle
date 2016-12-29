@@ -28,10 +28,10 @@ def get_best_pass(filename):
 
 
 filename = sys.argv[1]
-LOG = get_best_pass(filename)
-predict_error = math.sqrt(float(LOG[0])) / 2
+log = get_best_pass(filename)
+predict_error = math.sqrt(float(log[0])) / 2
 print 'Best pass is %s, error is %s, which means predict get error as %f' % (
-    LOG[1], LOG[0], predict_error)
+    log[1], log[0], predict_error)
 
-evaluate_pass = "output/pass-%s" % LOG[1]
+evaluate_pass = "output/pass-%s" % log[1]
 print "evaluating from pass %s" % evaluate_pass
