@@ -53,8 +53,7 @@ bool ContextProjection::init() {
                  FuncConfig()
                      .set("context_length", context_length)
                      .set("context_start", context_start)
-                     .set("begin_pad", beginPad_)
-                     .set("is_padding", is_padding));
+                     .set("begin_pad", beginPad_));
   createFunction(backward_,
                  "ContextProjectionBackward",
                  FuncConfig()
@@ -112,7 +111,7 @@ void ContextProjection::forward() {
   size_t dim = out_->value->getWidth();
   CHECK_EQ(dim, input_dim * config_.context_length());
   size_t batch_size = in_->value->getHeight();
-  CHECK_EQ(batch_size, out_->value->getHeight());
+  CHECK_EQ(forward_.size(), 1) << "Only one forward function here";
 
   REGISTER_TIMER_INFO("ContextProjectionForward", getName().c_str());
   bool is_padding = config_.trainable_padding();
@@ -120,12 +119,6 @@ void ContextProjection::forward() {
   auto w_ptr =
       state_ ? state_.get() : is_padding ? weight_->getW().get() : nullptr;
   auto start_pos = in_->sequenceStartPositions;
-  /// if use state_ as weight_, w_ptr already has mem, so padding true
-  forward_[0]->init(FuncConfig()
-                        .set("context_length", config_.context_length())
-                        .set("context_start", config_.context_start())
-                        .set("begin_pad", beginPad_)
-                        .set("is_padding", state_ ? true : is_padding));
   forward_[0]->calc({Tensor(in_->value->getData(), Dims{batch_size, input_dim}),
                      Tensor(w_ptr ? w_ptr->getData() : nullptr,
                             Dims{w_ptr ? w_ptr->getHeight() : 0, input_dim}),
@@ -161,6 +154,7 @@ void ContextProjection::backward(const UpdateCallback& callback) {
   CHECK_EQ(dim, input_dim * config_.context_length());
   size_t batch_size = in_->value->getHeight();
   CHECK_EQ(batch_size, out_->value->getHeight());
+  CHECK_EQ(backward_.size(), 1) << "Only one backward function here";
 
   REGISTER_TIMER_INFO("ContextProjectionBackward", getName().c_str());
   bool is_padding = config_.trainable_padding();

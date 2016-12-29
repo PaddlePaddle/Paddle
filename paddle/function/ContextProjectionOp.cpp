@@ -19,35 +19,17 @@ limitations under the License. */
 namespace paddle {
 
 template <>
-void ContextProjectionForward<DEVICE_TYPE_CPU>(Tensor& output,
-                                               const Tensor& input,
-                                               const Tensor& weight,
-                                               const Tensor& sequence,
+void ContextProjectionForward<DEVICE_TYPE_CPU>(CpuMatrix* out_mat,
+                                               const CpuMatrix* input_mat,
+                                               const CpuMatrix* weight_mat,
+                                               const CpuIVector& seq_vec,
                                                size_t context_length,
                                                int context_start,
-                                               size_t begin_pad,
-                                               bool is_padding) {
-  CHECK(output.getData() && input.getData() && sequence.getData());
-  CHECK_EQ(output.dims_.size(), 2);
-  CHECK_EQ(input.dims_.size(), 2);
-  CHECK_EQ(weight.dims_.size(), 2);
-  CHECK_EQ(sequence.dims_.size(), 1);
-
-  auto out_mat = std::make_shared<CpuMatrix>(
-      output.getData(), output.dims_[0], output.dims_[1]);
-  const auto in_mat = std::make_shared<CpuMatrix>(
-      input.getData(), input.dims_[0], input.dims_[1]);
-  const auto weight_mat =
-      !weight.getData()
-          ? nullptr
-          : std::make_shared<CpuMatrix>(
-                weight.getData(), weight.dims_[0], weight.dims_[1]);
-  CpuIVector seq_vec(sequence.dims_[0],
-                     reinterpret_cast<int*>(sequence.getData()));
-  CHECK_EQ(out_mat->getWidth(), in_mat->getWidth() * context_length);
-
+                                               size_t begin_pad) {
   const int* starts = seq_vec.getData();
   const size_t num_sequences = seq_vec.getSize() - 1;
+  auto w_mat = const_cast<CpuMatrix*>(weight_mat);
+  auto in_mat = const_cast<CpuMatrix*>(input_mat);
   for (size_t i = 0; i < num_sequences; ++i) {
     for (size_t j = 0; j < context_length; ++j) {
       int begin = starts[i] + context_start + j;
@@ -58,8 +40,8 @@ void ContextProjectionForward<DEVICE_TYPE_CPU>(Tensor& output,
         int64_t pad_size =
             std::min(starts[i] - begin, starts[i + 1] - starts[i]);
         MatrixPtr mat = out_mat->subMatrix(starts[i], pad_size);
-        if (is_padding && weight_mat) {
-          MatrixPtr sub = weight_mat->subMatrix(j, pad_size);
+        if (w_mat) {
+          MatrixPtr sub = w_mat->subMatrix(j, pad_size);
           mat->addAtOffset(*sub, j * in_mat->getWidth());
         }
         dst_begin = starts[i] + pad_size;
@@ -69,8 +51,8 @@ void ContextProjectionForward<DEVICE_TYPE_CPU>(Tensor& output,
         int64_t pad_size =
             std::min(end - starts[i + 1], starts[i + 1] - starts[i]);
         MatrixPtr mat = out_mat->subMatrix(starts[i + 1] - pad_size, pad_size);
-        if (is_padding && weight_mat) {
-          MatrixPtr sub = weight_mat->subMatrix(
+        if (w_mat) {
+          MatrixPtr sub = w_mat->subMatrix(
               begin_pad + context_start + j - pad_size, pad_size);
           mat->addAtOffset(*sub, j * in_mat->getWidth());
         }
@@ -98,7 +80,6 @@ public:
     context_length_ = config.get<size_t>("context_length");
     context_start_ = config.get<int>("context_start");
     begin_pad_ = config.get<size_t>("begin_pad");
-    is_padding_ = config.get<bool>("is_padding");
   }
 
   void calc(const Arguments& inputs,
@@ -108,59 +89,58 @@ public:
     CHECK_EQ(1, outputs.size());
     CHECK_EQ(0, inouts.size());
 
-    ContextProjectionForward<Device>((Tensor&)outputs[0],
-                                     inputs[0],
-                                     inputs[1],
-                                     inputs[2],
+    CHECK(outputs[0].getData() && inputs[0].getData() && inputs[2].getData());
+    CHECK_EQ(outputs[0].dims_.size(), 2);
+    CHECK_EQ(inputs[0].dims_.size(), 2);
+    CHECK_EQ(inputs[1].dims_.size(), 2);
+    CHECK_EQ(inputs[2].dims_.size(), 1);
+    /// dim of output = dim of input * context_length
+    CHECK_EQ(outputs[0].dims_[1], inputs[0].dims_[1] * context_length_);
+    /// dim of input == dim of weight
+    CHECK_EQ(inputs[0].dims_[1], inputs[1].dims_[1]);
+    /// input and output has the same batch_size
+    CHECK_EQ(inputs[0].dims_[0], outputs[0].dims_[0]);
+
+    auto out_mat = std::make_shared<typename MatrixT<Device>::type>(
+        outputs[0].getData(), outputs[0].dims_[0], outputs[0].dims_[1]);
+    const auto in_mat = std::make_shared<typename MatrixT<Device>::type>(
+        inputs[0].getData(), inputs[0].dims_[0], inputs[0].dims_[1]);
+    const auto w_mat =
+        !inputs[1].getData()
+            ? nullptr
+            : std::make_shared<typename MatrixT<Device>::type>(
+                  inputs[1].getData(), inputs[1].dims_[0], inputs[1].dims_[1]);
+    typename SequenceT<Device>::type seq_vec(
+        inputs[2].dims_[0], reinterpret_cast<int*>(inputs[2].getData()));
+
+    ContextProjectionForward<Device>(out_mat.get(),
+                                     in_mat.get(),
+                                     w_mat.get(),
+                                     seq_vec,
                                      context_length_,
                                      context_start_,
-                                     begin_pad_,
-                                     is_padding_);
+                                     begin_pad_);
   }
 
 private:
   size_t context_length_;
   int context_start_;
   size_t begin_pad_;
-  bool is_padding_;
 };
 
 template <>
-void ContextProjectionBackward<DEVICE_TYPE_CPU>(Tensor& out_grad,
-                                                Tensor& in_grad,
-                                                Tensor& w_grad,
-                                                const Tensor& sequence,
+void ContextProjectionBackward<DEVICE_TYPE_CPU>(CpuMatrix* out_grad_mat,
+                                                CpuMatrix* in_grad_mat,
+                                                CpuMatrix* w_grad_mat,
+                                                const CpuIVector& seq_vec,
                                                 size_t context_length,
                                                 int context_start,
                                                 size_t begin_pad,
                                                 bool is_padding,
                                                 size_t total_pad) {
-  CHECK(out_grad.getData() && sequence.getData());
-  CHECK_EQ(out_grad.dims_.size(), 2);
-  CHECK_EQ(in_grad.dims_.size(), 2);
-  CHECK_EQ(w_grad.dims_.size(), 2);
-  CHECK_EQ(sequence.dims_.size(), 1);
-
-  auto out_grad_mat = std::make_shared<CpuMatrix>(
-      out_grad.getData(), out_grad.dims_[0], out_grad.dims_[1]);
-  const auto in_grad_mat =
-      !in_grad.getData()
-          ? nullptr
-          : std::make_shared<CpuMatrix>(
-                in_grad.getData(), in_grad.dims_[0], in_grad.dims_[1]);
-  const auto w_grad_mat =
-      !w_grad.getData()
-          ? nullptr
-          : std::make_shared<CpuMatrix>(
-                w_grad.getData(), w_grad.dims_[0], w_grad.dims_[1]);
-  CpuIVector seq_vec(sequence.dims_[0],
-                     reinterpret_cast<int*>(sequence.getData()));
-  CHECK_EQ(out_grad_mat->getWidth(), in_grad_mat->getWidth() * context_length);
-
+  CHECK(out_grad_mat);
   size_t input_dim = in_grad_mat ? in_grad_mat->getWidth()
                                  : w_grad_mat ? w_grad_mat->getWidth() : 0;
-  CHECK_EQ(out_grad_mat->getWidth(), input_dim * context_length);
-
   const int* starts = seq_vec.getData();
   size_t num_sequences = seq_vec.getSize() - 1;
   for (size_t i = 0; i < num_sequences; ++i) {
@@ -226,10 +206,38 @@ public:
     CHECK_EQ(1, outputs.size());
     CHECK_EQ(0, inouts.size());
 
-    ContextProjectionBackward<Device>((Tensor&)outputs[0],
-                                      (Tensor&)inputs[0],
-                                      (Tensor&)inputs[1],
-                                      inputs[2],
+    CHECK(outputs[0].getData() && inputs[2].getData());
+    CHECK_EQ(outputs[0].dims_.size(), 2);
+    CHECK_EQ(inputs[0].dims_.size(), 2);
+    CHECK_EQ(inputs[1].dims_.size(), 2);
+    CHECK_EQ(inputs[2].dims_.size(), 1);
+
+    /// dim of input == dim of weight
+    CHECK_EQ(inputs[0].dims_[1], inputs[1].dims_[1]);
+    /// input and output has the same batch_size
+    CHECK_EQ(inputs[0].dims_[0], outputs[0].dims_[0]);
+    /// dim of output = dim of input * context_length
+    CHECK_EQ(outputs[0].dims_[1], inputs[0].dims_[1] * context_length_);
+
+    auto out_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
+        outputs[0].getData(), outputs[0].dims_[0], outputs[0].dims_[1]);
+    auto in_grad_mat =
+        !inputs[0].getData()
+            ? nullptr
+            : std::make_shared<typename MatrixT<Device>::type>(
+                  inputs[0].getData(), inputs[0].dims_[0], inputs[0].dims_[1]);
+    auto w_grad_mat =
+        !inputs[1].getData()
+            ? nullptr
+            : std::make_shared<typename MatrixT<Device>::type>(
+                  inputs[1].getData(), inputs[1].dims_[0], inputs[1].dims_[1]);
+    typename SequenceT<Device>::type seq_vec(
+        inputs[2].dims_[0], reinterpret_cast<int*>(inputs[2].getData()));
+
+    ContextProjectionBackward<Device>(out_grad_mat.get(),
+                                      in_grad_mat ? in_grad_mat.get() : nullptr,
+                                      w_grad_mat ? w_grad_mat.get() : nullptr,
+                                      seq_vec,
                                       context_length_,
                                       context_start_,
                                       begin_pad_,
@@ -264,10 +272,24 @@ public:
     CHECK_EQ(2, inputs.size());
     CHECK_EQ(1, outputs.size());
     CHECK_EQ(0, inouts.size());
+    CHECK(inputs[0].getData() && outputs[0].getData() && inputs[1].getData());
+    CHECK_EQ(outputs[0].dims_.size(), 2);
+    CHECK_EQ(inputs[0].dims_.size(), 2);
+    CHECK_EQ(inputs[1].dims_.size(), 1);
+    CHECK_EQ(outputs[0].dims_[1], inputs[0].dims_[1] * context_length_);
+    /// input and output has the same batch_size
+    CHECK_EQ(inputs[0].dims_[0], outputs[0].dims_[0]);
 
-    ContextProjectionBackwardData<Device>((Tensor&)outputs[0],
-                                          (Tensor&)inputs[0],
-                                          inputs[1],
+    auto out_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
+        outputs[0].getData(), outputs[0].dims_[0], outputs[0].dims_[1]);
+    const auto in_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
+        inputs[0].getData(), inputs[0].dims_[0], inputs[0].dims_[1]);
+    typename SequenceT<Device>::type seq_vec(
+        inputs[1].dims_[0], reinterpret_cast<int*>(inputs[1].getData()));
+
+    ContextProjectionBackwardData<Device>(out_grad_mat.get(),
+                                          in_grad_mat.get(),
+                                          seq_vec,
                                           context_length_,
                                           context_start_);
   }
@@ -299,9 +321,22 @@ public:
     CHECK_EQ(1, outputs.size());
     CHECK_EQ(0, inouts.size());
 
-    ContextProjectionBackwardWeight<Device>((Tensor&)outputs[0],
-                                            (Tensor&)inputs[0],
-                                            inputs[1],
+    CHECK(inputs[0].getData() && outputs[0].getData() && inputs[1].getData());
+    CHECK_EQ(outputs[0].dims_.size(), 2);
+    CHECK_EQ(inputs[0].dims_.size(), 2);
+    CHECK_EQ(inputs[1].dims_.size(), 1);
+    CHECK_EQ(outputs[0].dims_[1], inputs[0].dims_[1] * context_length_);
+
+    auto out_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
+        outputs[0].getData(), outputs[0].dims_[0], outputs[0].dims_[1]);
+    auto w_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
+        inputs[0].getData(), inputs[0].dims_[0], inputs[0].dims_[1]);
+    typename SequenceT<Device>::type seq_vec(
+        inputs[1].dims_[0], reinterpret_cast<int*>(inputs[1].getData()));
+
+    ContextProjectionBackwardWeight<Device>(out_grad_mat.get(),
+                                            w_grad_mat.get(),
+                                            seq_vec,
                                             context_length_,
                                             context_start_,
                                             total_pad_,

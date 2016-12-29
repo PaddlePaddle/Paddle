@@ -75,18 +75,16 @@ __global__ void KeContextProjectionForward(const real* input,
 
 void hl_context_projection_forward(const real* input,
                                    const int* sequence,
-                                   real* weight,
+                                   const real* weight,
                                    real* output,
                                    int num_sequences,
                                    int input_dim,
                                    int context_length,
                                    int context_start,
-                                   int begin_pad,
-                                   bool is_padding) {
+                                   int begin_pad) {
   CHECK_NOTNULL(input);
   CHECK_NOTNULL(sequence);
   CHECK_NOTNULL(output);
-  CHECK(!is_padding || weight);
 
   int block_size = 128;
   int blocks_x = num_sequences;
@@ -94,7 +92,7 @@ void hl_context_projection_forward(const real* input,
   dim3 threads(block_size, 1);
   dim3 grid(blocks_x, blocks_y);
 
-  if (is_padding) {
+  if (weight) {
     KeContextProjectionForward<true><<< grid, threads, 0, STREAM_DEFAULT >>>
       (input, sequence, weight, output, input_dim,
        context_length, context_start, begin_pad);
@@ -107,31 +105,23 @@ void hl_context_projection_forward(const real* input,
 }
 
 template <>
-void ContextProjectionForward<DEVICE_TYPE_GPU>(Tensor& output,
-                                               const Tensor& input,
-                                               const Tensor& weight,
-                                               const Tensor& sequence,
+void ContextProjectionForward<DEVICE_TYPE_GPU>(GpuMatrix* output,
+                                               const GpuMatrix* input,
+                                               const GpuMatrix* weight,
+                                               const GpuIVector& sequence,
                                                size_t context_length,
                                                int context_start,
-                                               size_t begin_pad,
-                                               bool is_padding) {
-  CHECK(output.getData() && input.getData() && sequence.getData());
-  CHECK_EQ(output.dims_.size(), 2);
-  CHECK_EQ(input.dims_.size(), 2);
-  CHECK_EQ(weight.dims_.size(), 2);
-  CHECK_EQ(sequence.dims_.size(), 1);
-  CHECK_EQ(output.dims_[1], input.dims_[1] * context_length);
-
-  hl_context_projection_forward(input.getData(),
-                                reinterpret_cast<int*>(sequence.getData()),
-                                weight.getData(),
-                                output.getData(),
-                                sequence.dims_[0] - 1,
-                                input.dims_[1],
+                                               size_t begin_pad) {
+  CHECK(input && output);
+  hl_context_projection_forward(input->getData(),
+                                sequence.getData(),
+                                weight ? weight->getData() : nullptr,
+                                output->getData(),
+                                sequence.getSize() - 1,
+                                input->getWidth(),
                                 context_length,
                                 context_start,
-                                begin_pad,
-                                is_padding);
+                                begin_pad);
 }
 
 __global__ void KeContextProjectionBackwardData(real* out_grad,
@@ -200,22 +190,17 @@ void hl_context_projection_backward_data(real* out_grad,
 }
 
 template <>
-void ContextProjectionBackwardData<DEVICE_TYPE_GPU>(Tensor& out_grad,
-                                               Tensor& in_grad,
-                                               const Tensor& sequence,
-                                               size_t context_length,
-                                               int context_start) {
-  CHECK(in_grad.getData() && out_grad.getData() && sequence.getData());
-  CHECK_EQ(out_grad.dims_.size(), 2);
-  CHECK_EQ(in_grad.dims_.size(), 2);
-  CHECK_EQ(sequence.dims_.size(), 1);
-  CHECK_EQ(out_grad.dims_[1], in_grad.dims_[1] * context_length);
-
-  hl_context_projection_backward_data(out_grad.getData(),
-                reinterpret_cast<int*>(sequence.getData()),
-                                      in_grad.getData(),
-                                      sequence.dims_[0] - 1,
-                                      in_grad.dims_[1],
+void ContextProjectionBackwardData<DEVICE_TYPE_GPU>(GpuMatrix* out_grad,
+                                                    GpuMatrix* in_grad,
+                                                    const GpuIVector& sequence,
+                                                    size_t context_length,
+                                                    int context_start) {
+  CHECK(in_grad && out_grad);
+  hl_context_projection_backward_data(out_grad->getData(),
+                                      sequence.getData(),
+                                      in_grad->getData(),
+                                      sequence.getSize() - 1,
+                                      in_grad->getWidth(),
                                       context_length,
                                       context_start);
 }
@@ -320,24 +305,20 @@ void hl_context_projection_backward_weight(real* out_grad,
 }
 
 template <>
-void ContextProjectionBackwardWeight<DEVICE_TYPE_GPU>(Tensor& out_grad,
-                                                      Tensor& w_grad,
-                                                      const Tensor& sequence,
-                                                      size_t context_length,
-                                                      int context_start,
-                                                      size_t total_pad,
-                                                      size_t begin_pad) {
-  CHECK(w_grad.getData() && out_grad.getData() && sequence.getData());
-  CHECK_EQ(out_grad.dims_.size(), 2);
-  CHECK_EQ(w_grad.dims_.size(), 2);
-  CHECK_EQ(sequence.dims_.size(), 1);
-  CHECK_EQ(out_grad.dims_[1], w_grad.dims_[1] * context_length);
-
-  hl_context_projection_backward_weight(out_grad.getData(),
-                    reinterpret_cast<int*>(sequence.getData()),
-                                        w_grad.getData(),
-                                        sequence.dims_[0] - 1,
-                                        w_grad.dims_[1],
+void ContextProjectionBackwardWeight<DEVICE_TYPE_GPU>(
+        GpuMatrix* out_grad,
+        GpuMatrix* w_grad,
+        const GpuIVector& seq_vec,
+        size_t context_length,
+        int context_start,
+        size_t total_pad,
+        size_t begin_pad) {
+  CHECK(out_grad && w_grad);
+  hl_context_projection_backward_weight(out_grad->getData(),
+                                        seq_vec.getData(),
+                                        w_grad->getData(),
+                                        seq_vec.getSize() - 1,
+                                        w_grad->getWidth(),
                                         total_pad,
                                         context_length,
                                         context_start,
@@ -345,24 +326,27 @@ void ContextProjectionBackwardWeight<DEVICE_TYPE_GPU>(Tensor& out_grad,
 }
 
 template <>
-void ContextProjectionBackward<DEVICE_TYPE_GPU>(Tensor& out_grad,
-                                               Tensor& in_grad,
-                                               Tensor& w_grad,
-                                               const Tensor& sequence,
-                                               size_t context_length,
-                                               int context_start,
-                                               size_t begin_pad,
-                                               bool is_padding,
-                                               size_t total_pad) {
-    if (in_grad.getData()) {
-        ContextProjectionBackwardData<DEVICE_TYPE_GPU>(out_grad,
+void ContextProjectionBackward<DEVICE_TYPE_GPU>(GpuMatrix* out_grad,
+                                                GpuMatrix* in_grad,
+                                                GpuMatrix* w_grad,
+                                                const GpuIVector& sequence,
+                                                size_t context_length,
+                                                int context_start,
+                                                size_t begin_pad,
+                                                bool is_padding,
+                                                size_t total_pad) {
+    CHECK(out_grad);
+    if (in_grad) {
+        ContextProjectionBackwardData<DEVICE_TYPE_GPU>(
+                out_grad,
                 in_grad,
                 sequence,
                 context_length,
                 context_start);
     }
-    if (is_padding && w_grad.getData()) {
-        ContextProjectionBackwardWeight<DEVICE_TYPE_GPU>(out_grad,
+    if (is_padding && w_grad) {
+        ContextProjectionBackwardWeight<DEVICE_TYPE_GPU>(
+                out_grad,
                 w_grad,
                 sequence,
                 context_length,

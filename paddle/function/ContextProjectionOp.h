@@ -32,14 +32,13 @@ namespace paddle {
  *
  */
 template <DeviceType Device>
-void ContextProjectionForward(Tensor& output,
-                              const Tensor& input,
-                              const Tensor& weight,
-                              const Tensor& sequence,
+void ContextProjectionForward(typename MatrixT<Device>::type* output,
+                              const typename MatrixT<Device>::type* input,
+                              const typename MatrixT<Device>::type* weight,
+                              const typename SequenceT<Device>::type& sequence,
                               size_t context_length,
                               int context_start,
-                              size_t begin_pad,
-                              bool is_padding);
+                              size_t begin_pad);
 
 /**
  * \brief   Context Projection Backward.
@@ -55,10 +54,10 @@ void ContextProjectionForward(Tensor& output,
  *
  */
 template <DeviceType Device>
-void ContextProjectionBackward(Tensor& out_grad,
-                               Tensor& in_grad,
-                               Tensor& w_grad,
-                               const Tensor& sequence,
+void ContextProjectionBackward(typename MatrixT<Device>::type* out_grad,
+                               typename MatrixT<Device>::type* in_grad,
+                               typename MatrixT<Device>::type* w_grad,
+                               const typename SequenceT<Device>::type& seq_vec,
                                size_t context_length,
                                int context_start,
                                size_t begin_pad,
@@ -66,19 +65,21 @@ void ContextProjectionBackward(Tensor& out_grad,
                                size_t total_pad);
 
 template <DeviceType Device>
-void ContextProjectionBackwardData(Tensor& out_grad,
-                                   Tensor& in_grad,
-                                   const Tensor& sequence,
-                                   size_t context_length,
-                                   int context_start);
+void ContextProjectionBackwardData(
+    typename MatrixT<Device>::type* out_grad,
+    typename MatrixT<Device>::type* in_grad,
+    const typename SequenceT<Device>::type& sequence,
+    size_t context_length,
+    int context_start);
 
 template <DeviceType Device>
-void ContextProjectionBackwardWeight(Tensor& out_grad,
-                                     Tensor& w_grad,
-                                     const Tensor& sequence,
-                                     size_t context_length,
-                                     int context_start,
-                                     size_t total_pad,
-                                     size_t begin_pad);
+void ContextProjectionBackwardWeight(
+    typename MatrixT<Device>::type* out_grad,
+    typename MatrixT<Device>::type* w_grad,
+    const typename SequenceT<Device>::type& seq_vec,
+    size_t context_length,
+    int context_start,
+    size_t total_pad,
+    size_t begin_pad);
 
 }  // namespace paddle

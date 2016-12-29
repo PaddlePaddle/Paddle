@@ -32,8 +32,7 @@ void testMatrixProjectionForward(int context_start,
                           FuncConfig()
                               .set("context_length", context_length)
                               .set("context_start", context_start)
-                              .set("begin_pad", std::max(0, -context_start))
-                              .set("is_padding", is_padding));
+                              .set("begin_pad", std::max(0, -context_start)));
 
   CpuMatrix cpu_in(batch_size, input_dim);
   cpu_in.randomizeUniform();
