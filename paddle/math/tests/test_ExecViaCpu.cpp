@@ -114,9 +114,3 @@ TEST(ExecViaCpu, test1) {
   testWrapper(functor);
 }
 #endif
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
