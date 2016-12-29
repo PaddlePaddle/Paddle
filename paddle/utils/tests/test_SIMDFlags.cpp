@@ -44,8 +44,3 @@ TEST(SIMDFlags, normalPrint) {
   LOG(INFO) << "Has AVX2:    " << std::boolalpha << HAS_AVX2;
   LOG(INFO) << "Has AVX512:  " << std::boolalpha << HAS_AVX512;
 }
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
