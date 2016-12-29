@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "hl_base.h"
-#include "context_projection_op.h"
+#include "ContextProjectionOp.h"
 
 namespace paddle {
 
@@ -327,7 +327,7 @@ void ContextProjectionBackwardWeight<DEVICE_TYPE_GPU>(Tensor& out_grad,
                                                       int context_start,
                                                       size_t total_pad,
                                                       size_t begin_pad) {
-  CHECK(w_grad.getData() && out_grad.getData());
+  CHECK(w_grad.getData() && out_grad.getData() && sequence.getData());
   CHECK_EQ(out_grad.dims_.size(), 2);
   CHECK_EQ(w_grad.dims_.size(), 2);
   CHECK_EQ(sequence.dims_.size(), 1);

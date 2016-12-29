@@ -60,14 +60,14 @@ FuncConfig& FuncConfig::set<real>(const std::string& key, real v) {
 
 template <>
 FuncConfig& FuncConfig::set<int>(const std::string& key, int v) {
-  CHECK(valueMap_.count(key) == 0) << "Duplicated value: " << key;
+  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
   valueMap_[key].i = v;
   return *this;
 }
 
 template <>
 FuncConfig& FuncConfig::set<bool>(const std::string& key, bool v) {
-  CHECK(valueMap_.count(key) == 0) << "Duplicated value: " << key;
+  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
   valueMap_[key].b = v;
   return *this;
 }
