@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "hl_base.h"
-#include "cross_map_normal_op.h"
+#include "CrossMapNormalOp.h"
 
 namespace paddle {
 

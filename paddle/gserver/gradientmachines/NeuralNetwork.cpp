@@ -81,33 +81,37 @@ void NeuralNetwork::init(const ModelConfig& config,
   }
   config_ = config;
 
+  auto paramCreate =
+      [&](const ParameterPtr& parameter) {
+        paramCallback(parameters_.size(), parameter.get());
+        if (!callback) {
+          for (ParameterType type :
+               (parameter->isStatic()
+                    ? std::vector<ParameterType>{PARAMETER_VALUE}
+                    : parameterTypes)) {
+            if (type != PARAMETER_VALUE && type != PARAMETER_GRADIENT) {
+              parameter->enableType(type);
+            }
+          }
+        }
+        parameter->setID(parameters_.size());
+        parameters_.push_back(parameter);
+      }
+
   if (rootNetwork_ != nullptr) {
     // direct use parameters_ and parameterMap_ from base network
     CHECK_EQ((size_t)config.parameters_size(),
              rootNetwork_->getParameters().size());
     parameters_ = rootNetwork_->getParameters();
     parameterMap_ = *(rootNetwork_->getParameterMap());
-  } else {
+  }
+  else {
     parameters_.reserve(config.parameters_size());
     for (const auto& para_config : config.parameters()) {
       auto parameter = std::make_shared<Parameter>(para_config,
                                                    useGpu,
                                                    /*initialize=*/false);
-      paramCallback(parameters_.size(), parameter.get());
-      if (!callback) {
-        for (ParameterType type :
-             (parameter->isStatic()
-                  ? std::vector<ParameterType>{PARAMETER_VALUE}
-                  : parameterTypes)) {
-          if (type != PARAMETER_VALUE && type != PARAMETER_GRADIENT) {
-            parameter->enableType(type);
-          }
-        }
-      }
-      parameter->setID(parameters_.size());
-      parameters_.push_back(parameter);
-      CHECK(!parameterMap_.count(parameter->getName()));
-      parameterMap_[parameter->getName()] = parameter;
+      paramCreate(parameter);
     }
   }
 
@@ -163,7 +167,13 @@ void NeuralNetwork::init(const ModelConfig& config,
   }
 
   for (const auto& layer : layers_) {
-    auto& para = layer->initParamHook();
+    auto& paras = layer->initParamHook();
+    if (paras) {
+      CHECK(!rootNetwork_) << "initParamHook not support rootNetwork.";
+    }
+    for (const auto& para : paras) {
+      paramCreate(parameter);
+    }
   }
 
   for (const auto& layer_name :

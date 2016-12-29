@@ -56,14 +56,26 @@ initParamHook() {
     conf->set_size(w->count());
     conf->add_dims(h);
     conf->add_dims(w);
+    // The parameter initialization remain consistent with Caffe
+    conf->set_initial_strategy(PARAMETER_INIT_SKIP);
     paramconfig_.emplace_back(conf);
+    // initialize = true, means the constructor will allocate buffer
     auto parameter = std::make_shared<Parameter>(paramconfig_[0].get(),
                                                  useGpu_,
-                                                 /*initialize=*/false);
+                                                 /*initialize=*/true);
     parameters_.push_back(parameter);
-    Weight* w = new Weight(h, w, parameter);
-    weights_.emplace_back(w);
+    copyBlobToParameter(DATA, caffeOp_->blobs()[i], parameter, useGpu_);
+
+    wDims_->push_back(w->shape());
+    wei_->push_back(new ::caffe::Blob<Dtype>());
+    parameterToBlob(DATA, parameter, wei_[i], wDims_[i], useGpu_);
   }
+
+  CHECK_EQ(caffeOp_->blobs().size(), wei_.size());
+  for (int i = 0; i < wei_.size(); ++i) {
+    caffeOp_->blobs()[i].reset(wei_[i]);
+  }
+
   return parameters_;
 }
 
@@ -88,14 +100,13 @@ void CaffeLayer::forward(PassType passType) {
 
   int batchSize = getInput(0).getBatchSize();
 
-  // set bottom data
+  // set bottom
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
     setDataToBlob(getInput(i), bot_[i], useGpu_);
   }
   caffeLayerSetup(batchSize);
 
   caffeOp_->Forward(bot_, top_);
-
   /* activation */ {
     REGISTER_TIMER_INFO("FwAtvTimer", getName().c_str());
     forwardActivation();

@@ -403,6 +403,8 @@ public:
    */
   typedef std::function<void(const VectorPtr vecs[])> ExecFunc;
   void exec(ExecFunc func);
+
+  void resetBuf() {}
 };
 
 typedef std::map<std::string, ParameterPtr> ParameterMap;

@@ -392,7 +392,7 @@ public:
    * Parameters can be builded in c++ Layer code rather than config parser.
    * Then used this interface to
    */
-  virtual std::vector<ParameterPtr>& initParamHook() {}
+  virtual std::vector<ParameterPtr>& initParamHook() { return nullptr; }
 
   /**
    * Intialization for sub network if there has sub network.

@@ -29,7 +29,9 @@ protected:
   ::caffe::Layer<real>* caffeOp_;
   std::vector<::caffe::Blob<real> *> bot_, top_, wei_;
   std::vector<bool> propagateDown_;
+  std::vector<std::vector<int>> wDims_;
   int batchSize_;
+  int initW_;
 
   std::vector<std::unique_ptr<ParameterConfig>> paramconfig_;
 
@@ -53,7 +55,7 @@ public:
    */
   void caffeLayerSetup(int curBatchSize);
 
-  void weightSetUp();
+  void onPassEnd() { initW_ = false; }
 };
 
 }  // namespace paddle

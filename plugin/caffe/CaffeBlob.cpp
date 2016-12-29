@@ -67,31 +67,36 @@ std::vector<int> argShape2Vector(const Argument& arg) {
   return shape;
 }
 
-void setDataToBlob(const Argument& arg,
-                   ::caffe::Blob<real>* blob,
-                   bool useGpu) {
-  std::vector<int> shape = argShape2Vector(arg);
-  blob->Reshape(shape);
-  if (useGpu) {
-    blob->set_gpu_data(arg.grad->getData());
+void setBlob(MemoryTypes memType, real* d, bool useGpu) {
+  if (memType == DATA) {
+    if (useGpu) {
+      blob->set_gpu_data(d);
+    } else {
+      blob->set_cpu_data(d);
+    }
   } else {
-    blob->set_cpu_data(arg.grad->getData());
+    if (useGpu) {
+      blob->set_gpu_diff(d);
+    } else {
+      blob->set_cpu_diff(d);
+    }
   }
 }
 
-void setGradToBlob(const Argument& arg,
-                   ::caffe::Blob<real>* blob,
-                   bool useGpu) {
+void argToBlob(MemoryTypes memType,
+               const Argument& arg,
+               ::caffe::Blob<real>* blob,
+               bool useGpu) {
   std::vector<int> shape = argShape2Vector(arg);
   blob->Reshape(shape);
-  if (useGpu) {
-    blob->set_gpu_diff(arg.value->getData());
-  } else {
-    blob->set_cpu_diff(arg.value->getData());
-  }
+  real* d = memType == DATA ? arg.value->getData() : arg.grad->getData();
+  setBlob(memType, d, useGpu);
 }
 
-void setDataToArg(::caffe::Blob<real>* blob, const Argument& arg, bool useGpu) {
+void blobToArg(MemoryTypes memType,
+               const ::caffe::Blob<real>* blob,
+               Argument& arg,
+               bool useGpu) {
   auto& shape = blob->shape();
   int h = shape(0);
   int w = blob->count(1);
@@ -100,21 +105,38 @@ void setDataToArg(::caffe::Blob<real>* blob, const Argument& arg, bool useGpu) {
     arg.setFrameWidth(shape[3]);
   }
   CHECK_LE(shape.size(), 4) << "Now only support 4-dimension at most";
-  real* data = useGpu ? blob->gpu_data() : blob->cpu_data();
-  arg.value = Matrix::create(data, h, w, false, useGpu);
+  if (memType == DATA) {
+    real* data = useGpu ? blob->mutable_gpu_data() : blob->mutable_cpu_data();
+    arg.value = Matrix::create(data, h, w, false, useGpu);
+  } else {
+    real* data = useGpu ? blob->mutable_gpu_diff() : blob->mutable_cpu_diff();
+    arg.grad = Matrix::create(data, h, w, false, useGpu);
+  }
 }
 
-void setGradToArg(const Argument& arg, ::caffe::Blob<real>* blob, bool useGpu) {
-  auto& shape = blob->shape();
-  int h = shape(0);
-  int w = blob->count(1);
-  if (shape.size() == 4) {
-    arg.setFrameHeight(shape[3]);
-    arg.setFrameWidth(shape[3]);
+void copyBlobToParameter(MemoryTypes memType,
+                         const ::caffe::Blob<real>* blob,
+                         ParameterPtr para,
+                         bool useGpu) {
+  int size = blob->count();
+  if (memType == DATA) {
+    real* d = useGpu ? blob->mutable_gpu_data() : blob->mutable_cpu_data();
+    para->getBuf(PARAMETER_VALUE)->copyFrom(d, size);
+  } else {
+    real* d = useGpu ? blob->mutable_gpu_diff() : blob->mutable_cpu_diff();
+    para->getBuf(PARAMETER_GRADIENT)->copyFrom(d, size);
   }
-  CHECK_LE(shape.size(), 4) << "Now only support 4-dimension at most";
-  real* data = useGpu ? blob->gpu_diff() : blob->cpu_diff();
-  arg.grad = Matrix::create(data, h, w, false, useGpu);
+}
+
+void parameterToBlob(MemoryTypes memType,
+                     const ParameterPtr para,
+                     ::caffe::Blob<real>* blob,
+                     const std::vector<int>& shape,
+                     bool useGpu) {
+  blob->Reshape(shape);
+  real* d = memType == DATA ? para->getBuf(PARAMETER_VALUE)
+                            : para->getBuf(PARAMETER_GRADIENT);
+  setBlob(memType, d, useGpu);
 }
 
 }  // namespace paddle

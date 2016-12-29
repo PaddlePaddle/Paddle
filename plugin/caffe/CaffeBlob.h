@@ -25,10 +25,26 @@ std::vector<int> layerConfig2BlobShape(const batch,
                                        const LayerConfig& preConfig);
 std::vector<int> argShape2Vector(const Argument& arg);
 
-void setDataToBlob(Argument& arg, ::caffe::Blob<real>* blob);
-void setGradToBlob(Argument& arg, ::caffe::Blob<real>* blob);
+void setBlob(MemoryTypes memType, real* d, bool useGpu);
 
-void setDataToArg(::caffe::Blob<real>* blob, Argument& arg);
-void setGradToArg(::caffe::Blob<real>* blob, Argument& arg);
+void argToBlob(MemoryTypes memType,
+               const Argument& arg,
+               ::caffe::Blob<real>* blob,
+               bool useGpu);
+
+void blobToArg(MemoryTypes memType,
+               const ::caffe::Blob<real>* blob,
+               Argument& arg,
+               bool useGpu);
+
+void copyBlobToParameter(MemoryTypes memType,
+                         const ::caffe::Blob<real>* blob,
+                         ParameterPtr para,
+                         bool useGpu);
+
+void parameterToBlob(MemoryTypes memType,
+                     const ParameterPtr para,
+                     ::caffe::Blob<real>* blob,
+                     bool useGpu);
 
 }  // namespace paddle

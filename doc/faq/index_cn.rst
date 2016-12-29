@@ -72,7 +72,7 @@ PaddlePaddle支持非常多的优化算法(Optimizer)，不同的优化算法需
 减少数据载入的耗时
 ++++++++++++++++++
 
-使用 :code:`pydataprovider`时，可以减少缓存池的大小，同时设置内存缓存功能，即可以极大的加速数据载入流程。
+使用\ :code:`pydataprovider`\ 时，可以减少缓存池的大小，同时设置内存缓存功能，即可以极大的加速数据载入流程。
 :code:`DataProvider` 缓存池的减小，和之前减小通过减小缓存池来减小内存占用的原理一致。
 
 ..  literalinclude:: src/reduce_min_pool_size.py

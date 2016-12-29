@@ -18,12 +18,14 @@ limitations under the License. */
 #include <google/protobuf/text_format.h>
 
 #include <caffe/proto/caffe.pb.h>
-#include <caffe/layer.hpp>
 #include <caffe/blob.hpp>
-#include <caffe/layer_factory.hpp>
 #include <caffe/common.hpp>
+#include <caffe/layer.hpp>
+#include <caffe/layer_factory.hpp>
 
 namespace paddle {
+
+enum MemoryTypes { VALUE, GRAD };
 
 bool readProtoFromTextContent(const std::string& text,
                               ::google::protobuf::Message* proto) {

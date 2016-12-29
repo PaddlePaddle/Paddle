@@ -102,6 +102,8 @@ void Parameter::randomize(const VectorPtr& value,
     value->randnorm(config.initial_mean(), config.initial_std());
     VLOG(1) << config.name() << ": initial_mean=" << config.initial_mean()
             << ", initial_std=" << config.initial_std();
+  } else if (PARAMETER_INIT_SKIP == config.initial_strategy()) {
+    return;
   } else {
     LOG(FATAL) << "not supported initial_strategy: "
                << config.initial_strategy();
