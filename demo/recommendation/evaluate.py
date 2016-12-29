@@ -17,8 +17,8 @@ import re
 import math
 
 
-def get_best_pass(filename):
-    with open(filename, 'r') as f:
+def get_best_pass(log_filename):
+    with open(log_filename, 'r') as f:
         text = f.read()
         pattern = re.compile('Test.*? cost=([0-9]+\.[0-9]+).*?pass-([0-9]+)',
                              re.S)
@@ -27,8 +27,8 @@ def get_best_pass(filename):
         return sorted_results[0]
 
 
-filename = sys.argv[1]
-log = get_best_pass(filename)
+log_filename = sys.argv[1]
+log = get_best_pass(log_filename)
 predict_error = math.sqrt(float(log[0])) / 2
 print 'Best pass is %s, error is %s, which means predict get error as %f' % (
     log[1], log[0], predict_error)
