@@ -127,13 +127,14 @@ private:
 
 template <>
 void ContextProjectionBackward<DEVICE_TYPE_CPU>(Tensor& out_grad,
-                                                const Tensor& in_grad,
-                                                const Tensor& w_grad,
+                                                Tensor& in_grad,
+                                                Tensor& w_grad,
                                                 const Tensor& sequence,
                                                 size_t context_length,
                                                 int context_start,
                                                 size_t begin_pad,
-                                                bool is_padding) {
+                                                bool is_padding,
+                                                size_t total_pad) {
   CHECK(out_grad.getData() && sequence.getData());
   CHECK_EQ(out_grad.dims_.size(), 2);
   CHECK_EQ(in_grad.dims_.size(), 2);
@@ -202,8 +203,8 @@ void ContextProjectionBackward<DEVICE_TYPE_CPU>(Tensor& out_grad,
 }
 
 /**
- * \param inputs[0] input value.
- * \param inputs[1] input weight.
+ * \param inputs[0] input grad.
+ * \param inputs[1] weight grad.
  * \param inputs[2] input sequence.
  * \param outputs[0] output value.
  */
@@ -215,6 +216,7 @@ public:
     context_start_ = config.get<int>("context_start");
     begin_pad_ = config.get<size_t>("begin_pad");
     is_padding_ = config.get<bool>("is_padding");
+    total_pad_ = config.get<size_t>("total_pad");
   }
 
   void calc(const Arguments& inputs,
@@ -225,13 +227,14 @@ public:
     CHECK_EQ(0, inouts.size());
 
     ContextProjectionBackward<Device>((Tensor&)outputs[0],
-                                      inputs[0],
-                                      inputs[1],
+                                      (Tensor&)inputs[0],
+                                      (Tensor&)inputs[1],
                                       inputs[2],
                                       context_length_,
                                       context_start_,
                                       begin_pad_,
-                                      is_padding_);
+                                      is_padding_,
+                                      total_pad_);
   }
 
 private:
@@ -239,6 +242,7 @@ private:
   int context_start_;
   size_t begin_pad_;
   bool is_padding_;
+  size_t total_pad_;
 };
 
 /**
@@ -321,6 +325,9 @@ REGISTER_TYPED_FUNC(ContextProjectionBackward,
 REGISTER_TYPED_FUNC(ContextProjectionForward,
                     GPU,
                     ContextProjectionForwardFunc);
+REGISTER_TYPED_FUNC(ContextProjectionBackward,
+                    GPU,
+                    ContextProjectionBackwardFunc);
 REGISTER_TYPED_FUNC(ContextProjectionBackwardData,
                     GPU,
                     ContextProjectionBackwardDataFunc);

@@ -86,33 +86,13 @@ void testMatrixProjectionBackward(int context_start,
                std::max(0, (int)(context_start + context_length - 1));
   if (pad == 0) is_padding = false;
 
-  std::shared_ptr<FunctionBase> cpu_func(
-      FunctionBase::funcRegistrar_.createByType(
-          "ContextProjectionBackward-CPU"));
-  FuncConfig cpu_config;
-  cpu_config.set("context_length", context_length)
-      .set("context_start", context_start)
-      .set("begin_pad", std::max(0, -context_start))
-      .set("is_padding", is_padding);
-  cpu_func->init(cpu_config);
-
-  std::shared_ptr<FunctionBase> gpu_data_func(
-      FunctionBase::funcRegistrar_.createByType(
-          "ContextProjectionBackwardData-GPU"));
-  FuncConfig gpu_data_config;
-  gpu_data_config.set("context_length", context_length)
-      .set("context_start", context_start);
-  gpu_data_func->init(gpu_data_config);
-
-  std::shared_ptr<FunctionBase> gpu_w_func(
-      FunctionBase::funcRegistrar_.createByType(
-          "ContextProjectionBackwardWeight-GPU"));
-  FuncConfig gpu_w_config;
-  gpu_w_config.set("context_length", context_length)
-      .set("context_start", context_start)
-      .set("begin_pad", std::max(0, -context_start))
-      .set("total_pad", pad);
-  gpu_w_func->init(gpu_w_config);
+  FunctionCompare compare("ContextProjectionBackward",
+                          FuncConfig()
+                              .set("context_length", context_length)
+                              .set("context_start", context_start)
+                              .set("begin_pad", std::max(0, -context_start))
+                              .set("is_padding", is_padding)
+                              .set("total_pad", pad));
 
   CpuMatrix cpu_in_grad(batch_size, input_dim);
   cpu_in_grad.randomizeUniform();
@@ -138,31 +118,25 @@ void testMatrixProjectionBackward(int context_start,
     gpu_w_grad->copyFrom(*cpu_w_grad);
   }
 
-  cpu_func->calc({Tensor(cpu_in_grad.getData(), Dims{batch_size, input_dim}),
-                  Tensor(cpu_w_grad ? cpu_w_grad->getData() : nullptr,
-                         Dims{pad, input_dim}),
-                  Tensor(reinterpret_cast<real*>(cpu_seq->getData()),
-                         Dims{cpu_seq->getSize()})},
-                 {Tensor(cpu_out_grad.getData(),
-                         Dims{batch_size, input_dim * context_length})},
-                 {});
+  compare.getCpuFunction()->calc(
+      {Tensor(cpu_in_grad.getData(), Dims{batch_size, input_dim}),
+       Tensor(cpu_w_grad ? cpu_w_grad->getData() : nullptr,
+              Dims{pad, input_dim}),
+       Tensor(reinterpret_cast<real*>(cpu_seq->getData()),
+              Dims{cpu_seq->getSize()})},
+      {Tensor(cpu_out_grad.getData(),
+              Dims{batch_size, input_dim * context_length})},
+      {});
 
-  gpu_data_func->calc(
+  compare.getGpuFunction()->calc(
       {Tensor(gpu_in_grad.getData(), Dims{batch_size, input_dim}),
+       Tensor(gpu_w_grad ? gpu_w_grad->getData() : nullptr,
+              Dims{pad, input_dim}),
        Tensor(reinterpret_cast<real*>(gpu_seq->getData()),
               Dims{gpu_seq->getSize()})},
       {Tensor(gpu_out_grad.getData(),
               Dims{batch_size, input_dim * context_length})},
       {});
-
-  if (is_padding && gpu_w_grad) {
-    gpu_w_func->calc({Tensor(gpu_w_grad->getData(), Dims{pad, input_dim}),
-                      Tensor(reinterpret_cast<real*>(gpu_seq->getData()),
-                             Dims{gpu_seq->getSize()})},
-                     {Tensor(gpu_out_grad.getData(),
-                             Dims{batch_size, input_dim * context_length})},
-                     {});
-  }
 
   autotest::TensorCheckErr(cpu_in_grad, gpu_in_grad);
   if (is_padding) {

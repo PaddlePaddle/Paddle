@@ -47,43 +47,23 @@ bool ContextProjection::init() {
   int context_start = config_.context_start();
   bool is_padding = config_.trainable_padding();
   size_t total_pad = is_padding ? beginPad_ + endPad_ : 0;
-  if (!useGpu_) {  // CPU functions
-    createFunction(forward_,
-                   "ContextProjectionForward-CPU",
-                   FuncConfig()
-                       .set("context_length", context_length)
-                       .set("context_start", context_start)
-                       .set("begin_pad", beginPad_)
-                       .set("is_padding", is_padding));
-    createFunction(backward_,
-                   "ContextProjectionBackward-CPU",
-                   FuncConfig()
-                       .set("context_length", context_length)
-                       .set("context_start", context_start)
-                       .set("begin_pad", beginPad_)
-                       .set("is_padding", is_padding));
-  } else {  // GPU functions
-    createFunction(forward_,
-                   "ContextProjectionForward-GPU",
-                   FuncConfig()
-                       .set("context_length", context_length)
-                       .set("context_start", context_start)
-                       .set("begin_pad", beginPad_)
-                       .set("is_padding", is_padding));
-    createFunction(backward_,
-                   "ContextProjectionBackwardData-GPU",
-                   FuncConfig()
-                       .set("context_length", context_length)
-                       .set("context_start", context_start));
 
-    createFunction(backward_,
-                   "ContextProjectionBackwardWeight-GPU",
-                   FuncConfig()
-                       .set("context_length", context_length)
-                       .set("context_start", context_start)
-                       .set("begin_pad", beginPad_)
-                       .set("total_pad", total_pad));
-  }
+  createFunction(forward_,
+                 "ContextProjectionForward",
+                 FuncConfig()
+                     .set("context_length", context_length)
+                     .set("context_start", context_start)
+                     .set("begin_pad", beginPad_)
+                     .set("is_padding", is_padding));
+  createFunction(backward_,
+                 "ContextProjectionBackward",
+                 FuncConfig()
+                     .set("context_length", context_length)
+                     .set("context_start", context_start)
+                     .set("begin_pad", beginPad_)
+                     .set("is_padding", is_padding)
+                     .set("total_pad", total_pad));
+
   return true;
 }
 
@@ -185,38 +165,16 @@ void ContextProjection::backward(const UpdateCallback& callback) {
   REGISTER_TIMER_INFO("ContextProjectionBackward", getName().c_str());
   bool is_padding = config_.trainable_padding();
   auto start_pos = in_->sequenceStartPositions;
-  if (!out_->grad->useGpu()) {
-    auto w_ptr = is_padding ? weight_->getWGrad() : nullptr;
-    backward_[0]->calc({Tensor(in_->grad ? in_->grad->getData() : nullptr,
-                               Dims{batch_size, input_dim}),
-                        Tensor(w_ptr ? w_ptr->getData() : nullptr,
-                               Dims{w_ptr ? w_ptr->getHeight() : 0, input_dim}),
-                        Tensor(reinterpret_cast<real*>(const_cast<int*>(
-                                   start_pos->getData(useGpu_))),
-                               Dims{start_pos->getSize()})},
-                       {Tensor(out_->grad->getData(), Dims{batch_size, dim})},
-                       {});
-  } else {
-    if (in_->grad) {
-      backward_[0]->calc(
-          {Tensor(in_->grad->getData(), Dims{batch_size, input_dim}),
-           Tensor(reinterpret_cast<real*>(
-                      const_cast<int*>(start_pos->getData(useGpu_))),
-                  Dims{start_pos->getSize()})},
-          {Tensor(out_->grad->getData(), Dims{batch_size, dim})},
-          {});
-    }
-    if (is_padding && weight_->getWGrad()) {
-      backward_[1]->calc(
-          {Tensor(weight_->getWGrad()->getData(),
-                  Dims{weight_->getWGrad()->getHeight(), input_dim}),
-           Tensor(reinterpret_cast<real*>(
-                      const_cast<int*>(start_pos->getData(useGpu_))),
-                  Dims{start_pos->getSize()})},
-          {Tensor(out_->grad->getData(), Dims{batch_size, dim})},
-          {});
-    }
-  }
+  auto w_ptr = is_padding ? weight_->getWGrad() : nullptr;
+  backward_[0]->calc({Tensor(in_->grad ? in_->grad->getData() : nullptr,
+                             Dims{batch_size, input_dim}),
+                      Tensor(w_ptr ? w_ptr->getData() : nullptr,
+                             Dims{w_ptr ? w_ptr->getHeight() : 0, input_dim}),
+                      Tensor(reinterpret_cast<real*>(
+                                 const_cast<int*>(start_pos->getData(useGpu_))),
+                             Dims{start_pos->getSize()})},
+                     {Tensor(out_->grad->getData(), Dims{batch_size, dim})},
+                     {});
 
   if (config_.trainable_padding()) {
     weight_->getParameterPtr()->incUpdate(callback);

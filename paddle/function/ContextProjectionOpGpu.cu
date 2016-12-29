@@ -344,4 +344,32 @@ void ContextProjectionBackwardWeight<DEVICE_TYPE_GPU>(Tensor& out_grad,
                                         begin_pad);
 }
 
+template <>
+void ContextProjectionBackward<DEVICE_TYPE_GPU>(Tensor& out_grad,
+                                               Tensor& in_grad,
+                                               Tensor& w_grad,
+                                               const Tensor& sequence,
+                                               size_t context_length,
+                                               int context_start,
+                                               size_t begin_pad,
+                                               bool is_padding,
+                                               size_t total_pad) {
+    if (in_grad.getData()) {
+        ContextProjectionBackwardData<DEVICE_TYPE_GPU>(out_grad,
+                in_grad,
+                sequence,
+                context_length,
+                context_start);
+    }
+    if (is_padding && w_grad.getData()) {
+        ContextProjectionBackwardWeight<DEVICE_TYPE_GPU>(out_grad,
+                w_grad,
+                sequence,
+                context_length,
+                context_start,
+                total_pad,
+                begin_pad);
+  }
+}
+
 }  // namespace paddle

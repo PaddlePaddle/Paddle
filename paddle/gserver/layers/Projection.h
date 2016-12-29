@@ -102,13 +102,19 @@ protected:
   /**
    * Create layer function. Function is called in forward or backward.
    * \param function, Layer::forward_ or Layer::backward_
-   * \param name, function name, include -GPU or -CPU
+   * \param name, function name
    * \param config, initialization configuration for the function
    */
   void createFunction(std::vector<std::shared_ptr<FunctionBase>>& function,
                       const std::string& name,
                       const FuncConfig& config) {
-    function.emplace_back(FunctionBase::funcRegistrar_.createByType(name));
+    if (useGpu_) {
+      function.emplace_back(
+          FunctionBase::funcRegistrar_.createByType(name + "-GPU"));
+    } else {
+      function.emplace_back(
+          FunctionBase::funcRegistrar_.createByType(name + "-CPU"));
+    }
     auto& func = function.back();
     func->init(config);
   }

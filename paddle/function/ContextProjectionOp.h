@@ -56,13 +56,14 @@ void ContextProjectionForward(Tensor& output,
  */
 template <DeviceType Device>
 void ContextProjectionBackward(Tensor& out_grad,
-                               const Tensor& in_grad,
-                               const Tensor& w_grad,
+                               Tensor& in_grad,
+                               Tensor& w_grad,
                                const Tensor& sequence,
                                size_t context_length,
                                int context_start,
                                size_t begin_pad,
-                               bool is_padding);
+                               bool is_padding,
+                               size_t total_pad);
 
 template <DeviceType Device>
 void ContextProjectionBackwardData(Tensor& out_grad,
