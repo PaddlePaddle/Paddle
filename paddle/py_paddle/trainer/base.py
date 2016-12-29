@@ -224,6 +224,7 @@ class Runner(object):
                 break
             exit_flag = self.__end_batch__()
         self.__end_pass__()
+        return self.__context__
 
     def __enter__(self):
         """

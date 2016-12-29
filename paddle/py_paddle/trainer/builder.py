@@ -16,17 +16,22 @@ class RunnerBuilder(object):
         self.__train_data__ = None
         self.__updater__ = None
         self.__gradient_machine__ = None
+        self.__init_param__ = None
         self.__evaluate__ = []
 
     def with_std_random_init_params(self):
-        self.__runner__.add_item(std_random_init_params())
+        self.__init_param__ = std_random_init_params()
         return self
 
-    def with_train_data(self, method, file_list, batch_size=None, **kwargs):
+    def with_train_data(self, method, file_list=None, batch_size=None,
+                        **kwargs):
         if batch_size is None:
             batch_size = self.__network__.optimize_graph().batch_size
 
-        self.__train_data__ = BasicTrainerDataProvider(
+        if file_list is None:
+            file_list = [None]
+
+        self.__train_data__ = BasicPaddleTrainerDataProvider(
             network=self.__network__,
             method=method,
             file_list=file_list,
@@ -77,8 +82,15 @@ class RunnerBuilder(object):
         return self
 
     def build(self):
+        if self.__init_param__ is None:
+            self.with_std_random_init_params()
+        self.__runner__.add_item(self.__init_param__)
         self.__runner__.add_item(self.__train_data__)
+        if self.__updater__ is None:
+            self.with_std_local_updater()
         self.__runner__.add_item(self.__updater__)
+        if self.__gradient_machine__ is None:
+            self.with_std_gradient_machine_ops()
         self.__runner__.add_item(self.__gradient_machine__)
         for each in self.__evaluate__:
             self.__runner__.add_item(each)

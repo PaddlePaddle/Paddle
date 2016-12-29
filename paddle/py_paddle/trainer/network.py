@@ -1,5 +1,6 @@
 from paddle.trainer_config_helpers import *
 from paddle.trainer_config_helpers import inputs as ipts
+import paddle.trainer.PyDataProvider2 as dp2
 
 __all__ = ['NetworkConfig', 'network']
 
@@ -51,6 +52,9 @@ class NetworkConfig(object):
         :rtype: paddle.proto.TrainerConfig_pb2.OptimizationConfig
         """
         raise NotImplemented()
+
+    def provider(self, **kwargs):
+        return dp2.provider(input_types=self.input_types(), **kwargs)
 
 
 def network(inputs, **opt_kwargs):

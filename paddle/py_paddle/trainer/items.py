@@ -9,8 +9,8 @@ __all__ = [
     'BasicLocalParameterUpdaterOps', 'BasicLocalParameterUpdater', 'Counter',
     'BatchEvaluate', 'PassEvaluate', 'BasicGradientMachineTrainOps',
     'BasicGradientMachineTestOps', 'InheritGradientMachineUpdater',
-    'TestOnPassEnd', 'BasicTrainerDataProvider', 'BasicDataProviderOps',
-    'BasicTestDataProvider', 'SaveParamsOnPassEnd', 'BaseObserveItem'
+    'TestOnPassEnd', 'BasicPaddleTrainerDataProvider', 'BasicDataProviderOps',
+    'BasicPaddleTestDataProvider', 'SaveParamsOnPassEnd', 'BaseObserveItem'
 ]
 
 
@@ -330,8 +330,7 @@ class BasicDataProviderOps(BaseRunnerItem):
 def data_provider_creator(is_train):
     class __cls__(BasicDataProviderOps):
         def __init__(self, network, method, file_list, batch_size, **kwargs):
-            BasicDataProviderOps.__init__(self)
-            assert isinstance(network, NetworkConfig)
+            super(__cls__, self).__init__()
             self.__dataprovider__ = method(
                 file_list=file_list,
                 input_order=network.input_order(),
@@ -355,8 +354,8 @@ def data_provider_creator(is_train):
     return __cls__
 
 
-BasicTrainerDataProvider = data_provider_creator(True)
-BasicTestDataProvider = data_provider_creator(False)
+BasicPaddleTrainerDataProvider = data_provider_creator(True)
+BasicPaddleTestDataProvider = data_provider_creator(False)
 
 
 class TestOnPassEnd(RunnerItem):
@@ -364,7 +363,7 @@ class TestOnPassEnd(RunnerItem):
         RunnerItem.__init__(self)
         self.__test_runner__ = Runner()
         self.__test_runner__.add_item(InheritGradientMachineUpdater())
-        self.__test_runner__.add_item(BasicTestDataProvider(**kwargs))
+        self.__test_runner__.add_item(BasicPaddleTestDataProvider(**kwargs))
         self.__test_runner__.add_item(BasicGradientMachineTestOps())
         self.__test_runner__.add_item(PassEvaluate(prefix='Test: '))
 
