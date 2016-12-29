@@ -10,7 +10,8 @@ set(API_SOURCES
     SequenceGenerator.cpp
     Trainer.cpp
     Util.cpp
-    Vector.cpp)
+    Vector.cpp
+    ParameterServer.cpp)
 set(API_HEADER
     PaddleAPI.h
     Internal.h)

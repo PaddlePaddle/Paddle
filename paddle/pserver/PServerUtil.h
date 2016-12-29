@@ -12,20 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <fstream>
+#pragma once
+
+#include "ParameterServer2.h"
+#include "RDMANetwork.h"
 #include "paddle/utils/StringUtil.h"
-#include "paddle/utils/Util.h"
 
-#include "PServerUtil.h"
+namespace paddle {
 
-using namespace paddle;  // NOLINT
+class PServerUtil {
+public:
+  void init();
+  void start();
+  void join();
 
-int main(int argc, char** argv) {
-  initMain(argc, argv);
-  PServerUtil* pserverUtil = new PServerUtil();
-  pserverUtil->init();
-  pserverUtil->start();
-  pserverUtil->join();
+private:
+  std::vector<std::shared_ptr<ParameterServer2>> pservers_;
+};
 
-  return 0;
-}
+}  // namespace paddle
