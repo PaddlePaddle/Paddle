@@ -21,13 +21,14 @@ limitations under the License. */
 
 namespace paddle {
 
-std::vector<int> ArgShape2Vector(const Argument& arg);
-void Vector2ArgShape(const Argument& arg, const std::vector<int>& vec);
+std::vector<int> layerConfig2BlobShape(const batch,
+                                       const LayerConfig& preConfig);
+std::vector<int> argShape2Vector(const Argument& arg);
 
-void SetDataToBlob(Argument& arg, ::caffe::Blob<real>* blob);
-void SetGradToBlob(Argument& arg, ::caffe::Blob<real>* blob);
+void setDataToBlob(Argument& arg, ::caffe::Blob<real>* blob);
+void setGradToBlob(Argument& arg, ::caffe::Blob<real>* blob);
 
-void SetDataToArg(::caffe::Blob<real>* blob, Argument& arg);
-void SetGradToArg(::caffe::Blob<real>* blob, Argument& arg);
+void setDataToArg(::caffe::Blob<real>* blob, Argument& arg);
+void setGradToArg(::caffe::Blob<real>* blob, Argument& arg);
 
 }  // namespace paddle

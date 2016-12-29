@@ -31,12 +31,15 @@ protected:
   std::vector<bool> propagateDown_;
   int batchSize_;
 
+  std::vector<std::unique_ptr<ParameterConfig>> paramconfig_;
+
 public:
   explicit CaffeLayer(const LayerConfig& config)
-      : Layer(config), lastBatchSize_(0) {}
+      : Layer(config), batchSize_(0), initW_(false) {}
   ~CaffeLayer() {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  std::vector<ParameterPtr>& initParamHook();
 
   Weight& getWeight(int idx) { return *weights_[idx]; }
 
@@ -49,6 +52,8 @@ public:
    * the output of this layer.
    */
   void caffeLayerSetup(int curBatchSize);
+
+  void weightSetUp();
 };
 
 }  // namespace paddle

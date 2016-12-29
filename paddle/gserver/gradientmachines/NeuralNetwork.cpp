@@ -162,6 +162,10 @@ void NeuralNetwork::init(const ModelConfig& config,
     layer->initSubNetwork(this /*root*/, config_, parameterTypes, useGpu);
   }
 
+  for (const auto& layer : layers_) {
+    auto& para = layer->initParamHook();
+  }
+
   for (const auto& layer_name :
        (useSubModel ? subModelConfig->input_layer_names()
                     : config.input_layer_names())) {
