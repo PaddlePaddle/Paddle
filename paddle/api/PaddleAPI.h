@@ -885,7 +885,6 @@ public:
   void init();
   void start();
   void join();
-  void stop();
 
 private:
   ParameterServerPrivate* m;
