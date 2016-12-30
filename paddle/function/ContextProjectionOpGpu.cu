@@ -73,15 +73,30 @@ __global__ void KeContextProjectionForward(const real* input,
   }
 }
 
+/**
+ * @brief   Context projection forward.
+ *
+ * @param[in]   input           input sequence.
+ * @param[in]   sequence        sequence index.
+ * @param[in]   weight          padding data.
+ * @param[out]  output          output sequence.
+ * @param[in]   num_sequences    number of sequences.
+ * @param[in]   input_dim        input sequence dimension.
+ * @param[in]   context_length   context length.
+ * @param[in]   context_start    context start.
+ * @param[in]   begin_pad        number of extra timesteps added at the
+ * beginning.
+ *
+ */
 void hl_context_projection_forward(const real* input,
                                    const int* sequence,
                                    const real* weight,
                                    real* output,
-                                   int num_sequences,
-                                   int input_dim,
-                                   int context_length,
+                                   size_t num_sequences,
+                                   size_t input_dim,
+                                   size_t context_length,
                                    int context_start,
-                                   int begin_pad) {
+                                   size_t begin_pad) {
   CHECK_NOTNULL(input);
   CHECK_NOTNULL(sequence);
   CHECK_NOTNULL(output);
@@ -168,12 +183,24 @@ __global__ void KeContextProjectionBackwardData(real* out_grad,
   }
 }
 
+/**
+ * @brief   Context projection backward data.
+ *
+ * @param[in]   out_grad         output gradient.
+ * @param[in]   sequence         sequence index.
+ * @param[out]  input_grad       input gradient.
+ * @param[in]   num_sequences    number of sequences.
+ * @param[in]   input_dim        input sequence dimension.
+ * @param[in]   context_length   context length.
+ * @param[in]   context_start    context start.
+ *
+ */
 void hl_context_projection_backward_data(real* out_grad,
                                          const int* sequence,
                                          real* input_grad,
-                                         int num_sequences,
-                                         int input_dim,
-                                         int context_length,
+                                         size_t num_sequences,
+                                         size_t input_dim,
+                                         size_t context_length,
                                          int context_start) {
   CHECK_NOTNULL(out_grad);
   CHECK_NOTNULL(sequence);
@@ -278,15 +305,30 @@ __global__ void KeContextProjectionBackwardWeight(real* out_grad,
   }
 }
 
+/**
+ * @brief   Context projection backward weight.
+ *
+ * @param[in]   out_grad         output gradient.
+ * @param[in]   sequence         sequence index.
+ * @param[out]  w_grad           weight gradient.
+ * @param[in]   num_sequences    number of sequences.
+ * @param[in]   w_dim            input sequence dimension.
+ * @param[in]   total_pad        number of extra timesteps.
+ * @param[in]   context_length   context length.
+ * @param[in]   context_start    context start.
+ * @param[in]   begin_pad        number of extra timesteps added at the
+ * beginning.
+ *
+ */
 void hl_context_projection_backward_weight(real* out_grad,
                                            const int* sequence,
                                            real* w_grad,
-                                           int num_sequences,
-                                           int w_dim,
+                                           size_t num_sequences,
+                                           size_t w_dim,
                                            size_t total_pad,
-                                           int context_length,
+                                           size_t context_length,
                                            int context_start,
-                                           int begin_pad) {
+                                           size_t begin_pad) {
   CHECK_NOTNULL(out_grad);
   CHECK_NOTNULL(sequence);
   CHECK_NOTNULL(w_grad);

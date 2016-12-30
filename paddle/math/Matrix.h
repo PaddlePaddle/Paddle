@@ -972,42 +972,6 @@ public:
     LOG(FATAL) << "Not implemeted";
   }
 
-  virtual void contextProjectionForward(Matrix& input,
-                                        Matrix* weight,
-                                        const IVector& sequence,
-                                        int contextLength,
-                                        int contextStart,
-                                        size_t beginPad,
-                                        bool isPadding) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackward(Matrix* inputGrad,
-                                         Matrix* weightGrad,
-                                         const IVector& sequence,
-                                         int contextLength,
-                                         int contextStart,
-                                         size_t beginPad,
-                                         bool isPadding) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackwardData(Matrix& inputGrad,
-                                             const IVector& sequence,
-                                             int contextLength,
-                                             int contextStart) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackwardWeight(Matrix& weightGrad,
-                                               const IVector& sequence,
-                                               int contextLength,
-                                               int contextStart,
-                                               int totalPad,
-                                               size_t beginPad) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
   /**
    * @code
    * this.row[i] += table.row[ids[i]]
@@ -1442,26 +1406,6 @@ public:
                            const IVector& sequence,
                            IVector& index);
 
-  void contextProjectionForward(Matrix& input,
-                                Matrix* weight,
-                                const IVector& sequence,
-                                int contextLength,
-                                int contextStart,
-                                size_t beginPad,
-                                bool isPadding);
-
-  void contextProjectionBackwardData(Matrix& inputGrad,
-                                     const IVector& sequence,
-                                     int contextLength,
-                                     int contextStart);
-
-  void contextProjectionBackwardWeight(Matrix& weightGrad,
-                                       const IVector& sequence,
-                                       int contextLength,
-                                       int contextStart,
-                                       int totalPad,
-                                       size_t beginPad);
-
   void bilinearForward(const Matrix& in,
                        const size_t inImgH,
                        const size_t inImgW,
@@ -1647,22 +1591,6 @@ public:
   void maxSequenceBackward(Matrix& outputGrad,
                            const IVector& sequence,
                            IVector& index);
-
-  void contextProjectionForward(Matrix& input,
-                                Matrix* weight,
-                                const IVector& sequence,
-                                int contextLength,
-                                int contextStart,
-                                size_t beginPad,
-                                bool isPadding);
-
-  void contextProjectionBackward(Matrix* inputGrad,
-                                 Matrix* weightGrad,
-                                 const IVector& sequence,
-                                 int contextLength,
-                                 int contextStart,
-                                 size_t beginPad,
-                                 bool isPadding);
 
   real* getRow(size_t row) { return BaseMatrix::rowBuf(row); }
   virtual real* getRowBuf(size_t row) { return getRow(row); }
