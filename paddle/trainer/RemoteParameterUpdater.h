@@ -56,7 +56,7 @@ class RemoteParameterUpdater : public ParameterUpdater {
 public:
   RemoteParameterUpdater(
       const OptimizationConfig& config,
-      int expectedPpassCount,
+      int expectedPassCount,
       std::unique_ptr<ParameterUpdater>&& localUpdater = nullptr);
   ~RemoteParameterUpdater() {
     if (controllerThread_) {
@@ -146,7 +146,7 @@ protected:
   BatchStatus batchStatus_;
   /// controller thread for sync-sgd
   std::unique_ptr<std::thread> controllerThread_;
-  /// passed alread finished
+  /// passed already finished
   int64_t passCount_;
   /// expected passes to finished
   int64_t expectedPassCount_;
