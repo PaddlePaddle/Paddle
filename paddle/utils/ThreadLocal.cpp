@@ -37,7 +37,7 @@ unsigned int* ThreadLocalRand::getSeed() {
       p = new unsigned int(defaultSeed_ - 1);
     } else {
       p = new unsigned int(defaultSeed_ + getTID());
-      LOG(INFO) << "thread use undeterministic rand seed:" << *p;
+      VLOG(3) << "thread use undeterministic rand seed:" << *p;
     }
     seed_.set(p);
   }
