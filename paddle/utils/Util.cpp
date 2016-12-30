@@ -125,7 +125,7 @@ void registerInitFunction(std::function<void()> func, int priority) {
 
 void runInitFunctions() {
   std::call_once(g_onceFlag, []() {
-    LOG(INFO) << "Calling runInitFunctions";
+    VLOG(3) << "Calling runInitFunctions";
     if (g_initFuncs) {
       std::sort(g_initFuncs->begin(),
                 g_initFuncs->end(),
@@ -139,7 +139,7 @@ void runInitFunctions() {
       g_initFuncs = nullptr;
     }
     g_initialized = true;
-    LOG(INFO) << "Call runInitFunctions done.";
+    VLOG(3) << "Call runInitFunctions done.";
   });
 }
 
@@ -231,7 +231,7 @@ std::string join(const std::string& part1, const std::string& part2) {
 }  // namespace path
 
 void copyFileToPath(const std::string& file, const std::string& dir) {
-  LOG(INFO) << "copy " << file << " to " << dir;
+  VLOG(3) << "copy " << file << " to " << dir;
   std::string fileName = path::basename(file);
   std::string dst = path::join(dir, fileName);
   std::ifstream source(file, std::ios_base::binary);
