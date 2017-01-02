@@ -1,17 +1,17 @@
-安装PaddlePaddle的Docker镜像
+安装Paddle的Docker镜像
 ============================
 
-PaddlePaddle提供了Docker的使用镜像。PaddlePaddle推荐使用Docker进行PaddlePaddle的部署和
+Paddle提供了Docker的使用镜像。Paddle推荐使用Docker进行Paddle的部署和
 运行。Docker是一个基于容器的轻量级虚拟环境。具有和宿主机相近的运行效率，并提供
 了非常方便的二进制分发手段。
 
 下述内容将分为如下几个类别描述。
 
-* PaddlePaddle提供的Docker镜像版本
+* Paddle提供的Docker镜像版本
 * 下载和运行Docker镜像
 * 注意事项
 
-PaddlePaddle提供的Docker镜像版本
+Paddle提供的Docker镜像版本
 --------------------------------
 
 我们提供了12个 `Docker image <https://hub.docker.com/r/paddledev/paddle/tags/>`_ ，他们的image name都是 :code:`paddle-dev/paddle` ，tag分别为
@@ -47,15 +47,15 @@ PaddlePaddle提供的Docker镜像版本
 
     if cat /proc/cpuinfo | grep -q avx ; then echo "Support AVX"; else echo "Not support AVX"; fi
 
-如果输出 :code:`Support AVX`，则可以选择上表中的AVX版本PaddlePaddle。否则需要选择非AVX的PaddlePaddle。选择普通CPU版本的devel版本的image，则可以使用 :code:`paddle-dev/paddle:cpu-devel-latest` 来引用这个image。
+如果输出 :code:`Support AVX`，则可以选择上表中的AVX版本Paddle。否则需要选择非AVX的Paddle。选择普通CPU版本的devel版本的image，则可以使用 :code:`paddle-dev/paddle:cpu-devel-latest` 来引用这个image。
 
-PaddlePaddle提供的镜像并不包含任何命令运行，想要运行PaddlePaddle，您需要进入镜像运行PaddlePaddle
+Paddle提供的镜像并不包含任何命令运行，想要运行Paddle，您需要进入镜像运行Paddle
 程序或者自定义一个含有启动脚本的image。具体请参考注意事项中的 :code:`使用ssh访问PaddlePaddle镜像`
 
 下载和运行Docker镜像
 --------------------
 
-为了运行PaddlePaddle的docker镜像，您需要在机器中安装好Docker。安装Docker需要您的机器
+为了运行Paddle的docker镜像，您需要在机器中安装好Docker。安装Docker需要您的机器
 至少具有3.10以上的linux kernel。安装方法请参考
 `Docker的官方文档 <https://docs.docker.com/engine/installation/>`_ 。如果您使用
 mac osx或者是windows机器，请参考 
@@ -69,23 +69,23 @@ mac osx或者是windows机器，请参考
     
     $ docker run -it paddledev/paddle:cpu-latest
 
-即可启动和进入PaddlePaddle的container。如果运行GPU版本的PaddlePaddle，则需要先将
+即可启动和进入Paddle的container。如果运行GPU版本的Paddle，则需要先将
 cuda相关的Driver和设备映射进container中，脚本类似于
 
 ..  code-block:: bash
 
     $ export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
     $ export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddlepaddle:latest-gpu
+    $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:latest-gpu
 
-进入Docker container后，运行 :code:`paddle version` 即可打印出PaddlePaddle的版本和构建
-信息。安装完成的PaddlePaddle主体包括三个部分， :code:`paddle` 脚本， python的
+进入Docker container后，运行 :code:`paddle version` 即可打印出Paddle的版本和构建
+信息。安装完成的Paddle主体包括三个部分， :code:`paddle` 脚本， python的
 :code:`paddle` 包和 :code:`py_paddle` 包。其中\:
 
-* :code:`paddle` 脚本和 :code:`paddle` 的python包是PaddlePaddle的训练主要程序。使用 
-  :code:`paddle` 脚本可以启动PaddlePaddle的训练进程和pserver。而 :code:`paddle` 脚本
+* :code:`paddle` 脚本和 :code:`paddle` 的python包是Paddle的训练主要程序。使用 
+  :code:`paddle` 脚本可以启动Paddle的训练进程和pserver。而 :code:`paddle` 脚本
   中的二进制使用了 :code:`paddle` 的python包来做配置文件解析等工作。
-* python包 :code:`py_paddle` 是一个swig封装的PaddlePaddle包，用来做预测和简单的定制化
+* python包 :code:`py_paddle` 是一个swig封装的Paddle包，用来做预测和简单的定制化
   训练。
 
 注意事项
@@ -104,7 +104,7 @@ cuda相关的Driver和设备映射进container中，脚本类似于
 远程访问问题和二次开发
 ++++++++++++++++++++++
 
-由于PaddlePaddle的Docker镜像并不包含任何预定义的运行命令。所以如果想要在后台启用ssh
+由于Paddle的Docker镜像并不包含任何预定义的运行命令。所以如果想要在后台启用ssh
 远程访问，则需要进行一定的二次开发，将ssh装入系统内并开启远程访问。二次开发可以
 使用Dockerfile构建一个全新的docker image。需要参考 
 `Dockerfile的文档 <https://docs.docker.com/engine/reference/builder/>`_ 和
@@ -140,4 +140,4 @@ root，密码也是root。命令为\:
 
     $ ssh -p 8022 root@YOUR_HOST_MACHINE
 
-至此，您就可以远程的使用PaddlePaddle啦。
+至此，您就可以远程的使用Paddle啦。
