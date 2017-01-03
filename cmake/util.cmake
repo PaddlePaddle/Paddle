@@ -156,6 +156,7 @@ function(link_paddle_test TARGET_NAME)
     link_paddle_exe(${TARGET_NAME})
     target_link_libraries(${TARGET_NAME}
                           paddle_test_main
+                          paddle_test_util
                           ${GTEST_LIBRARIES})
 endfunction()
 

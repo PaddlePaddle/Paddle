@@ -7,8 +7,7 @@ add_simple_unittest(test_SparseMatrix)
 
 # TODO(yuyang18): Refactor TestUtil.cpp. Remove this cross module reference.
 add_unittest(test_matrixCompare
-    test_matrixCompare.cpp
-    ../../gserver/tests/TestUtil.cpp)
+    test_matrixCompare.cpp)
 
 add_simple_unittest(test_sparseMatrixCompare)
 add_simple_unittest(test_perturbation)
