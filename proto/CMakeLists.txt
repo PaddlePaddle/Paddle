@@ -4,7 +4,8 @@ set(proto_filenames
     ModelConfig.proto
     ParameterConfig.proto
     ParameterService.proto
-    TrainerConfig.proto)
+    TrainerConfig.proto
+    ParameterServerConfig.proto)
 
 set(PROTO_GEN)
 set(PROTO_GEN_PY)
