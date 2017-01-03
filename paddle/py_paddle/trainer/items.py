@@ -43,10 +43,11 @@ def std_random_init_params(context, **kwargs):
 
 
 class CreateGradientMachine(BaseRunnerItem):
-    def __init__(self, network):
+    def __init__(self, network, local=True):
         RunnerItem.__init__(self)
         assert isinstance(network, NetworkConfig)
         self.__network__ = network
+        self.__local__ = local
 
     def initialize(self, context, next_callback):
         """
@@ -66,10 +67,16 @@ class CreateGradientMachine(BaseRunnerItem):
         _temp_optimizer_ = api.ParameterOptimizer.create(opt_config)
         enable_types = _temp_optimizer_.getParameterTypes()
 
+        graph = self.__network__.network_graph()
+
+        if self.__local__:
+            for param in graph.parameters:
+                if param.HasField("sparse_remote_update"):
+                    param.sparse_remote_update = False
+
         self.context.set_gradient_machine(
             api.GradientMachine.createFromConfigProto(
-                self.__network__.network_graph(
-                ), api.CREATE_MODE_NORMAL, enable_types))
+                graph, api.CREATE_MODE_NORMAL, enable_types))
         next_callback(context)
         self.context.gradient_machine().start()
 
