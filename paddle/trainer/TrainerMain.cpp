@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
   initPython(argc, argv);
 
   if (FLAGS_start_pserver) {
-    PServerUtil* pServerUtil = paddle::PServerUtil::create();
+    PServerUtil* pServerUtil = paddle::PServerUtil::createWithGflags();
     pServerUtil->start();
   }
   Trainer trainer;

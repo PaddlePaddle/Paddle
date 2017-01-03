@@ -21,7 +21,8 @@ using namespace paddle;  // NOLINT
 int main(int argc, char** argv) {
   initMain(argc, argv);
 
-  std::unique_ptr<PServerUtil> pServerPtr(paddle::PServerUtil::create());
+  std::unique_ptr<PServerUtil> pServerPtr(
+      paddle::PServerUtil::createWithGflags());
   pServerPtr->start();
   pServerPtr->join();
 

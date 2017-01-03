@@ -24,16 +24,47 @@ namespace paddle {
 class PServerUtil {
 public:
   DISABLE_COPY(PServerUtil);
-  static PServerUtil* create();
-  static PServerUtil* create(const ParameterServerConfig& config);
+
+  /**
+   * @brief Ctor, Create a PServerUtil from ParameterServerConfig.
+   */
   explicit PServerUtil(const ParameterServerConfig& config);
+
+  /**
+   * @brief Dtor.
+   */
   ~PServerUtil();
-  static ParameterServerConfig* initConfig();
+
+  /**
+   * @brief create PServerUtil from gflags, this is used for
+   * compatibility with the old usage of configuration by gflags.
+   */
+  static PServerUtil* createWithGflags();
+
+  /**
+   * @brief create PServerUtil with ParameterServerConfig, remove gflags
+   * from ParameterServer. Init all pservers thread according to the config.
+   */
+  static PServerUtil* create(const ParameterServerConfig& config);
+
+  /**
+   * @brief start all pserver thread in this PServerUtil.
+   */
   void start();
+
+  /**
+   * @brief join and wait for all pserver thread in this PServerUtil.
+   */
   void join();
 
 private:
   std::vector<std::shared_ptr<ParameterServer2>> pservers_;
+
+  /**
+   * @brief create ParameterServerConfig from gflags, this is used for
+   * compatibility with the old usage of configuration by gflags.
+   */
+  static ParameterServerConfig* initConfig();
 };
 
 }  // namespace paddle

@@ -19,7 +19,7 @@ source "$bin_dir/env.sh"
 paddle pserver \
   --nics=`get_nics` \
   --port=7164 \
-  --ports_num=2 \
+  --ports_num=1 \
   --ports_num_for_sparse=1 \
   --num_gradient_servers=1 \
   --comment="paddle_pserver" \

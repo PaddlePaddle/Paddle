@@ -16,30 +16,11 @@ limitations under the License. */
 
 namespace paddle {
 
-ParameterServerConfig* PServerUtil::initConfig() {
-  ParameterServerConfig* config = new ParameterServerConfig();
-  config->set_nics(FLAGS_nics);
-  config->set_port(FLAGS_port);
-  config->set_ports_num(FLAGS_ports_num);
-  config->set_rdma_tcp(FLAGS_rdma_tcp);
-  return config;
-}
-
-PServerUtil* PServerUtil::create() {
-  auto& pServerConfig = *paddle::PServerUtil::initConfig();
-  return PServerUtil::create(pServerConfig);
-}
-
-PServerUtil* PServerUtil::create(const ParameterServerConfig& config) {
-  return new PServerUtil(config);
-}
-
 PServerUtil::PServerUtil(const ParameterServerConfig& config) {
   // round robin to load balance RDMA server ENGINE
   std::vector<std::string> devices;
   int rdmaCpu = 0;
   int onlineCpus = rdma::numCpus();
-  ;
   int numPorts = config.ports_num() + config.ports_num_for_sparse();
 
   if (FLAGS_nics.empty()) {
@@ -77,6 +58,24 @@ PServerUtil::PServerUtil(const ParameterServerConfig& config) {
 }
 
 PServerUtil::~PServerUtil() { this->join(); }
+
+ParameterServerConfig* PServerUtil::initConfig() {
+  ParameterServerConfig* config = new ParameterServerConfig();
+  config->set_nics(FLAGS_nics);
+  config->set_port(FLAGS_port);
+  config->set_ports_num(FLAGS_ports_num);
+  config->set_rdma_tcp(FLAGS_rdma_tcp);
+  return config;
+}
+
+PServerUtil* PServerUtil::createWithGflags() {
+  auto& pServerConfig = *paddle::PServerUtil::initConfig();
+  return create(pServerConfig);
+}
+
+PServerUtil* PServerUtil::create(const ParameterServerConfig& config) {
+  return new PServerUtil(config);
+}
 
 void PServerUtil::start() {
   LOG(INFO) << "pserver sizes : " << pservers_.size();
