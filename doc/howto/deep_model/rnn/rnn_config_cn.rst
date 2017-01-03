@@ -1,4 +1,4 @@
-RNN 配置
+RNN配置
 ========
 
 本教程将指导你如何在 PaddlePaddle
@@ -20,7 +20,7 @@ PaddlePaddle
 不需要对序列数据进行任何预处理，例如填充。唯一需要做的是将相应类型设置为输入。例如，以下代码段定义了三个输入。
 它们都是序列，它们的大小是\ ``src_dict``\ ，\ ``trg_dict``\ 和\ ``trg_dict``\ ：
 
-.. code:: sourcecode
+.. code:: python
 
     settings.input_types = [
       integer_value_sequence(len(settings.src_dict)),
@@ -29,7 +29,7 @@ PaddlePaddle
 
 在\ ``process``\ 函数中，每个\ ``yield``\ 函数将返回三个整数列表。每个整数列表被视为一个整数序列：
 
-.. code:: sourcecode
+.. code:: python
 
     yield src_ids, trg_ids, trg_ids_next
 
@@ -45,18 +45,17 @@ PaddlePaddle
 
 循环神经网络在每个时间步骤顺序地处理序列。下面列出了 LSTM 的架构的示例。
 
-.. figure:: ../../../tutorials/sentiment_analysis/bi_lstm.jpg
-   :alt: image
+.. image:: ../../../tutorials/sentiment_analysis/bi_lstm.jpg
+      :align: center
 
-   image
+一般来说，循环网络从 :math:`t=1` 到 :math:`t=T` 或者反向地从 :math:`t=T` 到 :math:`t=1` 执行以下操作。
 
-一般来说，循环网络从 *t* = 1 到 *t* = *T* 或者反向地从 *t* = *T* 到 *t*
-= 1 执行以下操作。
+.. math::
 
-*x*\ \ *t* + 1 = *f*\ \ *x*\ (*x*\ \ *t*\ ),\ *y*\ \ *t*\  = *f*\ \ *y*\ (*x*\ \ *t*\ )
+    x_{t+1} = f_x(x_t), y_t = f_y(x_t)
 
-其中 *f*\ \ *x*\ (.) 称为\ **单步函数**\ （即单时间步执行的函数，step
-function），而 *f*\ \ *y*\ (.) 称为\ **输出函数**\ 。在 vanilla
+其中 :math:`f_x(.)` 称为\ **单步函数**\ （即单时间步执行的函数，step
+function），而 :math:`f_y(.)` 称为\ **输出函数**\ 。在 vanilla
 循环神经网络中，单步函数和输出函数都非常简单。然而，PaddlePaddle
 可以通过修改这两个函数来实现复杂的网络配置。我们将使用 sequence to
 sequence
@@ -67,16 +66,17 @@ vanilla
 
 对于 vanilla RNN，在每个时间步长，\ **单步函数**\ 为：
 
-*x*\ \ *t* + 1 = *W*\ \ *x*\ \ *x*\ \ *t*\  + *W*\ \ *i*\ \ *I*\ \ *t*\  + *b*
+.. math::
 
-其中 *x*\ \ *t*\  是RNN状态，并且 *I*\ \ *t*\  是输入，\ *W*\ \ *x*\  和
-*W*\ \ *i*\  分别是RNN状态和输入的变换矩阵。\ *b*
-是偏差。它的\ **输出函数**\ 只需要\ *x*\ \ *t*\ 作为输出。
+    x_{t+1} = W_x x_t + W_i I_t + b
+
+其中 :math:`x_t` 是RNN状态，并且 :math:`I_t` 是输入，:math:`W_x` 和
+:math:`W_i` 分别是RNN状态和输入的变换矩阵。:math:`b` 是偏差。它的\ **输出函数**\ 只需要 :math:`x_t` 作为输出。
 
 ``recurrent_group``\ 是构建循环神经网络的最重要的工具。
 它定义了\ **单步函数**\ ，\ **输出函数**\ 和循环神经网络的输入。注意，这个函数的\ ``step``\ 参数需要实现\ ``step function``\ （单步函数）和\ ``output function``\ （输出函数）：
 
-.. code:: sourcecode
+.. code:: python
 
     def simple_rnn(input,
                    size=None,
@@ -102,7 +102,7 @@ vanilla
 
 PaddlePaddle
 使用“Memory”（记忆模块）实现单步函数。\ **Memory**\ 是在PaddlePaddle中构造循环神经网络时最重要的概念。
-Memory是在单步函数中循环使用的状态，例如\ *x*\ \ *t* + 1 = *f*\ \ *x*\ (*x*\ \ *t*\ )。
+Memory是在单步函数中循环使用的状态，例如 :math:`x_{t+1} = f_x(x_t)` 。
 一个Memory包含\ **输出**\ 和\ **输入**\ 。当前时间步处的Memory的输出作为下一时间步Memory的输入。Memory也可以具有\ **boot
 layer(引导层)**\ ，其输出被用作Memory的初始值。
 在我们的例子中，门控循环单元的输出被用作输出Memory。请注意，\ ``rnn_out``\ 层的名称与\ ``out_mem``\ 的名称相同。这意味着\ ``rnn_out``
@@ -120,18 +120,15 @@ Sequence to Sequence Model with Attention
 我们将使用 sequence to sequence model with attention
 作为例子演示如何配置复杂的循环神经网络模型。该模型的说明如下图所示。
 
-.. figure:: ../../../tutorials/text_generation/encoder-decoder-attention-model.png
-   :alt: image
+.. image:: ../../../tutorials/text_generation/encoder-decoder-attention-model.png
+      :align: center
 
-   image
-
-在这个模型中，源序列 *S* = {*s*\ 1, …, \ *s*\ \ *T*\ }
+在这个模型中，源序列 :math:`S = \{s_1, \dots, s_T\}` 
 用双向门控循环神经网络编码。双向门控循环神经网络的隐藏状态
-*H*\ \ *S*\  = {*H*\ 1, …, \ *H*\ \ *T*\ } 被称为
-*编码向量*\ 。解码器是门控循环神经网络。当解读每一个\ *y*\ \ *t*\ 时,
-这个门控循环神经网络生成一系列权重
-*W*\ \ *S*\ \ *t*\  = {*W*\ 1\ *t*\ , …, \ *W*\ \ *T*\ \ *t*\ },
-用于计算编码向量的加权和。加权和用来生成\ *y*\ \ *t*\ 。
+:math:`H_S = \{H_1, \dots, H_T\}` 被称为
+*编码向量*\ 。解码器是门控循环神经网络。当解读每一个 :math:`y_t` 时,
+这个门控循环神经网络生成一系列权重  :math:`W_S^t = \{W_1^t, \dots, W_T^t\}` ,
+用于计算编码向量的加权和。加权和用来生成 :math:`y_t` 。
 
 模型的编码器部分如下所示。它叫做\ ``grumemory``\ 来表示门控循环神经网络。如果网络架构简单，那么推荐使用循环神经网络的方法，因为它比
 ``recurrent_group``
@@ -143,7 +140,7 @@ Sequence to Sequence Model with Attention
 维空间。这通过获得反向循环网络的第一个实例，并将其投射到
 ``decoder_size`` 维空间完成：
 
-.. code:: sourcecode
+.. code:: python
 
     # 定义源语句的数据层
     src_word_id = data_layer(name='source_language_word', size=source_dict_dim)
@@ -174,7 +171,7 @@ Sequence to Sequence Model with Attention
 解码器使用 ``recurrent_group`` 来定义循环神经网络。单步函数和输出函数在
 ``gru_decoder_with_attention`` 中定义：
 
-.. code:: sourcecode
+.. code:: python
 
     group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
                   StaticInput(input=encoded_proj,is_seq=True)]
@@ -198,7 +195,7 @@ Sequence to Sequence Model with Attention
 单步函数的实现如下所示。首先，它定义解码网络的\ **Memory**\ 。然后定义
 attention，门控循环单元单步函数和输出函数：
 
-.. code:: sourcecode
+.. code:: python
 
     def gru_decoder_with_attention(enc_vec, enc_proj, current_word):
         # 定义解码器的Memory
@@ -253,7 +250,7 @@ attention，门控循环单元单步函数和输出函数：
 
 代码如下：
 
-.. code:: sourcecode
+.. code:: python
 
     group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
                   StaticInput(input=encoded_proj,is_seq=True)]

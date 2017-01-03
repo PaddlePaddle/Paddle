@@ -1,4 +1,4 @@
-# Kubernetes 分布式训练
+# Kubernetes分布式训练
 
 前一篇文章介绍了如何在Kubernetes集群上启动一个单机PaddlePaddle训练作业 (Job)。在这篇文章里，我们介绍如何在Kubernetes集群上进行分布式PaddlePaddle训练作业。关于PaddlePaddle的分布式训练，文章 [Cluster Training](https://github.com/baidu/Paddle/blob/develop/doc/cluster/opensource/cluster_train.md)介绍了一种通过SSH远程分发任务，进行分布式训练的方法，与此不同的是，本文将介绍在Kubernetes容器管理平台上快速构建PaddlePaddle容器集群，进行分布式训练的方案。
 
@@ -22,7 +22,7 @@
 
 首先，我们需要拥有一个Kubernetes集群，在这个集群中所有node与pod都可以互相通信。关于Kubernetes集群搭建，可以参考[官方文档](http://kubernetes.io/docs/getting-started-guides/kubeadm/)，在以后的文章中我们也会介绍AWS上搭建的方案。本文假设大家能找到几台物理机，并且可以按照官方文档在上面部署Kubernetes。在本文的环境中，Kubernetes集群中所有node都挂载了一个[MFS](http://moosefs.org/)（Moose filesystem，一种分布式文件系统）共享目录，我们通过这个目录来存放训练文件与最终输出的模型。关于MFS的安装部署，可以参考[MooseFS documentation](https://moosefs.com/documentation.html)。在训练之前，用户将配置与训练数据切分好放在MFS目录中，训练时，程序从此目录拷贝文件到容器内进行训练，将结果保存到此目录里。整体的结构图如下：
 
-![paddle on kubernetes结构图](k8s-paddle-arch.png)
+![paddle on kubernetes结构图](src/k8s-paddle-arch.png)
 
 上图描述了一个3节点的分布式训练场景，Kubernetes集群的每个node上都挂载了一个MFS目录，这个目录可以通过volume的形式挂载到容器中。Kubernetes为这次训练创建了3个pod并且调度到了3个node上运行，每个pod包含一个PaddlePaddle容器。在容器创建后，会启动pserver与trainer进程，读取volume中的数据进行这次分布式训练。
 
