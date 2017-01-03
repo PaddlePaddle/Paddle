@@ -23,35 +23,36 @@ PServerUtil::PServerUtil(const ParameterServerConfig& config) {
   int onlineCpus = rdma::numCpus();
   int numPorts = config.ports_num() + config.ports_num_for_sparse();
 
-  if (FLAGS_nics.empty()) {
+  if (config.nics().empty()) {
     pservers_.resize(numPorts);
     for (int i = 0; i < numPorts; ++i) {
-      if (FLAGS_rdma_tcp == "rdma") {
+      if (config.rdma_tcp() == "rdma") {
         pservers_[i].reset(
-            new ParameterServer2(std::string(), FLAGS_port + i, rdmaCpu++));
+            new ParameterServer2(std::string(), config.port() + i, rdmaCpu++));
         rdmaCpu = rdmaCpu % onlineCpus;
       } else {
-        pservers_[i].reset(new ParameterServer2(std::string(), FLAGS_port + i));
+        pservers_[i].reset(
+            new ParameterServer2(std::string(), config.port() + i));
       }
       CHECK(pservers_[i]->init()) << "Fail to initialize parameter server"
-                                  << FLAGS_port + i;
+                                  << config.port() + i;
     }
   } else {
-    str::split(FLAGS_nics, ',', &devices);
+    str::split(config.nics(), ',', &devices);
     pservers_.resize(devices.size() * numPorts);
     for (int i = 0; i < numPorts; ++i) {
       for (size_t j = 0; j < devices.size(); ++j) {
-        if (FLAGS_rdma_tcp == "rdma") {
+        if (config.rdma_tcp() == "rdma") {
           pservers_[i * devices.size() + j].reset(new ParameterServer2(
-              getIpAddr(devices[j]), FLAGS_port + i, rdmaCpu++));
+              getIpAddr(devices[j]), config.port() + i, rdmaCpu++));
           rdmaCpu = rdmaCpu % onlineCpus;
         } else {
           pservers_[i * devices.size() + j].reset(
-              new ParameterServer2(getIpAddr(devices[j]), FLAGS_port + i));
+              new ParameterServer2(getIpAddr(devices[j]), config.port() + i));
         }
         CHECK(pservers_[i * devices.size() + j]->init())
             << "Fail to initialize parameter server" << devices[j]
-            << FLAGS_port + i;
+            << config.port() + i;
       }
     }
   }
