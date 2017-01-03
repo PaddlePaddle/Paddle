@@ -37,9 +37,10 @@ int main(int argc, char** argv) {
   initMain(argc, argv);
   initPython(argc, argv);
 
+  std::unique_ptr<PServerUtil> pServerPtr(nullptr);
   if (FLAGS_start_pserver) {
-    PServerUtil* pServerUtil = paddle::PServerUtil::createWithGflags();
-    pServerUtil->start();
+    pServerPtr.reset(paddle::PServerUtil::createWithGflags());
+    pServerPtr->start();
   }
   Trainer trainer;
   auto config = TrainerConfigHelper::createFromFlags();
