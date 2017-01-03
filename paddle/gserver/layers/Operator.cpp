@@ -23,3 +23,6 @@ Operator* Operator::create(const OperatorConfig& config, bool useGpu) {
 }
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(operator)

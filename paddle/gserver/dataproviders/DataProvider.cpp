@@ -17,9 +17,12 @@ limitations under the License. */
 #include <unistd.h>
 #include <algorithm>
 #include "ProtoDataProvider.h"
+#include "paddle/utils/ForceLink.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/StringUtil.h"
 #include "paddle/utils/Util.h"
+
+PADDLE_REGISTER_FORCE_LINK_FILE(base_data_providers);
 
 namespace paddle {
 

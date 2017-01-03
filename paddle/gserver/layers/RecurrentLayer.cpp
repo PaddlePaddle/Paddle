@@ -405,3 +405,6 @@ void RecurrentLayer::backwardBatch(int batchSize,
 }
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(recurrent_layer)

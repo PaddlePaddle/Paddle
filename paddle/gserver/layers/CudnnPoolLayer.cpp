@@ -137,3 +137,6 @@ CudnnPoolLayer::~CudnnPoolLayer() {
 }
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(cudnn_pool_layer)

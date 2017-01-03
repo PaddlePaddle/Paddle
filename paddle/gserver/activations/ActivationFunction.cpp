@@ -22,9 +22,10 @@ limitations under the License. */
 #include <type_traits>
 #include "paddle/parameter/Argument.h"
 #include "paddle/utils/ClassRegistrar.h"
-
+#include "paddle/utils/ForceLink.h"
 #include "paddle/utils/Logging.h"
 
+PADDLE_REGISTER_FORCE_LINK_FILE(activations);
 namespace paddle {
 
 static ClassRegistrar<ActivationFunction> gActivationRegistrar;

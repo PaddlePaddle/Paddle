@@ -63,3 +63,6 @@ void PoolProjectionLayer::backward(const UpdateCallback& callback) {
   poolProjection_->backward(callback);
 }
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(pool_projection_layer)

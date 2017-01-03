@@ -13,11 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/gserver/evaluators/Evaluator.h"
+#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
+#include "paddle/utils/ForceLink.h"
 #include "paddle/utils/Stat.h"
 
-#include "paddle/gserver/gradientmachines/NeuralNetwork.h"
-
 DECLARE_int32(trainer_id);
+PADDLE_REGISTER_FORCE_LINK_FILE(base_evaluators);
 
 namespace paddle {
 

@@ -50,3 +50,6 @@ void GruCompute::backward<0>(hl_gru_value value,
 }
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(gru_compute)

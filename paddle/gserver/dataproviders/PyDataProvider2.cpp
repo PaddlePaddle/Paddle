@@ -25,9 +25,12 @@ limitations under the License. */
 
 #include "DataProvider.h"
 
+#include "paddle/utils/ForceLink.h"
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"
+
+PADDLE_REGISTER_FORCE_LINK_FILE(py_dp2);
 
 namespace paddle {
 

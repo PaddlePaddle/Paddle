@@ -138,3 +138,6 @@ void OuterProdLayer::backward(const UpdateCallback& callback) {
 }
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(outer_prod_layer)

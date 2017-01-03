@@ -147,3 +147,6 @@ void PriorBoxLayer::forward(PassType passType) {
 REGISTER_LAYER(priorbox, PriorBoxLayer);
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(prior_box)

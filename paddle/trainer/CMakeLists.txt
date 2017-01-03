@@ -41,9 +41,11 @@ macro(add_paddle_exe TARGET_NAME)
 endmacro()
 
 add_paddle_exe(paddle_trainer
+    ForceLinkFiles.cpp
     TrainerMain.cpp)
 
 add_paddle_exe(paddle_merge_model
+    ForceLinkFiles.cpp
     MergeModel.cpp)
 
 if(WITH_TESTING)

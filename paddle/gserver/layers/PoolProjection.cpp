@@ -169,3 +169,6 @@ void AvgPoolProjection::backward(const UpdateCallback& callback) {
                              confPadding_);
 }
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(pool_projection)

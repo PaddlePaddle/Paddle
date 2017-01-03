@@ -15,9 +15,11 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
-#include "paddle/math/Vector.h"
-
 #include "Evaluator.h"
+#include "paddle/math/Vector.h"
+#include "paddle/utils/ForceLink.h"
+
+PADDLE_REGISTER_FORCE_LINK_FILE(chunck_evaluator);
 
 namespace paddle {
 

@@ -287,3 +287,6 @@ REGISTER_LAYER(sequence_gather_agent, SequenceGatherAgentLayer);
 REGISTER_LAYER(sequence_scatter_agent, SequenceScatterAgentLayer);
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(agent_layer)
