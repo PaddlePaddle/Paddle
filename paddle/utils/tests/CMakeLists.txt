@@ -15,3 +15,11 @@ if(NOT APPLE)
         COMMAND ${PROJ_ROOT}/paddle/utils/tests/test_CustomStackTracePrint.sh
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
+
+add_library(test_class_registrar_lib STATIC
+  test_ClassRegistrarLib.cpp
+  test_ClassRegistrarGlobals.cpp)
+
+add_simple_unittest(test_ClassRegistrar)
+target_link_libraries(test_ClassRegistrar
+  test_class_registrar_lib)

@@ -1,0 +1,6 @@
+#ifndef __PADDLE_PADDLE_CAPI_CONFIG_H_INCLUDED__
+#define __PADDLE_PADDLE_CAPI_CONFIG_H_INCLUDED__
+
+typedef @PADDLE_FLOAT_TYPE@ pd_real;
+
+#endif
