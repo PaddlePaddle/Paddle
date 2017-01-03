@@ -11,13 +11,16 @@ endif()
 
 add_library(paddle_function STATIC ${cpp_files} ${cu_objs})
 
-add_library(paddle_test_main STATIC TestMain.cpp)
-
 if(WITH_GPU)
+if(WITH_TESTING)
     # TODO:
     # file(GLOB test_files . *OpTest.cpp)
     # add_executable(${test_bin} EXCLUDE_FROM_ALL ${test_files})
     add_simple_unittest(CrossMapNormalOpTest)
+    add_unittest(ContextProjectionOpTest
+        ContextProjectionOpTest.cpp
+        ../gserver/tests/TestUtil.cpp)
+endif()
 endif()
 
 add_style_check_target(paddle_function ${h_files})

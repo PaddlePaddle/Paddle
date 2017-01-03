@@ -107,7 +107,6 @@ function(link_paddle_exe TARGET_NAME)
         paddle_parameter
         paddle_proto
         paddle_cuda
-        paddle_test_main
         ${METRIC_LIBS}
         ${PROTOBUF_LIBRARY}
         ${LIBGLOG_LIBRARY}
@@ -155,8 +154,9 @@ endfunction()
 # Rest Arguemnts: not used.
 function(link_paddle_test TARGET_NAME)
     link_paddle_exe(${TARGET_NAME})
-    target_link_libraries(${TARGET_NAME} ${GTEST_MAIN_LIBRARIES}
-        ${GTEST_LIBRARIES})
+    target_link_libraries(${TARGET_NAME}
+                          paddle_test_main
+                          ${GTEST_LIBRARIES})
 endfunction()
 
 # add_unittest_without_exec

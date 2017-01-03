@@ -16,10 +16,9 @@ set -e
 set -x
 BASE_URL='http://paddlepaddle.cdn.bcebos.com/model_zoo/embedding'
 
-wget ${BASE_URL}/baidu.dict
-
-DOWNLOAD_ITEMS=(model_32.emb model_64.emb model_128.emb model_256.emb)
-ITEM_MD5=(f88c8325ee6da6187f1080e8fe66c1cd
+DOWNLOAD_ITEMS=(baidu.dict model_32.emb model_64.emb model_128.emb model_256.emb)
+ITEM_MD5=(fa03a12321eaab6c30a8fcc9442eaea3
+          f88c8325ee6da6187f1080e8fe66c1cd
           927cf70f27f860aff1a5703ebf7f1584
 	  a52e43655cd25d279777ed509a1ae27b
 	  b92c67fe9ff70fea53596080e351ac80)
