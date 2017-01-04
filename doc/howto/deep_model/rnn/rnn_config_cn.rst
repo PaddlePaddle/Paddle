@@ -33,8 +33,7 @@ PaddlePaddle
 
     yield src_ids, trg_ids, trg_ids_next
 
-有关如何编写数据提供程序的更多细节描述，请参考
-`PyDataProvider2 <../../ui/data_provider/index.html>`__\ 。完整的数据提供文件在
+有关如何编写数据提供程序的更多细节描述，请参考 :ref:`api_pydataprovider2` 。完整的数据提供文件在
 ``demo/seqToseq/dataprovider.py``\ 。
 
 配置循环神经网络架构
@@ -132,9 +131,7 @@ Sequence to Sequence Model with Attention
 
 模型的编码器部分如下所示。它叫做\ ``grumemory``\ 来表示门控循环神经网络。如果网络架构简单，那么推荐使用循环神经网络的方法，因为它比
 ``recurrent_group``
-更快。我们已经实现了大多数常用的循环神经网络架构，可以参考
-`Layers <../../ui/api/trainer_config_helpers/layers_index.html>`__
-了解更多细节。
+更快。我们已经实现了大多数常用的循环神经网络架构，可以参考 :ref:`api_trainer_config_helpers_layers` 了解更多细节。
 
 我们还将编码向量投射到 ``decoder_size``
 维空间。这通过获得反向循环网络的第一个实例，并将其投射到
@@ -276,9 +273,6 @@ attention，门控循环单元单步函数和输出函数：
                               result_file=gen_trans_file)
     outputs(beam_gen)
 
-注意，这种生成技术只用于类似解码器的生成过程。如果你正在处理序列标记任务，请参阅
-`Semantic Role Labeling
-Demo <../../demo/semantic_role_labeling/index.html>`__
-了解更多详细信息。
+注意，这种生成技术只用于类似解码器的生成过程。如果你正在处理序列标记任务，请参阅 :ref:`semantic_role_labeling` 了解更多详细信息。
 
 完整的配置文件在\ ``demo/seqToseq/seqToseq_net.py``\ 。

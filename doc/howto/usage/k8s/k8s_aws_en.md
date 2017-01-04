@@ -331,15 +331,15 @@ For sharing the training data across all the Kubernetes nodes, we use EFS (Elast
 1. Make sure you added AmazonElasticFileSystemFullAccess policy in your group.
 
 1. Create the Elastic File System in AWS console, and attach the new VPC with it.
-<img src="src/create_efs.png" width="800">
+<center>![](src/create_efs.png)</center>
 
 
 1. Modify the Kubernetes security group under ec2/Security Groups, add additional inbound policy "All TCP TCP 0 - 65535 0.0.0.0/0" for Kubernetes default VPC security group. 
-<img src="src/add_security_group.png" width="800">
+<center>![](src/add_security_group.png)</center>
 
 
 1. Follow the EC2 mount instruction to mount the disk onto all the Kubernetes nodes, we recommend to mount EFS disk onto ~/efs.
-<img src="src/efs_mount.png" width="800">
+<center>![](src/efs_mount.png)</center>
 
 
 Before starting the training, you should place your user config and divided training data onto EFS. When the training start, each task will copy related files from EFS into container, and it will also write the training results back onto EFS, we will show you how to place the data later in this article.
