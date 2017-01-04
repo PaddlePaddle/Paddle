@@ -868,6 +868,27 @@ private:
   ParameterUpdaterPrivate* m;
 };
 
+struct ParameterServerPrivate;
+class ParameterServer {
+private:
+  ParameterServer();
+
+public:
+  static ParameterServer* createParameterServer();
+
+  ~ParameterServer();
+
+  /**
+   * @brief initialize Parameter Server.
+   * @param gm
+   */
+  void start();
+  void join();
+
+private:
+  ParameterServerPrivate* m;
+};
+
 struct EvaluatorPrivate;
 class Evaluator {
 private:
