@@ -33,25 +33,33 @@ public:
     // init cpu and gpu arguments
     auto initArgs = [=](
         Arguments& cpuArgs, Arguments& gpuArgs, const Arguments& inArgs) {
-      for (auto arg : inArgs) {
+      for (const auto arg : inArgs) {
         size_t size = sizeof(real);
-        for (auto dim : arg.dims_) {
+        for (const auto dim : arg.dims_) {
           size *= dim;
         }
-        cpuMemory.emplace_back(std::make_shared<CpuMemoryHandle>(size));
-        gpuMemory.emplace_back(std::make_shared<GpuMemoryHandle>(size));
-        cpuArgs.emplace_back(
-            Tensor((real*)cpuMemory.back()->getBuf(), arg.dims_));
-        gpuArgs.emplace_back(
-            Tensor((real*)gpuMemory.back()->getBuf(), arg.dims_));
-
-        // will use an api to refactor this code.
-        CpuVector cpuVector(size / sizeof(real),
-                            (real*)cpuArgs.back().getData());
-        GpuVector gpuVector(size / sizeof(real),
-                            (real*)gpuArgs.back().getData());
-        cpuVector.uniform(0.001, 1);
-        gpuVector.copyFrom(cpuVector);
+        if (arg.getData()) {
+          // todo(tianbing), waste unnecessary mem here
+          cpuMemory.emplace_back(std::make_shared<CpuMemoryHandle>(size));
+          gpuMemory.emplace_back(std::make_shared<GpuMemoryHandle>(size));
+          cpuArgs.emplace_back(Tensor((real*)arg.getData(), arg.dims_));
+          gpuArgs.emplace_back(Tensor((real*)arg.getData(), arg.dims_));
+          // already init outside
+        } else {
+          cpuMemory.emplace_back(std::make_shared<CpuMemoryHandle>(size));
+          gpuMemory.emplace_back(std::make_shared<GpuMemoryHandle>(size));
+          cpuArgs.emplace_back(
+              Tensor((real*)cpuMemory.back()->getBuf(), arg.dims_));
+          gpuArgs.emplace_back(
+              Tensor((real*)gpuMemory.back()->getBuf(), arg.dims_));
+          // will use an api to refactor this code.
+          CpuVector cpuVector(size / sizeof(real),
+                              (real*)cpuArgs.back().getData());
+          GpuVector gpuVector(size / sizeof(real),
+                              (real*)gpuArgs.back().getData());
+          cpuVector.uniform(0.001, 1);
+          gpuVector.copyFrom(cpuVector);
+        }
       }
     };
     initArgs(cpuInputs, gpuInputs, inputs);
@@ -81,6 +89,10 @@ public:
     checkArgs(cpuInouts, gpuInouts);
   }
 
+  std::shared_ptr<FunctionBase> getCpuFunction() const { return cpu; }
+
+  std::shared_ptr<FunctionBase> getGpuFunction() const { return gpu; }
+
 protected:
   std::shared_ptr<FunctionBase> cpu;
   std::shared_ptr<FunctionBase> gpu;
@@ -95,8 +107,3 @@ protected:
 };
 
 }  // namespace paddle
-
-using paddle::FunctionCompare;
-using paddle::FuncConfig;
-using paddle::Dims;
-using paddle::Tensor;
