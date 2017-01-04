@@ -37,4 +37,25 @@ void CosSimForward(typename MatrixT<Device>::type* output,
                    const typename MatrixT<Device>::type* input2,
                    real scale);
 
+/**
+ * \brief   Cosine Similarity BackWard for Derivative.
+ *
+ * \param[out]  output1           backward loss output grad.
+ * \param[in]   input1            forward-output value.
+ * \param[in]   input2            forward input value 1.
+ * \param[in]   input3            forward input value 2.
+ * \param[in]   input4            forward input grad 1.
+ * \param[in]   input5            forward input grad 2.
+ * \param[in]   scale             default 1.0.
+ *
+ */
+template <DeviceType Device>
+void CosSimBackward(const typename MatrixT<Device>::type* out_grad,
+                    const typename MatrixT<Device>::type* out_value,
+                    const typename MatrixT<Device>::type* in1_value,
+                    const typename MatrixT<Device>::type* in2_value,
+                    typename MatrixT<Device>::type* in1_grad,
+                    typename MatrixT<Device>::type* in2_grad,
+                    real scale);
+
 }  // namespace paddle
