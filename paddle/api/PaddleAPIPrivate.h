@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/gserver/evaluators/Evaluator.h"
 #include "paddle/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/parameter/ParameterUpdaterBase.h"
-#include "paddle/pserver/PServerUtil.h"
+#include "paddle/pserver/PServerController.h"
 #include "paddle/trainer/TrainerConfigHelper.h"
 
 struct GradientMachinePrivate {
@@ -74,7 +74,7 @@ struct ParameterUpdaterPrivate {
 };
 
 struct ParameterServerPrivate {
-  std::unique_ptr<paddle::PServerUtil> pServerUtil;
+  std::unique_ptr<paddle::PServerController> pServerController;
 };
 
 struct ParameterPrivate {

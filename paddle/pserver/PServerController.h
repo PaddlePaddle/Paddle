@@ -26,7 +26,7 @@ public:
   DISABLE_COPY(PServerController);
 
   /**
-   * @brief Ctor, Create a PServerUtil from ParameterServerConfig.
+   * @brief Ctor, Create a PServerController from ParameterServerConfig.
    */
   explicit PServerController(const ParameterServerConfig& config);
 
@@ -36,24 +36,24 @@ public:
   ~PServerController();
 
   /**
-   * @brief create PServerUtil from gflags, this is used for
+   * @brief create PServerController from gflags, this is used for
    * compatibility with the old usage of configuration by gflags.
    */
   static PServerController* createByGflags();
 
   /**
-   * @brief create PServerUtil with ParameterServerConfig, remove gflags
+   * @brief create PServerController with ParameterServerConfig, remove gflags
    * from ParameterServer. Init all pservers thread according to the config.
    */
   static PServerController* create(const ParameterServerConfig& config);
 
   /**
-   * @brief start all pserver thread in this PServerUtil.
+   * @brief start all pserver thread in this PServerController.
    */
   void start();
 
   /**
-   * @brief join and wait for all pserver thread in this PServerUtil.
+   * @brief join and wait for all pserver thread in this PServerController.
    */
   void join();
 
