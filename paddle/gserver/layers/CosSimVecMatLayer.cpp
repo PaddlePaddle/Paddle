@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "Layer.h"
-#include "paddle/math/Matrix.h"
+#include "CosSimVecMatLayer.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
@@ -98,11 +97,23 @@ bool CosSimVecMatLayer::init(const LayerMap& layerMap,
                            dataDim,
                            /* trans= */ false,
                            useGpu_);
+
+  /// todo(tianbing), do we really need to check these shared pointers?
+  CHECK(tmpRow0 && tmpRow1 && tmpRow2 && tmpRow3 && tmpMtx0 && tmpMtx1);
+
+  createFunction(forward_,
+                 "CosSimForward",
+                 FuncConfig().set("scale", (real)config_.cos_scale()));
+  createFunction(backward_,
+                 "CosSimBackward",
+                 FuncConfig().set("scale", (real)config_.cos_scale()));
+
   return true;
 }
 
 void CosSimVecMatLayer::forward(PassType passType) {
   Layer::forward(passType);
+  CHECK_EQ(forward_.size(), 1) << "Only one forward function needed";
 
   MatrixPtr inV0 = getInputValue(0);
   MatrixPtr inV1 = getInputValue(1);
@@ -118,17 +129,26 @@ void CosSimVecMatLayer::forward(PassType passType) {
   }
 
   MatrixPtr outV = getOutputValue();
-
+  CHECK(outV && inV0 && inV1);
   REGISTER_TIMER_INFO("FwCosVMTimer", getName().c_str());
   for (size_t i = 0; i < batchSize; i++) {
     tmpRow0->setData(inV0->rowBuf(i));
     tmpMtx0->setData(inV1->rowBuf(i));
     tmpRow2->setData(outV->rowBuf(i));
-    tmpRow2->cosSim(*(tmpMtx0), *(tmpRow0), config_.cos_scale());
+
+    forward_[0]->calc({Tensor(tmpMtx0->getData(),
+                              Dims{tmpMtx0->getHeight(), tmpMtx0->getWidth()}),
+                       Tensor(tmpRow0->getData(),
+                              Dims{tmpRow0->getHeight(), tmpRow0->getWidth()})},
+                      {Tensor(tmpRow2->getData(),
+                              Dims{tmpRow2->getHeight(), tmpRow2->getWidth()})},
+                      {});
   }
 }
 
 void CosSimVecMatLayer::backward(const UpdateCallback& callback) {
+  CHECK_EQ(backward_.size(), 1) << "Only one forward function needed";
+
   MatrixPtr inV0 = getInputValue(0);
   MatrixPtr inV1 = getInputValue(1);
   MatrixPtr inG0 = getInputGrad(0);
@@ -137,27 +157,31 @@ void CosSimVecMatLayer::backward(const UpdateCallback& callback) {
   MatrixPtr outG = getOutputGrad();
 
   size_t batchSize = inV0->getHeight();
-
+  CHECK(inV0 && inV1 && inG0 && inG1 && outV && outG);
   REGISTER_TIMER_INFO("BwCosVMTimer", getName().c_str());
 
-  if (inG0 && inG1) {
-    for (size_t i = 0; i < batchSize; i++) {
-      tmpRow0->setData(inV0->rowBuf(i));
-      tmpRow1->setData(inG0->rowBuf(i));
-      tmpMtx0->setData(inV1->rowBuf(i));
-      tmpMtx1->setData(inG1->rowBuf(i));
-      tmpRow2->setData(outV->rowBuf(i));
-      tmpRow3->setData(outG->rowBuf(i));
+  for (size_t i = 0; i < batchSize; i++) {
+    tmpRow0->setData(inV0->rowBuf(i));
+    tmpRow1->setData(inG0->rowBuf(i));
+    tmpMtx0->setData(inV1->rowBuf(i));
+    tmpMtx1->setData(inG1->rowBuf(i));
+    tmpRow2->setData(outV->rowBuf(i));
+    tmpRow3->setData(outG->rowBuf(i));
 
-      tmpRow3->cosSimDerivative(*(tmpRow2),
-                                *(tmpMtx0),
-                                *(tmpRow0),
-                                *(tmpMtx1),
-                                *(tmpRow1),
-                                config_.cos_scale());
-    }
-  } else {
-    CHECK(!inG0 || !inG1) << "Not supported";
+    backward_[0]->calc(
+        {Tensor(tmpRow2->getData(),
+                Dims{tmpRow2->getHeight(), tmpRow2->getWidth()}),
+         Tensor(tmpMtx0->getData(),
+                Dims{tmpMtx0->getHeight(), tmpMtx0->getWidth()}),
+         Tensor(tmpRow0->getData(),
+                Dims{tmpRow0->getHeight(), tmpRow0->getWidth()}),
+         Tensor(tmpMtx1->getData(),
+                Dims{tmpMtx1->getHeight(), tmpMtx1->getWidth()}),
+         Tensor(tmpRow1->getData(),
+                Dims{tmpRow1->getHeight(), tmpRow1->getWidth()})},
+        {Tensor(tmpRow3->getData(),
+                Dims{tmpRow3->getHeight(), tmpRow3->getWidth()})},
+        {});
   }
 }
 
