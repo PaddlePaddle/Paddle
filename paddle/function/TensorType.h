@@ -57,6 +57,11 @@ struct DataType<double> {
   static const ValueType value = VALUE_TYPE_DOUBLE;
 };
 
+template <>
+struct DataType<int> {
+  static const ValueType value = VALUE_TYPE_INT32;
+};
+
 namespace detail {
 
 template <typename VType, DeviceType Device>
