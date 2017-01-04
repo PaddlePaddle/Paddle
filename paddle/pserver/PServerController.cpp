@@ -60,18 +60,16 @@ PServerController::PServerController(const ParameterServerConfig& config) {
 
 PServerController::~PServerController() { this->join(); }
 
-ParameterServerConfig* PServerController::initConfigByGflags() {
-  ParameterServerConfig* config = new ParameterServerConfig();
-  config->set_nics(FLAGS_nics);
-  config->set_port(FLAGS_port);
-  config->set_ports_num(FLAGS_ports_num);
-  config->set_rdma_tcp(FLAGS_rdma_tcp);
-  return config;
-}
-
 PServerController* PServerController::createByGflags() {
-  auto& pServerConfig = *paddle::PServerController::initConfigByGflags();
-  return create(pServerConfig);
+  ParameterServerConfig config;
+
+  config.set_nics(FLAGS_nics);
+  config.set_rdma_tcp(FLAGS_rdma_tcp);
+  config.set_port(FLAGS_port);
+  config.set_ports_num(FLAGS_ports_num);
+  config.set_ports_num_for_sparse(FLAGS_ports_num_for_sparse);
+
+  return create(config);
 }
 
 PServerController* PServerController::create(

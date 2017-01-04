@@ -21,7 +21,7 @@ limitations under the License. */
 
 namespace paddle {
 
-class PServerController {
+class PServerController final {
 public:
   DISABLE_COPY(PServerController);
 
@@ -58,13 +58,7 @@ public:
   void join();
 
 private:
-  std::vector<std::shared_ptr<ParameterServer2>> pservers_;
-
-  /**
-   * @brief create ParameterServerConfig from gflags, this is used for
-   * compatibility with the old usage of configuration by gflags.
-   */
-  static ParameterServerConfig* initConfigByGflags();
+  std::vector<std::unique_ptr<ParameterServer2>> pservers_;
 };
 
 }  // namespace paddle
