@@ -18,7 +18,7 @@ foreach(filename ${proto_filenames})
         ${PROTO_GEN}
         ${CUR_PROTO_GEN})
     add_custom_command(OUTPUT ${CUR_PROTO_GEN}
-        COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} 
+        COMMAND env ${py_env} ${PROTOBUF_PROTOC_EXECUTABLE} 
                   --cpp_out ${CMAKE_CURRENT_BINARY_DIR}
           --proto_path ${PROJ_ROOT}/proto ${PROJ_ROOT}/proto/${filename}
         DEPENDS ${filename} ${external_project_dependencies})
@@ -29,7 +29,7 @@ foreach(filename ${proto_filenames})
         ${CUR_PROTO_GEN_PY}
         ${PROTO_GEN_PY})
     add_custom_command(OUTPUT ${CUR_PROTO_GEN_PY}
-        COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --python_out ${PROJ_ROOT}/python/paddle/proto
+        COMMAND env ${py_env} ${PROTOBUF_PROTOC_EXECUTABLE} --python_out ${PROJ_ROOT}/python/paddle/proto
     --proto_path ${PROJ_ROOT}/proto ${PROJ_ROOT}/proto/${filename}
         DEPENDS ${filename} ${external_project_dependencies})
 endforeach()
