@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <glog/logging.h>
+#include "paddle/math/Matrix.h"
 
 namespace paddle {
 
@@ -57,69 +57,60 @@ struct DataType<double> {
   static const ValueType value = VALUE_TYPE_DOUBLE;
 };
 
-/**
- * TensorShape used to represent shape of normal tensor.
- */
-class TensorShape {
-public:
-  TensorShape() : ndims_(0), nelements_(0) { initDims(0); }
+namespace detail {
 
-  TensorShape(size_t ndims) : ndims_(ndims), nelements_(1) { initDims(ndims); };
+template <typename VType, DeviceType Device>
+struct MatrixT;
 
-  TensorShape(std::initializer_list<size_t> dims) {
-    ndims_ = dims.size();
-    initDims(ndims_);
-    std::copy(dims.begin(), dims.end(), dims_.begin());
-    numElements();
-  };
+template <>
+struct MatrixT<real, DEVICE_TYPE_CPU> {
+  using type = CpuMatrix;
+};
 
-  TensorShape(const TensorShape& t)
-      : ndims_(t.ndims_), nelements_(t.nelements_) {
-    initDims(ndims_);
-    std::copy(t.dims_.begin(), t.dims_.end(), dims_.begin());
-  };
+template <>
+struct MatrixT<real, DEVICE_TYPE_GPU> {
+  using type = GpuMatrix;
+};
 
-  // get the size of specified dimension
-  size_t operator[](size_t dim) const {
-    CHECK_GE(dim, 0);
-    CHECK_LT(dim, ndims_);
-    return dims_[dim];
-  }
+template <>
+struct MatrixT<int, DEVICE_TYPE_CPU> {
+  using type = void;  // Not implemented
+};
 
-  // set the size of specified dimension
-  void setDim(size_t dim, size_t size) {
-    CHECK_GE(dim, 0);
-    CHECK_LT(dim, ndims_);
-    dims_[dim] = size;
-    numElements();
-  }
+template <>
+struct MatrixT<int, DEVICE_TYPE_GPU> {
+  using type = void;  // Not implemented
+};
 
-  // number of dimensions of the tensor
-  size_t ndims() const { return ndims_; }
+template <typename VType, DeviceType Device>
+struct VectorT;
 
-  size_t getElements() const { return nelements_; }
+template <>
+struct VectorT<real, DEVICE_TYPE_CPU> {
+  using type = CpuVector;
+};
 
-private:
-  // compute number of elements
-  void numElements() {
-    nelements_ = 1;
-    for (size_t n = 0; n < ndims_; n++) {
-      nelements_ *= dims_[n];
-    }
-  }
+template <>
+struct VectorT<real, DEVICE_TYPE_GPU> {
+  using type = GpuVector;
+};
 
-  // init dims_
-  void initDims(size_t ndims) {
-    size_t count = ndims < 4 ? 4 : ndims;
-    dims_.assign(count, 1);
-  }
+template <>
+struct VectorT<int, DEVICE_TYPE_CPU> {
+  using type = CpuIVector;
+};
 
-  // number of dimensions
-  // ndims_ may be not equeal dims_.size()
-  size_t ndims_;
-  // number of elements
-  size_t nelements_;
-  std::vector<size_t> dims_;
+template <>
+struct VectorT<int, DEVICE_TYPE_GPU> {
+  using type = GpuIVector;
+};
+
+}  // namespace detail
+
+template <typename VType, DeviceType DType>
+struct Tensor {
+  typedef typename detail::MatrixT<VType, DType>::type Matrix;
+  typedef typename detail::VectorT<VType, DType>::type Vector;
 };
 
 }  // namespace paddle

@@ -17,37 +17,31 @@ limitations under the License. */
 
 namespace paddle {
 
-TEST(TensorShape, Constructor) {
-  TensorShape t1;
-  EXPECT_EQ(t1.ndims(), 0);
-  EXPECT_EQ(t1.getElements(), 0);
+TEST(TensorType, Matrix) {
+  Tensor<real, DEVICE_TYPE_CPU>::Matrix matrix(100, 200);
+  EXPECT_EQ(matrix.getHeight(), 100);
+  EXPECT_EQ(matrix.getWidth(), 200);
+  EXPECT_EQ(matrix.getElementCnt(), 100 * 200);
+  EXPECT_EQ(matrix.useGpu(), false);
 
-  TensorShape t2(3);
-  EXPECT_EQ(t2.ndims(), 3);
-  EXPECT_EQ(t2.getElements(), 1);
-
-  TensorShape t3({8, 10});
-  EXPECT_EQ(t3.ndims(), 2);
-  EXPECT_EQ(t3.getElements(), 80);
-
-  TensorShape t4(t3);
-  EXPECT_EQ(t4.ndims(), t3.ndims());
-  EXPECT_EQ(t4.getElements(), t3.getElements());
-
-  TensorShape t5({1, 2, 3, 4, 5});
-  EXPECT_EQ(t5.ndims(), 5);
-  EXPECT_EQ(t5.getElements(), 120);
+  Tensor<real, DEVICE_TYPE_GPU>::Matrix testGpu(100, 200);
+  EXPECT_EQ(testGpu.useGpu(), true);
 }
 
-TEST(TensorShape, GetAndSet) {
-  TensorShape t({1, 2, 3});
-  EXPECT_EQ(t.ndims(), 3);
-  EXPECT_EQ(t.getElements(), 6);
+TEST(TensorType, Vector) {
+  Tensor<real, DEVICE_TYPE_CPU>::Vector cpuVector(100);
+  Tensor<real, DEVICE_TYPE_GPU>::Vector gpuVector(100);
+  EXPECT_EQ(cpuVector.useGpu(), false);
+  EXPECT_EQ(gpuVector.useGpu(), true);
+  EXPECT_EQ(cpuVector.getSize(), 100);
+  EXPECT_EQ(gpuVector.getSize(), 100);
 
-  EXPECT_EQ(t[1], 2);
-  t.setDim(1, 100);
-  EXPECT_EQ(t.getElements(), 300);
-  EXPECT_EQ(t[1], 100);
+  Tensor<int, DEVICE_TYPE_CPU>::Vector cpuIVector(100);
+  Tensor<int, DEVICE_TYPE_GPU>::Vector gpuIVector(100);
+  EXPECT_EQ(cpuIVector.useGpu(), false);
+  EXPECT_EQ(gpuIVector.useGpu(), true);
+  EXPECT_EQ(cpuIVector.getSize(), 100);
+  EXPECT_EQ(gpuIVector.getSize(), 100);
 }
 
 }  // namespace paddle
