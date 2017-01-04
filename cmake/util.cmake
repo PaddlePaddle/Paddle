@@ -24,7 +24,7 @@ function(target_circle_link_libraries TARGET_NAME)
                 list(APPEND libsInArgn ${arg})
             endif()
         endforeach()
-        if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
             list(APPEND LIBS "-undefined dynamic_lookup")
         endif()
         list(REVERSE libsInArgn)
@@ -105,7 +105,7 @@ function(link_paddle_exe TARGET_NAME)
 
     if(WITH_PYTHON)
         target_link_libraries(${TARGET_NAME}
-            ${PYTHON_LIBRARIES})
+            ${PYTHON_LIBRARIES} util)
     endif()
 
     if(WITH_GPU)
