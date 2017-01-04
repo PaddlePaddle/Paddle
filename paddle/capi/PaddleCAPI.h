@@ -7,10 +7,13 @@
 extern "C" {
 #endif
 
-#define PD_NO_ERROR 0
-#define PD_NULLPTR 1
-#define PD_OUT_OF_RANGE 2
-#define PD_UNDEFINED_ERROR -1
+typedef enum {
+  PD_NO_ERROR = 0,
+  PD_NULLPTR = 1,
+  PD_OUT_OF_RANGE = 2,
+  PD_PROTOBUF_ERROR = 3,
+  PD_UNDEFINED_ERROR = -1,
+} PD_Error;
 
 typedef void* PD_Vector;
 
@@ -47,6 +50,20 @@ int PDArgsResize(PD_Arguments args, uint64_t size);
 int PDArgsSetValue(PD_Arguments args, uint64_t ID, PD_Matrix mat);
 
 int PDArgsGetValue(PD_Arguments args, uint64_t ID, PD_Matrix mat);
+
+typedef void* PD_GradiemtMachine;
+
+int PDGradientMachineCreateForPredict(PD_GradiemtMachine* machine,
+                                      void* modelConfigProtobuf,
+                                      int size);
+
+int PDGradientMachineDestroy(PD_GradiemtMachine machine);
+
+int PDInit(int argc, char** argv);
+
+int PDParseTrainerConfigFromFile(char* filename,
+                                 void** modelConfigProtobuf,
+                                 int* size);
 
 #ifdef __cplusplus
 }

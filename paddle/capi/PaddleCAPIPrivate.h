@@ -1,4 +1,5 @@
 #include "PaddleCAPI.h"
+#include "paddle/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/Vector.h"
 #include "paddle/parameter/Argument.h"
@@ -17,6 +18,10 @@ struct CMatrix {
 
 struct CArguments {
   std::vector<paddle::Argument> args;
+};
+
+struct CGradientMachine {
+  paddle::GradientMachinePtr machine;
 };
 
 template <typename T>

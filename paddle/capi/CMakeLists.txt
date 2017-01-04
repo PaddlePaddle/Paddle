@@ -35,7 +35,8 @@ target_link_libraries(paddle_capi
   ${CBLAS_LIBS}
   ${ZLIB_LIBRARIES}
   ${INTERAL_LIBS}
-  ${CMAKE_DL_LIBS})
+  ${CMAKE_DL_LIBS}
+  ${PYTHON_LIBRARIES})
 
 
 set(PADDLE_CAPI_INC_PATH
