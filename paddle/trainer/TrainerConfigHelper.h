@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <paddle/utils/Error.h>
 #include <paddle/utils/Logging.h>
 #include <paddle/utils/Util.h>
 #include <memory>
@@ -32,11 +33,8 @@ class DataConfig;
  *
  * The all operation to TrainerConfig object should use this object. It remove
  * many copy & paste code in trainer.
- *
- * @TODO(yuyang18): Make cmake check compiler support keyword 'final' or not.
- * Define a macro to unify 'final' keyword
  */
-class TrainerConfigHelper /*final*/ {
+class TrainerConfigHelper final {
 public:
   DISABLE_COPY(TrainerConfigHelper);
 
@@ -44,7 +42,8 @@ public:
    * @brief Ctor, Create a TrainerConfig from config file
    * @param configFilePath Config file path.
    */
-  explicit TrainerConfigHelper(const std::string& configFilePath);
+  explicit TrainerConfigHelper(const std::string& configFilePath) throw(
+      ErrorPtr&);
   explicit TrainerConfigHelper(const TrainerConfig& config);
 
   /**

@@ -116,26 +116,39 @@ static void printPyErrorStack(std::ostream& os,
 }
 PyObjectPtr callPythonFuncRetPyObj(const std::string& moduleName,
                                    const std::string& funcName,
-                                   const std::vector<std::string>& args) {
+                                   const std::vector<std::string>& args,
+                                   std::string* errorString) {
   PyGuard guard;
-  PyObjectPtr pyModule = py::import(moduleName);
+  PyObjectPtr pyModule = py::import(moduleName, errorString);
+  if (pyModule == nullptr) {
+    return nullptr;
+  }
+
   PyObjectPtr pyFunc(PyObject_GetAttrString(pyModule.get(), funcName.c_str()));
-  CHECK_PY(pyFunc) << "GetAttrString failed.";
+  CHECK_PY_WITH_ERRORSTR(
+      pyFunc, "GetAttrString failed.", errorString, return nullptr);
   PyObjectPtr pyArgs(PyTuple_New(args.size()));
   for (size_t i = 0; i < args.size(); ++i) {
     PyObjectPtr pyArg(PyString_FromString(args[i].c_str()));
-    CHECK_PY(pyArg) << "Import pyArg failed.";
+    CHECK_PY_WITH_ERRORSTR(
+        pyArg, "Import pyArg failed.", errorString, return nullptr);
     PyTuple_SetItem(pyArgs.get(), i, pyArg.release());  //  Maybe a problem
   }
   PyObjectPtr ret(PyObject_CallObject(pyFunc.get(), pyArgs.get()));
-  CHECK_PY(ret) << "Call Object failed.";
+  CHECK_PY_WITH_ERRORSTR(
+      ret, "Call Object failed", errorString, return nullptr);
   return ret;
 }
 
 std::string callPythonFunc(const std::string& moduleName,
                            const std::string& funcName,
-                           const std::vector<std::string>& args) {
-  PyObjectPtr obj = callPythonFuncRetPyObj(moduleName, funcName, args);
+                           const std::vector<std::string>& args,
+                           std::string* errorString) {
+  PyObjectPtr obj =
+      callPythonFuncRetPyObj(moduleName, funcName, args, errorString);
+  if (obj == nullptr) {
+    return std::string("");
+  }
   return std::string(PyString_AsString(obj.get()), PyString_Size(obj.get()));
 }
 
@@ -181,10 +194,18 @@ std::string getPyCallStack() {
   return os.str();
 }
 
-PyObjectPtr import(const std::string& moduleName) {
+PyObjectPtr import(const std::string& moduleName, std::string* errorString) {
   auto module = PyImport_ImportModule(moduleName.c_str());
-  CHECK_PY(module) << "Import " << moduleName << "Error";
-  return PyObjectPtr(module);
+  if (errorString == nullptr) {
+    CHECK_PY(module) << "Import " << moduleName << "Error";
+    return PyObjectPtr(module);
+  } else {
+    if (module == nullptr) {
+      *errorString = getPyCallStack();
+      return nullptr;
+    }
+    return PyObjectPtr(module);
+  }
 }
 
 }  // namespace py
