@@ -21,7 +21,7 @@ function(target_circle_link_libraries TARGET_NAME)
         set(LIBS)
         target_link_libraries(${TARGET_NAME}
                 "-Wl,--start-group"
-                ${LIBS}
+                ${ARGN}
                 "-Wl,--end-group")
     endif()
 endfunction()

@@ -8,6 +8,7 @@ add_simple_unittest(test_SIMDFlags)
 add_executable(
     test_CustomStackTracePrint
     test_CustomStackTracePrint.cpp
+    ${PROJ_ROOT}/paddle/trainer/ForceLinkFiles.cpp
 )
 link_paddle_exe(test_CustomStackTracePrint)
 if(NOT APPLE)

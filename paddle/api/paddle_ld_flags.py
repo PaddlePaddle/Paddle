@@ -17,18 +17,6 @@ try:
     import os.path
     import platform
 
-    system = platform.system().lower()
-    is_osx = (system == 'darwin')
-    is_win = (system == 'windows')
-    is_lin = (system == 'linux')
-
-    if is_lin:
-        whole_start = "-Wl,--whole-archive"
-        whole_end = "-Wl,--no-whole-archive"
-    elif is_osx:
-        whole_start = ""
-        whole_end = ""
-
     LIB_DIRS = [
         "math", 'function', 'utils', 'parameter', "gserver", "api", "cuda",
         "pserver", "trainer"
@@ -73,10 +61,8 @@ try:
 
         def libs_str(self):
             libs = [
-                whole_start,
                 "-lpaddle_gserver",
                 "-lpaddle_function",
-                whole_end,
                 "-lpaddle_pserver",
                 "-lpaddle_trainer_lib",
                 "-lpaddle_network",
