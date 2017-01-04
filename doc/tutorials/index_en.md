@@ -7,6 +7,7 @@ There are several examples and demos here.
 * [Sentiment Analysis](sentiment_analysis/index_en.md)
 * [Semantic Role Labeling](semantic_role_labeling/index_en.md)
 * [Text Generation](text_generation/index_en.md)
+* [Image Auto-Generation](gan/index_en.md)
 
 ## Model Zoo
 * [ImageNet: ResNet](imagenet_model/resnet_model_en.md)
