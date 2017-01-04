@@ -50,6 +50,6 @@ WORKDIR "/notes"
 EXPOSE 8888
 
 RUN mkdir -p /opt/bin
-COPY ./paddle/scripts/docker/run_all /opt/bin/
+COPY ./paddle/scripts/docker/entrypoint /opt/bin/
 
-CMD ["/opt/bin/run_all"]
+CMD ["/opt/bin/entrypoint"]
