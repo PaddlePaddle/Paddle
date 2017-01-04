@@ -874,7 +874,8 @@ private:
   ParameterServer();
 
 public:
-  static ParameterServer* createParameterServer();
+  static ParameterServer* createByConfigProtoPtr(const void* confPtr);
+  static ParameterServer* createByConfigProtoStr(const std::string& protoStr);
 
   ~ParameterServer();
 

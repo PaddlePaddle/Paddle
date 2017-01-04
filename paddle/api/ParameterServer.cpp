@@ -18,10 +18,22 @@ limitations under the License. */
 
 ParameterServer::ParameterServer() : m(new ParameterServerPrivate()) {}
 
-ParameterServer* ParameterServer::createParameterServer() {
+ParameterServer* ParameterServer::createByConfigProtoPtr(const void* confPtr) {
+  auto& conf = *(const paddle::ParameterServerConfig*)(confPtr);
   auto pServer = new ParameterServer();
-  pServer->m->pServerUtil.reset(paddle::PServerUtil::createWithGflags());
+  pServer->m->pServerUtil.reset(paddle::PServerUtil::create(conf));
   return pServer;
+}
+
+ParameterServer* ParameterServer::createByConfigProtoStr(
+    const std::string& protoStr) {
+  paddle::ParameterServerConfig conf;
+  conf.ParseFromString(protoStr);
+  if (conf.IsInitialized()) {
+    return ParameterServer::createByConfigProtoPtr(&conf);
+  } else {
+    return nullptr;
+  }
 }
 
 ParameterServer::~ParameterServer() { delete m; }

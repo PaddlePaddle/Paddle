@@ -22,22 +22,22 @@ message ParameterClientConfig {
 message ParameterServerConfig {
   // The ports number for parameter send,
   // increment based on default port number
-  required int32 ports_num = 1 [default = 1];
+  optional int32 ports_num = 1 [default = 1];
   // The ports number for parameter send,
   // increment based on default (port + ports_num
-  required int32 ports_num_for_sparse = 2 [default = 0];
+  optional int32 ports_num_for_sparse = 2 [default = 0];
   // network device name for pservers
-  required string nics = 3 [default = "xgbe0,xgbe1"];
-  required string rdma_tcp = 4 [default = "tcp"];
+  optional string nics = 3 [default = "xgbe0,xgbe1"];
+  optional string rdma_tcp = 4 [default = "tcp"];
   // Listening port for pserver
-  required int32 port = 5 [default = 20134];
+  optional int32 port = 5 [default = 20134];
   // number of gradient servers
-  required int32 num_gradient_servers = 6 [default = 1];
+  optional int32 num_gradient_servers = 6 [default = 1];
   // number of threads for sync op exec
-  required int32 pserver_num_threads = 7 [default = 1];
+  optional int32 pserver_num_threads = 7 [default = 1];
   // control config_.async_lagged_grad_discard_ratio() min value
-  required double async_lagged_ratio_min = 8 [default = 1.0];
+  optional double async_lagged_ratio_min = 8 [default = 1.0];
   // if async_lagged_grad_discard_ratio is not set in trainer_config.conf
   // use it as defalut value
-  required double async_lagged_ratio_default = 9 [default = 1.5];
+  optional double async_lagged_ratio_default = 9 [default = 1.5];
 }
