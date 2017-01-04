@@ -12,31 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-INCLUDE(ExternalProject)
+INCLUDE(cblas)
 
-SET(CBLAS_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/openblas)
-SET(CBLAS_INSTALL_DIR ${PROJECT_BINARY_DIR}/openblas)
+IF(NOT ${CBLAS_FOUND})
+    INCLUDE(ExternalProject)
 
-ExternalProject_Add(
-    openblas
-    GIT_REPOSITORY      "https://github.com/xianyi/OpenBLAS.git"
-    GIT_TAG             v0.2.19
-    PREFIX              ${CBLAS_SOURCES_DIR}
-    INSTALL_DIR         ${CBLAS_INSTALL_DIR}
-    BUILD_IN_SOURCE     1
-    UPDATE_COMMAND      ""
-    CONFIGURE_COMMAND   ""
-    BUILD_COMMAND       cd ${CBLAS_SOURCES_DIR}/src/openblas && make -j4
-    INSTALL_COMMAND     cd ${CBLAS_SOURCES_DIR}/src/openblas && make install PREFIX=<INSTALL_DIR>
-)
+    SET(CBLAS_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/openblas)
+    SET(CBLAS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/install/openblas)
+    SET(CBLAS_INC_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
 
-SET(CBLAS_INCLUDE_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
-INCLUDE_DIRECTORIES(${CBLAS_INCLUDE_DIR})
+    IF(WIN32)
+        SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/openblas.lib" CACHE FILEPATH "openblas library." FORCE)
+    ELSE(WIN32)
+        SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/libopenblas.a" CACHE FILEPATH "openblas library" FORCE)
+    ENDIF(WIN32)
 
-IF(WIN32)
-    set(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/openblas.lib" CACHE FILEPATH "openblas library." FORCE)
-ELSE(WIN32)
-    set(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/libopenblas.a" CACHE FILEPATH "openblas library" FORCE)
-ENDIF(WIN32)
+    ExternalProject_Add(
+        openblas
+        ${EXTERNAL_PROJECT_LOG_ARGS}
+        URL                 "https://github.com/xianyi/OpenBLAS/archive/v0.2.19.tar.gz"
+        PREFIX              ${CBLAS_SOURCES_DIR}
+        INSTALL_DIR         ${CBLAS_INSTALL_DIR}
+        BUILD_IN_SOURCE     1
+        CONFIGURE_COMMAND   ""
+        BUILD_COMMAND       make CC=${CMAKE_C_COMPILER} FC=${CMAKE_Fortran_COMPILER}
+        INSTALL_COMMAND     make install PREFIX=<INSTALL_DIR>
+        UPDATE_COMMAND      ""
+    )
 
-LIST(APPEND external_project_dependencies openblas)
+    LIST(APPEND external_project_dependencies openblas)
+ENDIF()
+
+INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})

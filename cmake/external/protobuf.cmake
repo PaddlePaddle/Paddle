@@ -15,24 +15,9 @@
 INCLUDE(ExternalProject)
 
 SET(PROTOBUF_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/protobuf)
-SET(PROTOBUF_INSTALL_DIR ${PROJECT_BINARY_DIR}/protobuf)
-
-ExternalProject_Add(
-    protobuf
-    PREFIX          ${PROTOBUF_SOURCES_DIR}
-    DEPENDS         zlib
-    GIT_REPOSITORY  "https://github.com/google/protobuf.git"
-#   GIT_TAG         "v3.1.0"
-    CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} ${PROTOBUF_SOURCES_DIR}/src/protobuf/cmake
-        -Dprotobuf_BUILD_TESTS=OFF
-        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-        -DCMAKE_BUILD_TYPE=Release
-        -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
-    UPDATE_COMMAND ""
-)
-
+SET(PROTOBUF_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/install/protobuf)
 SET(PROTOBUF_INCLUDE_DIR "${PROTOBUF_INSTALL_DIR}/include" CACHE PATH "protobuf include directory." FORCE)
+
 INCLUDE_DIRECTORIES(${PROTOBUF_INCLUDE_DIR})
 
 IF(WIN32)
@@ -44,18 +29,34 @@ IF(WIN32)
         "${PROTOBUF_INSTALL_DIR}/lib/libprotoc.lib" CACHE FILEPATH "protoc library." FORCE)
   SET(PROTOBUF_PROTOC_EXECUTABLE "${PROTOBUF_INSTALL_DIR}/bin/protoc.exe" CACHE FILEPATH "protobuf executable." FORCE)
 ELSE(WIN32)
-  FIND_PATH(PROTOBUF_LIBS_DIR libprotoc.a
-      ${PROTOBUF_INSTALL_DIR}/lib
-      ${PROTOBUF_INSTALL_DIR}/lib64
-      NO_DEFAULT_PATH
-  )
+  IF(${HOST_SYSTEM} STREQUAL "centos")
+    SET(LIB "lib64")
+  ELSE()
+    SET(LIB "lib")
+  ENDIF()
   SET(PROTOBUF_LITE_LIBRARY
-        "${PROTOBUF_LIBS_DIR}/libprotobuf-lite.a" CACHE FILEPATH "protobuf lite library." FORCE)
+        "${PROTOBUF_INSTALL_DIR}/${LIB}/libprotobuf-lite.a" CACHE FILEPATH "protobuf lite library." FORCE)
   SET(PROTOBUF_LIBRARY
-        "${PROTOBUF_LIBS_DIR}/libprotobuf.a" CACHE FILEPATH "protobuf library." FORCE)
+        "${PROTOBUF_INSTALL_DIR}/${LIB}/libprotobuf.a" CACHE FILEPATH "protobuf library." FORCE)
   SET(PROTOBUF_PROTOC_LIBRARY
-        "${PROTOBUF_LIBS_DIR}/libprotoc.a" CACHE FILEPATH "protoc library." FORCE)
+        "${PROTOBUF_INSTALL_DIR}/${LIB}/libprotoc.a" CACHE FILEPATH "protoc library." FORCE)
   SET(PROTOBUF_PROTOC_EXECUTABLE "${PROTOBUF_INSTALL_DIR}/bin/protoc" CACHE FILEPATH "protobuf executable." FORCE)
 ENDIF(WIN32)
+
+ExternalProject_Add(
+  protobuf
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  PREFIX          ${PROTOBUF_SOURCES_DIR}
+  UPDATE_COMMAND  ""
+  DEPENDS         zlib
+  GIT_REPOSITORY  "https://github.com/google/protobuf.git"
+  GIT_TAG         "9f75c5aa851cd877fb0d93ccc31b8567a6706546"
+  CONFIGURE_COMMAND
+    ${CMAKE_COMMAND} ${PROTOBUF_SOURCES_DIR}/src/protobuf/cmake
+    -Dprotobuf_BUILD_TESTS=OFF
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
+)
 
 LIST(APPEND external_project_dependencies protobuf)
