@@ -40,6 +40,19 @@ struct MatrixT<DEVICE_TYPE_GPU> {
   using type = GpuMatrix;
 };
 
+template <DeviceType Device>
+struct SequenceT;
+
+template <>
+struct SequenceT<DEVICE_TYPE_CPU> {
+  using type = CpuIVector;
+};
+
+template <>
+struct SequenceT<DEVICE_TYPE_GPU> {
+  using type = GpuIVector;
+};
+
 typedef std::vector<size_t> Dims;
 
 class Tensor {
@@ -59,6 +72,8 @@ public:
   union value {
     size_t s;
     real r;
+    int i;
+    bool b;
   };
 
   template <typename T>

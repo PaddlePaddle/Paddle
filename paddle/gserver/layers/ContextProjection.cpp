@@ -38,6 +38,32 @@ ContextProjection::ContextProjection(const ProjectionConfig& config,
     CHECK_EQ(inputDim * totalPad, parameter->getSize());
     weight_.reset(new Weight(totalPad, inputDim, parameter));
   }
+  // init forward_ and backward_ functions
+  init();
+}
+
+bool ContextProjection::init() {
+  size_t context_length = config_.context_length();
+  int context_start = config_.context_start();
+  bool is_padding = config_.trainable_padding();
+  size_t total_pad = is_padding ? beginPad_ + endPad_ : 0;
+
+  createFunction(forward_,
+                 "ContextProjectionForward",
+                 FuncConfig()
+                     .set("context_length", context_length)
+                     .set("context_start", context_start)
+                     .set("begin_pad", beginPad_));
+  createFunction(backward_,
+                 "ContextProjectionBackward",
+                 FuncConfig()
+                     .set("context_length", context_length)
+                     .set("context_start", context_start)
+                     .set("begin_pad", beginPad_)
+                     .set("is_padding", is_padding)
+                     .set("total_pad", total_pad));
+
+  return true;
 }
 
 void ContextProjection::resetState() {
@@ -78,25 +104,29 @@ LayerStatePtr ContextProjection::getState() {
 }
 
 void ContextProjection::forward() {
-  CHECK(in_->value);
+  CHECK(in_->value && out_->value);
   CHECK(in_->sequenceStartPositions);
 
-  auto startPositions = in_->sequenceStartPositions->getVector(useGpu_);
-
-  int64_t inputDim = in_->value->getWidth();
-  int64_t dim = out_->value->getWidth();
-  CHECK_EQ(dim, inputDim * config_.context_length());
+  size_t input_dim = in_->value->getWidth();
+  size_t dim = out_->value->getWidth();
+  CHECK_EQ(dim, input_dim * config_.context_length());
+  size_t batch_size = in_->value->getHeight();
+  CHECK_EQ(forward_.size(), 1) << "Only one forward function here";
 
   REGISTER_TIMER_INFO("ContextProjectionForward", getName().c_str());
-  bool isPadding = config_.trainable_padding();
-  out_->value->contextProjectionForward(
-      *(in_->value),
-      state_ ? state_.get() : isPadding ? weight_->getW().get() : nullptr,
-      *startPositions,
-      config_.context_length(),
-      config_.context_start(),
-      beginPad_,
-      state_ ? true : isPadding);
+  bool is_padding = config_.trainable_padding();
+  /// first use state_, otherwise use weight_(padding false === w nullptr)
+  auto w_ptr =
+      state_ ? state_.get() : is_padding ? weight_->getW().get() : nullptr;
+  auto start_pos = in_->sequenceStartPositions;
+  forward_[0]->calc({Tensor(in_->value->getData(), Dims{batch_size, input_dim}),
+                     Tensor(w_ptr ? w_ptr->getData() : nullptr,
+                            Dims{w_ptr ? w_ptr->getHeight() : 0, input_dim}),
+                     Tensor(reinterpret_cast<real*>(
+                                const_cast<int*>(start_pos->getData(useGpu_))),
+                            Dims{start_pos->getSize()})},
+                    {Tensor(out_->value->getData(), Dims{batch_size, dim})},
+                    {});
 
   if (state_ && config_.context_start() < 0) {
     CHECK_EQ(1, in_->getNumSequences());
@@ -118,41 +148,27 @@ void ContextProjection::forward() {
 }
 
 void ContextProjection::backward(const UpdateCallback& callback) {
-  CHECK(in_->value);
-  int64_t inputDim = in_->value->getWidth();
-  int64_t dim = out_->value->getWidth();
-  CHECK_EQ(dim, inputDim * config_.context_length());
-  auto startPositions = in_->sequenceStartPositions->getVector(useGpu_);
+  CHECK(in_->value && out_->value && out_->grad);
+  size_t input_dim = in_->value->getWidth();
+  size_t dim = out_->value->getWidth();
+  CHECK_EQ(dim, input_dim * config_.context_length());
+  size_t batch_size = in_->value->getHeight();
+  CHECK_EQ(batch_size, out_->value->getHeight());
+  CHECK_EQ(backward_.size(), 1) << "Only one backward function here";
 
   REGISTER_TIMER_INFO("ContextProjectionBackward", getName().c_str());
-  bool isPadding = config_.trainable_padding();
-  if (!out_->grad->useGpu()) {
-    out_->grad->contextProjectionBackward(
-        in_->grad.get(),
-        isPadding ? weight_->getWGrad().get() : nullptr,
-        *startPositions,
-        config_.context_length(),
-        config_.context_start(),
-        beginPad_,
-        isPadding);
-  } else {
-    if (in_->grad) {
-      out_->grad->contextProjectionBackwardData(*(in_->grad),
-                                                *startPositions,
-                                                config_.context_length(),
-                                                config_.context_start());
-    }
-
-    if (isPadding && weight_->getWGrad()) {
-      out_->grad->contextProjectionBackwardWeight(
-          *(weight_->getWGrad()),
-          *startPositions,
-          config_.context_length(),
-          config_.context_start(),
-          weight_->getWGrad()->getHeight(),
-          beginPad_);
-    }
-  }
+  bool is_padding = config_.trainable_padding();
+  auto start_pos = in_->sequenceStartPositions;
+  auto w_ptr = is_padding ? weight_->getWGrad() : nullptr;
+  backward_[0]->calc({Tensor(in_->grad ? in_->grad->getData() : nullptr,
+                             Dims{batch_size, input_dim}),
+                      Tensor(w_ptr ? w_ptr->getData() : nullptr,
+                             Dims{w_ptr ? w_ptr->getHeight() : 0, input_dim}),
+                      Tensor(reinterpret_cast<real*>(
+                                 const_cast<int*>(start_pos->getData(useGpu_))),
+                             Dims{start_pos->getSize()})},
+                     {Tensor(out_->grad->getData(), Dims{batch_size, dim})},
+                     {});
 
   if (config_.trainable_padding()) {
     weight_->getParameterPtr()->incUpdate(callback);
