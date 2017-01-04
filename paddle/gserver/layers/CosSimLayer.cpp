@@ -79,13 +79,13 @@ void CosSimLayer::backward(const UpdateCallback& callback) {
     auto inG2 = this->getInputGrad(1);
     CHECK(outG && outV && inV1 && inV2 && inG1 && inG2);
     backward_[0]->calc(
-        {Tensor(outV->getData(), Dims{outV->getHeight(), outV->getWidth()}),
+        {Tensor(outG->getData(), Dims{outG->getHeight(), outG->getWidth()}),
+         Tensor(outV->getData(), Dims{outV->getHeight(), outV->getWidth()}),
          Tensor(inV1->getData(), Dims{inV1->getHeight(), inV1->getWidth()}),
-         Tensor(inV2->getData(), Dims{inV2->getHeight(), inV2->getWidth()}),
-         Tensor(inG1->getData(), Dims{inG1->getHeight(), inG1->getWidth()}),
-         Tensor(inG2->getData(), Dims{inG2->getHeight(), inG2->getWidth()})},
-        {Tensor(outG->getData(), Dims{outG->getHeight(), outG->getWidth()})},
-        {});
+         Tensor(inV2->getData(), Dims{inV2->getHeight(), inV2->getWidth()})},
+        {},
+        {Tensor(inG1->getData(), Dims{inG1->getHeight(), inG1->getWidth()}),
+         Tensor(inG2->getData(), Dims{inG2->getHeight(), inG2->getWidth()})});
   }
 }
 

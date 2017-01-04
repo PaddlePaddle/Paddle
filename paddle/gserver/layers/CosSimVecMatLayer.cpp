@@ -169,19 +169,19 @@ void CosSimVecMatLayer::backward(const UpdateCallback& callback) {
     tmpRow3->setData(outG->rowBuf(i));
 
     backward_[0]->calc(
-        {Tensor(tmpRow2->getData(),
+        {Tensor(tmpRow3->getData(),
+                Dims{tmpRow3->getHeight(), tmpRow3->getWidth()}),
+         Tensor(tmpRow2->getData(),
                 Dims{tmpRow2->getHeight(), tmpRow2->getWidth()}),
          Tensor(tmpMtx0->getData(),
                 Dims{tmpMtx0->getHeight(), tmpMtx0->getWidth()}),
          Tensor(tmpRow0->getData(),
-                Dims{tmpRow0->getHeight(), tmpRow0->getWidth()}),
-         Tensor(tmpMtx1->getData(),
+                Dims{tmpRow0->getHeight(), tmpRow0->getWidth()})},
+        {},
+        {Tensor(tmpMtx1->getData(),
                 Dims{tmpMtx1->getHeight(), tmpMtx1->getWidth()}),
          Tensor(tmpRow1->getData(),
-                Dims{tmpRow1->getHeight(), tmpRow1->getWidth()})},
-        {Tensor(tmpRow3->getData(),
-                Dims{tmpRow3->getHeight(), tmpRow3->getWidth()})},
-        {});
+                Dims{tmpRow1->getHeight(), tmpRow1->getWidth()})});
   }
 }
 

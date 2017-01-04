@@ -34,7 +34,6 @@ void CosSimForward<DEVICE_TYPE_CPU>(CpuMatrix* out_mat,
   CHECK(in2_mat->getHeight() == 1LU || in2_mat->getHeight() == num_samples);
   size_t inc = (in2_mat->getHeight() == 1LU) ? 0 : dim;
   for (size_t i = 0; i < num_samples; ++i, x += dim, y += inc) {
-    /// for each row, todo(tianbing), use TensorExpression square2 ?
     real square_sum_x = 0;
     real square_sum_y = 0;
     real xy = 0;
@@ -147,12 +146,15 @@ void CosSimBackward<DEVICE_TYPE_CPU>(const CpuMatrix* out_grad,
 }
 
 /**
- * \param inputs[0] output value 1, size: nSamples * 1.
- * \param inputs[1] input value 1, size: nSamples * dim.
- * \param inputs[2] input value 2, size: n2 * dim (n2 == 1 or n2 == nSamples).
- * \param inputs[3] input grad 1, size: nSamples * dim.
- * \param inputs[4] input grad 2, size: n2 * dim (n2 == 1 or n2 == nSamples).
- * \param outputs[0] output grad, size : nSamples * 1.
+ * \param inouts[0] forward input grad 1, size: nSamples * dim.
+ * \param inouts[1] forward input grad 2,
+ *                  size: n2 * dim (n2 == 1 or n2 == nSamples).
+ *
+ * \param inputs[0] backward loss output grad, size : nSamples * 1.
+ * \param inputs[1] forward output value, size: nSamples * 1.
+ * \param inputs[2] forward input value 1, size: nSamples * dim.
+ * \param inputs[3] forward input value 2,
+ *                  size: n2 * dim (n2 == 1 or n2 == nSamples).
  */
 template <DeviceType Device>
 class CosSimBackwardFunc : public FunctionBase {
@@ -163,35 +165,35 @@ class CosSimBackwardFunc : public FunctionBase {
   void calc(const Arguments& inputs,
             const Arguments& outputs,
             const Arguments& inouts) override {
-    CHECK_EQ(inputs.size(), 5);
-    CHECK_EQ(outputs.size(), 1);
-    CHECK_EQ(inouts.size(), 0);
+    CHECK_EQ(inputs.size(), 4);
+    CHECK_EQ(outputs.size(), 0);
+    CHECK_EQ(inouts.size(), 2);
     /// dim of out_grad and out_val == 1, column vector
-    CHECK_EQ(outputs[0].dims_[1], 1UL);
     CHECK_EQ(inputs[0].dims_[1], 1UL);
+    CHECK_EQ(inputs[1].dims_[1], 1UL);
     /// nSamples of out_grad == out_val == in_val1 == in_grad1
-    CHECK_EQ(inputs[0].dims_[0], outputs[0].dims_[0]);
-    CHECK_EQ(inputs[1].dims_[0], outputs[0].dims_[0]);
-    CHECK_EQ(inputs[3].dims_[0], outputs[0].dims_[0]);
+    CHECK_EQ(inputs[1].dims_[0], inputs[0].dims_[0]);
+    CHECK_EQ(inputs[0].dims_[0], inputs[0].dims_[0]);
+    CHECK_EQ(inouts[0].dims_[0], inputs[0].dims_[0]);
     /// dim of in1_val1 == in_val2 == in_grad1 == in_grad2
-    CHECK_EQ(inputs[2].dims_[1], inputs[1].dims_[1]);
-    CHECK_EQ(inputs[3].dims_[1], inputs[1].dims_[1]);
-    CHECK_EQ(inputs[4].dims_[1], inputs[1].dims_[1]);
+    CHECK_EQ(inputs[3].dims_[1], inputs[2].dims_[1]);
+    CHECK_EQ(inouts[0].dims_[1], inputs[2].dims_[1]);
+    CHECK_EQ(inouts[1].dims_[1], inputs[2].dims_[1]);
 
-    CHECK(outputs[0].getData() && inputs[0].getData() && inputs[1].getData() &&
-          inputs[2].getData() && inputs[3].getData() && inputs[4].getData());
+    CHECK(inputs[0].getData() && inputs[1].getData() && inputs[2].getData() &&
+          inputs[3].getData() && inouts[0].getData() && inouts[1].getData());
     const auto out_grad = std::make_shared<typename MatrixT<Device>::type>(
-        outputs[0].getData(), outputs[0].dims_[0], outputs[0].dims_[1]);
-    const auto out_val = std::make_shared<typename MatrixT<Device>::type>(
         inputs[0].getData(), inputs[0].dims_[0], inputs[0].dims_[1]);
-    const auto in1_val = std::make_shared<typename MatrixT<Device>::type>(
+    const auto out_val = std::make_shared<typename MatrixT<Device>::type>(
         inputs[1].getData(), inputs[1].dims_[0], inputs[1].dims_[1]);
-    const auto in2_val = std::make_shared<typename MatrixT<Device>::type>(
+    const auto in1_val = std::make_shared<typename MatrixT<Device>::type>(
         inputs[2].getData(), inputs[2].dims_[0], inputs[2].dims_[1]);
-    auto in1_grad = std::make_shared<typename MatrixT<Device>::type>(
+    const auto in2_val = std::make_shared<typename MatrixT<Device>::type>(
         inputs[3].getData(), inputs[3].dims_[0], inputs[3].dims_[1]);
+    auto in1_grad = std::make_shared<typename MatrixT<Device>::type>(
+        inouts[0].getData(), inouts[0].dims_[0], inouts[0].dims_[1]);
     auto in2_grad = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[4].getData(), inputs[4].dims_[0], inputs[4].dims_[1]);
+        inouts[1].getData(), inouts[1].dims_[0], inouts[1].dims_[1]);
 
     CosSimBackward<Device>(out_grad.get(),
                            out_val.get(),

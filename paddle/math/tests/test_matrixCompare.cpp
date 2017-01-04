@@ -720,61 +720,6 @@ TEST(Matrix, sequenceAvgForward) {
   }
 }
 
-void testCosSimDerivate(int heightX, int heightY, int width, real scale) {
-  MatrixPtr prevOutX = CpuMatrix::create(heightX, width, false, false);
-  MatrixPtr prevOutY = CpuMatrix::create(heightY, width, false, false);
-  MatrixPtr grad = CpuMatrix::create(heightX, 1, false, false);
-  MatrixPtr output = CpuMatrix::create(heightX, 1, false, false);
-  MatrixPtr prevGradX = CpuMatrix::create(heightX, width, false, false);
-  MatrixPtr prevGradY = CpuMatrix::create(heightY, width, false, false);
-
-  prevOutX->randomizeUniform();
-  prevOutY->randomizeUniform();
-  grad->randomizeUniform();
-  output->randomizeUniform();
-  prevGradX->randomizeUniform();
-  prevGradY->randomizeUniform();
-
-  MatrixPtr prevOutXGpu = GpuMatrix::create(heightX, width, false, true);
-  MatrixPtr prevOutYGpu = GpuMatrix::create(heightY, width, false, true);
-  MatrixPtr gradGpu = GpuMatrix::create(heightX, 1, false, true);
-  MatrixPtr outputGpu = GpuMatrix::create(heightX, 1, false, true);
-  MatrixPtr prevGradXGpu = GpuMatrix::create(heightX, width, false, true);
-  MatrixPtr prevGradYGpu = GpuMatrix::create(heightY, width, false, true);
-
-  prevOutXGpu->copyFrom(*prevOutX);
-  prevOutYGpu->copyFrom(*prevOutY);
-  gradGpu->copyFrom(*grad);
-  outputGpu->copyFrom(*output);
-  prevGradXGpu->copyFrom(*prevGradX);
-  prevGradYGpu->copyFrom(*prevGradY);
-
-  grad->cosSimDerivative(
-      *output, *prevOutX, *prevOutY, *prevGradX, *prevGradY, scale);
-
-  gradGpu->cosSimDerivative(*outputGpu,
-                            *prevOutXGpu,
-                            *prevOutYGpu,
-                            *prevGradXGpu,
-                            *prevGradYGpu,
-                            scale);
-
-  TensorCheckErr(*prevGradX, *prevGradXGpu);
-  TensorCheckErr(*prevGradY, *prevGradYGpu);
-}
-
-TEST(Matrix, cosSimDerivate) {
-  for (auto heightX : {1, 10, 100}) {
-    for (auto heightY : {1, heightX}) {
-      for (auto width : {1, 10, 100}) {
-        for (auto scale : {1.0, 2.0}) {
-          testCosSimDerivate(heightX, heightY, width, scale);
-        }
-      }
-    }
-  }
-}
-
 void testParamReluBackwardDiff(int height,
                                int width,
                                int w_height,

@@ -97,22 +97,22 @@ void testCosSimBackward(size_t height_x,
   gpu_in2_grad.copyFrom(cpu_in2_grad);
 
   compare.getCpuFunction()->calc(
-      {Tensor(cpu_out_val.getData(), Dims{height_x, 1}),
+      {Tensor(cpu_out_grad.getData(), Dims{height_x, 1}),
+       Tensor(cpu_out_val.getData(), Dims{height_x, 1}),
        Tensor(cpu_in1_val.getData(), Dims{height_x, width}),
-       Tensor(cpu_in2_val.getData(), Dims{height_x, width}),
-       Tensor(cpu_in1_grad.getData(), Dims{height_x, width}),
-       Tensor(cpu_in2_grad.getData(), Dims{height_x, width})},
-      {Tensor(cpu_out_grad.getData(), Dims{height_x, 1})},
-      {});
+       Tensor(cpu_in2_val.getData(), Dims{height_x, width})},
+      {},
+      {Tensor(cpu_in1_grad.getData(), Dims{height_x, width}),
+       Tensor(cpu_in2_grad.getData(), Dims{height_x, width})});
 
   compare.getGpuFunction()->calc(
-      {Tensor(gpu_out_val.getData(), Dims{height_x, 1}),
+      {Tensor(gpu_out_grad.getData(), Dims{height_x, 1}),
+       Tensor(gpu_out_val.getData(), Dims{height_x, 1}),
        Tensor(gpu_in1_val.getData(), Dims{height_x, width}),
-       Tensor(gpu_in2_val.getData(), Dims{height_x, width}),
-       Tensor(gpu_in1_grad.getData(), Dims{height_x, width}),
-       Tensor(gpu_in2_grad.getData(), Dims{height_x, width})},
-      {Tensor(gpu_out_grad.getData(), Dims{height_x, 1})},
-      {});
+       Tensor(gpu_in2_val.getData(), Dims{height_x, width})},
+      {},
+      {Tensor(gpu_in1_grad.getData(), Dims{height_x, width}),
+       Tensor(gpu_in2_grad.getData(), Dims{height_x, width})});
 
   autotest::TensorCheckErr(cpu_in1_grad, gpu_in1_grad);
   autotest::TensorCheckErr(cpu_in2_grad, gpu_in2_grad);

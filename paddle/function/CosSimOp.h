@@ -25,9 +25,9 @@ namespace paddle {
  *        = scale * \sum_j (in1[i][j] * in2[i][j]) /
  *                  sqrt(sum_j (in1[i][j]^2) * sum_j (in2[i][j])^2)
  *
- * \param[out]  output            output data.
- * \param[in]   intput1           input data.
- * \param[in]   intput2           input data.
+ * \param[out]  output            output value.
+ * \param[in]   intput1           input value.
+ * \param[in]   intput2           input value.
  * \param[in]   scale             default 1.0.
  *
  */
@@ -40,13 +40,13 @@ void CosSimForward(typename MatrixT<Device>::type* output,
 /**
  * \brief   Cosine Similarity BackWard for Derivative.
  *
- * \param[out]  output1           backward loss output grad.
- * \param[in]   input1            forward-output value.
- * \param[in]   input2            forward input value 1.
- * \param[in]   input3            forward input value 2.
- * \param[in]   input4            forward input grad 1.
- * \param[in]   input5            forward input grad 2.
- * \param[in]   scale             default 1.0.
+ * \param[in]       output grad           backward loss output grad.
+ * \param[in]       output val            forward-output value.
+ * \param[in]       input val1            forward input value 1.
+ * \param[in]       input val2            forward input value 2.
+ * \param[in/out]   input grad            forward input grad 1.
+ * \param[in/out]   input grad            forward input grad 2.
+ * \param[in]       scale                 default 1.0.
  *
  */
 template <DeviceType Device>
