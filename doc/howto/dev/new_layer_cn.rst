@@ -48,7 +48,7 @@ PaddlePaddle的base layer类可以自动计算上面的导数。
 因此，对全连接层来说，我们需要计算：
 
 .. math::
-  
+
    \frac{\partial z}{\partial x} = W, \frac{\partial z_j}{\partial W_{ij}} = x_i, \frac{\partial z}{\partial b} = \mathbf 1
 
 其中 :math:`\mathbf 1` 是一个全1的向量， :math:`W_{ij}` 是矩阵 :math:`W` 第i行第j列的数值， :math:`z_j` 是向量 :math:`z` 的第j个值， :math:`x_i` 是向量 :math:`x` 的第i个值。
@@ -373,7 +373,7 @@ python封装的实现使得我们可以在配置文件中使用新实现的网�
 - :code:`name` 是网络层实例的名字标识符。
 - :code:`type` 是网络层的类型，通过网络层的标识符来指定。
 - :code:`size` 是网络层输出的大小。
-- :code:`bias` 表明这个层的一个实例是否需要偏置。 
+- :code:`bias` 表明这个层的一个实例是否需要偏置。
 - :code:`inputs` 说明这个层的输入，输入是由一个list中的网络层实例的名字组成的。
 
 .. code-block:: python
