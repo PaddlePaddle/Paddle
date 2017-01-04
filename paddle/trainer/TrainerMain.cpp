@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <fenv.h>
-#include "paddle/pserver/PServerUtil.h"
+#include "paddle/pserver/PServerController.h"
 #include "paddle/utils/Excepts.h"
 #include "paddle/utils/PythonUtil.h"
 
@@ -37,9 +37,9 @@ int main(int argc, char** argv) {
   initMain(argc, argv);
   initPython(argc, argv);
 
-  std::unique_ptr<PServerUtil> pServerPtr(nullptr);
+  std::unique_ptr<PServerController> pServerPtr(nullptr);
   if (FLAGS_start_pserver) {
-    pServerPtr.reset(paddle::PServerUtil::createWithGflags());
+    pServerPtr.reset(paddle::PServerController::createByGflags());
     pServerPtr->start();
   }
   Trainer trainer;
