@@ -13,16 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <fstream>
-#include "PServerUtil.h"
-#include "paddle/trainer/ParamUtil.h"
+#include "PServerController.h"
 
 using namespace paddle;  // NOLINT
 
 int main(int argc, char** argv) {
   initMain(argc, argv);
 
-  std::unique_ptr<PServerUtil> pServerPtr(
-      paddle::PServerUtil::createWithGflags());
+  std::unique_ptr<PServerController> pServerPtr(
+      paddle::PServerController::createByGflags());
   pServerPtr->start();
   pServerPtr->join();
 

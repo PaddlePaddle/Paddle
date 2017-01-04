@@ -21,31 +21,31 @@ limitations under the License. */
 
 namespace paddle {
 
-class PServerUtil {
+class PServerController {
 public:
-  DISABLE_COPY(PServerUtil);
+  DISABLE_COPY(PServerController);
 
   /**
    * @brief Ctor, Create a PServerUtil from ParameterServerConfig.
    */
-  explicit PServerUtil(const ParameterServerConfig& config);
+  explicit PServerController(const ParameterServerConfig& config);
 
   /**
    * @brief Dtor.
    */
-  ~PServerUtil();
+  ~PServerController();
 
   /**
    * @brief create PServerUtil from gflags, this is used for
    * compatibility with the old usage of configuration by gflags.
    */
-  static PServerUtil* createWithGflags();
+  static PServerController* createByGflags();
 
   /**
    * @brief create PServerUtil with ParameterServerConfig, remove gflags
    * from ParameterServer. Init all pservers thread according to the config.
    */
-  static PServerUtil* create(const ParameterServerConfig& config);
+  static PServerController* create(const ParameterServerConfig& config);
 
   /**
    * @brief start all pserver thread in this PServerUtil.
@@ -64,7 +64,7 @@ private:
    * @brief create ParameterServerConfig from gflags, this is used for
    * compatibility with the old usage of configuration by gflags.
    */
-  static ParameterServerConfig* initConfig();
+  static ParameterServerConfig* initConfigByGflags();
 };
 
 }  // namespace paddle
