@@ -61,10 +61,6 @@ int PDGradientMachineDestroy(PD_GradiemtMachine machine);
 
 int PDInit(int argc, char** argv);
 
-int PDParseTrainerConfigFromFile(char* filename,
-                                 void** modelConfigProtobuf,
-                                 int* size);
-
 #ifdef __cplusplus
 }
 #endif

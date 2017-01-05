@@ -1,15 +1,18 @@
 #include <gtest/gtest.h>
+#include <paddle/trainer/TrainerConfigHelper.h>
 #include <stdlib.h>
 #include <string.h>
 #include "PaddleCAPI.h"
 
 TEST(GradientMachine, load) {
-  void* buf;
-  int size;
-  ASSERT_EQ(
-      PD_NO_ERROR,
-      PDParseTrainerConfigFromFile(strdup("./vgg_16_cifar.py"), &buf, &size));
-  free(buf);
+  paddle::TrainerConfigHelper config("./vgg_16_cifar.py");
+  std::string buffer;
+  ASSERT_TRUE(config.getModelConfig().SerializeToString(&buffer));
+  PD_GradiemtMachine machine;
+
+  ASSERT_EQ(PD_NO_ERROR,
+            PDGradientMachineCreateForPredict(
+                &machine, &buffer[0], (int)buffer.size()));
 }
 
 int main(int argc, char** argv) {

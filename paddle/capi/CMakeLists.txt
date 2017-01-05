@@ -18,7 +18,9 @@ target_include_directories(paddle_capi PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 add_dependencies(paddle_capi gen_proto_cpp)
 
 target_link_libraries(paddle_capi
+  "-Wl,-force_load"
   paddle_gserver
+  "-Wl,-force_load"
   paddle_function
   paddle_pserver
   paddle_trainer_lib
@@ -30,14 +32,13 @@ target_link_libraries(paddle_capi
   paddle_cuda
   ${PROTOBUF_LIBRARY}
   ${LIBGLOG_LIBRARY}
-  ${GFLAGS_LIBRARIES}
+  gflags
   ${CMAKE_THREAD_LIBS_INIT}
   ${CBLAS_LIBS}
   ${ZLIB_LIBRARIES}
   ${INTERAL_LIBS}
   ${CMAKE_DL_LIBS}
   ${PYTHON_LIBRARIES})
-
 
 set(PADDLE_CAPI_INC_PATH
   ${CMAKE_CURRENT_BINARY_DIR}

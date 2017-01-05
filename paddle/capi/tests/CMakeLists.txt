@@ -13,7 +13,6 @@ function(add_capi_unittest_without_exec TARGET_NAME)
     ${TARGET_NAME}
     ${sources})
 
-
   target_link_libraries(
     ${TARGET_NAME}
     paddle_capi

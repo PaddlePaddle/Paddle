@@ -26,18 +26,4 @@ int PDInit(int argc, char** argv) {
   free(realArgv[0]);
   return PD_NO_ERROR;
 }
-
-int PDParseTrainerConfigFromFile(char* filename,
-                                 void** modelConfigProtobuf,
-                                 int* size) {
-  if (filename == nullptr || modelConfigProtobuf == nullptr || size == nullptr)
-    return PD_NULLPTR;
-  paddle::TrainerConfigHelper conf(filename);
-  if (!conf.getConfig().IsInitialized()) return PD_PROTOBUF_ERROR;
-  *size = conf.getConfig().ByteSize();
-  *modelConfigProtobuf = malloc(*size);
-  if (!conf.getConfig().SerializeToArray(*modelConfigProtobuf, *size))
-    return PD_PROTOBUF_ERROR;
-  return PD_NO_ERROR;
-}
 }
