@@ -20,10 +20,6 @@ popd > /dev/null
 
 cd $SCRIPTPATH
 
-# rm -rf .test_env
-# virtualenv .test_env
-# source .test_env/bin/activate
-
 $1 -m pip install ../../dist/*.whl
 
 test_list="testArguments.py testGradientMachine.py testMatrix.py  testVector.py testTrain.py testTrainer.py"

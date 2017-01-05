@@ -94,17 +94,17 @@ add_dependencies(python_api_wheel python_swig_sources
   paddle_cuda)
 
 if(WITH_TESTING)
-  SET(PIP_SOURCES_DIR ${PYTHON_SOURCES_DIR}/pip)
-  ExternalProject_Add(pip
-      ${EXTERNAL_PROJECT_LOG_ARGS}
-      GIT_REPOSITORY      https://github.com/pypa/pip.git
-      GIT_TAG             9.0.1
-      PREFIX              ${PIP_SOURCES_DIR}
-      CONFIGURE_COMMAND   ""
-      BUILD_COMMAND       ""
-      INSTALL_COMMAND     env ${py_env} ${PYTHON_EXECUTABLE} setup.py install
-      BUILD_IN_SOURCE     1
-      DEPENDS python setuptools python_api_wheel
-  )
+    SET(PIP_SOURCES_DIR ${PYTHON_SOURCES_DIR}/pip)
+    ExternalProject_Add(pip
+        ${EXTERNAL_PROJECT_LOG_ARGS}
+        GIT_REPOSITORY      https://github.com/pypa/pip.git
+        GIT_TAG             9.0.1
+        PREFIX              ${PIP_SOURCES_DIR}
+        CONFIGURE_COMMAND   ""
+        BUILD_COMMAND       ""
+        INSTALL_COMMAND     env ${py_env} ${PYTHON_EXECUTABLE} setup.py install
+        BUILD_IN_SOURCE     1
+        DEPENDS python setuptools python_api_wheel
+    )
     add_subdirectory(test)
 endif()

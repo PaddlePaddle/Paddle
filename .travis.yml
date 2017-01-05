@@ -25,7 +25,9 @@ addons:
       - git
       - build-essential
       - libatlas-base-dev
+      - python
       - python-pip
+      - python2.7-dev
       - curl
       - graphviz
       - clang-format-3.8
