@@ -44,4 +44,21 @@ TEST(TensorType, Vector) {
   EXPECT_EQ(gpuIVector.getSize(), 100);
 }
 
+TEST(TensorType, EmptyMatrix) {
+  CpuMatrix empty(nullptr, 0, 0);
+  CpuMatrix nonEmpty(10, 10);
+  EXPECT_EQ(empty.isEmpty(), true);
+  EXPECT_EQ(nonEmpty.isEmpty(), false);
+  CHECK(nonEmpty);
+  auto function = [](const CpuMatrix& matrix) {
+    if (matrix) {
+      EXPECT_NE(matrix.getData(), nullptr);
+    } else {
+      EXPECT_EQ(matrix.getData(), nullptr);
+    }
+  };
+  function(empty);
+  function(nonEmpty);
+}
+
 }  // namespace paddle
