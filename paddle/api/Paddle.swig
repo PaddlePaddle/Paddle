@@ -179,6 +179,7 @@ namespace std {
 %newobject ParameterOptimizer::needSpecialTraversal;
 %newobject ParameterUpdater::createLocalUpdater;
 %newobject ParameterUpdater::createRemoteUpdater;
+%newobject ParameterServer::createParameterServer;
 
 %feature("director") UpdateCallback;
 %feature("autodoc", 1); // To generate method stub, for code hint in ide
@@ -197,5 +198,6 @@ namespace std {
 %ignore ParameterConfigPrivate;
 %ignore OptimizationConfigPrivate;
 %ignore ParameterTraverseCallbackPrivate;
+%ignore ParameterServerPrivate;
 %include "utils/GlobalConstants.h"
 %include "api/PaddleAPI.h"

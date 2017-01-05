@@ -12,20 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <fstream>
-#include "paddle/utils/StringUtil.h"
-#include "paddle/utils/Util.h"
+#include "PaddleAPI.h"
 
-#include "PServerUtil.h"
+#include "PaddleAPIPrivate.h"
 
-using namespace paddle;  // NOLINT
+ParameterServer::ParameterServer() : m(new ParameterServerPrivate()) {}
 
-int main(int argc, char** argv) {
-  initMain(argc, argv);
-  PServerUtil* pserverUtil = new PServerUtil();
-  pserverUtil->init();
-  pserverUtil->start();
-  pserverUtil->join();
-
-  return 0;
+ParameterServer* ParameterServer::createParameterServer() {
+  auto pServer = new ParameterServer();
+  pServer->m->pServerUtil.reset(new paddle::PServerUtil());
+  return pServer;
 }
+
+ParameterServer::~ParameterServer() { delete m; }
+
+void ParameterServer::init() { m->pServerUtil->init(); }
+
+void ParameterServer::start() { m->pServerUtil->start(); }
+
+void ParameterServer::join() { m->pServerUtil->join(); }
