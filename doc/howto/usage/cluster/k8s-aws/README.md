@@ -121,7 +121,7 @@ Fill in the required fields (You can get your AWS aceess key id and AWS secrete 
 ```
 AWS Access Key ID: YOUR_ACCESS_KEY_ID
 AWS Secrete Access Key: YOUR_SECRETE_ACCESS_KEY
-Default region name: us-west-2
+Default region name: us-west-1
 Default output format: json
 
 ```
@@ -147,12 +147,12 @@ Amazon KMS keys are used to encrypt and decrypt cluster TLS assets. If you alrea
 You can create a KMS key in the AWS console, or with the aws command line tool:
 
 ```
-$ aws kms --region=us-west-2 create-key --description="kube-aws assets"
+$ aws kms --region=us-west-1 create-key --description="kube-aws assets"
 {
     "KeyMetadata": {
         "CreationDate": 1458235139.724,
         "KeyState": "Enabled",
-        "Arn": "arn:aws:kms:us-west-2:xxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx",
+        "Arn": "arn:aws:kms:us-west-1:xxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx",
         "AWSAccountId": "xxxxxxxxxxxxx",
         "Enabled": true,
         "KeyUsage": "ENCRYPT_DECRYPT",
@@ -164,7 +164,7 @@ $ aws kms --region=us-west-2 create-key --description="kube-aws assets"
 
 You will use the `KeyMetadata.Arn` string to identify your KMS key in the init step.
 
-And then you need to add several inline policies in your user permission.
+And then you need to add several inline policies in your user permission, which located under `iam resources/users/your own account`, click the `add inline policy` at the right-botton corner.
 
 kms inline policy:
 
@@ -203,12 +203,13 @@ cloudformation inline policy:
                 "cloudformation:GetTemplate"
             ],
             "Resource": [
-                "arn:aws:cloudformation:us-west-2:xxxxxxxxx:stack/YOUR_CLUSTER_NAME/*"
+                "arn:aws:cloudformation:us-west-1:xxxxxxxxx:stack/YOUR_CLUSTER_NAME/*"
             ]
         }
     ]
 }
 ```
+NOTICE: you need to substitute `YOUR_CLUSTER_NAME` above for your own cluster name. 
 
 
 ####External DNS name
@@ -237,7 +238,7 @@ $ kube-aws init \
 --region=us-west-1 \
 --availability-zone=us-west-1c \
 --key-name=key-pair-name \
---kms-key-arn="arn:aws:kms:us-west-2:xxxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx"
+--kms-key-arn="arn:aws:kms:us-west-1:xxxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx"
 ```
 
 There will now be a cluster.yaml file in the asset directory. This is the main configuration file for your cluster.
@@ -338,7 +339,7 @@ For sharing the training data across all the Kubernetes nodes, we use EFS (Elast
 <img src="add_security_group.png" width="800">
 
 
-1. Follow the EC2 mount instruction to mount the disk onto all the Kubernetes nodes, we recommend to mount EFS disk onto ~/efs.
+1. Follow the EC2 mount instruction to mount the disk onto all the Kubernetes nodes, we recommend to mount EFS disk onto /home/core/efs.
 <img src="efs_mount.png" width="800">
 
 
@@ -472,18 +473,20 @@ In function `startPaddle`, the most important work is to generate `paddle pserve
 Use `docker build` to build toe Docker Image:
 
 ```
-docker build -t your_repo/paddle:mypaddle .
+docker build -t your_registry/your_repo/paddle:your_tag .
 ```
 
 And then push the built image onto docker registry.
 
 ```
-docker push  your_repo/paddle:mypaddle
+docker push your_registry/your_repo/paddle:your_tag
 ```
+NOTICE: you need to substitute `your_registry/your_repo/paddle:your_tag` for your own docker image uri. We will also use this uri in the following kubernetes yaml file.
+
 
 ####Upload Training Data File
 
-Here we will use PaddlePaddle's official recommendation demo as the content for this training, we put the training data file into a directory named by job name, which located in EFS sharing volume, the tree structure for the directory looks like:
+Here we will use PaddlePaddle's official recommendation demo as the content for this training, we put the training data file into a directory named by job name, which located under EFS sharing volume, the tree structure for the directory looks like:
 
 ```
 efs
@@ -498,7 +501,7 @@ efs
     └── recommendation
 ```
 
-The `paddle-cluster-job` directory is the job name for this training, this training includes 3 PaddlePaddle node, we store the pre-divided data under `paddle-cluster-job/data` directory, directory 0, 1, 2 each represent 3 nodes' trainer_id. the training data in in recommendation directory, the training results and logs will be in the output directory.
+The `paddle-cluster-job` directory is the job name for this training, this training includes 3 PaddlePaddle node, we store the pre-divided data under `paddle-cluster-job/data` directory, directory 0, 1, 2 each represent 3 nodes' trainer_id. the training configuration file is in recommendation directory, the training results and logs will be in the output directory after the training.
 
 
 ####Create Kubernetes Job
@@ -507,7 +510,7 @@ Kubernetes use yaml file to describe job details, and then use command line tool
 
 In yaml file, we describe the Docker image we use for this training, the node number we need to startup, the volume mounting information and all the necessary parameters we need for `paddle pserver` and `paddle train` processes.
 
-The yaml file content is as follows:
+The yaml file content is as follows, you need to fill in your own docker image uri:
 
 ```
 apiVersion: batch/v1
@@ -522,18 +525,18 @@ spec:
       name: paddle-cluster-job
     spec:
       volumes:
-      - name: jobpath
+      - name: efsvolume
         hostPath:
-          path: /home/admin/efs
+          path: /home/core/efs
       containers:
       - name: trainer
-        image: drinkcode/paddle:k8s-job
+        image: your_registry/your_repo/paddle:your_tag
         command: ["bin/bash",  "-c", "/root/start.sh"]
         env:
         - name: JOB_NAME
           value: paddle-cluster-job
         - name: JOB_PATH
-          value: /home/jobpath
+          value: /home/efsvolume
         - name: JOB_NAMESPACE
           value: default
         - name: TRAIN_CONFIG_DIR
@@ -549,8 +552,8 @@ spec:
         - name: CONF_PADDLE_GRADIENT_NUM
           value: "3"
         volumeMounts:
-        - name: jobpath
-          mountPath: /home/jobpath
+        - name: efsvolume
+          mountPath: /home/efsvolume
         ports:
         - name: jobport
           hostPort: 30001
@@ -559,7 +562,7 @@ spec:
 
 ```
 
-In yaml file, the metadata's name is the job's name. `parallelism, completions` means this job will simultaneously start up 3 PaddlePaddle nodes, and this job will be finished when there are 3 finished pods. For the data store volume, we declare the path jobpath, it mount the /home/admin/efs on host machine into the container with path /home/jobpath. So in container, the /home/jobpath actually stores the data onto EFS sharing volume.
+In yaml file, the metadata's name is the job's name. `parallelism, completions` means this job will simultaneously start up 3 PaddlePaddle nodes, and this job will be finished when there are 3 finished pods. For the data store volume, we declare the path `efsvolume`, it mount the `/home/core/efs` on host machine into the container with path /home/efsvolume. So in container, the `/home/efsvolume` actually stores the data onto EFS sharing volume.
 
 `env` field represents container's environment variables, we pass the PaddlePaddle parameters into containers by using the `env` field.
 
@@ -572,6 +575,8 @@ In yaml file, the metadata's name is the job's name. `parallelism, completions` 
 `CONF_PADDLE_PORTS_NUM_SPARSE` represents the sparse updated port number, `--ports_num_for_sparse` parameter.
 
 `CONF_PADDLE_GRADIENT_NUM` represents the training node number, `--num_gradient_servers` parameter.
+
+For the detailed description for the above parameters you can take a look at [this article](http://www.paddlepaddle.org/doc/ui/cmd_argument/detail_introduction.html#parameter-server-and-distributed-communication).
 
 After we create the yaml file, we can use Kubernetes command line tool to create the job onto the cluster.
 
@@ -618,7 +623,7 @@ I1116 09:10:17.123121    50 Util.cpp:155] commandline:
     --trainer_count=4 --num_passes=10 --use_gpu=0 
     --log_period=50 --dot_period=10 --saving_period=1 
     --local=0 --trainer_id=0
-    --save_dir=/home/jobpath/paddle-cluster-job/output
+    --save_dir=/home/efsvolume/paddle-cluster-job/output
 I1116 09:10:17.123440    50 Util.cpp:130] Calling runInitFunctions
 I1116 09:10:17.123764    50 Util.cpp:143] Call runInitFunctions done.
 [WARNING 2016-11-16 09:10:17,227 default_decorators.py:40] please use keyword arguments in paddle config.
