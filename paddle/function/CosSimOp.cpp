@@ -17,6 +17,15 @@ limitations under the License. */
 #include "paddle/math/Vector.h"
 
 namespace paddle {
+/**
+ * Cosine Similarity for CpuMatrix
+ *
+ * \param out_mat, output value, size: nSamples * 1.
+ * \param in1_mat, input value 1, size: nSamples * dim.
+ * \param in2_mat, input value 2, size: n2 * dim (n2 == 1 or n2 == nSamples).
+ * \param scale, default 1.0
+ *
+ */
 template <>
 void CosSimForward<DEVICE_TYPE_CPU>(CpuMatrix* out_mat,
                                     const CpuMatrix* in1_mat,
@@ -48,6 +57,13 @@ void CosSimForward<DEVICE_TYPE_CPU>(CpuMatrix* out_mat,
 }
 
 /**
+ * Cosine Similarity
+ * for each row i,
+ *   out[i] = scale * cos(input1[i], input2[i])
+ *      = scale * <input1[i], input2[i]>/sqrt(|input1[i]|^2 * |input2[i]|^2)
+ * when input2 only has one row, then for each row i,
+ *   out[i] = cos(input1[i], input2[0])
+ *
  * \param inputs[0] input matrix 1, size: nSamples * dim.
  * \param inputs[1] input matrix 2, size: n2 * dim (n2 == 1 or n2 == nSamples).
  * \param outputs[0] output matrix, size : nSamples * 1.
@@ -85,6 +101,20 @@ private:
   real scale_;
 };
 
+/**
+ * Cosine Similarity Derivative for CpuMatrix
+ *
+ * \param in1_grad  forward input grad 1, size: nSamples * dim.
+ * \param in2_grad  forward input grad 2,
+ *                  size: n2 * dim (n2 == 1 or n2 == nSamples).
+ *
+ * \param out_grad  backward loss output grad, size : nSamples * 1.
+ * \param out_val   forward output value, size: nSamples * 1.
+ * \param in1_val   forward input value 1, size: nSamples * dim.
+ * \param in2_val   forward input value 2,
+ *                  size: n2 * dim (n2 == 1 or n2 == nSamples).
+ * \param scale,    default 1.0
+ */
 template <>
 void CosSimBackward<DEVICE_TYPE_CPU>(const CpuMatrix* out_grad,
                                      const CpuMatrix* out_val,
@@ -146,6 +176,8 @@ void CosSimBackward<DEVICE_TYPE_CPU>(const CpuMatrix* out_grad,
 }
 
 /**
+ * Cosine Similarity backward Derivative
+ *
  * \param inouts[0] forward input grad 1, size: nSamples * dim.
  * \param inouts[1] forward input grad 2,
  *                  size: n2 * dim (n2 == 1 or n2 == nSamples).
