@@ -1,26 +1,28 @@
 #include "PaddleCAPI.h"
 #include "PaddleCAPIPrivate.h"
 
-#define cast(v) paddle::capi::cast<paddle::capi::CVector>(v)
+using paddle::capi::cast;
+
 extern "C" {
-int PDVecCreate(PD_Vector* vec, uint64_t size, bool useGpu) {
-  auto ptr = new paddle::capi::CVector();
-  ptr->vec = paddle::Vector::create(size, useGpu);
-  *vec = ptr;
-  return PD_NO_ERROR;
-}
-int PDVecDestroy(PD_Vector vec) {
-  auto v = cast(vec);
-  v->vec.reset();
-  delete v;
-  return PD_NO_ERROR;
+
+int PDIVecCreateNone(PD_IVector* ivec) {
+  if (ivec == nullptr) return kPD_NULLPTR;
+  auto ptr = new paddle::capi::CIVector();
+  *ivec = ptr;
+  return kPD_NO_ERROR;
 }
 
-int PDVecIsSparse(PD_Vector vec, bool* isSparse) {
-  if (isSparse == nullptr || vec == nullptr) {
-    return PD_NULLPTR;
-  }
-  *isSparse = cast(vec)->vec->isSparse();
-  return PD_NO_ERROR;
+int PDIVecDestroy(PD_IVector ivec) {
+  if (ivec == nullptr) return kPD_NULLPTR;
+  delete cast<paddle::capi::CIVector>(ivec);
+  return kPD_NO_ERROR;
+}
+
+int PDIVectorGet(PD_IVector ivec, int** buffer) {
+  if (ivec == nullptr || buffer == nullptr) return kPD_NULLPTR;
+  auto v = cast<paddle::capi::CIVector>(ivec);
+  if (v->vec == nullptr) return kPD_NULLPTR;
+  *buffer = v->vec->getData();
+  return kPD_NO_ERROR;
 }
 }

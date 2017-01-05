@@ -24,6 +24,6 @@ int PDInit(int argc, char** argv) {
   }
   initPaddle(argc + 1, realArgv.data());
   free(realArgv[0]);
-  return PD_NO_ERROR;
+  return kPD_NO_ERROR;
 }
 }

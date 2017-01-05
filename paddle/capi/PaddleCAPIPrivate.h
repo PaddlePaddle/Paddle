@@ -8,20 +8,40 @@
 namespace paddle {
 namespace capi {
 
-struct CVector {
-  VectorPtr vec;
+enum CType { kIVECTOR = 0, kMATRIX, kARGUMENTS, kGRADIENT_MACHINE };
+
+#define STRUCT_HEADER CType type;
+
+struct CHeader {
+  STRUCT_HEADER
+};
+
+struct CIVector {
+  STRUCT_HEADER
+  IVectorPtr vec;
+
+  CIVector() : type(kIVECTOR) {}
 };
 
 struct CMatrix {
+  STRUCT_HEADER
   MatrixPtr mat;
+
+  CMatrix() : type(kMATRIX) {}
 };
 
 struct CArguments {
+  STRUCT_HEADER
   std::vector<paddle::Argument> args;
+
+  CArguments() : type(kARGUMENTS) {}
 };
 
 struct CGradientMachine {
+  STRUCT_HEADER
   paddle::GradientMachinePtr machine;
+
+  CGradientMachine() : type(kGRADIENT_MACHINE) {}
 };
 
 template <typename T>
