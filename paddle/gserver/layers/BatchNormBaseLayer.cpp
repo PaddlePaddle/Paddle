@@ -73,3 +73,6 @@ void BatchNormBaseLayer::calFeatureMapSize() {
 }
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(batch_norm_base_layer)

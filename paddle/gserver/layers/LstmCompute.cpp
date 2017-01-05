@@ -91,3 +91,6 @@ void LstmCompute::backwardBatch<0>(hl_lstm_value value,
 }
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(lstm_compute)

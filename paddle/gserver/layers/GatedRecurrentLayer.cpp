@@ -411,3 +411,6 @@ void GatedRecurrentLayer::backwardBatch(int batchSize, MatrixPtr inputGrad) {
 }
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(gated_recurrent_layer)

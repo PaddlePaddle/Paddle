@@ -57,7 +57,7 @@ setup(name="py_paddle",
   version="@PADDLE_VERSION@",
   ext_modules=[
     Extension('py_paddle._swig_paddle',      # Build SWIG Extension.
-       ['Paddle_wrap.cxx'],
+       ['Paddle_wrap.cxx', './trainer/ForceLinkFiles.cpp'],
        language = "c++",
        include_dirs = include_dirs,
        extra_link_args = extra_links,

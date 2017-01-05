@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "Evaluator.h"
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
+#include "paddle/utils/ForceLink.h"
+
+PADDLE_REGISTER_FORCE_LINK_FILE(ctc_evaluator);
 
 namespace paddle {
 

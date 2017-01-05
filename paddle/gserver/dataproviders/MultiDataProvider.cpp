@@ -14,8 +14,11 @@ limitations under the License. */
 
 #include "MultiDataProvider.h"
 #include <algorithm>
+#include "paddle/utils/ForceLink.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Util.h"
+
+PADDLE_REGISTER_FORCE_LINK_FILE(multi_data_dp);
 
 namespace paddle {
 

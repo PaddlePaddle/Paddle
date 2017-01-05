@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "WarpCTCLayer.h"
+#include "paddle/utils/ForceLink.h"
 
+PADDLE_REGISTER_FORCE_LINK_FILE(warp_ctc);
 namespace paddle {
 
 REGISTER_LAYER(warp_ctc, WarpCTCLayer);

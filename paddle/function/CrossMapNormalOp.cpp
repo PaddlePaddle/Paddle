@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "CrossMapNormalOp.h"
 #include "paddle/math/Vector.h"
+#include "paddle/utils/ForceLink.h"
 
 namespace paddle {
 
@@ -225,3 +226,5 @@ REGISTER_TYPED_FUNC(CrossMapNormalGrad, GPU, CrossMapNormalGradFunc);
 #endif
 
 }  // namespace paddle
+
+PADDLE_REGISTER_FORCE_LINK_FILE(cross_map_norm_ops);

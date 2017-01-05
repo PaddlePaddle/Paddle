@@ -16,11 +16,13 @@ limitations under the License. */
 #include <algorithm>
 #include <fstream>
 #include <istream>
+#include "DataProviderGroup.h"
+#include "paddle/utils/ForceLink.h"
+#include "paddle/utils/Logging.h"
 #include "paddle/utils/StringUtil.h"
 #include "paddle/utils/Util.h"
 
-#include "DataProviderGroup.h"
-#include "paddle/utils/Logging.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(proto_dp);
 
 DEFINE_double(memory_threshold_on_load_data,
               1.0,

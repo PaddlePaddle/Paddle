@@ -12,24 +12,5 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "Projection.h"
-
-#include "ContextProjection.h"
-#include "FullMatrixProjection.h"
-#include "TableProjection.h"
-
-namespace paddle {
-
-ClassRegistrar<Projection, ProjectionConfig, ParameterPtr, bool>
-    Projection::registrar_;
-
-Projection* Projection::create(const ProjectionConfig& config,
-                               ParameterPtr parameter,
-                               bool useGpu) {
-  return registrar_.createByType(config.type(), config, parameter, useGpu);
-}
-
-}  // namespace paddle
-
-#include "paddle/utils/ForceLink.h"
-PADDLE_REGISTER_FORCE_LINK_FILE(projection)
+#include "test_ClassRegistrarLib.h"
+paddle::ClassRegistrar<BaseClass> gTestRegistrar_;

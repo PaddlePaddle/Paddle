@@ -15,7 +15,7 @@ limitations under the License. */
 #include "ContextProjectionOp.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/Vector.h"
-
+#include "paddle/utils/ForceLink.h"
 namespace paddle {
 
 template <>
@@ -371,3 +371,5 @@ REGISTER_TYPED_FUNC(ContextProjectionBackwardWeight,
                     ContextProjectionBackwardWeightFunc);
 #endif
 }  // namespace paddle
+
+PADDLE_REGISTER_FORCE_LINK_FILE(context_proj_ops);

@@ -60,3 +60,6 @@ public:
 REGISTER_LAYER(maxid, MaxIdLayer);
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(max_id_layer)

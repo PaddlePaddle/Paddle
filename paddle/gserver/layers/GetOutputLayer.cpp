@@ -38,3 +38,6 @@ public:
 REGISTER_LAYER(get_output, GetOutputLayer);
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(get_output_layer)

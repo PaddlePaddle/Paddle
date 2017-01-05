@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "CTCLayer.h"
+#include <paddle/utils/ForceLink.h>
 
 /* Please reference the Chapter7  in
  * "Alex graves, Supervised Sequence Labelling with
  * Recurrent Neural Networks" */
+PADDLE_REGISTER_FORCE_LINK_FILE(ctc);
 namespace paddle {
 REGISTER_LAYER(ctc, CTCLayer);
 

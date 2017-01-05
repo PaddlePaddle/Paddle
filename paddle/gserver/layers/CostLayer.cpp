@@ -637,3 +637,6 @@ public:
 REGISTER_LAYER(sum_cost, SumCostLayer);
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(cost_layer)

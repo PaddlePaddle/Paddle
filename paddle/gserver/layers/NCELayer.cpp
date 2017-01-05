@@ -17,7 +17,9 @@ limitations under the License. */
 #include "Layer.h"
 #include "MultinomialSampler.h"
 #include "paddle/math/MathFunctions.h"
+#include "paddle/utils/ForceLink.h"
 
+PADDLE_REGISTER_FORCE_LINK_FILE(nce);
 namespace paddle {
 
 /**

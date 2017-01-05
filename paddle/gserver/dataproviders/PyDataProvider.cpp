@@ -15,8 +15,11 @@ limitations under the License. */
 #include "PyDataProvider.h"
 #include <fenv.h>
 #include "paddle/utils/Excepts.h"
+#include "paddle/utils/ForceLink.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Util.h"
+
+PADDLE_REGISTER_FORCE_LINK_FILE(py_dp);
 
 namespace paddle {
 

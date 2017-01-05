@@ -7,47 +7,21 @@
 # Rest Arguments: libraries which link together.
 function(target_circle_link_libraries TARGET_NAME)
     if(APPLE)
-        set(LIBS)
-        set(inArchive OFF)
-        set(libsInArgn)
-
-        foreach(arg ${ARGN})
-            if(${arg} STREQUAL "ARCHIVE_START")
-                set(inArchive ON)
-            elseif(${arg} STREQUAL "ARCHIVE_END")
-                set(inArchive OFF)
-            else()
-                if(inArchive)
-                    list(APPEND LIBS "-Wl,-force_load")
-                endif()
-                list(APPEND LIBS ${arg})
-                list(APPEND libsInArgn ${arg})
-            endif()
-        endforeach()
+        set(LIBS ${ARGN})
+        set(libsInArgn ${ARGN})
+        list(REVERSE libsInArgn)
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
             list(APPEND LIBS "-undefined dynamic_lookup")
         endif()
-        list(REVERSE libsInArgn)
         target_link_libraries(${TARGET_NAME}
             ${LIBS}
             ${libsInArgn})
 
     else()  # LINUX
         set(LIBS)
-
-        foreach(arg ${ARGN})
-            if(${arg} STREQUAL "ARCHIVE_START")
-                list(APPEND LIBS "-Wl,--whole-archive")
-            elseif(${arg} STREQUAL "ARCHIVE_END")
-                list(APPEND LIBS "-Wl,--no-whole-archive")
-            else()
-                list(APPEND LIBS ${arg})
-            endif()
-        endforeach()
-
         target_link_libraries(${TARGET_NAME}
                 "-Wl,--start-group"
-                ${LIBS}
+                ${ARGN}
                 "-Wl,--end-group")
     endif()
 endfunction()
@@ -84,21 +58,17 @@ function(link_paddle_exe TARGET_NAME)
     if(PADDLE_WITH_INTERNAL)
         set(INTERAL_LIBS paddle_internal_gserver paddle_internal_parameter)
         target_circle_link_libraries(${TARGET_NAME}
-            ARCHIVE_START
             paddle_internal_gserver
             paddle_internal_owlqn
-            ARCHIVE_END
             paddle_internal_parameter)
     else()
         set(INTERAL_LIBS "")
     endif()
 
     target_circle_link_libraries(${TARGET_NAME}
-        ARCHIVE_START
         paddle_gserver
         paddle_function
         ${METRIC_LIBS}
-        ARCHIVE_END
         paddle_pserver
         paddle_trainer_lib
         paddle_network
@@ -165,7 +135,9 @@ endfunction()
 # TARGET_NAME: the unittest target name, same as executable file name
 # Rest Arguments: the source files to compile this unittest.
 macro(add_unittest_without_exec TARGET_NAME)
-    add_executable(${TARGET_NAME} ${ARGN})
+    add_executable(${TARGET_NAME}
+      ${PROJ_ROOT}/paddle/trainer/ForceLinkFiles.cpp
+      ${ARGN})
     link_paddle_test(${TARGET_NAME})
     add_style_check_target(${TARGET_NAME} ${ARGN})
 endmacro()

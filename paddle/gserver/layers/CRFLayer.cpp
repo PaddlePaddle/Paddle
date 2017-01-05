@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "CRFLayer.h"
+#include "paddle/utils/ForceLink.h"
 
+PADDLE_REGISTER_FORCE_LINK_FILE(crf);
 namespace paddle {
 
 REGISTER_LAYER(crf, CRFLayer);

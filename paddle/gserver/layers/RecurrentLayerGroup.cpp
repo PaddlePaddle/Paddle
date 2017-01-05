@@ -92,3 +92,6 @@ void RecurrentLayerGroup::initSubNetwork(
 }
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(recurrent_layer_group)

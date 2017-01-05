@@ -15,6 +15,9 @@ limitations under the License. */
 #include "LstmLayer.h"
 #include "paddle/math/BaseMatrix.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/utils/ForceLink.h"
+
+PADDLE_REGISTER_FORCE_LINK_FILE(mdlstm);
 
 namespace paddle {
 

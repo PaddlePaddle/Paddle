@@ -803,3 +803,6 @@ void LstmLayer::backwardSeqParallel(int batchSize,
 }
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(lstm_layer)

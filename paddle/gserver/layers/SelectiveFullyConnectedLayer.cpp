@@ -333,3 +333,6 @@ void paddle::SelectiveFullyConnectedLayer::getSelectiveCols() {
 }
 
 }  // namespace paddle
+
+#include "paddle/utils/ForceLink.h"
+PADDLE_REGISTER_FORCE_LINK_FILE(selective_fully_connected_layer)
