@@ -112,6 +112,7 @@ function(link_paddle_exe TARGET_NAME)
         ${LIBGLOG_LIBRARY}
         gflags
         ${CMAKE_THREAD_LIBS_INIT}
+	${CMAKE_THREAD_LIBS_INIT}
         ${CBLAS_LIBS}
         ${ZLIB_LIBRARIES}
         ${INTERAL_LIBS}
