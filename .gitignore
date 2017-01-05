@@ -12,3 +12,4 @@ Makefile
 
 *~
 bazel-*
+third_party/
