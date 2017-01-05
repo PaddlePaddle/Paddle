@@ -21,14 +21,14 @@ namespace paddle {
 /**
  * \brief   Context Projection Forward.
  *
- * \param[out]  outputs           output data.
- * \param[in]   input             input data.
- * \param[in]   weight            input weight.
- * \param[in]   sequence          input data.
- * \param[in]   context_length    consecutive rows for concatenation.
- * \param[in]   context_start     context start position.
- * \param[in]   begin_pad         begining pad position.
- * \param[in]   is_padding        whether padding 0 or not.
+ * \param[in/out]  outputs           output data.
+ * \param[in]      input             input data.
+ * \param[in]      weight            input weight.
+ * \param[in]      sequence          input data.
+ * \param[in]      context_length    consecutive rows for concatenation.
+ * \param[in]      context_start     context start position.
+ * \param[in]      begin_pad         begining pad position.
+ * \param[in]      is_padding        whether padding 0 or not.
  *
  */
 template <DeviceType DType>
@@ -68,7 +68,7 @@ void ContextProjectionBackward(
 
 template <DeviceType DType>
 void ContextProjectionBackwardData(
-    typename Tensor<real, DType>::Matrix& out_grad,
+    const typename Tensor<real, DType>::Matrix& out_grad,
     typename Tensor<real, DType>::Matrix& in_grad,
     const typename Tensor<int, DType>::Vector& sequence,
     size_t context_length,
@@ -76,7 +76,7 @@ void ContextProjectionBackwardData(
 
 template <DeviceType DType>
 void ContextProjectionBackwardWeight(
-    typename Tensor<real, DType>::Matrix& out_grad,
+    const typename Tensor<real, DType>::Matrix& out_grad,
     typename Tensor<real, DType>::Matrix& w_grad,
     const typename Tensor<int, DType>::Vector& seq_vec,
     size_t context_length,

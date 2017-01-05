@@ -70,10 +70,11 @@ void ContextProjectionForward<DEVICE_TYPE_CPU>(CpuMatrix& out_mat,
 }
 
 /**
+ * \param outputs[0] output value.
+ *
  * \param inputs[0] input value.
  * \param inputs[1] input weight.
  * \param inputs[2] input sequence.
- * \param outputs[0] output value.
  */
 template <DeviceType Device>
 class ContextProjectionForwardFunc : public FunctionBase {
@@ -123,7 +124,8 @@ private:
 };
 
 template <>
-void ContextProjectionBackward<DEVICE_TYPE_CPU>(CpuMatrix& out_grad_mat,
+<<<<<<< HEAD
+void ContextProjectionBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad_mat,
                                                 CpuMatrix& in_grad_mat,
                                                 CpuMatrix& w_grad_mat,
                                                 const CpuIVector& seq_vec,
@@ -176,10 +178,10 @@ void ContextProjectionBackward<DEVICE_TYPE_CPU>(CpuMatrix& out_grad_mat,
 }
 
 /**
- * \param inputs[0] input grad.
- * \param inputs[1] weight grad.
- * \param inputs[2] input sequence.
- * \param outputs[0] output value.
+ * \param inputs[0]     input sequence.
+ * \param inputs[1]     output grad.
+ * \param inouts[0]     input grad.
+ * \param inouts[1]     weight grad.
  */
 template <DeviceType Device>
 class ContextProjectionBackwardFunc : public FunctionBase {
@@ -192,6 +194,7 @@ public:
     total_pad_ = config.get<size_t>("total_pad");
   }
 
+<<<<<<< HEAD
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ((size_t)3, inputs.size());
     CHECK_EQ((size_t)1, outputs.size());
@@ -210,6 +213,42 @@ public:
     CHECK_EQ(outputs[0].shape()[1], inputs[0].shape()[1] * context_length_);
 
     CHECK_EQ(outputs[0].getArgType(), ADD_TO);
+=======
+  void calc(const Arguments& inputs,
+            const Arguments& outputs,
+            const Arguments& inouts) override {
+    CHECK_EQ(2, inputs.size());
+    CHECK_EQ(0, outputs.size());
+    CHECK_EQ(2, inouts.size());
+
+    CHECK(inputs[0].getData() && inputs[1].getData());
+    CHECK_EQ(inputs[0].dims_.size(), 1);
+    CHECK_EQ(inputs[1].dims_.size(), 2);
+    CHECK_EQ(inouts[0].dims_.size(), 2);
+    CHECK_EQ(inouts[1].dims_.size(), 2);
+
+    /// dim of input grad == dim of weight grad
+    CHECK_EQ(inouts[0].dims_[1], inouts[1].dims_[1]);
+    /// input grad and output grad have the same batch_size
+    CHECK_EQ(inouts[0].dims_[0], inputs[1].dims_[0]);
+    /// dim of output = dim of input * context_length
+    CHECK_EQ(inputs[1].dims_[1], inputs[0].dims_[1] * context_length_);
+
+    typename SequenceT<Device>::type seq_vec(
+        inputs[0].dims_[0], reinterpret_cast<int*>(inputs[0].getData()));
+    const auto out_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
+        inputs[1].getData(), inputs[1].dims_[0], inputs[1].dims_[1]);
+    auto in_grad_mat =
+        !inouts[0].getData()
+            ? nullptr
+            : std::make_shared<typename MatrixT<Device>::type>(
+                  inouts[0].getData(), inouts[0].dims_[0], inouts[0].dims_[1]);
+    auto w_grad_mat =
+        !inouts[1].getData()
+            ? nullptr
+            : std::make_shared<typename MatrixT<Device>::type>(
+                  inouts[1].getData(), inouts[1].dims_[0], inouts[1].dims_[1]);
+>>>>>>> Wei Xu's comments, set up right inouts.
 
     auto out_grad_mat = outputs[0].matrix<Device>();
     auto in_grad_mat =
@@ -240,9 +279,9 @@ private:
 
 #if 0
 /**
- * \param inputs[0] input grad.
- * \param inputs[1] input sequence.
- * \param outputs[0] output grad.
+ * \param inouts[0]    input grad.
+ * \param inputs[0]    input sequence.
+ * \param inputs[1]    output grad.
  */
 template <DeviceType Device>
 class ContextProjectionBackwardDataFunc : public FunctionBase {
@@ -255,23 +294,24 @@ public:
   void calc(const Arguments& inputs,
             const Arguments& outputs,
             const Arguments& inouts) override {
-    CHECK_EQ(2, static_cast<int>(inputs.size()));
-    CHECK_EQ(1, static_cast<int>(outputs.size()));
-    CHECK_EQ(0, static_cast<int>(inouts.size()));
-    CHECK(inputs[0].getData() && outputs[0].getData() && inputs[1].getData());
-    CHECK_EQ(static_cast<int>(outputs[0].dims_.size()), 2);
-    CHECK_EQ(static_cast<int>(inputs[0].dims_.size()), 2);
-    CHECK_EQ(static_cast<int>(inputs[1].dims_.size()), 1);
-    CHECK_EQ(outputs[0].dims_[1], inputs[0].dims_[1] * context_length_);
-    /// input and output has the same batch_size
-    CHECK_EQ(inputs[0].dims_[0], outputs[0].dims_[0]);
+    CHECK_EQ(2, inputs.size());
+    CHECK_EQ(0, outputs.size());
+    CHECK_EQ(1, inouts.size());
 
-    auto out_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
-        outputs[0].getData(), outputs[0].dims_[0], outputs[0].dims_[1]);
-    const auto in_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[0].getData(), inputs[0].dims_[0], inputs[0].dims_[1]);
+    CHECK(inouts[0].getData() && inputs[0].getData() && inputs[1].getData());
+    CHECK_EQ(inputs[0].dims_.size(), 1);
+    CHECK_EQ(inputs[1].dims_.size(), 2);
+    CHECK_EQ(inouts[0].dims_.size(), 2);
+    CHECK_EQ(inputs[1].dims_[1], inouts[0].dims_[1] * context_length_);
+    /// input and output grad have the same batch_size
+    CHECK_EQ(inouts[0].dims_[0], inputs[1].dims_[0]);
+
     typename SequenceT<Device>::type seq_vec(
-        inputs[1].dims_[0], reinterpret_cast<int*>(inputs[1].getData()));
+        inputs[0].dims_[0], reinterpret_cast<int*>(inputs[0].getData()));
+    const auto out_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
+        inputs[1].getData(), inputs[1].dims_[0], inputs[1].dims_[1]);
+    auto in_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
+        inouts[0].getData(), inouts[0].dims_[0], inouts[0].dims_[1]);
 
     ContextProjectionBackwardData<Device>(out_grad_mat.get(),
                                           in_grad_mat.get(),
@@ -286,9 +326,9 @@ private:
 };
 
 /**
- * \param inputs[0] weight grad.
- * \param inputs[1] input sequence.
- * \param outputs[0] output grad.
+ * \param inouts[0]    weight grad.
+ * \param inputs[0]    input sequence.
+ * \param inputs[1]    output grad.
  */
 template <DeviceType Device>
 class ContextProjectionBackwardWeightFunc : public FunctionBase {
@@ -303,22 +343,22 @@ public:
   void calc(const Arguments& inputs,
             const Arguments& outputs,
             const Arguments& inouts) override {
-    CHECK_EQ(2, static_cast<int>(inputs.size()));
-    CHECK_EQ(1, static_cast<int>(outputs.size()));
-    CHECK_EQ(0, static_cast<int>(inouts.size()));
+    CHECK_EQ(2, inputs.size());
+    CHECK_EQ(0, outputs.size());
+    CHECK_EQ(1, inouts.size());
 
-    CHECK(inputs[0].getData() && outputs[0].getData() && inputs[1].getData());
-    CHECK_EQ(static_cast<int>(outputs[0].dims_.size()), 2);
-    CHECK_EQ(static_cast<int>(inputs[0].dims_.size()), 2);
-    CHECK_EQ(static_cast<int>(inputs[1].dims_.size()), 1);
-    CHECK_EQ(outputs[0].dims_[1], inputs[0].dims_[1] * context_length_);
+    CHECK(inouts[0].getData() && inputs[0].getData() && inputs[1].getData());
+    CHECK_EQ(inputs[0].dims_.size(), 1);
+    CHECK_EQ(inputs[1].dims_.size(), 2);
+    CHECK_EQ(inouts[0].dims_.size(), 2);
+    CHECK_EQ(inputs[1].dims_[1], inouts[0].dims_[1] * context_length_);
 
-    auto out_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
-        outputs[0].getData(), outputs[0].dims_[0], outputs[0].dims_[1]);
-    auto w_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[0].getData(), inputs[0].dims_[0], inputs[0].dims_[1]);
     typename SequenceT<Device>::type seq_vec(
-        inputs[1].dims_[0], reinterpret_cast<int*>(inputs[1].getData()));
+        inputs[0].dims_[0], reinterpret_cast<int*>(inputs[0].getData()));
+    const auto out_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
+        inputs[1].getData(), inputs[1].dims_[0], inputs[1].dims_[1]);
+    auto w_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
+        inouts[0].getData(), inouts[0].dims_[0], inouts[0].dims_[1]);
 
     ContextProjectionBackwardWeight<Device>(out_grad_mat.get(),
                                             w_grad_mat.get(),

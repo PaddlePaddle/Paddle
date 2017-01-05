@@ -62,16 +62,18 @@ void testMatrixProjectionForward(int context_start,
               Dims{pad, input_dim}),
        Tensor(reinterpret_cast<real*>(cpu_seq->getData()),
               Dims{cpu_seq->getSize()})},
-      {Tensor(cpu_out.getData(), Dims{batch_size, input_dim * context_length})},
-      {});
+      {},
+      {Tensor(cpu_out.getData(),
+              Dims{batch_size, input_dim * context_length})});
   compare.getGpuFunction()->calc(
       {Tensor(gpu_in.getData(), Dims{batch_size, input_dim}),
        Tensor(gpu_weight ? gpu_weight->getData() : nullptr,
               Dims{pad, input_dim}),
        Tensor(reinterpret_cast<real*>(gpu_seq->getData()),
               Dims{gpu_seq->getSize()})},
-      {Tensor(gpu_out.getData(), Dims{batch_size, input_dim * context_length})},
-      {});
+      {},
+      {Tensor(gpu_out.getData(),
+              Dims{batch_size, input_dim * context_length})});
 
   autotest::TensorCheckEqual(cpu_out, gpu_out);
 }
@@ -118,24 +120,24 @@ void testMatrixProjectionBackward(int context_start,
   }
 
   compare.getCpuFunction()->calc(
+      {Tensor(reinterpret_cast<real*>(cpu_seq->getData()),
+              Dims{cpu_seq->getSize()}),
+       Tensor(cpu_out_grad.getData(),
+              Dims{batch_size, input_dim * context_length})},
+      {},
       {Tensor(cpu_in_grad.getData(), Dims{batch_size, input_dim}),
        Tensor(cpu_w_grad ? cpu_w_grad->getData() : nullptr,
-              Dims{pad, input_dim}),
-       Tensor(reinterpret_cast<real*>(cpu_seq->getData()),
-              Dims{cpu_seq->getSize()})},
-      {Tensor(cpu_out_grad.getData(),
-              Dims{batch_size, input_dim * context_length})},
-      {});
+              Dims{pad, input_dim})});
 
   compare.getGpuFunction()->calc(
+      {Tensor(reinterpret_cast<real*>(gpu_seq->getData()),
+              Dims{gpu_seq->getSize()}),
+       Tensor(gpu_out_grad.getData(),
+              Dims{batch_size, input_dim * context_length})},
+      {},
       {Tensor(gpu_in_grad.getData(), Dims{batch_size, input_dim}),
        Tensor(gpu_w_grad ? gpu_w_grad->getData() : nullptr,
-              Dims{pad, input_dim}),
-       Tensor(reinterpret_cast<real*>(gpu_seq->getData()),
-              Dims{gpu_seq->getSize()})},
-      {Tensor(gpu_out_grad.getData(),
-              Dims{batch_size, input_dim * context_length})},
-      {});
+              Dims{pad, input_dim})});
 
   autotest::TensorCheckErr(cpu_in_grad, gpu_in_grad);
   if (is_padding) {
