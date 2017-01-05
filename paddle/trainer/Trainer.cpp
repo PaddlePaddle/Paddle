@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "Trainer.h"
 
-#include <fenv.h>
 #include <stdio.h>
 
 #include <iomanip>
@@ -24,7 +23,7 @@ limitations under the License. */
 
 #include <google/protobuf/text_format.h>
 
-#include "paddle/utils/Excepts.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Stat.h"

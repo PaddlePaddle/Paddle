@@ -26,8 +26,8 @@ limitations under the License. */
 #include "BaseMatrix.h"
 #include "MemoryHandle.h"
 #include "Vector.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/common.h"
 
 namespace paddle {
 

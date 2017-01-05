@@ -19,8 +19,8 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "paddle/utils/Common.h"
 #include "paddle/utils/GlobalConstants.h"
-#include "paddle/utils/common.h"
 
 /// Import PaddlePaddle's enumeration into global namespace.
 using namespace paddle::enumeration_wrapper;  // NOLINT
