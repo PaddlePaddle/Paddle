@@ -21,39 +21,41 @@ limitations under the License. */
 
 namespace paddle {
 
-class PServerController final {
+class ParameterServerController final {
 public:
-  DISABLE_COPY(PServerController);
+  DISABLE_COPY(ParameterServerController);
 
   /**
-   * @brief Ctor, Create a PServerUtil from ParameterServerConfig.
+   * @brief Ctor, Create a ParameterServerController from ParameterServerConfig.
    */
-  explicit PServerController(const ParameterServerConfig& config);
+  explicit ParameterServerController(const ParameterServerConfig& config);
 
   /**
    * @brief Dtor.
    */
-  ~PServerController();
+  ~ParameterServerController();
 
   /**
-   * @brief create PServerUtil from gflags, this is used for
+   * @brief create ParameterServerController from gflags, this is used for
    * compatibility with the old usage of configuration by gflags.
    */
-  static PServerController* createByGflags();
+  static ParameterServerController* createByGflags();
 
   /**
-   * @brief create PServerUtil with ParameterServerConfig, remove gflags
-   * from ParameterServer. Init all pservers thread according to the config.
+   * @brief create ParameterServerController with ParameterServerConfig, remove
+   * gflags from ParameterServer. Init all pservers thread according to the
+   * config.
    */
-  static PServerController* create(const ParameterServerConfig& config);
+  static ParameterServerController* create(const ParameterServerConfig& config);
 
   /**
-   * @brief start all pserver thread in this PServerUtil.
+   * @brief start all pserver thread in this ParameterServerController.
    */
   void start();
 
   /**
-   * @brief join and wait for all pserver thread in this PServerUtil.
+   * @brief join and wait for all pserver thread in this
+   * ParameterServerController.
    */
   void join();
 
