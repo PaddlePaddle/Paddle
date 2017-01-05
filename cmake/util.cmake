@@ -110,8 +110,8 @@ function(link_paddle_exe TARGET_NAME)
         ${METRIC_LIBS}
         ${PROTOBUF_LIBRARY}
         ${LIBGLOG_LIBRARY}
-        ${GFLAGS_LIBRARIES}
-        ${CMAKE_THREAD_LIBS_INIT}
+        gflags
+	${CMAKE_THREAD_LIBS_INIT}
         ${CBLAS_LIBS}
         ${ZLIB_LIBRARIES}
         ${INTERAL_LIBS}
