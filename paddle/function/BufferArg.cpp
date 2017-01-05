@@ -28,16 +28,4 @@ const SparseMatrixArg& BufferArg::sparse() const {
   return dynamic_cast<const SparseMatrixArg&>(*this);
 }
 
-void BufferArgs::addArg(const Matrix& arg, const TensorShape& shape) {
-  args_.push_back(std::make_shared<BufferArg>(arg, shape));
-}
-
-void BufferArgs::addArg(const CpuSparseMatrix& arg) {
-  args_.push_back(std::make_shared<SparseMatrixArg>(arg));
-}
-
-void BufferArgs::addArg(const GpuSparseMatrix& arg) {
-  args_.push_back(std::make_shared<SparseMatrixArg>(arg));
-}
-
 }  // namespace paddle

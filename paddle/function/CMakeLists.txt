@@ -21,6 +21,7 @@ if(WITH_TESTING)
     add_simple_unittest(TensorShapeTest)
     add_simple_unittest(TensorTypeTest)
     add_simple_unittest(BufferArgTest)
+    add_simple_unittest(FunctionTest)
     # add_unittest(ContextProjectionOpTest
     #    ContextProjectionOpTest.cpp
     #    ../gserver/tests/TestUtil.cpp)

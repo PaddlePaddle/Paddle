@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "BufferArg.h"
 #include <gtest/gtest.h>
+#include "Function.h"
 #include "paddle/math/MemoryHandle.h"
 
 namespace paddle {
@@ -84,45 +85,6 @@ TEST(BufferTest, asArgument) {
 
   // call function
   function(argments);
-}
-
-template <DeviceType DType>
-void FunctionApi(typename Tensor<real, DType>::Matrix& output,
-                 const typename Tensor<real, DType>::Matrix& input);
-
-template <>
-void FunctionApi<DEVICE_TYPE_CPU>(CpuMatrix& output, const CpuMatrix& input) {
-  EXPECT_EQ(output.getHeight(), 100);
-  EXPECT_EQ(output.getWidth(), 200);
-}
-
-template <>
-void FunctionApi<DEVICE_TYPE_GPU>(GpuMatrix& output, const GpuMatrix& input) {
-  EXPECT_EQ(output.getHeight(), 10);
-  EXPECT_EQ(output.getWidth(), 20);
-}
-
-template <DeviceType DType>
-void Function(const BufferArgs& arguments) {
-  auto input = arguments[0].matrix<DType>();
-  auto output = arguments[1].matrix<DType>();
-  FunctionApi<DType>(output, input);
-}
-
-TEST(BufferTest, Function) {
-  CpuMatrix cpuInput = CpuMatrix(100, 200);
-  CpuMatrix cpuOutput = CpuMatrix(100, 200);
-  BufferArgs cpuArgments;
-  cpuArgments.addArg(cpuInput);
-  cpuArgments.addArg(cpuOutput);
-  Function<DEVICE_TYPE_CPU>(cpuArgments);
-
-  GpuMatrix gpuInput = GpuMatrix(10, 20);
-  GpuMatrix gpuOutput = GpuMatrix(10, 20);
-  BufferArgs gpuArgments;
-  gpuArgments.addArg(gpuInput);
-  gpuArgments.addArg(gpuOutput);
-  Function<DEVICE_TYPE_GPU>(gpuArgments);
 }
 
 }  // namespace paddle
