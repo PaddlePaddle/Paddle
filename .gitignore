@@ -12,3 +12,4 @@ Makefile
 
 *~
 bazel-*
+.ipynb_checkpoints

@@ -450,6 +450,8 @@ public:
                                         IVector* vec) throw(RangeError);
   void setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError);
 
+  float sumCosts() const;
+
 private:
   static Arguments* createByPaddleArgumentVector(void* ptr);
   void* getInternalArgumentsPtr() const;
@@ -547,6 +549,10 @@ public:
   void setValueUpdated();
 
   size_t getSize() const;
+
+  bool save(const std::string& filename) const;
+
+  bool load(const std::string& filename) const;
 
 private:
   static Parameter* createFromRawPtr(void* ptr);

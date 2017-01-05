@@ -15,7 +15,7 @@ RUN apt-get update \
     && apt-get clean -y
 RUN cd /usr/src/gtest && cmake . && make && cp *.a /usr/lib
 RUN pip install -U BeautifulSoup docopt PyYAML pillow \
-    sphinx sphinx_rtd_theme recommonmark
+    sphinx sphinx_rtd_theme recommonmark jupyter
 
 ARG WITH_AVX
 ARG WITH_DOC
@@ -43,4 +43,16 @@ RUN echo 'root:root' | chpasswd
 RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 EXPOSE 22
-CMD ["/usr/sbin/sshd", "-D"]
+
+# Jupyter Notebook directory.
+RUN mkdir /notes/
+WORKDIR "/notes"
+EXPOSE 8888
+
+RUN mkdir -p /opt/run
+COPY ./paddle/scripts/docker/jupyter_notebook_config.py /root/.jupyter/
+COPY ./paddle/scripts/docker/00_sshd /opt/run/
+COPY ./paddle/scripts/docker/01_jupyter /opt/run/
+COPY ./paddle/scripts/docker/run_all /opt/bin/
+
+CMD ["/opt/bin/run_all"]
