@@ -16,7 +16,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
 add_custom_command(OUTPUT ${OUTPUT_DIR}/.timestamp
     COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT_DIR}/.timestamp
-    DEPENDS gen_proto_py ${PY_FILES})
+    DEPENDS gen_proto_py ${PY_FILES} ${external_project_dependencies})
 
 add_custom_target(paddle_python ALL DEPENDS
     ${OUTPUT_DIR}/.timestamp)

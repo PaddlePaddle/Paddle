@@ -138,41 +138,22 @@ SET(NUMPY_SOURCES_DIR ${PYTHON_SOURCES_DIR}/numpy)
 SET(NUMPY_TAG_VERSION "v1.11.3")
 SET(NUMPY_VERSION "1.11.3")
 
+SET(EGG_NAME "")
+SET(PYTHON_NUMPY_INCLUDE_DIR "")
 IF(WIN32)
     SET(EGG_NAME "numpy-${NUMPY_VERSION}-py2.7-${HOST_SYSTEM}.egg")
 ELSE(WIN32)
     IF(APPLE)
-        SET(EGG_NAME "numpy-${NUMPY_VERSION}-py2.7-${HOST_SYSTEM}-${MACOS_VERSION}-x86_64.egg")
+        SET(EGG_NAME "numpy-${NUMPY_VERSION}-py2.7-${HOST_SYSTEM}-${MACOS_VERSION}")
     ELSE(APPLE)
-        SET(EGG_NAME "numpy-${NUMPY_VERSION}-py2.7-linux-x86_64.egg")
+        SET(EGG_NAME "numpy-${NUMPY_VERSION}-py2.7-linux")
+        SET(EGG_NAME "numpy-${NUMPY_VERSION}-py2.7-linux")
     ENDIF(APPLE)
-ENDIF(WIN32)
 
-SET(PYTHON_NUMPY_INCLUDE_DIR "${PY_SITE_PACKAGES_PATH}/${EGG_NAME}/numpy/core/include")
-IF(${PYTHON_FOUND}) # local python
-    SET(PYTHON_NUMPY_INCLUDE_DIR
-        "${PY_SITE_PACKAGES_PATH}/${EGG_NAME}/numpy/core/include")
-ELSE(${PYTHON_FOUND}) # global python
-    SET(PYTHON_NUMPY_INCLUDE_DIR "")
-    SET(PY_SITE_PACKAGES_DIR "")
-    FILE(WRITE ${PROJECT_BINARY_DIR}/FindNumpyPath.py
-        "try: import site; print(site.getsitepackages())\nexcept:pass\n")
-    EXEC_PROGRAM("env ${py_env} ${PYTHON_EXECUTABLE}" ${PROJECT_BINARY_DIR}
-        ARGS "FindNumpyPath.py" OUTPUT_VARIABLE NUMPY_PATH)
-
-    STRING(REPLACE "[" "" NUMPY_PATH "${NUMPY_PATH}")
-    STRING(REPLACE "]" "" NUMPY_PATH "${NUMPY_PATH}")
-    STRING(REPLACE "'" "" NUMPY_PATH "${NUMPY_PATH}")
-    STRING(REPLACE ", " ";" SITE_DIRS "${NUMPY_PATH}")
-
-    FOREACH(SITE_DIR ${SITE_DIRS})
-        IF(EXISTS ${SITE_DIR})
-            LIST(APPEND PYTHON_NUMPY_INCLUDE_DIR
-                "${SITE_DIR}/${EGG_NAME}/numpy/core/include")
-            SET(PY_SITE_PACKAGES_DIR "${SITE_DIR}")
-        ENDIF()
+    FOREACH(suffix x86_64 intel fat64 fat32 universal)
+        LIST(APPEND PYTHON_NUMPY_INCLUDE_DIR ${PY_SITE_PACKAGES_PATH}/${EGG_NAME}-${suffix}.egg/numpy/core/include)
     ENDFOREACH()
-ENDIF(${PYTHON_FOUND})
+ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${PYTHON_NUMPY_INCLUDE_DIR})
 
