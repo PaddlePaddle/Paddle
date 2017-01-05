@@ -31,6 +31,7 @@ the user group:
 - IAMUserSSHKeys
 - IAMFullAccess
 - NetworkAdministrator
+- AWSKeyManagementServicePowerUser
 
 
 By the time we write this tutorial, we noticed that Chinese AWS users
