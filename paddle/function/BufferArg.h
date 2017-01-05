@@ -46,32 +46,6 @@ class SequenceArg;
 class SparseMatrixArg;
 typedef std::shared_ptr<BufferArg> BufferArgPtr;
 
-class BufferArgs {
-public:
-  BufferArgs() {}
-  size_t size() const { return args_.size(); }
-
-  // add argument into BufferArgss
-  template <typename Tensor>
-  void addArg(const Tensor& arg) {
-    args_.push_back(std::make_shared<BufferArg>(arg));
-  }
-
-  void addArg(const Matrix& arg, const TensorShape& shape);
-
-  void addArg(const CpuSparseMatrix& arg);
-  void addArg(const GpuSparseMatrix& arg);
-
-  // get argument
-  const BufferArg& operator[](size_t num) const {
-    CHECK_LT(num, args_.size());
-    return *args_[num];
-  }
-
-private:
-  std::vector<BufferArgPtr> args_;
-};
-
 // an array of arbitrary dimensions
 class BufferArg {
 public:

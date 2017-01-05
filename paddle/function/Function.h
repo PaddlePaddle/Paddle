@@ -22,6 +22,11 @@ limitations under the License. */
 
 namespace paddle {
 
+/**
+ * Function Configuration.
+ * The argument type of Function::init.
+ * Follow-up will consider moving this data structure to Proto inside.
+ */
 class FuncConfig {
 public:
   union value {
@@ -41,6 +46,43 @@ protected:
   std::map<std::string, value> valueMap_;
 };
 
+/**
+ * Argument type for Function::calc().
+ * A BufferArgs contains a set of BufferArg,
+ * because Function can have multiple inputs, outputs and inouts.
+ */
+class BufferArgs {
+public:
+  BufferArgs() {}
+  size_t size() const { return args_.size(); }
+
+  // add argument into BufferArgss
+  template <typename Tensor>
+  void addArg(const Tensor& arg) {
+    args_.push_back(std::make_shared<BufferArg>(arg));
+  }
+
+  void addArg(const Matrix& arg, const TensorShape& shape);
+
+  void addArg(const CpuSparseMatrix& arg);
+  void addArg(const GpuSparseMatrix& arg);
+
+  // get argument
+  const BufferArg& operator[](size_t num) const {
+    CHECK_LT(num, args_.size());
+    return *args_[num];
+  }
+
+private:
+  std::vector<BufferArgPtr> args_;
+};
+
+/**
+ * Base class for Function.
+ * The basic Function implementation requires override init and calc interfaces.
+ * Need to pay attention to the inouts argument. For the input argument
+ * that will be modified, it needs to be passed through inouts.
+ */
 class FunctionBase {
 public:
   virtual ~FunctionBase() {}
