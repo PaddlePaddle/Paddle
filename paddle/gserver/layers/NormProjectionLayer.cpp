@@ -71,11 +71,16 @@ void CMRProjectionNormLayer::forward(PassType passType) {
 
   Matrix::resizeOrCreate(denoms_, batchSize, size, /* trans */ false, useGpu_);
 
-  dims_ = {batchSize, channels_, imgSizeH_, imgSizeW_};
-  forward_[0]->calc(
-      {Tensor(input->getData(), dims_)},
-      {Tensor(outV->getData(), dims_), Tensor(denoms_->getData(), dims_)},
-      {});
+  shape_ = TensorShape({batchSize, channels_, imgSizeH_, imgSizeW_});
+
+  BufferArgs inputs;
+  BufferArgs outputs;
+  BufferArgs inouts;
+  inputs.addArg(*input, shape_);
+  outputs.addArg(*outV, shape_);
+  outputs.addArg(*denoms_, shape_);
+
+  forward_[0]->calc(inputs, outputs, inouts);
 }
 
 void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
@@ -90,11 +95,14 @@ void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
   MatrixPtr localOutV = getOutputValue();
   MatrixPtr preOutV = inputLayers_[0]->getOutputValue();
 
-  backward_[0]->calc({Tensor(preOutV->getData(), dims_),
-                      Tensor(localOutV->getData(), dims_),
-                      Tensor(localGrad->getData(), dims_),
-                      Tensor(denoms_->getData(), dims_)},
-                     {Tensor(preOutGrad->getData(), dims_)},
-                     {});
+  BufferArgs inputs;
+  BufferArgs outputs;
+  BufferArgs inouts;
+  inputs.addArg(*preOutV, shape_);
+  inputs.addArg(*localOutV, shape_);
+  inputs.addArg(*localGrad, shape_);
+  inputs.addArg(*denoms_, shape_);
+  outputs.addArg(*preOutGrad, shape_);
+  backward_[0]->calc(inputs, outputs, inouts);
 }
 }  // namespace paddle

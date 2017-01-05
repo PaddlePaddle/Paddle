@@ -16,56 +16,11 @@ limitations under the License. */
 
 #include <map>
 #include <vector>
+#include "BufferArg.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/utils/ClassRegistrar.h"
 
 namespace paddle {
-
-enum DeviceType {
-  DEVICE_TYPE_UNSPECIFIED = 0,
-  DEVICE_TYPE_CPU = 1,
-  DEVICE_TYPE_GPU = 2,
-};
-
-template <DeviceType Device>
-struct MatrixT;
-
-template <>
-struct MatrixT<DEVICE_TYPE_CPU> {
-  using type = CpuMatrix;
-};
-
-template <>
-struct MatrixT<DEVICE_TYPE_GPU> {
-  using type = GpuMatrix;
-};
-
-template <DeviceType Device>
-struct SequenceT;
-
-template <>
-struct SequenceT<DEVICE_TYPE_CPU> {
-  using type = CpuIVector;
-};
-
-template <>
-struct SequenceT<DEVICE_TYPE_GPU> {
-  using type = GpuIVector;
-};
-
-typedef std::vector<size_t> Dims;
-
-class Tensor {
-public:
-  Tensor(real* data, const Dims& dim) : buf_(data), dims_(dim) {}
-
-  real* getData() const { return buf_; }
-
-  real* buf_;
-  Dims dims_;
-};
-
-typedef std::vector<Tensor> Arguments;
 
 class FuncConfig {
 public:
@@ -92,9 +47,9 @@ public:
 
   virtual void init(const FuncConfig& config) {}
 
-  virtual void calc(const Arguments& inputs,
-                    const Arguments& outputs,
-                    const Arguments& inouts) {}
+  virtual void calc(const BufferArgs& inputs,
+                    const BufferArgs& outputs,
+                    const BufferArgs& inouts) {}
 
   static ClassRegistrar<FunctionBase> funcRegistrar_;
 };
