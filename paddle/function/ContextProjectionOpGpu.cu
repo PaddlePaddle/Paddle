@@ -256,7 +256,7 @@ __global__ void KeContextProjectionBackwardWeight(const real* out_grad,
     for (int seqId = idy; seqId < num_sequences; seqId += THREADS_Y) {
       int seq_start = sequence[seqId];
       int seq_end = sequence[seqId+1];
-      output_r = const_cast<real*>(out_grad) 
+      output_r = const_cast<real*>(out_grad)
                     + seq_start * w_dim * context_length;
 
       if (context_start < 0) {
