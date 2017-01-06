@@ -38,7 +38,8 @@ struct TrainerConfigHelperPrivate {
   TrainerConfig conf;
 };
 
-TrainerConfigHelper::TrainerConfigHelper(const std::string &configFilePath)
+TrainerConfigHelper::TrainerConfigHelper(
+    const std::string &configFilePath) throw(ErrorPtr &)
     : m(new TrainerConfigHelperPrivate()) {
   std::ostringstream configArgs;
   configArgs << "trainer_id=" << FLAGS_trainer_id << ",local=" << FLAGS_local
@@ -50,11 +51,19 @@ TrainerConfigHelper::TrainerConfigHelper(const std::string &configFilePath)
   }
 
   VLOG(3) << "Parsing trainer config " << configFilePath;
+  std::string errStr;
   std::string configProtoStr =
       callPythonFunc(kConfigParserModuleName,
                      kConfigParserFuncName,
-                     {configFilePath, configArgs.str()});
-  CHECK(m->conf.ParseFromString(configProtoStr));
+                     {configFilePath, configArgs.str()},
+                     &errStr);
+  if (!errStr.empty()) {
+    Error::throwError(errStr);
+  }
+
+  if (!m->conf.ParseFromString(configProtoStr)) {
+    Error::throwError("cannot parse configuration proto string");
+  }
 }
 
 TrainerConfigHelper::TrainerConfigHelper(const TrainerConfig &config)

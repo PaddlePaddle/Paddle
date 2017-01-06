@@ -46,7 +46,8 @@ namespace paddle {
 
 std::string callPythonFunc(const std::string& moduleName,
                            const std::string& funcName,
-                           const std::vector<std::string>& args);
+                           const std::vector<std::string>& args,
+                           std::string* errorString = nullptr);
 
 #ifndef PADDLE_NO_PYTHON
 
@@ -76,7 +77,8 @@ typedef std::unique_ptr<PyObject, PyObjectDeleter> PyObjectPtr;
 
 PyObjectPtr callPythonFuncRetPyObj(const std::string& moduleName,
                                    const std::string& funcName,
-                                   const std::vector<std::string>& args);
+                                   const std::vector<std::string>& args,
+                                   std::string* errorString = nullptr);
 
 PyObjectPtr createPythonClass(const std::string& moduleName,
                               const std::string& className,
@@ -84,9 +86,20 @@ PyObjectPtr createPythonClass(const std::string& moduleName,
                               const std::map<std::string, std::string>& kwargs);
 
 #define CHECK_PY(x) CHECK((x) != nullptr) << ::paddle::py::getPyCallStack()
+#define CHECK_PY_WITH_ERRORSTR(x, extraMsg, errStr, ...) \
+  do {                                                   \
+    if ((errStr) == nullptr) {                           \
+      CHECK_PY(x) << (extraMsg);                         \
+    } else if ((x) == nullptr) {                         \
+      *(errStr) = (extraMsg);                            \
+      *(errStr) += ::paddle::py::getPyCallStack();       \
+      __VA_ARGS__;                                       \
+    }                                                    \
+  } while (0)
 
 namespace py {
-PyObjectPtr import(const std::string& moduleName);
+PyObjectPtr import(const std::string& moduleName,
+                   std::string* errorString = nullptr);
 
 /**
  * Cast a PyLong or PyInt to int type T.

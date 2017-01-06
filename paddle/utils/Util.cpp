@@ -27,6 +27,7 @@ limitations under the License. */
 #include <gflags/gflags.h>
 
 #include "CustomStackTrace.h"
+#include "Error.h"
 #include "Logging.h"
 #include "StringUtil.h"
 #include "Thread.h"
@@ -143,7 +144,19 @@ void runInitFunctions() {
   });
 }
 
+static void logAllUnhandledExceptions() {
+  try {
+    throw;
+  } catch (ErrorPtr& err) {
+    std::cerr << err->what() << "\n";
+  } catch (...) {
+    std::cerr << "Unsupported error occured";
+  }
+  exit(1);
+}
+
 void initMain(int argc, char** argv) {
+  std::set_terminate(logAllUnhandledExceptions);
   initializeLogging(argc, argv);
   installLayerStackTracer();
   std::string line;
