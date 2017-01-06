@@ -10,6 +10,8 @@ if(WITH_GPU)
 endif()
 
 add_library(paddle_function STATIC ${cpp_files} ${cu_objs})
+add_dependencies(paddle_function ${external_project_dependencies})
+
 
 if(WITH_GPU)
 if(WITH_TESTING)

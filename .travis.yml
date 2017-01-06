@@ -28,16 +28,8 @@ addons:
       - python
       - python-pip
       - python2.7-dev
-      - m4
-      - python-numpy
-      - python-wheel
-      - libgoogle-glog-dev
-      - libgflags-dev
-      - libgtest-dev
       - curl
-      - lcov
       - graphviz
-      - swig
       - clang-format-3.8
       - automake
       - libtool
@@ -53,10 +45,10 @@ before_install:
         fi
       fi
     fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo paddle/scripts/travis/before_install.linux.sh; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
   - if [[ "$JOB" == "PRE_COMMIT" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
-  - pip install wheel protobuf sphinx recommonmark virtualenv numpy sphinx_rtd_theme pre-commit requests==2.9.2 LinkChecker
+  - pip install --upgrade pip
+  - pip install wheel protobuf sphinx recommonmark sphinx_rtd_theme virtualenv pre-commit requests==2.9.2 LinkChecker
 script:
   - paddle/scripts/travis/main.sh
 notifications:

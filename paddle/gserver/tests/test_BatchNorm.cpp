@@ -114,8 +114,8 @@ TEST(Layer, batchNorm) {
   bnLayer->forward(PASS_GC);
   convLayer->forward(PASS_GC);
 
-  CHECK_EQ(convLayer->getOutputValue()->getHeight(), 100);
-  CHECK_EQ(convLayer->getOutputValue()->getWidth(), 576);
+  CHECK_EQ(static_cast<int>(convLayer->getOutputValue()->getHeight()), 100);
+  CHECK_EQ(static_cast<int>(convLayer->getOutputValue()->getWidth()), 576);
 }
 
 int main(int argc, char** argv) {
