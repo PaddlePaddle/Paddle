@@ -1,4 +1,4 @@
-# Kubernetes 单机训练
+# Kubernetes单机训练
 
 在这篇文档里，我们介绍如何在 Kubernetes 集群上启动一个单机使用CPU的Paddle训练作业。在下一篇中，我们将介绍如何启动分布式训练作业。
 

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/gserver/layers/Layer.h"
 #include "paddle/gserver/layers/WarpCTCLayer.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

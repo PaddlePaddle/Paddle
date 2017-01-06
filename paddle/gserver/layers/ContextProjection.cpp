@@ -111,7 +111,8 @@ void ContextProjection::forward() {
   size_t dim = out_->value->getWidth();
   CHECK_EQ(dim, input_dim * config_.context_length());
   size_t batch_size = in_->value->getHeight();
-  CHECK_EQ(forward_.size(), 1) << "Only one forward function here";
+  CHECK_EQ(static_cast<int>(forward_.size()), 1)
+      << "Only one forward function here";
 
   REGISTER_TIMER_INFO("ContextProjectionForward", getName().c_str());
   bool is_padding = config_.trainable_padding();
@@ -154,7 +155,8 @@ void ContextProjection::backward(const UpdateCallback& callback) {
   CHECK_EQ(dim, input_dim * config_.context_length());
   size_t batch_size = in_->value->getHeight();
   CHECK_EQ(batch_size, out_->value->getHeight());
-  CHECK_EQ(backward_.size(), 1) << "Only one backward function here";
+  CHECK_EQ(static_cast<int>(backward_.size()), 1)
+      << "Only one backward function here";
 
   REGISTER_TIMER_INFO("ContextProjectionBackward", getName().c_str());
   bool is_padding = config_.trainable_padding();

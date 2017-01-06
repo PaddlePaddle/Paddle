@@ -26,9 +26,9 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "Common.h"
 #include "Logging.h"
 #include "TrainerConfig.pb.h"
-#include "common.h"
 
 #include "Flags.h"
 #include "hl_gpu.h"
