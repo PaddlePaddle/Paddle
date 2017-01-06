@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors, Inc. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 set -e
 
 cfg=trainer_config.py
-#TRAINER_BIN="./paddle_trainer"
 paddle train \
   --config=$cfg \
   --save_dir=./output \
@@ -25,6 +24,4 @@ paddle train \
   --num_passes=10 \
   --use_gpu=false \
   --show_parameter_stats_period=3000 \
-  --test_wait=1
-  #--test_all_data_in_one_period=1 \
   2>&1 | tee 'train.log'

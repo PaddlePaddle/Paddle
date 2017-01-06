@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors, Inc. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ define_py_data_sources2(
     train_list=trn, test_list=tst, module="dataprovider", obj=process)
 ################################### Parameter Configuaration #######################################
 TERM_NUM = 24
-FORECASTING_NUM = 25
+FORECASTING_NUM = 24
 emb_size = 16
 batch_size = 128 if not is_predict else 1
 settings(

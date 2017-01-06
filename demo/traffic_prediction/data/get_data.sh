@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2016 Baidu, Inc. All Rights Reserved
+# Copyright (c) 2016 PaddlePaddle Authors, Inc. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ cd $DIR
 
 #download the dataset
 echo "Downloading traffic data..."
-wget http://paddlepaddle.bj.bcebos.com/demo/traffic/traffic_data.tar.gz
+wget http://paddlepaddle.cdn.bcebos.com/demo/traffic/traffic_data.tar.gz
 
 #extract package
 echo "Unzipping..."
