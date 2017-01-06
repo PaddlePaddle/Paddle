@@ -27,8 +27,8 @@ wget http://paddlepaddle.bj.bcebos.com/demo/traffic/traffic_data.tar.gz
 echo "Unzipping..."
 tar -zxvf traffic_data.tar.gz
 
-echo "data/speeds.csv" >> train.list
-echo "data/speeds.csv" >> test.list
-echo "data/speeds.csv" >> pred.list
+echo "data/speeds.csv" > train.list
+echo "data/speeds.csv" > test.list
+echo "data/speeds.csv" > pred.list
 
 echo "Done."
