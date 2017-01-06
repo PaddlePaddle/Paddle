@@ -18,7 +18,7 @@ limitations under the License. */
 #include <algorithm>
 #include <cstdlib>
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 #include "paddle/trainer/Trainer.h"
 #include "paddle/utils/Stat.h"
 

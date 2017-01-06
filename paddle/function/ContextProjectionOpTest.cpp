@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include "FunctionTest.h"
-#include "paddle/gserver/tests/TestUtil.h"
 #include "paddle/math/Matrix.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT
 

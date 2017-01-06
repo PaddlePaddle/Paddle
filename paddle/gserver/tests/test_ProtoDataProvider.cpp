@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/gserver/dataproviders/ProtoDataProvider.h"
 #include "paddle/utils/Util.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace std;  // NOLINT
 

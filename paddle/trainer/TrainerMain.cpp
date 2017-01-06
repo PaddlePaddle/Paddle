@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <fenv.h>
 #include "paddle/pserver/ParameterServerController.h"
-#include "paddle/utils/Excepts.h"
 #include "paddle/utils/PythonUtil.h"
 
 #include "ParamUtil.h"

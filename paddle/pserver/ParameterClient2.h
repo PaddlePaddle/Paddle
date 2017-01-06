@@ -23,11 +23,11 @@ limitations under the License. */
 #include "paddle/math/Vector.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/pserver/BaseClient.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Queue.h"
 #include "paddle/utils/Util.h"
-#include "paddle/utils/common.h"
 
 #include "ParameterService.pb.h"
 
