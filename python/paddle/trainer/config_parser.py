@@ -493,6 +493,7 @@ class Input(Cfg):
             block_expand=None,
             maxout=None,
             spp=None,
+            pad=None,
             format=None,
             nnz=None,
             is_static=None,
@@ -841,6 +842,12 @@ class Pool(Cfg):
 @config_class
 class SpatialPyramidPool(Cfg):
     def __init__(self, pool_type, pyramid_height, channels):
+        self.add_keys(locals())
+
+
+@config_class
+class Pad(Cfg):
+    def __init__(self, channels, pad_c, pad_h, pad_w):
         self.add_keys(locals())
 
 
@@ -1840,6 +1847,25 @@ class SpatialPyramidPoolLayer(LayerBase):
             parse_spp(self.inputs[input_index].spp, input_layer.name, spp_conf)
             output_x = (pow(4, spp_conf.pyramid_height) - 1) / (4 - 1)
             self.set_cnn_layer(name, 1, output_x, spp_conf.image_conf.channels)
+
+
+@config_layer('pad')
+class PadLayer(LayerBase):
+    def __init__(self, name, inputs, **xargs):
+        super(PadLayer, self).__init__(name, 'pad', 0, inputs=inputs, **xargs)
+        pad = self.inputs[0].pad
+        self.config.inputs[0].pad_conf.pad_c.extend(pad.pad_c)
+        self.config.inputs[0].pad_conf.pad_h.extend(pad.pad_h)
+        self.config.inputs[0].pad_conf.pad_w.extend(pad.pad_w)
+
+        input_layer = self.get_input_layer(0)
+        image_conf = self.config.inputs[0].pad_conf.image_conf
+        parse_image(pad, input_layer.name, image_conf)
+        out_ch = pad.channels + pad.pad_c[0] + pad.pad_c[1]
+        out_h = image_conf.img_size_y + pad.pad_h[0] + pad.pad_h[1]
+        out_w = image_conf.img_size + pad.pad_w[0] + pad.pad_w[1]
+        self.set_cnn_layer(name, out_h, out_w, out_ch)
+        self.config.size = out_ch * out_h * out_w
 
 
 @config_layer('batch_norm')
