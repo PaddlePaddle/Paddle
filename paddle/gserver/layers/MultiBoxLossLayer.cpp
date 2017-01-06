@@ -174,7 +174,6 @@ void MultiBoxLossLayer::forward(PassType passType) {
                   &allMaxConfScore);
   Argument label = getInput(*getLabelLayer());
   const int* labelIndex = label.sequenceStartPositions->getData(false);
-  // const int* labelIndex2 = label.subSequenceStartPositions->getData(false);
   int seqNum = label.getNumSequences();
   // Match priorbox to ground truth bbox
   numMatches_ = 0;
