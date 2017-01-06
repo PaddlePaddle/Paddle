@@ -38,3 +38,4 @@ paddle train \
   --config_args=is_test=1 \
   --test_all_data_in_one_period=1 \
 2>&1 | tee 'test.log'
+paddle usage -l test.log -e $? -n "semantic_role_labeling_test" >/dev/null 2>&1

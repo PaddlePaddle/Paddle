@@ -7,4 +7,6 @@ paddle train \
        --dot_period=10 \
        --log_period=1000 \
        --test_period=0 \
-       --num_passes=10
+       --num_passes=10 \
+2>&1 | tee 'train.log'
+paddle usage -l 'train.log' -e $? -n "sequence_tagging_train" >/dev/null 2>&1
