@@ -15,15 +15,15 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <vector>
 #include "ModelConfig.pb.h"
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 #include "paddle/trainer/Trainer.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_bool(use_gpu);
+DECLARE_int32(gpu_id);
+DECLARE_bool(thread_local_rand_use_global_seed);
 
 enum InputType {
   INPUT_DATA,         // dense vector

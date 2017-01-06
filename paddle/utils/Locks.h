@@ -19,7 +19,7 @@ limitations under the License. */
 #include <condition_variable>
 #include <mutex>
 
-#include "DisableCopy.h"
+#include "Common.h"
 
 namespace paddle {
 

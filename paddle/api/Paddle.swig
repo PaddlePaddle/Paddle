@@ -96,7 +96,9 @@ namespace std {
 %rename(__getitem__) Vector::get;
 %rename(__setitem__) Vector::set;
 %rename(__len__) Vector::getSize;
+%rename(__len__) Parameter::getSize;
 %rename(__call__) ParameterTraverseCallback::apply;
+%rename(__repr__) Evaluator::toString;
 
 %apply (float* INPLACE_ARRAY2, int DIM1, int DIM2) { 
   (float* data, int dim1, int dim2) 
@@ -167,6 +169,7 @@ namespace std {
 %newobject GradientMachine::asSequenceGenerator;
 %newobject GradientMachine::getParameter;
 %newobject GradientMachine::getLayerOutput;
+%newobject GradientMachine::makeEvaluator;
 %newobject TrainerConfig::createFromTrainerConfigFile;
 %newobject TrainerConfig::getModelConfig;
 %newobject TrainerConfig::getOptimizationConfig;
@@ -174,6 +177,8 @@ namespace std {
 %newobject Parameter::getConfig;
 %newobject ParameterOptimizer::create;
 %newobject ParameterOptimizer::needSpecialTraversal;
+%newobject ParameterUpdater::createLocalUpdater;
+%newobject ParameterUpdater::createRemoteUpdater;
 
 %feature("director") UpdateCallback;
 %feature("autodoc", 1); // To generate method stub, for code hint in ide

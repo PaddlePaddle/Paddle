@@ -181,12 +181,12 @@ public:
   /**
    * Create an evaluator which can be used for eval()
    */
-  virtual Evaluator* makeEvaluator() = 0;
+  virtual Evaluator* makeEvaluator() const = 0;
 
   /**
    * evaluate using the given evaluator
    */
-  virtual void eval(Evaluator* evaluator) = 0;
+  virtual void eval(Evaluator* evaluator) const = 0;
 
   std::vector<ParameterPtr>& getParameters() { return parameters_; }
 
@@ -212,11 +212,7 @@ public:
    * @note    This function will only been implemented and used in a
    *          multithreaded environment.
    */
-  virtual void start(const TrainerConfig& config,
-                     DataProviderPtr dataProvider) {
-    (void)config;
-    (void)dataProvider;
-  }
+  virtual void start() {}
 
   /**
    * @brief   check  each work-thread whether is failed/error/finish,

@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <fenv.h>
 #include "paddle/pserver/ParameterServer2.h"
-#include "paddle/utils/Excepts.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/StringUtil.h"
 
@@ -22,21 +21,20 @@ limitations under the License. */
 #include "Trainer.h"
 #include "paddle/pserver/RDMANetwork.h"
 
-P_DEFINE_bool(start_pserver, false, "Whether to start pserver");
-P_DECLARE_int32(gpu_id);
-P_DEFINE_string(job, "train", "one of (train, test, checkgrad)");
-P_DECLARE_int32(start_pass);
-P_DECLARE_string(config);
-P_DECLARE_string(init_model_path);
-P_DECLARE_string(rdma_tcp);
+DEFINE_bool(start_pserver, false, "Whether to start pserver");
+DECLARE_int32(gpu_id);
+DEFINE_string(job, "train", "one of (train, test, checkgrad)");
+DECLARE_int32(start_pass);
+DECLARE_string(config);
+DECLARE_string(init_model_path);
+DECLARE_string(rdma_tcp);
 
 using namespace paddle;  // NOLINT
 
 int main(int argc, char** argv) {
-// write logs instantly (never buffer log messages)
-#ifdef PADDLE_USE_GLOG
+  // write logs instantly (never buffer log messages)
   FLAGS_logbuflevel = -1;
-#endif
+
   initMain(argc, argv);
   initPython(argc, argv);
 

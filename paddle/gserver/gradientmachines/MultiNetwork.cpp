@@ -109,10 +109,9 @@ void MultiNetwork::onPassEnd() {
   }
 }
 
-void MultiNetwork::start(const TrainerConfig& config,
-                         DataProviderPtr dataProvider) {
+void MultiNetwork::start() {
   for (auto& subNetwork : subNetworks_) {
-    subNetwork->start(config, dataProvider);
+    subNetwork->start();
   }
 }
 
@@ -172,7 +171,7 @@ protected:
   std::vector<std::unique_ptr<Evaluator>> evaluators_;
 };
 
-Evaluator* MultiNetwork::makeEvaluator() {
+Evaluator* MultiNetwork::makeEvaluator() const {
   MultiCombinedEvaluator* multiCombinedEvaluator = new MultiCombinedEvaluator();
   for (size_t i = 0; i < subNetworks_.size(); i++) {
     std::unique_ptr<Evaluator> evaluator(subNetworks_[i]->makeEvaluator());
@@ -181,6 +180,6 @@ Evaluator* MultiNetwork::makeEvaluator() {
   return multiCombinedEvaluator;
 }
 
-void MultiNetwork::eval(Evaluator* evaluator) { evaluator->eval(*this); }
+void MultiNetwork::eval(Evaluator* evaluator) const { evaluator->eval(*this); }
 
 }  // namespace paddle

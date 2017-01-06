@@ -9,6 +9,8 @@ build/
 .pydevproject
 Makefile
 .test_env/
+third_party/
 
 *~
 bazel-*
+third_party/

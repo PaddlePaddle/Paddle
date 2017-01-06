@@ -21,10 +21,10 @@ limitations under the License. */
 #include "paddle/pserver/ProtoServer.h"
 #include "paddle/utils/Stat.h"
 
-P_DEFINE_string(server_addr, "127.0.0.1", "Server address");
-P_DEFINE_int64(dim, 50000000, "Data size");
-P_DEFINE_bool(test_proto_server, true, "whether to test ProtoServer");
-P_DEFINE_bool(benchmark, false, "Do benchmark. Skip some tests");
+DEFINE_string(server_addr, "127.0.0.1", "Server address");
+DEFINE_int64(dim, 50000000, "Data size");
+DEFINE_bool(test_proto_server, true, "whether to test ProtoServer");
+DEFINE_bool(benchmark, false, "Do benchmark. Skip some tests");
 
 using namespace paddle;  // NOLINT
 

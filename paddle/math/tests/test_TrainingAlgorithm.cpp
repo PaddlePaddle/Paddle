@@ -22,9 +22,9 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 
 #ifndef PADDLE_TYPE_DOUBLE
-P_DEFINE_double(max_diff, 1e-5, "max diff allowed");
+DEFINE_double(max_diff, 1e-5, "max diff allowed");
 #else
-P_DEFINE_double(max_diff, 1e-13, "max diff allowed");
+DEFINE_double(max_diff, 1e-13, "max diff allowed");
 #endif
 
 class SetMaxDiff {
@@ -459,11 +459,3 @@ void testSparseMomentum(size_t size, bool useGpu) {
 }
 
 TEST(Training, SparseMomentum) { testCase(testSparseMomentum); }
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  initMain(argc, argv);
-  hl_start();
-  hl_init(FLAGS_gpu_id);
-  return RUN_ALL_TESTS();
-}

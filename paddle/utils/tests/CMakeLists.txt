@@ -1,5 +1,3 @@
-add_simple_unittest(test_CommandLineParser)
-add_simple_unittest(test_Logging)
 add_simple_unittest(test_Thread)
 add_simple_unittest(test_StringUtils)
 add_simple_unittest(test_CustomStackTrace)

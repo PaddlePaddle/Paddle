@@ -45,6 +45,15 @@ bool CMRProjectionNormLayer::init(const LayerMap& layerMap,
   /* the size of inputs for norm-layer is 1 */
   CHECK_EQ(config_.inputs_size(), 1);
 
+  createFunction(
+      forward_,
+      "CrossMapNormal",
+      FuncConfig().set("size", size_).set("scale", scale_).set("pow", pow_));
+  createFunction(
+      backward_,
+      "CrossMapNormalGrad",
+      FuncConfig().set("size", size_).set("scale", scale_).set("pow", pow_));
+
   return true;
 }
 
@@ -54,7 +63,7 @@ void CMRProjectionNormLayer::forward(PassType passType) {
   /* malloc memory for the output_ if necessary */
   /* note: one sample correspond to one row */
   MatrixPtr input = inputLayers_[0]->getOutputValue();
-  int batchSize = input->getHeight();
+  size_t batchSize = input->getHeight();
   int size = getSize();
   resetOutput(batchSize, size);
 
@@ -62,10 +71,11 @@ void CMRProjectionNormLayer::forward(PassType passType) {
 
   Matrix::resizeOrCreate(denoms_, batchSize, size, /* trans */ false, useGpu_);
 
-  denoms_->zeroMem();
-
-  outV->crossMapNormalFwd(
-      *input, imgSizeH_, imgSizeW_, *denoms_, channels_, size_, scale_, pow_);
+  dims_ = {batchSize, channels_, imgSizeH_, imgSizeW_};
+  forward_[0]->calc(
+      {Tensor(input->getData(), dims_)},
+      {Tensor(outV->getData(), dims_), Tensor(denoms_->getData(), dims_)},
+      {});
 }
 
 void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
@@ -80,15 +90,11 @@ void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
   MatrixPtr localOutV = getOutputValue();
   MatrixPtr preOutV = inputLayers_[0]->getOutputValue();
 
-  preOutGrad->crossMapNormalBwd(*localGrad,
-                                *denoms_,
-                                *preOutV,
-                                *localOutV,
-                                channels_,
-                                imgSizeH_,
-                                imgSizeW_,
-                                size_,
-                                scale_,
-                                pow_);
+  backward_[0]->calc({Tensor(preOutV->getData(), dims_),
+                      Tensor(localOutV->getData(), dims_),
+                      Tensor(localGrad->getData(), dims_),
+                      Tensor(denoms_->getData(), dims_)},
+                     {Tensor(preOutGrad->getData(), dims_)},
+                     {});
 }
 }  // namespace paddle

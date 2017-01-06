@@ -57,19 +57,21 @@ def evaluator(*attrs):
     return impl
 
 
-def evaluator_base(input,
-                   type,
-                   label=None,
-                   weight=None,
-                   name=None,
-                   chunk_scheme=None,
-                   num_chunk_types=None,
-                   classification_threshold=None,
-                   positive_label=None,
-                   dict_file=None,
-                   result_file=None,
-                   num_results=None,
-                   delimited=None):
+def evaluator_base(
+        input,
+        type,
+        label=None,
+        weight=None,
+        name=None,
+        chunk_scheme=None,
+        num_chunk_types=None,
+        classification_threshold=None,
+        positive_label=None,
+        dict_file=None,
+        result_file=None,
+        num_results=None,
+        delimited=None,
+        excluded_chunk_types=None, ):
     """
     Evaluator will evaluate the network status while training/testing.
 
@@ -127,7 +129,8 @@ def evaluator_base(input,
         positive_label=positive_label,
         dict_file=dict_file,
         result_file=result_file,
-        delimited=delimited)
+        delimited=delimited,
+        excluded_chunk_types=excluded_chunk_types, )
 
 
 @evaluator(EvaluatorAttribute.FOR_CLASSIFICATION)
@@ -327,9 +330,11 @@ def ctc_error_evaluator(
 @wrap_name_default()
 def chunk_evaluator(
         input,
+        label,
+        chunk_scheme,
+        num_chunk_types,
         name=None,
-        chunk_scheme=None,
-        num_chunk_types=None, ):
+        excluded_chunk_types=None, ):
     """
     Chunk evaluator is used to evaluate segment labelling accuracy for a
     sequence. It calculates the chunk detection F1 score.
@@ -363,24 +368,29 @@ def chunk_evaluator(
 
     .. code-block:: python
 
-       eval = chunk_evaluator(input)
+       eval = chunk_evaluator(input, label, chunk_scheme, num_chunk_types)
 
     :param input: The input layers.
     :type input: LayerOutput
-    :param name: The Evaluator name, it is not necessary.
-    :type name: basename|None
+    :param label: An input layer containing the ground truth label.
+    :type label: LayerOutput
     :param chunk_scheme: The labelling schemes support 4 types. It is one of
-                         "IOB", "IOE", "IOBES", "plain".This Evaluator must
-                         contain this chunk_scheme.
+                         "IOB", "IOE", "IOBES", "plain". It is required.
     :type chunk_scheme: basestring
     :param num_chunk_types: number of chunk types other than "other"
+    :param name: The Evaluator name, it is optional.
+    :type name: basename|None
+    :param excluded_chunk_types: chunks of these types are not considered
+    :type excluded_chunk_types: list of integer|None
     """
     evaluator_base(
         name=name,
         type="chunk",
         input=input,
+        label=label,
         chunk_scheme=chunk_scheme,
-        num_chunk_types=num_chunk_types)
+        num_chunk_types=num_chunk_types,
+        excluded_chunk_types=excluded_chunk_types, )
 
 
 @evaluator(EvaluatorAttribute.FOR_UTILS)

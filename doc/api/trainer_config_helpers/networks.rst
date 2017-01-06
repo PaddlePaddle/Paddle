@@ -36,6 +36,8 @@ img_conv_group
     :members: img_conv_group
     :noindex:
 
+..  _api_trainer_config_helpers_network_simple_img_conv_pool:
+
 simple_img_conv_pool
 --------------------
 ..  automodule:: paddle.trainer_config_helpers.networks

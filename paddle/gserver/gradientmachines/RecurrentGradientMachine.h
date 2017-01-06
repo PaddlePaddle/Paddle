@@ -63,7 +63,7 @@ public:
                        const UpdateCallback& callback);
 
   virtual void resetState() {}
-  virtual void eval(Evaluator* evaluator);
+  virtual void eval(Evaluator* evaluator) const;
 
   const std::vector<int>& getParameterIds() { return parameterIds_; }
 

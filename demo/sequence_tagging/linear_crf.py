@@ -74,7 +74,8 @@ sum_evaluator(
 
 chunk_evaluator(
     name="chunk_f1",
-    input=[crf_decoding, chunk],
+    input=crf_decoding,
+    label=chunk,
     chunk_scheme="IOB",
     num_chunk_types=11, )
 

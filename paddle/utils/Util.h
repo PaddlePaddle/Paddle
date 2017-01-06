@@ -26,13 +26,11 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "CommandLineParser.h"
-#include "DisableCopy.h"
+#include "Common.h"
 #include "Logging.h"
 #include "TrainerConfig.pb.h"
 
 #include "Flags.h"
-#include "TypeDefs.h"
 #include "hl_gpu.h"
 
 /**

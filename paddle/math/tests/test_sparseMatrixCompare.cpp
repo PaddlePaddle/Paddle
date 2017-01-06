@@ -102,8 +102,8 @@ void testSpMatrixMul(int M, int N, int K, real rate) {
   gpuC->copyFrom(*cpuC, stream);
   hl_stream_synchronize(stream);
 
-  cpuC->mul(cpuA, cpuB->getTranspose(), 1, 1);
-  gpuC->mul(gpuA, gpuB->getTranspose(), 1, 1);
+  cpuC->mul(*cpuA, *cpuB->getTranspose(), 1, 1);
+  gpuC->mul(*gpuA, *gpuB->getTranspose(), 1, 1);
 
   MatrixPtr outputCheck(new CpuSparseMatrix(M, N, nnz));
   outputCheck->copyFrom(*gpuC, stream);
@@ -169,13 +169,6 @@ TEST(SMatrix, sMatrixCollectBias) {
       testSpMatrixCollectBias(height, width, 0.1);
     }
   }
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  initMain(argc, argv);
-  int ret = RUN_ALL_TESTS();
-  return ret;
 }
 
 #endif

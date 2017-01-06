@@ -137,6 +137,9 @@ void StatSet::printSegTimerStatus() {
 
 void StatSet::printBarrierTimerStatus() {
   ReadLockGuard guard(lock_);
+  if (barrierStatSet_.empty()) {
+    return;
+  }
   // control barrierAbstact in runtime, so enable compliation
   LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')
             << "======= BarrierStatSet status ======" << std::endl;

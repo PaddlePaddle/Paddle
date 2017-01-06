@@ -26,8 +26,8 @@ limitations under the License. */
 #include "BaseMatrix.h"
 #include "MemoryHandle.h"
 #include "Vector.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/TypeDefs.h"
 
 namespace paddle {
 
@@ -444,8 +444,8 @@ public:
    * this = scaleAB*(a*b) + scaleT*this
    * @endcode
    */
-  virtual void mul(const MatrixPtr a,
-                   const MatrixPtr b,
+  virtual void mul(const Matrix& a,
+                   const Matrix& b,
                    real scaleAB,
                    real scaleT) {
     LOG(FATAL) << "Not implemented";
@@ -643,7 +643,7 @@ public:
    *  this = a*b
    * @endcode
    */
-  virtual void mul(const MatrixPtr a, const MatrixPtr b) {
+  virtual void mul(const Matrix& a, const Matrix& b) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -835,7 +835,7 @@ public:
    *
    * output[i] = 0 if row i is correct.
    */
-  virtual void classificationError(MatrixPtr output, IVectorPtr label) {
+  virtual void classificationError(Matrix& output, IVector& label) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -952,31 +952,6 @@ public:
     LOG(FATAL) << "Not implemeted";
   }
 
-  /// normalize-operation.
-  virtual void crossMapNormalFwd(Matrix& input,
-                                 size_t imgSizeH,
-                                 size_t imgSizeW,
-                                 Matrix& denoms,
-                                 size_t channels,
-                                 size_t sizeX,
-                                 float scale,
-                                 float pow) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void crossMapNormalBwd(Matrix& localGrad,
-                                 Matrix& denoms,
-                                 Matrix& preOutV,
-                                 Matrix& localOutV,
-                                 size_t channels,
-                                 size_t imgSizeH,
-                                 size_t imgSizeW,
-                                 size_t size,
-                                 float scale,
-                                 float pow) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
   /**
    * Input: one or more sequences. Each sequence contains some instances.
    *
@@ -994,42 +969,6 @@ public:
   virtual void maxSequenceBackward(Matrix& outputGrad,
                                    const IVector& sequence,
                                    IVector& index) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionForward(MatrixPtr input,
-                                        MatrixPtr weight,
-                                        const IVector& sequence,
-                                        int contextLength,
-                                        int contextStart,
-                                        size_t beginPad,
-                                        bool isPadding) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackward(MatrixPtr inputGrad,
-                                         MatrixPtr weightGrad,
-                                         const IVector& sequence,
-                                         int contextLength,
-                                         int contextStart,
-                                         size_t beginPad,
-                                         bool isPadding) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackwardData(MatrixPtr inputGrad,
-                                             const IVector& sequence,
-                                             int contextLength,
-                                             int contextStart) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  virtual void contextProjectionBackwardWeight(MatrixPtr weightGrad,
-                                               const IVector& sequence,
-                                               int contextLength,
-                                               int contextStart,
-                                               int totalPad,
-                                               size_t beginPad) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -1272,14 +1211,14 @@ public:
    * this = scaleAB*(a*b) + scaleT*this
    * @endcode
    */
-  void mul(const MatrixPtr a, const MatrixPtr b, real scaleAB, real scaleT);
+  void mul(const Matrix& a, const Matrix& b, real scaleAB, real scaleT);
 
   /**
    * @code
    * this = a*b
    * @endcode
    */
-  void mul(const MatrixPtr a, const MatrixPtr b);
+  void mul(const Matrix& a, const Matrix& b);
 
   void mul(const GpuMatrix& a, const GpuMatrix& b, real scaleAB, real scaleT);
 
@@ -1373,7 +1312,7 @@ public:
   void check(std::ostream& os, Matrix& refMat, bool printDiff = true);
   void randomizeUniform();
 
-  void classificationError(MatrixPtr output, IVectorPtr label);
+  void classificationError(Matrix& output, IVector& label);
 
   void convExpand(Matrix& feature,
                   int feaImgHeight,
@@ -1459,26 +1398,6 @@ public:
                        size_t paddingH,
                        size_t paddingW);
 
-  void crossMapNormalFwd(Matrix& input,
-                         size_t imgSizeH,
-                         size_t imgSizeW,
-                         Matrix& denoms,
-                         size_t channels,
-                         size_t sizeX,
-                         float scale,
-                         float pow);
-
-  void crossMapNormalBwd(Matrix& localGrad,
-                         Matrix& denoms,
-                         Matrix& preOutV,
-                         Matrix& localOutV,
-                         size_t channels,
-                         size_t imgSizeH,
-                         size_t imgSizeW,
-                         size_t sizeX,
-                         float scale,
-                         float pow);
-
   void maxSequenceForward(Matrix& input,
                           const IVector& sequence,
                           IVector& index);
@@ -1486,26 +1405,6 @@ public:
   void maxSequenceBackward(Matrix& outputGrad,
                            const IVector& sequence,
                            IVector& index);
-
-  void contextProjectionForward(MatrixPtr input,
-                                MatrixPtr weight,
-                                const IVector& sequence,
-                                int contextLength,
-                                int contextStart,
-                                size_t beginPad,
-                                bool isPadding);
-
-  void contextProjectionBackwardData(MatrixPtr inputGrad,
-                                     const IVector& sequence,
-                                     int contextLength,
-                                     int contextStart);
-
-  void contextProjectionBackwardWeight(MatrixPtr weightGrad,
-                                       const IVector& sequence,
-                                       int contextLength,
-                                       int contextStart,
-                                       int totalPad,
-                                       size_t beginPad);
 
   void bilinearForward(const Matrix& in,
                        const size_t inImgH,
@@ -1685,26 +1584,6 @@ public:
                        size_t paddingH,
                        size_t paddingW);
 
-  void crossMapNormalFwd(Matrix& input,
-                         size_t imgSizeH,
-                         size_t imgSizeW,
-                         Matrix& denoms,
-                         size_t channels,
-                         size_t sizeX,
-                         float scale,
-                         float pow);
-
-  void crossMapNormalBwd(Matrix& localGrad,
-                         Matrix& denoms,
-                         Matrix& preOutV,
-                         Matrix& localOutV,
-                         size_t channels,
-                         size_t imgSizeH,
-                         size_t imgSizeW,
-                         size_t sizeX,
-                         float scale,
-                         float pow);
-
   void maxSequenceForward(Matrix& input,
                           const IVector& sequence,
                           IVector& index);
@@ -1712,22 +1591,6 @@ public:
   void maxSequenceBackward(Matrix& outputGrad,
                            const IVector& sequence,
                            IVector& index);
-
-  void contextProjectionForward(MatrixPtr input,
-                                MatrixPtr weight,
-                                const IVector& sequence,
-                                int contextLength,
-                                int contextStart,
-                                size_t beginPad,
-                                bool isPadding);
-
-  void contextProjectionBackward(MatrixPtr inputGrad,
-                                 MatrixPtr weightGrad,
-                                 const IVector& sequence,
-                                 int contextLength,
-                                 int contextStart,
-                                 size_t beginPad,
-                                 bool isPadding);
 
   real* getRow(size_t row) { return BaseMatrix::rowBuf(row); }
   virtual real* getRowBuf(size_t row) { return getRow(row); }
@@ -1784,7 +1647,7 @@ public:
 
   void addColumnVector(const Matrix& b);
 
-  void mul(const MatrixPtr a, const MatrixPtr b, real scaleAB, real scaleT);
+  void mul(const Matrix& a, const Matrix& b, real scaleAB, real scaleT);
   void mul(CpuMatrix* a, CpuMatrix* b, real scaleAB, real scaleT);
 
   void mul(CpuMatrix* a, CpuSparseMatrix* b, real scaleAB, real scaleT);
@@ -1807,7 +1670,7 @@ public:
 
   virtual void mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB, real scaleT);
 
-  void mul(const MatrixPtr a, const MatrixPtr b);
+  void mul(const Matrix& a, const Matrix& b);
 
   void rightMul(Matrix& b, real scaleAB, real scaleT);
   void rightMul(Matrix& b);
@@ -1881,7 +1744,7 @@ public:
 
   void randomizeUniform();
 
-  void classificationError(MatrixPtr output, IVectorPtr label);
+  void classificationError(Matrix& output, IVector& label);
 
   void addByBitCode(size_t numClasses, const IVector& codes, const Matrix& vec);
 
@@ -1973,8 +1836,8 @@ public:
 
 public:
   virtual void mul(CpuSparseMatrix* a, CpuMatrix* b, real scaleAB, real scaleT);
-  void add(Matrix& b, real p1, real p2);
-  void add(real p1, real p2);
+  virtual void add(Matrix& b, real p1, real p2);
+  virtual void add(real p1, real p2);
 
 private:
   using Matrix::mul;
