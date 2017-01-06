@@ -209,7 +209,7 @@ cloudformation inline policy:
     ]
 }
 ```
-NOTICE: you need to substitute `YOUR_CLUSTER_NAME` above for your own cluster name. 
+NOTICE: you need to replace `YOUR_CLUSTER_NAME` above by your own cluster name. 
 
 
 ####External DNS name
@@ -387,7 +387,7 @@ Now we'll start a PaddlePaddle training demo on AWS, steps are as follows:
 
 ####Build PaddlePaddle Docker Image
 
-PaddlePaddle docker image need to provide the runtime environment for `paddle pserver` and `paddle train`, so the container use this image should have two main function:
+PaddlePaddle Docker image need to provide the runtime environment for `paddle pserver` and `paddle train`, so the container use this image should have two main function:
 
 1. Copy the training data into container.
 1. Generate the startup parameter for `paddle pserver` and `paddle train` process, and startup the training.
@@ -470,23 +470,23 @@ In function `startPaddle`, the most important work is to generate `paddle pserve
         str(trainerId) + " --save_dir=" + JOB_PATH_OUTPUT
 ```
 
-Use `docker build` to build toe Docker Image:
+Use `docker build` to build the Docker Image:
 
 ```
 docker build -t your_registry/your_repo/paddle:your_tag .
 ```
 
-And then push the built image onto docker registry.
+And then push the built image onto Docker registry.
 
 ```
 docker push your_registry/your_repo/paddle:your_tag
 ```
-NOTICE: you need to substitute `your_registry/your_repo/paddle:your_tag` for your own docker image uri. We will also use this uri in the following kubernetes yaml file.
+NOTICE: you need to replace `your_registry/your_repo/paddle:your_tag` by your own Docker image uri. We will also use this uri in the following kubernetes yaml file.
 
 
 ####Upload Training Data File
 
-Here we will use PaddlePaddle's official recommendation demo as the content for this training, we put the training data file into a directory named by job name, which located under EFS sharing volume, the tree structure for the directory looks like:
+Here we will use PaddlePaddle's official recommendation demo as the content for this training, we put the training data file into a directory named by job name, which located in an EFS sharing volume, the tree structure for the directory looks like:
 
 ```
 efs
@@ -501,7 +501,7 @@ efs
     └── recommendation
 ```
 
-The `paddle-cluster-job` directory is the job name for this training, this training includes 3 PaddlePaddle node, we store the pre-divided data under `paddle-cluster-job/data` directory, directory 0, 1, 2 each represent 3 nodes' trainer_id. the training configuration file is in recommendation directory, the training results and logs will be in the output directory after the training.
+The `paddle-cluster-job` directory is the job name for this training, this training includes 3 PaddlePaddle node, we store the pre-divided data under `paddle-cluster-job/data` directory, directory 0, 1, 2 each represent 3 nodes' trainer_id. the training configuration file is in directory `recommendation`, the training results and logs will be in the output directory.
 
 
 ####Create Kubernetes Job
@@ -510,7 +510,7 @@ Kubernetes use yaml file to describe job details, and then use command line tool
 
 In yaml file, we describe the Docker image we use for this training, the node number we need to startup, the volume mounting information and all the necessary parameters we need for `paddle pserver` and `paddle train` processes.
 
-The yaml file content is as follows, you need to fill in your own docker image uri:
+The yaml file content is as follows, you need to fill in your own Docker image uri:
 
 ```
 apiVersion: batch/v1
