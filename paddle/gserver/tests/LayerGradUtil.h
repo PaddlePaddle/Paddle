@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/trainer/Trainer.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 using namespace std;  // NOLINT
 
 namespace paddle {
