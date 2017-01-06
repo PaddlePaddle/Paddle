@@ -29,6 +29,7 @@ addons:
       - python-pip
       - python2.7-dev
       - curl
+      - swig
       - graphviz
       - clang-format-3.8
       - automake
