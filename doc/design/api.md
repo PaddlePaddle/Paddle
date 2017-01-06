@@ -6,27 +6,27 @@ To write a Paddle program using the current API, we would have to write two Pyth
 
 The API design depends on basic concepts about deep learning.
 
-1. *Model*
+### Model
 
-   For deep learning, a model includes two parts: the topology and parameters.  Currently, the concept *model* in Paddle contains only the topology, and parameters are in another concept *gradient machine*.  This differs from the intuition and makes it difficult to save/load models.  In this design, we should keep both topology and parameters in a *model*.
+For deep learning, a model includes two parts: the topology and parameters.  Currently, the concept *model* in Paddle contains only the topology, and parameters are in another concept *gradient machine*.  This differs from the intuition and makes it difficult to save/load models.  In this design, we should keep both topology and parameters in a *model*.
    
-   Algorithms like GAN requires the flexibility to temporarily compose multiple models into one, while keeping each of them workable alone.  We will show later that we don't need model composite API; instead, we can use composite gradient machines.
+Algorithms like GAN requires the flexibility to temporarily compose multiple models into one, while keeping each of them workable alone.  We will show later that we don't need model composite API; instead, we can use composite gradient machines.
 
-1. *Trainer*
+### Gradient Machine and Updater
 
-   In order to learn the model, we need to run the error backpropagation algorithm iteratively.  In each iteration, we run the forward algorithm with a minibatch of data.  This updates the outputs of layers.  Then we run a backward algorithm which computes the gradients of every parameter.  The outputs and gradients are not part of the model; instead, they are side effects of the training process and should be maintained in the trainer.
+In order to learn the model, we need to run the error backpropagation algorithm iteratively.  In each iteration, we run the forward algorithm with a minibatch of data.  This updates the outputs of layers.  Then we run a backward algorithm which computes the gradients of every parameter.  The outputs and gradients are not part of the model; instead, they are side effects of the training process and should be maintained in the trainer.
    
-   After the invocation of the backward algorithm, we should update model parameters using the gradients and parameters like learning rate.  This step might involve communications with the parameter server in the case of distributed training.  This complexity motivates us to separate the trainer into two concepts:
+After the invocation of the backward algorithm, we should update model parameters using the gradients and parameters like learning rate.  This step might involve communications with the parameter server in the case of distributed training.  This complexity motivates us to separate the trainer into two concepts:
    
-   1. *gradient machine*, which computes and maintains layer outputs and gradients, and
+1. *gradient machine*, which computes and maintains layer outputs and gradients, and
       
-   1. *updater*, which encapsulates the updating algorithm.
+1. *updater*, which encapsulates the updating algorithm.
    
-   It seems that *cost function* is a property of *gradient machine*?
+It seems that *cost function* is a property of *gradient machine*?
    
-1. *Data*
+### Data
 
-   Models are trained using data sets.  We hope to provide a set of utility data sets encapsulated in Python packages like `paddle.data.amazon.product_review` and `paddle.data.wikipedia.articles`.  A reasonable idea might be that in each of these packages, we provide a `new` function that returns a reader object or a Python iterator.  And the *reader* has a read method `read`, which, once called, returns a minibatch and a flag indicating if it reaches the end of a data set.  For online learning, the flag would always be False.  Therefore, a training loop might look like:
+Models are trained using data sets.  We hope to provide a set of utility data sets encapsulated in Python packages like `paddle.data.amazon.product_review` and `paddle.data.wikipedia.articles`.  A reasonable idea might be that in each of these packages, we provide a `new` function that returns a reader object or a Python iterator.  And the *reader* has a read method `read`, which, once called, returns a minibatch and a flag indicating if it reaches the end of a data set.  For online learning, the flag would always be False.  In this way, we don't have to have two concepts: *pass* and *iteration*; instead, we need only the latter.
 
 ## Examples
 
@@ -45,6 +45,8 @@ for mb, pass_end in rd.read():
     if pass_end:
         log(mt.flash()) # output aggregated accuracy records of this pass and reset mt.
 ```
+
+In this example, `GradientMachine.feed` is a convenience that calls `GradientMachine.forward` and `GradientMachine.backward`.
 
 ### A GAN Example
 
