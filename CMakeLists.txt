@@ -26,7 +26,7 @@ find_package(NumPy REQUIRED)
 find_package(Threads REQUIRED)
 find_package(AVX QUIET)
 find_package(Glog REQUIRED)
-find_package(Gflags REQUIRED)
+find_package(gflags REQUIRED)
 find_package(GTest)
 find_package(Sphinx)
 find_package(Doxygen)
@@ -138,8 +138,7 @@ endif(WITH_RDMA)
 include_directories(${LIBGLOG_INCLUDE_DIR})
 
 #gflags
-add_definitions(-DGFLAGS_NS=${GFLAGS_NAMESPACE})
-include_directories(${GFLAGS_INCLUDE_DIRS})
+include_directories(${gflags_INCLUDE_DIR})
 
 if(WITH_TESTING)
     enable_testing()
