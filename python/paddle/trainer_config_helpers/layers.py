@@ -1980,7 +1980,8 @@ def img_pool_layer(input,
                    layer_attr=None,
                    pool_size_y=None,
                    stride_y=None,
-                   padding_y=None):
+                   padding_y=None,
+                   ceil_mode=True):
     """
     Image pooling Layer.
 
@@ -2011,6 +2012,23 @@ def img_pool_layer(input,
     :type stride_y: int|None
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param ceil_mode: Wether to use ceil mode to calculate output height and with.
+                      Defalut is True. If set false, Otherwise use floor.
+
+                      - ceil_mode=True:
+
+                      ..  math::
+
+                          w = 1 + int(ceil(input_width + 2 * padding - pool_size) / float(stride))
+                          h = 1 + int(ceil(input_height + 2 * padding_y - pool_size_y) / float(stride_y))
+
+                      - ceil_mode=False:
+
+                      ..  math::
+
+                          w = 1 + int(floor(input_width + 2 * padding - pool_size) / float(stride))
+                          h = 1 + int(floor(input_height + 2 * padding_y - pool_size_y) / float(stride_y))
+    :type ceil_mode: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2048,6 +2066,7 @@ def img_pool_layer(input,
                     stride_y=stride_y,
                     padding_y=padding_y))
         ],
+        ceil_mode=ceil_mode,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,

@@ -73,10 +73,6 @@ void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
   }
 }
 
-/**
- * \param inputs[0] input value.
- * \param outputs[0] output value.
- */
 template <DeviceType Device>
 class PadFunc : public FunctionBase {
 public:
@@ -89,6 +85,10 @@ public:
     padw1_ = config.get<int>("padw1");
   }
 
+  /**
+   * \param inputs[0] input value.
+   * \param outputs[0] output value.
+   */
   void calc(const Arguments& inputs,
             const Arguments& outputs,
             const Arguments& inouts) override {
@@ -124,10 +124,6 @@ private:
   int padw1_;
 };
 
-/**
- * \param inputs[0] input grad.
- * \param outputs[0] output grad.
- */
 template <DeviceType Device>
 class PadGradFunc : public FunctionBase {
 public:
@@ -140,6 +136,10 @@ public:
     padw1_ = config.get<int>("padw1");
   }
 
+  /**
+   * \param inputs[0] output grad.
+   * \param inouts[0] input grad.
+   */
   void calc(const Arguments& inputs,
             const Arguments& outputs,
             const Arguments& inouts) override {

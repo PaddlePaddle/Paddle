@@ -43,28 +43,30 @@ TEST(Pad, real) {
   }
 }
 
-// TEST(PadGrad, real) {
-//  for (size_t numSamples : {5, 32}) {
-//    for (size_t channels : {1, 5, 32}) {
-//      for (size_t imgSizeH : {5, 33, 100}) {
-//        for (size_t imgSizeW : {5, 32, 96}) {
-//          VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
-//                  << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW;
-//
-//          FunctionCompare compare("PadGrad",
-//                                  FuncConfig()
-//                                     .set("padc0", 2).set("padc1", 3)
-//                                     .set("padh0", 1).set("padh1", 2)
-//                                     .set("padw0", 3).set("padw1", 2));
-//          Dims inDims{numSamples, channels, imgSizeH, imgSizeW};
-//          Dims outDims{numSamples, channels + 5, imgSizeH + 3, imgSizeW + 5};
-//          compare.cmpWithArg({Tensor(nullptr, inDims)},
-//                             {Tensor(nullptr, outDims)},
-//                             {});
-//        }
-//      }
-//    }
-//  }
-//}
+TEST(PadGrad, real) {
+  for (size_t numSamples : {5, 32}) {
+    for (size_t channels : {1, 5, 32}) {
+      for (size_t imgSizeH : {5, 33, 100}) {
+        for (size_t imgSizeW : {5, 32, 96}) {
+          VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
+                  << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW;
+
+          FunctionCompare compare("PadGrad",
+                                  FuncConfig()
+                                      .set("padc0", 2)
+                                      .set("padc1", 3)
+                                      .set("padh0", 1)
+                                      .set("padh1", 2)
+                                      .set("padw0", 3)
+                                      .set("padw1", 2));
+          Dims inDims{numSamples, channels, imgSizeH, imgSizeW};
+          Dims outDims{numSamples, channels + 5, imgSizeH + 3, imgSizeW + 5};
+          compare.cmpWithArg(
+              {Tensor(nullptr, inDims)}, {}, {Tensor(nullptr, outDims)});
+        }
+      }
+    }
+  }
+}
 
 }  // namespace paddle

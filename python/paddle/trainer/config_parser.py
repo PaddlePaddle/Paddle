@@ -1109,7 +1109,7 @@ def parse_bilinear(bilinear, input_layer_name, bilinear_conf):
     bilinear_conf.out_size_y = bilinear.out_size_y
 
 
-def parse_pool(pool, input_layer_name, pool_conf):
+def parse_pool(pool, input_layer_name, pool_conf, ceil_mode):
     pool_conf.pool_type = pool.pool_type
     config_assert(pool.pool_type in [
         'max-projection', 'avg-projection', 'cudnn-max-pool', 'cudnn-avg-pool'
@@ -1134,10 +1134,10 @@ def parse_pool(pool, input_layer_name, pool_conf):
     pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
     pool_conf.output_x = cnn_output_size(pool_conf.img_size, pool_conf.size_x,
                                          pool_conf.padding, pool_conf.stride,
-                                         False)
+                                         not ceil_mode)
     pool_conf.output_y = cnn_output_size(pool_conf.img_size_y, pool_conf.size_y,
                                          pool_conf.padding_y,
-                                         pool_conf.stride_y, False)
+                                         pool_conf.stride_y, not ceil_mode)
 
 
 def parse_spp(spp, input_layer_name, spp_conf):
@@ -1810,9 +1810,8 @@ class ConvTransLayer(ConvTransLayerBase):
 
 @config_layer('norm')
 class NormLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
-        super(NormLayer, self).__init__(
-            name, 'norm', 0, inputs=inputs, device=device)
+    def __init__(self, name, inputs, **xargs):
+        super(NormLayer, self).__init__(name, 'norm', 0, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             norm_conf = self.config.inputs[input_index].norm_conf
@@ -1824,23 +1823,22 @@ class NormLayer(LayerBase):
 
 @config_layer('pool')
 class PoolLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
-        super(PoolLayer, self).__init__(
-            name, 'pool', 0, inputs=inputs, device=device)
+    def __init__(self, name, inputs, ceil_mode=True, **xargs):
+        super(PoolLayer, self).__init__(name, 'pool', 0, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             pool_conf = self.config.inputs[input_index].pool_conf
             parse_pool(self.inputs[input_index].pool, input_layer.name,
-                       pool_conf)
+                       pool_conf, ceil_mode)
             self.set_cnn_layer(name, pool_conf.output_y, pool_conf.output_x,
                                pool_conf.channels)
 
 
 @config_layer('spp')
 class SpatialPyramidPoolLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, **xargs):
         super(SpatialPyramidPoolLayer, self).__init__(
-            name, 'spp', 0, inputs=inputs, device=device)
+            name, 'spp', 0, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             spp_conf = self.config.inputs[input_index].spp_conf
@@ -1877,7 +1875,6 @@ class BatchNormLayer(LayerBase):
                  inputs,
                  active_type="linear",
                  bias=True,
-                 device=None,
                  use_global_stats=True,
                  moving_average_fraction=0.9,
                  batch_norm_type=None,
@@ -1919,7 +1916,6 @@ class BatchNormLayer(LayerBase):
             0,
             active_type=active_type,
             inputs=inputs,
-            device=device,
             **xargs)
 
         if use_global_stats is not None:
@@ -1953,9 +1949,9 @@ class BatchNormLayer(LayerBase):
 
 @config_layer('trans')
 class TransLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, **xargs):
         super(TransLayer, self).__init__(
-            name, 'trans', 0, inputs=inputs, device=device)
+            name, 'trans', 0, inputs=inputs, **xargs)
         config_assert(
             len(self.inputs) == 1,
             'TransLayer must have one and only one input')
@@ -1964,9 +1960,9 @@ class TransLayer(LayerBase):
 
 @config_layer('resize')
 class ResizeLayer(LayerBase):
-    def __init__(self, name, size, inputs, device=None):
+    def __init__(self, name, size, inputs, **xargs):
         super(ResizeLayer, self).__init__(
-            name, 'resize', size=size, inputs=inputs, device=device)
+            name, 'resize', size=size, inputs=inputs, **xargs)
         config_assert(
             len(self.inputs) == 1,
             'ResizeLayer must have one and only one input')
@@ -1974,9 +1970,9 @@ class ResizeLayer(LayerBase):
 
 @config_layer('blockexpand')
 class BlockExpandLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, **xargs):
         super(BlockExpandLayer, self).__init__(
-            name, 'blockexpand', 0, inputs=inputs, device=device)
+            name, 'blockexpand', 0, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             parse_block_expand(
