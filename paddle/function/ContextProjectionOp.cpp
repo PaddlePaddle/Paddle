@@ -18,6 +18,10 @@ limitations under the License. */
 
 namespace paddle {
 
+/**
+ * Context Projection Forward with CPU Matrix Device.
+ *
+ */
 template <>
 void ContextProjectionForward<DEVICE_TYPE_CPU>(CpuMatrix& out_mat,
                                                const CpuMatrix& input_mat,
@@ -70,11 +74,29 @@ void ContextProjectionForward<DEVICE_TYPE_CPU>(CpuMatrix& out_mat,
 }
 
 /**
- * \param outputs[0] output value.
+ * Paddle Function for Context Projection Forward.
+ * Calculate the value for the output layer with context projection.
  *
- * \param inputs[0] input value.
- * \param inputs[1] input weight.
- * \param inputs[2] input sequence.
+ * What is Context Projection?
+ * For example, assumed input (x) has 4 words and the dimension of each word
+ * representation is 2. If we use zero to pad instead of learned weight to pad,
+ * and the context_lenth is 3, the output (y) is:
+ *
+ * @code
+ *  x = [a1, a2;
+ *       b1, b2;
+ *       c1, c2;
+ *       d1, d2]
+ *  y = [0,  0,  a1, a2, b1, b2;
+ *       a1, a2, b1, b2, c1, c2;
+ *       b1, b2, c1, c2, d1, d2;
+ *       c1, c2, d1, d2, 0,  0]
+ * @endcode
+ *
+ * \param outputs[0] output value.
+ * \param inputs[0]  input value.
+ * \param inputs[1]  input weight.
+ * \param inputs[2]  input sequence.
  */
 template <DeviceType Device>
 class ContextProjectionForwardFunc : public FunctionBase {
@@ -123,6 +145,10 @@ private:
   size_t begin_pad_;
 };
 
+/**
+ * Context Projection Backward with CPU Matrix Device.
+ *
+ */
 template <>
 <<<<<<< HEAD
 void ContextProjectionBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad_mat,
@@ -178,10 +204,13 @@ void ContextProjectionBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad_mat,
 }
 
 /**
- * \param inputs[0]     input sequence.
- * \param inputs[1]     output grad.
- * \param inouts[0]     input grad.
- * \param inouts[1]     weight grad.
+ * Context Projection Backward Function.
+ * Update the weight gradient and input layer gradient with backprop
+ *
+ * \param inputs[0]      input sequence.
+ * \param inputs[1]      output grad.
+ * \param inouts[0]      input grad.
+ * \param inouts[1]      weight grad.
  */
 template <DeviceType Device>
 class ContextProjectionBackwardFunc : public FunctionBase {
@@ -194,7 +223,6 @@ public:
     total_pad_ = config.get<size_t>("total_pad");
   }
 
-<<<<<<< HEAD
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ((size_t)3, inputs.size());
     CHECK_EQ((size_t)1, outputs.size());
@@ -213,42 +241,6 @@ public:
     CHECK_EQ(outputs[0].shape()[1], inputs[0].shape()[1] * context_length_);
 
     CHECK_EQ(outputs[0].getArgType(), ADD_TO);
-=======
-  void calc(const Arguments& inputs,
-            const Arguments& outputs,
-            const Arguments& inouts) override {
-    CHECK_EQ(2, inputs.size());
-    CHECK_EQ(0, outputs.size());
-    CHECK_EQ(2, inouts.size());
-
-    CHECK(inputs[0].getData() && inputs[1].getData());
-    CHECK_EQ(inputs[0].dims_.size(), 1);
-    CHECK_EQ(inputs[1].dims_.size(), 2);
-    CHECK_EQ(inouts[0].dims_.size(), 2);
-    CHECK_EQ(inouts[1].dims_.size(), 2);
-
-    /// dim of input grad == dim of weight grad
-    CHECK_EQ(inouts[0].dims_[1], inouts[1].dims_[1]);
-    /// input grad and output grad have the same batch_size
-    CHECK_EQ(inouts[0].dims_[0], inputs[1].dims_[0]);
-    /// dim of output = dim of input * context_length
-    CHECK_EQ(inputs[1].dims_[1], inouts[0].dims_[1] * context_length_);
-
-    typename SequenceT<Device>::type seq_vec(
-        inputs[0].dims_[0], reinterpret_cast<int*>(inputs[0].getData()));
-    const auto out_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[1].getData(), inputs[1].dims_[0], inputs[1].dims_[1]);
-    auto in_grad_mat =
-        !inouts[0].getData()
-            ? nullptr
-            : std::make_shared<typename MatrixT<Device>::type>(
-                  inouts[0].getData(), inouts[0].dims_[0], inouts[0].dims_[1]);
-    auto w_grad_mat =
-        !inouts[1].getData()
-            ? nullptr
-            : std::make_shared<typename MatrixT<Device>::type>(
-                  inouts[1].getData(), inouts[1].dims_[0], inouts[1].dims_[1]);
->>>>>>> Wei Xu's comments, set up right inouts.
 
     auto out_grad_mat = outputs[0].matrix<Device>();
     auto in_grad_mat =
@@ -279,6 +271,9 @@ private:
 
 #if 0
 /**
+ * Context Projection Backward Data Function.
+ * Update gradient of the input layer with backprop.
+ *
  * \param inouts[0]    input grad.
  * \param inputs[0]    input sequence.
  * \param inputs[1]    output grad.
@@ -326,6 +321,9 @@ private:
 };
 
 /**
+ * Context Projection Backward Weight Function.
+ * Update weight gradient with backprop.
+ *
  * \param inouts[0]    weight grad.
  * \param inputs[0]    input sequence.
  * \param inputs[1]    output grad.
