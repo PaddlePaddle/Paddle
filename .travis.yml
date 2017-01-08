@@ -21,13 +21,14 @@ addons:
     packages:
       - gcc-4.8
       - g++-4.8
-      - wget
       - git
       - build-essential
       - libatlas-base-dev
       - python
       - python-pip
       - python2.7-dev
+      - python-numpy
+      - python-wheel
       - curl
       - swig
       - graphviz
@@ -48,8 +49,7 @@ before_install:
     fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
   - if [[ "$JOB" == "PRE_COMMIT" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
-  - pip install --upgrade pip
-  - pip install wheel protobuf sphinx recommonmark sphinx_rtd_theme virtualenv pre-commit requests==2.9.2 LinkChecker
+  - pip install numpy wheel protobuf sphinx recommonmark sphinx_rtd_theme virtualenv pre-commit requests==2.9.2 LinkChecker
 script:
   - paddle/scripts/travis/main.sh
 notifications:
