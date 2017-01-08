@@ -28,7 +28,7 @@ include(system)
 include(simd)
 
 ###################### Configurations ############################
-option(WITH_DSO "Compile PaddlePaddle with dynamic linked libraries" ON)
+option(WITH_DSO "Compile PaddlePaddle with dynamic linked libraries" OFF)
 option(WITH_GPU "Compile PaddlePaddle with gpu" ${CUDA_FOUND})
 option(WITH_DOUBLE "Compile PaddlePaddle with double precision, otherwise use single precision" OFF)
 option(WITH_AVX "Compile PaddlePaddle with avx intrinsics" ${AVX_FOUND})
