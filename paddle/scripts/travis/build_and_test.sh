@@ -16,7 +16,4 @@ elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
   cmake .. -DON_TRAVIS=ON -DON_COVERALLS=ON -DCOVERALLS_UPLOAD=ON -DWITH_SWIG_PY=ON
   NPROC=`sysctl -n hw.ncpu`
   make -j $NPROC
-  env CTEST_OUTPUT_ON_FAILURE=1 make test ARGS="-j $NPROC"
-  sudo make install
-  sudo paddle version
 fi
