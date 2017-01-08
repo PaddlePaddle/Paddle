@@ -53,6 +53,7 @@ ExternalProject_Add(
     CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
     CMAKE_ARGS      -DWITH_GPU=${WITH_GPU}
     CMAKE_ARGS      -DWITH_OMP=${USE_OMP}
+    CMAKE_ARGS      -DBUILD_SHARED=OFF
 )
 
 LIST(APPEND external_project_dependencies warpctc)

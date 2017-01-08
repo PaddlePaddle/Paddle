@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(NOT WITH_PYTHON)
+    add_definitions(-DPADDLE_NO_PYTHON)
+endif(NOT WITH_PYTHON)
+
 if(WITH_DSO)
     add_definitions(-DPADDLE_USE_DSO)
 endif(WITH_DSO)

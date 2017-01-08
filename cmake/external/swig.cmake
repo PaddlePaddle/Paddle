@@ -12,59 +12,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# build swig as an external project
-INCLUDE(ExternalProject)
+FIND_PACKAGE(SWIG)
 
-SET(SWIG_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/swig)
-SET(SWIG_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/install/swig)
-SET(SWIG_TARGET_VERSION "3.0.2")
-SET(SWIG_DOWNLOAD_SRC_MD5 "62f9b0d010cef36a13a010dc530d0d41")
-SET(SWIG_DOWNLOAD_WIN_MD5 "3f18de4fc09ab9abb0d3be37c11fbc8f")
+IF(NOT SWIG_FOUND)
+    # build swig as an external project
+    INCLUDE(ExternalProject)
 
-IF(WIN32)
-    # swig.exe available as pre-built binary on Windows:
-    ExternalProject_Add(swig
-        URL                 http://prdownloads.sourceforge.net/swig/swigwin-${SWIG_TARGET_VERSION}.zip
-        URL_MD5             ${SWIG_DOWNLOAD_WIN_MD5}
-        SOURCE_DIR          ${SWIG_SOURCES_DIR}
-        CONFIGURE_COMMAND   ""
-        BUILD_COMMAND       ""
-        INSTALL_COMMAND     ""
-        UPDATE_COMMAND      ""
-    )
-    SET(SWIG_DIR ${SWIG_SOURCES_DIR} CACHE FILEPATH "SWIG Directory" FORCE)
-    SET(SWIG_EXECUTABLE ${SWIG_SOURCES_DIR}/swig.exe  CACHE FILEPATH "SWIG Executable" FORCE)
-ELSE(WIN32)
-    # From PCRE configure
-    ExternalProject_Add(pcre
-        ${EXTERNAL_PROJECT_LOG_ARGS}
-        GIT_REPOSITORY https://github.com/svn2github/pcre.git
-        PREFIX ${SWIG_SOURCES_DIR}/pcre
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${SWIG_INSTALL_DIR}/pcre
-    )
+    SET(SWIG_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/swig)
+    SET(SWIG_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/install/swig)
+    SET(SWIG_TARGET_VERSION "3.0.2")
+    SET(SWIG_DOWNLOAD_SRC_MD5 "62f9b0d010cef36a13a010dc530d0d41")
+    SET(SWIG_DOWNLOAD_WIN_MD5 "3f18de4fc09ab9abb0d3be37c11fbc8f")
 
-    # swig uses bison find it by cmake and pass it down
-    FIND_PACKAGE(BISON)
+    IF(WIN32)
+        # swig.exe available as pre-built binary on Windows:
+        ExternalProject_Add(swig
+            URL                 http://prdownloads.sourceforge.net/swig/swigwin-${SWIG_TARGET_VERSION}.zip
+            URL_MD5             ${SWIG_DOWNLOAD_WIN_MD5}
+            SOURCE_DIR          ${SWIG_SOURCES_DIR}
+            CONFIGURE_COMMAND   ""
+            BUILD_COMMAND       ""
+            INSTALL_COMMAND     ""
+            UPDATE_COMMAND      ""
+        )
+        SET(SWIG_DIR ${SWIG_SOURCES_DIR} CACHE FILEPATH "SWIG Directory" FORCE)
+        SET(SWIG_EXECUTABLE ${SWIG_SOURCES_DIR}/swig.exe  CACHE FILEPATH "SWIG Executable" FORCE)
+    ELSE(WIN32)
+        # From PCRE configure
+        ExternalProject_Add(pcre
+            ${EXTERNAL_PROJECT_LOG_ARGS}
+            GIT_REPOSITORY https://github.com/svn2github/pcre.git
+            PREFIX ${SWIG_SOURCES_DIR}/pcre
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${SWIG_INSTALL_DIR}/pcre
+        )
 
-    # From SWIG configure
-    ExternalProject_Add(swig
-        GIT_REPOSITORY      https://github.com/swig/swig.git
-        GIT_TAG             rel-3.0.10
-        PREFIX              ${SWIG_SOURCES_DIR}
-        CONFIGURE_COMMAND   cd ${SWIG_SOURCES_DIR}/src/swig && ./autogen.sh
-        CONFIGURE_COMMAND   cd ${SWIG_SOURCES_DIR}/src/swig &&
-        env "PCRE_LIBS=${SWIG_INSTALL_DIR}/pcre/lib/libpcre.a ${SWIG_INSTALL_DIR}/pcre/lib/libpcrecpp.a ${SWIG_INSTALL_DIR}/pcre/lib/libpcreposix.a"
-        ./configure
-            --prefix=${SWIG_INSTALL_DIR}
-            --with-pcre-prefix=${SWIG_INSTALL_DIR}/pcre
-        BUILD_COMMAND   cd ${SWIG_SOURCES_DIR}/src/swig && make
-        INSTALL_COMMAND cd ${SWIG_SOURCES_DIR}/src/swig && make install
-        UPDATE_COMMAND  ""
-        DEPENDS pcre
-    )
+        # swig uses bison find it by cmake and pass it down
+        FIND_PACKAGE(BISON)
 
-    SET(SWIG_DIR ${SWIG_INSTALL_DIR}/share/swig/${SWIG_TARGET_VERSION})
-    SET(SWIG_EXECUTABLE ${SWIG_INSTALL_DIR}/bin/swig)
-ENDIF(WIN32)
+        # From SWIG configure
+        ExternalProject_Add(swig
+            GIT_REPOSITORY      https://github.com/swig/swig.git
+            GIT_TAG             rel-3.0.10
+            PREFIX              ${SWIG_SOURCES_DIR}
+            CONFIGURE_COMMAND   cd ${SWIG_SOURCES_DIR}/src/swig && ./autogen.sh
+            CONFIGURE_COMMAND   cd ${SWIG_SOURCES_DIR}/src/swig &&
+            env "PCRE_LIBS=${SWIG_INSTALL_DIR}/pcre/lib/libpcre.a ${SWIG_INSTALL_DIR}/pcre/lib/libpcrecpp.a ${SWIG_INSTALL_DIR}/pcre/lib/libpcreposix.a"
+            ./configure
+                --prefix=${SWIG_INSTALL_DIR}
+                --with-pcre-prefix=${SWIG_INSTALL_DIR}/pcre
+            BUILD_COMMAND   cd ${SWIG_SOURCES_DIR}/src/swig && make
+            INSTALL_COMMAND cd ${SWIG_SOURCES_DIR}/src/swig && make install
+            UPDATE_COMMAND  ""
+            DEPENDS pcre
+        )
 
-LIST(APPEND external_project_dependencies swig)
+        SET(SWIG_DIR ${SWIG_INSTALL_DIR}/share/swig/${SWIG_TARGET_VERSION})
+        SET(SWIG_EXECUTABLE ${SWIG_INSTALL_DIR}/bin/swig)
+    ENDIF(WIN32)
+
+    LIST(APPEND external_project_dependencies swig)
+ENDIF(NOT SWIG_FOUND)
