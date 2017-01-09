@@ -1,0 +1,8 @@
+#!/bin/bash
+LOG=/var/log/all
+
+touch $LOG
+
+/usr/sbin/sshd -D >> $LOG &
+jupyter notebook --ip=0.0.0.0 /notes/ >> $LOG &
+tail -f $LOG

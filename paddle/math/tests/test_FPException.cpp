@@ -28,10 +28,10 @@ limitations under the License. */
  * so we can add some tricks to prevent exp calculate an excessive value.
  *
  */
-#include <fenv.h>
+
 #include <gtest/gtest.h>
 #include "paddle/math/Matrix.h"
-#include "paddle/utils/Excepts.h"
+#include "paddle/utils/Common.h"
 
 using namespace paddle;  // NOLINT
 

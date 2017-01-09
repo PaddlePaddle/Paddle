@@ -14,21 +14,7 @@ limitations under the License. */
 
 #include "paddle/parameter/Parameter.h"
 #include "PaddleAPI.h"
-
-struct ParameterPrivate {
-  std::shared_ptr<paddle::Parameter> sharedPtr;
-  paddle::Parameter* rawPtr;
-
-  ParameterPrivate() : sharedPtr(nullptr), rawPtr(nullptr) {}
-
-  paddle::Parameter* getPtr() {
-    if (sharedPtr) {
-      return sharedPtr.get();
-    } else {
-      return rawPtr;
-    }
-  }
-};
+#include "PaddleAPIPrivate.h"
 
 Parameter::Parameter() : m(new ParameterPrivate()) {}
 
@@ -78,3 +64,5 @@ bool Parameter::save(const std::string& filename) const {
 bool Parameter::load(const std::string& filename) const {
   return m->getPtr()->load(filename);
 }
+
+size_t Parameter::getSize() const { return m->getPtr()->getSize(); }

@@ -7,7 +7,7 @@ protostr=`dirname $0`/protostr
 
 files=`ls $protostr | grep -v "unittest"`
 
-./generate_protostr.sh
+./generate_protostr.sh $1
 
 . ./file_list.sh
 

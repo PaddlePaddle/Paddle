@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/gserver/layers/Layer.h"
 #include "paddle/gserver/layers/WarpCTCLayer.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -241,10 +241,4 @@ TEST(Layer, WarpCTCLayer) {
       }
     }
   }
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  initMain(argc, argv);
-  return RUN_ALL_TESTS();
 }

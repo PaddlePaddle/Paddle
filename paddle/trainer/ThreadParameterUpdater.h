@@ -33,8 +33,8 @@ namespace paddle {
    because at the current moment, the merging on CPU is happening on the
    main thread, and the its parameter size can be much larger than the one GPU.
    Thus, for GPU, the parameter updates happens in updateImpl() function, which
-   is called by gradient machines as a callback function as a callback function
-   supplied to backward() and forwardBackward().
+   is called by gradient machines as a callback function supplied to backward()
+   and forwardBackward().
    For CPU, the parameter updates happens in separate threads maintained by this
    class.
  */

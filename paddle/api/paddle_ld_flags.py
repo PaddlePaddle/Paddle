@@ -40,14 +40,14 @@ try:
             self.paddle_build_dir = PADDLE_BUILD_DIR
             self.paddle_build_dir = os.path.abspath(self.paddle_build_dir)
             self.with_gpu = PaddleLDFlag.cmake_bool(WITH_GPU)
-            self.protolib = PROTOBUF_LIB
-            self.zlib = ZLIB_LIB
+            self.protolib = PROTOBUF_LIBRARY
+            self.zlib = ZLIB_LIBRARIES
             self.thread = CMAKE_THREAD_LIB
             self.dl_libs = CMAKE_DL_LIBS
             self.with_python = PaddleLDFlag.cmake_bool(WITH_PYTHON)
             self.python_libs = PYTHON_LIBRARIES
 
-            self.glog_libs = LIBGLOG_LIBRARY
+            self.glog_libs = GLOG_LIBRARIES
 
             self.with_coverage = PaddleLDFlag.cmake_bool(WITH_COVERALLS)
             self.gflags_libs = GFLAGS_LIBRARIES
@@ -141,9 +141,12 @@ try:
 
         def c_flag(self):
             if self.with_coverage:
-                return ["-fprofile-arcs", "-ftest-coverage", "-O0", "-g"]
+                return [
+                    "-fprofile-arcs", "-ftest-coverage", "-O0", "-g",
+                    "-std=c++11"
+                ]
             else:
-                return None
+                return ["-std=c++11"]
 except ImportError:
 
     class PaddleLDFlag(object):

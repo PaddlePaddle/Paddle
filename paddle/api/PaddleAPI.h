@@ -19,15 +19,11 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "paddle/utils/Common.h"
 #include "paddle/utils/GlobalConstants.h"
-#include "paddle/utils/TypeDefs.h"
 
 /// Import PaddlePaddle's enumeration into global namespace.
 using namespace paddle::enumeration_wrapper;  // NOLINT
-
-#define DISABLE_COPY_AND_ASSIGN(classname) \
-  classname(const classname& other);       \
-  classname& operator=(const classname& other)
 
 /**
  * @brief Initialize paddle.
@@ -102,7 +98,7 @@ const size_t NO_SPARSE_ID = -1UL;
 struct MatrixPrivate;
 class Matrix {
   Matrix();  // User Cannot Create Matrix.
-  DISABLE_COPY_AND_ASSIGN(Matrix);
+  DISABLE_COPY(Matrix);
   static Matrix* createByPaddleMatrixPtr(void* sharedPtr);
 
 public:
@@ -242,7 +238,7 @@ private:
 
 struct VectorPrivate;
 class Vector {
-  DISABLE_COPY_AND_ASSIGN(Vector);
+  DISABLE_COPY(Vector);
   Vector();
   static Vector* createByPaddleVectorPtr(void* ptr);
 
@@ -322,7 +318,7 @@ private:
 struct IVectorPrivate;
 class IVector {
   IVector();
-  DISABLE_COPY_AND_ASSIGN(IVector);
+  DISABLE_COPY(IVector);
   static IVector* createByPaddleVectorPtr(void* ptr);
 
 public:
@@ -402,7 +398,7 @@ struct ArgumentsPrivate;
 class Arguments {
 private:
   Arguments();  // Internal Create.
-  DISABLE_COPY_AND_ASSIGN(Arguments);
+  DISABLE_COPY(Arguments);
 
 public:
   /**
@@ -474,7 +470,7 @@ enum GradientMatchineCreateMode {
 
 struct ParameterConfigPrivate;
 class ParameterConfig {
-  DISABLE_COPY_AND_ASSIGN(ParameterConfig);
+  DISABLE_COPY(ParameterConfig);
   ParameterConfig();
 
   /**
@@ -504,7 +500,7 @@ private:
 
 struct OptimizationConfigPrivate;
 class OptimizationConfig {
-  DISABLE_COPY_AND_ASSIGN(OptimizationConfig);
+  DISABLE_COPY(OptimizationConfig);
   OptimizationConfig();
 
 public:
@@ -521,6 +517,7 @@ private:
 
   friend class TrainerConfig;
   friend class ParameterOptimizer;
+  friend class ParameterUpdater;
   friend class Trainer;
 };
 
@@ -528,7 +525,7 @@ struct ParameterPrivate;
 class Parameter {
 private:
   Parameter();
-  DISABLE_COPY_AND_ASSIGN(Parameter);
+  DISABLE_COPY(Parameter);
 
 public:
   virtual ~Parameter();
@@ -555,6 +552,8 @@ public:
 
   bool load(const std::string& filename) const;
 
+  size_t getSize() const;
+
 private:
   static Parameter* createFromRawPtr(void* ptr);
   static Parameter* createFromSharedPtr(void* ptr);
@@ -563,6 +562,7 @@ private:
   ParameterPrivate* m;
   friend class UpdateCallbackWrapper;
   friend class GradientMachine;
+  friend class ParameterUpdater;
 };
 
 struct ModelConfigPrivate;
@@ -574,7 +574,7 @@ struct ModelConfigPrivate;
 class ModelConfig {
 private:
   ModelConfig();
-  DISABLE_COPY_AND_ASSIGN(ModelConfig);
+  DISABLE_COPY(ModelConfig);
 
 public:
   virtual ~ModelConfig();
@@ -595,7 +595,7 @@ struct TrainerConfigPrivate;
 class TrainerConfig {
 private:
   TrainerConfig();
-  DISABLE_COPY_AND_ASSIGN(TrainerConfig);
+  DISABLE_COPY(TrainerConfig);
 
 public:
   virtual ~TrainerConfig();
@@ -635,7 +635,7 @@ public:
 
 struct ParameterTraverseCallbackPrivate;
 class ParameterTraverseCallback {
-  DISABLE_COPY_AND_ASSIGN(ParameterTraverseCallback);
+  DISABLE_COPY(ParameterTraverseCallback);
   ParameterTraverseCallback();
 
 public:
@@ -657,7 +657,7 @@ private:
  */
 struct ParameterOptimizerPrivate;
 class ParameterOptimizer {
-  DISABLE_COPY_AND_ASSIGN(ParameterOptimizer);
+  DISABLE_COPY(ParameterOptimizer);
   ParameterOptimizer();
 
 public:
@@ -689,12 +689,12 @@ private:
 };
 
 class SequenceGenerator;
-
+class Evaluator;
 struct GradientMachinePrivate;
 class GradientMachine {
 private:
   GradientMachine();
-  DISABLE_COPY_AND_ASSIGN(GradientMachine);
+  DISABLE_COPY(GradientMachine);
 
 public:
   virtual ~GradientMachine();
@@ -719,6 +719,13 @@ public:
       ModelConfig* conf,
       GradientMatchineCreateMode mode = CREATE_MODE_NORMAL,
       const std::vector<int>& parameterTypes = defaultParamTypes);
+
+  /**
+   * @brief finish
+   */
+  void finish();
+
+  void start();
 
   /**
    * Prefetch row ids of sparse parameter.
@@ -777,6 +784,10 @@ public:
       size_t max_length = 100UL,
       size_t beam_size = -1UL);
 
+  Evaluator* makeEvaluator();
+
+  void eval(Evaluator* evaluator);
+
 private:
   GradientMachinePrivate* m;
 
@@ -788,6 +799,111 @@ private:
   // Not to use c++ 11 init-list, so we use static var as function default arg.
   static std::vector<int> defaultParamTypes;
   friend class Trainer;
+  friend class ParameterUpdater;
+};
+
+struct ParameterUpdaterPrivate;
+class ParameterUpdater {
+private:
+  ParameterUpdater();
+
+public:
+  static ParameterUpdater* createLocalUpdater(OptimizationConfig* config);
+  static ParameterUpdater* createRemoteUpdater(OptimizationConfig* config,
+                                               int passCount);
+  ~ParameterUpdater();
+
+  /**
+   * @brief initialize Parameter Updater by GradientMachine.
+   * @param gm
+   */
+  void init(const GradientMachine& gm);
+
+  /**
+   * @brief begin of a training/testing of one pass.
+   */
+  void startPass();
+
+  /**
+   * @brief end of a traning/testing of one pass.
+   */
+  void finishPass();
+
+  /**
+   * @brief begin of a training/testing of one batch.
+   * @param data batch's size
+   * @return PassType, mostly will be training.
+   */
+  PassType startBatch(size_t batchSize);
+
+  /**
+   * @brief end of a traning/testing of one batch
+   * @param cost current batch cost.
+   */
+  void finishBatch(float cost);
+
+  /**
+   * @brief update a parameter (by local optimizer or by cluster pserver)
+   * @param param
+   */
+  void update(Parameter* param);
+
+  /**
+   * @brief restore the average parameter.
+   * @note It is only used in AverageOptimizer. Restore will get the current
+   * PARAMETER_VALUE back.
+   */
+  void restore();
+
+  /**
+   * @brief apply. Store the average parameter.
+   * @note It is only used in AverageOptimizer. Apply will store the current
+   * PARAMETER_VALUE to buffer, calcaualte current Average Parameter, and save
+   * it to PARAMETER_VALUE.
+   */
+  void apply();
+
+  /**
+   * @brief catchUpWith The Regularization will be delayed in many situations(
+   * pserver, local sparse). Catch Up means catch the regularization up, apply
+   * regularization to all params.
+   */
+  void catchUpWith();
+
+private:
+  ParameterUpdaterPrivate* m;
+};
+
+struct EvaluatorPrivate;
+class Evaluator {
+private:
+  Evaluator();
+  DISABLE_COPY(Evaluator);
+
+public:
+  ~Evaluator();
+
+  /**
+   * @brief begin an evaluate stage.
+   */
+  void start();
+
+  /**
+   * @brief end an evaluate stage.
+   */
+  void finish();
+
+  /**
+   * @brief toString will get a evaluate result.
+   *
+   * __repr__ method in python
+   */
+  std::string toString();
+
+private:
+  EvaluatorPrivate* m;
+
+  friend class GradientMachine;
 };
 
 struct TrainerPrivate;
@@ -796,7 +912,7 @@ private:
   TrainerPrivate* m;
   Trainer();
   Trainer(TrainerConfig* optConfig, GradientMachine* gm);
-  DISABLE_COPY_AND_ASSIGN(Trainer);
+  DISABLE_COPY(Trainer);
 
 public:
   virtual ~Trainer();
@@ -862,7 +978,7 @@ public:
 
 struct SequenceGeneratorPrivate;
 class SequenceGenerator {
-  DISABLE_COPY_AND_ASSIGN(SequenceGenerator);
+  DISABLE_COPY(SequenceGenerator);
   SequenceGenerator();
 
 public:

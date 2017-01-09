@@ -134,14 +134,14 @@ fc2=fc_layer(...)
 fc3=fc_layer(...,layer_attr=ExtraAttr(device=-1))
 
 ```
-- default_device(0): set default device ID to 0. This means that except the layers with device=-1, all layers will use a GPU, and the specific GPU used for each layer depends on trainer\_count and gpu\_id (0 by default). Here, layer l1 and l2 are computed on the GPU.
+- default_device(0): set default device ID to 0. This means that except the layers with device=-1, all layers will use a GPU, and the specific GPU used for each layer depends on trainer\_count and gpu\_id (0 by default). Here, layer fc1 and fc2 are computed on the GPU.
 
-- device=-1: use the CPU for layer l3.
+- device=-1: use the CPU for layer fc3.
 
 - trainer_count:
-  - trainer_count=1: if gpu\_id is not set, then use the first GPU to compute layers l1 and l2. Otherwise use the GPU with gpu\_id.
+  - trainer_count=1: if gpu\_id is not set, then use the first GPU to compute layers fc1 and fc2. Otherwise use the GPU with gpu\_id.
 
-  - trainer_count>1: use trainer\_count GPUs to compute one layer using data parallelism. For example, trainer\_count=2 means that GPUs 0 and 1 will use data parallelism to compute layer l1 and l2.
+  - trainer_count>1: use trainer\_count GPUs to compute one layer using data parallelism. For example, trainer\_count=2 means that GPUs 0 and 1 will use data parallelism to compute layer fc1 and fc2.
 
 ### Case 2: Specify Layers in Different Devices
 
@@ -157,14 +157,14 @@ fc4=fc_layer(input=fc2, layer_attr=ExtraAttr(device=-1), ...)
 In this case, we assume that there are 4 GPUs in one machine.
 
 - trainer_count=1:
-  - Use GPU 0 to compute layer l2.
-  - Use GPU 1 to compute layer l3.
-  - Use CPU to compute layer l4.
+  - Use GPU 0 to compute layer fc2.
+  - Use GPU 1 to compute layer fc3.
+  - Use CPU to compute layer fc4.
 
 - trainer_count=2:
-  - Use GPU 0 and 1 to compute layer l2.
-  - Use GPU 2 and 3 to compute layer l3.
-  - Use CPU to compute l4 in two threads.
+  - Use GPU 0 and 1 to compute layer fc2.
+  - Use GPU 2 and 3 to compute layer fc3.
+  - Use CPU to compute fc4 in two threads.
 
 - trainer_count=4:
   - It will fail (note, we have assumed that there are 4 GPUs in machine), because argument `allow_only_one_model_on_one_gpu` is true by default.
