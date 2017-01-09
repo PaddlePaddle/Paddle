@@ -27,22 +27,23 @@ find_package(Threads REQUIRED)
 include(system)
 include(simd)
 
-###################### Configurations ############################
-option(WITH_DSO "Compile PaddlePaddle with dynamic linked libraries" ON)
-option(WITH_GPU "Compile PaddlePaddle with gpu" ${CUDA_FOUND})
-option(WITH_DOUBLE "Compile PaddlePaddle with double precision, otherwise use single precision" OFF)
-option(WITH_AVX "Compile PaddlePaddle with avx intrinsics" ${AVX_FOUND})
-option(WITH_PYTHON "Compile PaddlePaddle with python interpreter" ON)
-option(WITH_STYLE_CHECK "Style Check for PaddlePaddle" ON)
-option(WITH_RDMA "Compile PaddlePaddle with rdma support" OFF)
-option(WITH_TIMER "Compile PaddlePaddle use timer" OFF)
-option(WITH_PROFILER "Compile PaddlePaddle use gpu profiler" OFF)
-option(WITH_TESTING "Compile and run unittest for PaddlePaddle" ON)
-option(WITH_DOC "Compile PaddlePaddle with documentation" OFF)
-option(WITH_SWIG_PY "Compile PaddlePaddle with py PaddlePaddle prediction api" ON)
-option(ON_TRAVIS "Running test on travis-ci or not." OFF)
-option(ON_COVERALLS "Generating code coverage data on coveralls or not." OFF)
-option(COVERALLS_UPLOAD "Uploading the generated coveralls json." ON)
+################################ Configurations #######################################
+option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
+option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
+option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" OFF)
+option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
+option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
+option(WITH_STYLE_CHECK "Compile PaddlePaddle with style check"         ON)
+option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
+option(WITH_DOUBLE      "Compile PaddlePaddle with double precision"    OFF)
+option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
+option(WITH_TIMER       "Compile PaddlePaddle with stats timer"         OFF)
+option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler"        OFF)
+option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
+option(ON_COVERALLS     "Compile PaddlePaddle with code coverage"       OFF)
+option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
+option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
+########################################################################################
 
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
@@ -63,7 +64,6 @@ include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
-include(python_module)      # set python module
 
 include(configure)          # add paddle env configuration
 
