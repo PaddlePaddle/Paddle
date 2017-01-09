@@ -112,6 +112,8 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
 }
 
 /**
+ * \brief {o_0, o_1} = calc(i_0)
+ *
  * \param inputs[0] input value.
  * \param outputs[0] output value.
  * \param outputs[1] denoms.
@@ -125,17 +127,16 @@ public:
     pow_ = config.get<real>("pow");
   }
 
-  void calc(const BufferArgs& inputs,
-            const BufferArgs& outputs,
-            const BufferArgs& inouts) override {
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(1, inputs.size());
     CHECK_EQ(2, outputs.size());
-    CHECK_EQ(0, inouts.size());
 
     CHECK_EQ(inputs[0].shape().ndims(), 4);
     CHECK(inputs[0].shape() == outputs[0].shape());
     CHECK(inputs[0].shape() == outputs[1].shape());
 
+    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
+    CHECK_EQ(outputs[1].getArgType(), ASSIGN_TO);
     size_t samples = inputs[0].shape()[0];
     size_t channels = inputs[0].shape()[1];
     size_t height = inputs[0].shape()[2];
@@ -160,6 +161,8 @@ private:
 };
 
 /**
+ * \brief {o_0} = calc(i_0, i_1, i_2, i_3)
+ *
  * \param inputs[0] input value.
  * \param inputs[1] output value.
  * \param inputs[2] output grad.
@@ -175,18 +178,18 @@ public:
     pow_ = config.get<real>("pow");
   }
 
-  void calc(const BufferArgs& inputs,
-            const BufferArgs& outputs,
-            const BufferArgs& inouts) override {
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(4, inputs.size());
     CHECK_EQ(1, outputs.size());
-    CHECK_EQ(0, inouts.size());
 
     CHECK_EQ(inputs[0].shape().ndims(), 4);
     CHECK(inputs[0].shape() == inputs[1].shape());
     CHECK(inputs[0].shape() == inputs[2].shape());
     CHECK(inputs[0].shape() == inputs[3].shape());
     CHECK(inputs[0].shape() == outputs[0].shape());
+
+    // TODO(hedaoyuan): need support ASSIGN_TO mode.
+    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
 
     size_t samples = inputs[0].shape()[0];
     size_t channels = inputs[0].shape()[1];

@@ -49,7 +49,7 @@ protected:
 /**
  * Argument type for Function::calc().
  * A BufferArgs contains a set of BufferArg,
- * because Function can have multiple inputs, outputs and inouts.
+ * because Function can have multiple inputs and outputs.
  */
 class BufferArgs {
 public:
@@ -58,9 +58,11 @@ public:
 
   // add argument into BufferArgs
   // Tensor can be Matrix, Vector, IVector.
+  // For inputs, do not need argType.
+  // For outputs, the argType needs to be specified as ASSIGN_TO or ADD_TO.
   template <typename Tensor>
-  void addArg(const Tensor& arg) {
-    args_.push_back(std::make_shared<BufferArg>(arg));
+  void addArg(const Tensor& arg, ArgType argType = UNSPECIFIED) {
+    args_.push_back(std::make_shared<BufferArg>(arg, argType));
   }
 
   // Add arg into BufferArgs and reshape the arg.
@@ -68,10 +70,12 @@ public:
   // For example, arg represents an image buffer,
   // but Matrix can only represent a two-dimensional Tensor.
   // So need an extra argument to describe the shape of the image buffer.
-  void addArg(const Matrix& arg, const TensorShape& shape);
+  void addArg(const Matrix& arg,
+              const TensorShape& shape,
+              ArgType argType = UNSPECIFIED);
 
-  void addArg(const CpuSparseMatrix& arg);
-  void addArg(const GpuSparseMatrix& arg);
+  void addArg(const CpuSparseMatrix& arg, ArgType argType = UNSPECIFIED);
+  void addArg(const GpuSparseMatrix& arg, ArgType argType = UNSPECIFIED);
 
   // get argument
   const BufferArg& operator[](size_t num) const {

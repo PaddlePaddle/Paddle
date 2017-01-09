@@ -59,7 +59,6 @@ bool CMRProjectionNormLayer::init(const LayerMap& layerMap,
 
 void CMRProjectionNormLayer::forward(PassType passType) {
   Layer::forward(passType);
-
   /* malloc memory for the output_ if necessary */
   /* note: one sample correspond to one row */
   MatrixPtr input = inputLayers_[0]->getOutputValue();
@@ -67,42 +66,36 @@ void CMRProjectionNormLayer::forward(PassType passType) {
   int size = getSize();
   resetOutput(batchSize, size);
 
-  MatrixPtr outV = getOutputValue();
-
   Matrix::resizeOrCreate(denoms_, batchSize, size, /* trans */ false, useGpu_);
 
   shape_ = TensorShape({batchSize, channels_, imgSizeH_, imgSizeW_});
 
+  // prepare forward arguments
   BufferArgs inputs;
   BufferArgs outputs;
-  BufferArgs inouts;
-  inputs.addArg(*input, shape_);
-  outputs.addArg(*outV, shape_);
-  outputs.addArg(*denoms_, shape_);
+  inputs.addArg(*getInputValue(0), shape_);
+  outputs.addArg(*getOutputValue(), shape_, ASSIGN_TO);
+  outputs.addArg(*denoms_, shape_, ASSIGN_TO);
 
-  forward_[0]->calc(inputs, outputs, inouts);
+  forward_[0]->calc(inputs, outputs);
 }
 
 void CMRProjectionNormLayer::backward(const UpdateCallback& callback) {
   (void)callback;
 
-  if (NULL == inputLayers_[0]->getOutputGrad()) {
+  if (NULL == getInputGrad(0)) {
     return;
   }
-  /* Do derivation */
-  MatrixPtr preOutGrad = inputLayers_[0]->getOutputGrad();
-  MatrixPtr localGrad = getOutputGrad();
-  MatrixPtr localOutV = getOutputValue();
-  MatrixPtr preOutV = inputLayers_[0]->getOutputValue();
 
+  // prepare backward arguments
   BufferArgs inputs;
   BufferArgs outputs;
-  BufferArgs inouts;
-  inputs.addArg(*preOutV, shape_);
-  inputs.addArg(*localOutV, shape_);
-  inputs.addArg(*localGrad, shape_);
+  inputs.addArg(*getInputValue(0), shape_);
+  inputs.addArg(*getOutputValue(), shape_);
+  inputs.addArg(*getOutputGrad(), shape_);
   inputs.addArg(*denoms_, shape_);
-  outputs.addArg(*preOutGrad, shape_);
-  backward_[0]->calc(inputs, outputs, inouts);
+  outputs.addArg(*getInputGrad(0), shape_, ADD_TO);
+
+  backward_[0]->calc(inputs, outputs);
 }
 }  // namespace paddle

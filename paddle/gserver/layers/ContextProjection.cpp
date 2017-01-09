@@ -122,14 +122,13 @@ void ContextProjection::forward() {
 
   BufferArgs inputs;
   BufferArgs outputs;
-  BufferArgs inouts;
   inputs.addArg(*in_->value);
   inputs.addArg(CpuMatrix(w_ptr ? w_ptr->getData() : nullptr,
                           w_ptr ? w_ptr->getHeight() : 0,
                           input_dim));
   inputs.addArg(*in_->sequenceStartPositions->getVector(useGpu_));
-  outputs.addArg(*out_->value);
-  forward_[0]->calc(inputs, outputs, inouts);
+  outputs.addArg(*out_->value, ADD_TO);
+  forward_[0]->calc(inputs, outputs);
 
   if (state_ && config_.context_start() < 0) {
     CHECK_EQ(1, in_->getNumSequences());
@@ -166,15 +165,14 @@ void ContextProjection::backward(const UpdateCallback& callback) {
 
   BufferArgs inputs;
   BufferArgs outputs;
-  BufferArgs inouts;
   inputs.addArg(CpuMatrix(
       in_->grad ? in_->grad->getData() : nullptr, batch_size, input_dim));
   inputs.addArg(CpuMatrix(w_ptr ? w_ptr->getData() : nullptr,
                           w_ptr ? w_ptr->getHeight() : 0,
                           input_dim));
   inputs.addArg(*in_->sequenceStartPositions->getVector(useGpu_));
-  outputs.addArg(*out_->grad);
-  backward_[0]->calc(inputs, outputs, inouts);
+  outputs.addArg(*out_->grad, ADD_TO);
+  backward_[0]->calc(inputs, outputs);
 
   if (config_.trainable_padding()) {
     weight_->getParameterPtr()->incUpdate(callback);

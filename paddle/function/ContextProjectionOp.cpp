@@ -84,12 +84,9 @@ public:
     begin_pad_ = config.get<size_t>("begin_pad");
   }
 
-  void calc(const BufferArgs& inputs,
-            const BufferArgs& outputs,
-            const BufferArgs& inouts) override {
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(3, inputs.size());
     CHECK_EQ(1, outputs.size());
-    CHECK_EQ(0, inouts.size());
 
     CHECK(outputs[0].data() && inputs[0].data() && inputs[2].data());
     CHECK_EQ(outputs[0].shape().ndims(), 2);
@@ -103,6 +100,7 @@ public:
     /// input and output has the same batch_size
     CHECK_EQ(inputs[0].shape()[0], outputs[0].shape()[0]);
 
+    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
     auto out_mat = outputs[0].matrix<Device>();
     auto in_mat = inputs[0].matrix<Device>();
     auto w_mat = !inputs[1].data()
@@ -194,12 +192,9 @@ public:
     total_pad_ = config.get<size_t>("total_pad");
   }
 
-  void calc(const BufferArgs& inputs,
-            const BufferArgs& outputs,
-            const BufferArgs& inouts) override {
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(3, inputs.size());
     CHECK_EQ(1, outputs.size());
-    CHECK_EQ(0, inouts.size());
 
     CHECK(outputs[0].data() && inputs[2].data());
     CHECK_EQ(outputs[0].shape().ndims(), 2);
@@ -213,6 +208,8 @@ public:
     CHECK_EQ(inputs[0].shape()[0], outputs[0].shape()[0]);
     /// dim of output = dim of input * context_length
     CHECK_EQ(outputs[0].shape()[1], inputs[0].shape()[1] * context_length_);
+
+    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
 
     auto out_grad_mat = outputs[0].matrix<Device>();
     auto in_grad_mat =
