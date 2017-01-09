@@ -92,6 +92,10 @@ class ParameterAttribute(object):
                                         value larger than some value, will be
                                         clipped.
     :type gradient_clipping_threshold: float
+    :param num_batches_regularization: do not do regularization until
+                                       num_batches_regularization batches are
+                                       accumulated.
+    :type num_batches_regularization: int
     :param sparse_update: Enable sparse update for this parameter. It will
                           enable both local and remote sparse update.
     :type sparse_update: bool
@@ -109,6 +113,7 @@ class ParameterAttribute(object):
                  learning_rate=None,
                  momentum=None,
                  gradient_clipping_threshold=None,
+                 num_batches_regularization=None,
                  sparse_update=False):
         # initialize strategy.
         if is_static:
@@ -161,6 +166,11 @@ class ParameterAttribute(object):
                 is_compatible_with(gradient_clipping_threshold, float):
             self.attr['gradient_clipping_threshold'] = \
                 gradient_clipping_threshold
+
+        if num_batches_regularization is not None and \
+                is_compatible_with(num_batches_regularization, int):
+            self.attr['num_batches_regularization'] = \
+                num_batches_regularization
 
     def set_default_parameter_name(self, name):
         """
