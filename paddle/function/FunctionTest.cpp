@@ -35,7 +35,7 @@ void FunctionApi<DEVICE_TYPE_GPU>(GpuMatrix& output, const GpuMatrix& input) {
 
 template <DeviceType DType>
 void Function(const BufferArgs& arguments) {
-  auto input = arguments[0].matrix<DType>();
+  const auto input = arguments[0].matrix<DType>();
   auto output = arguments[1].matrix<DType>();
   FunctionApi<DType>(output, input);
 }

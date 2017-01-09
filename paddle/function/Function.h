@@ -56,12 +56,18 @@ public:
   BufferArgs() {}
   size_t size() const { return args_.size(); }
 
-  // add argument into BufferArgss
+  // add argument into BufferArgs
+  // Tensor can be Matrix, Vector, IVector.
   template <typename Tensor>
   void addArg(const Tensor& arg) {
     args_.push_back(std::make_shared<BufferArg>(arg));
   }
 
+  // Add arg into BufferArgs and reshape the arg.
+  //
+  // For example, arg represents an image buffer,
+  // but Matrix can only represent a two-dimensional Tensor.
+  // So need an extra argument to describe the shape of the image buffer.
   void addArg(const Matrix& arg, const TensorShape& shape);
 
   void addArg(const CpuSparseMatrix& arg);
@@ -78,10 +84,20 @@ private:
 };
 
 /**
- * Base class for Function.
+ * \brief Base class for Function.
  * The basic Function implementation requires override init and calc interfaces.
- * Need to pay attention to the inouts argument. For the input argument
- * that will be modified, it needs to be passed through inouts.
+ *
+ * Function inputs are readonly, Function outputs have two modes: ASSIGN_TO
+ * and ADD_TO.
+ * If output.getArgType() == ASSIGN_TO, this is assign mode, and the calculation
+ * result of Function assigned to the output BufferArg.
+ * If output.getArgType() == ADD_TO, this is add mode, and the calculation
+ * result of Function need added to the output BufferArg.
+ *
+ * For example:
+ * ASSIGN_TO: output = Function(inputs)
+ * ADD_TO: output += Function(inputs)
+ * If Function has more than one output, each output can have different modes.
  */
 class FunctionBase {
 public:
@@ -89,9 +105,7 @@ public:
 
   virtual void init(const FuncConfig& config) {}
 
-  virtual void calc(const BufferArgs& inputs,
-                    const BufferArgs& outputs,
-                    const BufferArgs& inouts) {}
+  virtual void calc(const BufferArgs& inputs, const BufferArgs& outputs) {}
 
   static ClassRegistrar<FunctionBase> funcRegistrar_;
 };
