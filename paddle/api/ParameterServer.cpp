@@ -21,7 +21,8 @@ ParameterServer::ParameterServer() : m(new ParameterServerPrivate()) {}
 ParameterServer* ParameterServer::createByConfigProtoPtr(const void* confPtr) {
   auto& conf = *(const paddle::ParameterServerConfig*)(confPtr);
   auto pServer = new ParameterServer();
-  pServer->m->pServerController.reset(paddle::PServerController::create(conf));
+  pServer->m->parameterServerController.reset(
+      paddle::ParameterServerController::create(conf));
   return pServer;
 }
 
@@ -38,6 +39,6 @@ ParameterServer* ParameterServer::createByConfigProtoStr(
 
 ParameterServer::~ParameterServer() { delete m; }
 
-void ParameterServer::start() { m->pServerController->start(); }
+void ParameterServer::start() { m->parameterServerController->start(); }
 
-void ParameterServer::join() { m->pServerController->join(); }
+void ParameterServer::join() { m->parameterServerController->join(); }
