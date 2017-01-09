@@ -67,11 +67,11 @@ SWIG_LINK_LIBRARIES(swig_paddle
     paddle_trainer_lib
     paddle_network
     paddle_proto
-    ARCHIVE_START
+    ${ARCHIVE_START}
     paddle_gserver
     paddle_function
     ${METRIC_LIBS}
-    ARCHIVE_END
+    ${ARCHIVE_END}
 )
 
 add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/dist/.timestamp

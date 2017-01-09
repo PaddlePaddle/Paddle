@@ -22,6 +22,8 @@ setup(name="py_paddle",
       package_data={'py_paddle':['*.py','_swig_paddle.so']},
       install_requires = [
         'numpy>=1.8.0',      # The numpy is required.
-        'protobuf>=2.4.1'    # The paddle protobuf version
+        'protobuf>=3.0.0'    # The paddle protobuf version
       ],
+      url='http://www.paddlepaddle.org/',
+      license='Apache 2.0',
 )
