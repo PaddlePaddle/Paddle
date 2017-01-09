@@ -62,7 +62,7 @@ TEST(PadGrad, real) {
           Dims inDims{numSamples, channels, imgSizeH, imgSizeW};
           Dims outDims{numSamples, channels + 5, imgSizeH + 3, imgSizeW + 5};
           compare.cmpWithArg(
-              {Tensor(nullptr, inDims)}, {}, {Tensor(nullptr, outDims)});
+              {Tensor(nullptr, outDims)}, {}, {Tensor(nullptr, inDims)});
         }
       }
     }

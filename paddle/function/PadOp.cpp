@@ -92,9 +92,9 @@ public:
   void calc(const Arguments& inputs,
             const Arguments& outputs,
             const Arguments& inouts) override {
-    CHECK_EQ(1, inputs.size());
-    CHECK_EQ(1, outputs.size());
-    CHECK_EQ(0, inouts.size());
+    CHECK_EQ(1UL, inputs.size());
+    CHECK_EQ(1UL, outputs.size());
+    CHECK_EQ(0UL, inouts.size());
 
     size_t num = inputs[0].dims_[0];
     size_t inC = inputs[0].dims_[1];
@@ -143,9 +143,9 @@ public:
   void calc(const Arguments& inputs,
             const Arguments& outputs,
             const Arguments& inouts) override {
-    CHECK_EQ(1, inputs.size());
-    CHECK_EQ(0, outputs.size());
-    CHECK_EQ(1, inouts.size());
+    CHECK_EQ(1UL, inputs.size());
+    CHECK_EQ(0UL, outputs.size());
+    CHECK_EQ(1UL, inouts.size());
 
     size_t n = inouts[0].dims_[0];
     size_t inC = inouts[0].dims_[1];

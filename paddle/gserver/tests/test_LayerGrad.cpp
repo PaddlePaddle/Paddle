@@ -850,15 +850,13 @@ TEST(Layer, SequenceLastInstanceLayer) {
   testDegradeLayer(true,
                    "seqlastins",
                    "non-seq");  // hasSubseq seqlastins to non-seq
-  testDegradeLayer(true, "seqlastins", "seq");  // hasSubseq seqlastins to
-  seq
+  testDegradeLayer(true, "seqlastins", "seq");  // hasSubseq seqlastins to seq
 }
 
 TEST(Layer, AverageLayer) {
   testDegradeLayer(false, "average", "non-seq");  // seq average to non-seq
-  testDegradeLayer(true, "average", "non-seq");   // hasSubseq average to
-  non -
-      seq testDegradeLayer(true, "average", "seq");  // hasSubseq average to seq
+  testDegradeLayer(true, "average", "non-seq");  // hasSubseq average to non-seq
+  testDegradeLayer(true, "average", "seq");      // hasSubseq average to seq
 }
 
 TEST(Layer, SequenceConcatLayer) {
