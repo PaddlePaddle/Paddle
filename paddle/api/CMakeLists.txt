@@ -45,6 +45,9 @@ SET(SWIG_MODULE_swig_paddle_EXTRA_DEPS
 
 IF(APPLE)
     SET(CMAKE_LINK_FLAGS "-undefined dynamic_lookup -Wl,-all_load")
+ELSE(APPLE)
+    SET(ARCHIVE_START "-Wl,--whole-archive")
+    SET(ARCHIVE_END "-Wl,--no-whole-archive")
 ENDIF(APPLE)
 
 SWIG_ADD_MODULE(swig_paddle python Paddle.i)
@@ -52,21 +55,23 @@ SWIG_LINK_LIBRARIES(swig_paddle
     ${CMAKE_LINK_FLAGS}
     ${CMAKE_DL_LIBS}
     ${EXTERNAL_LIBS}
-    ${PYTHON_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
     ${RDMA_LD_FLAGS}
     ${RDMA_LIBS}
     paddle_parameter
-    paddle_function
     paddle_math
     paddle_utils
-    paddle_gserver
     paddle_pserver
     paddle_api
     paddle_cuda
     paddle_trainer_lib
     paddle_network
     paddle_proto
+    ARCHIVE_START
+    paddle_gserver
+    paddle_function
+    ${METRIC_LIBS}
+    ARCHIVE_END
 )
 
 add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/dist/.timestamp

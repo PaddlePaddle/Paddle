@@ -72,13 +72,20 @@ include_directories("${PROJ_ROOT}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 
 set(EXTERNAL_LIBS
-    # have not include gtest here.
     ${GFLAGS_LIBRARIES}
     ${GLOG_LIBRARIES}
     ${CBLAS_LIBRARIES}
     ${PROTOBUF_LIBRARY}
     ${ZLIB_LIBRARIES}
+    ${PYTHON_LIBRARIES}
 )
+
+if(WITH_GPU)
+    list(APPEND EXTERNAL_LIB ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
+    if(NOT WITH_DSO)
+        list(APPEND EXTERNAL_LIB ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+    endif(NOT WITH_DSO)
+endif(WITH_GPU)
 
 add_subdirectory(proto)
 add_subdirectory(paddle)
