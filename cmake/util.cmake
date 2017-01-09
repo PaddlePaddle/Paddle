@@ -120,6 +120,7 @@ function(link_paddle_exe TARGET_NAME)
             target_link_libraries(${TARGET_NAME} rt)
         endif()
     endif()
+
     add_dependencies(${TARGET_NAME} ${external_project_dependencies})
 endfunction()
 
