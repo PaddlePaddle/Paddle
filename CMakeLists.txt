@@ -27,10 +27,10 @@ find_package(Threads REQUIRED)
 include(system)
 include(simd)
 
-###################### Configurations ############################
+################################ Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
-option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
+option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" OFF)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
 option(WITH_STYLE_CHECK "Compile PaddlePaddle with style check"         ON)
@@ -43,6 +43,7 @@ option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
 option(ON_COVERALLS     "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
+########################################################################################
 
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags

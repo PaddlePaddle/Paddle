@@ -13,7 +13,7 @@ if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
   sudo make install
 elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
   export PYTHONPATH=/usr/local/lib/python2.7/site-packages
-  cmake .. -DON_TRAVIS=ON -DON_COVERALLS=ON -DCOVERALLS_UPLOAD=ON -DWITH_SWIG_PY=ON
+  cmake .. -DON_TRAVIS=ON -DON_COVERALLS=ON -DCOVERALLS_UPLOAD=ON
   NPROC=`sysctl -n hw.ncpu`
   make -j $NPROC
 fi

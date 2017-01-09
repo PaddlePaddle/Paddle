@@ -15,6 +15,7 @@
 INCLUDE(cblas)
 
 IF(NOT ${CBLAS_FOUND})
+    MESSAGE(FATAL_ERROR "Please install OpenBlas, MKL or ATLAS.")
     INCLUDE(ExternalProject)
 
     SET(CBLAS_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/openblas)
