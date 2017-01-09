@@ -43,5 +43,7 @@ cp -rv /woboq/data $WOBOQ_OUT/../data
     -o $WOBOQ_OUT \
     -p paddle:/paddle
 /woboq/indexgenerator/codebrowser_indexgenerator $WOBOQ_OUT
-
+cd /woboq
+make clean
+rm -rf /paddle/build
 trap : 0

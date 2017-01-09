@@ -25,14 +25,14 @@ set(PSERVER_SOURCES
     ParameterClient2.cpp
     ParameterServer2.cpp
     SparseParameterDistribution.cpp
-    PServerController.cpp)
+    ParameterServerController.cpp)
 
 set(PSERVER_HEADERS
     BaseClient.h
     ParameterClient2.h
     ParameterServer2.h
     SparseParameterDistribution.h
-    PServerController.h)
+    ParameterServerController.h)
 
 add_library(paddle_pserver STATIC
     ${PSERVER_SOURCES})

@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "PServerController.h"
+#include "ParameterServerController.h"
 
 namespace paddle {
 
-PServerController::PServerController(const ParameterServerConfig& config) {
+ParameterServerController::ParameterServerController(
+    const ParameterServerConfig& config) {
   // round robin to load balance RDMA server ENGINE
   std::vector<std::string> devices;
   int rdmaCpu = 0;
@@ -58,9 +59,9 @@ PServerController::PServerController(const ParameterServerConfig& config) {
   }
 }
 
-PServerController::~PServerController() { this->join(); }
+ParameterServerController::~ParameterServerController() { this->join(); }
 
-PServerController* PServerController::createByGflags() {
+ParameterServerController* ParameterServerController::createByGflags() {
   ParameterServerConfig config;
 
   config.set_nics(FLAGS_nics);
@@ -72,12 +73,12 @@ PServerController* PServerController::createByGflags() {
   return create(config);
 }
 
-PServerController* PServerController::create(
+ParameterServerController* ParameterServerController::create(
     const ParameterServerConfig& config) {
-  return new PServerController(config);
+  return new ParameterServerController(config);
 }
 
-void PServerController::start() {
+void ParameterServerController::start() {
   LOG(INFO) << "pserver sizes : " << pservers_.size();
   int i = 0;
   for (const auto& pserver : pservers_) {
@@ -87,7 +88,7 @@ void PServerController::start() {
   }
 }
 
-void PServerController::join() {
+void ParameterServerController::join() {
   LOG(INFO) << "pserver sizes : " << pservers_.size();
   int i = 0;
   for (const auto& pserver : pservers_) {

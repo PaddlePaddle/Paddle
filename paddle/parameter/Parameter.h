@@ -26,11 +26,11 @@ limitations under the License. */
 #include "ParameterUpdaterHook.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/Vector.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/ThreadLocal.h"
 #include "paddle/utils/Util.h"
-#include "paddle/utils/common.h"
 
 namespace paddle {
 

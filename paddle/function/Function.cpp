@@ -46,28 +46,32 @@ bool FuncConfig::get<bool>(const std::string& key) const {
 
 template <>
 FuncConfig& FuncConfig::set<size_t>(const std::string& key, size_t v) {
-  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
+  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
+                                                      << key;
   valueMap_[key].s = v;
   return *this;
 }
 
 template <>
 FuncConfig& FuncConfig::set<real>(const std::string& key, real v) {
-  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
+  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
+                                                      << key;
   valueMap_[key].r = v;
   return *this;
 }
 
 template <>
 FuncConfig& FuncConfig::set<int>(const std::string& key, int v) {
-  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
+  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
+                                                      << key;
   valueMap_[key].i = v;
   return *this;
 }
 
 template <>
 FuncConfig& FuncConfig::set<bool>(const std::string& key, bool v) {
-  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
+  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
+                                                      << key;
   valueMap_[key].b = v;
   return *this;
 }

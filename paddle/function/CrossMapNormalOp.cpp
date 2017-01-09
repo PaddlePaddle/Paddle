@@ -128,11 +128,11 @@ public:
   void calc(const Arguments& inputs,
             const Arguments& outputs,
             const Arguments& inouts) override {
-    CHECK_EQ(1, inputs.size());
-    CHECK_EQ(2, outputs.size());
-    CHECK_EQ(0, inouts.size());
+    CHECK_EQ(1, static_cast<int>(inputs.size()));
+    CHECK_EQ(2, static_cast<int>(outputs.size()));
+    CHECK_EQ(0, static_cast<int>(inouts.size()));
 
-    CHECK_EQ(inputs[0].dims_.size(), 4);
+    CHECK_EQ(static_cast<int>(inputs[0].dims_.size()), 4);
     for (size_t i = 0; i < inputs[0].dims_.size(); i++) {
       CHECK_EQ(inputs[0].dims_[i], outputs[0].dims_[i]);
       CHECK_EQ(inputs[0].dims_[i], outputs[1].dims_[i]);
@@ -180,11 +180,11 @@ public:
   void calc(const Arguments& inputs,
             const Arguments& outputs,
             const Arguments& inouts) override {
-    CHECK_EQ(4, inputs.size());
-    CHECK_EQ(1, outputs.size());
-    CHECK_EQ(0, inouts.size());
+    CHECK_EQ(4, static_cast<int>(inputs.size()));
+    CHECK_EQ(1, static_cast<int>(outputs.size()));
+    CHECK_EQ(0, static_cast<int>(inouts.size()));
 
-    CHECK_EQ(inputs[0].dims_.size(), 4);
+    CHECK_EQ(static_cast<int>(inputs[0].dims_.size()), 4);
     for (size_t i = 0; i < inputs[0].dims_.size(); i++) {
       CHECK_EQ(inputs[0].dims_[i], inputs[1].dims_[i]);
       CHECK_EQ(inputs[0].dims_[i], inputs[2].dims_[i]);
