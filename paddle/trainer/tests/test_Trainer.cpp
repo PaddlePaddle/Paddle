@@ -96,11 +96,6 @@ TEST(checkGradient, multi) {
 TEST(checkGradient, hsigmoid) { checkGradientTest(configFile2, false, false); }
 
 TEST(checkGradient, chunk) {
-#if defined(__APPLE__) || defined(__OSX__)
-  EXPECT_EQ(0, system("python trainer/tests/gen_proto_data.py"));
-#else
-  EXPECT_EQ(0, system("python2 trainer/tests/gen_proto_data.py"));
-#endif
   checkGradientTest(configFile3, false, false);
 #ifndef PADDLE_ONLY_CPU
   checkGradientTest(configFile3, true, true);

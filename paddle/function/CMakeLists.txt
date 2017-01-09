@@ -11,6 +11,8 @@ if(WITH_GPU)
 endif()
 
 add_library(paddle_function STATIC ${cpp_files} ${cu_objs})
+add_dependencies(paddle_function ${external_project_dependencies})
+
 
 if(WITH_GPU)
 if(WITH_TESTING)
@@ -22,9 +24,7 @@ if(WITH_TESTING)
     add_simple_unittest(TensorTypeTest)
     add_simple_unittest(BufferArgTest)
     add_simple_unittest(FunctionTest)
-    # add_unittest(ContextProjectionOpTest
-    #    ContextProjectionOpTest.cpp
-    #    ../gserver/tests/TestUtil.cpp)
+    # add_simple_unittest(ContextProjectionOpTest)
 endif()
 endif()
 

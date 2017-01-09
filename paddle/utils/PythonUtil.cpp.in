@@ -195,6 +195,10 @@ extern const char enable_virtualenv_py[];
 }
 void initPython(int argc, char** argv) {
 #ifndef PADDLE_NO_PYTHON
+  char pyHome[] = "@PYTHON_INSTALL_DIR@"; // NOLINT
+  if (strlen(pyHome)) {
+    Py_SetPythonHome(pyHome);
+  }
   Py_SetProgramName(argv[0]);
   Py_Initialize();
   PySys_SetArgv(argc, argv);

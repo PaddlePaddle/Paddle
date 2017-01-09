@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/trainer/Trainer.h"
 
 #include "LayerGradUtil.h"
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT

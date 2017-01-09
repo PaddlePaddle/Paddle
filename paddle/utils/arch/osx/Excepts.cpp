@@ -12,11 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "Excepts.h"
+#include "paddle/utils/Excepts.h"
 
 #if defined(__APPLE__) || defined(__OSX__)
-
-#include <fenv.h>
 
 int fegetexcept(void) {
   static fenv_t fenv;
