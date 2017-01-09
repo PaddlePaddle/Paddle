@@ -28,8 +28,8 @@ IF(PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND)
     FIND_PACKAGE(NumPy REQUIRED)
 ELSE(PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND)
     ##################################### PYTHON ########################################
-    SET(PYTHON_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/python)
-    SET(PYTHON_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/install/python)
+    SET(PYTHON_SOURCES_DIR ${THIRD_PARTY_PATH}/python)
+    SET(PYTHON_INSTALL_DIR ${THIRD_PARTY_PATH}/install/python)
     SET(_python_DIR ${PYTHON_INSTALL_DIR})
 
     IF(UNIX)
