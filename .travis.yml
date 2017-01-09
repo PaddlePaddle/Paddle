@@ -1,5 +1,9 @@
 language: cpp
-cache: ccache
+cache:
+  directories:
+    - $HOME/third_party
+    - $HOME/.ccache
+
 sudo: required
 dist: trusty
 os:
@@ -35,6 +39,7 @@ addons:
       - clang-format-3.8
       - automake
       - libtool
+      - ccache
 before_install:
   - |
     if [ ${JOB} == "BUILD_AND_TEST" ]; then
