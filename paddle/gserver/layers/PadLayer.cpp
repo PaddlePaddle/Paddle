@@ -33,9 +33,9 @@ bool PadLayer::init(const LayerMap& layerMap,
                                               : img_conf.img_size());
   inDims_.push_back(img_conf.img_size());
 
-  CHECK_EQ(2UL, pad_conf.pad_c_size());
-  CHECK_EQ(2UL, pad_conf.pad_h_size());
-  CHECK_EQ(2UL, pad_conf.pad_w_size());
+  CHECK_EQ(2, pad_conf.pad_c_size());
+  CHECK_EQ(2, pad_conf.pad_h_size());
+  CHECK_EQ(2, pad_conf.pad_w_size());
   padc_.push_back(pad_conf.pad_c(0));
   padc_.push_back(pad_conf.pad_c(1));
   padh_.push_back(pad_conf.pad_h(0));
@@ -76,7 +76,7 @@ void PadLayer::setOutDims(int batchSize) {
 }
 
 void PadLayer::setTensorDim(int batchSize) {
-  CHECK_EQ(inputLayers_.size(), 1UL);
+  CHECK_EQ(static_cast<int>(inputLayers_.size()), 1);
   inDims_[0] = batchSize;
   int h = inputLayers_[0]->getOutput().getFrameHeight();
   if (h != 0) inDims_[2];
