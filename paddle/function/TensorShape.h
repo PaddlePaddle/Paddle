@@ -30,14 +30,14 @@ public:
   TensorShape(std::initializer_list<size_t> dims) {
     ndims_ = dims.size();
     initDims(ndims_);
-    std::copy(dims.begin(), dims.end(), dims_.begin());
+    dims_.assign(dims);
     numElements();
   };
 
   TensorShape(const TensorShape& t)
       : ndims_(t.ndims_), nelements_(t.nelements_) {
     initDims(ndims_);
-    std::copy(t.dims_.begin(), t.dims_.end(), dims_.begin());
+    dims_.assign(t.dims_.begin(), t.dims_.end());
   };
 
   // get the size of specified dimension
