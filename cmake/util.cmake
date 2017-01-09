@@ -121,10 +121,6 @@ function(link_paddle_exe TARGET_NAME)
         endif()
     endif()
 
-    if(NOT WITH_DSO)
-        target_link_libraries(${TARGET_NAME} ${WARPCTC_LIBRARIES})
-    endif()
-
     add_dependencies(${TARGET_NAME} ${external_project_dependencies})
 endfunction()
 
