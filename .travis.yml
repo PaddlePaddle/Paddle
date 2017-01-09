@@ -3,7 +3,7 @@ cache:
   directories:
     - $HOME/third_party
     - $HOME/.ccache
-
+    - $HOME/.cache/pip
 sudo: required
 dist: trusty
 os:
