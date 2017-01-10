@@ -47,7 +47,7 @@ def fetch():
     file_source = "cifar-10-batches-py"
     #Set the download dir for cifar.
     data_home = set_data_path(source_name)
-    filepath = data_download(data_home,source_url)
+    filepath = data_download(data_home, source_url)
     """
     for i in range(1, num_batch + 1):
         fpath = os.path.join(filepath, "data_batch_%d" % i)
