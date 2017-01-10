@@ -110,9 +110,8 @@ void ContextProjection::forward() {
   size_t input_dim = in_->value->getWidth();
   size_t dim = out_->value->getWidth();
   CHECK_EQ(dim, input_dim * config_.context_length());
-  size_t batch_size = in_->value->getHeight();
-  CHECK_EQ(static_cast<int>(forward_.size()), 1)
-      << "Only one forward function here";
+  // size_t batch_size = in_->value->getHeight();
+  CHECK_EQ(forward_.size(), (size_t)1) << "Only one forward function here";
 
   REGISTER_TIMER_INFO("ContextProjectionForward", getName().c_str());
   bool is_padding = config_.trainable_padding();
@@ -120,14 +119,16 @@ void ContextProjection::forward() {
   auto w_ptr =
       state_ ? state_.get() : is_padding ? weight_->getW().get() : nullptr;
   auto start_pos = in_->sequenceStartPositions;
-  forward_[0]->calc({Tensor(in_->value->getData(), Dims{batch_size, input_dim}),
-                     Tensor(w_ptr ? w_ptr->getData() : nullptr,
-                            Dims{w_ptr ? w_ptr->getHeight() : 0, input_dim}),
-                     Tensor(reinterpret_cast<real*>(
-                                const_cast<int*>(start_pos->getData(useGpu_))),
-                            Dims{start_pos->getSize()})},
-                    {Tensor(out_->value->getData(), Dims{batch_size, dim})},
-                    {});
+
+  BufferArgs inputs;
+  BufferArgs outputs;
+  inputs.addArg(*in_->value);
+  inputs.addArg(CpuMatrix(w_ptr ? w_ptr->getData() : nullptr,
+                          w_ptr ? w_ptr->getHeight() : 0,
+                          input_dim));
+  inputs.addArg(*in_->sequenceStartPositions->getVector(useGpu_));
+  outputs.addArg(*out_->value, ADD_TO);
+  forward_[0]->calc(inputs, outputs);
 
   if (state_ && config_.context_start() < 0) {
     CHECK_EQ(1, in_->getNumSequences());
@@ -162,15 +163,17 @@ void ContextProjection::backward(const UpdateCallback& callback) {
   bool is_padding = config_.trainable_padding();
   auto start_pos = in_->sequenceStartPositions;
   auto w_ptr = is_padding ? weight_->getWGrad() : nullptr;
-  backward_[0]->calc({Tensor(in_->grad ? in_->grad->getData() : nullptr,
-                             Dims{batch_size, input_dim}),
-                      Tensor(w_ptr ? w_ptr->getData() : nullptr,
-                             Dims{w_ptr ? w_ptr->getHeight() : 0, input_dim}),
-                      Tensor(reinterpret_cast<real*>(
-                                 const_cast<int*>(start_pos->getData(useGpu_))),
-                             Dims{start_pos->getSize()})},
-                     {Tensor(out_->grad->getData(), Dims{batch_size, dim})},
-                     {});
+
+  BufferArgs inputs;
+  BufferArgs outputs;
+  inputs.addArg(CpuMatrix(
+      in_->grad ? in_->grad->getData() : nullptr, batch_size, input_dim));
+  inputs.addArg(CpuMatrix(w_ptr ? w_ptr->getData() : nullptr,
+                          w_ptr ? w_ptr->getHeight() : 0,
+                          input_dim));
+  inputs.addArg(*in_->sequenceStartPositions->getVector(useGpu_));
+  outputs.addArg(*out_->grad, ADD_TO);
+  backward_[0]->calc(inputs, outputs);
 
   if (config_.trainable_padding()) {
     weight_->getParameterPtr()->incUpdate(callback);
