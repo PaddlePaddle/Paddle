@@ -9,7 +9,6 @@ The user api could be simpler and carefully designed.
 import random
 
 import paddle.v2 as paddle
-import py_paddle.swig_paddle as api
 
 from mnist_util import read_from_mnist
 
@@ -79,7 +78,7 @@ def main():
     # Create Simple Gradient Machine.
     model_config = paddle.config.parse_network(network_config)
     m = paddle.raw.GradientMachine.createFromConfigProto(
-        model_config, api.CREATE_MODE_NORMAL, enable_types)
+        model_config, paddle.raw.CREATE_MODE_NORMAL, enable_types)
 
     # This type check is not useful. Only enable type hint in IDE.
     # Such as PyCharm
@@ -123,7 +122,7 @@ def main():
 
     # outArgs is Neural Network forward result. Here is not useful, just passed
     # to gradient_machine.forward
-    outArgs = api.Arguments.createArguments(0)
+    outArgs = paddle.raw.Arguments.createArguments(0)
 
     for pass_id in xrange(2):  # we train 2 passes.
         updater.startPass()
@@ -171,7 +170,7 @@ def main():
         test_data_generator = input_order_converter(read_from_mnist(test_file))
         for data_batch in generator_to_batch(test_data_generator, 512):
             # in testing stage, only forward is needed.
-            m.forward(converter(data_batch), outArgs, api.PASS_TEST)
+            m.forward(converter(data_batch), outArgs, paddle.raw.PASS_TEST)
             m.eval(test_evaluator)
 
         # print error rate for test data set
@@ -182,8 +181,8 @@ def main():
         updater.catchUpWith()
         params = m.getParameters()
         for each_param in params:
-            assert isinstance(each_param, api.Parameter)
-            value = each_param.getBuf(api.PARAMETER_VALUE)
+            assert isinstance(each_param, paddle.raw.Parameter)
+            value = each_param.getBuf(paddle.raw.PARAMETER_VALUE)
             value = value.copyToNumpyArray()
 
             # Here, we could save parameter to every where you want
