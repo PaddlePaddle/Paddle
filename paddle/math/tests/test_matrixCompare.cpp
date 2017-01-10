@@ -773,10 +773,11 @@ void testParamReluBackwardDiff(int height,
 }
 
 TEST(Matrix, paramReluBackwardDiff) {
-  for (auto height : {10, 100}) {
-    for (auto width : {10, 100}) {
+  for (auto height : {10, 40, 100}) {
+    for (auto width : {10, 40, 100}) {
       for (auto w_height : {1, 2}) {
         for (auto w_width : {1, 2}) {
+          if (width % (w_height * w_width)) continue;
           testParamReluBackwardDiff(height, width, w_height, w_width);
         }
       }
