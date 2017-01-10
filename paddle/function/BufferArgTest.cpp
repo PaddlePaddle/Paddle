@@ -16,6 +16,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "Function.h"
 #include "paddle/math/MemoryHandle.h"
+#include "paddle/math/SparseMatrix.h"
 
 namespace paddle {
 
