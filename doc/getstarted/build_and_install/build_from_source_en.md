@@ -62,13 +62,12 @@ PaddlePaddle supports some build options.
 
 As a simple example, consider the following:  
 
-1. **Python Dependencies(optional)**
+1. **BLAS Dependencies(optional)**
   
-    To compile PaddlePaddle with python predict API, set `-DWITH_SWIG_PY=ON` as follows:
+    Paddle will find BLAS from system's default path. But you can specify MKL, OpenBLAS or ATLAS via `CBLAS_INC_DIR` and `CBLAS_LIBRARIES`.
 
     ```bash
-    # active swig in cmake
-    cmake .. -DWITH_SWIG_PY=ON
+    cmake .. -DCBLAS_INC_DIR=<cblas_inc> -DCBLAS_LIBRARIES=<cblas_libs>
     ```
 
 2. **Doc Dependencies(optional)**
