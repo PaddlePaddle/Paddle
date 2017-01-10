@@ -9,4 +9,4 @@ import paddle.trainer_config_helpers as tmp
 
 __all__ = ['parse', 'parse_network', 'parse_optimizer']
 
-__all__.extend(tmp.__all__)
+__all__.extend(filter(lambda x: x[:2] != '__', dir(tmp)))

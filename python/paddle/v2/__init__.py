@@ -11,8 +11,8 @@ as our import statement. The API is in flux, never use this package in
 production.
 """
 
-import paddle.trainer_config_helpers as config
-import paddle.v2.data as data
 import py_paddle.swig_paddle as raw
+import config
+import data
 
 __all__ = ['config', 'data', 'raw']
