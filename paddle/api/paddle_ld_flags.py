@@ -40,14 +40,14 @@ try:
             self.paddle_build_dir = PADDLE_BUILD_DIR
             self.paddle_build_dir = os.path.abspath(self.paddle_build_dir)
             self.with_gpu = PaddleLDFlag.cmake_bool(WITH_GPU)
-            self.protolib = PROTOBUF_LIB
-            self.zlib = ZLIB_LIB
+            self.protolib = PROTOBUF_LIBRARY
+            self.zlib = ZLIB_LIBRARIES
             self.thread = CMAKE_THREAD_LIB
             self.dl_libs = CMAKE_DL_LIBS
             self.with_python = PaddleLDFlag.cmake_bool(WITH_PYTHON)
             self.python_libs = PYTHON_LIBRARIES
 
-            self.glog_libs = LIBGLOG_LIBRARY
+            self.glog_libs = GLOG_LIBRARIES
 
             self.with_coverage = PaddleLDFlag.cmake_bool(WITH_COVERALLS)
             self.gflags_location = GFLAGS_LOCATION

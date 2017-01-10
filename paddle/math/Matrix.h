@@ -26,8 +26,8 @@ limitations under the License. */
 #include "BaseMatrix.h"
 #include "MemoryHandle.h"
 #include "Vector.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/common.h"
 
 namespace paddle {
 
@@ -1091,6 +1091,10 @@ public:
       TensorCpuApply<real>(*this, expr);
     }
   }
+
+  bool isEmpty() const { return data_ == nullptr; }
+
+  explicit operator bool() const { return !isEmpty(); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Matrix& mat) {

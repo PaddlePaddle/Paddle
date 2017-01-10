@@ -310,7 +310,7 @@ void initDataLayer(TestConfig testConf,
         testConf.inputDefs[i].labelSeqStartPositions;
     if (labelSeqStartPositions.size() != 0) {
       CHECK(!sequenceStartPositions);
-      CHECK_GE(labelSeqStartPositions.size(), 2);
+      CHECK_GE(static_cast<int>(labelSeqStartPositions.size()), 2);
 
       sequenceStartPositions =
           ICpuGpuVector::create(labelSeqStartPositions.size(), useGpu);

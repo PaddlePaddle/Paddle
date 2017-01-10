@@ -4,7 +4,7 @@
 source ./common.sh
 
 # Compile Documentation only.
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=ON
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_DOC=ON ${EXTRA_CMAKE_OPTS}
 make paddle_docs paddle_docs_cn
 
 # check websites for broken links

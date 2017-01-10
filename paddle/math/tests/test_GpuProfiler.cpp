@@ -15,9 +15,9 @@ limitations under the License. */
 #ifndef PADDLE_ONLY_CPU
 
 #include <gtest/gtest.h>
-#include "paddle/gserver/tests/TestUtil.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
+#include "paddle/testing/TestUtil.h"
 #include "paddle/utils/Stat.h"
 #include "paddle/utils/Util.h"
 
