@@ -34,8 +34,8 @@ def fetch():
     #Set the download dir for cifar.
     data_home = set_data_path(source_name)
     #filepath = data_download(data_home,moses_url)
-    filepath = data_download(data_home,source_url)
-    filepath = data_download(data_home,moses_url)
+    filepath = data_download(data_home, source_url)
+    filepath = data_download(data_home, moses_url)
     """
     for i in range(1, num_batch + 1):
         fpath = os.path.join(filepath, "data_batch_%d" % i)
@@ -59,7 +59,7 @@ def set_data_path(source_name):
          os.makedirs(datadir)
      return datadir
 
-def data_download(download_dir,source_url):
+def data_download(download_dir, source_url):
     src_file = source_url.strip().split('/')[-1]
     file_path = os.path.join(download_dir, src_file)
 
@@ -91,8 +91,8 @@ def data_download(download_dir,source_url):
         print("Data has been already downloaded and unpacked!")
     return download_dir
 
-def move_files(source_dire,target_dire):
-    shutil.move(source_dire,target_dire)
+def move_files(source_dire, target_dire):
+    shutil.move(source_dire, target_dire)
 
 def download_with_urlretrieve(url, filename=None):
     return urllib.request.urlretrieve(url, filename)

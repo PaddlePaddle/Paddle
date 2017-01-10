@@ -32,14 +32,14 @@ def fetch():
     file_source = "cifar-10-batches-py"
     #Set the download dir for cifar.
     data_home = set_data_path(source_name)
-    filepath = data_download(data_home,source_url)
+    filepath = data_download(data_home, source_url)
     """
     for i in range(1, num_batch + 1):
         fpath = os.path.join(filepath, "data_batch_%d" % i)
     """
 
 def set_data_path(source_name):
-     data_base = os.path.expanduser(os.path.join('~','.paddle'))
+     data_base = os.path.expanduser(os.path.join('~', '.paddle'))
      if not os.access(data_base, os.W_OK):
          data_base = os.path.join('/tmp', '.paddle')
      datadir = os.path.join(data_base, source_name)
@@ -48,16 +48,16 @@ def set_data_path(source_name):
          os.makedirs(datadir)
      return datadir
 
-def data_download(download_dir,source_url):
+def data_download(download_dir, source_url):
     for file in filename:
-        data_url = urlparse.urljoin(source_url,file)
-        file_path = os.path.join(download_dir,file)
-        untar_path = os.path.join(download_dir,file.replace(".gz",""))
+        data_url = urlparse.urljoin(source_url, file)
+        file_path = os.path.join(download_dir, file)
+        untar_path = os.path.join(download_dir, file.replace(".gz", ""))
         if not os.path.exists(file_path):
             temp_file_name,_ = download_with_urlretrieve(data_url)
             temp_file_path = os.getcwd()
-            os.rename(temp_file_name,file)
-            move_files(file,download_dir)
+            os.rename(temp_file_name, file)
+            move_files(file, download_dir)
             print("Download finished,Extracting files.")
             g_file = gzip.GzipFile(file_path)
             open(untar_path,'w+').write(g_file.read())
@@ -65,14 +65,14 @@ def data_download(download_dir,source_url):
             print("Unpacking done!")
         else:
             g_file = gzip.GzipFile(file_path)
-            open(untar_path,'w+').write(g_file.read())
+            open(untar_path, 'w+').write(g_file.read())
             g_file.close()
             print("Data has been already downloaded and unpacked!")
         os.remove(file_path)
     return download_dir
 
-def move_files(source_dire,target_dire):
-    shutil.move(source_dire,target_dire)
+def move_files(source_dire, target_dire):
+    shutil.move(source_dire, target_dire)
 
 def download_with_urlretrieve(url, filename=None):
     return urllib.request.urlretrieve(url, filename)
