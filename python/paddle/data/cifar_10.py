@@ -62,7 +62,7 @@ def _unpickle(file_path):
     return data
 
 def set_data_path(source_name):
-     data_base = os.path.expanduser(os.path.join('~','.paddle'))
+     data_base = os.path.expanduser(os.path.join('~', '.paddle'))
      print data_base
      if not os.access(data_base, os.W_OK):
          data_base = os.path.join('/tmp', '.paddle')
@@ -72,14 +72,14 @@ def set_data_path(source_name):
          os.makedirs(datadir)
      return datadir
 
-def data_download(download_dir,source_url):
+def data_download(download_dir, source_url):
     src_file = source_url.strip().split('/')[-1]
-    file_path = os.path.join(download_dir,src_file)
+    file_path = os.path.join(download_dir, src_file)
     if not os.path.exists(file_path):
         temp_file_name,_ = download_with_urlretrieve(source_url)
         temp_file_path = os.getcwd()
-        os.rename(temp_file_name,src_file)
-        move_files(src_file,download_dir)
+        os.rename(temp_file_name, src_file)
+        move_files(src_file, download_dir)
         print("Download finished,Extracting files.")
         tarfile.open(name=file_path, mode="r:gz").extractall(download_dir)
         print("Unpacking done!")
@@ -88,8 +88,8 @@ def data_download(download_dir,source_url):
         print("Data has been already downloaded and unpacked!")
     return download_dir
 
-def move_files(source_dire,target_dire):
-    shutil.move(source_dire,target_dire)
+def move_files(source_dire, target_dire):
+    shutil.move(source_dire, target_dire)
 
 def download_with_urlretrieve(url, filename=None):
     return urllib.request.urlretrieve(url, filename)
