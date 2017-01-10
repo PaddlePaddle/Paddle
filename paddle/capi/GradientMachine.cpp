@@ -1,3 +1,17 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #include "PaddleCAPI.h"
 #include "PaddleCAPIPrivate.h"
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
@@ -21,7 +35,7 @@ NeuralNetwork* newCustomNerualNetwork(const std::string& name,
                                       NeuralNetwork* network) {
   return new MyNeuralNetwork(name, network);
 }
-}
+}  // namespace paddle
 
 extern "C" {
 int PDGradientMachineCreateForPredict(PD_GradiemtMachine* machine,
@@ -91,7 +105,6 @@ int PDGradientMachineCreateSharedParam(PD_GradiemtMachine origin,
              auto p = o->machine->getParameters()[paramId];
              param->enableSharedType(paddle::PARAMETER_VALUE,
                                      p->getBuf(paddle::PARAMETER_VALUE));
-
            },
            {paddle::PARAMETER_VALUE},
            false);
