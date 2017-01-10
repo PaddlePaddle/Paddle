@@ -42,14 +42,14 @@ public:
 
   // get the size of specified dimension
   size_t operator[](size_t dim) const {
-    CHECK_GE(dim, 0);
+    CHECK_GE(dim, (size_t)0);
     CHECK_LT(dim, ndims_);
     return dims_[dim];
   }
 
   // set the size of specified dimension
   void setDim(size_t dim, size_t size) {
-    CHECK_GE(dim, 0);
+    CHECK_GE(dim, (size_t)0);
     CHECK_LT(dim, ndims_);
     dims_[dim] = size;
     numElements();

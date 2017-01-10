@@ -126,7 +126,7 @@ public:
     CHECK(buf_);
     CHECK(valueType_ == DataType<real>::value);
     // CHECK(deviceType_ == DType);
-    CHECK_EQ(2, shape_.ndims());
+    CHECK_EQ((size_t)2, shape_.ndims());
     return typename Tensor<real, DType>::Matrix(
         reinterpret_cast<real*>(buf_), shape_[0], shape_[1]);
   }
@@ -136,7 +136,7 @@ public:
     CHECK(buf_);
     CHECK(valueType_ == DataType<VType>::value);
     // CHECK(deviceType_ == DType);
-    CHECK_EQ(1, shape_.ndims());
+    CHECK_EQ((size_t)1, shape_.ndims());
     return typename Tensor<VType, DType>::Vector(
         shape_[0], reinterpret_cast<VType*>(buf_));
   }
@@ -176,7 +176,7 @@ public:
                 const TensorShape& shape,
                 ArgType argType = UNSPECIFIED)
       : BufferArg(buf, VALUE_TYPE_INT32, shape, argType) {
-    CHECK_EQ(shape_.ndims(), 1);
+    CHECK_EQ(shape_.ndims(), (size_t)1);
     numSeqs_ = shape_[0] - 1;
   }
 
@@ -238,9 +238,9 @@ public:
         format_(format),
         type_(type) {
     CHECK((valueType == VALUE_TYPE_FLOAT) || (valueType == VALUE_TYPE_DOUBLE));
-    CHECK_EQ(shape_.ndims(), 2);
-    CHECK_EQ(row_.shape().ndims(), 1);
-    CHECK_EQ(col_.shape().ndims(), 1);
+    CHECK_EQ(shape_.ndims(), (size_t)2);
+    CHECK_EQ(row_.shape().ndims(), (size_t)1);
+    CHECK_EQ(col_.shape().ndims(), (size_t)1);
     if (format == SPARSE_CSR_FORMAT) {
       CHECK_EQ(nnz, col.shape()[0]);
     } else if (format == SPARSE_CSC_FORMAT) {

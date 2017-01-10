@@ -131,7 +131,7 @@ public:
     CHECK_EQ((size_t)1, inputs.size());
     CHECK_EQ((size_t)2, outputs.size());
 
-    CHECK_EQ(inputs[0].shape().ndims(), 4);
+    CHECK_EQ(inputs[0].shape().ndims(), (size_t)4);
     CHECK(inputs[0].shape() == outputs[0].shape());
     CHECK(inputs[0].shape() == outputs[1].shape());
 
@@ -182,7 +182,7 @@ public:
     CHECK_EQ((size_t)4, inputs.size());
     CHECK_EQ((size_t)1, outputs.size());
 
-    CHECK_EQ(inputs[0].shape().ndims(), 4);
+    CHECK_EQ(inputs[0].shape().ndims(), (size_t)4);
     CHECK(inputs[0].shape() == inputs[1].shape());
     CHECK(inputs[0].shape() == inputs[2].shape());
     CHECK(inputs[0].shape() == inputs[3].shape());

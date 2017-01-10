@@ -85,8 +85,8 @@ public:
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(3, inputs.size());
-    CHECK_EQ(1, outputs.size());
+    CHECK_EQ((size_t)3, inputs.size());
+    CHECK_EQ((size_t)1, outputs.size());
 
     CHECK(outputs[0].data() && inputs[0].data() && inputs[2].data());
     CHECK_EQ(outputs[0].shape().ndims(), (size_t)2);
@@ -193,8 +193,8 @@ public:
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(3, inputs.size());
-    CHECK_EQ(1, outputs.size());
+    CHECK_EQ((size_t)3, inputs.size());
+    CHECK_EQ((size_t)1, outputs.size());
 
     CHECK(outputs[0].data() && inputs[2].data());
     CHECK_EQ(outputs[0].shape().ndims(), (size_t)2);
