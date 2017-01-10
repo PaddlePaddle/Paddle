@@ -40,7 +40,7 @@ option(WITH_RDMA        "Compile PaddlePaddle with RDMA support"        OFF)
 option(WITH_TIMER       "Compile PaddlePaddle with stats timer"         OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler"        OFF)
 option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
-option(ON_COVERALLS     "Compile PaddlePaddle with code coverage"       OFF)
+option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 ########################################################################################
