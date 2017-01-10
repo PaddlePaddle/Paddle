@@ -4,7 +4,8 @@ packages=['paddle',
           'paddle.proto',
           'paddle.trainer',
           'paddle.trainer_config_helpers',
-          'paddle.utils']
+          'paddle.utils',
+	  'paddle.v2']
 
 setup(name='paddle',
       version='${PADDLE_VERSION}',
