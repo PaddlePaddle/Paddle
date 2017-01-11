@@ -17,7 +17,7 @@ cd paddle
 To compile the source code, your computer must be equipped with the following dependencies.
 
 - **Compiler**: GCC >= 4.8 or Clang >= 3.3 (AppleClang >= 5.1)
-- **CMake**: version >= 3.0
+- **CMake**: version >= 3.0 (at least CMake 3.4 on Mac OS X)
 - **BLAS**: MKL, OpenBlas or ATLAS
 
 **Note:** For CUDA 7.0 and CUDA 7.5, GCC 5.0 and up are not supported!
@@ -64,10 +64,13 @@ As a simple example, consider the following:
 
 1. **BLAS Dependencies(optional)**
   
-    Paddle will find BLAS from system's default path. But you can specify MKL, OpenBLAS or ATLAS via `CBLAS_INC_DIR` and `CBLAS_LIBRARIES`.
+    Paddle will find BLAS from system's default path. But you can specify MKL, OpenBLAS or ATLAS via `MKL_ROOT`, `OPENBLAS_ROOT` or `ATLAS_ROOT`.
 
     ```bash
-    cmake .. -DCBLAS_INC_DIR=<cblas_inc> -DCBLAS_LIBRARIES=<cblas_libs>
+    # specify MKL
+    cmake .. -DMKL_ROOT=<mkl_path>
+    # or specify OpenBLAS
+    cmake .. -DOPENBLAS_ROOT=<openblas_path>
     ```
 
 2. **Doc Dependencies(optional)**
