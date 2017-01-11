@@ -16,23 +16,13 @@ Developers can work on PaddlePaddle using Docker.  This allows
 developers to work on different platforms -- Linux, Mac OS X, and
 Windows -- in a consistent way.
 
-The general development workflow with Docker and Bazel is as follows:
+The general development workflow with Docker and CMake is as follows:
 
 1. Get the source code of Paddle:
 
    .. code-block:: bash
 
-      git clone --recursive https://github.com/PaddlePaddle/Paddle.git
-
-   
-   Here **git clone --recursive is required** as we have a submodule `warp-ctc <https://github.com/baidu-research/warp-ctc>`_.
-
-   If you have used :code:`git clone https://github.com/PaddlePaddle/Paddle` and find that the directory :code:`warp-ctc` is
-   empty, please use the following command to get the submodule.
-
-   .. code-block:: bash
-
-      git submodule update --init --recursive
+      git clone https://github.com/PaddlePaddle/Paddle.git
 
 
 2. Build a development Docker image :code:`paddle:dev` from the source
@@ -162,7 +152,6 @@ source code:
    cd ~
    git clone https://github.com/PaddlePaddle/Paddle.git
    cd Paddle
-   git submodule update --init --recursive
    docker build --build-arg WITH_AVX=OFF -t paddle:cpu-noavx -f paddle/scripts/docker/Dockerfile .
    docker build --build-arg WITH_AVX=OFF -t paddle:gpu-noavx -f paddle/scripts/docker/Dockerfile.gpu .
 
