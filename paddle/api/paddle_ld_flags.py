@@ -50,6 +50,7 @@ try:
             self.glog_libs = GLOG_LIBRARIES
 
             self.with_coverage = PaddleLDFlag.cmake_bool(WITH_COVERALLS)
+            self.gflags_libs = GFLAGS_LIBRARIES
             self.gflags_location = GFLAGS_LOCATION
             self.cblas_libs = CBLAS_LIBRARIES
             self.curt = CUDA_LIBRARIES
@@ -87,7 +88,7 @@ try:
                 "-lpaddle_api",
                 self.normalize_flag(self.protolib),
                 self.normalize_flag(self.glog_libs),
-                self.normalize_flag("gflags"),
+                self.normalize_flag(self.gflags_libs),
                 self.normalize_flag(self.zlib),
                 self.normalize_flag(self.thread),
                 self.normalize_flag(self.dl_libs),
@@ -113,7 +114,10 @@ try:
                 return cmake_flag
             elif cmake_flag.startswith("-l"):  # normal link command
                 return cmake_flag
-            elif cmake_flag == "gflags":  # special for gflags
+            elif cmake_flag in [
+                    "gflags-shared", "gflags-static", "gflags_nothreads-shared",
+                    "gflags_nothreads-static"
+            ]:  # special for gflags
                 assert PaddleLDFlag.cmake_bool(self.gflags_location)
                 return self.gflags_location
             elif len(cmake_flag) != 0:
