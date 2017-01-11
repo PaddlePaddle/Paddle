@@ -56,7 +56,7 @@ void ContextProjectionForward(
  */
 template <DeviceType DType>
 void ContextProjectionBackward(
-    typename Tensor<real, DType>::Matrix& out_grad,
+    const typename Tensor<real, DType>::Matrix& out_grad,
     typename Tensor<real, DType>::Matrix& in_grad,
     typename Tensor<real, DType>::Matrix& w_grad,
     const typename Tensor<int, DType>::Vector& seq_vec,

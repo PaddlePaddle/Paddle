@@ -217,7 +217,6 @@ void hl_context_projection_backward_data(const real* out_grad,
 }
 
 template <>
-<<<<<<< HEAD
 void ContextProjectionBackwardData<DEVICE_TYPE_GPU>(const GpuMatrix& out_grad,
                                                     GpuMatrix& in_grad,
                                                     const GpuIVector& sequence,

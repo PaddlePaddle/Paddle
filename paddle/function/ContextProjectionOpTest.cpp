@@ -56,24 +56,25 @@ void testMatrixProjectionForward(int context_start,
   cpu_out.randomizeUniform();
   gpu_out.copyFrom(cpu_out);
 
-  compare.getCpuFunction()->calc(
-      {Tensor(cpu_in.getData(), Dims{batch_size, input_dim}),
-       Tensor(cpu_weight ? cpu_weight->getData() : nullptr,
-              Dims{pad, input_dim}),
-       Tensor(reinterpret_cast<real*>(cpu_seq->getData()),
-              Dims{cpu_seq->getSize()})},
-      {},
-      {Tensor(cpu_out.getData(),
-              Dims{batch_size, input_dim * context_length})});
-  compare.getGpuFunction()->calc(
-      {Tensor(gpu_in.getData(), Dims{batch_size, input_dim}),
-       Tensor(gpu_weight ? gpu_weight->getData() : nullptr,
-              Dims{pad, input_dim}),
-       Tensor(reinterpret_cast<real*>(gpu_seq->getData()),
-              Dims{gpu_seq->getSize()})},
-      {},
-      {Tensor(gpu_out.getData(),
-              Dims{batch_size, input_dim * context_length})});
+  BufferArgs cpu_inputs;
+  BufferArgs cpu_outputs;
+  cpu_inputs.addArg(cpu_in);
+  cpu_inputs.addArg(cpu_weight ? *cpu_weight
+                               : CpuMatrix(nullptr, 0, input_dim));
+  cpu_inputs.addArg(*cpu_seq);
+  cpu_outputs.addArg(cpu_out, ADD_TO);
+
+  compare.getCpuFunction()->calc(cpu_inputs, cpu_outputs);
+
+  BufferArgs gpu_inputs;
+  BufferArgs gpu_outputs;
+  gpu_inputs.addArg(gpu_in);
+  gpu_inputs.addArg(gpu_weight ? *gpu_weight
+                               : GpuMatrix(nullptr, 0, input_dim));
+  gpu_inputs.addArg(*gpu_seq);
+  gpu_outputs.addArg(gpu_out, ADD_TO);
+
+  compare.getGpuFunction()->calc(gpu_inputs, gpu_outputs);
 
   autotest::TensorCheckEqual(cpu_out, gpu_out);
 }
@@ -119,25 +120,25 @@ void testMatrixProjectionBackward(int context_start,
     gpu_w_grad->copyFrom(*cpu_w_grad);
   }
 
-  compare.getCpuFunction()->calc(
-      {Tensor(reinterpret_cast<real*>(cpu_seq->getData()),
-              Dims{cpu_seq->getSize()}),
-       Tensor(cpu_out_grad.getData(),
-              Dims{batch_size, input_dim * context_length})},
-      {},
-      {Tensor(cpu_in_grad.getData(), Dims{batch_size, input_dim}),
-       Tensor(cpu_w_grad ? cpu_w_grad->getData() : nullptr,
-              Dims{pad, input_dim})});
+  BufferArgs cpu_inputs;
+  BufferArgs cpu_outputs;
+  cpu_inputs.addArg(*cpu_seq);
+  cpu_inputs.addArg(cpu_out_grad);
+  cpu_outputs.addArg(cpu_in_grad, ADD_TO);
+  cpu_outputs.addArg(
+      cpu_w_grad ? *cpu_w_grad : CpuMatrix(nullptr, 0, input_dim), ADD_TO);
 
-  compare.getGpuFunction()->calc(
-      {Tensor(reinterpret_cast<real*>(gpu_seq->getData()),
-              Dims{gpu_seq->getSize()}),
-       Tensor(gpu_out_grad.getData(),
-              Dims{batch_size, input_dim * context_length})},
-      {},
-      {Tensor(gpu_in_grad.getData(), Dims{batch_size, input_dim}),
-       Tensor(gpu_w_grad ? gpu_w_grad->getData() : nullptr,
-              Dims{pad, input_dim})});
+  compare.getCpuFunction()->calc(cpu_inputs, cpu_outputs);
+
+  BufferArgs gpu_inputs;
+  BufferArgs gpu_outputs;
+  gpu_inputs.addArg(*gpu_seq);
+  gpu_inputs.addArg(gpu_out_grad);
+  gpu_outputs.addArg(gpu_in_grad, ADD_TO);
+  gpu_outputs.addArg(
+      gpu_w_grad ? *gpu_w_grad : GpuMatrix(nullptr, 0, input_dim), ADD_TO);
+
+  compare.getGpuFunction()->calc(gpu_inputs, gpu_outputs);
 
   autotest::TensorCheckErr(cpu_in_grad, gpu_in_grad);
   if (is_padding) {

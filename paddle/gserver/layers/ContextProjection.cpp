@@ -166,13 +166,16 @@ void ContextProjection::backward(const UpdateCallback& callback) {
 
   BufferArgs inputs;
   BufferArgs outputs;
-  inputs.addArg(CpuMatrix(
-      in_->grad ? in_->grad->getData() : nullptr, batch_size, input_dim));
-  inputs.addArg(CpuMatrix(w_ptr ? w_ptr->getData() : nullptr,
-                          w_ptr ? w_ptr->getHeight() : 0,
-                          input_dim));
   inputs.addArg(*in_->sequenceStartPositions->getVector(useGpu_));
-  outputs.addArg(*out_->grad, ADD_TO);
+  inputs.addArg(*out_->grad);
+  outputs.addArg(
+      CpuMatrix(
+          in_->grad ? in_->grad->getData() : nullptr, batch_size, input_dim),
+      ADD_TO);
+  outputs.addArg(CpuMatrix(w_ptr ? w_ptr->getData() : nullptr,
+                           w_ptr ? w_ptr->getHeight() : 0,
+                           input_dim),
+                 ADD_TO);
   backward_[0]->calc(inputs, outputs);
 
   if (config_.trainable_padding()) {

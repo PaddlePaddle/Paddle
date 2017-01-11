@@ -125,11 +125,11 @@ public:
 
     CHECK_EQ(outputs[0].getArgType(), ADD_TO);
     auto out_mat = outputs[0].matrix<Device>();
-    auto in_mat = inputs[0].matrix<Device>();
-    auto w_mat = !inputs[1].data()
-                     ? typename Tensor<real, Device>::Matrix(nullptr, 0, 0)
-                     : inputs[1].matrix<Device>();
-    auto seq_vec = inputs[2].vector<int, Device>();
+    const auto in_mat = inputs[0].matrix<Device>();
+    const auto w_mat =
+        !inputs[1].data() ? typename Tensor<real, Device>::Matrix(nullptr, 0, 0)
+                          : inputs[1].matrix<Device>();
+    const auto seq_vec = inputs[2].vector<int, Device>();
     ContextProjectionForward<Device>(out_mat,
                                      in_mat,
                                      w_mat,
@@ -150,7 +150,6 @@ private:
  *
  */
 template <>
-<<<<<<< HEAD
 void ContextProjectionBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad_mat,
                                                 CpuMatrix& in_grad_mat,
                                                 CpuMatrix& w_grad_mat,
@@ -174,7 +173,8 @@ void ContextProjectionBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad_mat,
         int64_t pad_size =
             std::min(starts[i] - begin, starts[i + 1] - starts[i]);
         if (is_padding && w_grad_mat) {
-          MatrixPtr mat = out_grad_mat.subMatrix(starts[i], pad_size);
+          MatrixPtr mat = const_cast<CpuMatrix&>(out_grad_mat)
+                              .subMatrix(starts[i], pad_size);
           MatrixPtr sub = w_grad_mat.subMatrix(j, pad_size);
           sub->addAtOffset(*mat, j * input_dim);
         }
@@ -185,8 +185,8 @@ void ContextProjectionBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad_mat,
         int64_t pad_size =
             std::min(end - starts[i + 1], starts[i + 1] - starts[i]);
         if (is_padding && w_grad_mat) {
-          MatrixPtr mat =
-              out_grad_mat.subMatrix(starts[i + 1] - pad_size, pad_size);
+          MatrixPtr mat = const_cast<CpuMatrix&>(out_grad_mat)
+                              .subMatrix(starts[i + 1] - pad_size, pad_size);
           MatrixPtr sub = w_grad_mat.subMatrix(
               begin_pad + context_start + j - pad_size, pad_size);
           sub->addAtOffset(*mat, j * input_dim);
@@ -197,7 +197,8 @@ void ContextProjectionBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad_mat,
       if (end <= begin) continue;
       if (!in_grad_mat) continue;
       MatrixPtr src = in_grad_mat.subMatrix(begin, end - begin);
-      MatrixPtr dst = out_grad_mat.subMatrix(dst_begin, dst_end - dst_begin);
+      MatrixPtr dst = const_cast<CpuMatrix&>(out_grad_mat)
+                          .subMatrix(dst_begin, dst_end - dst_begin);
       src->addAtOffset(*dst, j * input_dim);
     }
   }
@@ -207,10 +208,10 @@ void ContextProjectionBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad_mat,
  * Context Projection Backward Function.
  * Update the weight gradient and input layer gradient with backprop
  *
- * \param inputs[0]      input sequence.
- * \param inputs[1]      output grad.
- * \param inouts[0]      input grad.
- * \param inouts[1]      weight grad.
+ * \param inputs[0]       input sequence.
+ * \param inputs[1]       output layer grad.
+ * \param outputs[0]      input layer grad.
+ * \param outputs[1]      weight grad.
  */
 template <DeviceType Device>
 class ContextProjectionBackwardFunc : public FunctionBase {
@@ -224,32 +225,34 @@ public:
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ((size_t)3, inputs.size());
-    CHECK_EQ((size_t)1, outputs.size());
+    CHECK_EQ((size_t)2, inputs.size());
+    CHECK_EQ((size_t)2, outputs.size());
 
-    CHECK(outputs[0].data() && inputs[2].data());
-    CHECK_EQ(outputs[0].shape().ndims(), (size_t)2);
-    CHECK_EQ(inputs[0].shape().ndims(), (size_t)2);
+    CHECK(inputs[0].data() && inputs[1].data());
+    CHECK_EQ(inputs[0].shape().ndims(), (size_t)1);
     CHECK_EQ(inputs[1].shape().ndims(), (size_t)2);
-    CHECK_EQ(inputs[2].shape().ndims(), (size_t)1);
+    CHECK_EQ(outputs[0].shape().ndims(), (size_t)2);
+    CHECK_EQ(outputs[1].shape().ndims(), (size_t)2);
 
-    /// dim of input == dim of weight
-    CHECK_EQ(inputs[0].shape()[1], inputs[1].shape()[1]);
-    /// input and output has the same batch_size
-    CHECK_EQ(inputs[0].shape()[0], outputs[0].shape()[0]);
-    /// dim of output = dim of input * context_length
-    CHECK_EQ(outputs[0].shape()[1], inputs[0].shape()[1] * context_length_);
+    /// dim of input grad == dim of weight
+    CHECK_EQ(outputs[0].shape()[1], outputs[1].shape()[1]);
+    /// input and output grad has the same batch_size
+    CHECK_EQ(outputs[0].shape()[0], inputs[1].shape()[0]);
+    /// dim of output val = dim of input grad * context_length
+    CHECK_EQ(inputs[1].shape()[1], outputs[0].shape()[1] * context_length_);
 
     CHECK_EQ(outputs[0].getArgType(), ADD_TO);
+    CHECK_EQ(outputs[1].getArgType(), ADD_TO);
 
-    auto out_grad_mat = outputs[0].matrix<Device>();
+    const auto seq_vec = inputs[0].vector<int, Device>();
+    const auto out_grad_mat = inputs[1].matrix<Device>();
     auto in_grad_mat =
-        !inputs[0].data() ? typename Tensor<real, Device>::Matrix(nullptr, 0, 0)
-                          : inputs[0].matrix<Device>();
-    auto w_grad_mat = !inputs[1].data()
+        !outputs[0].data()
+            ? typename Tensor<real, Device>::Matrix(nullptr, 0, 0)
+            : outputs[0].matrix<Device>();
+    auto w_grad_mat = !outputs[1].data()
                           ? typename Tensor<real, Device>::Matrix(nullptr, 0, 0)
-                          : inputs[1].matrix<Device>();
-    auto seq_vec = inputs[2].vector<int, Device>();
+                          : outputs[1].matrix<Device>();
     ContextProjectionBackward<Device>(out_grad_mat,
                                       in_grad_mat,
                                       w_grad_mat,
@@ -269,112 +272,6 @@ private:
   size_t total_pad_;
 };
 
-#if 0
-/**
- * Context Projection Backward Data Function.
- * Update gradient of the input layer with backprop.
- *
- * \param inouts[0]    input grad.
- * \param inputs[0]    input sequence.
- * \param inputs[1]    output grad.
- */
-template <DeviceType Device>
-class ContextProjectionBackwardDataFunc : public FunctionBase {
-public:
-  void init(const FuncConfig& config) override {
-    context_length_ = config.get<size_t>("context_length");
-    context_start_ = config.get<int>("context_start");
-  }
-
-  void calc(const Arguments& inputs,
-            const Arguments& outputs,
-            const Arguments& inouts) override {
-    CHECK_EQ(2, inputs.size());
-    CHECK_EQ(0, outputs.size());
-    CHECK_EQ(1, inouts.size());
-
-    CHECK(inouts[0].getData() && inputs[0].getData() && inputs[1].getData());
-    CHECK_EQ(inputs[0].dims_.size(), 1);
-    CHECK_EQ(inputs[1].dims_.size(), 2);
-    CHECK_EQ(inouts[0].dims_.size(), 2);
-    CHECK_EQ(inputs[1].dims_[1], inouts[0].dims_[1] * context_length_);
-    /// input and output grad have the same batch_size
-    CHECK_EQ(inouts[0].dims_[0], inputs[1].dims_[0]);
-
-    typename SequenceT<Device>::type seq_vec(
-        inputs[0].dims_[0], reinterpret_cast<int*>(inputs[0].getData()));
-    const auto out_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[1].getData(), inputs[1].dims_[0], inputs[1].dims_[1]);
-    auto in_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
-        inouts[0].getData(), inouts[0].dims_[0], inouts[0].dims_[1]);
-
-    ContextProjectionBackwardData<Device>(out_grad_mat.get(),
-                                          in_grad_mat.get(),
-                                          seq_vec,
-                                          context_length_,
-                                          context_start_);
-  }
-
-private:
-  size_t context_length_;
-  int context_start_;
-};
-
-/**
- * Context Projection Backward Weight Function.
- * Update weight gradient with backprop.
- *
- * \param inouts[0]    weight grad.
- * \param inputs[0]    input sequence.
- * \param inputs[1]    output grad.
- */
-template <DeviceType Device>
-class ContextProjectionBackwardWeightFunc : public FunctionBase {
-public:
-  void init(const FuncConfig& config) override {
-    context_length_ = config.get<size_t>("context_length");
-    context_start_ = config.get<int>("context_start");
-    begin_pad_ = config.get<size_t>("begin_pad");
-    total_pad_ = config.get<size_t>("total_pad");
-  }
-
-  void calc(const Arguments& inputs,
-            const Arguments& outputs,
-            const Arguments& inouts) override {
-    CHECK_EQ(2, inputs.size());
-    CHECK_EQ(0, outputs.size());
-    CHECK_EQ(1, inouts.size());
-
-    CHECK(inouts[0].getData() && inputs[0].getData() && inputs[1].getData());
-    CHECK_EQ(inputs[0].dims_.size(), 1);
-    CHECK_EQ(inputs[1].dims_.size(), 2);
-    CHECK_EQ(inouts[0].dims_.size(), 2);
-    CHECK_EQ(inputs[1].dims_[1], inouts[0].dims_[1] * context_length_);
-
-    typename SequenceT<Device>::type seq_vec(
-        inputs[0].dims_[0], reinterpret_cast<int*>(inputs[0].getData()));
-    const auto out_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[1].getData(), inputs[1].dims_[0], inputs[1].dims_[1]);
-    auto w_grad_mat = std::make_shared<typename MatrixT<Device>::type>(
-        inouts[0].getData(), inouts[0].dims_[0], inouts[0].dims_[1]);
-
-    ContextProjectionBackwardWeight<Device>(out_grad_mat.get(),
-                                            w_grad_mat.get(),
-                                            seq_vec,
-                                            context_length_,
-                                            context_start_,
-                                            total_pad_,
-                                            begin_pad_);
-  }
-
-private:
-  size_t context_length_;
-  int context_start_;
-  size_t begin_pad_;
-  size_t total_pad_;
-};
-#endif
-
 REGISTER_TYPED_FUNC(ContextProjectionForward,
                     CPU,
                     ContextProjectionForwardFunc);
@@ -388,13 +285,5 @@ REGISTER_TYPED_FUNC(ContextProjectionForward,
 REGISTER_TYPED_FUNC(ContextProjectionBackward,
                     GPU,
                     ContextProjectionBackwardFunc);
-#if 0
-REGISTER_TYPED_FUNC(ContextProjectionBackwardData,
-                    GPU,
-                    ContextProjectionBackwardDataFunc);
-REGISTER_TYPED_FUNC(ContextProjectionBackwardWeight,
-                    GPU,
-                    ContextProjectionBackwardWeightFunc);
-#endif
 #endif
 }  // namespace paddle
