@@ -14,5 +14,6 @@ production.
 import py_paddle.swig_paddle as raw
 import config
 import data
+import paddle.proto as proto
 
-__all__ = ['config', 'data', 'raw']
+__all__ = ['config', 'data', 'raw', 'proto']
