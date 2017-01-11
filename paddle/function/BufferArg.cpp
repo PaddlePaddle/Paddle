@@ -15,6 +15,7 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include "BufferArg.h"
+#include "paddle/math/SparseMatrix.h"
 
 namespace paddle {
 
@@ -27,5 +28,15 @@ const SparseMatrixArg& BufferArg::sparse() const {
   // CHECK_EQ(bufferType_, TENSOR_SPARSE);
   return dynamic_cast<const SparseMatrixArg&>(*this);
 }
+
+SparseMatrixArg::SparseMatrixArg(const CpuSparseMatrix& sparse, ArgType argType)
+    : BufferArg(sparse, argType),
+      row_(reinterpret_cast<void*>(sparse.getRows()), VALUE_TYPE_INT32),
+      col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32) {}
+
+SparseMatrixArg::SparseMatrixArg(const GpuSparseMatrix& sparse, ArgType argType)
+    : BufferArg(sparse, argType),
+      row_(reinterpret_cast<void*>(sparse.getRows()), VALUE_TYPE_INT32),
+      col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32) {}
 
 }  // namespace paddle
