@@ -47,6 +47,7 @@ class Cifar10Data(object):
                  meta,
                  train_file_list,
                  test_file_list,
+                 batch_size,
                  img_size=32,
                  mean_img_size=32,
                  num_classes=10,
@@ -64,7 +65,7 @@ class Cifar10Data(object):
             self.img_raw_size = self.img_size * self.img_size
         self.meta_path = meta
         self.use_jpeg = use_jpeg
-        self.batch_size = 128
+        self.batch_size = batch_size
         self.img_mean = image_util.load_meta(self.meta_path, self.mean_img_size,
                                              self.img_size, self.is_color)
 

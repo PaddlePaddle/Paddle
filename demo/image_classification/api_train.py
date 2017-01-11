@@ -25,7 +25,9 @@ from paddle.trainer_config_helpers import *
 
 import cifar_util
 
-data_size = 3 * 32 * 32
+# some global parameter.
+image_size = 32
+data_size = 3 * image_size * image_size
 label_size = 10
 
 
@@ -64,9 +66,10 @@ def main():
 
     # prepare cifar-10 data.
     cifar_data = cifar_util.Cifar10Data(
-        img_size=32,
-        mean_img_size=32,
-        num_classes=10,
+        img_size=image_size,
+        mean_img_size=image_size,
+        num_classes=label_size,
+        batch_size=128,
         train_file_list='data/cifar-out/batches/train.txt',
         test_file_list='data/cifar-out/batches/test.txt',
         meta='data/cifar-out/batches/batches.meta')
