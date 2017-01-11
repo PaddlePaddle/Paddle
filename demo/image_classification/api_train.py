@@ -20,8 +20,8 @@ passed to C++ side of Paddle.
 The user api should be simpler and carefully designed.
 """
 import numpy as np
-import py_paddle.swig_paddle as api
-from paddle.trainer_config_helpers import *
+import paddle.trainer_config_helpers as config_helpers
+import py_paddle.swig_paddle as swig_api
 
 import cifar_util
 
@@ -33,36 +33,39 @@ label_size = 10
 
 def optimizer_config():
     """Function to config optimizer."""
-    settings(
+    config_helpers.optimizers.settings(
         batch_size=128,
         learning_rate=0.1 / 128.0,
-        learning_method=MomentumOptimizer(0.9),
-        regularization=L2Regularization(0.0005 * 128))
+        learning_method=config_helpers.optimizers.MomentumOptimizer(0.9),
+        regularization=config_helpers.optimizers.L2Regularization(0.0005 * 128))
 
 
 def network_config():
     """Function to config neural network."""
-    img = data_layer(name='image', size=data_size)
-    lbl = data_layer(name='label', size=label_size)
-    hidden1 = fc_layer(input=img, size=200)
-    hidden2 = fc_layer(input=hidden1, size=200)
-    inference = fc_layer(input=hidden2, size=10, act=SoftmaxActivation())
-    cost = classification_cost(input=inference, label=lbl)
-    outputs(cost)
+    img = config_helpers.layers.data_layer(name='image', size=data_size)
+    lbl = config_helpers.layers.data_layer(name='label', size=label_size)
+    hidden1 = config_helpers.layers.fc_layer(input=img, size=200)
+    hidden2 = config_helpers.layers.fc_layer(input=hidden1, size=200)
+    inference = config_helpers.layers.fc_layer(
+        input=hidden2,
+        size=10,
+        act=config_helpers.activations.SoftmaxActivation())
+    cost = config_helpers.layers.classification_cost(input=inference, label=lbl)
+    config_helpers.networks.outputs(cost)
 
 
 def init_parameter(gradient_machine):
     """Function to init parameter inside gradient machine"""
-    assert isinstance(gradient_machine, api.GradientMachine)
+    assert isinstance(gradient_machine, swig_api.GradientMachine)
     for each_param in gradient_machine.getParameters():
-        assert isinstance(each_param, api.Parameter)
+        assert isinstance(each_param, swig_api.Parameter)
         array_size = len(each_param)
         array = np.random.uniform(-1.0, 1.0, array_size).astype('float32')
-        each_param.getBuf(api.PARAMETER_VALUE).copyFromNumpyArray(array)
+        each_param.getBuf(swig_api.PARAMETER_VALUE).copyFromNumpyArray(array)
 
 
 def main():
-    api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
+    swig_api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
 
     # prepare cifar-10 data.
     cifar_data = cifar_util.Cifar10Data(
@@ -78,19 +81,21 @@ def main():
     # enable_types = [value, gradient, momentum, etc]
     # For each optimizer(SGD, Adam), GradientMachine should enable different
     # buffers.
-    opt_config_proto = parse_optimizer_config(optimizer_config)
-    opt_config = api.OptimizationConfig.createFromProto(opt_config_proto)
-    _temp_optimizer_ = api.ParameterOptimizer.create(opt_config)
+    opt_config_proto = config_helpers.config_parser_utils.parse_optimizer_config(
+        optimizer_config)
+    opt_config = swig_api.OptimizationConfig.createFromProto(opt_config_proto)
+    _temp_optimizer_ = swig_api.ParameterOptimizer.create(opt_config)
     enable_types = _temp_optimizer_.getParameterTypes()
 
     # Create Simple Gradient Machine.
-    model_config = parse_network_config(network_config)
-    gradient_machine = api.GradientMachine.createFromConfigProto(
-        model_config, api.CREATE_MODE_NORMAL, enable_types)
+    model_config = config_helpers.config_parser_utils.parse_network_config(
+        network_config)
+    gradient_machine = swig_api.GradientMachine.createFromConfigProto(
+        model_config, swig_api.CREATE_MODE_NORMAL, enable_types)
 
     # This type check is not useful. Only enable type hint in IDE.
     # Such as PyCharm
-    assert isinstance(gradient_machine, api.GradientMachine)
+    assert isinstance(gradient_machine, swig_api.GradientMachine)
 
     # Initialize Parameter by numpy.
     init_parameter(gradient_machine=gradient_machine)
@@ -98,8 +103,8 @@ def main():
     # Create Local Updater. Local means not run in cluster.
     # For a cluster training, here we can change to createRemoteUpdater
     # in future.
-    updater = api.ParameterUpdater.createLocalUpdater(opt_config)
-    assert isinstance(updater, api.ParameterUpdater)
+    updater = swig_api.ParameterUpdater.createLocalUpdater(opt_config)
+    assert isinstance(updater, swig_api.ParameterUpdater)
 
     # Initialize ParameterUpdater.
     updater.init(gradient_machine)
@@ -115,7 +120,7 @@ def main():
 
     # output_arguments is Neural Network forward result. Here is not useful, just passed
     # to gradient_machine.forward
-    output_arguments = api.Arguments.createArguments(0)
+    output_arguments = swig_api.Arguments.createArguments(0)
 
     for pass_id in xrange(3):  # we train 2 passes.
         updater.startPass()
@@ -166,7 +171,7 @@ def main():
             # in testing stage, only forward is needed.
             gradient_machine.forward(
                 cifar_data.data_converter.convert(data_batch), output_arguments,
-                api.PASS_TEST)
+                swig_api.PASS_TEST)
             gradient_machine.eval(test_evaluator)
 
         # print error rate for test data set
@@ -177,8 +182,8 @@ def main():
         updater.catchUpWith()
         params = gradient_machine.getParameters()
         for each_param in params:
-            assert isinstance(each_param, api.Parameter)
-            value = each_param.getBuf(api.PARAMETER_VALUE)
+            assert isinstance(each_param, swig_api.Parameter)
+            value = each_param.getBuf(swig_api.PARAMETER_VALUE)
             value = value.copyToNumpyArray()
 
             # Here, we could save parameter to every where you want
