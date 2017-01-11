@@ -36,16 +36,20 @@ void testCosSimForward(size_t height_x,
   CpuMatrix cpu_out(height_x, 1);
   GpuMatrix gpu_out(height_x, 1);
 
-  compare.getCpuFunction()->calc(
-      {Tensor(cpu_arg1.getData(), Dims{height_x, width}),
-       Tensor(cpu_arg2.getData(), Dims{height_y, width})},
-      {Tensor(cpu_out.getData(), Dims{height_x, 1})},
-      {});
-  compare.getGpuFunction()->calc(
-      {Tensor(gpu_arg1.getData(), Dims{height_x, width}),
-       Tensor(gpu_arg2.getData(), Dims{height_y, width})},
-      {Tensor(gpu_out.getData(), Dims{height_x, 1})},
-      {});
+  BufferArgs cpu_inputs;
+  BufferArgs cpu_outputs;
+  cpu_inputs.addArg(cpu_arg1);
+  cpu_inputs.addArg(cpu_arg2);
+  cpu_outputs.addArg(cpu_out, ASSIGN_TO);
+
+  BufferArgs gpu_inputs;
+  BufferArgs gpu_outputs;
+  gpu_inputs.addArg(gpu_arg1);
+  gpu_inputs.addArg(gpu_arg2);
+  gpu_outputs.addArg(gpu_out, ASSIGN_TO);
+
+  compare.getCpuFunction()->calc(cpu_inputs, cpu_outputs);
+  compare.getGpuFunction()->calc(gpu_inputs, gpu_outputs);
 
   autotest::TensorCheckErr(cpu_out, gpu_out);
 }
@@ -96,23 +100,26 @@ void testCosSimBackward(size_t height_x,
   gpu_in1_grad.copyFrom(cpu_in1_grad);
   gpu_in2_grad.copyFrom(cpu_in2_grad);
 
-  compare.getCpuFunction()->calc(
-      {Tensor(cpu_out_grad.getData(), Dims{height_x, 1}),
-       Tensor(cpu_out_val.getData(), Dims{height_x, 1}),
-       Tensor(cpu_in1_val.getData(), Dims{height_x, width}),
-       Tensor(cpu_in2_val.getData(), Dims{height_x, width})},
-      {},
-      {Tensor(cpu_in1_grad.getData(), Dims{height_x, width}),
-       Tensor(cpu_in2_grad.getData(), Dims{height_x, width})});
+  BufferArgs cpu_inputs;
+  BufferArgs cpu_outputs;
+  cpu_inputs.addArg(cpu_out_grad);
+  cpu_inputs.addArg(cpu_out_val);
+  cpu_inputs.addArg(cpu_in1_val);
+  cpu_inputs.addArg(cpu_in2_val);
+  cpu_outputs.addArg(cpu_in1_grad, ADD_TO);
+  cpu_outputs.addArg(cpu_in2_grad, ADD_TO);
 
-  compare.getGpuFunction()->calc(
-      {Tensor(gpu_out_grad.getData(), Dims{height_x, 1}),
-       Tensor(gpu_out_val.getData(), Dims{height_x, 1}),
-       Tensor(gpu_in1_val.getData(), Dims{height_x, width}),
-       Tensor(gpu_in2_val.getData(), Dims{height_x, width})},
-      {},
-      {Tensor(gpu_in1_grad.getData(), Dims{height_x, width}),
-       Tensor(gpu_in2_grad.getData(), Dims{height_x, width})});
+  BufferArgs gpu_inputs;
+  BufferArgs gpu_outputs;
+  gpu_inputs.addArg(gpu_out_grad);
+  gpu_inputs.addArg(gpu_out_val);
+  gpu_inputs.addArg(gpu_in1_val);
+  gpu_inputs.addArg(gpu_in2_val);
+  gpu_outputs.addArg(gpu_in1_grad, ADD_TO);
+  gpu_outputs.addArg(gpu_in2_grad, ADD_TO);
+
+  compare.getCpuFunction()->calc(cpu_inputs, cpu_outputs);
+  compare.getGpuFunction()->calc(gpu_inputs, gpu_outputs);
 
   autotest::TensorCheckErr(cpu_in1_grad, gpu_in1_grad);
   autotest::TensorCheckErr(cpu_in2_grad, gpu_in2_grad);

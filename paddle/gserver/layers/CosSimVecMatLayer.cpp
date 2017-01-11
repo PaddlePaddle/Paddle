@@ -12,11 +12,44 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "CosSimVecMatLayer.h"
+#include "Layer.h"
+#include "paddle/math/Matrix.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
+/**
+ * @brief A layer for computing cosine similarity between a vector
+ * and each row of a matrix
+ * out[i] = cos_scale * cos(in1, in2(i,:));
+ * @note used in NEURAL TURING MACHINE
+ *
+ * Input1: a vector (batchSize * dataDim)
+ *
+ * Input2: a matrix in vector form (batchSize * (weightDim*dataDim))
+ *
+ * Output: a vector (batchSize * weightDim)
+ */
+
+class CosSimVecMatLayer : public Layer {
+public:
+  explicit CosSimVecMatLayer(const LayerConfig& config) : Layer(config) {}
+
+  ~CosSimVecMatLayer() {}
+
+  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+
+  void forward(PassType passType);
+  void backward(const UpdateCallback& callback = nullptr);
+
+protected:
+  MatrixPtr tmpMtx0;
+  MatrixPtr tmpMtx1;
+  MatrixPtr tmpRow0;
+  MatrixPtr tmpRow1;
+  MatrixPtr tmpRow2;
+  MatrixPtr tmpRow3;
+};
 
 /**
  * @brief A layer for computing cosine similarity between a vector
@@ -98,7 +131,6 @@ bool CosSimVecMatLayer::init(const LayerMap& layerMap,
                            /* trans= */ false,
                            useGpu_);
 
-  /// todo(tianbing), do we really need to check these shared pointers?
   CHECK(tmpRow0 && tmpRow1 && tmpRow2 && tmpRow3 && tmpMtx0 && tmpMtx1);
 
   createFunction(forward_,
@@ -136,13 +168,12 @@ void CosSimVecMatLayer::forward(PassType passType) {
     tmpMtx0->setData(inV1->rowBuf(i));
     tmpRow2->setData(outV->rowBuf(i));
 
-    forward_[0]->calc({Tensor(tmpMtx0->getData(),
-                              Dims{tmpMtx0->getHeight(), tmpMtx0->getWidth()}),
-                       Tensor(tmpRow0->getData(),
-                              Dims{tmpRow0->getHeight(), tmpRow0->getWidth()})},
-                      {Tensor(tmpRow2->getData(),
-                              Dims{tmpRow2->getHeight(), tmpRow2->getWidth()})},
-                      {});
+    BufferArgs inputs;
+    BufferArgs outputs;
+    inputs.addArg(*tmpMtx0);
+    inputs.addArg(*tmpRow0);
+    outputs.addArg(*tmpRow2, ASSIGN_TO);
+    forward_[0]->calc(inputs, outputs);
   }
 }
 
@@ -168,20 +199,16 @@ void CosSimVecMatLayer::backward(const UpdateCallback& callback) {
     tmpRow2->setData(outV->rowBuf(i));
     tmpRow3->setData(outG->rowBuf(i));
 
-    backward_[0]->calc(
-        {Tensor(tmpRow3->getData(),
-                Dims{tmpRow3->getHeight(), tmpRow3->getWidth()}),
-         Tensor(tmpRow2->getData(),
-                Dims{tmpRow2->getHeight(), tmpRow2->getWidth()}),
-         Tensor(tmpMtx0->getData(),
-                Dims{tmpMtx0->getHeight(), tmpMtx0->getWidth()}),
-         Tensor(tmpRow0->getData(),
-                Dims{tmpRow0->getHeight(), tmpRow0->getWidth()})},
-        {},
-        {Tensor(tmpMtx1->getData(),
-                Dims{tmpMtx1->getHeight(), tmpMtx1->getWidth()}),
-         Tensor(tmpRow1->getData(),
-                Dims{tmpRow1->getHeight(), tmpRow1->getWidth()})});
+    BufferArgs inputs;
+    BufferArgs outputs;
+    inputs.addArg(*tmpRow3);
+    inputs.addArg(*tmpRow2);
+    inputs.addArg(*tmpMtx0);
+    inputs.addArg(*tmpRow0);
+    outputs.addArg(*tmpMtx1, ADD_TO);
+    outputs.addArg(*tmpRow1, ADD_TO);
+
+    backward_[0]->calc(inputs, outputs);
   }
 }
 

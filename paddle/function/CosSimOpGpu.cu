@@ -65,12 +65,12 @@ __global__ void KeCosSim(real* output,
 }
 
 void hlCossim(real* output,
-               const real* input1,
-               const real* input2,
-               size_t width,
-               size_t input1_height,
-               size_t input2_height,
-               real scale) {
+              const real* input1,
+              const real* input2,
+              size_t width,
+              size_t input1_height,
+              size_t input2_height,
+              real scale) {
   CHECK_NOTNULL(output);
   CHECK_NOTNULL(input1);
   CHECK_NOTNULL(input2);
@@ -84,20 +84,20 @@ void hlCossim(real* output,
 }
 
 template <>
-void CosSimForward<DEVICE_TYPE_GPU>(GpuMatrix* out_mat,
-                                    const GpuMatrix* in1_mat,
-                                    const GpuMatrix* in2_mat,
+void CosSimForward<DEVICE_TYPE_GPU>(GpuMatrix& out_mat,
+                                    const GpuMatrix& in1_mat,
+                                    const GpuMatrix& in2_mat,
                                     real scale) {
-  CHECK(out_mat && in1_mat && in2_mat);
-  CHECK(in1_mat->useGpu_ == true && in2_mat->useGpu_ == true)
+  CHECK(out_mat.getData() && in1_mat.getData() && in2_mat.getData());
+  CHECK(in1_mat.useGpu_ == true && in2_mat.useGpu_ == true)
       << "Matrix type are not GPU";
 
-  size_t num_samples = out_mat->getHeight();
-  size_t dim = in1_mat->getWidth();
-  real* out = out_mat->getData();
-  const real* x = in1_mat->getData();
-  const real* y = in2_mat->getData();
-  hlCossim(out, x, y, dim, in1_mat->getHeight(), in2_mat->getHeight(), scale);
+  size_t num_samples = out_mat.getHeight();
+  size_t dim = in1_mat.getWidth();
+  real* out = out_mat.getData();
+  const real* x = in1_mat.getData();
+  const real* y = in2_mat.getData();
+  hlCossim(out, x, y, dim, in1_mat.getHeight(), in2_mat.getHeight(), scale);
 }
 
 template<int block_size>
@@ -206,25 +206,26 @@ void hlCossimDerivative(const real* grad,
 }
 
 template <>
-void CosSimBackward<DEVICE_TYPE_GPU>(const GpuMatrix* out_grad,
-                                     const GpuMatrix* out_val,
-                                     const GpuMatrix* in1_val,
-                                     const GpuMatrix* in2_val,
-                                     GpuMatrix* in1_grad,
-                                     GpuMatrix* in2_grad,
+void CosSimBackward<DEVICE_TYPE_GPU>(const GpuMatrix& out_grad,
+                                     const GpuMatrix& out_val,
+                                     const GpuMatrix& in1_val,
+                                     const GpuMatrix& in2_val,
+                                     GpuMatrix& in1_grad,
+                                     GpuMatrix& in2_grad,
                                      real scale) {
-  CHECK(out_grad && out_val && in1_val && in2_val && in1_grad && in2_grad);
-  CHECK(out_grad->useGpu_ && out_val->useGpu_ && in1_val->useGpu_
-        && in2_val->useGpu_ && in1_grad->useGpu_ && in2_grad->useGpu_)
+  CHECK(out_grad.getData() && out_val.getData() && in1_val.getData() &&
+        in2_val.getData() && in1_grad.getData() && in2_grad.getData());
+  CHECK(out_grad.useGpu_ && out_val.useGpu_ && in1_val.useGpu_
+        && in2_val.useGpu_ && in1_grad.useGpu_ && in2_grad.useGpu_)
         << "Matrix types are not equally GPU";
 
-  size_t dim = in1_val->getWidth();
-  const real* grad = out_grad->getData();
-  const real* out = out_val->getData();
-  const real* prev_out_x = in1_val->getData();
-  const real* prev_out_y = in2_val->getData();
-  real* prev_grad_x = in1_grad->getData();
-  real* prev_grad_y = in2_grad->getData();
+  size_t dim = in1_val.getWidth();
+  const real* grad = out_grad.getData();
+  const real* out = out_val.getData();
+  const real* prev_out_x = in1_val.getData();
+  const real* prev_out_y = in2_val.getData();
+  real* prev_grad_x = in1_grad.getData();
+  real* prev_grad_y = in2_grad.getData();
   hlCossimDerivative(grad,
                      out,
                      prev_out_x,
@@ -232,8 +233,8 @@ void CosSimBackward<DEVICE_TYPE_GPU>(const GpuMatrix* out_grad,
                      prev_grad_x,
                      prev_grad_y,
                      dim,
-                     in1_val->getHeight(),
-                     in2_val->getHeight(),
+                     in1_val.getHeight(),
+                     in2_val.getHeight(),
                      scale);
 }
 

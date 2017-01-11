@@ -27,21 +27,21 @@ namespace paddle {
  *
  */
 template <>
-void CosSimForward<DEVICE_TYPE_CPU>(CpuMatrix* out_mat,
-                                    const CpuMatrix* in1_mat,
-                                    const CpuMatrix* in2_mat,
+void CosSimForward<DEVICE_TYPE_CPU>(CpuMatrix& out_mat,
+                                    const CpuMatrix& in1_mat,
+                                    const CpuMatrix& in2_mat,
                                     real scale) {
-  CHECK(out_mat && in1_mat && in2_mat);
-  size_t num_samples = out_mat->getHeight();
-  size_t dim = in1_mat->getWidth();
+  CHECK(out_mat.getData() && in1_mat.getData() && in2_mat.getData());
+  size_t num_samples = out_mat.getHeight();
+  size_t dim = in1_mat.getWidth();
   /// column vector [nSamples, 1]
-  real* out = out_mat->getData();
-  const real* x = in1_mat->getData();
-  const real* y = in2_mat->getData();
+  real* out = out_mat.getData();
+  const real* x = in1_mat.getData();
+  const real* y = in2_mat.getData();
 
   /// in2 might only have one row or full rows
-  CHECK(in2_mat->getHeight() == 1LU || in2_mat->getHeight() == num_samples);
-  size_t inc = (in2_mat->getHeight() == 1LU) ? 0 : dim;
+  CHECK(in2_mat.getHeight() == 1LU || in2_mat.getHeight() == num_samples);
+  size_t inc = (in2_mat.getHeight() == 1LU) ? 0 : dim;
   for (size_t i = 0; i < num_samples; ++i, x += dim, y += inc) {
     real square_sum_x = 0;
     real square_sum_y = 0;
@@ -75,26 +75,26 @@ class CosSimForwardFunc : public FunctionBase {
     scale_ = config.get<real>("scale");
   }
 
-  void calc(const Arguments& inputs,
-            const Arguments& outputs,
-            const Arguments& inouts) override {
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(inputs.size(), 2);
     CHECK_EQ(outputs.size(), 1);
-    CHECK_EQ(inouts.size(), 0);
 
-    CHECK_EQ(inputs[0].dims_[0], outputs[0].dims_[0]);
-    CHECK_EQ(inputs[0].dims_[1], inputs[1].dims_[1]);
-    CHECK_EQ(outputs[0].dims_[1], 1UL);
+    CHECK_EQ(inputs[0].shape().ndims(), (size_t)2);
+    CHECK_EQ(inputs[1].shape().ndims(), (size_t)2);
+    CHECK_EQ(outputs[0].shape().ndims(), (size_t)2);
 
-    CHECK(outputs[0].getData() && inputs[0].getData() && inputs[1].getData());
-    auto out_mat = std::make_shared<typename MatrixT<Device>::type>(
-        outputs[0].getData(), outputs[0].dims_[0], outputs[0].dims_[1]);
-    const auto in1_mat = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[0].getData(), inputs[0].dims_[0], inputs[0].dims_[1]);
-    const auto in2_mat = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[1].getData(), inputs[1].dims_[0], inputs[1].dims_[1]);
+    CHECK_EQ(inputs[0].shape()[0], outputs[0].shape()[0]);
+    CHECK_EQ(inputs[0].shape()[1], inputs[1].shape()[1]);
+    CHECK_EQ(outputs[0].shape()[1], 1UL);
 
-    CosSimForward<Device>(out_mat.get(), in1_mat.get(), in2_mat.get(), scale_);
+    CHECK(outputs[0].data() && inputs[0].data() && inputs[1].data());
+
+    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
+    auto out_mat = outputs[0].matrix<Device>();
+    const auto in1_mat = inputs[0].matrix<Device>();
+    const auto in2_mat = inputs[1].matrix<Device>();
+
+    CosSimForward<Device>(out_mat, in1_mat, in2_mat, scale_);
   }
 
 private:
@@ -116,28 +116,29 @@ private:
  * \param scale,    default 1.0
  */
 template <>
-void CosSimBackward<DEVICE_TYPE_CPU>(const CpuMatrix* out_grad,
-                                     const CpuMatrix* out_val,
-                                     const CpuMatrix* in1_val,
-                                     const CpuMatrix* in2_val,
-                                     CpuMatrix* in1_grad,
-                                     CpuMatrix* in2_grad,
+void CosSimBackward<DEVICE_TYPE_CPU>(const CpuMatrix& out_grad,
+                                     const CpuMatrix& out_val,
+                                     const CpuMatrix& in1_val,
+                                     const CpuMatrix& in2_val,
+                                     CpuMatrix& in1_grad,
+                                     CpuMatrix& in2_grad,
                                      real scale) {
-  CHECK(out_grad && out_val && in1_val && in2_val && in1_grad && in2_grad);
-  CHECK_EQ(out_val->useGpu_, false) << "Matrix type are GPU, CPU required";
+  CHECK(out_grad.getData() && out_val.getData() && in1_val.getData() &&
+        in2_val.getData() && in1_grad.getData() && in2_grad.getData());
+  CHECK_EQ(out_val.useGpu_, false) << "Matrix type are GPU, CPU required";
 
-  const real* grad = out_grad->getData();
-  const real* out = out_val->getData();
-  const real* prev_out_x = in1_val->getData();
-  const real* prev_out_y = in2_val->getData();
-  real* prev_grad_x = in1_grad->getData();
-  real* prev_grad_y = in2_grad->getData();
+  const real* grad = out_grad.getData();
+  const real* out = out_val.getData();
+  const real* prev_out_x = in1_val.getData();
+  const real* prev_out_y = in2_val.getData();
+  real* prev_grad_x = in1_grad.getData();
+  real* prev_grad_y = in2_grad.getData();
 
-  size_t num_samples = out_grad->getHeight();
-  size_t dim = in1_val->getWidth();
-  CHECK_EQ(in2_val->getHeight(), in2_grad->getHeight());
-  CHECK(in2_val->getHeight() == 1LU || in2_val->getHeight() == num_samples);
-  size_t inc = (in2_val->getHeight() == 1LU) ? 0 : dim;
+  size_t num_samples = out_grad.getHeight();
+  size_t dim = in1_val.getWidth();
+  CHECK_EQ(in2_val.getHeight(), in2_grad.getHeight());
+  CHECK(in2_val.getHeight() == 1LU || in2_val.getHeight() == num_samples);
+  size_t inc = (in2_val.getHeight() == 1LU) ? 0 : dim;
   for (size_t i = 0; i < num_samples; ++i,
               prev_out_x += dim,
               prev_out_y += inc,
@@ -178,8 +179,8 @@ void CosSimBackward<DEVICE_TYPE_CPU>(const CpuMatrix* out_grad,
 /**
  * Cosine Similarity backward Derivative
  *
- * \param inouts[0] forward input grad 1, size: nSamples * dim.
- * \param inouts[1] forward input grad 2,
+ * \param outputs[0] forward input grad 1, size: nSamples * dim.
+ * \param outputs[1] forward input grad 2,
  *                  size: n2 * dim (n2 == 1 or n2 == nSamples).
  *
  * \param inputs[0] backward loss output grad, size : nSamples * 1.
@@ -194,46 +195,36 @@ class CosSimBackwardFunc : public FunctionBase {
     scale_ = config.get<real>("scale");
   }
 
-  void calc(const Arguments& inputs,
-            const Arguments& outputs,
-            const Arguments& inouts) override {
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(inputs.size(), 4);
-    CHECK_EQ(outputs.size(), 0);
-    CHECK_EQ(inouts.size(), 2);
+    CHECK_EQ(outputs.size(), 2);
     /// dim of out_grad and out_val == 1, column vector
-    CHECK_EQ(inputs[0].dims_[1], 1UL);
-    CHECK_EQ(inputs[1].dims_[1], 1UL);
+    CHECK_EQ(inputs[0].shape()[1], 1UL);
+    CHECK_EQ(inputs[1].shape()[1], 1UL);
     /// nSamples of out_grad == out_val == in_val1 == in_grad1
-    CHECK_EQ(inputs[1].dims_[0], inputs[0].dims_[0]);
-    CHECK_EQ(inputs[0].dims_[0], inputs[0].dims_[0]);
-    CHECK_EQ(inouts[0].dims_[0], inputs[0].dims_[0]);
+    CHECK_EQ(inputs[1].shape()[0], inputs[0].shape()[0]);
+    CHECK_EQ(inputs[0].shape()[0], inputs[0].shape()[0]);
+    CHECK_EQ(outputs[0].shape()[0], inputs[0].shape()[0]);
     /// dim of in1_val1 == in_val2 == in_grad1 == in_grad2
-    CHECK_EQ(inputs[3].dims_[1], inputs[2].dims_[1]);
-    CHECK_EQ(inouts[0].dims_[1], inputs[2].dims_[1]);
-    CHECK_EQ(inouts[1].dims_[1], inputs[2].dims_[1]);
+    CHECK_EQ(inputs[3].shape()[1], inputs[2].shape()[1]);
+    CHECK_EQ(outputs[0].shape()[1], inputs[2].shape()[1]);
+    CHECK_EQ(outputs[1].shape()[1], inputs[2].shape()[1]);
 
-    CHECK(inputs[0].getData() && inputs[1].getData() && inputs[2].getData() &&
-          inputs[3].getData() && inouts[0].getData() && inouts[1].getData());
-    const auto out_grad = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[0].getData(), inputs[0].dims_[0], inputs[0].dims_[1]);
-    const auto out_val = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[1].getData(), inputs[1].dims_[0], inputs[1].dims_[1]);
-    const auto in1_val = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[2].getData(), inputs[2].dims_[0], inputs[2].dims_[1]);
-    const auto in2_val = std::make_shared<typename MatrixT<Device>::type>(
-        inputs[3].getData(), inputs[3].dims_[0], inputs[3].dims_[1]);
-    auto in1_grad = std::make_shared<typename MatrixT<Device>::type>(
-        inouts[0].getData(), inouts[0].dims_[0], inouts[0].dims_[1]);
-    auto in2_grad = std::make_shared<typename MatrixT<Device>::type>(
-        inouts[1].getData(), inouts[1].dims_[0], inouts[1].dims_[1]);
+    CHECK(inputs[0].data() && inputs[1].data() && inputs[2].data() &&
+          inputs[3].data() && outputs[0].data() && outputs[1].data());
 
-    CosSimBackward<Device>(out_grad.get(),
-                           out_val.get(),
-                           in1_val.get(),
-                           in2_val.get(),
-                           in1_grad.get(),
-                           in2_grad.get(),
-                           scale_);
+    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
+    CHECK_EQ(outputs[1].getArgType(), ADD_TO);
+
+    const auto out_grad = inputs[0].matrix<Device>();
+    const auto out_val = inputs[1].matrix<Device>();
+    const auto in1_val = inputs[2].matrix<Device>();
+    const auto in2_val = inputs[3].matrix<Device>();
+    auto in1_grad = outputs[0].matrix<Device>();
+    auto in2_grad = outputs[1].matrix<Device>();
+
+    CosSimBackward<Device>(
+        out_grad, out_val, in1_val, in2_val, in1_grad, in2_grad, scale_);
   }
 
 private:

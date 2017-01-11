@@ -56,13 +56,12 @@ void CosSimLayer::forward(PassType passType) {
     MatrixPtr prevOut2 = getInputValue(1);
 
     CHECK(outV && prevOut1 && prevOut2);
-    forward_[0]->calc(
-        {Tensor(prevOut1->getData(),
-                Dims{prevOut1->getHeight(), prevOut1->getWidth()}),
-         Tensor(prevOut2->getData(),
-                Dims{prevOut2->getHeight(), prevOut2->getWidth()})},
-        {Tensor(outV->getData(), Dims{outV->getHeight(), outV->getWidth()})},
-        {});
+    BufferArgs inputs;
+    BufferArgs outputs;
+    inputs.addArg(*prevOut1);
+    inputs.addArg(*prevOut2);
+    outputs.addArg(*outV, ASSIGN_TO);
+    forward_[0]->calc(inputs, outputs);
   }
 }
 
@@ -78,14 +77,16 @@ void CosSimLayer::backward(const UpdateCallback& callback) {
     auto inG1 = this->getInputGrad(0);
     auto inG2 = this->getInputGrad(1);
     CHECK(outG && outV && inV1 && inV2 && inG1 && inG2);
-    backward_[0]->calc(
-        {Tensor(outG->getData(), Dims{outG->getHeight(), outG->getWidth()}),
-         Tensor(outV->getData(), Dims{outV->getHeight(), outV->getWidth()}),
-         Tensor(inV1->getData(), Dims{inV1->getHeight(), inV1->getWidth()}),
-         Tensor(inV2->getData(), Dims{inV2->getHeight(), inV2->getWidth()})},
-        {},
-        {Tensor(inG1->getData(), Dims{inG1->getHeight(), inG1->getWidth()}),
-         Tensor(inG2->getData(), Dims{inG2->getHeight(), inG2->getWidth()})});
+    BufferArgs inputs;
+    BufferArgs outputs;
+    inputs.addArg(*outG);
+    inputs.addArg(*outV);
+    inputs.addArg(*inV1);
+    inputs.addArg(*inV2);
+    outputs.addArg(*inG1, ADD_TO);
+    outputs.addArg(*inG2, ADD_TO);
+
+    backward_[0]->calc(inputs, outputs);
   }
 }
 

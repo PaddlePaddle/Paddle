@@ -157,6 +157,9 @@ public:
     cpuSparse_->randomizeUniform();
     gpuSparse_->copyFrom(*cpuSparse_, stream);
     hl_stream_synchronize(stream);
+  void addInputs(const SequenceArg& input) {
+    size_t batchSize = input.shape()[0];
+    size_t numSeqs = batchSize / 10 + 1;
 
     cpuOutputs_.emplace_back(
         std::make_shared<SparseMatrixArg>(*cpuSparse_, argType));
@@ -331,6 +334,7 @@ protected:
   }
 
 protected:
+<<<<<<< HEAD
   std::shared_ptr<FunctionBase> cpuFunc_;
   std::shared_ptr<FunctionBase> gpuFunc_;
   std::vector<CpuMemHandlePtr> cpuMemory_;

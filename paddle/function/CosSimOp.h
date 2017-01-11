@@ -32,9 +32,9 @@ namespace paddle {
  *
  */
 template <DeviceType Device>
-void CosSimForward(typename MatrixT<Device>::type* output,
-                   const typename MatrixT<Device>::type* input1,
-                   const typename MatrixT<Device>::type* input2,
+void CosSimForward(typename Tensor<real, Device>::Matrix& output,
+                   const typename Tensor<real, Device>::Matrix& input1,
+                   const typename Tensor<real, Device>::Matrix& input2,
                    real scale);
 
 /**
@@ -50,12 +50,12 @@ void CosSimForward(typename MatrixT<Device>::type* output,
  *
  */
 template <DeviceType Device>
-void CosSimBackward(const typename MatrixT<Device>::type* out_grad,
-                    const typename MatrixT<Device>::type* out_value,
-                    const typename MatrixT<Device>::type* in1_value,
-                    const typename MatrixT<Device>::type* in2_value,
-                    typename MatrixT<Device>::type* in1_grad,
-                    typename MatrixT<Device>::type* in2_grad,
+void CosSimBackward(const typename Tensor<real, Device>::Matrix& out_grad,
+                    const typename Tensor<real, Device>::Matrix& out_value,
+                    const typename Tensor<real, Device>::Matrix& in1_value,
+                    const typename Tensor<real, Device>::Matrix& in2_value,
+                    typename Tensor<real, Device>::Matrix& in1_grad,
+                    typename Tensor<real, Device>::Matrix& in2_grad,
                     real scale);
 
 }  // namespace paddle
