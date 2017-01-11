@@ -25,43 +25,44 @@ ParameterServerController::ParameterServerController(
   int numPorts = config.ports_num() + config.ports_num_for_sparse();
 
   if (config.nics().empty()) {
-    pservers_.resize(numPorts);
+    parameterServers_.resize(numPorts);
     for (int i = 0; i < numPorts; ++i) {
       if (config.rdma_tcp() == "rdma") {
-        pservers_[i].reset(
+        parameterServers_[i].reset(
             new ParameterServer2(std::string(), config.port() + i, rdmaCpu++));
         rdmaCpu = rdmaCpu % onlineCpus;
       } else {
-        pservers_[i].reset(
+        parameterServers_[i].reset(
             new ParameterServer2(std::string(), config.port() + i));
       }
-      CHECK(pservers_[i]->init()) << "Fail to initialize parameter server"
-                                  << config.port() + i;
+      CHECK(parameterServers_[i]->init()) << "Fail to initialize parameter "
+                                             "server on port "
+                                          << config.port() + i;
     }
   } else {
     str::split(config.nics(), ',', &devices);
-    pservers_.resize(devices.size() * numPorts);
+    parameterServers_.resize(devices.size() * numPorts);
     for (int i = 0; i < numPorts; ++i) {
       for (size_t j = 0; j < devices.size(); ++j) {
         if (config.rdma_tcp() == "rdma") {
-          pservers_[i * devices.size() + j].reset(new ParameterServer2(
+          parameterServers_[i * devices.size() + j].reset(new ParameterServer2(
               getIpAddr(devices[j]), config.port() + i, rdmaCpu++));
           rdmaCpu = rdmaCpu % onlineCpus;
         } else {
-          pservers_[i * devices.size() + j].reset(
+          parameterServers_[i * devices.size() + j].reset(
               new ParameterServer2(getIpAddr(devices[j]), config.port() + i));
         }
-        CHECK(pservers_[i * devices.size() + j]->init())
-            << "Fail to initialize parameter server" << devices[j]
+        CHECK(parameterServers_[i * devices.size() + j]->init())
+            << "Fail to initialize parameter server with device " << devices[j]
             << config.port() + i;
       }
     }
   }
 }
 
-ParameterServerController::~ParameterServerController() { this->join(); }
+ParameterServerController::~ParameterServerController() { this->wait(); }
 
-ParameterServerController* ParameterServerController::createByGflags() {
+ParameterServerController* ParameterServerController::createFromGflags() {
   ParameterServerConfig config;
 
   config.set_nics(FLAGS_nics);
@@ -79,21 +80,21 @@ ParameterServerController* ParameterServerController::create(
 }
 
 void ParameterServerController::start() {
-  LOG(INFO) << "pserver sizes : " << pservers_.size();
+  LOG(INFO) << "number of parameterServer instances: "
+            << parameterServers_.size();
   int i = 0;
-  for (const auto& pserver : pservers_) {
-    LOG(INFO) << "pserver started : " << i;
-    pserver->start();
+  for (const auto& parameterServer : parameterServers_) {
+    LOG(INFO) << "Starting parameterServer[" << i << "]";
+    parameterServer->start();
     i++;
   }
 }
 
-void ParameterServerController::join() {
-  LOG(INFO) << "pserver sizes : " << pservers_.size();
+void ParameterServerController::wait() {
   int i = 0;
-  for (const auto& pserver : pservers_) {
-    LOG(INFO) << "pserver join : " << i;
-    pserver->join();
+  for (const auto& parameterServer : parameterServers_) {
+    LOG(INFO) << "Waiting parameterServer[" << i << "]";
+    parameterServer->join();
     i++;
   }
 }

@@ -21,6 +21,12 @@ limitations under the License. */
 
 namespace paddle {
 
+/**
+ * @brief ParameterServerController is used for create, init and manage multi
+ * parameter server instances. The num of the instances is decided by port
+ * num(the ports number for parameter send) and network devices configured
+ * by gflags or proto.
+ */
 class ParameterServerController final {
 public:
   DISABLE_COPY(ParameterServerController);
@@ -39,28 +45,30 @@ public:
    * @brief create ParameterServerController from gflags, this is used for
    * compatibility with the old usage of configuration by gflags.
    */
-  static ParameterServerController* createByGflags();
+  static ParameterServerController* createFromGflags();
 
   /**
    * @brief create ParameterServerController with ParameterServerConfig, remove
-   * gflags from ParameterServer. Init all pservers thread according to the
-   * config.
+   * gflags from ParameterServer. Init all ParameterServer2 instances according
+   * to
+   * the config.
    */
   static ParameterServerController* create(const ParameterServerConfig& config);
 
   /**
-   * @brief start all pserver thread in this ParameterServerController.
+   * @brief start all ParameterServer2 instances in this
+   * ParameterServerController.
    */
   void start();
 
   /**
-   * @brief join and wait for all pserver thread in this
+   * @brief join and wait for all ParameterServer2 instances thread in this
    * ParameterServerController.
    */
-  void join();
+  void wait();
 
 private:
-  std::vector<std::unique_ptr<ParameterServer2>> pservers_;
+  std::vector<std::unique_ptr<ParameterServer2>> parameterServers_;
 };
 
 }  // namespace paddle

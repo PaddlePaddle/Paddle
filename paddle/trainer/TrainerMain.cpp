@@ -36,10 +36,11 @@ int main(int argc, char** argv) {
   initMain(argc, argv);
   initPython(argc, argv);
 
-  std::unique_ptr<ParameterServerController> pServerPtr(nullptr);
+  std::unique_ptr<ParameterServerController> parameterServerPtr(nullptr);
   if (FLAGS_start_pserver) {
-    pServerPtr.reset(paddle::ParameterServerController::createByGflags());
-    pServerPtr->start();
+    parameterServerPtr.reset(
+        paddle::ParameterServerController::createFromGflags());
+    parameterServerPtr->start();
   }
   Trainer trainer;
   auto config = TrainerConfigHelper::createFromFlags();
