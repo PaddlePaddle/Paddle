@@ -122,8 +122,7 @@ void testMatrixProjectionBackward(int context_start,
 
   BufferArgs cpu_inputs;
   BufferArgs cpu_outputs;
-  cpu_inputs.addArg(*cpu_seq);
-  cpu_inputs.addArg(cpu_out_grad);
+  cpu_inputs.addArg(cpu_out_grad, *cpu_seq);
   cpu_outputs.addArg(cpu_in_grad, ADD_TO);
   cpu_outputs.addArg(
       cpu_w_grad ? *cpu_w_grad : CpuMatrix(nullptr, 0, input_dim), ADD_TO);
@@ -132,8 +131,7 @@ void testMatrixProjectionBackward(int context_start,
 
   BufferArgs gpu_inputs;
   BufferArgs gpu_outputs;
-  gpu_inputs.addArg(*gpu_seq);
-  gpu_inputs.addArg(gpu_out_grad);
+  gpu_inputs.addArg(gpu_out_grad, *gpu_seq);
   gpu_outputs.addArg(gpu_in_grad, ADD_TO);
   gpu_outputs.addArg(
       gpu_w_grad ? *gpu_w_grad : GpuMatrix(nullptr, 0, input_dim), ADD_TO);

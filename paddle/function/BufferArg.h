@@ -190,7 +190,7 @@ private:
   size_t numSeqs_;
 };
 
-// sequence data
+// sequence data {seqId(vec), buf(matrix)}
 class SequenceArg : public BufferArg {
 public:
   SequenceArg(void* buf,
@@ -210,6 +210,7 @@ public:
 
   void* getIdBuf() const { return startPositions_.data(); }
   size_t numSeqs() const { return startPositions_.numSeqs(); }
+  const SequenceIdArg& getSequenceIds() const { return startPositions_; }
 
 private:
   SequenceIdArg startPositions_;

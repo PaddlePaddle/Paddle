@@ -166,8 +166,7 @@ void ContextProjection::backward(const UpdateCallback& callback) {
 
   BufferArgs inputs;
   BufferArgs outputs;
-  inputs.addArg(*in_->sequenceStartPositions->getVector(useGpu_));
-  inputs.addArg(*out_->grad);
+  inputs.addArg(*out_->grad, *in_->sequenceStartPositions->getVector(useGpu_));
   outputs.addArg(
       CpuMatrix(
           in_->grad ? in_->grad->getData() : nullptr, batch_size, input_dim),
