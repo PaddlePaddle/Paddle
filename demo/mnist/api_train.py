@@ -6,42 +6,32 @@ passed to C++ side of Paddle.
 
 The user api could be simpler and carefully designed.
 """
-import py_paddle.swig_paddle as api
-from py_paddle import DataProviderConverter
-import paddle.trainer.PyDataProvider2 as dp
-import numpy as np
 import random
+
+import paddle.v2 as paddle
+
 from mnist_util import read_from_mnist
-from paddle.trainer_config_helpers import *
 
 
 def optimizer_config():
-    settings(
+    paddle.config.settings(
         learning_rate=1e-4,
-        learning_method=AdamOptimizer(),
+        learning_method=paddle.config.AdamOptimizer(),
         batch_size=1000,
-        model_average=ModelAverage(average_window=0.5),
-        regularization=L2Regularization(rate=0.5))
+        model_average=paddle.config.ModelAverage(average_window=0.5),
+        regularization=paddle.config.L2Regularization(rate=0.5))
 
 
 def network_config():
-    imgs = data_layer(name='pixel', size=784)
-    hidden1 = fc_layer(input=imgs, size=200)
-    hidden2 = fc_layer(input=hidden1, size=200)
-    inference = fc_layer(input=hidden2, size=10, act=SoftmaxActivation())
-    cost = classification_cost(
-        input=inference, label=data_layer(
+    imgs = paddle.config.data_layer(name='pixel', size=784)
+    hidden1 = paddle.config.fc_layer(input=imgs, size=200)
+    hidden2 = paddle.config.fc_layer(input=hidden1, size=200)
+    inference = paddle.config.fc_layer(
+        input=hidden2, size=10, act=paddle.config.SoftmaxActivation())
+    cost = paddle.config.classification_cost(
+        input=inference, label=paddle.config.data_layer(
             name='label', size=10))
-    outputs(cost)
-
-
-def init_parameter(network):
-    assert isinstance(network, api.GradientMachine)
-    for each_param in network.getParameters():
-        assert isinstance(each_param, api.Parameter)
-        array_size = len(each_param)
-        array = np.random.uniform(-1.0, 1.0, array_size).astype('float32')
-        each_param.getBuf(api.PARAMETER_VALUE).copyFromNumpyArray(array)
+    paddle.config.outputs(cost)
 
 
 def generator_to_batch(generator, batch_size):
@@ -73,42 +63,44 @@ def input_order_converter(generator):
 
 
 def main():
-    api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
+    paddle.raw.initPaddle("-use_gpu=false",
+                          "-trainer_count=4")  # use 4 cpu cores
 
     # get enable_types for each optimizer.
     # enable_types = [value, gradient, momentum, etc]
     # For each optimizer(SGD, Adam), GradientMachine should enable different
     # buffers.
-    opt_config_proto = parse_optimizer_config(optimizer_config)
-    opt_config = api.OptimizationConfig.createFromProto(opt_config_proto)
-    _temp_optimizer_ = api.ParameterOptimizer.create(opt_config)
+    opt_config_proto = paddle.config.parse_optimizer(optimizer_config)
+    opt_config = paddle.raw.OptimizationConfig.createFromProto(opt_config_proto)
+    _temp_optimizer_ = paddle.raw.ParameterOptimizer.create(opt_config)
     enable_types = _temp_optimizer_.getParameterTypes()
 
     # Create Simple Gradient Machine.
-    model_config = parse_network_config(network_config)
-    m = api.GradientMachine.createFromConfigProto(
-        model_config, api.CREATE_MODE_NORMAL, enable_types)
+    model_config = paddle.config.parse_network(network_config)
+    m = paddle.raw.GradientMachine.createFromConfigProto(
+        model_config, paddle.raw.CREATE_MODE_NORMAL, enable_types)
 
     # This type check is not useful. Only enable type hint in IDE.
     # Such as PyCharm
-    assert isinstance(m, api.GradientMachine)
+    assert isinstance(m, paddle.raw.GradientMachine)
 
     # Initialize Parameter by numpy.
-    init_parameter(network=m)
+    m.randParameters()
 
     # Create Local Updater. Local means not run in cluster.
     # For a cluster training, here we can change to createRemoteUpdater
     # in future.
-    updater = api.ParameterUpdater.createLocalUpdater(opt_config)
-    assert isinstance(updater, api.ParameterUpdater)
+    updater = paddle.raw.ParameterUpdater.createLocalUpdater(opt_config)
+    assert isinstance(updater, paddle.raw.ParameterUpdater)
 
     # Initialize ParameterUpdater.
     updater.init(m)
 
     # DataProvider Converter is a utility convert Python Object to Paddle C++
     # Input. The input format is as same as Paddle's DataProvider.
-    converter = DataProviderConverter(
-        input_types=[dp.dense_vector(784), dp.integer_value(10)])
+    converter = paddle.data.DataProviderConverter(input_types=[
+        paddle.data.dense_vector(784), paddle.data.integer_value(10)
+    ])
 
     train_file = './data/raw_data/train'
     test_file = './data/raw_data/t10k'
@@ -130,7 +122,7 @@ def main():
 
     # outArgs is Neural Network forward result. Here is not useful, just passed
     # to gradient_machine.forward
-    outArgs = api.Arguments.createArguments(0)
+    outArgs = paddle.raw.Arguments.createArguments(0)
 
     for pass_id in xrange(2):  # we train 2 passes.
         updater.startPass()
@@ -178,7 +170,7 @@ def main():
         test_data_generator = input_order_converter(read_from_mnist(test_file))
         for data_batch in generator_to_batch(test_data_generator, 512):
             # in testing stage, only forward is needed.
-            m.forward(converter(data_batch), outArgs, api.PASS_TEST)
+            m.forward(converter(data_batch), outArgs, paddle.raw.PASS_TEST)
             m.eval(test_evaluator)
 
         # print error rate for test data set
@@ -189,8 +181,8 @@ def main():
         updater.catchUpWith()
         params = m.getParameters()
         for each_param in params:
-            assert isinstance(each_param, api.Parameter)
-            value = each_param.getBuf(api.PARAMETER_VALUE)
+            assert isinstance(each_param, paddle.raw.Parameter)
+            value = each_param.getBuf(paddle.raw.PARAMETER_VALUE)
             value = value.copyToNumpyArray()
 
             # Here, we could save parameter to every where you want
