@@ -25,9 +25,10 @@ import numpy as np
 from six.moves import urllib
 import stat
 
-source_url='http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Electronics_5.json.gz'
-moses_url='https://github.com/moses-smt/mosesdecoder/archive/master.zip'
-file_source = "mosesdecoder-master"
+source_url=['http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/bitexts.tgz',
+        'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz'
+        ]
+model_url='http://paddlepaddle.bj.bcebos.com/model_zoo/wmt14_model.tar.gz'
 
 
 def fetch():
@@ -40,15 +41,16 @@ def fetch():
     Returns:
         path to downloaded file.
     """
-    source_name = "amazon"
+    source_name = "seqToseq"
     data_home = set_data_path(source_name)
-    filepath = data_download(data_home,source_url)
-    filepath = data_download(data_home,moses_url)
+    model_path = data_download(data_home, model_url)
+    for url in source_url:
+        filepath = data_download(data_home, source_url)
     """
     for i in range(1, num_batch + 1):
         fpath = os.path.join(filepath, "data_batch_%d" % i)
     """
-    return filepath
+        return filepath
 
 
 def _unpickle(file_path):
@@ -61,7 +63,7 @@ def _unpickle(file_path):
 
 
 def set_data_path(source_name):
-    """
+   """
     Set the path for download according to the source name.
 
     Args:
@@ -80,7 +82,7 @@ def set_data_path(source_name):
      return datadir
 
 
-def data_download(download_dir,source_url):
+def data_download(download_dir, source_url):
     """
     Download data according to the url for mnist.
     when downloading,it can see each download process.
@@ -92,7 +94,7 @@ def data_download(download_dir,source_url):
     Returns:
         the path after data downloaded.
     """
-    src_file = source_url.strip().split('/')[-1]
+    src_file = url.strip().split('/')[-1]
     file_path = os.path.join(download_dir, src_file)
 
     if not os.path.exists(file_path):
@@ -101,25 +103,12 @@ def data_download(download_dir,source_url):
         os.rename(temp_file_name, src_file)
         move_files(src_file, download_dir)
         print("Download finished, Extracting files.")
-
-        if 'zip' in src_file:
-            tar = zipfile.ZipFile(file_path,'r')
-            infos = tar.infolist()
-            for file in infos:
-                tar.extract(file, download_dir)
-                fpath = os.path.join(download_dir, file.filename)
-                os.chmod(fpath,stat.S_IRWXU|stat.S_IRGRP|stat.S_IROTH)
-            os.remove(file_path)
+        tarfile.open(name=file_path, mode="r:gz").extractall(download_dir)
+        os.remove(file_path)
         print("Unpacking done!")
     else:
-        if 'zip' in src_file:
-            tar = zipfile.ZipFile(file_path,'r')
-            infos = tar.infolist()
-            for file in infos:
-                tar.extract(file, download_dir)
-                fpath = os.path.join(download_dir, file.filename)
-                os.chmod(fpath,stat.S_IRWXU|stat.S_IRGRP|stat.S_IROTH)
-            os.remove(file_path)
+        tarfile.open(name=file_path, mode="r:gz").extractall(download_dir)
+        os.remove(file_path)
         print("Data has been already downloaded and unpacked!")
     return download_dir
 

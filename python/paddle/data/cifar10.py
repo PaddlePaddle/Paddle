@@ -19,15 +19,26 @@
 import shutil
 import os
 import sys
+import tarfile
 import zipfile
 import collections
 import numpy as np
 from six.moves import urllib
-import stat
 
-source_url='http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Electronics_5.json.gz'
-moses_url='https://github.com/moses-smt/mosesdecoder/archive/master.zip'
-file_source = "mosesdecoder-master"
+source_url='https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+source_file = "cifar-10-batches-py"
+label_map = {
+0: "airplane",
+1: "automobile",
+2: "bird",
+3: "cat",
+4: "deer",
+5: "dog",
+6: "frog",
+7: "horse",
+8: "ship",
+9: "truck"
+}
 
 
 def fetch():
@@ -40,10 +51,13 @@ def fetch():
     Returns:
         path to downloaded file.
     """
-    source_name = "amazon"
+    num_images_train = 50000
+    num_batch = 5
+    source_name = "cifar"
+    file_source = "cifar-10-batches-py"
+    #Set the download dir for cifar.
     data_home = set_data_path(source_name)
     filepath = data_download(data_home,source_url)
-    filepath = data_download(data_home,moses_url)
     """
     for i in range(1, num_batch + 1):
         fpath = os.path.join(filepath, "data_batch_%d" % i)
@@ -52,6 +66,7 @@ def fetch():
 
 
 def _unpickle(file_path):
+
     with open(file_path, mode='rb') as file:
         if sys.version_info < (3,):
             data = cPickle.load(file)
@@ -70,7 +85,8 @@ def set_data_path(source_name):
     Returns:
         the data directory for data download.
     """
-     data_base = os.path.expanduser(os.path.join('~',' .paddle'))
+     data_base = os.path.expanduser(os.path.join('~','.paddle'))
+     print data_base
      if not os.access(data_base, os.W_OK):
          data_base = os.path.join('/tmp', '.paddle')
      datadir = os.path.join(data_base, source_name)
@@ -80,7 +96,7 @@ def set_data_path(source_name):
      return datadir
 
 
-def data_download(download_dir,source_url):
+def data_download(download_dir, source_url):
     """
     Download data according to the url for mnist.
     when downloading,it can see each download process.
@@ -94,32 +110,16 @@ def data_download(download_dir,source_url):
     """
     src_file = source_url.strip().split('/')[-1]
     file_path = os.path.join(download_dir, src_file)
-
     if not os.path.exists(file_path):
         temp_file_name,_ = download_with_urlretrieve(source_url)
         temp_file_path = os.getcwd()
         os.rename(temp_file_name, src_file)
-        move_files(src_file, download_dir)
+        move_files(src_file,download_dir)
         print("Download finished, Extracting files.")
-
-        if 'zip' in src_file:
-            tar = zipfile.ZipFile(file_path,'r')
-            infos = tar.infolist()
-            for file in infos:
-                tar.extract(file, download_dir)
-                fpath = os.path.join(download_dir, file.filename)
-                os.chmod(fpath,stat.S_IRWXU|stat.S_IRGRP|stat.S_IROTH)
-            os.remove(file_path)
+        tarfile.open(name=file_path, mode="r:gz").extractall(download_dir)
         print("Unpacking done!")
     else:
-        if 'zip' in src_file:
-            tar = zipfile.ZipFile(file_path,'r')
-            infos = tar.infolist()
-            for file in infos:
-                tar.extract(file, download_dir)
-                fpath = os.path.join(download_dir, file.filename)
-                os.chmod(fpath,stat.S_IRWXU|stat.S_IRGRP|stat.S_IROTH)
-            os.remove(file_path)
+        tarfile.open(name=file_path, mode="r:gz").extractall(download_dir)
         print("Data has been already downloaded and unpacked!")
     return download_dir
 
@@ -151,22 +151,21 @@ def download_with_urlretrieve(url, filename=None):
     return urllib.request.urlretrieve(url, filename, reporthook=check_download_progress)
 
 
-def check_download_progress(count, block_size, total_size):
-    """
-    Print and check the download process.
+ def check_download_progress(count, block_size, total_size):
+     """
+     Print and check the download process.
 
-    Args:
-        count:
-        block_size:
-        total_size:
+     Args:
+         count:
+         block_size:
+         total_size:
 
-    Returns:
-    """
-    percent = float(count * block_size) / total_size
-    msg = "\r- Download progress: {:.1%}".format(percent)
-    sys.stdout.write(msg)
-    sys.stdout.flush()
-
+     Returns:
+     """
+     percent = float(count * block_size) / total_size
+     msg = "\r- Download progress: {:.1%}".format(percent)
+     sys.stdout.write(msg)
+     sys.stdout.flush()
 
 if __name__ == '__main__':
     path = fetch()
