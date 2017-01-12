@@ -18,8 +18,8 @@ IF(NOT SWIG_FOUND)
     # build swig as an external project
     INCLUDE(ExternalProject)
 
-    SET(SWIG_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/swig)
-    SET(SWIG_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/install/swig)
+    SET(SWIG_SOURCES_DIR ${THIRD_PARTY_PATH}/swig)
+    SET(SWIG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/swig)
     SET(SWIG_TARGET_VERSION "3.0.2")
     SET(SWIG_DOWNLOAD_SRC_MD5 "62f9b0d010cef36a13a010dc530d0d41")
     SET(SWIG_DOWNLOAD_WIN_MD5 "3f18de4fc09ab9abb0d3be37c11fbc8f")

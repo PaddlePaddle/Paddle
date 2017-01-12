@@ -43,6 +43,16 @@ option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
 option(ON_COVERALLS     "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
+
+# CMAKE_BUILD_TYPE
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
+      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
+      FORCE)
+endif()
+
+set(THIRD_PARTY_PATH "${PROJ_ROOT}/third_party" CACHE STRING
+  "A path setting third party libraries download & build directories.")
 ########################################################################################
 
 include(external/zlib)      # download, build, install zlib

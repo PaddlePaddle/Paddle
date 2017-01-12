@@ -25,6 +25,7 @@ log_file="$bin_dir/train.log"
 pushd "$home_dir"
 cfg=trainer_config.lr.py
 paddle train \
+  --start_pserver=false \
   --config=$cfg \
   --save_dir=${model_dir} \
   --trainer_count=4 \

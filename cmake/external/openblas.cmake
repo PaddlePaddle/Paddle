@@ -17,8 +17,8 @@ INCLUDE(cblas)
 IF(NOT ${CBLAS_FOUND})
     INCLUDE(ExternalProject)
 
-    SET(CBLAS_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/openblas)
-    SET(CBLAS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/install/openblas)
+    SET(CBLAS_SOURCES_DIR ${THIRD_PARTY_PATH}/openblas)
+    SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
     SET(CBLAS_INC_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
 
     IF(WIN32)
