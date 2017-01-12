@@ -84,8 +84,8 @@ class MomentumOptimizer(BaseSGDOptimizer):
         u_t &= u_{t-1} - \\alpha_t \\gamma_t g_t \\\\
         v_t &= v_{t-1} + \\tau_{t-1} \\alpha_t \\gamma_t g_t \\\\
         \\tau_t &= \\tau_{t-1} + \\beta_t / \\alpha_t
-    
-    where :math:`k` is momentum, :math:`\\lambda` is decay rate, 
+
+    where :math:`k` is momentum, :math:`\\lambda` is decay rate,
     :math:`\\gamma_t` is learning rate at the t'th step.
 
     :param sparse: with sparse support or not.
@@ -192,13 +192,24 @@ class AdaGradOptimizer(BaseSGDOptimizer):
 
         G &= \\sum_{\\tau=1}^{t} g_{\\tau} g_{\\tau}^T \\\\
         w & = w - \\eta diag(G)^{-\\frac{1}{2}} \\circ g
+
+    param momentum: add momentum for AdaGradOptimizer.
+                    AdaGradOptimizer support add momentum property
+    type momentum: float
+    param sparse: if using sparse updater, set it to True
+    type sparse: bool
     """
+
+    def extra_settings(self):
+        default_momentum(self.momentum)
 
     def to_setting_kwargs(self):
         return {'learning_method': 'adagrad'}
 
-    def __init__(self):
-        pass
+    def __init__(self, momentum=None, sparse=False):
+        assert not (sparse and momentum is not None)
+        self.momentum = momentum
+        self.sparse = sparse
 
 
 class RMSPropOptimizer(BaseSGDOptimizer):
@@ -218,7 +229,15 @@ class RMSPropOptimizer(BaseSGDOptimizer):
     :type rho: float
     :param epsilon: the :math:`\\epsilon` in the equation.
     :type epsilon: float
+    param momentum: add momentum for RMSPropOptimizer
+                    RMSPropOptimizer support add momentum property
+    type momentum: float
+    param sparse: if using sparse updater, set it to True
+    type sparse: bool
     """
+
+    def extra_settings(self):
+        default_momentum(self.momentum)
 
     def to_setting_kwargs(self):
         return {
@@ -227,9 +246,12 @@ class RMSPropOptimizer(BaseSGDOptimizer):
             'ada_epsilon': self.epsilon
         }
 
-    def __init__(self, rho=0.95, epsilon=1e-6):
+    def __init__(self, rho=0.95, epsilon=1e-6, momentum=None, sparse=False):
         self.rho = rho
         self.epsilon = epsilon
+        assert not (sparse and momentum is not None)
+        self.momentum = momentum
+        self.sparse = sparse
 
 
 class DecayedAdaGradOptimizer(BaseSGDOptimizer):
@@ -246,7 +268,15 @@ class DecayedAdaGradOptimizer(BaseSGDOptimizer):
     :type rho: float
     :param epsilon: The :math:`\\epsilon` parameter in that equation.
     :type epsilon: float
+    param momentum: add momentum for DecayedAdaGradOptimizer
+                    DecayedAdaGradOptimizer support add momentum property
+    type momentum: float
+    param sparse: if using sparse updater, set it to True
+    type sparse: bool
     """
+
+    def extra_settings(self):
+        default_momentum(self.momentum)
 
     def to_setting_kwargs(self):
         return {
@@ -255,9 +285,12 @@ class DecayedAdaGradOptimizer(BaseSGDOptimizer):
             'ada_epsilon': self.epsilon
         }
 
-    def __init__(self, rho=0.95, epsilon=1e-6):
+    def __init__(self, rho=0.95, epsilon=1e-6, momentum=None, sparse=False):
         self.rho = rho
         self.epsilon = epsilon
+        assert not (sparse and momentum is not None)
+        self.momentum = momentum
+        self.sparse = sparse
 
 
 class AdaDeltaOptimizer(BaseSGDOptimizer):
@@ -277,7 +310,15 @@ class AdaDeltaOptimizer(BaseSGDOptimizer):
     :type rho: float
     :param epsilon: :math:`\\rho` in equation
     :type epsilon: float
+    param momentum: add momentum for AdaDeltaOptimizer
+                    AdaDeltaOptimizer support add momentum property
+    type momentum: float
+    param sparse: if using sparse updater, set it to True
+    type sparse: bool
     """
+
+    def extra_settings(self):
+        default_momentum(self.momentum)
 
     def to_setting_kwargs(self):
         return {
@@ -286,9 +327,12 @@ class AdaDeltaOptimizer(BaseSGDOptimizer):
             'ada_epsilon': self.epsilon
         }
 
-    def __init__(self, rho=0.95, epsilon=1e-6):
+    def __init__(self, rho=0.95, epsilon=1e-6, momentum=None, sparse=False):
         self.rho = rho
         self.epsilon = epsilon
+        assert not (sparse and momentum is not None)
+        self.momentum = momentum
+        self.sparse = sparse
 
 
 class BaseRegularization(Optimizer):
