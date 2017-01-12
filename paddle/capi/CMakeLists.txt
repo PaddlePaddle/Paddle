@@ -32,7 +32,7 @@ add_dependencies(paddle_capi gen_proto_cpp)
 # combine all paddle static libraries together, into libpaddle_capi_whole.a
 # user should use PaddleCAPI as -lpaddle_capi_whole
 set(capi_whole_library libpaddle_capi_whole.a)
-add_custom_target(paddle_capi_whole
+add_custom_target(paddle_capi_whole ALL
         COMMAND mkdir -p o_files/capi && cd o_files/capi/ && ar -x $<TARGET_FILE:paddle_capi>
         COMMAND mkdir -p o_files/utils && cd o_files/utils/ && ar -x $<TARGET_FILE:paddle_utils>
         COMMAND mkdir -p o_files/parameter && cd o_files/parameter/ && ar -x $<TARGET_FILE:paddle_parameter>
