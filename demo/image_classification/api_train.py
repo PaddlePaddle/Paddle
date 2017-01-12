@@ -26,9 +26,9 @@ import py_paddle.swig_paddle as swig_api
 import cifar_util
 
 # some global parameter.
-image_size = 32
-data_size = 3 * image_size * image_size
-label_size = 10
+IMAGE_SIZE = 32
+DATA_SIZE = 3 * IMAGE_SIZE * IMAGE_SIZE
+LABEL_SIZE = 10
 
 
 def optimizer_config():
@@ -42,8 +42,8 @@ def optimizer_config():
 
 def network_config():
     """Function to config neural network."""
-    img = config_helpers.layers.data_layer(name='image', size=data_size)
-    lbl = config_helpers.layers.data_layer(name='label', size=label_size)
+    img = config_helpers.layers.data_layer(name='image', size=DATA_SIZE)
+    lbl = config_helpers.layers.data_layer(name='label', size=LABEL_SIZE)
     hidden1 = config_helpers.layers.fc_layer(input=img, size=200)
     hidden2 = config_helpers.layers.fc_layer(input=hidden1, size=200)
     inference = config_helpers.layers.fc_layer(
@@ -69,9 +69,9 @@ def main():
 
     # prepare cifar-10 data.
     cifar_data = cifar_util.Cifar10Data(
-        img_size=image_size,
-        mean_img_size=image_size,
-        num_classes=label_size,
+        img_size=IMAGE_SIZE,
+        mean_img_size=IMAGE_SIZE,
+        num_classes=LABEL_SIZE,
         batch_size=128,
         train_file_list='data/cifar-out/batches/train.txt',
         test_file_list='data/cifar-out/batches/test.txt',

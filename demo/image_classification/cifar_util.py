@@ -17,7 +17,7 @@ Some class for prepare cifar-10 image data.
 import io
 import random
 
-import paddle.trainer.PyDataProvider2 as dataprovider
+import paddle.trainer.PyDataProvider2 as data_provider
 import paddle.utils.image_util as image_util
 from paddle.trainer.PyDataProvider2 import *
 from py_paddle import DataProviderConverter
@@ -76,8 +76,8 @@ class Cifar10Data(object):
         #              'label': dp.integer_value(label_size)
         # }
         input_types = [
-            dataprovider.dense_vector(self.img_raw_size),
-            dataprovider.integer_value(self.num_classes)
+            data_provider.dense_vector(self.img_raw_size),
+            data_provider.integer_value(self.num_classes)
         ]
         self.data_converter = DataProviderConverter(input_types)
 
