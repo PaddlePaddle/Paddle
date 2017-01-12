@@ -43,12 +43,11 @@ SET(SWIG_MODULE_swig_paddle_EXTRA_DEPS
     paddle_trainer_lib
     paddle_network
     paddle_proto
-    ${PY_PADDLE_PYTHON_FILES}
     ${external_project_dependencies}
 )
 
 IF(APPLE)
-    SET(ARCHIVE_START "-undefined dynamic_lookup -Wl,-all_load")
+    SET(MACOS_LD_FLAGS "-undefined dynamic_lookup -Wl,-all_load")
 ELSE(APPLE)
     SET(START_GROUP "-Xlinker -start-group")
     SET(END_GROUP "-Xlinker -end-group")
@@ -58,6 +57,7 @@ ENDIF(APPLE)
 
 SWIG_ADD_MODULE(swig_paddle python Paddle.i)
 SWIG_LINK_LIBRARIES(swig_paddle
+    ${MACOS_LD_FLAGS}
     ${START_GROUP}
     ${ARCHIVE_START}
     paddle_gserver
@@ -81,9 +81,9 @@ SWIG_LINK_LIBRARIES(swig_paddle
     ${START_END}
 )
 
-add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/dist/.timestamp
-    COMMAND mv ${CMAKE_CURRENT_BINARY_DIR}/swig_paddle.py ${PROJ_ROOT}/paddle/py_paddle
-         && mv ${CMAKE_CURRENT_BINARY_DIR}/_swig_paddle.so ${PROJ_ROOT}/paddle/py_paddle
+add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/swig_paddle.py ${PROJ_ROOT}/paddle/py_paddle
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/_swig_paddle.so ${PROJ_ROOT}/paddle/py_paddle
     COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMAND ${CMAKE_COMMAND} -E touch dist/.timestamp
     COMMAND rm -rf py_paddle.egg-info build
@@ -91,7 +91,8 @@ add_custom_command(OUTPUT ${PROJ_ROOT}/paddle/dist/.timestamp
     DEPENDS _swig_paddle
 )
 
-add_custom_target(python_api_wheel ALL DEPENDS ${PROJ_ROOT}/paddle/dist/.timestamp)
+# TODO(yuyang18) : make wheel name calculated by cmake
+add_custom_target(python_api_wheel ALL DEPENDS ${PROJ_ROOT}/paddle/py_paddle/_swig_paddle.so)
 
 install(DIRECTORY ${PROJ_ROOT}/paddle/dist/ DESTINATION opt/paddle/share/wheels)
 
