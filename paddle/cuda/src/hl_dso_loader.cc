@@ -25,10 +25,8 @@ DEFINE_string(cudnn_dir,
 DEFINE_string(cuda_dir,
               "",
               "Specify path for loading cuda library, such as libcublas, "
-              "libcurand. For instance, /usr/local/cuda/lib64. (Note: "
-              "libcudart can not be specified by cuda_dir, since some "
-              "build-in function in cudart already ran before main entry). "
-              "If default, dlopen will search cuda from LD_LIBRARY_PATH");
+              "libcurand. For instance, /usr/local/cuda/lib64. If default, "
+              "dlopen will search cuda from LD_LIBRARY_PATH");
 
 DEFINE_string(warpctc_dir, "", "Specify path for loading libwarpctc.so.");
 
@@ -144,14 +142,6 @@ void GetCudnnDsoHandle(void** dso_handle) {
   GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", dso_handle);
 #else
   GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", dso_handle);
-#endif
-}
-
-void GetCudartDsoHandle(void** dso_handle) {
-#if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath("", "libcudart.dylib", dso_handle);
-#else
-  GetDsoHandleFromSearchPath("", "libcudart.so", dso_handle);
 #endif
 }
 

@@ -22,3 +22,4 @@ paddle train \
     --log_period=100 \
     --dot_period=1 \
     --num_passes=50  2>&1 | tee 'log.txt'
+paddle usage -l log.txt -e $? -n "recommendation" >/dev/null 2>&1

@@ -1091,6 +1091,10 @@ public:
       TensorCpuApply<real>(*this, expr);
     }
   }
+
+  bool isEmpty() const { return data_ == nullptr; }
+
+  explicit operator bool() const { return !isEmpty(); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Matrix& mat) {
