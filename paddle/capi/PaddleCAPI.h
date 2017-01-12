@@ -21,6 +21,16 @@ limitations under the License. */
 extern "C" {
 #endif
 
+/**
+ * Paddle C API. It will replace SWIG as Multiple Language API for model
+ * training & inference. Currently it is only used in model infernece.
+ *
+ * NOTE: This is an experimental API, it could be changed.
+ */
+
+/**
+ * Error Type for Paddle API.
+ */
 typedef enum {
   kPD_NO_ERROR = 0,
   kPD_NULLPTR = 1,
@@ -29,6 +39,9 @@ typedef enum {
   kPD_UNDEFINED_ERROR = -1,
 } PD_Error;
 
+/**
+ * Int Vector Functions. Return will be a PD_Error type.
+ */
 typedef void* PD_IVector;
 
 int PDIVecCreateNone(PD_IVector* ivec);
@@ -37,6 +50,9 @@ int PDIVecDestroy(PD_IVector ivec);
 
 int PDIVectorGet(PD_IVector ivec, int** buffer);
 
+/**
+ * Matrix functions. Return will be a PD_Error type.
+ */
 typedef void* PD_Matrix;
 
 int PDMatCreate(PD_Matrix* mat, uint64_t height, uint64_t width, bool useGpu);
@@ -51,6 +67,10 @@ int PDMatCreateNone(PD_Matrix* mat);
 
 int PDMatGetShape(PD_Matrix mat, uint64_t* height, uint64_t* width);
 
+/**
+ * Arguments functions. Each argument means layer output. Arguments means a
+ * array of arguemnt.
+ */
 typedef void* PD_Arguments;
 
 int PDArgsCreateNone(PD_Arguments* args);
@@ -67,6 +87,9 @@ int PDArgsGetValue(PD_Arguments args, uint64_t ID, PD_Matrix mat);
 
 int PDArgsGetIds(PD_Arguments args, uint64_t ID, PD_IVector ids);
 
+/**
+ * @brief GradientMachine means a neural network.
+ */
 typedef void* PD_GradientMachine;
 
 int PDGradientMachineCreateForPredict(PD_GradientMachine* machine,
@@ -88,6 +111,9 @@ int PDGradientMachineCreateSharedParam(PD_GradientMachine origin,
 
 int PDGradientMachineDestroy(PD_GradientMachine machine);
 
+/**
+ * Initialize Paddle.
+ */
 int PDInit(int argc, char** argv);
 
 #ifdef __cplusplus
