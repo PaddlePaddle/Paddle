@@ -58,21 +58,21 @@ void testMatrixProjectionForward(int context_start,
 
   BufferArgs cpu_inputs;
   BufferArgs cpu_outputs;
-  cpu_inputs.addArg(cpu_in);
-  cpu_inputs.addArg(cpu_weight ? *cpu_weight
-                               : CpuMatrix(nullptr, 0, input_dim));
-  cpu_inputs.addArg(*cpu_seq);
-  cpu_outputs.addArg(cpu_out, ADD_TO);
+  cpu_inputs.addArg(cpu_in, *cpu_seq);
+  if (cpu_weight) {
+    cpu_inputs.addArg(*cpu_weight, *cpu_seq);
+  }
+  cpu_outputs.addArg(cpu_out, *cpu_seq, ADD_TO);
 
   compare.getCpuFunction()->calc(cpu_inputs, cpu_outputs);
 
   BufferArgs gpu_inputs;
   BufferArgs gpu_outputs;
-  gpu_inputs.addArg(gpu_in);
-  gpu_inputs.addArg(gpu_weight ? *gpu_weight
-                               : GpuMatrix(nullptr, 0, input_dim));
-  gpu_inputs.addArg(*gpu_seq);
-  gpu_outputs.addArg(gpu_out, ADD_TO);
+  gpu_inputs.addArg(gpu_in, *gpu_seq);
+  if (gpu_weight) {
+    gpu_inputs.addArg(*gpu_weight, *gpu_seq);
+  }
+  gpu_outputs.addArg(gpu_out, *gpu_seq, ADD_TO);
 
   compare.getGpuFunction()->calc(gpu_inputs, gpu_outputs);
 
