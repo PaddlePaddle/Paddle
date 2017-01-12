@@ -39,15 +39,18 @@ add_custom_target(paddle_capi_whole ALL
         COMMAND mkdir -p o_files/math && cd o_files/math/  && ar -x $<TARGET_FILE:paddle_math>
         COMMAND mkdir -p o_files/cuda && cd o_files/cuda/ && ar -x $<TARGET_FILE:paddle_cuda>
         COMMAND mkdir -p o_files/function && cd o_files/function/ && ar -x $<TARGET_FILE:paddle_function>
-        COMMAND mkdir -p o_files/pserver && cd o_files/pserver/ && ar -x $<TARGET_FILE:paddle_pserver>
         COMMAND mkdir -p o_files/gserver && cd o_files/gserver/ && ar -x $<TARGET_FILE:paddle_gserver>
         COMMAND mkdir -p o_files/proto && cd o_files/proto/ && ar -x $<TARGET_FILE:paddle_proto>
+        COMMAND mkdir -p o_files/network && cd o_files/network/ && ar -x
+        +$<TARGET_FILE:paddle_network>
+        +       COMMAND mkdir -p o_files/pserver && cd o_files/pserver/ && ar -x
+        +$<TARGET_FILE:paddle_pserver
         COMMAND ar crs ${capi_whole_library} `find ./o_files -name '*.o'`
         COMMAND rm -rf o_files
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS paddle_capi paddle_utils paddle_parameter paddle_math
-                paddle_cuda paddle_function paddle_pserver paddle_gserver
-                paddle_proto
+                paddle_cuda paddle_function paddle_gserver
+                paddle_proto paddle_pserver paddle_network
         )
 set_target_properties(paddle_capi_whole
   PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${capi_whole_library})

@@ -36,7 +36,7 @@ TEST(GradientMachine, testPredict) {
   paddle::TrainerConfigHelper config("./test_predict_network.py");
   std::string buffer;
   ASSERT_TRUE(config.getModelConfig().SerializeToString(&buffer));
-  PD_GradiemtMachine machine;
+  PD_GradientMachine machine;
 
   ASSERT_EQ(kPD_NO_ERROR,
             PDGradientMachineCreateForPredict(
@@ -50,7 +50,7 @@ TEST(GradientMachine, testPredict) {
   ASSERT_EQ(kPD_NO_ERROR,
             PDGradientMachineLoadParameterFromDisk(machine, "./"));
 
-  PD_GradiemtMachine machineSlave;
+  PD_GradientMachine machineSlave;
   ASSERT_EQ(kPD_NO_ERROR,
             PDGradientMachineCreateSharedParam(
                 machine, &buffer[0], (int)buffer.size(), &machineSlave));

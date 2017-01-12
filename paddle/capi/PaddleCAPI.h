@@ -67,26 +67,26 @@ int PDArgsGetValue(PD_Arguments args, uint64_t ID, PD_Matrix mat);
 
 int PDArgsGetIds(PD_Arguments args, uint64_t ID, PD_IVector ids);
 
-typedef void* PD_GradiemtMachine;
+typedef void* PD_GradientMachine;
 
-int PDGradientMachineCreateForPredict(PD_GradiemtMachine* machine,
+int PDGradientMachineCreateForPredict(PD_GradientMachine* machine,
                                       void* modelConfigProtobuf,
                                       int size);
 
-int PDGradientMachineLoadParameterFromDisk(PD_GradiemtMachine machine,
+int PDGradientMachineLoadParameterFromDisk(PD_GradientMachine machine,
                                            const char* path);
 
-int PDGradientMachineForward(PD_GradiemtMachine machine,
+int PDGradientMachineForward(PD_GradientMachine machine,
                              PD_Arguments inArgs,
                              PD_Arguments outArgs,
                              bool isTrain);
 
-int PDGradientMachineCreateSharedParam(PD_GradiemtMachine origin,
+int PDGradientMachineCreateSharedParam(PD_GradientMachine origin,
                                        void* modelConfigProtobuf,
                                        int size,
-                                       PD_GradiemtMachine* slave);
+                                       PD_GradientMachine* slave);
 
-int PDGradientMachineDestroy(PD_GradiemtMachine machine);
+int PDGradientMachineDestroy(PD_GradientMachine machine);
 
 int PDInit(int argc, char** argv);
 
