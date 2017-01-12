@@ -21,6 +21,7 @@ addons:
     packages:
       - gcc-4.8
       - g++-4.8
+      - gfortran-4.8
       - git
       - build-essential
       - libatlas-base-dev
