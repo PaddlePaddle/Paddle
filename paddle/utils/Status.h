@@ -11,18 +11,44 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
+#pragma once
+
 #include <memory>
 #include <string>
 
 namespace paddle {
 
+/**
+ * Status is Paddle error code. It only contain a std::string as error message.
+ * Although Status inherits the std::exception, but do not throw it except you
+ * know what you are doing.
+ */
 class Status final : public std::exception {
 public:
+  /**
+   * Default Status. OK
+   */
   Status() noexcept {}
 
-  Status(const std::string& msg) : errMsg_(new std::string(msg)) {}
+  /**
+   * @brief Create Status with error message
+   * @param msg
+   */
+  explicit Status(const std::string& msg) : errMsg_(new std::string(msg)) {}
 
-  virtual const char* what() const noexcept override {
+  /**
+   * @brief set a error message for status.
+   * @param msg
+   */
+  inline void set(const std::string& msg) noexcept {
+    errMsg_.reset(new std::string(msg));
+  }
+
+  /**
+   * @brief what will return the error message. If status is OK, return nullptr.
+   */
+  const char* what() const noexcept override {
     if (errMsg_) {
       return errMsg_->data();
     } else {
@@ -30,10 +56,14 @@ public:
     }
   }
 
+  /**
+   * @brief isOK
+   * @return true if OK.
+   */
   inline bool isOK() const noexcept { return errMsg_ == nullptr; }
 
 private:
-  std::unique_ptr<std::string> errMsg_;
+  std::shared_ptr<std::string> errMsg_;
 };
 
 }  // namespace paddle

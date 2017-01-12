@@ -69,8 +69,14 @@ static ClassRegistrar<ActivationFunction> gActivationRegistrar;
 class IdentityActivation : public ActivationFunction {
 public:
   static const std::string name;
-  void forward(Argument& act) { (void)act; }
-  void backward(Argument& act) { (void)act; }
+  Status forward(Argument& act) {
+    (void)act;
+    return Status();
+  }
+  Status backward(Argument& act) {
+    (void)act;
+    return Status();
+  }
   const std::string& getName() const { return name; }
 };
 const std::string IdentityActivation::name = "";
@@ -86,8 +92,14 @@ static InitFunction __reg_activation__identity([] {
  * \f]
  */
 BEGIN_DEFINE_ACTIVATION(sigmoid)
-void forward(Argument& act) { act.value->sigmoid(*act.value); }
-void backward(Argument& act) { act.grad->sigmoidDerivative(*act.value); }
+Status forward(Argument& act) {
+  act.value->sigmoid(*act.value);
+  return Status();
+}
+Status backward(Argument& act) {
+  act.grad->sigmoidDerivative(*act.value);
+  return Status();
+}
 END_DEFINE_ACTIVATION(sigmoid)
 
 /**
@@ -103,9 +115,12 @@ MatrixPtr sftMaxDot_;
 MatrixPtr one_;
 
 public:
-void forward(Argument& act) { act.value->softmax(*act.value); }
+Status forward(Argument& act) {
+  act.value->softmax(*act.value);
+  return Status();
+}
 
-void backward(Argument& act) {
+Status backward(Argument& act) {
   MatrixPtr outputV = act.value;
   MatrixPtr outputG = act.grad;
 
@@ -137,6 +152,7 @@ void backward(Argument& act) {
 
     act.grad->softmaxDerivative(*act.value, *sftMaxSum_);
   }
+  return Status();
 }
 END_DEFINE_ACTIVATION(softmax)
 
@@ -151,8 +167,11 @@ ACTIVATION_CLASS_NAME(softmax) softmax_;
 Argument argument_;
 
 public:
-void forward(Argument& act) {
-  CHECK_EQ(act.value->getWidth(), 1UL);
+Status forward(Argument& act) {
+  if (act.value->getWidth() != 1UL) {
+    return Status(
+        "Input width for each timestep of sequence softmax should be 1");
+  }
 
   if (!argument_.value) {
     argument_.value = Matrix::create(nullptr,
@@ -169,10 +188,14 @@ void forward(Argument& act) {
 
   auto starts = act.sequenceStartPositions->getVector(useGpu(act.deviceId));
   act.value->sequenceSoftmax(*act.value, *starts);
+  return Status();
 }
 
-void backward(Argument& act) {
-  CHECK_EQ(act.grad->getWidth(), 1UL);
+Status backward(Argument& act) {
+  if (act.value->getWidth() != 1UL) {
+    return Status(
+        "Input width for each timestep of sequence softmax should be 1");
+  }
 
   size_t numSequences = act.getNumSequences();
   const int* starts = act.sequenceStartPositions->getData(false);
@@ -186,6 +209,7 @@ void backward(Argument& act) {
 
     softmax_.backward(argument_);
   }
+  return Status();
 }
 END_DEFINE_ACTIVATION(sequence_softmax)
 
@@ -200,9 +224,15 @@ END_DEFINE_ACTIVATION(sequence_softmax)
  *    0 otherwise.
  */
 BEGIN_DEFINE_ACTIVATION(relu)
-void forward(Argument& act) { act.value->relu(*act.value); }
+Status forward(Argument& act) {
+  act.value->relu(*act.value);
+  return Status();
+}
 
-void backward(Argument& act) { act.grad->reluDerivative(*act.value); }
+Status backward(Argument& act) {
+  act.grad->reluDerivative(*act.value);
+  return Status();
+}
 END_DEFINE_ACTIVATION(relu)
 
 /**
@@ -219,9 +249,15 @@ END_DEFINE_ACTIVATION(relu)
  * TODO(yuyang18): Remove magic number 24 or make it configuable.
  */
 BEGIN_DEFINE_ACTIVATION(brelu)
-void forward(Argument& act) { act.value->brelu(*act.value); }
+Status forward(Argument& act) {
+  act.value->brelu(*act.value);
+  return Status();
+}
 
-void backward(Argument& act) { act.grad->breluDerivative(*act.value); }
+Status backward(Argument& act) {
+  act.grad->breluDerivative(*act.value);
+  return Status();
+}
 END_DEFINE_ACTIVATION(brelu)
 
 /**
@@ -231,9 +267,15 @@ END_DEFINE_ACTIVATION(brelu)
  * \f]
  */
 BEGIN_DEFINE_ACTIVATION(tanh)
-void forward(Argument& act) { act.value->tanh(*act.value); }
+Status forward(Argument& act) {
+  act.value->tanh(*act.value);
+  return Status();
+}
 
-void backward(Argument& act) { act.grad->tanhDerivative(*act.value); }
+Status backward(Argument& act) {
+  act.grad->tanhDerivative(*act.value);
+  return Status();
+}
 END_DEFINE_ACTIVATION(tanh)
 
 /**
@@ -248,10 +290,14 @@ real a, b;
 
 public:
 ACTIVATION_CLASS_NAME(stanh)() : a(1.7159), b(2. / 3.) {}
-void forward(Argument& act) { act.value->scaledTanh(*act.value, a, b); }
+Status forward(Argument& act) {
+  act.value->scaledTanh(*act.value, a, b);
+  return Status();
+}
 
-void backward(Argument& act) {
+Status backward(Argument& act) {
   act.grad->scaledTanhDerivative(*act.value, a, b);
+  return Status();
 }
 END_DEFINE_ACTIVATION(stanh)
 
@@ -262,9 +308,15 @@ END_DEFINE_ACTIVATION(stanh)
  * \f]
  */
 BEGIN_DEFINE_ACTIVATION(softrelu)
-void forward(Argument& act) { act.value->softrelu(*act.value); }
+Status forward(Argument& act) {
+  act.value->softrelu(*act.value);
+  return Status();
+}
 
-void backward(Argument& act) { act.grad->softreluDerivative(*act.value); }
+Status backward(Argument& act) {
+  act.grad->softreluDerivative(*act.value);
+  return Status();
+}
 END_DEFINE_ACTIVATION(softrelu)
 
 /**
@@ -280,7 +332,7 @@ END_DEFINE_ACTIVATION(softrelu)
  *     0   if z=0
  */
 BEGIN_DEFINE_ACTIVATION(abs)
-void forward(Argument& act) {
+Status forward(Argument& act) {
   SetDevice device(act.deviceId);
   Matrix::resizeOrCreate(act.in,
                          act.value->getHeight(),
@@ -290,9 +342,13 @@ void forward(Argument& act) {
 
   act.in->copyFrom(*act.value);
   act.value->abs2(*act.value);
+  return Status();
 }
 
-void backward(Argument& act) { act.grad->absDerivative(*act.in); }
+Status backward(Argument& act) {
+  act.grad->absDerivative(*act.in);
+  return Status();
+}
 END_DEFINE_ACTIVATION(abs)
 
 /**
@@ -302,7 +358,7 @@ END_DEFINE_ACTIVATION(abs)
  * \f]
  */
 BEGIN_DEFINE_ACTIVATION(square)
-void forward(Argument& act) {
+Status forward(Argument& act) {
   SetDevice device(act.deviceId);
   Matrix::resizeOrCreate(act.in,
                          act.value->getHeight(),
@@ -312,9 +368,13 @@ void forward(Argument& act) {
 
   act.in->copyFrom(*act.value);
   act.value->square2(*act.value);
+  return Status();
 }
 
-void backward(Argument& act) { act.grad->squareDerivative(*act.in); }
+Status backward(Argument& act) {
+  act.grad->squareDerivative(*act.in);
+  return Status();
+}
 END_DEFINE_ACTIVATION(square)
 
 /**
@@ -324,9 +384,15 @@ END_DEFINE_ACTIVATION(square)
  * \f]
  */
 BEGIN_DEFINE_ACTIVATION(exponential)
-void forward(Argument& act) { act.value->exp2(*act.value); }
+Status forward(Argument& act) {
+  act.value->exp2(*act.value);
+  return Status();
+}
 
-void backward(Argument& act) { act.grad->expDerivative(*act.value); }
+Status backward(Argument& act) {
+  act.grad->expDerivative(*act.value);
+  return Status();
+}
 END_DEFINE_ACTIVATION(exponential)
 
 /**
@@ -336,7 +402,7 @@ END_DEFINE_ACTIVATION(exponential)
  * \f]
  */
 BEGIN_DEFINE_ACTIVATION(log)
-void forward(Argument& act) {
+Status forward(Argument& act) {
   SetDevice device(act.deviceId);
   Matrix::resizeOrCreate(act.in,
                          act.value->getHeight(),
@@ -346,9 +412,13 @@ void forward(Argument& act) {
 
   act.in->copyFrom(*act.value);
   act.value->log2(*act.value);
+  return Status();
 }
 
-void backward(Argument& act) { act.grad->dotDiv(*act.grad, *act.in); }
+Status backward(Argument& act) {
+  act.grad->dotDiv(*act.grad, *act.in);
+  return Status();
+}
 END_DEFINE_ACTIVATION(log)
 
 ActivationFunction* ActivationFunction::create(const std::string& type) {
