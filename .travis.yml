@@ -28,7 +28,6 @@ addons:
       - gfortran-4.8
       - git
       - build-essential
-      - libatlas-base-dev
       - python
       - python-pip
       - python2.7-dev
