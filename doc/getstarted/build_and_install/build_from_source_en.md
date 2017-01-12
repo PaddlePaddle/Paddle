@@ -64,7 +64,8 @@ As a simple example, consider the following:
 
 1. **BLAS Dependencies(optional)**
   
-    Paddle will find BLAS from system's default path. But you can specify MKL, OpenBLAS or ATLAS via `MKL_ROOT`, `OPENBLAS_ROOT` or `ATLAS_ROOT`.
+    First, CMake will search system path to find BLAS libraries. If not found, OpenBLAS will be downloaded, built and installed automatically.
+    If you want to use BLAS in other directory， you can simply specify MKL, OpenBLAS or ATLAS via `MKL_ROOT`, `OPENBLAS_ROOT` or `ATLAS_ROOT`.
 
     ```bash
     # specify MKL
