@@ -169,6 +169,7 @@ void ContextProjection::backward(const UpdateCallback& callback) {
   outputs.addArg(
       CpuMatrix(
           in_->grad ? in_->grad->getData() : nullptr, batch_size, input_dim),
+      *in_->sequenceStartPositions->getVector(useGpu_),
       ADD_TO);
   outputs.addArg(CpuMatrix(w_ptr ? w_ptr->getData() : nullptr,
                            w_ptr ? w_ptr->getHeight() : 0,
