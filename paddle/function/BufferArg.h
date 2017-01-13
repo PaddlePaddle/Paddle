@@ -167,7 +167,7 @@ public:
   ValueType valueType() const { return valueType_; }
   BufferType bufferType() const { return bufferType_; }
   const TensorShape& shape() const { return shape_; }
-  bool isSparse() const { return (TENSOR_SPARSE == bufferType_); }
+  bool isSparse() const { return TENSOR_SPARSE == bufferType_; }
   bool isSequenceArg() const { return TENSOR_SEQUENCE_DATA == bufferType_; }
 
   const SequenceArg& sequence() const;
@@ -271,13 +271,15 @@ public:
                   size_t nnz,
                   SparseDataFormat format,
                   SparseDataType type,
+                  bool trans = false,
                   ArgType argType = UNSPECIFIED)
       : BufferArg(buf, valueType, shape, argType),
         row_(row),
         col_(col),
         nnz_(nnz),
         format_(format),
-        type_(type) {
+        type_(type),
+        trans_(trans) {
     bufferType_ = TENSOR_SPARSE;
     CHECK((valueType == VALUE_TYPE_FLOAT) || (valueType == VALUE_TYPE_DOUBLE));
     CHECK_EQ(shape_.ndims(), (size_t)2);
@@ -294,6 +296,24 @@ public:
 
   SparseMatrixArg(const GpuSparseMatrix& sparse, ArgType argType = UNSPECIFIED);
 
+  template <DeviceType DType>
+  typename Tensor<real, DType>::SparseMatrix SparseMatrix() const {
+    CHECK(buf_);
+    CHECK(valueType_ == DataType<real>::value);
+    // CHECK(deviceType_ == DType);
+    CHECK_EQ(2, shape_.ndims());
+    return typename Tensor<real, DType>::SparseMatrix(
+        reinterpret_cast<real*>(buf_),
+        reinterpret_cast<int*>(row_.data()),
+        reinterpret_cast<int*>(col_.data()),
+        shape_[0],
+        shape_[1],
+        nnz_,
+        static_cast<SparseValueType>(type_),
+        static_cast<SparseFormat>(format_),
+        trans_);
+  }
+
   ~SparseMatrixArg() {}
 
   void* getRowBuf() const { return row_.data(); }
@@ -301,6 +321,8 @@ public:
   void* getColBuf() const { return col_.data(); }
 
   size_t nnz() const { return nnz_; }
+
+  bool isTranspose() const { return trans_; }
 
   SparseDataFormat dataFormat() const { return format_; }
 
@@ -312,6 +334,8 @@ private:
   size_t nnz_;
   SparseDataFormat format_;
   SparseDataType type_;
+  /// todo(tianbing), move trans_ up to BufferArg
+  bool trans_;
 };
 
 }  // namespace paddle

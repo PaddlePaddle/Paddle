@@ -88,6 +88,29 @@ struct MatrixT<int, DEVICE_TYPE_GPU> {
 };
 
 template <typename VType, DeviceType Device>
+struct SparseMatrixT;
+
+template <>
+struct SparseMatrixT<real, DEVICE_TYPE_CPU> {
+  using type = CpuSparseMatrix;
+};
+
+template <>
+struct SparseMatrixT<real, DEVICE_TYPE_GPU> {
+  using type = GpuSparseMatrix;
+};
+
+template <>
+struct SparseMatrixT<int, DEVICE_TYPE_CPU> {
+  using type = void;  // Not implemented
+};
+
+template <>
+struct SparseMatrixT<int, DEVICE_TYPE_GPU> {
+  using type = void;  // Not implemented
+};
+
+template <typename VType, DeviceType Device>
 struct VectorT;
 
 template <>
@@ -114,8 +137,9 @@ struct VectorT<int, DEVICE_TYPE_GPU> {
 
 template <typename VType, DeviceType DType>
 struct Tensor {
-  typedef typename detail::MatrixT<VType, DType>::type Matrix;
   typedef typename detail::VectorT<VType, DType>::type Vector;
+  typedef typename detail::MatrixT<VType, DType>::type Matrix;
+  typedef typename detail::SparseMatrixT<VType, DType>::type SparseMatrix;
 };
 
 }  // namespace paddle

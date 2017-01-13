@@ -32,14 +32,16 @@ const SparseMatrixArg& BufferArg::sparse() const {
 SparseMatrixArg::SparseMatrixArg(const CpuSparseMatrix& sparse, ArgType argType)
     : BufferArg(sparse, argType),
       row_(reinterpret_cast<void*>(sparse.getRows()), VALUE_TYPE_INT32),
-      col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32) {
+      col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32),
+      trans_(const_cast<CpuSparseMatrix&>(sparse).getTranspose()) {
   bufferType_ = TENSOR_SPARSE;
 }
 
 SparseMatrixArg::SparseMatrixArg(const GpuSparseMatrix& sparse, ArgType argType)
     : BufferArg(sparse, argType),
       row_(reinterpret_cast<void*>(sparse.getRows()), VALUE_TYPE_INT32),
-      col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32) {
+      col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32),
+      trans_(const_cast<GpuSparseMatrix&>(sparse).getTranspose()) {
   bufferType_ = TENSOR_SPARSE;
 }
 
