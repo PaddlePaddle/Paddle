@@ -108,6 +108,7 @@ __all__ = [
     'print_layer',
     'priorbox_layer',
     'multibox_loss_layer',
+    'normalize_layer',
     'spp_layer',
 ]
 
@@ -175,6 +176,7 @@ class LayerType(object):
     PRINT_LAYER = "print"
     PRIORBOX_LAYER = "priorbox"
     MULTIBOX_LOSS_LAYER = "multibox_loss"
+    NORMALIZE_LAYER = "normalize"
 
     CTC_LAYER = "ctc"
     WARP_CTC_LAYER = "warp_ctc"
@@ -1062,6 +1064,33 @@ def multibox_loss_layer(input_loc,
         background_id=background_id)
     return LayerOutput(
         name, LayerType.MULTIBOX_LOSS_LAYER, parents=parents, size=1)
+
+
+@wrap_name_default("normalize")
+def normalize_layer(input, name=None, param_attr=None):
+    """
+    Normalize a layer's output. This layer is necessary for ssd.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput
+    :param param_attr: The Parameter Attribute|list.
+    :type param_attr: ParameterAttribute
+    :return: LayerOutput
+    """
+    Layer(
+        name=name,
+        type=LayerType.NORMALIZE_LAYER,
+        inputs=[Input(input.name, **param_attr.attr)],
+        size=input.size,
+        num_filters=input.num_filters)
+    return LayerOutput(
+        name,
+        LayerType.NORMALIZE_LAYER,
+        parents=input,
+        num_filters=input.num_filters,
+        size=input.size)
 
 
 @wrap_name_default("seq_pooling")

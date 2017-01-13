@@ -60,7 +60,7 @@ void MultiBoxLossLayer::forward(PassType passType) {
   // locBuffer layout:
   // | xmin1 | ymin1 | xmax1 | ymax1 | xmin2 ......
   // confBuffer layout:
-  // | class1 score | class2 score | ... |classN score| class1 score| ......
+  // | class1 score | class2 score | ... |classN score | class1 score | ......
   if (useGpu_) {
     Matrix::resizeOrCreate(locGpuBuffer_, 1, locSizeSum_, false, useGpu_);
     Matrix::resizeOrCreate(confGpuBuffer_, 1, confSizeSum_, false, useGpu_);
@@ -81,6 +81,7 @@ void MultiBoxLossLayer::forward(PassType passType) {
   for (size_t n = 0; n < inputNum_; n++) {
     const MatrixPtr inLoc = getInputValue(*getLocInputLayer(n));
     const MatrixPtr inConf = getInputValue(*getConfInputLayer(n));
+
     size_t locSize = inLoc->getElementCnt();
     size_t confSize = inConf->getElementCnt();
     size_t height = getInput(*getLocInputLayer(n)).getFrameHeight();
@@ -167,13 +168,17 @@ void MultiBoxLossLayer::forward(PassType passType) {
   // Retrieve max scores for each prior. Used in negative mining
   vector<vector<real>> allMaxConfScore;
   numPriors_ = priorValue->getElementCnt() / 8;
+  CHECK_EQ(locOffset / 4, numPriors_);
+  CHECK_EQ(confOffset / numClasses_, numPriors_);
   getMaxConfScore(confBuffer_->getData(),
                   batchSize,
                   numPriors_,
                   numClasses_,
                   &allMaxConfScore);
+
   Argument label = getInput(*getLabelLayer());
   const int* labelIndex = label.sequenceStartPositions->getData(false);
+
   int seqNum = label.getNumSequences();
   // Match priorbox to ground truth bbox
   numMatches_ = 0;
@@ -344,7 +349,6 @@ void MultiBoxLossLayer::backward(const UpdateCallback& callback) {
     }
     CHECK_EQ(count, numConf_);
   }
-
   // Copy data from CPU to GPU if use GPU
   if (useGpu_) {
     locGpuBuffer_->copyFrom(*locCpuBuffer_);
@@ -434,7 +438,7 @@ real MultiBoxLossLayer::softmaxLoss(const vector<real> confPredData,
     for (size_t j = 0; j < numClasses; j++) sum += confProb[offset + j];
     for (size_t j = 0; j < numClasses; j++)
       confProb[offset + j] = confProb[offset + j] / sum;
-    error -= std::log(std::max(confProb[confGtData[i]], FLT_MIN));
+    error -= std::log(std::max(confProb[offset + confGtData[i]], FLT_MIN));
   }
   // keep same as caffe version
   return error / numMatches;
@@ -444,6 +448,7 @@ real MultiBoxLossLayer::smoothL1Loss(const vector<real> locPredData,
                                      const vector<real> locGtData,
                                      const real locWeight,
                                      real* locDiff) {
+  CHECK_EQ(locPredData.size(), locGtData.size());
   real error = 0.;
   for (size_t i = 0; i < locPredData.size(); i++) {
     locDiff[i] = locPredData[i] - locGtData[i];
@@ -511,6 +516,8 @@ real MultiBoxLossLayer::jaccardOverlap(const real* priorData,
   real height1 = yMax1 - yMin1;
   real width2 = xMax2 - xMin2;
   real height2 = yMax2 - yMin2;
+  real bboxSize1 = width1 * height1;
+  real bboxSize2 = width2 * height2;
 
   real intersectWidth;
   real intersectHeight;
@@ -519,8 +526,7 @@ real MultiBoxLossLayer::jaccardOverlap(const real* priorData,
     intersectWidth = std::min(xMax1, xMax2) - std::max(xMin1, xMin2);
     intersectHeight = std::min(yMax1, yMax2) - std::max(yMin1, yMin2);
     real intersectSize = intersectWidth * intersectHeight;
-    real overlap =
-        intersectSize / (width1 * height1 + width2 * height2 - intersectSize);
+    real overlap = intersectSize / (bboxSize1 + bboxSize2 - intersectSize);
     return overlap;
   } else {
     return 0;
