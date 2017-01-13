@@ -25,13 +25,16 @@ import numpy as np
 from six.moves import urllib
 import stat
 
+
 source_url=['http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/bitexts.tgz',
         'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz'
         ]
 model_url='http://paddlepaddle.bj.bcebos.com/model_zoo/wmt14_model.tar.gz'
 
+model_source = "wmt14_model"
+file_source = "bitexts.selected"
 
-def fetch():
+def fetch(directory=None):
     """
     According to the source name,set the download path for source,
     download the data from the source url,and return the download path to fetch for training api.
@@ -42,121 +45,19 @@ def fetch():
         path to downloaded file.
     """
     source_name = "seqToseq"
-    data_home = set_data_path(source_name)
-    model_path = data_download(data_home, model_url)
+    if directory is None:
+        directory = os.path.expanduser(os.path.join('~', 'paddle_data_directory'))
+
+    download_path = os.path.join(directory, source_name)
+    if not os.path.exists(download_path):
+        os.makedirs(download_path)
+
+    model_data = data_download(download_path, model_url)
+    model_path = os.path.join(model_data, model_source)
+
     for url in source_url:
-        filepath = data_download(data_home, source_url)
-    """
-    for i in range(1, num_batch + 1):
-        fpath = os.path.join(filepath, "data_batch_%d" % i)
-    """
-        return filepath
+        filepath = data_download(download_path, url)
+        data_path = os.path.join(filepath, file_source)
+        return data_path
 
 
-def _unpickle(file_path):
-    with open(file_path, mode='rb') as file:
-        if sys.version_info < (3,):
-            data = cPickle.load(file)
-        else:
-            data = cPickle.load(file, encoding='bytes')
-    return data
-
-
-def set_data_path(source_name):
-   """
-    Set the path for download according to the source name.
-
-    Args:
-        source_name:the source
-
-    Returns:
-        the data directory for data download.
-    """
-     data_base = os.path.expanduser(os.path.join('~',' .paddle'))
-     if not os.access(data_base, os.W_OK):
-         data_base = os.path.join('/tmp', '.paddle')
-     datadir = os.path.join(data_base, source_name)
-     print datadir
-     if not os.path.exists(datadir):
-         os.makedirs(datadir)
-     return datadir
-
-
-def data_download(download_dir, source_url):
-    """
-    Download data according to the url for mnist.
-    when downloading,it can see each download process.
-
-    Args:
-        download_dir:the directory for data download.
-        source_url:the url for data download.
-
-    Returns:
-        the path after data downloaded.
-    """
-    src_file = url.strip().split('/')[-1]
-    file_path = os.path.join(download_dir, src_file)
-
-    if not os.path.exists(file_path):
-        temp_file_name,_ = download_with_urlretrieve(source_url)
-        temp_file_path = os.getcwd()
-        os.rename(temp_file_name, src_file)
-        move_files(src_file, download_dir)
-        print("Download finished, Extracting files.")
-        tarfile.open(name=file_path, mode="r:gz").extractall(download_dir)
-        os.remove(file_path)
-        print("Unpacking done!")
-    else:
-        tarfile.open(name=file_path, mode="r:gz").extractall(download_dir)
-        os.remove(file_path)
-        print("Data has been already downloaded and unpacked!")
-    return download_dir
-
-
-def move_files(source_dire, target_dire):
-    """
-    Renaming the source file to other name.
-
-    Args:
-        source_dire:the source name of file
-        target_dire:the target name of file.
-
-    Returns:
-    """
-    shutil.move(source_dire, target_dire)
-
-
-def download_with_urlretrieve(url, filename=None):
-    """
-    Download each file with urlretrieve,and the download process can be seen.
-
-    Args:
-        url:the url for data downoad.
-        filename:the target name for download.
-
-    Returns:
-           the temp name after urlretrieve downloaded.
-    """
-    return urllib.request.urlretrieve(url, filename, reporthook=check_download_progress)
-
-
-def check_download_progress(count, block_size, total_size):
-    """
-    Print and check the download process.
-
-    Args:
-        count:
-        block_size:
-        total_size:
-
-    Returns:
-    """
-    percent = float(count * block_size) / total_size
-    msg = "\r- Download progress: {:.1%}".format(percent)
-    sys.stdout.write(msg)
-    sys.stdout.flush()
-
-
-if __name__ == '__main__':
-    path = fetch()
-    print path
