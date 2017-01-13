@@ -30,7 +30,7 @@ include(simd)
 ################################ Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
-option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" OFF)
+option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
 option(WITH_STYLE_CHECK "Compile PaddlePaddle with style check"         ON)
