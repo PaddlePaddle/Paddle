@@ -56,6 +56,7 @@ bool CudnnConvLayer::init(const LayerMap &layerMap,
 
 void CudnnConvLayer::forward(PassType passType) {
   Layer::forward(passType);
+
   int batchSize = getInput(0).getBatchSize();
   resetOutput(batchSize, calOutputSize());
 
