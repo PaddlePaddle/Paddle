@@ -12,6 +12,9 @@ cd ..
 export PATH=/usr/bin:$PATH
 pre-commit install
 clang-format --version
-pre-commit run -a
+
+if ! pre-commit run -a ; then
+  git diff  --exit-code
+fi
 
 trap : 0

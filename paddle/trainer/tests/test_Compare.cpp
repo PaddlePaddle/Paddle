@@ -24,10 +24,10 @@ using namespace std;     // NOLINT
 
 static const string& configFile = "trainer/tests/sample_trainer_config.conf";
 
-P_DECLARE_int32(gpu_id);
-P_DECLARE_bool(use_gpu);
-P_DECLARE_string(config);
-P_DECLARE_string(config_args);
+DECLARE_int32(gpu_id);
+DECLARE_bool(use_gpu);
+DECLARE_string(config);
+DECLARE_string(config_args);
 
 struct comData {
   vector<Argument> outArgs;
@@ -50,7 +50,7 @@ void calcGradient(bool useGpu, comData& Data) {
   trainer.getDataProvider()->getNextBatch(batchSize, &dataBatch);
   CHECK(dataBatch.getSize()) << "No data from data provider";
   vector<Argument>& inArgs = dataBatch.getStreams();
-  trainer.getGradientMachine()->start(trainer.getConfig(), nullptr);
+  trainer.getGradientMachine()->start();
   for (int i = 0; i < 2; ++i) {
     trainer.getGradientMachine()->forwardBackward(
         inArgs, &Data.outArgs, PASS_TRAIN);

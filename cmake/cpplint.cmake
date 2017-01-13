@@ -53,7 +53,7 @@ macro(add_style_check_target TARGET_NAME)
             if(LINT MATCHES ON)
                 add_custom_command(TARGET ${TARGET_NAME}
                     PRE_BUILD
-                    COMMAND "${PYTHON_EXECUTABLE}" "${PROJ_ROOT}/paddle/scripts/cpplint.py"
+                    COMMAND env ${py_env} "${PYTHON_EXECUTABLE}" "${PROJ_ROOT}/paddle/scripts/cpplint.py"
                                 "--filter=${STYLE_FILTER}" ${filename}
                     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
             endif()

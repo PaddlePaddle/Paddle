@@ -93,6 +93,7 @@ void PriorBoxLayer::forward(PassType passType) {
     for (int w = 0; w < layerWidth; ++w) {
       real centerX = (w + 0.5) * stepW;
       real centerY = (h + 0.5) * stepH;
+
       real minSize = 0;
       for (size_t s = 0; s < minSize_.size(); s++) {
         // first prior.

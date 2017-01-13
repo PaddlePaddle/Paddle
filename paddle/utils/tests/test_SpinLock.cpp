@@ -12,14 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
 #include <vector>
-#include "paddle/utils/CommandLineParser.h"
+
+#include <gflags/gflags.h>
+#include <gtest/gtest.h>
+
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Util.h"
 
-P_DEFINE_int32(test_thread_num, 100, "testing thread number");
+DEFINE_int32(test_thread_num, 100, "testing thread number");
 
 void testNormalImpl(
     size_t thread_num,
@@ -50,10 +52,4 @@ TEST(ThreadSpinLock, normalTest) {
           ++count;
         });
   }
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  paddle::initMain(argc, argv);
-  return RUN_ALL_TESTS();
 }

@@ -4,7 +4,8 @@ set(proto_filenames
     ModelConfig.proto
     ParameterConfig.proto
     ParameterService.proto
-    TrainerConfig.proto)
+    TrainerConfig.proto
+    ParameterServerConfig.proto)
 
 set(PROTO_GEN)
 set(PROTO_GEN_PY)
@@ -18,10 +19,10 @@ foreach(filename ${proto_filenames})
         ${PROTO_GEN}
         ${CUR_PROTO_GEN})
     add_custom_command(OUTPUT ${CUR_PROTO_GEN}
-        COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} 
+        COMMAND env ${py_env} ${PROTOBUF_PROTOC_EXECUTABLE} 
                   --cpp_out ${CMAKE_CURRENT_BINARY_DIR}
-		  --proto_path ${PROJ_ROOT}/proto ${PROJ_ROOT}/proto/${filename}
-        DEPENDS ${filename})
+          --proto_path ${PROJ_ROOT}/proto ${PROJ_ROOT}/proto/${filename}
+        DEPENDS ${filename} ${external_project_dependencies})
 
     set(CUR_PROTO_GEN_PY
         ${PROJ_ROOT}/paddle/python/paddle/proto/${base_filename}_pb2.py)
@@ -29,9 +30,9 @@ foreach(filename ${proto_filenames})
         ${CUR_PROTO_GEN_PY}
         ${PROTO_GEN_PY})
     add_custom_command(OUTPUT ${CUR_PROTO_GEN_PY}
-        COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --python_out ${PROJ_ROOT}/python/paddle/proto
-	--proto_path ${PROJ_ROOT}/proto ${PROJ_ROOT}/proto/${filename}
-        DEPENDS ${filename})
+        COMMAND env ${py_env} ${PROTOBUF_PROTOC_EXECUTABLE} --python_out ${PROJ_ROOT}/python/paddle/proto
+    --proto_path ${PROJ_ROOT}/proto ${PROJ_ROOT}/proto/${filename}
+        DEPENDS ${filename} ${external_project_dependencies})
 endforeach()
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/proto)

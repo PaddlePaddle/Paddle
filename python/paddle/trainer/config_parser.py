@@ -498,9 +498,16 @@ class Input(Cfg):
             is_static=None,
             is_shared=None,
             update_hooks=None,
-            input_layer_argument=None, ):
+            input_layer_argument=None,
+            make_layer_name_in_submodel=True, ):
+        """
+        @param make_layer_name_in_submodel True by defalut, you might need to
+        set it carefully when adding Input in config_parser.py.
+        """
         self.add_keys(locals())
-        self.input_layer_name = MakeLayerNameInSubmodel(input_layer_name)
+        self.input_layer_name = MakeLayerNameInSubmodel(
+            input_layer_name
+        ) if make_layer_name_in_submodel else input_layer_name
 
 
 # Define a projection for iexed layer
@@ -1240,7 +1247,8 @@ def Evaluator(
         dict_file=None,
         result_file=None,
         num_results=None,
-        delimited=None, ):
+        delimited=None,
+        excluded_chunk_types=None, ):
     evaluator = g_config.model_config.evaluators.add()
     evaluator.type = type
     evaluator.name = MakeLayerNameInSubmodel(name)
@@ -1268,6 +1276,9 @@ def Evaluator(
         evaluator.num_results = num_results
     if delimited is not None:
         evaluator.delimited = delimited
+
+    if excluded_chunk_types:
+        evaluator.excluded_chunk_types.extend(excluded_chunk_types)
 
 
 class LayerBase(object):
@@ -1897,7 +1908,8 @@ class BatchNormLayer(LayerBase):
                     initial_std=0.0,
                     initial_mean=0.0,
                     is_static=True,
-                    is_shared=is_shared, ))
+                    is_shared=is_shared,
+                    make_layer_name_in_submodel=False, ))
 
         parallel_nn = bool(int(g_command_config_args.get("parallel_nn", 0)))
         cudnn_version = int(g_command_config_args.get("cudnn_version", 0))
@@ -1924,8 +1936,14 @@ class BatchNormLayer(LayerBase):
         input_layer = self.get_input_layer(0)
         image_conf = self.config.inputs[0].image_conf
         parse_image(self.inputs[0].image, input_layer.name, image_conf)
-        self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
-                           image_conf.channels, False)
+
+        # Only pass the width and height of input to batch_norm layer 
+        # when either of it is non-zero. 
+        if input_layer.width != 0 or input_layer.height != 0:
+            self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
+                               image_conf.channels, False)
+        else:
+            self.set_layer_size(input_layer.size)
 
         psize = self.calc_parameter_size(image_conf)
         dims = [1, psize]
@@ -3430,8 +3448,35 @@ def register_parse_config_hook(f):
     _parse_config_hooks.add(f)
 
 
-def parse_config(config_file, config_arg_str):
+def update_g_config():
     '''
+    Update g_config after execute config_file or config_functions.
+    '''
+    for k, v in settings.iteritems():
+        if v is None:
+            continue
+        g_config.opt_config.__setattr__(k, v)
+
+    for k, v in trainer_settings.iteritems():
+        if v is None:
+            continue
+        g_config.__setattr__(k, v)
+
+    for name in g_config.model_config.input_layer_names:
+        assert name in g_layer_map, \
+            'input name "%s" does not correspond to a layer name' % name
+        assert (g_layer_map[name].type == "data" or g_layer_map[name].type == "data_trim"), \
+            'The type of input layer "%s" is not "data"' % name
+    for name in g_config.model_config.output_layer_names:
+        assert name in g_layer_map, \
+            'input name "%s" does not correspond to a layer name' % name
+    return g_config
+
+
+def parse_config(trainer_config, config_arg_str):
+    '''
+    @param trainer_config: can be a string of config file name or a function name
+    with config logic
     @param config_arg_str: a string of the form var1=val1,var2=val2. It will be
     passed to config script as a dictionary CONFIG_ARGS
     '''
@@ -3465,45 +3510,20 @@ def parse_config(config_file, config_arg_str):
     g_root_submodel.is_recurrent_layer_group = False
     g_current_submodel = g_root_submodel
 
-    # for paddle on spark, need support non-file config.
-    # you can use parse_config like below:
-    #
-    # from paddle.trainer.config_parser import parse_config
-    # def configs():
-    #    #your paddle config code, which is same as config file.
-    #
-    # config = parse_config(configs, "is_predict=1")
-    # # then you get config proto object.
-    if hasattr(config_file, '__call__'):
-        config_file.func_globals.update(
+    if hasattr(trainer_config, '__call__'):
+        trainer_config.func_globals.update(
             make_config_environment("", config_args))
-        config_file()
+        trainer_config()
     else:
-        execfile(config_file, make_config_environment(config_file, config_args))
-    for k, v in settings.iteritems():
-        if v is None:
-            continue
-        g_config.opt_config.__setattr__(k, v)
+        execfile(trainer_config,
+                 make_config_environment(trainer_config, config_args))
 
-    for k, v in trainer_settings.iteritems():
-        if v is None:
-            continue
-        g_config.__setattr__(k, v)
-
-    for name in g_config.model_config.input_layer_names:
-        assert name in g_layer_map, \
-            'input name "%s" does not correspond to a layer name' % name
-        assert (g_layer_map[name].type == "data" or g_layer_map[name].type == "data_trim"), \
-            'The type of input layer "%s" is not "data"' % name
-    for name in g_config.model_config.output_layer_names:
-        assert name in g_layer_map, \
-            'input name "%s" does not correspond to a layer name' % name
-    return g_config
+    return update_g_config()
 
 
-def parse_config_and_serialize(config_file, config_arg_str):
+def parse_config_and_serialize(trainer_config, config_arg_str):
     try:
-        config = parse_config(config_file, config_arg_str)
+        config = parse_config(trainer_config, config_arg_str)
         #logger.info(config)
         return config.SerializeToString()
     except:

@@ -58,8 +58,6 @@ layers {
   }
   bias_parameter_name: "___batch_norm_0__.wbias"
   moving_average_fraction: 0.9
-  height: 256
-  width: 256
 }
 layers {
   name: "__crmnorm_0__"

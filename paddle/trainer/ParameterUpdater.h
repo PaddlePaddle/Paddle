@@ -64,7 +64,7 @@ public:
    *           be initialized.
    * @param parameters The parameter need to be initialized.
    */
-  virtual void init(std::vector<ParameterPtr>& parameters) {
+  virtual void init(const std::vector<ParameterPtr>& parameters) {
     ParameterUpdater::init(parameters);
     optimizer_->init(parameters_.size(), nullptr);
     // check no L1 decay in parameter configs
@@ -102,9 +102,9 @@ public:
    * @param cost sum cost during one pass.
    * @return true if accept (used for owlqn).
    */
-  virtual bool finishPass(real cost) {
+  virtual bool finishPass() {
     optimizer_->finishPass();
-    return ParameterUpdater::finishPass(cost);
+    return ParameterUpdater::finishPass();
   }
 
   /**
@@ -208,7 +208,7 @@ public:
    * @brief init. Initialize cpu parameters, model average optimizer.
    * @param parameters
    */
-  virtual void init(std::vector<ParameterPtr>& parameters);
+  virtual void init(const std::vector<ParameterPtr>& parameters);
 
   virtual PassType startBatch(int64_t batchSize) {
     averager_->startBatch(-1UL);
@@ -220,9 +220,9 @@ public:
     averager_->startPass();
     SgdLocalUpdater::startPass();
   }
-  virtual bool finishPass(real cost) {
+  virtual bool finishPass() {
     averager_->finishPass();
-    return SgdLocalUpdater::finishPass(cost);
+    return SgdLocalUpdater::finishPass();
   }
 
   /// apply the averaged parameter to PARAMETER_VALUE

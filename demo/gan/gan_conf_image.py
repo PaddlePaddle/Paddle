@@ -87,9 +87,9 @@ def conv_bn(input,
     print(imgSize, output_x, stride, filter_size, padding)
 
     if trans:
-        nameApx = "_conv"
-    else:
         nameApx = "_convt"
+    else:
+        nameApx = "_conv"
 
     if bn:
         conv = img_conv_layer(

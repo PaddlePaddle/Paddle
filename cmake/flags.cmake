@@ -3,12 +3,6 @@ include(CheckCXXCompilerFlag)
 include(CheckCCompilerFlag)
 include(CheckCXXSymbolExists)
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING 
-        "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-        FORCE)
-endif()
-
 function(CheckCompilerCXX11Flag)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.8)

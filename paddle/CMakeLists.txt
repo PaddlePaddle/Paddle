@@ -1,5 +1,7 @@
 add_subdirectory(cuda)
+add_subdirectory(function)
 add_subdirectory(utils)
+add_subdirectory(testing)
 add_subdirectory(math)
 add_subdirectory(parameter)
 add_subdirectory(gserver)

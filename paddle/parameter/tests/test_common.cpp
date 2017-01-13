@@ -23,15 +23,6 @@ limitations under the License. */
 
 using namespace paddle;  // NOLINT
 
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-
-  int ret = RUN_ALL_TESTS();
-
-  return ret;
-}
-
 class CommonTest : public ::testing::Test {
 protected:
   CommonTest() : testStat_("test") {}

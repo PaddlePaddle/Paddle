@@ -163,15 +163,16 @@ MatrixPtr CpuSparseMatrix::getTranspose() {
 
 SparseValueType CpuSparseMatrix::getValueType() { return valueType_; }
 
-void CpuSparseMatrix::mul(MatrixPtr a, MatrixPtr b, real scaleAB, real scaleT) {
+void CpuSparseMatrix::mul(const Matrix& a,
+                          const Matrix& b,
+                          real scaleAB,
+                          real scaleT) {
   CHECK(!isTransposed()) << "Not supported";
+  const auto a_ptr = dynamic_cast<const CpuMatrix*>(&a);
+  const auto b_ptr = dynamic_cast<const CpuMatrix*>(&b);
 
-  if (dynamic_cast<CpuMatrix*>(a.get()) && dynamic_cast<CpuMatrix*>(b.get())) {
-    CpuMatrix::mul(dynamic_cast<CpuMatrix*>(a.get()),
-                   dynamic_cast<CpuMatrix*>(b.get()),
-                   this,
-                   scaleAB,
-                   scaleT);
+  if (a_ptr && b_ptr) {
+    CpuMatrix::mul((CpuMatrix*)a_ptr, (CpuMatrix*)b_ptr, this, scaleAB, scaleT);
   } else {
     LOG(FATAL) << "not supported";
   }
