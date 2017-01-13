@@ -19,7 +19,7 @@ if(WITH_TESTING)
     # TODO:
     # file(GLOB test_files . *OpTest.cpp)
     # add_executable(${test_bin} EXCLUDE_FROM_ALL ${test_files})
-    # add_simple_unittest(CrossMapNormalOpTest)
+    add_simple_unittest(CrossMapNormalOpTest)
     add_simple_unittest(TensorShapeTest)
     add_simple_unittest(TensorTypeTest)
     add_simple_unittest(BufferArgTest)
