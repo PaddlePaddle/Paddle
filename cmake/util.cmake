@@ -108,6 +108,7 @@ function(link_paddle_exe TARGET_NAME)
     endif()
 
     if(WITH_GPU)
+        target_link_libraries(${TARGET_NAME} ${CUDA_CUDART_LIBRARY})
         if(NOT WITH_DSO OR WITH_METRIC)
             target_link_libraries(${TARGET_NAME}
                 ${CUDNN_LIBRARY}

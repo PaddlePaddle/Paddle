@@ -33,7 +33,6 @@ cd Paddle
 git checkout -b develop  # 创建 develop 分支
 git remote add upstream https://github.com/PaddlePaddle/Paddle.git  # 添加 upstream 到 baidu/Paddle
 git pull upstream develop  # 更新 upstream
-git submodule update --init --recursive
 ```
 
 然后你可以通过做一个本地开发分支开始开发

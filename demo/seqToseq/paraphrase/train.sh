@@ -27,3 +27,4 @@ paddle train \
     --log_period=10 \
     --dot_period=5 \
     2>&1 | tee 'paraphrase/train.log'
+paddle usage -l 'paraphrase/train.log' -e $? -n "seqToseq_paraphrase_train" >/dev/null 2>&1
