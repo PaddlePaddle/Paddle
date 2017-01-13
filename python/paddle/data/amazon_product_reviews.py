@@ -23,7 +23,13 @@ http://jmcauley.ucsd.edu/data/amazon/
 import os
 from http_download import download
 from logger import logger
+import gzip
+import json
 import hashlib
+import nltk
+import collections
+import h5py
+import numpy
 
 BASE_URL = 'http://snap.stanford.edu/data/' \
            'amazon/productGraph/categoryFiles/reviews_%s_5.json.gz'
@@ -83,7 +89,7 @@ class Categories(object):
     __md5__[VideoGames] = '730612da2d6a93ed19f39a808b63993e'
 
 
-__all__ = ['fetch', 'Categories']
+__all__ = ['fetch', 'Categories', 'preprocess']
 
 
 def calculate_md5(fn):
@@ -118,9 +124,90 @@ def fetch(category=None, directory=None):
     fn = os.path.join(directory, '%s.json.gz' % category)
 
     if os.path.exists(fn) and \
-                    calculate_md5(category) == Categories.__md5__[category]:
+                    calculate_md5(fn) == Categories.__md5__[category]:
         # already download.
         return fn
 
     logger.info("Downloading amazon review dataset for %s category" % category)
     return download(BASE_URL % category, fn)
+
+
+def preprocess(category=None, directory=None):
+    """
+    Download and preprocess amazon reviews data set. Save the preprocessed
+    result to hdf5 file.
+
+    In preprocess, it uses nltk to tokenize english sentence. It is slightly
+    different from moses. But nltk is a pure python library, it could be
+    integrated well with Paddle.
+
+    :return: hdf5 file name.
+    """
+    if category is None:
+        category = Categories.Electronics
+
+    if directory is None:
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data', 'amazon'))
+
+    preprocess_fn = os.path.join(directory, '%s.hdf5' % category)
+    raw_file_fn = fetch(category, directory)
+
+    word_dict = collections.defaultdict(int)
+    if not os.path.exists(preprocess_fn):  # already preprocessed
+        with gzip.open(raw_file_fn, mode='r') as f:
+            for sample_num, line in enumerate(f):
+                txt = json.loads(line)['reviewText']
+                try:  # automatically download nltk tokenizer data.
+                    words = nltk.tokenize.word_tokenize(txt, 'english')
+                except LookupError:
+                    nltk.download('punkt')
+                    words = nltk.tokenize.word_tokenize(txt, 'english')
+                for each_word in words:
+                    word_dict[each_word] += 1
+            sample_num += 1
+
+        word_dict_sorted = []
+        for each in word_dict:
+            word_dict_sorted.append((each, word_dict[each]))
+
+        word_dict_sorted.sort(cmp=lambda a, b: a[1] > b[1])
+
+        word_dict = dict()
+
+        h5file = h5py.File(preprocess_fn, 'w')
+        try:
+            word_dict_h5 = h5file.create_dataset(
+                'word_dict',
+                shape=(len(word_dict_sorted), ),
+                dtype=h5py.special_dtype(vlen=str))
+            for i, each in enumerate(word_dict_sorted):
+                word_dict_h5[i] = each[0]
+                word_dict[each[0]] = i
+
+            sentence = h5file.create_dataset(
+                'sentence',
+                shape=(sample_num, ),
+                dtype=h5py.special_dtype(vlen=numpy.int32))
+
+            label = h5file.create_dataset(
+                'label', shape=(sample_num, 1), dtype=numpy.int8)
+
+            with gzip.open(raw_file_fn, mode='r') as f:
+                for i, line in enumerate(f):
+                    obj = json.loads(line)
+                    txt = obj['reviewText']
+                    score = numpy.int8(obj['overall'])
+                    words = nltk.tokenize.word_tokenize(txt, 'english')
+                    words = numpy.array(
+                        [word_dict[w] for w in words], dtype=numpy.int32)
+                    sentence[i] = words
+                    label[i] = score
+
+        finally:
+            h5file.close()
+    return preprocess_fn
+
+
+if __name__ == '__main__':
+    preprocess(category=Categories.AmazonInstantVideo)
