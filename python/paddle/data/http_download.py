@@ -1,4 +1,4 @@
-#/usr/bin/env python
+# /usr/bin/env python
 # -*- coding:utf-8 -*-
 
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
@@ -33,36 +33,31 @@ import stat
 from six.moves import urllib
 
 
-def download_with_urlretrieve(url, filename=None):
+def download_with_urlretrieve(url, filename=None, with_progress=True):
     """
     Download each file with urlretrieve,and the download process can be seen.
 
-    Args:
-        url:the url for data downoad.
-        filename:the target name for download.
-
-    Returns:
-           the temp name after urlretrieve downloaded.
+    :param url: the url for data download.
+    :type url: basestring
+    :param filename: Output file name. None if use default file name.
+    :type filename: basestring
+    :param with_progress: with progress bar or not. Default is true.
+    :type with_progress: bool
+    :return: the downloaded filename
+    :rtype: basestring
     """
-    return urllib.request.urlretrieve(
-        url, filename, reporthook=check_download_progress)
 
+    def check_download_progress(count, block_size, total_size):
+        percent = float(count * block_size) / total_size
+        msg = "\r- Downloading {1} progress: {0:.1%}".format(percent, filename)
+        sys.stdout.write(msg)
+        sys.stdout.flush()
 
-def check_download_progress(count, block_size, total_size):
-    """
-    Print and check the download process.
+    hook = None
+    if with_progress:
+        hook = check_download_progress
 
-    Args:
-        count:
-        block_size:
-        total_size:
-
-    Returns:
-    """
-    percent = float(count * block_size) / total_size
-    msg = "\r- Download progress: {:.1%}".format(percent)
-    sys.stdout.write(msg)
-    sys.stdout.flush()
+    return urllib.request.urlretrieve(url, filename, reporthook=hook)[0]
 
 
 def data_download(download_dir, source_url):
@@ -82,7 +77,7 @@ def data_download(download_dir, source_url):
 
     print file_path
     if not os.path.exists(file_path):
-        temp_file_name, _ = download_with_urlretrieve(source_url)
+        temp_file_name = download_with_urlretrieve(source_url)
         temp_file_path = os.getcwd()
         os.rename(temp_file_name, src_file)
         shutil.move(src_file, download_dir)
@@ -121,3 +116,6 @@ def data_download(download_dir, source_url):
         print("Data has been already downloaded and unpacked!")
 
     return download_dir
+
+
+download = download_with_urlretrieve
