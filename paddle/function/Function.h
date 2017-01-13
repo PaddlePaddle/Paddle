@@ -75,8 +75,17 @@ public:
   // Tensor can be Matrix, Vector, IVector.
   // For inputs, do not need argType.
   // For outputs, the argType needs to be specified as ASSIGN_TO or ADD_TO.
-  template <typename Tensor>
-  void addArg(const Tensor& arg, ArgType argType = UNSPECIFIED) {
+  void addArg(const Matrix& arg, ArgType argType = UNSPECIFIED) {
+    _args_.push_back(new BufferArg(arg, argType));
+    addArg(*_args_.back());
+  }
+
+  void addArg(const Vector& arg, ArgType argType = UNSPECIFIED) {
+    _args_.push_back(new BufferArg(arg, argType));
+    addArg(*_args_.back());
+  }
+
+  void addArg(const IVector& arg, ArgType argType = UNSPECIFIED) {
     _args_.push_back(new BufferArg(arg, argType));
     addArg(*_args_.back());
   }

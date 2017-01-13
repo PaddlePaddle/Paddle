@@ -19,6 +19,8 @@ limitations under the License. */
 
 namespace paddle {
 
+typedef std::shared_ptr<BufferArg> BufferArgPtr;
+
 /**
  * \brief A class for comparing CPU and GPU implementations of Function.
  *
@@ -45,143 +47,121 @@ namespace paddle {
 class FunctionCompare {
 public:
   FunctionCompare(const std::string& name, const FuncConfig& config)
-      : cpu(FunctionBase::funcRegistrar_.createByType(name + "-CPU")),
-        gpu(FunctionBase::funcRegistrar_.createByType(name + "-GPU")) {
-    cpu->init(config);
-    gpu->init(config);
+      : cpuFunc_(FunctionBase::funcRegistrar_.createByType(name + "-CPU")),
+        gpuFunc_(FunctionBase::funcRegistrar_.createByType(name + "-GPU")) {
+    cpuFunc_->init(config);
+    gpuFunc_->init(config);
   }
 
-  void addInputs(const BufferArg& input) { inputs.push_back(input); }
+  ~FunctionCompare() {}
 
-  void addOutputs(const BufferArg& output) { outputs.push_back(output); }
-
-  void run() {
-    // prepare cpu/gpu arguments
-    prepareArgs();
-
-    // function calculate
-    cpu->calc(cpuInputs, cpuOutputs);
-    gpu->calc(gpuInputs, gpuOutputs);
-
-    // check outputs and inouts
-    auto checkArgs = [=](const BufferArgs& cpuArgs, const BufferArgs& gpuArgs) {
-      for (size_t i = 0; i < cpuArgs.size(); i++) {
-        auto cpu = cpuArgs[i];
-        auto gpu = gpuArgs[i];
-        CpuVector cpuVector(cpu.shape().getElements(), (real*)cpu.getData());
-        GpuVector gpuVector(cpu.shape().getElements(), (real*)gpu.getData());
-
-        autotest::TensorCheckErr(cpuVector, gpuVector);
-      }
-    };
-    checkArgs(cpuOutputs, gpuOutputs);
-  }
-#if 0
-  void cmpWithArg(const Arguments& inputs,
-                  const Arguments& outputs,
-                  const Arguments& inouts) {
-    // init cpu and gpu arguments
-    auto initArgs = [=](
-        Arguments& cpuArgs, Arguments& gpuArgs, const Arguments& inArgs) {
-      for (const auto arg : inArgs) {
-        size_t size = sizeof(real);
-        for (const auto dim : arg.dims_) {
-          size *= dim;
-        }
-        if (arg.getData()) {
-          // todo(tianbing), waste unnecessary mem here
-          cpuMemory.emplace_back(std::make_shared<CpuMemoryHandle>(size));
-          gpuMemory.emplace_back(std::make_shared<GpuMemoryHandle>(size));
-          cpuArgs.emplace_back(Tensor((real*)arg.getData(), arg.dims_));
-          gpuArgs.emplace_back(Tensor((real*)arg.getData(), arg.dims_));
-          // already init outside
-        } else {
-          cpuMemory.emplace_back(std::make_shared<CpuMemoryHandle>(size));
-          gpuMemory.emplace_back(std::make_shared<GpuMemoryHandle>(size));
-          cpuArgs.emplace_back(
-              Tensor((real*)cpuMemory.back()->getBuf(), arg.dims_));
-          gpuArgs.emplace_back(
-              Tensor((real*)gpuMemory.back()->getBuf(), arg.dims_));
-          // will use an api to refactor this code.
-          CpuVector cpuVector(size / sizeof(real),
-                              (real*)cpuArgs.back().getData());
-          GpuVector gpuVector(size / sizeof(real),
-                              (real*)gpuArgs.back().getData());
-          cpuVector.uniform(0.001, 1);
-          gpuVector.copyFrom(cpuVector);
-        }
-      }
-    };
-    initArgs(cpuInputs, gpuInputs, inputs);
-    initArgs(cpuOutputs, gpuOutputs, outputs);
-
-    // function calculate
-    cpu->calc(cpuInputs, cpuOutputs);
-    gpu->calc(gpuInputs, gpuOutputs);
-
-    // check outputs and inouts
-    auto checkArgs = [=](const Arguments& cpuArgs, const Arguments& gpuArgs) {
-      for (size_t i = 0; i < cpuArgs.size(); i++) {
-        auto cpu = cpuArgs[i];
-        auto gpu = gpuArgs[i];
-        size_t size = 1;
-        for (auto dim : cpu.dims_) {
-          size *= dim;
-        }
-        CpuVector cpuVector(size, (real*)cpu.getData());
-        GpuVector gpuVector(size, (real*)gpu.getData());
-
-        autotest::TensorCheckErr(cpuVector, gpuVector);
-      }
-    };
-    checkArgs(cpuOutputs, gpuOutputs);
-  }
-#endif
-
-  std::shared_ptr<FunctionBase> getCpuFunction() const { return cpu; }
-
-  std::shared_ptr<FunctionBase> getGpuFunction() const { return gpu; }
-
-protected:
-  void prepareArgs() {
-    // TODO, if inputs has data
-  }
-
-  void createArg(BufferArgs& cpuArgs, BufferArgs& gpuArgs, BufferArg& arg) {
-    size_t size = arg.shape().getElements() * sizeOfValuType(arg.valueType());
+  // input need only contains shape, do not contains data.
+  void addInputs(const BufferArg& input) {
+    size_t size =
+        input.shape().getElements() * sizeOfValuType(input.valueType());
     cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
     gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
 
-    cpuArgs.emplace_back(
-        BufferArg(cpuMemory_.back()->getBuf()), arg.valueType(), arg.shape());
-    gpuArgs.emplace_back(
-        BufferArg(gpuMemory_.back()->getBuf()), arg.valueType(), arg.shape());
+    cpuInputs_.emplace_back(std::make_shared<BufferArg>(
+        cpuMemory_.back()->getBuf(), input.valueType(), input.shape()));
+    gpuInputs_.emplace_back(std::make_shared<BufferArg>(
+        gpuMemory_.back()->getBuf(), input.valueType(), input.shape()));
   }
 
-  void createArg(BufferArgs& cpuArgs, BufferArgs& gpuArgs, SequenceArg& arg) {
-    size_t batchSize = arg.shape()[0];
+  // output need only contains shape, do not contains data.
+  void addOutputs(const BufferArg& output) {
+    size_t size =
+        output.shape().getElements() * sizeOfValuType(output.valueType());
+    cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
+    gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
+
+    cpuOutputs_.emplace_back(
+        std::make_shared<BufferArg>(cpuMemory_.back()->getBuf(),
+                                    output.valueType(),
+                                    output.shape(),
+                                    ASSIGN_TO));
+    gpuOutputs_.emplace_back(
+        std::make_shared<BufferArg>(gpuMemory_.back()->getBuf(),
+                                    output.valueType(),
+                                    output.shape(),
+                                    ASSIGN_TO));
+  }
+
+  void addInputs(const SequenceArg& input) {
+    size_t batchSize = input.shape()[0];
     size_t numSeqs = batchSize / 10 + 1;
 
     size_t sizeId = (numSeqs + 1) * sizeOfValuType(VALUE_TYPE_INT32);
-    cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
-    gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
+    cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(sizeId));
+    gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(sizeId));
 
     TensorShape seqsId({numSeqs + 1});
-    void* cpuBuffer = cpuMemory_.back()->getBuf();
-    void* gpuBuffer = gpuMemory_.back()->getBuf();
+    // void* cpuBuffer = cpuMemory_.back()->getBuf();
+    // void* gpuBuffer = gpuMemory_.back()->getBuf();
 
-    size_t size = arg.shape().getElements() * sizeOfValuType(arg.valueType());
+    size_t size =
+        input.shape().getElements() * sizeOfValuType(input.valueType());
     cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
     gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
 
-    cpuArgs.emplace_back(SequenceArg(cpuMemory_.back()->getBuf(),
-                                     arg.valueType(),
-                                     arg.shape(),
-                                     SequenceIdArg(cpuBuffer, seqsId)));
-    gpuArgs.emplace_back(SequenceArg(gpuMemory_.back()->getBuf(),
-                                     arg.valueType(),
-                                     arg.shape(),
-                                     SequenceIdArg(gpuBuffer, seqsId)));
+    // TODO: need be implemented.
+  }
+
+  void run() {
+    // prepare cpu/gpu arguments
+    initInputs();
+
+    // function calculate
+    auto callFunction = [](FunctionBase* function,
+                           std::vector<BufferArgPtr>& inputs,
+                           std::vector<BufferArgPtr>& outputs) {
+      BufferArgs inArgs;
+      BufferArgs outArgs;
+      for (auto arg : inputs) {
+        inArgs.addArg(*arg);
+      }
+      for (auto arg : outputs) {
+        outArgs.addArg(*arg);
+      }
+      function->calc(inArgs, outArgs);
+    };
+
+    callFunction(cpuFunc_.get(), cpuInputs_, cpuOutputs_);
+    callFunction(gpuFunc_.get(), gpuInputs_, gpuOutputs_);
+
+    // check outputs and inouts
+    compareOutputs();
+  }
+
+  std::shared_ptr<FunctionBase> getCpuFunction() const { return cpuFunc_; }
+
+  std::shared_ptr<FunctionBase> getGpuFunction() const { return gpuFunc_; }
+
+protected:
+  void initInputs() {
+    for (size_t i = 0; i < cpuInputs_.size(); i++) {
+      initArg(*cpuInputs_[i]);
+
+      // TODO: Need a BufferCopy used to copy from one BufferArg to another.
+      CpuVector cpuVector(cpuInputs_[i]->shape().getElements(),
+                          (real*)cpuInputs_[i]->data());
+      GpuVector gpuVector(gpuInputs_[i]->shape().getElements(),
+                          (real*)gpuInputs_[i]->data());
+
+      gpuVector.copyFrom(cpuVector);
+    }
+  }
+
+  void compareOutputs() {
+    for (size_t i = 0; i < cpuOutputs_.size(); i++) {
+      // TODO, Need a BufferCheck used to compare the two buffers.
+      auto cpu = cpuOutputs_[i];
+      auto gpu = gpuOutputs_[i];
+      CpuVector cpuVector(cpu->shape().getElements(), (real*)cpu->data());
+      GpuVector gpuVector(cpu->shape().getElements(), (real*)gpu->data());
+
+      autotest::TensorCheckErr(cpuVector, gpuVector);
+    }
   }
 
   // only init cpu argument, gpu argument copy from cpu argument.
@@ -192,10 +172,10 @@ protected:
 
   void initArg(SequenceIdArg& arg, size_t batchSize) {
     size_t numSeqs = arg.numSeqs();
-    int* buf = arg.data();
+    int* buf = (int*)arg.data();
     int pos = 0;
     size_t maxLen = 2 * batchSize / numSeqs;
-    for (int i = 0; i < numSeqs; ++i) {
+    for (int i = 0; i < (int)numSeqs; ++i) {
       int len = uniformRandom(
                     std::min<int64_t>(maxLen, batchSize - pos - numSeqs + i)) +
                 1;
@@ -207,17 +187,14 @@ protected:
   }
 
 protected:
-  std::shared_ptr<FunctionBase> cpu;
-  std::shared_ptr<FunctionBase> gpu;
+  std::shared_ptr<FunctionBase> cpuFunc_;
+  std::shared_ptr<FunctionBase> gpuFunc_;
   std::vector<CpuMemHandlePtr> cpuMemory_;
   std::vector<GpuMemHandlePtr> gpuMemory_;
-  // inputs and outputs
-  BufferArgs inputs;
-  BufferArgs outputs;
-  BufferArgs cpuInputs_;
-  BufferArgs cpuOutputs_;
-  BufferArgs gpuInputs_;
-  BufferArgs gpuOutputs_;
+  std::vector<BufferArgPtr> cpuInputs_;
+  std::vector<BufferArgPtr> cpuOutputs_;
+  std::vector<BufferArgPtr> gpuInputs_;
+  std::vector<BufferArgPtr> gpuOutputs_;
 };
 
 }  // namespace paddle
