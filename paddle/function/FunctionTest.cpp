@@ -84,6 +84,10 @@ void testBufferArgs(const BufferArgs& inputs,
   }
 }
 
+void testBufferArgs(const BufferArgs& inputs, const CheckBufferArg& check) {
+  check(inputs[0]);
+}
+
 TEST(Arguments, Matrix) {
   MatrixPtr matrix = Matrix::create(100, 200);
   CheckBufferArg check = [=](const BufferArg& arg) {
@@ -142,6 +146,20 @@ TEST(Arguments, CpuSparseMatrix) {
   std::vector<CheckBufferArg> checkFunc;
   checkFunc.push_back(check);
   testBufferArgs(argments, checkFunc);
+}
+
+TEST(Arguments, BufferArg) {
+  BufferArg arg(nullptr, VALUE_TYPE_FLOAT, {1, 2, 3});
+  CheckBufferArg check = [=](const BufferArg& arg) {
+    EXPECT_EQ(arg.shape().ndims(), 3);
+    EXPECT_EQ(arg.shape()[0], 1);
+    EXPECT_EQ(arg.shape()[1], 2);
+    EXPECT_EQ(arg.shape()[2], 3);
+  };
+
+  BufferArgs argments;
+  argments.addArg(arg);
+  testBufferArgs(argments, check);
 }
 
 }  // namespace paddle
