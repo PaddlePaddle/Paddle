@@ -24,7 +24,6 @@
 #
 ########################################################################
 
-
 import os
 import sys
 import shutil
@@ -45,7 +44,8 @@ def download_with_urlretrieve(url, filename=None):
     Returns:
            the temp name after urlretrieve downloaded.
     """
-    return urllib.request.urlretrieve(url, filename, reporthook=check_download_progress)
+    return urllib.request.urlretrieve(
+        url, filename, reporthook=check_download_progress)
 
 
 def check_download_progress(count, block_size, total_size):
@@ -82,7 +82,7 @@ def data_download(download_dir, source_url):
 
     print file_path
     if not os.path.exists(file_path):
-        temp_file_name,_ = download_with_urlretrieve(source_url)
+        temp_file_name, _ = download_with_urlretrieve(source_url)
         temp_file_path = os.getcwd()
         os.rename(temp_file_name, src_file)
         shutil.move(src_file, download_dir)
@@ -95,9 +95,9 @@ def data_download(download_dir, source_url):
                 tar.extract(file, download_dir)
                 fpath = os.path.join(download_dir, file.filename)
                 if 'master' in src_file:
-                    os.chmod(fpath,stat.S_IRWXU|stat.S_IRGRP|stat.S_IROTH)
+                    os.chmod(fpath, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
             os.remove(file_path)
-        elif src_file in ['.json.gz','txt','emb','python.tar.gz']:
+        elif src_file in ['.json.gz', 'txt', 'emb', 'python.tar.gz']:
             pass
         elif src_file.split('.')[-1] is 'gz':
             tarfile.open(name=file_path, mode="r:gz").extractall(download_dir)
@@ -111,9 +111,9 @@ def data_download(download_dir, source_url):
                 tar.extract(file, download_dir)
                 fpath = os.path.join(download_dir, file.filename)
                 if 'master' in src_file:
-                    os.chmod(fpath,stat.S_IRWXU|stat.S_IRGRP|stat.S_IROTH)
+                    os.chmod(fpath, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
             os.remove(file_path)
-        elif src_file in ['.json.gz','txt','emb']:
+        elif src_file in ['.json.gz', 'txt', 'emb']:
             pass
         elif src_file.split('.')[-1] is 'gz':
             tarfile.open(name=file_path, mode="r:gz").extractall(download_dir)
@@ -121,4 +121,3 @@ def data_download(download_dir, source_url):
         print("Data has been already downloaded and unpacked!")
 
     return download_dir
-

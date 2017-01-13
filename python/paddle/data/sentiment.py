@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 ############################################################################
 #
 # Function for fetch the data untar directory for sentiment training api.
@@ -27,7 +26,6 @@
 #
 ############################################################################
 
-
 import shutil
 import os
 import sys
@@ -37,8 +35,8 @@ import numpy as np
 from six.moves import urllib
 import stat
 
-source_url='http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
-moses_url='https://github.com/moses-smt/mosesdecoder/archive/master.zip'
+source_url = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
+moses_url = 'https://github.com/moses-smt/mosesdecoder/archive/master.zip'
 
 moses_source = "mosesdecoder-master"
 file_source = "aclImdb"
@@ -56,7 +54,8 @@ def fetch(directory=None):
     """
     source_name = "sentiment"
     if directory is None:
-        directory = os.path.expanduser(os.path.join('~', 'paddle_data_directory'))
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data_directory'))
 
     download_path = os.path.join(directory, source_name)
     if not os.path.exists(download_path):
@@ -69,6 +68,3 @@ def fetch(directory=None):
     data_path = os.path.join(filepath, file_source)
 
     return data_path
-
-
-

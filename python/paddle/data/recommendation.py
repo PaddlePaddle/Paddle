@@ -26,7 +26,6 @@
 #
 ##############################################################################
 
-
 import shutil
 import os
 import sys
@@ -36,8 +35,7 @@ import numpy as np
 from six.moves import urllib
 import stat
 
-
-source_url='http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+source_url = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
 file_source = "ml-1m"
 
 
@@ -53,7 +51,8 @@ def fetch(directory=None):
     """
     source_name = "recommendation"
     if directory is None:
-        directory = os.path.expanduser(os.path.join('~', 'paddle_data_directory'))
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data_directory'))
 
     download_path = os.path.join(directory, source_name)
     if not os.path.exists(download_path):

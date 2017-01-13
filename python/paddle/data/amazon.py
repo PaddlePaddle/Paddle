@@ -34,7 +34,6 @@
 #
 #########################################################################
 
-
 import shutil
 import os
 import sys
@@ -44,9 +43,8 @@ import stat
 from six.moves import urllib
 from http_download import data_download
 
-
-source_url='http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Electronics_5.json.gz'
-moses_url='https://github.com/moses-smt/mosesdecoder/archive/master.zip'
+source_url = 'http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/reviews_Electronics_5.json.gz'
+moses_url = 'https://github.com/moses-smt/mosesdecoder/archive/master.zip'
 
 mose_source = "mosesdecoder-master"
 
@@ -63,7 +61,8 @@ def fetch(directory=None):
     """
     source_name = "amazon"
     if directory is None:
-        directory = os.path.expanduser(os.path.join('~', 'paddle_data_directory'))
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data_directory'))
 
     download_path = os.path.join(directory, source_name)
     if not os.path.exists(download_path):
@@ -74,5 +73,3 @@ def fetch(directory=None):
 
     filepath = data_download(download_path, source_url)
     return filepath
-
-

@@ -32,7 +32,6 @@
 #
 ########################################################################
 
-
 import shutil
 import os
 import sys
@@ -41,8 +40,7 @@ import numpy as np
 from six.moves import urllib
 from http_download import data_download
 
-
-source_url='https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+source_url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
 source_file = "cifar-10-batches-py"
 
 
@@ -59,7 +57,8 @@ def fetch(directory=None):
     source_name = "cifar"
 
     if directory is None:
-        directory = os.path.expanduser(os.path.join('~', 'paddle_data_directory'))
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data_directory'))
 
     download_path = os.path.join(directory, source_name)
     if not os.path.exists(download_path):
@@ -67,4 +66,3 @@ def fetch(directory=None):
     filepath = data_download(download_path, source_url)
 
     return filepath
-

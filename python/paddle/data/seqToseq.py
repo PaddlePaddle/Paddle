@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import shutil
 import os
 import sys
@@ -25,14 +24,15 @@ import numpy as np
 from six.moves import urllib
 import stat
 
-
-source_url=['http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/bitexts.tgz',
-        'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz'
-        ]
-model_url='http://paddlepaddle.bj.bcebos.com/model_zoo/wmt14_model.tar.gz'
+source_url = [
+    'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/bitexts.tgz',
+    'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz'
+]
+model_url = 'http://paddlepaddle.bj.bcebos.com/model_zoo/wmt14_model.tar.gz'
 
 model_source = "wmt14_model"
 file_source = "bitexts.selected"
+
 
 def fetch(directory=None):
     """
@@ -46,7 +46,8 @@ def fetch(directory=None):
     """
     source_name = "seqToseq"
     if directory is None:
-        directory = os.path.expanduser(os.path.join('~', 'paddle_data_directory'))
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data_directory'))
 
     download_path = os.path.join(directory, source_name)
     if not os.path.exists(download_path):
@@ -59,5 +60,3 @@ def fetch(directory=None):
         filepath = data_download(download_path, url)
         data_path = os.path.join(filepath, file_source)
         return data_path
-
-

@@ -26,7 +26,6 @@
 #
 ############################################################################
 
-
 import shutil
 import os
 import sys
@@ -36,9 +35,11 @@ from six.moves import urllib
 import urlparse
 import gzip
 
-
 source_url = 'http://yann.lecun.com/exdb/mnist/'
-filename = ['train-images-idx3-ubyte.gz','t10k-images-idx3-ubyte.gz','train-labels-idx1-ubyte.gz','t10k-labels-idx1-ubyte.gz']
+filename = [
+    'train-images-idx3-ubyte.gz', 't10k-images-idx3-ubyte.gz',
+    'train-labels-idx1-ubyte.gz', 't10k-labels-idx1-ubyte.gz'
+]
 
 
 def fetch(directory=None):
@@ -54,7 +55,8 @@ def fetch(directory=None):
     source_name = "mnist"
 
     if directory is None:
-        directory = os.path.expanduser(os.path.join('~', 'paddle_data_directory'))
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data_directory'))
 
     download_path = os.path.join(directory, source_name)
     if not os.path.exists(download_path):
@@ -65,4 +67,3 @@ def fetch(directory=None):
         filepath = data_download(download_path, url)
         data_dir = os.path.join(filepath, file.split('.')[0])
         return data_dir
-

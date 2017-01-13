@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 ############################################################################
 #
 # Function for fetch the data untar directory for semantic_role_labeling
@@ -27,7 +26,6 @@
 #
 ############################################################################
 
-
 import shutil
 import os
 import sys
@@ -37,12 +35,13 @@ import numpy as np
 from six.moves import urllib
 import stat
 
-source_url=['http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz',
-        'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/verbDict.txt',
-        'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/targetDict.txt',
-        'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/wordDict.txt',
-        'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/emb'
-        ]
+source_url = [
+    'http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz',
+    'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/verbDict.txt',
+    'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/targetDict.txt',
+    'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/wordDict.txt',
+    'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/emb'
+]
 
 file_source = "conll05st-release"
 
@@ -59,7 +58,8 @@ def fetch(directory=None):
     """
     source_name = "semantic"
     if directory is None:
-        directory = os.path.expanduser(os.path.join('~', 'paddle_data_directory'))
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data_directory'))
 
     download_path = os.path.join(directory, source_name)
     if not os.path.exists(download_path):
@@ -72,17 +72,19 @@ def fetch(directory=None):
             data_path = os.path.join(filepath, file_source)
 
             sub_file = ['est.wsj.words.gz', 'test.wsj.props.gz']
-            words_path = os.path.join(data_path, "test.wsj/words/test.wsj.words.gz")
-            props_path = os.path.join(data_path, "test.wsj/props/test.wsj.props.gz")
+            words_path = os.path.join(data_path,
+                                      "test.wsj/words/test.wsj.words.gz")
+            props_path = os.path.join(data_path,
+                                      "test.wsj/props/test.wsj.props.gz")
 
             sub_path = [words_path, props_path]
             for sub_file in sub_path:
                 new_sub_path = os.path.join(download_path, sub_file)
                 shutil.move(sub_path, new_subpath)
-                tarfile.open(name=new_subpath, mode="r:gz").extractall(download_path)
+                tarfile.open(
+                    name=new_subpath, mode="r:gz").extractall(download_path)
                 os.remove(new_subpath)
         else:
             filepath = data_download(download_path, url)
 
     return filepath
-
