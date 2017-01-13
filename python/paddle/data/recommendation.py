@@ -34,6 +34,8 @@ import collections
 import numpy as np
 from six.moves import urllib
 import stat
+from http_download import data_download
+
 
 source_url = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
 file_source = "ml-1m"

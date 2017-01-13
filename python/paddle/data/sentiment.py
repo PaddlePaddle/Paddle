@@ -34,6 +34,7 @@ import collections
 import numpy as np
 from six.moves import urllib
 import stat
+from http_download import data_download
 
 source_url = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
 moses_url = 'https://github.com/moses-smt/mosesdecoder/archive/master.zip'

@@ -34,6 +34,7 @@ import numpy as np
 from six.moves import urllib
 import urlparse
 import gzip
+from http_download import data_download
 
 source_url = 'http://yann.lecun.com/exdb/mnist/'
 filename = [

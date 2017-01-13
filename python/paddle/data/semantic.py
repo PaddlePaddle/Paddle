@@ -33,7 +33,8 @@ import zipfile
 import collections
 import numpy as np
 from six.moves import urllib
-import stat
+from http_download import data_download
+
 
 source_url = [
     'http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz',
