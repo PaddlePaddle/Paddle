@@ -39,6 +39,7 @@ IF(NOT ${CBLAS_FOUND})
 
     ExternalProject_Add(
         openblas
+        ${EXTERNAL_PROJECT_LOG_ARGS}
         GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
         GIT_TAG             v0.2.19
         PREFIX              ${CBLAS_SOURCES_DIR}
