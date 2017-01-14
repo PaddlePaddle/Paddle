@@ -76,6 +76,20 @@ FuncConfig& FuncConfig::set<bool>(const std::string& key, bool v) {
   return *this;
 }
 
+void BufferArgs::addArg(const Matrix& arg,
+                        const TensorShape& shape,
+                        ArgType argType) {
+  args_.push_back(std::make_shared<BufferArg>(arg, shape, argType));
+}
+
+void BufferArgs::addArg(const CpuSparseMatrix& arg, ArgType argType) {
+  args_.push_back(std::make_shared<SparseMatrixArg>(arg, argType));
+}
+
+void BufferArgs::addArg(const GpuSparseMatrix& arg, ArgType argType) {
+  args_.push_back(std::make_shared<SparseMatrixArg>(arg, argType));
+}
+
 ClassRegistrar<FunctionBase> FunctionBase::funcRegistrar_;
 
 }  // namespace paddle

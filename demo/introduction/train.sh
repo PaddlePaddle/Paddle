@@ -19,3 +19,4 @@ paddle train \
     --save_dir=./output \
     --num_passes=30 \
     2>&1 |tee 'train.log'
+paddle usage -l "train.log" -e $? -n "introduction" >/dev/null 2>&1
