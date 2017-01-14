@@ -72,6 +72,7 @@ function( Sphinx_add_target target_name builder conf cache source destination )
     ${source}
     ${destination}
     COMMENT "Generating sphinx documentation: ${builder}"
+    COMMAND ln -sf ${destination}/index_*.html ${destination}/index.html
     )
 
   set_property(

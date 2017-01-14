@@ -18,6 +18,7 @@ limitations under the License. */
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <chrono>
 
 #include <arpa/inet.h>
 #include <net/if.h>
@@ -31,23 +32,23 @@ limitations under the License. */
 #include "paddle/utils/Util.h"
 
 /// quick ack can reduce the latency of small message
-P_DEFINE_bool(small_messages,
-              false,
-              "if message size is small, recommend set it True to enable quick "
-              "ack and no delay");
+DEFINE_bool(small_messages,
+            false,
+            "if message size is small, recommend set it True to enable quick "
+            "ack and no delay");
 
 /// reasonable sock_send_buf_size can control the traffic injected into switch
 /// network. Injecting too many data into traffic could cause packets loss which
 /// cause long latency and degrade the efficiency of communication.
-P_DEFINE_int32(sock_send_buf_size,
-               1024 * 1024 * 40,
-               "restrict sock send buff size, can reduce network congestion if "
-               "set carefully");
+DEFINE_int32(sock_send_buf_size,
+             1024 * 1024 * 40,
+             "restrict sock send buff size, can reduce network congestion if "
+             "set carefully");
 
 /// reasonable size can hold bursted packets and reduce packets loss
-P_DEFINE_int32(sock_recv_buf_size,
-               1024 * 1024 * 40,
-               "restrict sock recv buff size");
+DEFINE_int32(sock_recv_buf_size,
+             1024 * 1024 * 40,
+             "restrict sock recv buff size");
 
 namespace paddle {
 
@@ -382,8 +383,20 @@ void SocketClient::TcpClient(const std::string &serverAddr, int serverPort) {
   setOption(sockfd);
 
   /// Now connect to the server
-  PCHECK(connect(sockfd, (sockaddr *)&serv_addr, sizeof(serv_addr)) >= 0)
-      << "ERROR connecting to " << serverAddr;
+  int retry_second = 0;
+  int error = 0;
+  do {
+    error = connect(sockfd, (sockaddr *)&serv_addr, sizeof(serv_addr));
+    if (error == ECONNREFUSED) {
+      LOG(WARNING) << "connection refused by pserver, try again!";
+      if (retry_second++ >= 7) {
+        LOG(FATAL) << "connection refused by pserver, maybe pserver failed!";
+      }
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    } else {
+      PCHECK(error >= 0) << "ERROR connecting to " << serverAddr;
+    }
+  } while (error == ECONNREFUSED);
 
   channel_.reset(new SocketChannel(sockfd, serverAddr));
   tcpRdma_ = F_TCP;

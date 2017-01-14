@@ -131,11 +131,7 @@ void ParallelNeuralNetwork::forwardBackward(const std::vector<Argument>& inArgs,
   backward(callback);
 }
 
-void ParallelNeuralNetwork::start(const TrainerConfig& config,
-                                  DataProviderPtr dataProvider) {
-  (void)config;
-  (void)dataProvider;
-
+void ParallelNeuralNetwork::start() {
   for (auto& thread : threads_) {
     thread->start();
   }

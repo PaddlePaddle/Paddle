@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 
-P_DECLARE_int32(trainer_id);
+DECLARE_int32(trainer_id);
 
 namespace paddle {
 
@@ -78,7 +78,7 @@ public:
                                               useGpu(arguments[0].deviceId));
     errorMat->zeroMem();
     if (label != nullptr) {
-      errorMat->classificationError(output, label);
+      errorMat->classificationError(*output, *label);
     } else if (dynamic_cast<CpuSparseMatrix*>(multiBinaryLabel.get()) ||
                dynamic_cast<GpuSparseMatrix*>(multiBinaryLabel.get())) {
       errorMat->classificationErrorMulti(

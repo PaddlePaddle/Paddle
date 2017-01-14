@@ -34,7 +34,8 @@ SgdUpdaterWithCpuAverager::SgdUpdaterWithCpuAverager(
   updateWorker_.addJob([]() { hl_set_device(FLAGS_gpu_id); });
 }
 
-void SgdUpdaterWithCpuAverager::init(std::vector<ParameterPtr>& parameters) {
+void SgdUpdaterWithCpuAverager::init(
+    const std::vector<ParameterPtr>& parameters) {
   SgdLocalUpdater::init(parameters);
   averager_->init(parameters_.size(), nullptr);
   copyEvents_.resize(parameters_.size());

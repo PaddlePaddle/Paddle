@@ -27,12 +27,15 @@ static const string& configFile1 = "trainer/tests/sample_trainer_config.conf";
 static const string& configFile2 =
     "trainer/tests/sample_trainer_config_parallel.conf";
 
-P_DECLARE_bool(use_gpu);
-P_DECLARE_string(config);
-P_DECLARE_int32(gpu_id);
-P_DECLARE_int32(seed);
-P_DECLARE_int32(num_passes);
-P_DECLARE_int32(saving_period);
+static const string& configFileSimpleSparse =
+    "trainer/tests/simple_sparse_neural_network.py";
+
+DECLARE_bool(use_gpu);
+DECLARE_string(config);
+DECLARE_int32(gpu_id);
+DECLARE_int32(seed);
+DECLARE_int32(num_passes);
+DECLARE_int32(saving_period);
 
 class TrainerForTest : public paddle::Trainer {
 public:
@@ -122,10 +125,10 @@ TEST(average_window_cpu, gpu4) {
 #endif
 
 // 3. test trainer + pserver.
-P_DECLARE_int32(num_gradient_servers);
-P_DECLARE_int32(port);
-P_DECLARE_bool(local);
-P_DECLARE_bool(use_old_updater);
+DECLARE_int32(num_gradient_servers);
+DECLARE_int32(port);
+DECLARE_bool(local);
+DECLARE_bool(use_old_updater);
 
 double checkRemoteParameterUpdater(TrainerForTest& trainer) {
   auto gradientMachine = trainer.getGradientMachine();
@@ -298,11 +301,15 @@ TEST(checkRemoteUpdater, cpuDeltaTrainerOldUpdater) {
   checkRemoteParameterUpdaterTest(configFile1, false, false, 1, true, 10);
 }
 
+TEST(SgdThreadUpdater, simpleSparseNN) {
+  trainerOnePassTest(configFileSimpleSparse, false, false, 1, 0.5, true);
+}
+
 int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);
   initPython(argc, argv);
   gNumDevices = hl_get_device_count();
-  testing::InitGoogleTest(&argc, argv);
 
   FLAGS_num_passes = 1;          // train one pass
   FLAGS_saving_period = 100000;  // do not save parameteres

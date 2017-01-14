@@ -14,6 +14,15 @@
 # limitations under the License.
 set -e
 
+UNAME_STR=`uname`
+
+if [[ ${UNAME_STR} == 'Linux' ]]; then
+	SHUF_PROG='shuf'
+else
+	SHUF_PROG='gshuf'
+fi
+
+
 cd "$(dirname "$0")"
 delimiter='::'
 dir=ml-1m
@@ -25,7 +34,7 @@ python meta_generator.py $dir meta.bin --config=meta_config.json
 echo 'split train/test file'
 python split.py $dir/ratings.dat --delimiter=${delimiter} --test_ratio=0.1
 echo 'shuffle train file'
-shuf $dir/ratings.dat.train > ratings.dat.train
+${SHUF_PROG} $dir/ratings.dat.train > ratings.dat.train
 cp $dir/ratings.dat.test .
 echo "./data/ratings.dat.train" > train.list
 echo "./data/ratings.dat.test" > test.list

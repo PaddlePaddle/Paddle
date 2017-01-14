@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "CustomStackTrace.h"
+#include <gflags/gflags.h>
 #include <iostream>
-#include "CommandLineParser.h"
 
-P_DEFINE_bool(
+DEFINE_bool(
     layer_stack_error_only_current_thread,
     true,
     "Dump current thread or whole process layer stack when signal error "

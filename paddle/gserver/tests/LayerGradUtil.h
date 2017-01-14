@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/trainer/Trainer.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 using namespace std;  // NOLINT
 
 namespace paddle {
@@ -64,6 +64,9 @@ struct InputDef {
   size_t paraSize;
   ParaSparse sparse;
   bool isStatic;
+  std::vector<int> labelInitValue;
+  std::vector<int> labelSeqStartPositions;
+
   InputDef(InputType type, string nameIn, size_t dimIn, size_t sizeIn) {
     inputType = type;
     name = nameIn;
@@ -72,6 +75,23 @@ struct InputDef {
     sparse = {""};
     isStatic = false;
   }
+
+  InputDef(InputType type,
+           string nameIn,
+           size_t dimIn,
+           size_t sizeIn,
+           const std::vector<int>& labelInitValue,
+           const std::vector<int>& labelSeqStartPositions)
+      : labelInitValue(labelInitValue),
+        labelSeqStartPositions(labelSeqStartPositions) {
+    inputType = type;
+    name = nameIn;
+    dim = dimIn;
+    paraSize = sizeIn;
+    sparse = {""};
+    isStatic = false;
+  }
+
   InputDef(InputType type,
            string nameIn,
            size_t dimIn,

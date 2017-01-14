@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Parameter.h"
+#include <gflags/gflags.h>
 #include <fstream>
 #include "AverageOptimizer.h"
 #include "FirstOrderOptimizer.h"
@@ -23,14 +24,13 @@ limitations under the License. */
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/math/MathUtils.h"
 #include "paddle/math/SparseRowMatrix.h"
-#include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Logging.h"
 
-P_DEFINE_int32(enable_grad_share,
-               (100 * 1024 * 1024),
-               "threshold for enable gradient parameter share for batch "
-               "multi-cpu training");
-P_DEFINE_int32(
+DEFINE_int32(enable_grad_share,
+             (100 * 1024 * 1024),
+             "threshold for enable gradient parameter share for batch "
+             "multi-cpu training");
+DEFINE_int32(
     grad_share_block_num,
     64,
     "block number of gradient parameter share for batch multi-cpu training");

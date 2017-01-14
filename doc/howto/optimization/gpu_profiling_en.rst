@@ -1,5 +1,8 @@
-Profiling on PaddlePaddle
-=========================
+====================
+Tune GPU Performance 
+====================
+
+..  contents::
 
 This tutorial will guide you step-by-step through how to conduct profiling and performance tuning using built-in timer, **nvprof** and **nvvp**.
 
@@ -49,11 +52,11 @@ For general GPU profiling, a bunch of tools are provided from both NVIDIA and th
 In this tutorial, we will focus on nvprof and nvvp.
 
 :code:`test_GpuProfiler` from :code:`paddle/math/tests` directory will be used to evaluate
-above profilers. 
+above profilers.
 
 .. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
    :language: c++
-   :lines: 111-124
+   :lines: 137-151
    :linenos:
 
 The above code snippet includes two methods, you can use any of them to profile the regions of interest.
@@ -79,8 +82,8 @@ As a simple example, consider the following:
 
     .. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
         :language: c++
-        :lines: 111-124
-        :emphasize-lines: 8-10,13
+        :lines: 137-151
+        :emphasize-lines: 8-12,14
         :linenos:
 
 2. Configure cmake with **WITH_TIMER** and recompile PaddlePaddle.
@@ -90,31 +93,31 @@ As a simple example, consider the following:
         cmake .. -DWITH_TIMER=ON
         make
 
-3. Execute your code and observe the results (see the emphasize-lines). 
+3. Execute your code and observe the results (see the emphasize-lines).
 
     .. code-block:: bash
         :emphasize-lines: 1,12-15
 
-        > ./paddle/math/tests/test_GpuProfiler                                                                             
-        I1117 11:13:42.313065 2522362816 Util.cpp:155] commandline: ./paddle/math/tests/test_GpuProfiler                                             
-        I1117 11:13:42.845065 2522362816 Util.cpp:130] Calling runInitFunctions                                                                      
-        I1117 11:13:42.845208 2522362816 Util.cpp:143] Call runInitFunctions done.                                                                   
-        [==========] Running 1 test from 1 test case.                                                                                                
-        [----------] Global test environment set-up.                                                                                                 
-        [----------] 1 test from Profiler                                                                                                            
-        [ RUN      ] Profiler.BilinearFwdBwd                                                                                                         
+        > ./paddle/math/tests/test_GpuProfiler
+        I1117 11:13:42.313065 2522362816 Util.cpp:155] commandline: ./paddle/math/tests/test_GpuProfiler
+        I1117 11:13:42.845065 2522362816 Util.cpp:130] Calling runInitFunctions
+        I1117 11:13:42.845208 2522362816 Util.cpp:143] Call runInitFunctions done.
+        [==========] Running 1 test from 1 test case.
+        [----------] Global test environment set-up.
+        [----------] 1 test from Profiler
+        [ RUN      ] Profiler.BilinearFwdBwd
         I1117 11:13:42.845310 2522362816 test_GpuProfiler.cpp:114] Enable GPU Profiler Stat: [testBilinearFwdBwd] "numSamples = 10, channels = 16, im
-        gSizeX = 64, imgSizeY = 64"                                                                                                                  
-        I1117 11:13:42.850154 2522362816 ThreadLocal.cpp:37] thread use undeterministic rand seed:20659751                                           
-        I1117 11:13:42.981501 2522362816 Stat.cpp:130] ======= StatSet: [GlobalStatInfo] status ======                                               
-        I1117 11:13:42.981539 2522362816 Stat.cpp:133] Stat=testBilinearFwdBwd     total=136.141    avg=136.141    max=136.141    min=136.141   count=1                                                                                                                                  
-        I1117 11:13:42.981572 2522362816 Stat.cpp:141] ======= BarrierStatSet status ======                                                          
-        I1117 11:13:42.981575 2522362816 Stat.cpp:154] --------------------------------------------------                                            
-        [       OK ] Profiler.BilinearFwdBwd (136 ms)                                                                                                
-        [----------] 1 test from Profiler (136 ms total)                                                                                             
-                                                                                                                                                    
-        [----------] Global test environment tear-down                                                                                               
-        [==========] 1 test from 1 test case ran. (136 ms total)                                                                                     
+        gSizeX = 64, imgSizeY = 64"
+        I1117 11:13:42.850154 2522362816 ThreadLocal.cpp:37] thread use undeterministic rand seed:20659751
+        I1117 11:13:42.981501 2522362816 Stat.cpp:130] ======= StatSet: [GlobalStatInfo] status ======
+        I1117 11:13:42.981539 2522362816 Stat.cpp:133] Stat=testBilinearFwdBwd     total=136.141    avg=136.141    max=136.141    min=136.141   count=1
+        I1117 11:13:42.981572 2522362816 Stat.cpp:141] ======= BarrierStatSet status ======
+        I1117 11:13:42.981575 2522362816 Stat.cpp:154] --------------------------------------------------
+        [       OK ] Profiler.BilinearFwdBwd (136 ms)
+        [----------] 1 test from Profiler (136 ms total)
+
+        [----------] Global test environment tear-down
+        [==========] 1 test from 1 test case ran. (136 ms total)
         [  PASSED  ] 1 test.
 
 nvprof profiler
@@ -126,7 +129,7 @@ To use this command line profiler **nvprof**, you can simply issue the following
 
     .. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
         :language: c++
-        :lines: 111-124
+        :lines: 137-151
         :emphasize-lines: 6-7
         :linenos:
 
@@ -147,42 +150,42 @@ Then, you can get the following profiling result:
 
 .. code-block:: bash
 
-    ==78544== Profiling application: ./paddle/math/tests/test_GpuProfiler                                                                                                      
-    ==78544== Profiling result:                                                                                                                                                
-    Time(%)     Time     Calls       Avg       Min       Max  Name                                                                                                            
-    27.60%  9.6305ms         5  1.9261ms  3.4560us  6.4035ms  [CUDA memcpy HtoD]                                                                                              
-    26.07%  9.0957ms         1  9.0957ms  9.0957ms  9.0957ms  KeBilinearInterpBw                                                                                            
-    23.78%  8.2977ms         1  8.2977ms  8.2977ms  8.2977ms  KeBilinearInterpFw                                                                                        
-    22.55%  7.8661ms         2  3.9330ms  1.5798ms  6.2863ms  [CUDA memcpy DtoH]                                                                                              
-                                                                                                                                                                            
-    ==78544== API calls:                                                                                                                                                       
-    Time(%)     Time     Calls       Avg       Min       Max  Name                                                                                                            
-    46.85%  682.28ms         8  85.285ms  12.639us  682.03ms  cudaStreamCreateWithFlags                                                                                       
-    39.83%  580.00ms         4  145.00ms     302ns  550.27ms  cudaFree                                                                                                        
-    9.82%   143.03ms         9  15.892ms  8.7090us  142.78ms  cudaStreamCreate                                                                                                
-    1.23%   17.983ms         7  2.5690ms  23.210us  6.4563ms  cudaMemcpy                                                                                                      
-    1.23%   17.849ms         2  8.9247ms  8.4726ms  9.3768ms  cudaStreamSynchronize                                                                                           
-    0.66%   9.5969ms         7  1.3710ms  288.43us  2.4279ms  cudaHostAlloc                                                                                                   
-    0.13%   1.9530ms        11  177.54us  7.6810us  591.06us  cudaMalloc                                                                                                      
-    0.07%   1.0424ms         8  130.30us  1.6970us  453.72us  cudaGetDevice                                                                                                   
-    0.04%   527.90us        40  13.197us     525ns  253.99us  cudaEventCreateWithFlags                                                                                        
-    0.03%   435.73us       348  1.2520us     124ns  42.704us  cuDeviceGetAttribute                                                                                            
-    0.03%   419.36us         1  419.36us  419.36us  419.36us  cudaGetDeviceCount                                                                                              
-    0.02%   260.75us         2  130.38us  129.32us  131.43us  cudaGetDeviceProperties                                                                                         
-    0.02%   222.32us         2  111.16us  106.94us  115.39us  cudaLaunch                                                                                                      
-    0.01%   214.06us         4  53.514us  28.586us  77.655us  cuDeviceGetName                                                                                                 
-    0.01%   115.45us         4  28.861us  9.8250us  44.526us  cuDeviceTotalMem                                                                                                
-    0.01%   83.988us         4  20.997us     578ns  77.760us  cudaSetDevice                                                                                                   
-    0.00%   38.918us         1  38.918us  38.918us  38.918us  cudaEventCreate                                                                                                 
-    0.00%   34.573us        31  1.1150us     279ns  12.784us  cudaDeviceGetAttribute                                                                                          
-    0.00%   17.767us         1  17.767us  17.767us  17.767us  cudaProfilerStart                                                                                               
-    0.00%   15.228us         2  7.6140us  3.5460us  11.682us  cudaConfigureCall                                                                                               
-    0.00%   14.536us         2  7.2680us  1.1490us  13.387us  cudaGetLastError                                                                                                
-    0.00%   8.6080us        26     331ns     173ns     783ns  cudaSetupArgument                                                                                               
-    0.00%   5.5470us         6     924ns     215ns  2.6780us  cuDeviceGet                                                                                                     
-    0.00%   5.4090us         6     901ns     328ns  3.3320us  cuDeviceGetCount                                                                                                
-    0.00%   4.1770us         3  1.3920us  1.0630us  1.8300us  cuDriverGetVersion                                                                                              
-    0.00%   3.4650us         3  1.1550us  1.0810us  1.2680us  cuInit                                                                                                          
+    ==78544== Profiling application: ./paddle/math/tests/test_GpuProfiler
+    ==78544== Profiling result:
+    Time(%)     Time     Calls       Avg       Min       Max  Name
+    27.60%  9.6305ms         5  1.9261ms  3.4560us  6.4035ms  [CUDA memcpy HtoD]
+    26.07%  9.0957ms         1  9.0957ms  9.0957ms  9.0957ms  KeBilinearInterpBw
+    23.78%  8.2977ms         1  8.2977ms  8.2977ms  8.2977ms  KeBilinearInterpFw
+    22.55%  7.8661ms         2  3.9330ms  1.5798ms  6.2863ms  [CUDA memcpy DtoH]
+
+    ==78544== API calls:
+    Time(%)     Time     Calls       Avg       Min       Max  Name
+    46.85%  682.28ms         8  85.285ms  12.639us  682.03ms  cudaStreamCreateWithFlags
+    39.83%  580.00ms         4  145.00ms     302ns  550.27ms  cudaFree
+    9.82%   143.03ms         9  15.892ms  8.7090us  142.78ms  cudaStreamCreate
+    1.23%   17.983ms         7  2.5690ms  23.210us  6.4563ms  cudaMemcpy
+    1.23%   17.849ms         2  8.9247ms  8.4726ms  9.3768ms  cudaStreamSynchronize
+    0.66%   9.5969ms         7  1.3710ms  288.43us  2.4279ms  cudaHostAlloc
+    0.13%   1.9530ms        11  177.54us  7.6810us  591.06us  cudaMalloc
+    0.07%   1.0424ms         8  130.30us  1.6970us  453.72us  cudaGetDevice
+    0.04%   527.90us        40  13.197us     525ns  253.99us  cudaEventCreateWithFlags
+    0.03%   435.73us       348  1.2520us     124ns  42.704us  cuDeviceGetAttribute
+    0.03%   419.36us         1  419.36us  419.36us  419.36us  cudaGetDeviceCount
+    0.02%   260.75us         2  130.38us  129.32us  131.43us  cudaGetDeviceProperties
+    0.02%   222.32us         2  111.16us  106.94us  115.39us  cudaLaunch
+    0.01%   214.06us         4  53.514us  28.586us  77.655us  cuDeviceGetName
+    0.01%   115.45us         4  28.861us  9.8250us  44.526us  cuDeviceTotalMem
+    0.01%   83.988us         4  20.997us     578ns  77.760us  cudaSetDevice
+    0.00%   38.918us         1  38.918us  38.918us  38.918us  cudaEventCreate
+    0.00%   34.573us        31  1.1150us     279ns  12.784us  cudaDeviceGetAttribute
+    0.00%   17.767us         1  17.767us  17.767us  17.767us  cudaProfilerStart
+    0.00%   15.228us         2  7.6140us  3.5460us  11.682us  cudaConfigureCall
+    0.00%   14.536us         2  7.2680us  1.1490us  13.387us  cudaGetLastError
+    0.00%   8.6080us        26     331ns     173ns     783ns  cudaSetupArgument
+    0.00%   5.5470us         6     924ns     215ns  2.6780us  cuDeviceGet
+    0.00%   5.4090us         6     901ns     328ns  3.3320us  cuDeviceGetCount
+    0.00%   4.1770us         3  1.3920us  1.0630us  1.8300us  cuDriverGetVersion
+    0.00%   3.4650us         3  1.1550us  1.0810us  1.2680us  cuInit
     0.00%      830ns         1     830ns     830ns     830ns  cudaRuntimeGetVersion
 
 

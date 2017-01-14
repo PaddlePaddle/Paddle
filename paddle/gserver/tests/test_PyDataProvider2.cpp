@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Util.h"
 
-P_DEFINE_string(train_list, "unittest.list", "file list for unittest");
+DEFINE_string(train_list, "unittest.list", "file list for unittest");
 
 namespace paddle {
 namespace unittest {
@@ -293,7 +293,7 @@ TEST(PyDataProvider2, can_over_batch_size) {
   while (true) {
     int64_t realBatchSize = provider->getNextBatchInternal(batchSize, &batch);
     if (realBatchSize) {
-      CHECK_LE((size_t)realBatchSize, batchSize);
+      CHECK_LE(static_cast<size_t>(realBatchSize), batchSize);
     } else {
       break;
     }

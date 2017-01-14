@@ -8,8 +8,7 @@ add_simple_unittest(test_RowBuffer)
 
 # TODO(yuyang18): Refactor TestUtil.cpp. Remove this cross module reference.
 add_unittest(test_matrixCompare
-    test_matrixCompare.cpp
-    ../../gserver/tests/TestUtil.cpp)
+    test_matrixCompare.cpp)
 
 add_simple_unittest(test_sparseMatrixCompare)
 add_simple_unittest(test_perturbation)
@@ -17,12 +16,10 @@ add_simple_unittest(test_CpuGpuVector)
 add_simple_unittest(test_Allocator)
 
 if(WITH_GPU)
-    if(COMPILER_SUPPORT_CXX11)
-    	CUDA_ADD_EXECUTABLE(test_Tensor test_Tensor.cu)
-		link_paddle_test(test_Tensor)
-        CUDA_ADD_EXECUTABLE(test_lazyAssign test_lazyAssign.cu)
-        link_paddle_test(test_lazyAssign)
-    endif()
+    CUDA_ADD_EXECUTABLE(test_Tensor test_Tensor.cu)
+    link_paddle_test(test_Tensor)
+    CUDA_ADD_EXECUTABLE(test_lazyAssign test_lazyAssign.cu)
+    link_paddle_test(test_lazyAssign)
 else()
     compile_cu_as_cpp(test_Tensor.cu)
     add_unittest(test_Tensor test_Tensor.cu)
