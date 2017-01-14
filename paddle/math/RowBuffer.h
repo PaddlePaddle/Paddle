@@ -47,7 +47,7 @@ public:
    */
   inline void resize(int rowCnt) {
     if (preallocatedBuf_) {
-      CHECK(preallocatedBuf_->getSize() < rowCnt * width_ * sizeof(real));
+      CHECK(preallocatedBuf_->getSize() >= rowCnt * width_ * sizeof(real));
     } else {
       rowStore_.resize(rowCnt * width_);
     }
@@ -107,7 +107,7 @@ public:
    */
   inline size_t getRowCount() const {
     if (preallocatedBuf_) {
-      return preallocatedBuf_->getSize() / sizeof(float) / width_;
+      return preallocatedBuf_->getSize() / sizeof(real) / width_;
     } else {
       return rowStore_.size() / width_;
     }
@@ -117,7 +117,7 @@ public:
    * @brief get is this buffer can automatically grow or not.
    * @return ture if can automacitally grow.
    */
-  inline bool isAutoGrowth() const { return preallocatedBuf_ == nullptr; }
+  inline bool isAutoGrowth() const { return !preallocatedBuf_; }
 
   /**
    * @brief return the width of matrix. a.k.a length of row.
