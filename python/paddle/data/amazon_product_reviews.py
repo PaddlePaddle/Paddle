@@ -23,6 +23,7 @@ http://jmcauley.ucsd.edu/data/amazon/
 import os
 from http_download import download
 from logger import logger
+from base import BaseDataSet
 import gzip
 import json
 import hashlib
@@ -33,6 +34,9 @@ import numpy
 
 BASE_URL = 'http://snap.stanford.edu/data/' \
            'amazon/productGraph/categoryFiles/reviews_%s_5.json.gz'
+
+DATASET_LABEL = 'label'
+DATASET_SENTENCE = 'sentence'
 
 
 class Categories(object):
@@ -89,7 +93,7 @@ class Categories(object):
     __md5__[VideoGames] = '730612da2d6a93ed19f39a808b63993e'
 
 
-__all__ = ['fetch', 'Categories', 'preprocess']
+__all__ = ['fetch', 'Categories', 'preprocess', 'dataset']
 
 
 def calculate_md5(fn):
@@ -186,12 +190,12 @@ def preprocess(category=None, directory=None):
                 word_dict[each[0]] = i
 
             sentence = h5file.create_dataset(
-                'sentence',
+                DATASET_SENTENCE,
                 shape=(sample_num, ),
                 dtype=h5py.special_dtype(vlen=numpy.int32))
 
             label = h5file.create_dataset(
-                'label', shape=(sample_num, 1), dtype=numpy.int8)
+                DATASET_LABEL, shape=(sample_num, 1), dtype=numpy.int8)
 
             with gzip.open(raw_file_fn, mode='r') as f:
                 for i, line in enumerate(f):
@@ -209,5 +213,77 @@ def preprocess(category=None, directory=None):
     return preprocess_fn
 
 
+class AmazonProductReviewsDataSet(BaseDataSet):
+    def __init__(self,
+                 category=None,
+                 directory=None,
+                 test_ratio=0.1,
+                 positive_threshold=5,
+                 negative_threshold=2,
+                 random_seed=0):
+        super(AmazonProductReviewsDataSet, self).__init__(
+            random_seed=random_seed)
+
+        fn = preprocess(category=category, directory=directory)
+
+        self.__h5file__ = h5py.File(fn, 'r')
+
+        self.__label__ = self.__h5file__[DATASET_LABEL]
+        self.__sentence__ = self.__h5file__[DATASET_SENTENCE]
+
+        positive_idx = []
+        negative_idx = []
+        for i, lbl in enumerate(self.__label__):
+            if lbl >= positive_threshold:
+                positive_idx.append(i)
+            elif lbl <= negative_threshold:
+                negative_idx.append(i)
+
+        positive_len = int(test_ratio * len(positive_idx))
+        negative_len = int(test_ratio * len(negative_idx))
+
+        self.__train_set__ = positive_idx[positive_len:] + negative_idx[
+            negative_len:]
+        self.__test_set__ = positive_idx[:
+                                         positive_len] + negative_idx[:
+                                                                      negative_len]
+        self.__test_set__.sort()
+        self.__positive_threshold__ = positive_threshold
+        self.__negative_threshold__ = negative_threshold
+        self.__is_reading_train_data__ = False
+
+    def __read_data__(self, idx):
+        return self.__sentence__[
+            idx], self.__label__ >= self.__positive_threshold__
+
+    def train_data(self):
+        if self.__is_reading_train_data__:
+            raise RuntimeError("Should not get multiple train_data generators")
+
+        self.__is_reading_train_data__ = True
+        try:
+            self.__random__.shuffle(self.__train_set__)
+            for each_id in self.__train_set__:
+                yield self.__read_data__(each_id)
+        finally:
+            self.__is_reading_train_data__ = False
+
+    def test_data(self):
+        for each_id in self.__test_set__:
+            yield self.__read_data__(each_id)
+
+    def __del__(self):
+        self.__h5file__.close()
+
+
+dataset = AmazonProductReviewsDataSet
+
 if __name__ == '__main__':
-    preprocess(category=Categories.AmazonInstantVideo)
+    ds = dataset(category=Categories.AmazonInstantVideo)
+
+    for each_train_data in ds.train_data():
+        # print each_train_data
+        pass
+
+    for each_test_data in ds.test_data():
+        pass
