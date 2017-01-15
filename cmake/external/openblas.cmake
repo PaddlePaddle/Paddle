@@ -15,7 +15,6 @@
 INCLUDE(cblas)
 
 IF(NOT ${CBLAS_FOUND})
-    MESSAGE(FATAL_ERROR "Please install OpenBlas, MKL or ATLAS.")
     INCLUDE(ExternalProject)
 
     SET(CBLAS_SOURCES_DIR ${THIRD_PARTY_PATH}/openblas)
@@ -28,16 +27,21 @@ IF(NOT ${CBLAS_FOUND})
         SET(CBLAS_LIBRARIES "${CBLAS_INSTALL_DIR}/lib/libopenblas.a" CACHE FILEPATH "openblas library" FORCE)
     ENDIF(WIN32)
 
+    IF(CMAKE_COMPILER_IS_GNUCC)
+        ENABLE_LANGUAGE(Fortran)
+        LIST(APPEND CBLAS_LIBRARIES gfortran pthread)
+    ENDIF(CMAKE_COMPILER_IS_GNUCC)
+
     ExternalProject_Add(
         openblas
-        ${EXTERNAL_PROJECT_LOG_ARGS}
-        URL                 "https://github.com/xianyi/OpenBLAS/archive/v0.2.19.tar.gz"
+        GIT_REPOSITORY      "git://github.com/xianyi/OpenBLAS.git"
+        GIT_TAG             "v0.2.19"
         PREFIX              ${CBLAS_SOURCES_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
         CONFIGURE_COMMAND   ""
-        BUILD_COMMAND       make CC=${CMAKE_C_COMPILER} FC=${CMAKE_Fortran_COMPILER}
-        INSTALL_COMMAND     make install PREFIX=<INSTALL_DIR>
+        BUILD_COMMAND       make CC=${CMAKE_C_COMPILER} FC=${CMAKE_Fortran_COMPILER} NO_SHARED=1 libs netlib
+        INSTALL_COMMAND     make install NO_SHARED=1 PREFIX=<INSTALL_DIR>
         UPDATE_COMMAND      ""
     )
 
