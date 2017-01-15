@@ -23,10 +23,20 @@ http://jmcauley.ucsd.edu/data/amazon/
 import os
 from http_download import download
 from logger import logger
+from base import BaseDataSet
+import gzip
+import json
 import hashlib
+import nltk
+import collections
+import h5py
+import numpy
 
 BASE_URL = 'http://snap.stanford.edu/data/' \
            'amazon/productGraph/categoryFiles/reviews_%s_5.json.gz'
+
+DATASET_LABEL = 'label'
+DATASET_SENTENCE = 'sentence'
 
 
 class Categories(object):
@@ -62,9 +72,36 @@ class Categories(object):
     __md5__[Automotive] = '757fdb1ab2c5e2fc0934047721082011'
     __md5__[Baby] = '7698a4179a1d8385e946ed9083490d22'
     __md5__[Beauty] = '5d2ccdcd86641efcfbae344317c10829'
+    __md5__[Books] = 'bc1e2aa650fe51f978e9d3a7a4834bc6'
+    __md5__[CDsAndVinyl] = '82bffdc956e76c32fa655b98eca9576b'
+    __md5__[CellPhonesAndAccessories] = '903a19524d874970a2f0ae32a175a48f'
+    __md5__[ClothingShoesAndJewelry] = 'b333fba48651ea2309288aeb51f8c6e4'
+    __md5__[DigitalMusic] = '35e62f7a7475b53714f9b177d9dae3e7'
+    __md5__[Electronics] = 'e4524af6c644cd044b1969bac7b62b2a'
+    __md5__[GroceryAndGourmetFood] = 'd8720f98ea82c71fa5c1223f39b6e3d9'
+    __md5__[HealthAndPersonalCare] = '352ea1f780a8629783220c7c9a9f7575'
+    __md5__[HomeAndKitchen] = '90221797ccc4982f57e6a5652bea10fc'
+    __md5__[KindleStore] = 'b608740c754287090925a1a186505353'
+    __md5__[MoviesAndTV] = 'd3bb01cfcda2602c07bcdbf1c4222997'
+    __md5__[MusicalInstruments] = '8035b6e3f9194844785b3f4cee296577'
+    __md5__[OfficeProducts] = '1b7e64c707ecbdcdeca1efa09b716499'
+    __md5__[PatioLawnAndGarden] = '4d2669abc5319d0f073ec3c3a85f18af'
+    __md5__[PetSupplies] = '40568b32ca1536a4292e8410c5b9de12'
+    __md5__[SportsAndOutdoors] = '1df6269552761c82aaec9667bf9a0b1d'
+    __md5__[ToolsAndHomeImprovement] = '80bca79b84621d4848a88dcf37a1c34b'
+    __md5__[ToysAndGames] = 'dbd07c142c47473c6ee22b535caee81f'
+    __md5__[VideoGames] = '730612da2d6a93ed19f39a808b63993e'
 
 
-__all__ = ['fetch', 'Categories']
+__all__ = ['fetch', 'Categories', 'preprocess', 'dataset']
+
+
+def calculate_md5(fn):
+    h = hashlib.md5()
+    with open(fn, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def fetch(category=None, directory=None):
@@ -87,33 +124,166 @@ def fetch(category=None, directory=None):
 
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+    fn = os.path.join(directory, '%s.json.gz' % category)
+
+    if os.path.exists(fn) and \
+                    calculate_md5(fn) == Categories.__md5__[category]:
+        # already download.
+        return fn
+
     logger.info("Downloading amazon review dataset for %s category" % category)
-    return download(BASE_URL % category,
-                    os.path.join(directory, '%s.json.gz' % category))
+    return download(BASE_URL % category, fn)
 
 
-def calculate_md5(fn):
-    h = hashlib.md5()
-    with open(fn, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            h.update(chunk)
-    return h.hexdigest()
+def preprocess(category=None, directory=None):
+    """
+    Download and preprocess amazon reviews data set. Save the preprocessed
+    result to hdf5 file.
 
+    In preprocess, it uses nltk to tokenize english sentence. It is slightly
+    different from moses. But nltk is a pure python library, it could be
+    integrated well with Paddle.
 
-def main():
-    categories = filter(
-        lambda c: getattr(Categories, c) not in Categories.__md5__.keys(),
-        filter(lambda c: c[0] != '_', dir(Categories)))
+    :return: hdf5 file name.
+    """
+    if category is None:
+        category = Categories.Electronics
 
-    for each in categories:
+    if directory is None:
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data', 'amazon'))
+
+    preprocess_fn = os.path.join(directory, '%s.hdf5' % category)
+    raw_file_fn = fetch(category, directory)
+
+    word_dict = collections.defaultdict(int)
+    if not os.path.exists(preprocess_fn):  # already preprocessed
+        with gzip.open(raw_file_fn, mode='r') as f:
+            for sample_num, line in enumerate(f):
+                txt = json.loads(line)['reviewText']
+                try:  # automatically download nltk tokenizer data.
+                    words = nltk.tokenize.word_tokenize(txt, 'english')
+                except LookupError:
+                    nltk.download('punkt')
+                    words = nltk.tokenize.word_tokenize(txt, 'english')
+                for each_word in words:
+                    word_dict[each_word] += 1
+            sample_num += 1
+
+        word_dict_sorted = []
+        for each in word_dict:
+            word_dict_sorted.append((each, word_dict[each]))
+
+        word_dict_sorted.sort(cmp=lambda a, b: a[1] > b[1])
+
+        word_dict = dict()
+
+        h5file = h5py.File(preprocess_fn, 'w')
         try:
-            filename = fetch(category=getattr(Categories, each))
-        except Exception as e:
-            print type(e)
-            continue
-        print each, calculate_md5(filename)
-        os.remove(filename)
+            word_dict_h5 = h5file.create_dataset(
+                'word_dict',
+                shape=(len(word_dict_sorted), ),
+                dtype=h5py.special_dtype(vlen=str))
+            for i, each in enumerate(word_dict_sorted):
+                word_dict_h5[i] = each[0]
+                word_dict[each[0]] = i
 
+            sentence = h5file.create_dataset(
+                DATASET_SENTENCE,
+                shape=(sample_num, ),
+                dtype=h5py.special_dtype(vlen=numpy.int32))
+
+            label = h5file.create_dataset(
+                DATASET_LABEL, shape=(sample_num, 1), dtype=numpy.int8)
+
+            with gzip.open(raw_file_fn, mode='r') as f:
+                for i, line in enumerate(f):
+                    obj = json.loads(line)
+                    txt = obj['reviewText']
+                    score = numpy.int8(obj['overall'])
+                    words = nltk.tokenize.word_tokenize(txt, 'english')
+                    words = numpy.array(
+                        [word_dict[w] for w in words], dtype=numpy.int32)
+                    sentence[i] = words
+                    label[i] = score
+
+        finally:
+            h5file.close()
+    return preprocess_fn
+
+
+class AmazonProductReviewsDataSet(BaseDataSet):
+    def __init__(self,
+                 category=None,
+                 directory=None,
+                 test_ratio=0.1,
+                 positive_threshold=5,
+                 negative_threshold=2,
+                 random_seed=0):
+        super(AmazonProductReviewsDataSet, self).__init__(
+            random_seed=random_seed)
+
+        fn = preprocess(category=category, directory=directory)
+
+        self.__h5file__ = h5py.File(fn, 'r')
+
+        self.__label__ = self.__h5file__[DATASET_LABEL]
+        self.__sentence__ = self.__h5file__[DATASET_SENTENCE]
+
+        positive_idx = []
+        negative_idx = []
+        for i, lbl in enumerate(self.__label__):
+            if lbl >= positive_threshold:
+                positive_idx.append(i)
+            elif lbl <= negative_threshold:
+                negative_idx.append(i)
+
+        positive_len = int(test_ratio * len(positive_idx))
+        negative_len = int(test_ratio * len(negative_idx))
+
+        self.__train_set__ = positive_idx[positive_len:] + negative_idx[
+            negative_len:]
+        self.__test_set__ = positive_idx[:
+                                         positive_len] + negative_idx[:
+                                                                      negative_len]
+        self.__test_set__.sort()
+        self.__positive_threshold__ = positive_threshold
+        self.__negative_threshold__ = negative_threshold
+        self.__is_reading_train_data__ = False
+
+    def __read_data__(self, idx):
+        return self.__sentence__[
+            idx], self.__label__ >= self.__positive_threshold__
+
+    def train_data(self):
+        if self.__is_reading_train_data__:
+            raise RuntimeError("Should not get multiple train_data generators")
+
+        self.__is_reading_train_data__ = True
+        try:
+            self.__random__.shuffle(self.__train_set__)
+            for each_id in self.__train_set__:
+                yield self.__read_data__(each_id)
+        finally:
+            self.__is_reading_train_data__ = False
+
+    def test_data(self):
+        for each_id in self.__test_set__:
+            yield self.__read_data__(each_id)
+
+    def __del__(self):
+        self.__h5file__.close()
+
+
+dataset = AmazonProductReviewsDataSet
 
 if __name__ == '__main__':
-    main()
+    ds = dataset(category=Categories.AmazonInstantVideo)
+
+    for each_train_data in ds.train_data():
+        # print each_train_data
+        pass
+
+    for each_test_data in ds.test_data():
+        pass
