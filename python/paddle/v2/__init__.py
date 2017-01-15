@@ -15,5 +15,6 @@ import py_paddle.swig_paddle as raw
 import config
 import data
 import paddle.proto as proto
+import layers
 
-__all__ = ['config', 'data', 'raw', 'proto']
+__all__ = ['config', 'data', 'raw', 'proto', 'layers']
