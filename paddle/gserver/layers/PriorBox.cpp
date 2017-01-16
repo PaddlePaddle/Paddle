@@ -93,12 +93,12 @@ void PriorBoxLayer::forward(PassType passType) {
     for (int w = 0; w < layerWidth; ++w) {
       real centerX = (w + 0.5) * stepW;
       real centerY = (h + 0.5) * stepH;
-      int minSize = 0;
+      real minSize = 0;
       for (size_t s = 0; s < minSize_.size(); s++) {
         // first prior.
         minSize = minSize_[s];
-        int boxWidth = minSize;
-        int boxHeight = minSize;
+        real boxWidth = minSize;
+        real boxHeight = minSize;
         // xmin, ymin, xmax, ymax.
         tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
         tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
@@ -111,7 +111,7 @@ void PriorBoxLayer::forward(PassType passType) {
           CHECK_EQ(minSize_.size(), maxSize_.size());
           // second prior.
           for (size_t s = 0; s < maxSize_.size(); s++) {
-            int maxSize = maxSize_[s];
+            real maxSize = maxSize_[s];
             boxWidth = boxHeight = sqrt(minSize * maxSize);
             tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
             tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
