@@ -126,6 +126,8 @@ public:
   inline size_t getWidth() const { return width_; }
 
 private:
+  //! TODO(yuyang18): Add resize method to CpuMemHandlePtr, then we can get rid
+  //! of std::vector here.
   CpuMemHandlePtr preallocatedBuf_;
   std::vector<real, AlignedAllocator<real, 32>> rowStore_;
   size_t width_;
