@@ -19,8 +19,8 @@ limitations under the License. */
 #include <algorithm>
 #include "Matrix.h"
 #include "RowBuffer.h"
-#include "paddle/utils/CommandLineParser.h"
 #include "paddle/utils/Util.h"
+
 DECLARE_bool(allow_inefficient_sparse_update);
 
 namespace paddle {
