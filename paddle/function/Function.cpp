@@ -96,7 +96,8 @@ void BufferArgs::addArg(const GpuSparseMatrix& arg, ArgType argType) {
 void BufferArgs::addArg(const Matrix& matrix,
                         const IVector& vector,
                         ArgType argType) {
-  args_.push_back(std::make_shared<SequenceArg>(matrix, vector, argType));
+  _args_.push_back(new SequenceArg(matrix, vector, argType));
+  addArg(*_args_.back());
 }
 
 ClassRegistrar<FunctionBase> FunctionBase::funcRegistrar_;
