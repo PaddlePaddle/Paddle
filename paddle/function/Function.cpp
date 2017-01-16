@@ -93,6 +93,12 @@ void BufferArgs::addArg(const GpuSparseMatrix& arg, ArgType argType) {
   addArg(*_args_.back());
 }
 
+void BufferArgs::addArg(const Matrix& matrix,
+                        const IVector& vector,
+                        ArgType argType) {
+  args_.push_back(std::make_shared<SequenceArg>(matrix, vector, argType));
+}
+
 ClassRegistrar<FunctionBase> FunctionBase::funcRegistrar_;
 
 }  // namespace paddle

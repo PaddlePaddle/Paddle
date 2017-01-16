@@ -64,7 +64,8 @@ As a simple example, consider the following:
 
 1. **BLAS Dependencies(optional)**
   
-    Paddle will find BLAS from system's default path. But you can specify MKL, OpenBLAS or ATLAS via `MKL_ROOT`, `OPENBLAS_ROOT` or `ATLAS_ROOT`.
+    CMake will search BLAS libraries from system. If not found, OpenBLAS will be downloaded, built and installed automatically.
+    To utilize preinstalled BLAS， you can simply specify MKL, OpenBLAS or ATLAS via `MKL_ROOT`, `OPENBLAS_ROOT` or `ATLAS_ROOT`.
 
     ```bash
     # specify MKL
@@ -99,7 +100,7 @@ As a simple example, consider the following:
     ```bash
     # necessary
     sudo apt-get update
-    sudo apt-get install -y g++ make cmake build-essential libatlas-base-dev python python-pip libpython-dev git
+    sudo apt-get install -y g++ make cmake build-essential python python-pip libpython-dev git
     sudo pip install wheel numpy
     sudo pip install 'protobuf>=3.0.0'
     ```

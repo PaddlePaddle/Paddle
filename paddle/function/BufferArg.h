@@ -23,10 +23,11 @@ limitations under the License. */
 namespace paddle {
 
 enum BufferType {
-  TENSOR_NORMAL = 0,
-  TENSOR_SEQUENCE_ID = 1,
-  TENSOR_SEQUENCE_DATA = 2,
-  TENSOR_SPARSE = 3
+  TENSOR_UNKNOWN = 0,
+  TENSOR_NORMAL = 1,
+  TENSOR_SEQUENCE_ID = 2,
+  TENSOR_SEQUENCE_DATA = 3,
+  TENSOR_SPARSE = 4
 };
 
 enum SparseDataType {
@@ -98,6 +99,7 @@ public:
         valueType_(DataType<real>::value),
         shape_(2),
         argType_(argType) {
+    bufferType_ = TENSOR_NORMAL;
     shape_.setDim(0, matrix.getHeight());
     shape_.setDim(1, matrix.getWidth());
   }
@@ -110,6 +112,7 @@ public:
         valueType_(DataType<real>::value),
         shape_(shape),
         argType_(argType) {
+    bufferType_ = TENSOR_NORMAL;
     CHECK_EQ(matrix.getElementCnt(), shape.getElements());
   }
 
@@ -119,6 +122,7 @@ public:
         valueType_(DataType<real>::value),
         shape_(1),
         argType_(argType) {
+    bufferType_ = TENSOR_NORMAL;
     shape_.setDim(0, vector.getSize());
   }
 
@@ -128,6 +132,7 @@ public:
         valueType_(VALUE_TYPE_INT32),
         shape_(1),
         argType_(argType) {
+    bufferType_ = TENSOR_NORMAL;
     shape_.setDim(0, vector.getSize());
   }
 
@@ -162,6 +167,8 @@ public:
   ValueType valueType() const { return valueType_; }
   BufferType bufferType() const { return bufferType_; }
   const TensorShape& shape() const { return shape_; }
+  bool isSparse() const { return (TENSOR_SPARSE == bufferType_); }
+  bool isSequenceArg() const { return TENSOR_SEQUENCE_DATA == bufferType_; }
 
   const SequenceArg& sequence() const;
   const SparseMatrixArg& sparse() const;
@@ -170,8 +177,8 @@ protected:
   void* buf_;
   ValueType valueType_;
   TensorShape shape_;
-  BufferType bufferType_;
-  ArgType argType_ = UNSPECIFIED;
+  BufferType bufferType_{TENSOR_UNKNOWN};
+  ArgType argType_{UNSPECIFIED};
   // leading dimensions. The size is dims_.size()
   // Dims lds_;
 };
@@ -192,11 +199,13 @@ public:
                 const TensorShape& shape,
                 ArgType argType = UNSPECIFIED)
       : BufferArg(buf, VALUE_TYPE_INT32, shape, argType) {
+    bufferType_ = TENSOR_SEQUENCE_ID;
     CHECK_EQ(shape_.ndims(), (size_t)1);
     numSeqs_ = shape_[0] - 1;
   }
 
   SequenceIdArg(const IVector& vector) : BufferArg(vector) {
+    bufferType_ = TENSOR_SEQUENCE_ID;
     numSeqs_ = shape_[0] - 1;
   }
 
@@ -226,12 +235,16 @@ public:
               const SequenceIdArg& startPositions,
               ArgType argType = UNSPECIFIED)
       : BufferArg(buf, valueType, shape, argType),
-        startPositions_(startPositions) {}
+        startPositions_(startPositions) {
+    bufferType_ = TENSOR_SEQUENCE_DATA;
+  }
 
   SequenceArg(const Matrix& matrix,
               const IVector& vector,
               ArgType argType = UNSPECIFIED)
-      : BufferArg(matrix, argType), startPositions_(vector) {}
+      : BufferArg(matrix, argType), startPositions_(vector) {
+    bufferType_ = TENSOR_SEQUENCE_DATA;
+  }
 
   ~SequenceArg() {}
 
@@ -264,6 +277,7 @@ public:
         nnz_(nnz),
         format_(format),
         type_(type) {
+    bufferType_ = TENSOR_SPARSE;
     CHECK((valueType == VALUE_TYPE_FLOAT) || (valueType == VALUE_TYPE_DOUBLE));
     CHECK_EQ(shape_.ndims(), (size_t)2);
     CHECK_EQ(row_.shape().ndims(), (size_t)1);

@@ -2,15 +2,9 @@
 
 ## Create AWS Account and IAM Account
 
-To use AWS, we need to sign up an AWS account on Amazon's Web site.
-An AWS account allows us to login to the AWS Console Web interface to
-create IAM users and user groups. Usually, we create a user group with
-privileges required to run PaddlePaddle, and we create users for
-those who are going to run PaddlePaddle and add these users into the
-group. IAM users can identify themselves using password and tokens,
-where passwords allows users to log in to the AWS Console, and tokens
-make it easy for users to submit and inspect jobs from the command
-line.
+AWS account allow us to manage AWS from Web Console. Amazon AMI enable us to manage AWS from command line interface.
+
+We need to create an AMI user with sufficient privilege to create kubernetes cluster on AWS.
 
 To sign up an AWS account, please
 follow
@@ -19,8 +13,7 @@ To create users and user groups under an AWS account, please
 follow
 [this guide](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html).
 
-Please be aware that this tutorial needs the following privileges in
-the user group:
+Please be aware that this tutorial needs the following privileges for the user in AMI:
 
 - AmazonEC2FullAccess
 - AmazonS3FullAccess
@@ -31,6 +24,7 @@ the user group:
 - IAMUserSSHKeys
 - IAMFullAccess
 - NetworkAdministrator
+- AWSKeyManagementServicePowerUser
 
 
 By the time we write this tutorial, we noticed that Chinese AWS users
@@ -46,9 +40,11 @@ it.
 Here we will show you step by step on how to run PaddlePaddle training on AWS cluster.
 
 
-###Download kube-aws and kubectl
+### Download kube-aws and kubectl
 
-####kube-aws
+#### kube-aws
+
+[kube-aws](https://github.com/coreos/kube-aws) is a CLI tool to automate cluster deployment to AWS.
 
 Import the CoreOS Application Signing Public Key:
 
@@ -88,24 +84,22 @@ mv ${PLATFORM}/kube-aws /usr/local/bin
 ```
 
 
-####kubectl
+#### kubectl
+
+[kubectl](https://kubernetes.io/docs/user-guide/kubectl-overview/) is a command line interface for running commands against Kubernetes clusters.
 
 Go to the [releases](https://github.com/kubernetes/kubernetes/releases) and download the latest release tarball.
 
 Extract the tarball and then concate the kubernetes binaries directory into PATH:
 
 ```
-export PATH=<path/to/kubernetes-directory>/platforms/linux/amd64:$PATH
-
+export PATH=<path/to/kubernetes-directory>/platforms/linux/amd64:$PATH # The exact path depend on your platform
 ```
 
-User credentials and security tokens will be generated later in user directory, not in `~/.kube/config`, they will be necessary to use the CLI or the HTTP Basic Auth.
 
+### Configure AWS Credentials
 
-###Configure AWS Credentials
-
-First check out [this](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) for installing the AWS command line interface, if you use ec2 instance with default amazon AMI, the cli tool has already been installed on your machine.
-
+First check out [this](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) for installing the AWS command line interface.
 
 And then configure your AWS account information:
 
@@ -126,33 +120,35 @@ Default output format: json
 
 ```
 
-Test that your credentials work by describing any instances you may already have running on your account:
+Verify that your credentials work by describing any instances you may already have running on your account:
 
 ```
 aws ec2 describe-instances
 ```
 
-###Define Cluster Parameters
+### Define Cluster Parameters
 
-####EC2 key pair
+#### EC2 key pair
 
 The keypair that will authenticate SSH access to your EC2 instances. The public half of this key pair will be configured on each CoreOS node.
 
-After creating a key pair, you will use the name you gave the keys to configure the cluster. Key pairs are only available to EC2 instances in the same region. More info in the [EC2 Keypair docs](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html).
+Follow [EC2 Keypair docs](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html) to create a EC2 key pair
 
-####KMS key
+After creating a key pair, you will use the name you gave the keys to configure the cluster. Key pairs are only available to EC2 instances in the same region.
+
+#### KMS key
 
 Amazon KMS keys are used to encrypt and decrypt cluster TLS assets. If you already have a KMS Key that you would like to use, you can skip creating a new key and provide the Arn string for your existing key.
 
 You can create a KMS key in the AWS console, or with the aws command line tool:
 
 ```
-$ aws kms --region=us-west-2 create-key --description="kube-aws assets"
+$ aws kms --region=us-west-1 create-key --description="kube-aws assets"
 {
     "KeyMetadata": {
         "CreationDate": 1458235139.724,
         "KeyState": "Enabled",
-        "Arn": "arn:aws:kms:us-west-2:xxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx",
+        "Arn": "arn:aws:kms:us-west-1:xxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx",
         "AWSAccountId": "xxxxxxxxxxxxx",
         "Enabled": true,
         "KeyUsage": "ENCRYPT_DECRYPT",
@@ -166,7 +162,9 @@ You will use the `KeyMetadata.Arn` string to identify your KMS key in the init s
 
 And then you need to add several inline policies in your user permission.
 
-kms inline policy:
+Go to AMI user page, click on `Add inline policy` button, and then select `Custom Policy`
+
+paste into following inline policies:
 
 ```
 {
@@ -182,16 +180,8 @@ kms inline policy:
             "Resource": [
                 "arn:aws:kms:*:xxxxxxxxx:key/*"
             ]
-        }
-    ]
-}
-```
-cloudformation inline policy:
-
-```
-"Version": "2012-10-17",
-    "Statement": [
-        {
+        },
+		{
             "Sid": "Stmt1482205746000",
             "Effect": "Allow",
             "Action": [
@@ -200,10 +190,11 @@ cloudformation inline policy:
                 "cloudformation:DeleteStack",
                 "cloudformation:DescribeStacks",
                 "cloudformation:DescribeStackResource",
-                "cloudformation:GetTemplate"
+                "cloudformation:GetTemplate",
+                "cloudformation:DescribeStackEvents"
             ],
             "Resource": [
-                "arn:aws:cloudformation:us-west-2:xxxxxxxxx:stack/YOUR_CLUSTER_NAME/*"
+                "arn:aws:cloudformation:us-west-1:xxxxxxxxx:stack/YOUR_CLUSTER_NAME/*"
             ]
         }
     ]
@@ -211,15 +202,23 @@ cloudformation inline policy:
 ```
 
 
-####External DNS name
+#### External DNS name
 
 When the cluster is created, the controller will expose the TLS-secured API on a public IP address. You will need to create an A record for the external DNS hostname you want to point to this IP address. You can find the API external IP address after the cluster is created by invoking kube-aws status.
 
-####S3 bucket
+#### S3 bucket
 
 You need to create an S3 bucket before startup the Kubernetes cluster.
 
-####Initialize an asset directory
+command (need to have a global unique name):
+
+```
+paddle aws s3api --region=us-west-1 create-bucket --bucket bucket-name
+```
+
+If you get an error message, try a different bucket name. The bucket name needs to be globally unique.
+
+#### Initialize an asset directory
 
 Create a directory on your local machine to hold the generated assets:
 
@@ -237,12 +236,16 @@ $ kube-aws init \
 --region=us-west-1 \
 --availability-zone=us-west-1c \
 --key-name=key-pair-name \
---kms-key-arn="arn:aws:kms:us-west-2:xxxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx"
+--kms-key-arn="arn:aws:kms:us-west-1:xxxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx"
 ```
+
+Here `us-west-1c` is used for parameter `--availability-zone`, but supported availability zone varies among AWS accounts.
+
+Please check if `us-west-1c` is supported by `aws ec2 --region us-west-1 describe-availability-zones`, if not switch to other supported availability zone. (e.g., `us-west-1a`, or `us-west-1b`)
 
 There will now be a cluster.yaml file in the asset directory. This is the main configuration file for your cluster.
 
-####Render contents of the asset directory
+#### Render contents of the asset directory
 
 In the simplest case, you can have kube-aws generate both your TLS identities and certificate authority for you.
 
@@ -285,21 +288,21 @@ $ tree
 These assets (templates and credentials) are used to create, update and interact with your Kubernetes cluster.
 
 
-###Kubernetes Cluster Start Up
+### Kubernetes Cluster Start Up
 
-####Create the instances defined in the CloudFormation template
+#### Create the instances defined in the CloudFormation template
 
-Now for the exciting part, creating your cluster:
+Now for the exciting part, creating your cluster (choose any `<prefix>`):
 
 ```
 $ kube-aws up --s3-uri s3://<your-bucket-name>/<prefix>
 ```
 
-####Configure DNS
+#### Configure DNS
 
-You can invoke `kube-aws status` to get the cluster API endpoint after cluster creation, if necessary. This command can take a while. And then dig the load balancer hostname to get the ip address, use this ip to setup an A record for your external dns name.
+You can invoke `kube-aws status` to get the cluster API endpoint after cluster creation, if necessary. This command can take a while. And use command `dig` to check the load balancer hostname to get the ip address, use this ip to setup an A record for your external dns name.
 
-####Access the cluster
+#### Access the cluster
 
 Once the API server is running, you should see:
 
@@ -312,7 +315,7 @@ ip-10-0-0-xx.us-west-1.compute.internal    Ready,SchedulingDisabled   5m
 ```
 
 
-###Setup PaddlePaddle Environment on AWS
+### Setup PaddlePaddle Environment on AWS
 
 Now, we've created a cluster with following network capability:
 

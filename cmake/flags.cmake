@@ -96,6 +96,7 @@ set(COMMON_FLAGS
     -Wno-unused-parameter
     -Wno-unused-function
     -Wno-error=literal-suffix
+    -Wno-error=sign-compare
     -Wno-error=unused-local-typedefs)
 
 set(GPU_COMMON_FLAGS
@@ -105,6 +106,7 @@ set(GPU_COMMON_FLAGS
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
     -Wno-unused-function
+    -Wno-error=sign-compare
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs
     -Wno-error=unused-function  # Warnings in Numpy Header.
