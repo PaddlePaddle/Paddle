@@ -2,9 +2,7 @@
 
 ## Create AWS Account and IAM Account
 
-AWS account allow us to manage AWS from Web Console. Amazon IAM enable us to manage AWS from command line interface.
-
-We need to create an IAM user with sufficient privilege to create kubernetes cluster on AWS.
+Under each AWS account, we can create multiple [IAM](http://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html) users. This allows us to grant some privileges to each IAM user and to create/operate AWS clusters as an IAM user.
 
 To sign up an AWS account, please
 follow
@@ -51,7 +49,7 @@ gpg2 --fingerprint FC8A365E
 ```
 The correct key fingerprint is `18AD 5014 C99E F7E3 BA5F 6CE9 50BD D3E0 FC8A 365E`
 
-Go to the [releases](https://github.com/coreos/kube-aws/releases) and download release tarball (this tutorial is using v0.9.1) and detached signature (.sig) for your architecture.
+We can download `kube-aws` from its [release page](https://github.com/coreos/kube-aws/releases). In this tutorial, we use version 0.9.1
 
 Validate the tarball's GPG signature:
 
@@ -224,7 +222,7 @@ We will need to use DNS name later in tutorial. If you don't already own one, yo
 
 You need to create an S3 bucket before startup the Kubernetes cluster.
 
-There are some bug in aws cli in creating S3 bucket, so let's use [web console](https://console.aws.amazon.com/s3/home?region=us-west-1).
+There are some bugs in aws cli in creating S3 bucket, so let's use the [Web console](https://console.aws.amazon.com/s3/home?region=us-west-1).
 
 Click on `Create Bucket`, fill in a unique BUCKET_NAME, and make sure region is us-west-1 (Northern California).
 
