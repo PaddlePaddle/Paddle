@@ -77,6 +77,10 @@ public:
   void addArg(const CpuSparseMatrix& arg, ArgType argType = UNSPECIFIED);
   void addArg(const GpuSparseMatrix& arg, ArgType argType = UNSPECIFIED);
 
+  void addArg(const Matrix& matrix,
+              const IVector& vector,
+              ArgType argType = UNSPECIFIED);
+
   // get argument
   const BufferArg& operator[](size_t num) const {
     CHECK_LT(num, args_.size());
