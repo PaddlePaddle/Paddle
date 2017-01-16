@@ -1,4 +1,4 @@
-#/usr/bin/env python
+# /usr/bin/env python
 # -*- coding:utf-8 -*-
 
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
@@ -14,58 +14,74 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+A utility for fetching, reading sentiment data set.
 
-############################################################################
-#
-# Function for fetch the data untar directory for sentiment training api.
-# you can use this data for sentiment analasis.
-#
-# First,we special the data download directory is "~/paddle_data_directory".
-# For the sentiment dataset,it untar the dataset,and returns the untar
-# directory for training api.
-#
-############################################################################
+http://ai.stanford.edu/%7Eamaas/data/sentiment
+"""
 
-import shutil
 import os
-import sys
-import zipfile
+from http_download import download
+from logger import logger
+from base import BaseDataSet
+import gzip
+import json
+import hashlib
+import nltk
 import collections
-import numpy as np
-from six.moves import urllib
-import stat
-from http_download import data_download
+import h5py
+import numpy
 
-source_url = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
-moses_url = 'https://github.com/moses-smt/mosesdecoder/archive/master.zip'
-
-moses_source = "mosesdecoder-master"
-file_source = "aclImdb"
+BASE_URL = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/%s.tar.gz'
 
 
-def fetch(directory=None):
+DATASET_LABEL = 'label'
+DATASET_SENTENCE = 'sentence'
+
+
+class Categories(object):
+    AclImdb = "aclImdb_v1"
+
+    __md5__ = dict()
+
+    __md5__[AclImdb] = '7c2ac02c03563afcf9b574c7e56c153a'
+
+__all__ = ['fetch', 'Categories', 'preprocess', 'dataset']
+
+
+def calculate_md5(fn):
+    h = hashlib.md5()
+    with open(fn, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def fetch(category=None, directory=None):
     """
     According to the source name,set the download path for source,
-    download the data from the source url,and return the download path to fetch for training api.
-
-    Args:
-
-    Returns:
-        path to downloaded file.
+    download the data from the source url,and return the download path to fetch
+    for training api.
+    :param category:
+    :param directory:
+    :return:
     """
-    source_name = "sentiment"
+    if category is None:
+        category = Categories.AclImdb
+
     if directory is None:
         directory = os.path.expanduser(
-            os.path.join('~', 'paddle_data_directory'))
+            os.path.join('~', 'paddle_data', 'sentiment'))
 
-    download_path = os.path.join(directory, source_name)
-    if not os.path.exists(download_path):
-        os.makedirs(download_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
-    moses_path = data_download(download_path, moses_url)
-    moses_data = os.path.join(moses_path, moses_source)
+    fn = os.path.join(directory, '%s.tar.gz' % category)
 
-    filepath = data_download(download_path, source_url)
-    data_path = os.path.join(filepath, file_source)
+    if os.path.exists(fn) and \
+                    calculate_md5(fn) == Categories.__md5__[category]:
+        # already download.
+        return fn
 
-    return data_path
+    logger.info("Downloading binary sentiment classification dataset for %s category" % category)
+    return download(BASE_URL % category, fn)
