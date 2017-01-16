@@ -21,6 +21,7 @@ ELSE(WIN32)
         SET(MACOS_VERSION ${VERSION})
         SET(HOST_SYSTEM "macosx")
     ELSE(APPLE)
+
         IF(EXISTS "/etc/issue")
             FILE(READ "/etc/issue" LINUX_ISSUE)
             IF(LINUX_ISSUE MATCHES "CentOS")
@@ -31,6 +32,14 @@ ELSE(WIN32)
                 SET(HOST_SYSTEM "ubuntu")
             ENDIF()
         ENDIF(EXISTS "/etc/issue")
+
+        IF(EXISTS "/etc/redhat-release")
+            FILE(READ "/etc/redhat-release" LINUX_ISSUE)
+            IF(LINUX_ISSUE MATCHES "CentOS")
+                SET(HOST_SYSTEM "centos")
+            ENDIF()
+        ENDIF(EXISTS "/etc/redhat-release")
+
     ENDIF(APPLE)
 ENDIF(WIN32)
 
