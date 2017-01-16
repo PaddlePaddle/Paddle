@@ -47,9 +47,6 @@ TEST(CrossMapNormal, real) {
   }
 }
 
-#if 0
-// TODO(hedaoyuan): Now CrossMapNormalGrad not support ASSIGN_TO mode.
-// Maybe all Function need support ASSIGN_TO mode.
 TEST(CrossMapNormalGrad, real) {
   for (size_t numSamples : {5, 32}) {
     for (size_t channels : {1, 5, 32}) {
@@ -79,6 +76,5 @@ TEST(CrossMapNormalGrad, real) {
     }
   }
 }
-#endif
 
 }  // namespace paddle
