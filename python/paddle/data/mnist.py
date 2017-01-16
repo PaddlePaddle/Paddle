@@ -14,57 +14,89 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+A utility for fetching, reading mnist handwritten digit dataset.
 
-############################################################################
-#
-# Function for fetch the data untar directory for mnist training api.
-# you can use this data for Digital identification.
-#
-# First,we special the data download directory is "~/paddle_data_directory".
-# For the mnist dataset,it untar the dataset,and returns the untar
-# directory for training api.
-#
-############################################################################
+http://yann.lecun.com/exdb/mnist/
+"""
 
-import shutil
 import os
-import sys
-import collections
-import numpy as np
-from six.moves import urllib
-import urlparse
+from http_download import download
+from logger import logger
+from base import BaseDataSet
 import gzip
-from http_download import data_download
+import json
+import hashlib
+import nltk
+import collections
+import h5py
+import numpy
 
-source_url = 'http://yann.lecun.com/exdb/mnist/'
-filename = [
-    'train-images-idx3-ubyte.gz', 't10k-images-idx3-ubyte.gz',
-    'train-labels-idx1-ubyte.gz', 't10k-labels-idx1-ubyte.gz'
-]
+BASE_URL = 'http://yann.lecun.com/exdb/mnist/%s-ubyte.gz'
 
 
-def fetch(directory=None):
+class Categories(object):
+    TrainImage = 'train-images-idx3'
+    TrainLabels = 'train-labels-idx1'
+    TestImage = 't10k-images-idx3'
+    TestLabels = 't10k-labels-idx1'
+
+    All = [TrainImage, TrainLabels, TestImage, TestLabels]
+
+    __md5__ = dict()
+
+    __md5__[TrainImage] = 'f68b3c2dcbeaaa9fbdd348bbdeb94873'
+    __md5__[TrainLabels] = 'd53e105ee54ea40749a09fcbcd1e9432'
+    __md5__[TestImage] = '9fb629c4189551a2d022fa330f9573f3'
+    __md5__[TestLabels] = 'ec29112dd5afa0611ce80d1b7f02629c'
+
+
+__all__ = ['fetch', 'Categories']
+
+
+def calculate_md5(fn):
+    h = hashlib.md5()
+    with open(fn, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def fetch_data(category=None, directory=None):
+    """
+    Calculate each md5 value.
+    :param category:
+    :param directory:
+    :return:
+    """
+    cn = category + '-ubyte'
+    fn = os.path.join(directory, '%s.gz' % cn)
+    if os.path.exists(fn) and \
+                    calculate_md5(fn) == Categories.__md5__[category]:
+        return fn
+    logger.info("Downloading mnist handwritten digit dataset for %s category" % cn)
+    return download(BASE_URL % category, fn)
+
+
+def fetch(category=None, directory=None):
     """
     According to the source name,set the download path for source,
-    download the data from the source url,and return the download path to fetch for training api.
-
-    Args:
-
-    Returns:
-        path for untar file.
+    download the data from the source url,and return the download path to fetch
+    for training api.
+    :param category:
+    :param directory:
+    :return:
     """
-    source_name = "mnist"
-
     if directory is None:
         directory = os.path.expanduser(
-            os.path.join('~', 'paddle_data_directory'))
+            os.path.join('~', 'paddle_data', 'mnist'))
 
-    download_path = os.path.join(directory, source_name)
-    if not os.path.exists(download_path):
-        os.makedirs(download_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
-    for file in filename:
-        url = urlparse.urljoin(source_url, file)
-        filepath = data_download(download_path, url)
-        data_dir = os.path.join(filepath, file.split('.')[0])
-        return data_dir
+    if category is None:
+        category = [category for category in Categories.All]
+        fl = []  # download file list
+        for index, line in range(len(category)):
+            fl.append(fetch_data(line, directory))
+        return fl

@@ -1,4 +1,4 @@
-# /usr/bin/env python
+#/usr/bin/env python
 # -*- coding:utf-8 -*-
 
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
@@ -14,39 +14,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-A utility for fetching, reading semantic data set.
 
-http://www.cs.upc.edu/~srlconll
+"""
+A utility for fetching, reading CIFAR-10 dataset.
+
+https://www.cs.toronto.edu/~kriz/cifar.html
 """
 
 import os
 from http_download import download
 from logger import logger
-from base import BaseDataSet
-import gzip
-import json
 import hashlib
-import nltk
-import collections
-import h5py
-import numpy
 
-BASE_URL = 'http://www.cs.upc.edu/~srlconll/%s.tar.gz'
-
-DATASET_LABEL = 'label'
-DATASET_SENTENCE = 'sentence'
+BASE_URL = 'https://www.cs.toronto.edu/~kriz/cifar-%s-python.tar.gz'
 
 
 class Categories(object):
-    Conll05test = "conll05st-tests"
+    Ten = 10
+    Hundred = 100
 
     __md5__ = dict()
 
-    __md5__[Conll05test] = '387719152ae52d60422c016e92a742fc'
+    __md5__[Ten] = 'c58f30108f718f92721af3b95e74349a'
+    __md5__[Hundred] = 'eb9058c3a382ffc7106e4002c42a8d85'
 
-
-__all__ = ['fetch', 'Categories', 'preprocess', 'dataset']
+__all__ = ['fetch', 'Categories']
 
 
 def calculate_md5(fn):
@@ -60,30 +52,26 @@ def calculate_md5(fn):
 def fetch(category=None, directory=None):
     """
     According to the source name,set the download path for source,
-    download the data from the source url,and return the download path to fetch
-    for training api.
-    :param category:
-    :param directory:
-    :return:
-    """
-    if category is None:
-        category = Categories.Conll05test
+    download the data from the source url,and return the download path to fetch for training api.
 
+    Args:
+
+    Returns:
+        path to untar file.
+    """
     if directory is None:
         directory = os.path.expanduser(
-            os.path.join('~', 'paddle_data', 'amazon'))
+            os.path.join('~', 'paddle_data_directory', 'cifar'))
 
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    fn = os.path.join(directory, '%s.json.gz' % category)
+    cn = 'cifar' + category
+    fn = os.path.join(directory, '%s.tar.gz' % cn)
 
-    if os.path.exists(fn) and \
-                    calculate_md5(fn) == Categories.__md5__[category]:
-        # already download.
+    if os.path.exists(fn) and calculate_md5(fn) == Categories.__md5__[category]:
         return fn
 
-    logger.info("Downloading amazon review dataset for %s category" % category)
-    return download(BASE_URL % category, fn)
-
-
+    logger.info("Downloading cifar dataset for %s category" % cn)
+    return download(BASE_URL % category,
+                    os.path.join(directory, '%s.tar.gz' % cn))
