@@ -26,4 +26,9 @@ TEST(Status, testAll) {
   paddle::Status status2("error2");
   ASSERT_FALSE(status2.isOK());
   ASSERT_STREQ("error2", status2.what());
+
+  int i = 3;
+  auto status3 = paddle::Status::printf("error%d", i);
+  ASSERT_FALSE(status3.isOK());
+  ASSERT_STREQ("error3", status3.what());
 }

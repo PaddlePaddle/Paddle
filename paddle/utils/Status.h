@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdio.h>
 #include <memory>
 #include <string>
 
@@ -43,6 +44,28 @@ public:
    */
   inline void set(const std::string& msg) noexcept {
     errMsg_.reset(new std::string(msg));
+  }
+
+  /**
+   * @brief set a error message for status. Use C style printf
+   * @param fmt
+   */
+  template <typename... ARGS>
+  inline void setByPrintf(const char* fmt, ARGS... args) noexcept {
+    constexpr size_t bufferSize = 4096;
+    char buffer[bufferSize];
+    snprintf(buffer, bufferSize, fmt, args...);
+    errMsg_.reset(new std::string(buffer));
+  }
+
+  /**
+   * create a error status by C style printf.
+   */
+  template <typename... ARGS>
+  inline static Status printf(const char* fmt, ARGS... args) noexcept {
+    Status s;
+    s.setByPrintf(fmt, args...);
+    return s;
   }
 
   /**
