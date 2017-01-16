@@ -9,7 +9,7 @@ set(PY_FILES paddle/__init__.py
              ${TRAINER_PY_FILES}
              ${HELPERS_PY_FILES}
              ${UTILS_PY_FILES}
-	     ${V2_PY_FILES})
+             ${V2_PY_FILES})
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)

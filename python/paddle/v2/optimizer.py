@@ -1,5 +1,12 @@
 from paddle.trainer_config_helpers import *
 import py_paddle.swig_paddle as api
+import paddle.trainer_config_helpers.optimizers as raw_opt_pacakge
+
+__all__ = ['Optimizer']
+
+__all__.extend(
+    filter(lambda x: x not in ['Optimizer', 'BaseSGDOptimizer', 'settings'],
+           raw_opt_pacakge.__all__))
 
 
 class Optimizer(object):

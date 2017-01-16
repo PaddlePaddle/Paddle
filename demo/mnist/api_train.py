@@ -13,15 +13,6 @@ import paddle.v2 as paddle
 from mnist_util import read_from_mnist
 
 
-def optimizer_config():
-    paddle.config.settings(
-        learning_rate=1e-4,
-        learning_method=paddle.config.AdamOptimizer(),
-        batch_size=1000,
-        model_average=paddle.config.ModelAverage(average_window=0.5),
-        regularization=paddle.config.L2Regularization(rate=0.5))
-
-
 def network_config():
     imgs = paddle.config.data_layer(name='pixel', size=784)
     hidden1 = paddle.config.fc_layer(input=imgs, size=200)
@@ -70,15 +61,16 @@ def main():
     # enable_types = [value, gradient, momentum, etc]
     # For each optimizer(SGD, Adam), GradientMachine should enable different
     # buffers.
-    opt_config_proto = paddle.config.parse_optimizer(optimizer_config)
-    opt_config = paddle.raw.OptimizationConfig.createFromProto(opt_config_proto)
-    _temp_optimizer_ = paddle.raw.ParameterOptimizer.create(opt_config)
-    enable_types = _temp_optimizer_.getParameterTypes()
+    optimizer = paddle.optimizer.Optimizer(
+        learning_method=paddle.optimizer.AdamOptimizer(),
+        learning_rate=1e-4,
+        model_average=paddle.optimizer.ModelAverage(average_window=0.5),
+        regularization=paddle.optimizer.L2Regularization(rate=0.5))
 
     # Create Simple Gradient Machine.
     model_config = paddle.config.parse_network(network_config)
     m = paddle.raw.GradientMachine.createFromConfigProto(
-        model_config, paddle.raw.CREATE_MODE_NORMAL, enable_types)
+        model_config, paddle.raw.CREATE_MODE_NORMAL, optimizer.enable_types())
 
     # This type check is not useful. Only enable type hint in IDE.
     # Such as PyCharm
@@ -90,7 +82,7 @@ def main():
     # Create Local Updater. Local means not run in cluster.
     # For a cluster training, here we can change to createRemoteUpdater
     # in future.
-    updater = paddle.raw.ParameterUpdater.createLocalUpdater(opt_config)
+    updater = optimizer.create_local_updater()
     assert isinstance(updater, paddle.raw.ParameterUpdater)
 
     # Initialize ParameterUpdater.
