@@ -13,18 +13,6 @@ import paddle.v2 as paddle
 from mnist_util import read_from_mnist
 
 
-def network_config():
-    imgs = paddle.config.data_layer(name='pixel', size=784)
-    hidden1 = paddle.config.fc_layer(input=imgs, size=200)
-    hidden2 = paddle.config.fc_layer(input=hidden1, size=200)
-    inference = paddle.config.fc_layer(
-        input=hidden2, size=10, act=paddle.config.SoftmaxActivation())
-    cost = paddle.config.classification_cost(
-        input=inference, label=paddle.config.data_layer(
-            name='label', size=10))
-    paddle.config.outputs(cost)
-
-
 def generator_to_batch(generator, batch_size):
     ret_val = list()
     for each_item in generator:
@@ -67,8 +55,17 @@ def main():
         model_average=paddle.optimizer.ModelAverage(average_window=0.5),
         regularization=paddle.optimizer.L2Regularization(rate=0.5))
 
+    # define network
+    imgs = paddle.layers.data_layer(name='pixel', size=784)
+    hidden1 = paddle.layers.fc_layer(input=imgs, size=200)
+    hidden2 = paddle.layers.fc_layer(input=hidden1, size=200)
+    inference = paddle.layers.fc_layer(
+        input=hidden2, size=10, act=paddle.config.SoftmaxActivation())
+    cost = paddle.layers.classification_cost(
+        input=inference, label=paddle.layers.data_layer(
+            name='label', size=10))
     # Create Simple Gradient Machine.
-    model_config = paddle.config.parse_network(network_config)
+    model_config = paddle.layers.parse_network(cost)
     m = paddle.raw.GradientMachine.createFromConfigProto(
         model_config, paddle.raw.CREATE_MODE_NORMAL, optimizer.enable_types())
 
