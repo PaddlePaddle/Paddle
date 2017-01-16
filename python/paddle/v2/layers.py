@@ -16,6 +16,7 @@ import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
+import collections
 
 
 class Layer(object):
@@ -31,8 +32,13 @@ class Layer(object):
         """
         kwargs = dict()
         for param_name in self.__parent_layer__:
-            param_value = self.__parent_layer__[param_name].to_proto(
-                context=context)
+            if not isinstance(self.__parent_layer__[param_name],
+                              collections.Sequence):
+                param_value = self.__parent_layer__[param_name].to_proto(
+                    context=context)
+            else:
+                param_value = map(lambda x: x.to_proto(context=context),
+                                  self.__parent_layer__[param_name])
             kwargs[param_name] = param_value
 
         if self.name not in context:
@@ -99,7 +105,7 @@ if __name__ == '__main__':
     data = data_layer(name='pixel', size=784)
     hidden = fc_layer(input=data, size=100, act=conf_helps.SigmoidActivation())
     predict = fc_layer(
-        input=hidden, size=10, act=conf_helps.SoftmaxActivation())
+        input=[hidden, data], size=10, act=conf_helps.SoftmaxActivation())
     cost = classification_cost(
         input=predict, label=data_layer(
             name='label', size=10))
