@@ -41,6 +41,10 @@ class Model(object):
 
         self.__updater__ = self.create_local_updater(optimizer)
 
+    @property
+    def input_order(self):
+        raise NotImplementedError()
+
     def rand_parameter(self):
         raise NotImplementedError()
 
