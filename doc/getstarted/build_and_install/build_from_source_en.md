@@ -101,8 +101,8 @@ As a simple example, consider the following:
     ```bash
     # necessary
     sudo apt-get update
-    sudo apt-get install -y git curl gcc g++ gfortran make build-essential
-    sudo apt-get install -y python python-pip python-numpy libpython-dev
+    sudo apt-get install -y git curl gcc g++ gfortran make build-essential autotools-dev
+    sudo apt-get install -y python python-pip python-numpy libpython-dev automake
     sudo pip install 'protobuf==3.1.0.post1'
 
     # install cmake 3.4

@@ -10,6 +10,7 @@ RUN apt-get update && \
     apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
     apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
     apt-get install -y python-numpy python-matplotlib gcc g++ gfortran && \
+    apt-get install -y autotools-dev automake && \
     apt-get clean -y
 
 RUN pip install --upgrade pip && \ 
