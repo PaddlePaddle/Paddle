@@ -8,7 +8,8 @@ RUN apt-get update
 RUN apt-get install -y software-properties-common
 RUN apt-get install -y python-software-properties
 RUN add-apt-repository -y ppa:george-edison55/cmake-3.x
-RUN apt-get install -y cmake libprotobuf-dev protobuf-compiler git \
+RUN apt-get update \
+    && apt-get install -y cmake libprotobuf-dev protobuf-compiler git \
     libgoogle-glog-dev libgflags-dev libgtest-dev \
     libatlas-dev libatlas3-base g++ m4 python-pip \
     python-protobuf python-numpy python-dev swig openssh-server \
