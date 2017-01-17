@@ -390,7 +390,7 @@ Now we've already setup a 3 nodes distributed Kubernetes cluster, and on each no
 
 #### Distributed Training Job
 
-Distributed training job is represented by a [kubernetes job](https://kubernetes.io/docs/user-guide/jobs/#what-is-a-job).
+A distributed training job is represented by a [kubernetes job](https://kubernetes.io/docs/user-guide/jobs/#what-is-a-job).
 
 Each Kuberentes job is described by a job config file, which specifies the information like the number of pods in the job and environment variables.
 
