@@ -54,14 +54,20 @@ void CosSimLayer::forward(PassType passType) {
 void CosSimLayer::backward(const UpdateCallback& callback) {
   /* activation */ {
     REGISTER_TIMER_INFO("CosBpAtvTimer", getName().c_str());
-    MatrixPtr outG = this->getOutputGrad();
+    auto& outG = this->getOutputGrad();
+    auto& outV = this->getOutputValue();
+    auto& inV0 = this->getInputValue(0);
+    auto& inV1 = this->getInputValue(1);
+    auto& inG0 = this->getInputGrad(0);
+    auto& inG1 = this->getInputGrad(1);
 
-    outG->cosSimDerivative(*this->getOutputValue(),
-                           *getInputValue(0),
-                           *getInputValue(1),
-                           *getInputGrad(0),
-                           *getInputGrad(1),
-                           config_.cos_scale());
+    if (outG && outV && inV0 && inV1 && inG0 && inG1) {
+      auto scale = config_.cos_scale();
+      outG->cosSimDerivative(*outV, *inV0, *inV1, *inG0, *inG1, scale);
+    } else {
+      // This branch is for eithor input0 or input1 is using static parameter.
+      // In this situation, inG0 or inG1 maybe nullptr.
+    }
   }
 }
 
