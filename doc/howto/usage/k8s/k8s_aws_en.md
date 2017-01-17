@@ -392,14 +392,14 @@ Now we've already setup a 3 nodes distributed Kubernetes cluster, and on each no
 
 Distributed training job is represented by a [kubernetes job](https://kubernetes.io/docs/user-guide/jobs/#what-is-a-job).
 
-Kubernetes job is described by a job config file. The file contains lots of configuration information. For example, PaddlePaddle's node number, `paddle pserver` open port number, the network card info etc. These information are passed into container for `pserver` and `trainer` to use as environment variables.
+Each Kuberentes job is described by a job config file, which specifies the information like the number of pods in the job and environment variables.
 
-In one distributed training job, we will:
+In a distributed training job, we would:
 
-1. Upload the pre-divided training data and configuration file onto EFS volume.
-1. Create and submit the Kubernetes job config to the Kubernetes cluster to start the training job.
+1. upload the partitioned training data and configuration file onto EFS volume, and
+1. create and submit the Kubernetes job config to the Kubernetes cluster to start the training job.
 
-#### Parameter Server and Trainer
+#### Parameter Servers and Trainers
 
 There are two roles in a PaddlePaddle cluster: `parameter server` and `trainer`. Each parameter server process maintains a shard of the global model. Each trainer has its local copy of the model, and uses its local data to update the model. During the training process, trainers send model updates to parameter servers, parameter servers are responsible for aggregating these updates, so that trainers can synchronize their local copy with the global model.
 
@@ -411,13 +411,13 @@ Parameter server and trainer are packaged into a same docker image. They will ru
 
 #### Trainer ID
 
-Trainer id is the index of trainer within all trainers of a job. Trainer needs this information to do things like reading the correct shared of data.
+Each trainer process requires a trainer ID, a zero-based index value, passed in as a command-line parameter. The trainer process thus reads the data partition indexed by this ID.
 
 #### Training
 
-After container gets started, it starts up the distributed training by using scripts. Each node will use job pod's name to query Kubernetes apiserver for information of all pods in current job.
+The entry-point of a container is a Python script. As it runs in a pod, it can see some environment variables pre-defined by Kubernetes. This includes one that gives the job's identity, which can be used in a remote call to the Kubernetes apiserver that lists all pods in the job.
 
-From pods information, script knows static ip addresses of pservers. And assign trainer it's own `trainer_id`. The workflow of the script is as follows:
+We rank each pod by sorting them by their ips. The rank of each pod could be the "pod ID". Because we run one trainer and one parameter server in each pod, we can use this "pod ID" as the trainer ID. A detailed workflow of the entry-point script is as follows:
 
 1. Query the api server to get pod information, and assign the `trainer_id` by sorting the ip.
 1. Copy the training data from EFS sharing volume into container.
@@ -550,7 +550,7 @@ efs
     └── recommendation
 ```
 
-The `paddle-cluster-job` directory is the job name for this training, this training includes 3 PaddlePaddle node, we store the pre-divided data under `paddle-cluster-job/data` directory, directory 0, 1, 2 each represent 3 nodes' trainer_id. the training data in in recommendation directory, the training results and logs will be in the output directory.
+The `paddle-cluster-job` directory is the job name for this training, this training includes 3 PaddlePaddle node, we store the partitioned data under `paddle-cluster-job/data` directory, directory 0, 1, 2 each represent 3 nodes' trainer_id. the training data in in recommendation directory, the training results and logs will be in the output directory.
 
 
 #### Create Kubernetes Job
