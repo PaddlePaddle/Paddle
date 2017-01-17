@@ -483,7 +483,7 @@ class PassManualLRS(ManualLRS):
 @wrap_param_default(
     ['regularization'], default_factory=lambda _: BaseRegularization())
 @wrap_param_default(
-    ['learning_rate_args'], default_factory=lambda _: ConstantLRS())
+    ['learning_rate_schedule'], default_factory=lambda _: ConstantLRS())
 def settings(batch_size,
              learning_rate=1e-3,
              learning_rate_decay_a=0.,

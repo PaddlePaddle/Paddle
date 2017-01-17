@@ -46,7 +46,7 @@ opt_config {
   ada_epsilon: 1e-06
   do_average_in_cpu: false
   ada_rou: 0.95
-  learning_rate_schedule: "poly"
+  learning_rate_schedule: "constant"
   delta_add_rate: 1.0
   shrink_parameter_value: 0
   adam_beta1: 0.9
