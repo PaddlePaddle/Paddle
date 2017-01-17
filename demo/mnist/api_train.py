@@ -65,123 +65,116 @@ def main():
         input=inference, label=paddle.layers.data_layer(
             name='label', size=10))
 
-    # Create Simple Gradient Machine.
-    model_config = paddle.layers.parse_network(cost)
+    model = paddle.model.Model(layers=[cost], optimizer=optimizer)
 
-    m = paddle.raw.GradientMachine.createFromConfigProto(
-        model_config, paddle.raw.CREATE_MODE_NORMAL, optimizer.enable_types())
+    model.rand_parameter()
 
-    # This type check is not useful. Only enable type hint in IDE.
-    # Such as PyCharm
-    assert isinstance(m, paddle.raw.GradientMachine)
+    model.start()
 
-    # Initialize Parameter by numpy.
-    m.randParameters()
-
-    # Create Local Updater. Local means not run in cluster.
-    # For a cluster training, here we can change to createRemoteUpdater
-    # in future.
-    updater = optimizer.create_local_updater()
-    assert isinstance(updater, paddle.raw.ParameterUpdater)
-
-    # Initialize ParameterUpdater.
-    updater.init(m)
-
-    # DataProvider Converter is a utility convert Python Object to Paddle C++
-    # Input. The input format is as same as Paddle's DataProvider.
-    converter = paddle.data.DataProviderConverter(input_types=[
-        paddle.data.dense_vector(784), paddle.data.integer_value(10)
-    ])
+    batch_evaluator = model.make_evaluator()
+    test_evaluator = model.make_evaluator()
 
     train_file = './data/raw_data/train'
-    test_file = './data/raw_data/t10k'
+    for pass_id in xrange(2):
+        model.start_pass()
 
-    # start gradient machine.
-    # the gradient machine must be started before invoke forward/backward.
-    # not just for training, but also for inference.
-    m.start()
+        model.finish_pass()
 
-    # evaluator can print error rate, etc. It is a C++ class.
-    batch_evaluator = m.makeEvaluator()
-    test_evaluator = m.makeEvaluator()
+    # # DataProvider Converter is a utility convert Python Object to Paddle C++
+    # # Input. The input format is as same as Paddle's DataProvider.
+    # converter = paddle.data.DataProviderConverter(input_types=[
+    #     paddle.data.dense_vector(784), paddle.data.integer_value(10)
+    # ])
+    #
+    # train_file = './data/raw_data/train'
+    # test_file = './data/raw_data/t10k'
+    #
+    # # start gradient machine.
+    # # the gradient machine must be started before invoke forward/backward.
+    # # not just for training, but also for inference.
+    # m.start()
+    #
+    # # evaluator can print error rate, etc. It is a C++ class.
+    # batch_evaluator = m.makeEvaluator()
+    # test_evaluator = m.makeEvaluator()
+    #
+    # # Get Train Data.
+    # # TrainData will stored in a data pool. Currently implementation is not care
+    # # about memory, speed. Just a very naive implementation.
+    # train_data_generator = input_order_converter(read_from_mnist(train_file))
+    # train_data = BatchPool(train_data_generator, 512)
+    #
+    # # outArgs is Neural Network forward result. Here is not useful, just passed
+    # # to gradient_machine.forward
+    # outArgs = paddle.raw.Arguments.createArguments(0)
+    #
+    # for pass_id in xrange(2):  # we train 2 passes.
+    #     updater.startPass()
+    #
+    #     for batch_id, data_batch in enumerate(train_data()):
+    #         # data_batch is input images.
+    #         # here, for online learning, we could get data_batch from network.
+    #
+    #         # Start update one batch.
+    #         pass_type = updater.startBatch(len(data_batch))
+    #
+    #         # Start BatchEvaluator.
+    #         # batch_evaluator can be used between start/finish.
+    #         batch_evaluator.start()
+    #
+    #         # forwardBackward is a shortcut for forward and backward.
+    #         # It is sometimes faster than invoke forward/backward separately,
+    #         # because in GradientMachine, it may be async.
+    #         m.forwardBackward(converter(data_batch), outArgs, pass_type)
+    #
+    #         for each_param in m.getParameters():
+    #             updater.update(each_param)
+    #
+    #         # Get cost. We use numpy to calculate total cost for this batch.
+    #         cost_vec = outArgs.getSlotValue(0)
+    #         cost_vec = cost_vec.copyToNumpyMat()
+    #         cost = cost_vec.sum() / len(data_batch)
+    #
+    #         # Make evaluator works.
+    #         m.eval(batch_evaluator)
+    #
+    #         # Print logs.
+    #         print 'Pass id', pass_id, 'Batch id', batch_id, 'with cost=', \
+    #             cost, batch_evaluator
+    #
+    #         batch_evaluator.finish()
+    #         # Finish batch.
+    #         #  * will clear gradient.
+    #         #  * ensure all values should be updated.
+    #         updater.finishBatch(cost)
+    #
+    #     # testing stage. use test data set to test current network.
+    #     updater.apply()
+    #     test_evaluator.start()
+    #     test_data_generator = input_order_converter(read_from_mnist(test_file))
+    #     for data_batch in generator_to_batch(test_data_generator, 512):
+    #         # in testing stage, only forward is needed.
+    #         m.forward(converter(data_batch), outArgs, paddle.raw.PASS_TEST)
+    #         m.eval(test_evaluator)
+    #
+    #     # print error rate for test data set
+    #     print 'Pass', pass_id, ' test evaluator: ', test_evaluator
+    #     test_evaluator.finish()
+    #     updater.restore()
+    #
+    #     updater.catchUpWith()
+    #     params = m.getParameters()
+    #     for each_param in params:
+    #         assert isinstance(each_param, paddle.raw.Parameter)
+    #         value = each_param.getBuf(paddle.raw.PARAMETER_VALUE)
+    #         value = value.copyToNumpyArray()
+    #
+    #         # Here, we could save parameter to every where you want
+    #         print each_param.getName(), value
+    #
+    #     updater.finishPass()
 
-    # Get Train Data.
-    # TrainData will stored in a data pool. Currently implementation is not care
-    # about memory, speed. Just a very naive implementation.
-    train_data_generator = input_order_converter(read_from_mnist(train_file))
-    train_data = BatchPool(train_data_generator, 512)
-
-    # outArgs is Neural Network forward result. Here is not useful, just passed
-    # to gradient_machine.forward
-    outArgs = paddle.raw.Arguments.createArguments(0)
-
-    for pass_id in xrange(2):  # we train 2 passes.
-        updater.startPass()
-
-        for batch_id, data_batch in enumerate(train_data()):
-            # data_batch is input images.
-            # here, for online learning, we could get data_batch from network.
-
-            # Start update one batch.
-            pass_type = updater.startBatch(len(data_batch))
-
-            # Start BatchEvaluator.
-            # batch_evaluator can be used between start/finish.
-            batch_evaluator.start()
-
-            # forwardBackward is a shortcut for forward and backward.
-            # It is sometimes faster than invoke forward/backward separately,
-            # because in GradientMachine, it may be async.
-            m.forwardBackward(converter(data_batch), outArgs, pass_type)
-
-            for each_param in m.getParameters():
-                updater.update(each_param)
-
-            # Get cost. We use numpy to calculate total cost for this batch.
-            cost_vec = outArgs.getSlotValue(0)
-            cost_vec = cost_vec.copyToNumpyMat()
-            cost = cost_vec.sum() / len(data_batch)
-
-            # Make evaluator works.
-            m.eval(batch_evaluator)
-
-            # Print logs.
-            print 'Pass id', pass_id, 'Batch id', batch_id, 'with cost=', \
-                cost, batch_evaluator
-
-            batch_evaluator.finish()
-            # Finish batch.
-            #  * will clear gradient.
-            #  * ensure all values should be updated.
-            updater.finishBatch(cost)
-
-        # testing stage. use test data set to test current network.
-        updater.apply()
-        test_evaluator.start()
-        test_data_generator = input_order_converter(read_from_mnist(test_file))
-        for data_batch in generator_to_batch(test_data_generator, 512):
-            # in testing stage, only forward is needed.
-            m.forward(converter(data_batch), outArgs, paddle.raw.PASS_TEST)
-            m.eval(test_evaluator)
-
-        # print error rate for test data set
-        print 'Pass', pass_id, ' test evaluator: ', test_evaluator
-        test_evaluator.finish()
-        updater.restore()
-
-        updater.catchUpWith()
-        params = m.getParameters()
-        for each_param in params:
-            assert isinstance(each_param, paddle.raw.Parameter)
-            value = each_param.getBuf(paddle.raw.PARAMETER_VALUE)
-            value = value.copyToNumpyArray()
-
-            # Here, we could save parameter to every where you want
-            print each_param.getName(), value
-
-        updater.finishPass()
-
-    m.finish()
+    model.finish()
 
 
 if __name__ == '__main__':

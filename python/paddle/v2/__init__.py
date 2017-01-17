@@ -17,5 +17,6 @@ import data
 import paddle.proto as proto
 import layers
 import optimizer
+import model
 
-__all__ = ['config', 'data', 'raw', 'proto', 'layers', 'optimizer']
+__all__ = ['config', 'data', 'raw', 'proto', 'layers', 'optimizer', 'model']

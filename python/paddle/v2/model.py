@@ -79,6 +79,14 @@ class Model(object):
         # forward.
         raise NotImplementedError()
 
+    def make_evaluator(self):
+        """
+
+        :return:
+        :rtype: Evaluator
+        """
+        raise NotImplementedError()
+
     def finish_pass(self):
         raise NotImplementedError()
 
