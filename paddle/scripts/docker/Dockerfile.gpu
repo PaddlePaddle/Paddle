@@ -9,7 +9,7 @@ RUN apt-get update && \
     apt-get install -y git python-pip python-dev openssh-server && \
     apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
     apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
-    apt-get install -y python-numpy python-matplotlib g++ && \
+    apt-get install -y python-numpy python-matplotlib gcc g++ gfortran && \
     apt-get clean -y
 
 RUN pip install --upgrade pip && \ 

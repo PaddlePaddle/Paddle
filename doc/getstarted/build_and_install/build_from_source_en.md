@@ -16,7 +16,7 @@ cd paddle
 
 To compile the source code, your computer must be equipped with the following dependencies.
 
-- **Compiler**: GCC >= 4.8 or Clang >= 3.3 (AppleClang >= 5.1)
+- **Compiler**: GCC >= 4.8 or Clang >= 3.3 (AppleClang >= 5.1) and gfortran compiler
 - **CMake**: CMake >= 3.0 (at least CMake 3.4 on Mac OS X)
 - **BLAS**: MKL, OpenBlas or ATLAS
 - **Python**: only support Python 2.7
@@ -96,16 +96,21 @@ As a simple example, consider the following:
 
 ### Install Dependencies
 
-- **CPU Dependencies**
+- **Paddle Dependencies**
 
     ```bash
     # necessary
     sudo apt-get update
-    sudo apt-get install -y g++ make cmake build-essential python python-pip python-numpy libpython-dev git
-    sudo pip install wheel
-    sudo pip install 'protobuf>=3.0.0'
+    sudo apt-get install -y git curl gcc g++ gfortran make build-essential
+    sudo apt-get install -y python python-pip python-numpy libpython-dev
+    sudo pip install 'protobuf==3.1.0.post1'
+
+    # install cmake 3.4
+    curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
+        cd cmake-3.4.1 && ./bootstrap && make -j4 && sudo make install && \
+        cd .. && rm -rf cmake-3.4.1
     ```
-  
+
 - **GPU Dependencies (optional)**
 
     To build GPU version, you will need the following installed:
