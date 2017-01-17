@@ -9,12 +9,12 @@ RUN apt-get update && \
     apt-get install -y git python-pip python-dev openssh-server && \
     apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
     apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
-    apt-get install -y g++ clang-3.8 llvm-3.8 libclang-3.8-dev && \
+    apt-get install -y python-matplotlib g++ && \
     apt-get clean -y
 
 RUN pip install --upgrade pip && \ 
     pip install 'protobuf==3.1.0.post1' && \
-    pip install -U numpy wheel matplotlib pillow && \
+    pip install -U numpy wheel pillow && \
     pip install -U BeautifulSoup docopt PyYAML sphinx && \
     pip install -U sphinx_rtd_theme recommonmark jupyter
 
