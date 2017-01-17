@@ -4,6 +4,8 @@ Installing from Sources
 * [1. Download and Setup](#download)
 * [2. Requirements](#requirements)
 * [3. Build on Ubuntu](#ubuntu)
+* [4. Build on Centos](#centos)
+
 
 ## <span id="download">Download and Setup</span> 
 You can download PaddlePaddle from the [github source](https://github.com/PaddlePaddle/Paddle).
@@ -144,6 +146,67 @@ Finally, you can build and install PaddlePaddle:
 ```bash
 # you can add build option here, such as:    
 cmake .. -DCMAKE_INSTALL_PREFIX=<path to install>
+# please use sudo make install, if you want to install PaddlePaddle into the system
+make -j `nproc` && make install
+# set PaddlePaddle installation path in ~/.bashrc
+export PATH=<path to install>/bin:$PATH
+# install PaddlePaddle Python modules.
+sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
+```
+## <span id="centos">Build on Centos 7</span>
+
+### Install Dependencies
+
+- **CPU Dependencies**
+
+    ```bash
+    # necessary
+    sudo yum update
+    sudo yum install -y epel-release
+    sudo yum install -y make cmake3 python-devel python-pip gcc-gfortran swig git
+    sudo pip install wheel numpy
+    sudo pip install 'protobuf>=3.0.0'
+    ```
+  
+- **GPU Dependencies (optional)**
+
+    To build GPU version, you will need the following installed:
+
+        1. a CUDA-capable GPU
+        2. A supported version of Linux with a gcc compiler and toolchain
+        3. NVIDIA CUDA Toolkit (available at http://developer.nvidia.com/cuda-downloads)
+        4. NVIDIA cuDNN Library (availabel at https://developer.nvidia.com/cudnn)
+
+    The CUDA development environment relies on tight integration with the host development environment,
+    including the host compiler and C runtime libraries, and is therefore only supported on
+    distribution versions that have been qualified for this CUDA Toolkit release.
+        
+    After downloading cuDNN library, issue the following commands:
+
+    ```bash
+    sudo tar -xzf cudnn-7.5-linux-x64-v5.1.tgz -C /usr/local
+    sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
+    ```
+    Then you need to set LD\_LIBRARY\_PATH, PATH environment variables in ~/.bashrc.
+
+    ```bash
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/usr/local/cuda/bin:$PATH
+    ```
+
+### Build and Install
+
+As usual, the best option is to create build folder under paddle project directory.
+
+```bash
+mkdir build && cd build
+``` 
+
+Finally, you can build and install PaddlePaddle:
+
+```bash
+# you can add build option here, such as:    
+cmake3 .. -DCMAKE_INSTALL_PREFIX=<path to install>
 # please use sudo make install, if you want to install PaddlePaddle into the system
 make -j `nproc` && make install
 # set PaddlePaddle installation path in ~/.bashrc
