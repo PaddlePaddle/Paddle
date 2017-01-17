@@ -2,18 +2,16 @@
 
 ## Create AWS Account and IAM Account
 
-AWS account allow us to manage AWS from Web Console. Amazon AMI enable us to manage AWS from command line interface.
-
-We need to create an AMI user with sufficient privilege to create kubernetes cluster on AWS.
+Under each AWS account, we can create multiple [IAM](http://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html) users. This allows us to grant some privileges to each IAM user and to create/operate AWS clusters as an IAM user.
 
 To sign up an AWS account, please
 follow
 [this guide](http://docs.aws.amazon.com/lambda/latest/dg/setting-up.html).
-To create users and user groups under an AWS account, please
+To create IAM users and user groups under an AWS account, please
 follow
 [this guide](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html).
 
-Please be aware that this tutorial needs the following privileges for the user in AMI:
+Please be aware that this tutorial needs the following privileges for the user in IAM:
 
 - AmazonEC2FullAccess
 - AmazonS3FullAccess
@@ -25,14 +23,6 @@ Please be aware that this tutorial needs the following privileges for the user i
 - IAMFullAccess
 - NetworkAdministrator
 - AWSKeyManagementServicePowerUser
-
-
-By the time we write this tutorial, we noticed that Chinese AWS users
-might suffer from authentication problems when running this tutorial.
-Our solution is that we create a VM instance with the default Amazon
-AMI and in the same zone as our cluster runs, so we can SSH to this VM
-instance as a tunneling server and control our cluster and jobs from
-it.
 
 
 ## PaddlePaddle on AWS
@@ -59,7 +49,7 @@ gpg2 --fingerprint FC8A365E
 ```
 The correct key fingerprint is `18AD 5014 C99E F7E3 BA5F 6CE9 50BD D3E0 FC8A 365E`
 
-Go to the [releases](https://github.com/coreos/kube-aws/releases) and download the latest release tarball and detached signature (.sig) for your architecture.
+We can download `kube-aws` from its [release page](https://github.com/coreos/kube-aws/releases). In this tutorial, we use version 0.9.1
 
 Validate the tarball's GPG signature:
 
@@ -88,14 +78,22 @@ mv ${PLATFORM}/kube-aws /usr/local/bin
 
 [kubectl](https://kubernetes.io/docs/user-guide/kubectl-overview/) is a command line interface for running commands against Kubernetes clusters.
 
-Go to the [releases](https://github.com/kubernetes/kubernetes/releases) and download the latest release tarball.
-
-Extract the tarball and then concate the kubernetes binaries directory into PATH:
+Download `kubectl` from the Kubernetes release artifact site with the `curl` tool.
 
 ```
-export PATH=<path/to/kubernetes-directory>/platforms/linux/amd64:$PATH # The exact path depend on your platform
+# OS X
+curl -O https://storage.googleapis.com/kubernetes-release/release/"$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)"/bin/darwin/amd64/kubectl
+
+# Linux
+curl -O https://storage.googleapis.com/kubernetes-release/release/"$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)"/bin/linux/amd64/kubectl
 ```
 
+Make the kubectl binary executable and move it to your PATH (e.g. `/usr/local/bin`):
+
+```
+chmod +x ./kubectl
+sudo mv ./kubectl /usr/local/bin/kubectl
+```
 
 ### Configure AWS Credentials
 
@@ -109,16 +107,17 @@ aws configure
 ```
 
 
-Fill in the required fields (You can get your AWS aceess key id and AWS secrete access key by following [this](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) instruction):
+Fill in the required fields:
 
 
 ```
 AWS Access Key ID: YOUR_ACCESS_KEY_ID
 AWS Secrete Access Key: YOUR_SECRETE_ACCESS_KEY
-Default region name: us-west-2
+Default region name: us-west-1
 Default output format: json
-
 ```
+
+`YOUR_ACCESS_KEY_ID`, and `YOUR_SECRETE_ACCESS_KEY` is the IAM key and secret from [Create AWS Account and IAM Account](#create-aws-account-and-iam-account)
 
 Verify that your credentials work by describing any instances you may already have running on your account:
 
@@ -134,7 +133,9 @@ The keypair that will authenticate SSH access to your EC2 instances. The public 
 
 Follow [EC2 Keypair docs](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html) to create a EC2 key pair
 
-After creating a key pair, you will use the name you gave the keys to configure the cluster. Key pairs are only available to EC2 instances in the same region.
+After creating a key pair, you will use the key pair name to configure the cluster.
+
+Key pairs are only available to EC2 instances in the same region. We are using us-west-1 in our tutorial, so make sure to creat key pairs in that region (N. California).
 
 #### KMS key
 
@@ -143,12 +144,12 @@ Amazon KMS keys are used to encrypt and decrypt cluster TLS assets. If you alrea
 You can create a KMS key in the AWS console, or with the aws command line tool:
 
 ```
-$ aws kms --region=us-west-1 create-key --description="kube-aws assets"
+aws kms --region=us-west-1 create-key --description="kube-aws assets"
 {
     "KeyMetadata": {
         "CreationDate": 1458235139.724,
         "KeyState": "Enabled",
-        "Arn": "arn:aws:kms:us-west-1:xxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx",
+        "Arn": "arn:aws:kms:us-west-1:aaaaaaaaaaaaa:key/xxxxxxxxxxxxxxxxxxx",
         "AWSAccountId": "xxxxxxxxxxxxx",
         "Enabled": true,
         "KeyUsage": "ENCRYPT_DECRYPT",
@@ -158,11 +159,11 @@ $ aws kms --region=us-west-1 create-key --description="kube-aws assets"
 }
 ```
 
-You will use the `KeyMetadata.Arn` string to identify your KMS key in the init step.
+We will need to use the value of `Arn` later.
 
 And then you need to add several inline policies in your user permission.
 
-Go to AMI user page, click on `Add inline policy` button, and then select `Custom Policy`
+Go to IAM user page, click on `Add inline policy` button, and then select `Custom Policy`
 
 paste into following inline policies:
 
@@ -178,7 +179,7 @@ paste into following inline policies:
                 "kms:Encrypt"
             ],
             "Resource": [
-                "arn:aws:kms:*:xxxxxxxxx:key/*"
+                "arn:aws:kms:*:AWS_ACCOUNT_ID:key/*"
             ]
         },
 		{
@@ -194,29 +195,37 @@ paste into following inline policies:
                 "cloudformation:DescribeStackEvents"
             ],
             "Resource": [
-                "arn:aws:cloudformation:us-west-1:xxxxxxxxx:stack/YOUR_CLUSTER_NAME/*"
+                "arn:aws:cloudformation:us-west-1:AWS_ACCOUNT_ID:stack/MY_CLUSTER_NAME/*"
             ]
         }
     ]
 }
 ```
 
+`AWS_ACCOUNT_ID`: You can get it from following command line:
+
+```
+aws sts get-caller-identity --output text --query Account
+```
+
+`MY_CLUSTER_NAME`: Pick a MY_CLUSTER_NAME that you like, you will use it later as well.
 
 #### External DNS name
 
-When the cluster is created, the controller will expose the TLS-secured API on a public IP address. You will need to create an A record for the external DNS hostname you want to point to this IP address. You can find the API external IP address after the cluster is created by invoking kube-aws status.
+When the cluster is created, the controller will expose the TLS-secured API on a DNS name.
+
+The A record of that DNS name needs to be point to the cluster ip address.
+
+We will need to use DNS name later in tutorial. If you don't already own one, you can choose any DNS name (e.g., `paddle`) and modify `/etc/hosts` to associate cluster ip with that DNS name.
 
 #### S3 bucket
 
 You need to create an S3 bucket before startup the Kubernetes cluster.
 
-command (need to have a global unique name):
+There are some bugs in aws cli in creating S3 bucket, so let's use the [Web console](https://console.aws.amazon.com/s3/home?region=us-west-1).
 
-```
-paddle aws s3api --region=us-west-1 create-bucket --bucket bucket-name
-```
+Click on `Create Bucket`, fill in a unique BUCKET_NAME, and make sure region is us-west-1 (Northern California).
 
-If you get an error message, try a different bucket name. The bucket name needs to be globally unique.
 
 #### Initialize an asset directory
 
@@ -230,33 +239,44 @@ $ cd my-cluster
 Initialize the cluster CloudFormation stack with the KMS Arn, key pair name, and DNS name from the previous step:
 
 ```
-$ kube-aws init \
---cluster-name=my-cluster-name \
---external-dns-name=my-cluster-endpoint \
+kube-aws init \
+--cluster-name=MY_CLUSTER_NAME \
+--external-dns-name=MY_EXTERNAL_DNS_NAME \
 --region=us-west-1 \
---availability-zone=us-west-1c \
---key-name=key-pair-name \
+--availability-zone=us-west-1a \
+--key-name=KEY_PAIR_NAME \
 --kms-key-arn="arn:aws:kms:us-west-1:xxxxxxxxxx:key/xxxxxxxxxxxxxxxxxxx"
 ```
 
-Here `us-west-1c` is used for parameter `--availability-zone`, but supported availability zone varies among AWS accounts.
+`MY_CLUSTER_NAME`: the one you picked in [KMS key](#kms-key)
 
-Please check if `us-west-1c` is supported by `aws ec2 --region us-west-1 describe-availability-zones`, if not switch to other supported availability zone. (e.g., `us-west-1a`, or `us-west-1b`)
+`MY_EXTERNAL_DNS_NAME`: see [External DNS name](#external-dns-name)
+
+`KEY_PAIR_NAME`: see [EC2 key pair](#ec2-key-pair)
+
+`--kms-key-arn`: the "Arn" in [KMS key](#kms-key)
+
+Here `us-west-1a` is used for parameter `--availability-zone`, but supported availability zone varies among AWS accounts.
+
+Please check if `us-west-1a` is supported by `aws ec2 --region us-west-1 describe-availability-zones`, if not switch to other supported availability zone. (e.g., `us-west-1a`, or `us-west-1b`)
+
+Note: please don't use `us-west-1c`. Subnets can currently only be created in the following availability zones: us-west-1b, us-west-1a.
 
 There will now be a cluster.yaml file in the asset directory. This is the main configuration file for your cluster.
+
 
 #### Render contents of the asset directory
 
 In the simplest case, you can have kube-aws generate both your TLS identities and certificate authority for you.
 
 ```
-$ kube-aws render credentials --generate-ca
+kube-aws render credentials --generate-ca
 ```
 
 The next command generates the default set of cluster assets in your asset directory.
 
 ```
-sh $ kube-aws render stack
+kube-aws render stack
 ```
 
 Here's what the directory structure looks like:
@@ -292,15 +312,41 @@ These assets (templates and credentials) are used to create, update and interact
 
 #### Create the instances defined in the CloudFormation template
 
-Now for the exciting part, creating your cluster (choose any `<prefix>`):
+Now let's create your cluster (choose any PREFIX for the command below):
 
 ```
-$ kube-aws up --s3-uri s3://<your-bucket-name>/<prefix>
+kube-aws up --s3-uri s3://BUCKET_NAME/PREFIX
 ```
+
+`BUCKET_NAME`: the bucket name that you used in [S3 bucket](#s3-bucket)
+
 
 #### Configure DNS
 
-You can invoke `kube-aws status` to get the cluster API endpoint after cluster creation, if necessary. This command can take a while. And use command `dig` to check the load balancer hostname to get the ip address, use this ip to setup an A record for your external dns name.
+You can invoke `kube-aws status` to get the cluster API endpoint after cluster creation.
+
+```
+$ kube-aws status
+Cluster Name:		paddle-cluster
+Controller DNS Name:	paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-1.elb.amazonaws.com
+```
+
+Use command `dig` to check the load balancer hostname to get the ip address.
+
+```
+$ dig paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-1.elb.amazonaws.com
+
+;; QUESTION SECTION:
+;paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-1.elb.amazonaws.com. IN A
+
+;; ANSWER SECTION:
+paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-1.elb.amazonaws.com. 59 IN A 54.241.164.52
+paddle-cl-ElbAPISe-EEOI3EZPR86C-531251350.us-west-1.elb.amazonaws.com. 59 IN A 54.67.102.112
+```
+
+In the above output, both ip `54.241.164.52`, `54.67.102.112` will work.
+
+If you own a DNS name, set the A record to any of the above ip. Otherwise you can edit `/etc/hosts` to associate ip with the DNS name.
 
 #### Access the cluster
 
