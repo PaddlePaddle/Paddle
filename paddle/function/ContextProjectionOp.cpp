@@ -115,11 +115,10 @@ public:
     const auto val_seqs = dynamic_cast<const SequenceArg&>(inputs[0]);
     auto out_seq = dynamic_cast<const SequenceArg&>(outputs[0]);
 
-    CHECK(out_seq.data() && val_seqs.data() &&
-          val_seqs.getSequenceIds().data());
+    CHECK(out_seq.data() && val_seqs.data() && val_seqs.getSequenceId().data());
     CHECK_EQ(out_seq.shape().ndims(), (size_t)2);
     CHECK_EQ(val_seqs.shape().ndims(), (size_t)2);
-    CHECK_EQ(val_seqs.getSequenceIds().shape().ndims(), (size_t)1);
+    CHECK_EQ(val_seqs.getSequenceId().shape().ndims(), (size_t)1);
     if (2 == inputs.size()) {
       CHECK_EQ(inputs[1].shape().ndims(), (size_t)2);
     }
@@ -139,7 +138,7 @@ public:
         (2 == inputs.size())
             ? inputs[1].matrix<Device>()
             : typename Tensor<real, Device>::Matrix(nullptr, 0, 0);
-    const auto seq_vec = val_seqs.getSequenceIds().vector<int, Device>();
+    const auto seq_vec = val_seqs.getSequenceId().vector<int, Device>();
     ContextProjectionForward<Device>(out_mat,
                                      in_mat,
                                      w_mat,
@@ -242,11 +241,11 @@ public:
         << "SequenceArg required here";
     const auto in_seq = dynamic_cast<const SequenceArg&>(inputs[0]);
     auto out_seq = dynamic_cast<const SequenceArg&>(outputs[0]);
-    CHECK(in_seq.data() && in_seq.getSequenceIds().data());
+    CHECK(in_seq.data() && in_seq.getSequenceId().data());
     CHECK_EQ(in_seq.shape().ndims(), (size_t)2);
-    CHECK_EQ(in_seq.getSequenceIds().shape().ndims(), (size_t)1);
+    CHECK_EQ(in_seq.getSequenceId().shape().ndims(), (size_t)1);
     CHECK_EQ(out_seq.shape().ndims(), (size_t)2);
-    CHECK_EQ(out_seq.getSequenceIds().shape().ndims(), (size_t)1);
+    CHECK_EQ(out_seq.getSequenceId().shape().ndims(), (size_t)1);
     CHECK_EQ(outputs[1].shape().ndims(), (size_t)2);
 
     /// dim of input grad == dim of weight
@@ -258,7 +257,7 @@ public:
     CHECK_EQ(out_seq.getArgType(), ADD_TO);
     CHECK_EQ(outputs[1].getArgType(), ADD_TO);
 
-    const auto seq_vec = in_seq.getSequenceIds().vector<int, Device>();
+    const auto seq_vec = in_seq.getSequenceId().vector<int, Device>();
     const auto out_grad_mat = in_seq.matrix<Device>();
     auto in_grad_mat =
         !out_seq.data() ? typename Tensor<real, Device>::Matrix(nullptr, 0, 0)
@@ -312,10 +311,10 @@ public:
     const auto in_seq = dynamic_cast<const SequenceArg&>(inputs[0]);
     const auto out_seq = dynamic_cast<const SequenceArg&>(outputs[0]);
 
-    CHECK(in_seq.data() && out_seq.data() && in_seq.getSequenceIds().data());
+    CHECK(in_seq.data() && out_seq.data() && in_seq.getSequenceId().data());
     CHECK_EQ(static_cast<int>(out_seq.shape().ndims()), 2);
     CHECK_EQ(static_cast<int>(in_seq.shape().ndims()), 2);
-    CHECK_EQ(static_cast<int>(in_seq.getSequenceIds().shape().ndims()), 1);
+    CHECK_EQ(static_cast<int>(in_seq.getSequenceId().shape().ndims()), 1);
     /// output layer grad dim == input layer grad dim * context_length_
     CHECK_EQ(in_seq.shape().ndims(), out_seq.shape().ndims() * context_length_);
     /// input and output has the same batch_size
@@ -323,7 +322,7 @@ public:
     CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
 
     const auto out_grad_mat = in_seq.matrix<Device>();
-    const auto seq_vec = in_seq.getSequenceIds().vector<int, Device>();
+    const auto seq_vec = in_seq.getSequenceId().vector<int, Device>();
     auto in_grad_mat = out_seq.matrix<Device>();
 
     ContextProjectionBackwardData<Device>(
@@ -360,16 +359,16 @@ public:
     CHECK_EQ(1, static_cast<int>(outputs.size()));
     CHECK(inputs[0].isSequenceArg()) << "SequenceArg required here";
     const auto in_seq = dynamic_cast<const SequenceArg&>(inputs[0]);
-    CHECK(in_seq.data() && in_seq.getSequenceIds().data() && outputs[0].data());
+    CHECK(in_seq.data() && in_seq.getSequenceId().data() && outputs[0].data());
     CHECK_EQ(static_cast<int>(outputs[0].shape().ndims()), 2);
     CHECK_EQ(static_cast<int>(in_seq.shape().ndims()), 2);
-    CHECK_EQ(static_cast<int>(in_seq.getSequenceIds().shape().ndims()), 1);
+    CHECK_EQ(static_cast<int>(in_seq.getSequenceId().shape().ndims()), 1);
     CHECK_EQ(in_seq.shape()[0], outputs[0].shape()[0]);
     /// output layer grad dim == weight dim * context_length_
     CHECK_EQ(in_seq.shape()[1], outputs[0].shape()[1] * context_length_);
     CHECK_EQ(outputs[0].getArgType(), ADD_TO);
 
-    const auto seq_vec = in_seq.getSequenceIds().vector<int, Device>();
+    const auto seq_vec = in_seq.getSequenceId().vector<int, Device>();
     const auto out_grad_mat = in_seq.matrix<Device>();
     auto w_grad_mat = outputs[0].matrix<Device>();
     ContextProjectionBackwardWeight<Device>(out_grad_mat,

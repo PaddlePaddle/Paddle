@@ -79,21 +79,25 @@ FuncConfig& FuncConfig::set<bool>(const std::string& key, bool v) {
 void BufferArgs::addArg(const Matrix& arg,
                         const TensorShape& shape,
                         ArgType argType) {
-  args_.push_back(std::make_shared<BufferArg>(arg, shape, argType));
+  _args_.push_back(new BufferArg(arg, shape, argType));
+  addArg(*_args_.back());
 }
 
 void BufferArgs::addArg(const CpuSparseMatrix& arg, ArgType argType) {
-  args_.push_back(std::make_shared<SparseMatrixArg>(arg, argType));
+  _args_.push_back(new SparseMatrixArg(arg, argType));
+  addArg(*_args_.back());
 }
 
 void BufferArgs::addArg(const GpuSparseMatrix& arg, ArgType argType) {
-  args_.push_back(std::make_shared<SparseMatrixArg>(arg, argType));
+  _args_.push_back(new SparseMatrixArg(arg, argType));
+  addArg(*_args_.back());
 }
 
 void BufferArgs::addArg(const Matrix& matrix,
                         const IVector& vector,
                         ArgType argType) {
-  args_.push_back(std::make_shared<SequenceArg>(matrix, vector, argType));
+  _args_.push_back(new SequenceArg(matrix, vector, argType));
+  addArg(*_args_.back());
 }
 
 ClassRegistrar<FunctionBase> FunctionBase::funcRegistrar_;

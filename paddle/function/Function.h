@@ -50,19 +50,44 @@ protected:
  * Argument type for Function::calc().
  * A BufferArgs contains a set of BufferArg,
  * because Function can have multiple inputs and outputs.
+ *
+ * addArg() with Matix object used to adapt Layer Argument.
+ * Will create a BufferArg object in addArg(),
+ * and free in destructor of BufferArgs.
+ *
+ * addArg() with BufferArg object, just save BufferArg object address,
+ * and the caller needs to guarantee the validity of the BufferArg object
+ * in the BufferArgs life time.
  */
 class BufferArgs {
 public:
   BufferArgs() {}
+
+  ~BufferArgs() {
+    for (auto arg : _args_) {
+      delete arg;
+    }
+  }
+
   size_t size() const { return args_.size(); }
 
   // add argument into BufferArgs
   // Tensor can be Matrix, Vector, IVector.
   // For inputs, do not need argType.
   // For outputs, the argType needs to be specified as ASSIGN_TO or ADD_TO.
-  template <typename Tensor>
-  void addArg(const Tensor& arg, ArgType argType = UNSPECIFIED) {
-    args_.push_back(std::make_shared<BufferArg>(arg, argType));
+  void addArg(const Matrix& arg, ArgType argType = UNSPECIFIED) {
+    _args_.push_back(new BufferArg(arg, argType));
+    addArg(*_args_.back());
+  }
+
+  void addArg(const Vector& arg, ArgType argType = UNSPECIFIED) {
+    _args_.push_back(new BufferArg(arg, argType));
+    addArg(*_args_.back());
+  }
+
+  void addArg(const IVector& arg, ArgType argType = UNSPECIFIED) {
+    _args_.push_back(new BufferArg(arg, argType));
+    addArg(*_args_.back());
   }
 
   // Add arg into BufferArgs and reshape the arg.
@@ -87,13 +112,26 @@ public:
     return *args_[num];
   }
 
+  void addArg(BufferArg& arg) { args_.push_back(&arg); }
+
+  void addArg(SequenceIdArg& arg) { args_.push_back(&arg); }
+
+  void addArg(SequenceArg& arg) { args_.push_back(&arg); }
+
+  void addArg(SparseMatrixArg& arg) { args_.push_back(&arg); }
+
 private:
-  std::vector<BufferArgPtr> args_;
+  std::vector<BufferArg*> args_;
+  // The BufferArg object is constructed and freed by BufferArgs.
+  std::vector<BufferArg*> _args_;
 };
 
 /**
  * \brief Base class for Function.
  * The basic Function implementation requires override init and calc interfaces.
+ *
+ * The caller needs to ensure the validity of the arguments
+ * during Function execution.
  *
  * Function inputs are readonly, Function outputs have two modes: ASSIGN_TO
  * and ADD_TO.
