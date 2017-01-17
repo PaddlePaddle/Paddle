@@ -170,4 +170,13 @@ void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
   }
 }
 
+template <>
+void MulOp<DEVICE_TYPE_GPU>(GpuSparseMatrix& out,
+                            const GpuMatrix& a,
+                            const GpuMatrix& b,
+                            real scale_ab,
+                            real scale_t) {
+/// todo(tianbing), implement it
+}
+
 }  // namespace paddle

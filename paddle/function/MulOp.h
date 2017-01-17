@@ -68,4 +68,11 @@ void MulOp(GpuMatrix& out,
            real scaleAB,
            real scaleT);
 
+template <DeviceType DType>
+void MulOp(GpuSparseMatrix& out,
+           const GpuMatrix& a,
+           const GpuMatrix& b,
+           real scaleAB,
+           real scaleT);
+
 }  // namespace paddle

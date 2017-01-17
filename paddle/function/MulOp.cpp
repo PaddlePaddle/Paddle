@@ -483,8 +483,8 @@ template <DeviceType Device>
 class MulFunc : public FunctionBase {
 public:
   void init(const FuncConfig& config) override {
-    scaleAB_ = config.get<real>("scaleAB");
-    scaleT_ = config.get<real>("scaleT");
+    alpha_ = config.get<real>("scaleAB");
+    beta_ = config.get<real>("scaleT");
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -494,7 +494,7 @@ public:
     CHECK_EQ(inputs[0].shape().ndims(), (size_t)2);
     CHECK_EQ(inputs[1].shape().ndims(), (size_t)2);
     CHECK_EQ(outputs[0].shape().ndims(), (size_t)2);
-    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
+    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
 
     auto in1_mat = inputs[0].matrix<Device>();
     if (inputs[0].isSparseArg()) {
@@ -505,12 +505,12 @@ public:
       in2_mat = inputs[1].sparse().SparseMatrix<Device>();
     }
     auto out_mat = outputs[0].matrix<Device>();
-    MulOp<Device>(out_mat, in1_mat, in2_mat, scaleAB_, scaleT_);
+    MulOp<Device>(out_mat, in1_mat, in2_mat, alpha_, beta_);
   }
 
 private:
-  real scaleAB_;
-  real scaleT_;
+  real alpha_;
+  real beta_;
 };
 
 REGISTER_TYPED_FUNC(MulOp, CPU, MulFunc);

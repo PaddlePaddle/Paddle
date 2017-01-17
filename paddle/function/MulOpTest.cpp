@@ -16,50 +16,79 @@ limitations under the License. */
 #include "FunctionTest.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
+#include "paddle/math/tests/test_matrixUtil.h"
 #include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT
 
-void testSpMatrixMul(int M, int N, int K, real rate, real scale1, real scale2) {
-  /// todo(tianbing) check CPU/GPU
+/**
+ *  C = alpha * C + beta * (A * B)
+ */
+void testMatrixMul(bool transa, bool transb, int dimM, int dimN, int dimK) {
+  real alpha = 1.5;
+  real beta = 2.0;
+
+  const auto cpuFunc = FunctionBase::funcRegistrar_.createByType("MulOp-CPU");
+  cpuFunc->init(FuncConfig().set("scaleAB", alpha).set("scaleT", beta));
   const auto gpuFunc = FunctionBase::funcRegistrar_.createByType("MulOp-GPU");
-  gpuFunc->init(FuncConfig().set("scaleAB", scale1).set("scaleT", scale2));
+  gpuFunc->init(FuncConfig().set("scaleAB", alpha).set("scaleT", beta));
 
-  int nnz = M * N * rate;
-  MatrixPtr cpuA = std::make_shared<CpuMatrix>(M, K);
-  MatrixPtr cpuB = std::make_shared<CpuMatrix>(N, K);
-  MatrixPtr cpuC(new CpuSparseMatrix(M, N, nnz));
+  int heightA = (transa == false) ? dimM : dimK;
+  int widthA = (transa == false) ? dimK : dimM;
+  int heightB = (transb == false) ? dimK : dimN;
+  int widthB = (transb == false) ? dimN : dimK;
+  int heightC = dimM;
+  int widthC = dimN;
 
-  MatrixPtr gpuA = std::make_shared<GpuMatrix>(M, K);
-  MatrixPtr gpuB = std::make_shared<GpuMatrix>(N, K);
-  MatrixPtr gpuC(new GpuSparseMatrix(M, N, nnz));
+  auto cpuA = std::make_shared<CpuMatrix>(heightA, widthA, transa);
+  auto cpuB = std::make_shared<CpuMatrix>(heightB, widthB, transb);
+  auto cpuC = std::make_shared<CpuMatrix>(heightC, widthC);
+  auto gpuA = std::make_shared<GpuMatrix>(heightA, widthA, transa);
+  auto gpuB = std::make_shared<GpuMatrix>(heightB, widthB, transb);
+  auto gpuC = std::make_shared<GpuMatrix>(heightC, widthC);
 
   cpuA->randomizeUniform();
   cpuB->randomizeUniform();
   cpuC->randomizeUniform();
+  gpuA->copyFrom(*cpuA);
+  gpuB->copyFrom(*cpuB);
+  gpuC->copyFrom(*cpuC);
 
-  hl_stream_t stream(HPPL_STREAM_3);
-  gpuA->copyFrom(*cpuA, stream);
-  gpuB->copyFrom(*cpuB, stream);
-  gpuC->copyFrom(*cpuC, stream);
-  hl_stream_synchronize(stream);
+  BufferArgs cpuInputs;
+  BufferArgs cpuOutputs;
+  cpuInputs.addArg(*cpuA);
+  cpuInputs.addArg(*cpuB);
+  cpuOutputs.addArg(*cpuC, ADD_TO);
+  cpuFunc->calc(cpuInputs, cpuOutputs);
 
-  BufferArgs inputs;
-  BufferArgs outputs;
-  inputs.addArg(*gpuA->getTranspose());
-  inputs.addArg(*gpuB->getTranspose());
-  outputs.addArg(*gpuC, ASSIGN_TO);
+  BufferArgs gpuInputs;
+  BufferArgs gpuOutputs;
+  gpuInputs.addArg(*gpuA);
+  gpuInputs.addArg(*gpuB);
+  gpuOutputs.addArg(*gpuC, ADD_TO);
+  gpuFunc->calc(gpuInputs, gpuOutputs);
 
-  gpuFunc->calc(inputs, outputs);
+  autotest::TensorCheckErr(*cpuC, *gpuC);
 }
 
-TEST(SMatrix, sMatrixMul) {
-  for (auto M : {1, 40, 128, 200}) {
-    for (auto N : {100}) {
-      for (auto K : {100}) {
-        /// todo(tianbing), add scaleAB and scaleT
-        VLOG(3) << " M=" << M << " N=" << N << " K=" << K;
-        testSpMatrixMul(M, N, K, 0.05, 1, 1);
+TEST(Matrix, mul) {
+  for (auto transa : {false, true}) {
+    for (auto transb : {false, true}) {
+      for (auto dimM : {1, 10, 100}) {
+        for (auto dimN : {1, 10}) {
+          for (auto dimK : {8}) {
+            if (true == transa && true == transb) {
+              continue;
+            }
+            VLOG(3) << setiosflags(std::ios::left) << std::setfill(' ')
+                    << " transa=" << transa << " transb=" << transb
+                    << " dimM=" << std::setw(5) << dimM
+                    << " dimN=" << std::setw(5) << dimN
+                    << " dimK=" << std::setw(5) << dimK;
+
+            testMatrixMul(transa, transb, dimM, dimN, dimK);
+          }
+        }
       }
     }
   }
