@@ -17,8 +17,9 @@ cd paddle
 To compile the source code, your computer must be equipped with the following dependencies.
 
 - **Compiler**: GCC >= 4.8 or Clang >= 3.3 (AppleClang >= 5.1)
-- **CMake**: version >= 3.0 (at least CMake 3.4 on Mac OS X)
+- **CMake**: CMake >= 3.0 (at least CMake 3.4 on Mac OS X)
 - **BLAS**: MKL, OpenBlas or ATLAS
+- **Python**: only support Python 2.7
 
 **Note:** For CUDA 7.0 and CUDA 7.5, GCC 5.0 and up are not supported!
 For CUDA 8.0, GCC versions later than 5.3 are not supported!
