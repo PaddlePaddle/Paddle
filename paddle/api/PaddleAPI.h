@@ -890,7 +890,7 @@ public:
    * @param gm
    */
   void start();
-  void join();
+  void wait();
 
 private:
   ParameterServerPrivate* m;

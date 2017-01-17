@@ -41,4 +41,4 @@ ParameterServer::~ParameterServer() { delete m; }
 
 void ParameterServer::start() { m->parameterServerController->start(); }
 
-void ParameterServer::join() { m->parameterServerController->join(); }
+void ParameterServer::wait() { m->parameterServerController->wait(); }

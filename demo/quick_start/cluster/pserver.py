@@ -25,7 +25,7 @@ def main():
     pServerConfig.port = 7164
     pserver = api.ParameterServer.createFromConfigProto(pServerConfig)
     pserver.start()
-    pserver.join()
+    pserver.wait()
 
 
 if __name__ == '__main__':
