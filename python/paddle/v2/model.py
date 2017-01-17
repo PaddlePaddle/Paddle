@@ -83,6 +83,10 @@ class Model(object):
         # forward.
         raise NotImplementedError()
 
+    def evaluate(self, evaluator):
+        assert isinstance(evaluator, Evaluator)
+        raise NotImplementedError()
+
     def make_evaluator(self):
         """
 

@@ -105,8 +105,12 @@ def create_data_pool(file_reader,
 
     def __impl__():
         settings = object()
+        method = file_reader
+        if method.func_code.co_argcount == 2:  # for backward capacity
+            method = functools.partial(method, settings)
+
         for each_file in file_list:
-            for each_sample in file_reader(settings, each_file):
+            for each_sample in method(each_file):
                 yield each_sample
 
     return pool_class(
