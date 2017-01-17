@@ -52,9 +52,9 @@ public:
    */
   template <typename... ARGS>
   inline void setByPrintf(const char* fmt, ARGS... args) noexcept {
-    constexpr size_t bufferSize = 4096;
-    char buffer[bufferSize];
-    snprintf(buffer, bufferSize, fmt, args...);
+    constexpr size_t kBufferSize = 4096;
+    char buffer[kBufferSize];
+    snprintf(buffer, kBufferSize, fmt, args...);
     errMsg_.reset(new std::string(buffer));
   }
 
