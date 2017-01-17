@@ -22,31 +22,41 @@ using namespace paddle;  // NOLINT
 
 void testSpMatrixMul(int M, int N, int K, real rate, real scale1, real scale2) {
   /// todo(tianbing) check CPU/GPU
-  const auto gpuFunc = FunctionBase::funcRegistrar_.createByType("MulOP-GPU");
+  const auto gpuFunc = FunctionBase::funcRegistrar_.createByType("MulOp-GPU");
   gpuFunc->init(FuncConfig().set("scaleAB", scale1).set("scaleT", scale2));
 
-  int nnz = M * K * rate;
-  auto gpuA = std::make_shared<GpuSparseMatrix>(M, K, nnz);
-  const auto gpuB = std::make_shared<GpuMatrix>(K, N);
-  const auto gpuOut = std::make_shared<GpuMatrix>(M, N);
+  int nnz = M * N * rate;
+  MatrixPtr cpuA = std::make_shared<CpuMatrix>(M, K);
+  MatrixPtr cpuB = std::make_shared<CpuMatrix>(N, K);
+  MatrixPtr cpuC(new CpuSparseMatrix(M, N, nnz));
 
-  gpuA->randomizeUniform();
-  gpuB->randomizeUniform();
-  gpuOut->randomizeUniform();
+  MatrixPtr gpuA = std::make_shared<GpuMatrix>(M, K);
+  MatrixPtr gpuB = std::make_shared<GpuMatrix>(N, K);
+  MatrixPtr gpuC(new GpuSparseMatrix(M, N, nnz));
+
+  cpuA->randomizeUniform();
+  cpuB->randomizeUniform();
+  cpuC->randomizeUniform();
+
+  hl_stream_t stream(HPPL_STREAM_3);
+  gpuA->copyFrom(*cpuA, stream);
+  gpuB->copyFrom(*cpuB, stream);
+  gpuC->copyFrom(*cpuC, stream);
+  hl_stream_synchronize(stream);
 
   BufferArgs inputs;
   BufferArgs outputs;
-  inputs.addArg(*gpuA);
-  inputs.addArg(*gpuB);
-  outputs.addArg(*gpuOut);
+  inputs.addArg(*gpuA->getTranspose());
+  inputs.addArg(*gpuB->getTranspose());
+  outputs.addArg(*gpuC, ASSIGN_TO);
 
   gpuFunc->calc(inputs, outputs);
 }
 
 TEST(SMatrix, sMatrixMul) {
   for (auto M : {1, 40, 128, 200}) {
-    for (auto N : {100, 2000, 20480}) {
-      for (auto K : {100, 512, 1024}) {
+    for (auto N : {100}) {
+      for (auto K : {100}) {
         /// todo(tianbing), add scaleAB and scaleT
         VLOG(3) << " M=" << M << " N=" << N << " K=" << K;
         testSpMatrixMul(M, N, K, 0.05, 1, 1);

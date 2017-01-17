@@ -167,7 +167,7 @@ public:
   ValueType valueType() const { return valueType_; }
   BufferType bufferType() const { return bufferType_; }
   const TensorShape& shape() const { return shape_; }
-  bool isSparse() const { return TENSOR_SPARSE == bufferType_; }
+  bool isSparseArg() const { return TENSOR_SPARSE == bufferType_; }
   bool isSequenceArg() const { return TENSOR_SEQUENCE_DATA == bufferType_; }
 
   const SequenceArg& sequence() const;
