@@ -172,7 +172,7 @@ protected:
 
   void initArg(SequenceIdArg& arg, size_t batchSize) {
     size_t numSeqs = arg.numSeqs();
-    int* buf = (int*)arg.data();
+    int* buf = reinterpret_cast<int*>(arg.data());
     int pos = 0;
     size_t maxLen = 2 * batchSize / numSeqs;
     for (int i = 0; i < (int)numSeqs; ++i) {

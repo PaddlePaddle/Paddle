@@ -85,6 +85,7 @@ void testBufferArgs(const BufferArgs& inputs,
 }
 
 void testBufferArgs(const BufferArgs& inputs, const CheckBufferArg& check) {
+  EXPECT_EQ(inputs.size(), 1);
   check(inputs[0]);
 }
 

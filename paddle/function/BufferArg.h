@@ -192,6 +192,7 @@ public:
   SequenceIdArg(const TensorShape& shape, ArgType argType = UNSPECIFIED)
       : BufferArg(VALUE_TYPE_INT32, shape, argType) {
     CHECK_EQ(shape_.ndims(), (size_t)1);
+    CHECK_GT(shape_[0], 1);
     numSeqs_ = shape_[0] - 1;
   }
 
