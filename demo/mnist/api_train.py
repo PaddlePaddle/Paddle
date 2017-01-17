@@ -64,8 +64,10 @@ def main():
     cost = paddle.layers.classification_cost(
         input=inference, label=paddle.layers.data_layer(
             name='label', size=10))
+
     # Create Simple Gradient Machine.
     model_config = paddle.layers.parse_network(cost)
+
     m = paddle.raw.GradientMachine.createFromConfigProto(
         model_config, paddle.raw.CREATE_MODE_NORMAL, optimizer.enable_types())
 
