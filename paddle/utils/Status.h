@@ -24,6 +24,13 @@ namespace paddle {
  * Status is Paddle error code. It only contain a std::string as error message.
  * Although Status inherits the std::exception, but do not throw it except you
  * know what you are doing.
+ *
+ *
+ * There are two styles to return status in Paddle.
+ *
+ * 1. Return Status
+ *
+ *
  */
 class Status final : public std::exception {
 public:
@@ -52,7 +59,7 @@ public:
    */
   template <typename... ARGS>
   inline void setByPrintf(const char* fmt, ARGS... args) noexcept {
-    constexpr size_t kBufferSize = 4096;
+    constexpr size_t kBufferSize = 1024;  // 1KB buffer
     char buffer[kBufferSize];
     snprintf(buffer, kBufferSize, fmt, args...);
     errMsg_.reset(new std::string(buffer));
