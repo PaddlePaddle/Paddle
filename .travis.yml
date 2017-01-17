@@ -1,5 +1,9 @@
 language: cpp
-cache: ccache
+cache:
+  directories:
+    - $HOME/third_party
+    - $HOME/.ccache
+    - $HOME/.cache/pip
 sudo: required
 dist: trusty
 os:
@@ -21,9 +25,9 @@ addons:
     packages:
       - gcc-4.8
       - g++-4.8
+      - gfortran-4.8
       - git
       - build-essential
-      - libatlas-base-dev
       - python
       - python-pip
       - python2.7-dev
@@ -35,6 +39,7 @@ addons:
       - clang-format-3.8
       - automake
       - libtool
+      - ccache
 before_install:
   - |
     if [ ${JOB} == "BUILD_AND_TEST" ]; then

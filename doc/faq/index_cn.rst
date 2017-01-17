@@ -286,22 +286,3 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
 ..      code-block:: bash
 
         paddle train --use_gpu=true --trainer_count=2 --gpu_id=2
-
-12. 编译源码提示warp-ctc/include/ctc.h 找不到的情况
----------------------------------------------------
-
-目前Paddle使用\ :code:`git submodule`\ 来引用一些第三方模块。简单的\
-:code:`git clone`\ 命令不能得到第三方模块的代码。需要使用\:
-
-..  code-block:: bash
-
-    git clone --recursive https://github.com/PaddlePaddle/Paddle.git
-
-来获取所有源码。对于已经clone的git版本库，可以在Paddle的源码目录中执行\:
-
-..  code-block:: bash
-
-    git submodule init
-    git submodule update
-
-来获得所有第三方模块。

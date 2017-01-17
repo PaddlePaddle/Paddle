@@ -15,10 +15,17 @@ syntax = "proto2";
 
 package paddle;
 
+
+/**
+ * Configuration structure for ParameterClient2.
+ */
 message ParameterClientConfig {
   required int32 trainer_id = 1;
 }
 
+/**
+ * Configuration structure for ParameterServer2.
+ */
 message ParameterServerConfig {
   // The ports number for parameter send,
   // increment based on default port number

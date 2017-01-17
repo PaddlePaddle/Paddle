@@ -16,7 +16,7 @@
 set(CBLAS_FOUND OFF)
 
 ## Find MKL First.
-set(MKL_ROOT $ENV{MKL_ROOT} CACHE PATH "Folder contains MKL")
+set(MKL_ROOT $ENV{MKLROOT} CACHE PATH "Folder contains MKL")
 
 find_path(MKL_INCLUDE_DIR mkl.h PATHS
   ${MKL_ROOT}/include)

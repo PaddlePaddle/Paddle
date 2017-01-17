@@ -112,6 +112,8 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
 }
 
 /**
+ * \brief {o_0, o_1} = calc(i_0)
+ *
  * \param inputs[0] input value.
  * \param outputs[0] output value.
  * \param outputs[1] denoms.
@@ -125,27 +127,24 @@ public:
     pow_ = config.get<real>("pow");
   }
 
-  void calc(const Arguments& inputs,
-            const Arguments& outputs,
-            const Arguments& inouts) override {
-    CHECK_EQ(1, static_cast<int>(inputs.size()));
-    CHECK_EQ(2, static_cast<int>(outputs.size()));
-    CHECK_EQ(0, static_cast<int>(inouts.size()));
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK_EQ((size_t)1, inputs.size());
+    CHECK_EQ((size_t)2, outputs.size());
 
-    CHECK_EQ(static_cast<int>(inputs[0].dims_.size()), 4);
-    for (size_t i = 0; i < inputs[0].dims_.size(); i++) {
-      CHECK_EQ(inputs[0].dims_[i], outputs[0].dims_[i]);
-      CHECK_EQ(inputs[0].dims_[i], outputs[1].dims_[i]);
-    }
+    CHECK_EQ(inputs[0].shape().ndims(), (size_t)4);
+    CHECK(inputs[0].shape() == outputs[0].shape());
+    CHECK(inputs[0].shape() == outputs[1].shape());
 
-    size_t samples = inputs[0].dims_[0];
-    size_t channels = inputs[0].dims_[1];
-    size_t height = inputs[0].dims_[2];
-    size_t width = inputs[0].dims_[3];
+    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
+    CHECK_EQ(outputs[1].getArgType(), ASSIGN_TO);
+    size_t samples = inputs[0].shape()[0];
+    size_t channels = inputs[0].shape()[1];
+    size_t height = inputs[0].shape()[2];
+    size_t width = inputs[0].shape()[3];
 
-    CrossMapNormal<Device>(outputs[0].getData(),
-                           outputs[1].getData(),
-                           inputs[0].getData(),
+    CrossMapNormal<Device>(outputs[0].data<real>(),
+                           outputs[1].data<real>(),
+                           inputs[0].data<real>(),
                            samples,
                            channels,
                            height,
@@ -162,6 +161,8 @@ private:
 };
 
 /**
+ * \brief {o_0} = calc(i_0, i_1, i_2, i_3)
+ *
  * \param inputs[0] input value.
  * \param inputs[1] output value.
  * \param inputs[2] output grad.
@@ -177,31 +178,29 @@ public:
     pow_ = config.get<real>("pow");
   }
 
-  void calc(const Arguments& inputs,
-            const Arguments& outputs,
-            const Arguments& inouts) override {
-    CHECK_EQ(4, static_cast<int>(inputs.size()));
-    CHECK_EQ(1, static_cast<int>(outputs.size()));
-    CHECK_EQ(0, static_cast<int>(inouts.size()));
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK_EQ((size_t)4, inputs.size());
+    CHECK_EQ((size_t)1, outputs.size());
 
-    CHECK_EQ(static_cast<int>(inputs[0].dims_.size()), 4);
-    for (size_t i = 0; i < inputs[0].dims_.size(); i++) {
-      CHECK_EQ(inputs[0].dims_[i], inputs[1].dims_[i]);
-      CHECK_EQ(inputs[0].dims_[i], inputs[2].dims_[i]);
-      CHECK_EQ(inputs[0].dims_[i], inputs[3].dims_[i]);
-      CHECK_EQ(inputs[0].dims_[i], outputs[0].dims_[i]);
-    }
+    CHECK_EQ(inputs[0].shape().ndims(), (size_t)4);
+    CHECK(inputs[0].shape() == inputs[1].shape());
+    CHECK(inputs[0].shape() == inputs[2].shape());
+    CHECK(inputs[0].shape() == inputs[3].shape());
+    CHECK(inputs[0].shape() == outputs[0].shape());
 
-    size_t samples = inputs[0].dims_[0];
-    size_t channels = inputs[0].dims_[1];
-    size_t height = inputs[0].dims_[2];
-    size_t width = inputs[0].dims_[3];
+    // TODO(hedaoyuan): need support ASSIGN_TO mode.
+    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
 
-    CrossMapNormalGrad<Device>(outputs[0].getData(),
-                               inputs[0].getData(),
-                               inputs[1].getData(),
-                               inputs[2].getData(),
-                               inputs[3].getData(),
+    size_t samples = inputs[0].shape()[0];
+    size_t channels = inputs[0].shape()[1];
+    size_t height = inputs[0].shape()[2];
+    size_t width = inputs[0].shape()[3];
+
+    CrossMapNormalGrad<Device>(outputs[0].data<real>(),
+                               inputs[0].data<real>(),
+                               inputs[1].data<real>(),
+                               inputs[2].data<real>(),
+                               inputs[3].data<real>(),
                                samples,
                                channels,
                                height,

@@ -20,10 +20,10 @@ using namespace paddle;  // NOLINT
 int main(int argc, char** argv) {
   initMain(argc, argv);
 
-  std::unique_ptr<ParameterServerController> pServerPtr(
-      paddle::ParameterServerController::createByGflags());
-  pServerPtr->start();
-  pServerPtr->join();
+  std::unique_ptr<ParameterServerController> parameterServerPtr(
+      paddle::ParameterServerController::createFromGflags());
+  parameterServerPtr->start();
+  parameterServerPtr->wait();
 
   return 0;
 }
