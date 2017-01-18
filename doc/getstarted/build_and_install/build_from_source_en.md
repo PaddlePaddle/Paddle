@@ -4,6 +4,8 @@ Installing from Sources
 * [1. Download and Setup](#download)
 * [2. Requirements](#requirements)
 * [3. Build on Ubuntu](#ubuntu)
+* [4. Build on Centos](#centos)
+
 
 ## <span id="download">Download and Setup</span> 
 You can download PaddlePaddle from the [github source](https://github.com/PaddlePaddle/Paddle).
@@ -16,9 +18,10 @@ cd paddle
 
 To compile the source code, your computer must be equipped with the following dependencies.
 
-- **Compiler**: GCC >= 4.8 or Clang >= 3.3 (AppleClang >= 5.1)
-- **CMake**: version >= 3.0 (at least CMake 3.4 on Mac OS X)
+- **Compiler**: GCC >= 4.8 or Clang >= 3.3 (AppleClang >= 5.1) and gfortran compiler
+- **CMake**: CMake >= 3.0 (at least CMake 3.4 on Mac OS X)
 - **BLAS**: MKL, OpenBlas or ATLAS
+- **Python**: only support Python 2.7
 
 **Note:** For CUDA 7.0 and CUDA 7.5, GCC 5.0 and up are not supported!
 For CUDA 8.0, GCC versions later than 5.3 are not supported!
@@ -95,12 +98,78 @@ As a simple example, consider the following:
 
 ### Install Dependencies
 
-- **CPU Dependencies**
+- **Paddle Dependencies**
 
     ```bash
     # necessary
     sudo apt-get update
-    sudo apt-get install -y g++ make cmake build-essential python python-pip libpython-dev git
+    sudo apt-get install -y git curl gcc g++ gfortran make build-essential automake
+    sudo apt-get install -y python python-pip python-numpy libpython-dev bison
+    sudo pip install 'protobuf==3.1.0.post1'
+
+    # install cmake 3.4
+    curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
+        cd cmake-3.4.1 && ./bootstrap && make -j4 && sudo make install && \
+        cd .. && rm -rf cmake-3.4.1
+    ```
+
+- **GPU Dependencies (optional)**
+
+    To build GPU version, you will need the following installed:
+
+        1. a CUDA-capable GPU
+        2. A supported version of Linux with a gcc compiler and toolchain
+        3. NVIDIA CUDA Toolkit (available at http://developer.nvidia.com/cuda-downloads)
+        4. NVIDIA cuDNN Library (availabel at https://developer.nvidia.com/cudnn)
+
+    The CUDA development environment relies on tight integration with the host development environment,
+    including the host compiler and C runtime libraries, and is therefore only supported on
+    distribution versions that have been qualified for this CUDA Toolkit release.
+        
+    After downloading cuDNN library, issue the following commands:
+
+    ```bash
+    sudo tar -xzf cudnn-7.5-linux-x64-v5.1.tgz -C /usr/local
+    sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
+    ```
+    Then you need to set LD\_LIBRARY\_PATH, PATH environment variables in ~/.bashrc.
+
+    ```bash
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PATH=/usr/local/cuda/bin:$PATH
+    ```
+
+### Build and Install
+
+As usual, the best option is to create build folder under paddle project directory.
+
+```bash
+mkdir build && cd build
+``` 
+
+Finally, you can build and install PaddlePaddle:
+
+```bash
+# you can add build option here, such as:    
+cmake .. -DCMAKE_INSTALL_PREFIX=<path to install>
+# please use sudo make install, if you want to install PaddlePaddle into the system
+make -j `nproc` && make install
+# set PaddlePaddle installation path in ~/.bashrc
+export PATH=<path to install>/bin:$PATH
+# install PaddlePaddle Python modules.
+sudo pip install <path to install>/opt/paddle/share/wheels/*.whl
+```
+## <span id="centos">Build on Centos 7</span>
+
+### Install Dependencies
+
+- **CPU Dependencies**
+
+    ```bash
+    # necessary
+    sudo yum update
+    sudo yum install -y epel-release
+    sudo yum install -y make cmake3 python-devel python-pip gcc-gfortran swig git
     sudo pip install wheel numpy
     sudo pip install 'protobuf>=3.0.0'
     ```
@@ -143,7 +212,7 @@ Finally, you can build and install PaddlePaddle:
 
 ```bash
 # you can add build option here, such as:    
-cmake .. -DCMAKE_INSTALL_PREFIX=<path to install>
+cmake3 .. -DCMAKE_INSTALL_PREFIX=<path to install>
 # please use sudo make install, if you want to install PaddlePaddle into the system
 make -j `nproc` && make install
 # set PaddlePaddle installation path in ~/.bashrc
