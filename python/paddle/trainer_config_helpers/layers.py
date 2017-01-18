@@ -108,6 +108,7 @@ __all__ = [
     'print_layer',
     'priorbox_layer',
     'spp_layer',
+    'pad_layer',
 ]
 
 
