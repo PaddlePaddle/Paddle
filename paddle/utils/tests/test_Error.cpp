@@ -16,19 +16,19 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-TEST(Status, testAll) {
-  paddle::Error status;
-  ASSERT_TRUE(status.isOK());
-  status = paddle::ErrorF("I'm the error");
-  ASSERT_FALSE(status.isOK());
-  ASSERT_STREQ("I'm the error", status.what());
+TEST(Error, testAll) {
+  paddle::Error error;
+  ASSERT_TRUE(error.isOK());
+  error = paddle::ErrorF("I'm the error");
+  ASSERT_FALSE(error.isOK());
+  ASSERT_STREQ("I'm the error", error.what());
 
-  status = paddle::ErrorF("error2");
-  ASSERT_FALSE(status.isOK());
-  ASSERT_STREQ("error2", status.what());
+  error = paddle::ErrorF("error2");
+  ASSERT_FALSE(error.isOK());
+  ASSERT_STREQ("error2", error.what());
 
   int i = 3;
-  auto status3 = paddle::ErrorF("error%d", i);
-  ASSERT_FALSE(status3.isOK());
-  ASSERT_STREQ("error3", status3.what());
+  auto error3 = paddle::ErrorF("error%d", i);
+  ASSERT_FALSE(error3.isOK());
+  ASSERT_STREQ("error3", error3.what());
 }
