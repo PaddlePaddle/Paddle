@@ -30,7 +30,6 @@ ExternalProject_Add(
     glog
     ${EXTERNAL_PROJECT_LOG_ARGS}
     GIT_REPOSITORY  https://github.com/google/glog.git
-    GIT_TAG         v0.3.4
     PREFIX          ${GLOG_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX=${GLOG_INSTALL_DIR}
