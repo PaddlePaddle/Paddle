@@ -6,11 +6,11 @@ ARG UBUNTU_MIRROR
 RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
 
 RUN apt-get update && \
-    apt-get install -y git python-pip python-dev openssh-server && \
+    apt-get install -y git python-pip python-dev openssh-server bison && \
     apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
     apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
     apt-get install -y python-numpy python-matplotlib gcc g++ gfortran && \
-    apt-get install -y autotools-dev automake && \
+    apt-get install -y automake clang-3.8 llvm-3.8 libclang-3.8-dev && \
     apt-get clean -y
 
 RUN pip install --upgrade pip && \ 
