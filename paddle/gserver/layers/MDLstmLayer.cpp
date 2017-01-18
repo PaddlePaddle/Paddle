@@ -506,9 +506,12 @@ void MDLstmLayer::forwardGate2OutputSequence(int start,
           *frameState_[start + preOffsetV[i]].value, *checkFgOneDim, 1.0, 1.0);
     }
   }
-  activationGate_->forward(frameInputGate_[idxCurr]);
-  activationGate_->forward(frameForgetGate_[idxCurr]);
-  activation_->forward(frameInputNode_[idxCurr]);
+  auto status = activationGate_->forward(frameInputGate_[idxCurr]);
+  status.check();
+  status = activationGate_->forward(frameForgetGate_[idxCurr]);
+  status.check();
+  status = activation_->forward(frameInputNode_[idxCurr]);
+  status.check();
 
   frameState_[idxCurr].value->zeroMem();
   for (int i = 0; i < numDims_; i++) {
@@ -530,10 +533,12 @@ void MDLstmLayer::forwardGate2OutputSequence(int start,
 
   frameOutputGate_[idxCurr].value->addDotMul(
       *frameState_[idxCurr].value, *checkOg_, 1.0, 1.0);
-  activationGate_->forward(frameOutputGate_[idxCurr]);
+  status = activationGate_->forward(frameOutputGate_[idxCurr]);
+  status.check();
 
   framePreOutput_[idxCurr].value->copyFrom(*(frameState_[idxCurr].value));
-  activationState_->forward(framePreOutput_[idxCurr]);
+  status = activationState_->forward(framePreOutput_[idxCurr]);
+  status.check();
 
   frameOutput_[idxCurr].value->dotMul(*framePreOutput_[idxCurr].value,
                                       *frameOutputGate_[idxCurr].value);
@@ -640,12 +645,12 @@ void MDLstmLayer::backwardGate2OutputSequence(int start,
 
   framePreOutput_[idxCurr].grad->dotMul(*frameOutput_[idxCurr].grad,
                                         *frameOutputGate_[idxCurr].value);
-  activationState_->backward(framePreOutput_[idxCurr]);
+  activationState_->backward(framePreOutput_[idxCurr]).check();
   frameState_[idxCurr].grad->copyFrom(*(framePreOutput_[idxCurr].grad));
 
   frameOutputGate_[idxCurr].grad->dotMul(*frameOutput_[idxCurr].grad,
                                          *framePreOutput_[idxCurr].value);
-  activationGate_->backward(frameOutputGate_[idxCurr]);
+  activationGate_->backward(frameOutputGate_[idxCurr]).check();
 
   frameState_[idxCurr].grad->addDotMul(
       *frameOutputGate_[idxCurr].grad, *checkOg_, 1.0, 1.0);
@@ -702,9 +707,9 @@ void MDLstmLayer::backwardGate2OutputSequence(int start,
     }
   }
 
-  activationGate_->backward(frameInputGate_[idxCurr]);
-  activationGate_->backward(frameForgetGate_[idxCurr]);
-  activation_->backward(frameInputNode_[idxCurr]);
+  activationGate_->backward(frameInputGate_[idxCurr]).check();
+  activationGate_->backward(frameForgetGate_[idxCurr]).check();
+  activation_->backward(frameInputNode_[idxCurr]).check();
 
   if (bias_->getWGrad()) {
     for (int i = 0; i < numDims_; i++) {

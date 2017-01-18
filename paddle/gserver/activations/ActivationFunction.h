@@ -49,7 +49,7 @@ public:
    *
    * Usually, act is Layer::output_
    */
-  virtual Status forward(Argument& act) = 0;
+  virtual Status __must_check forward(Argument& act) = 0;
 
   /**
    * @brief Backward propagaion
@@ -58,7 +58,7 @@ public:
    * - Before calling backward(), act.grad = dE / dy, where E is the error/cost
    * - After backward() returns, act.grad = dE / dx = (dE/dy) * (dy/dx)
    */
-  virtual Status backward(Argument& act) = 0;
+  virtual Status __must_check backward(Argument& act) = 0;
 
   virtual const std::string& getName() const = 0;
 };

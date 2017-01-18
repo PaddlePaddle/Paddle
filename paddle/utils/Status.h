@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <glog/logging.h>
 #include <stdio.h>
 #include <memory>
 #include <string>
+#include "Compiler.h"
 
 namespace paddle {
 
@@ -29,8 +31,55 @@ namespace paddle {
  * There are two styles to return status in Paddle.
  *
  * 1. Return Status
+ *    When method return a status, the return must use `__must_check` attribute.
+ *    Example as below.
+ * @code{cpp}
+ * Status __must_check foo();
+ *
+ * Status __must_check bar() {
+ *   // do something.
+ *   Status s = foo();  // invoke other method return status.
+ *   if (!s.isOK()) return s;
+ *   // do something else.
+ *   return Status();
+ * }
+ * @endcode{cpp}
+ *
+ * 2. Return by parameter.
+ *    It is another way to return a status, by using a pointer parameter.
+ *    Example as below.
+ *
+ * @code{cpp}
+ * Status bar();
+ *
+ * int foo(Status* status) {
+ *   // Do something.
+ *   Status s = bar();
+ *   if (!s.isOK()) {
+ *     *status = s;
+ *     return 0;
+ *   }
+ *   // Do something else.
+ *   if (someInternalErrorHappend) {
+ *     status->setByPrintf("Some dimension is too large, %d", dimension);
+ *     return 0;
+ *   }
+ *   // End of method.
+ *   return someValue;
+ * }
+ *
+ * Status foobar() {
+ *   Status s;
+ *   // do something.
+ *   foo(&s);
+ *   if (!s.isOK()) return s;
+ * }
+ * @endcode{cpp}
  *
  *
+ * Currently there is a helper method 'check' in status, because Paddle always
+ * use log(FATAL) or CHECK to make program exit before. When we clean all
+ * log(FATAL) and CHECK in Paddle, 'check' method will be removed.
  */
 class Status final : public std::exception {
 public:
@@ -91,6 +140,13 @@ public:
    * @return true if OK.
    */
   inline bool isOK() const noexcept { return errMsg_ == nullptr; }
+
+  /**
+   * @brief check this status by glog.
+   * @note It is a temp method used during cleaning Paddle code. It will be
+   *       removed later.
+   */
+  inline void check() const { CHECK(isOK()) << what(); }
 
 private:
   std::shared_ptr<std::string> errMsg_;
