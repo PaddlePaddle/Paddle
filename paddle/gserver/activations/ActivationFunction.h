@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
-#include "paddle/utils/Status.h"
+#include "paddle/utils/Error.h"
 
 namespace paddle {
 
@@ -49,7 +49,7 @@ public:
    *
    * Usually, act is Layer::output_
    */
-  virtual Status __must_check forward(Argument& act) = 0;
+  virtual Error __must_check forward(Argument& act) = 0;
 
   /**
    * @brief Backward propagaion
@@ -58,7 +58,7 @@ public:
    * - Before calling backward(), act.grad = dE / dy, where E is the error/cost
    * - After backward() returns, act.grad = dE / dx = (dE/dy) * (dy/dx)
    */
-  virtual Status __must_check backward(Argument& act) = 0;
+  virtual Error __must_check backward(Argument& act) = 0;
 
   virtual const std::string& getName() const = 0;
 };

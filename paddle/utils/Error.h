@@ -34,9 +34,9 @@ namespace paddle {
  *    When method return a status, the return must use `__must_check` attribute.
  *    Example as below.
  * @code{cpp}
- * Status __must_check foo();
+ * Error __must_check foo();
  *
- * Status __must_check bar() {
+ * Error __must_check bar() {
  *   // do something.
  *   Status s = foo();  // invoke other method return status.
  *   if (!s.isOK()) return s;
@@ -50,9 +50,9 @@ namespace paddle {
  *    Example as below.
  *
  * @code{cpp}
- * Status bar();
+ * Error bar();
  *
- * int foo(Status* status) {
+ * int foo(Error* status) {
  *   // Do something.
  *   Status s = bar();
  *   if (!s.isOK()) {
@@ -61,15 +61,15 @@ namespace paddle {
  *   }
  *   // Do something else.
  *   if (someInternalErrorHappend) {
- *     status->setByPrintf("Some dimension is too large, %d", dimension);
+ *     *status = ErrorF("Some dimension is too large, %d", dimension);
  *     return 0;
  *   }
  *   // End of method.
  *   return someValue;
  * }
  *
- * Status foobar() {
- *   Status s;
+ * Error foobar() {
+ *   Error s;
  *   // do something.
  *   foo(&s);
  *   if (!s.isOK()) return s;
@@ -81,48 +81,12 @@ namespace paddle {
  * use log(FATAL) or CHECK to make program exit before. When we clean all
  * log(FATAL) and CHECK in Paddle, 'check' method will be removed.
  */
-class Status final : public std::exception {
+class Error final : public std::exception {
 public:
   /**
    * Default Status. OK
    */
-  Status() noexcept {}
-
-  /**
-   * @brief Create Status with error message
-   * @param msg
-   */
-  explicit Status(const std::string& msg) : errMsg_(new std::string(msg)) {}
-
-  /**
-   * @brief set a error message for status.
-   * @param msg
-   */
-  inline void set(const std::string& msg) noexcept {
-    errMsg_.reset(new std::string(msg));
-  }
-
-  /**
-   * @brief set a error message for status. Use C style printf
-   * @param fmt
-   */
-  template <typename... ARGS>
-  inline void setByPrintf(const char* fmt, ARGS... args) noexcept {
-    constexpr size_t kBufferSize = 1024;  // 1KB buffer
-    char buffer[kBufferSize];
-    snprintf(buffer, kBufferSize, fmt, args...);
-    errMsg_.reset(new std::string(buffer));
-  }
-
-  /**
-   * create a error status by C style printf.
-   */
-  template <typename... ARGS>
-  inline static Status printf(const char* fmt, ARGS... args) noexcept {
-    Status s;
-    s.setByPrintf(fmt, args...);
-    return s;
-  }
+  Error() noexcept {}
 
   /**
    * @brief what will return the error message. If status is OK, return nullptr.
@@ -148,8 +112,46 @@ public:
    */
   inline void check() const { CHECK(isOK()) << what(); }
 
+  /**
+   * friend method to create Error.
+   */
+  template <typename... ARGS>
+  friend Error __must_check ErrorF(const char* fmt, ARGS... args);
+
 private:
   std::shared_ptr<std::string> errMsg_;
 };
+
+/**
+ * ErrorF will create an Error by printf syntax.
+ *
+ * Specialize this method because clang will give a warning when use printf(fmt)
+ * without arguments.
+ */
+template <>
+inline Error __must_check ErrorF(const char* msg) {
+  Error e;
+  e.errMsg_.reset(new std::string(msg));
+  return e;
+}
+
+/**
+ * ErrorF will create an Error by printf syntax.
+ *
+ * Examples:
+ * @code{cpp}
+ * auto err = ErrorF("SomeError");
+ * auto err2 = ErrorF("SomeErrorWithParameter %f %d", real_val, int_val);
+ * @endcode{cpp}
+ */
+template <typename... ARGS>
+inline Error __must_check ErrorF(const char* fmt, ARGS... args) {
+  constexpr size_t kBufferSize = 1024;
+  char buffer[kBufferSize];
+  snprintf(buffer, kBufferSize, fmt, args...);
+  Error e;
+  e.errMsg_.reset(new std::string(buffer));
+  return e;
+}
 
 }  // namespace paddle

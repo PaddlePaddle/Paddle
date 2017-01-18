@@ -12,23 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Status.h"
+#include "paddle/utils/Error.h"
 
 #include <gtest/gtest.h>
 
 TEST(Status, testAll) {
-  paddle::Status status;
+  paddle::Error status;
   ASSERT_TRUE(status.isOK());
-  status.set("I'm the error");
+  status = paddle::ErrorF("I'm the error");
   ASSERT_FALSE(status.isOK());
   ASSERT_STREQ("I'm the error", status.what());
 
-  paddle::Status status2("error2");
-  ASSERT_FALSE(status2.isOK());
-  ASSERT_STREQ("error2", status2.what());
+  status = paddle::ErrorF("error2");
+  ASSERT_FALSE(status.isOK());
+  ASSERT_STREQ("error2", status.what());
 
   int i = 3;
-  auto status3 = paddle::Status::printf("error%d", i);
+  auto status3 = paddle::ErrorF("error%d", i);
   ASSERT_FALSE(status3.isOK());
   ASSERT_STREQ("error3", status3.what());
 }

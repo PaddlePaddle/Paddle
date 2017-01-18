@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/utils/Util.h"
 
 #include "paddle/math/SparseMatrix.h"
+#include "paddle/utils/Error.h"
 #include "paddle/utils/Logging.h"
-#include "paddle/utils/Status.h"
 
 #include "AddtoLayer.h"
 #include "CRFLayer.h"
