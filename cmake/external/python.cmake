@@ -31,6 +31,7 @@ IF(PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND)
         "please use pip to upgrade protobuf.")
     ENDIF(${PY_GOOGLE.PROTOBUF_VERSION} VERSION_LESS "3.0.0")
 ELSE(PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND)
+    MESSAGE(FATAL_ERROR "Please install python 2.7 before building PaddlePaddle.")
     ##################################### PYTHON ########################################
     SET(PYTHON_SOURCES_DIR ${THIRD_PARTY_PATH}/python)
     SET(PYTHON_INSTALL_DIR ${THIRD_PARTY_PATH}/install/python)

@@ -33,13 +33,13 @@ public:
   void backward(const UpdateCallback& callback = nullptr);
 
 protected:
-  void setOutDims(int batchSize);
-  void setTensorDim(int batchSize);
+  void setOutDims(const size_t batchSize);
+  void setTensorDim(const size_t batchSize);
 
   std::vector<int> padc_;
   std::vector<int> padh_;
   std::vector<int> padw_;
-  Dims inDims_;
-  Dims outDims_;
+  TensorShape inDims_;
+  TensorShape outDims_;
 };
 }  // namespace paddle

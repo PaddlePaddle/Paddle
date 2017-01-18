@@ -27,11 +27,11 @@ bool PadLayer::init(const LayerMap& layerMap,
   auto& pad_conf = config_.inputs(0).pad_conf();
   auto& img_conf = pad_conf.image_conf();
   CHECK_EQ(config_.inputs_size(), 1);
-  inDims_.push_back(0);
-  inDims_.push_back(img_conf.channels());
-  inDims_.push_back(img_conf.has_img_size_y() ? img_conf.img_size_y()
-                                              : img_conf.img_size());
-  inDims_.push_back(img_conf.img_size());
+  inDims_ = TensorShape(
+      {0,
+       img_conf.channels(),
+       img_conf.has_img_size_y() ? img_conf.img_size_y() : img_conf.img_size(),
+       img_conf.img_size()});
 
   CHECK_EQ(2, pad_conf.pad_c_size());
   CHECK_EQ(2, pad_conf.pad_h_size());
@@ -43,7 +43,7 @@ bool PadLayer::init(const LayerMap& layerMap,
   padw_.push_back(pad_conf.pad_w(0));
   padw_.push_back(pad_conf.pad_w(1));
 
-  outDims_.resize(4);
+  outDims_ = TensorShape(4);
   setOutDims(0);
 
   createFunction(forward_,
@@ -68,20 +68,20 @@ bool PadLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-void PadLayer::setOutDims(int batchSize) {
-  outDims_[0] = batchSize;
-  outDims_[1] = inDims_[1] + padc_[0] + padc_[1];
-  outDims_[2] = inDims_[2] + padh_[0] + padh_[1];
-  outDims_[3] = inDims_[3] + padw_[0] + padw_[1];
+void PadLayer::setOutDims(const size_t batchSize) {
+  outDims_.reshape({batchSize,
+                    inDims_[1] + padc_[0] + padc_[1],
+                    inDims_[2] + padh_[0] + padh_[1],
+                    inDims_[3] + padw_[0] + padw_[1]});
 }
 
-void PadLayer::setTensorDim(int batchSize) {
+void PadLayer::setTensorDim(const size_t batchSize) {
   CHECK_EQ(static_cast<int>(inputLayers_.size()), 1);
-  inDims_[0] = batchSize;
+  inDims_.setDim(0, batchSize);
   int h = inputLayers_[0]->getOutput().getFrameHeight();
-  if (h != 0) inDims_[2];
+  if (h != 0) inDims_.setDim(2, h);
   int w = inputLayers_[0]->getOutput().getFrameWidth();
-  if (w != 0) inDims_[3];
+  if (w != 0) inDims_.setDim(3, w);
   setOutDims(batchSize);
 }
 
@@ -94,22 +94,22 @@ void PadLayer::forward(PassType passType) {
   resetOutput(batchSize, size);
   MatrixPtr outV = getOutputValue();
   REGISTER_TIMER_INFO("PadForward", getName().c_str());
-  forward_[0]->calc({Tensor(input->getData(), inDims_)},
-                    {Tensor(outV->getData(), outDims_)},
-                    {});
+
+  BufferArgs inputs;
+  BufferArgs outputs;
+  inputs.addArg(*getInputValue(0), inDims_);
+  outputs.addArg(*getOutputValue(), outDims_, ASSIGN_TO);
+  forward_[0]->calc(inputs, outputs);
 }
 
 void PadLayer::backward(const UpdateCallback& callback) {
   (void)callback;
-
-  MatrixPtr preGrad = inputLayers_[0]->getOutputGrad();
-  if (NULL == preGrad) {
-    return;
-  }
-  MatrixPtr outGrad = getOutputGrad();
   REGISTER_TIMER_INFO("PadBackward", getName().c_str());
-  backward_[0]->calc({Tensor(outGrad->getData(), outDims_)},
-                     {},
-                     {Tensor(preGrad->getData(), inDims_)});
+
+  BufferArgs inputs;
+  BufferArgs outputs;
+  inputs.addArg(*getOutputGrad(), outDims_);
+  outputs.addArg(*getInputGrad(0), inDims_, ADD_TO);
+  backward_[0]->calc(inputs, outputs);
 }
 }  // namespace paddle

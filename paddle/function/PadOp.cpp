@@ -89,20 +89,21 @@ public:
    * \param inputs[0] input value.
    * \param outputs[0] output value.
    */
-  void calc(const Arguments& inputs,
-            const Arguments& outputs,
-            const Arguments& inouts) override {
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(1UL, inputs.size());
     CHECK_EQ(1UL, outputs.size());
-    CHECK_EQ(0UL, inouts.size());
+    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
 
-    size_t num = inputs[0].dims_[0];
-    size_t inC = inputs[0].dims_[1];
-    size_t inH = inputs[0].dims_[2];
-    size_t inW = inputs[0].dims_[3];
+    size_t num = inputs[0].shape()[0];
+    size_t inC = inputs[0].shape()[1];
+    size_t inH = inputs[0].shape()[2];
+    size_t inW = inputs[0].shape()[3];
+    typename Tensor<real, Device>::Vector vec(outputs[0].shape().getElements(),
+                                              outputs[0].data<real>());
+    vec.zero();
 
-    Pad<Device>(outputs[0].getData(),
-                inputs[0].getData(),
+    Pad<Device>(outputs[0].data<real>(),
+                inputs[0].data<real>(),
                 num,
                 inC,
                 inH,
@@ -140,21 +141,25 @@ public:
    * \param inputs[0] output grad.
    * \param inouts[0] input grad.
    */
-  void calc(const Arguments& inputs,
-            const Arguments& outputs,
-            const Arguments& inouts) override {
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(1UL, inputs.size());
-    CHECK_EQ(0UL, outputs.size());
-    CHECK_EQ(1UL, inouts.size());
+    CHECK_EQ(1UL, outputs.size());
 
-    size_t n = inouts[0].dims_[0];
-    size_t inC = inouts[0].dims_[1];
-    size_t inH = inouts[0].dims_[2];
-    size_t inW = inouts[0].dims_[3];
+    size_t num = outputs[0].shape()[0];
+    size_t inC = outputs[0].shape()[1];
+    size_t inH = outputs[0].shape()[2];
+    size_t inW = outputs[0].shape()[3];
 
-    PadGrad<Device>(inouts[0].getData(),
-                    inputs[0].getData(),
-                    n,
+    if (outputs[0].getArgType() != ADD_TO) {
+      // for unit test
+      typename Tensor<real, Device>::Vector tmp(
+          outputs[0].shape().getElements(), outputs[0].data<real>());
+      tmp.zero();
+    }
+
+    PadGrad<Device>(outputs[0].data<real>(),
+                    inputs[0].data<real>(),
+                    num,
                     inC,
                     inH,
                     inW,

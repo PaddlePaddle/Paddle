@@ -1674,7 +1674,7 @@ def trans_layer(input, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
-def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
+def cos_sim(a, b, scale=1, size=1, name=None, layer_attr=None):
     """
     Cosine Similarity Layer. The cosine similarity equation is here.
 

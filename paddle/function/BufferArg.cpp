@@ -20,23 +20,27 @@ limitations under the License. */
 namespace paddle {
 
 const SequenceArg& BufferArg::sequence() const {
-  // CHECK_EQ(bufferType_, TENSOR_SEQUENCE_DATA);
+  CHECK_EQ(bufferType_, TENSOR_SEQUENCE_DATA);
   return dynamic_cast<const SequenceArg&>(*this);
 }
 
 const SparseMatrixArg& BufferArg::sparse() const {
-  // CHECK_EQ(bufferType_, TENSOR_SPARSE);
+  CHECK_EQ(bufferType_, TENSOR_SPARSE);
   return dynamic_cast<const SparseMatrixArg&>(*this);
 }
 
 SparseMatrixArg::SparseMatrixArg(const CpuSparseMatrix& sparse, ArgType argType)
     : BufferArg(sparse, argType),
       row_(reinterpret_cast<void*>(sparse.getRows()), VALUE_TYPE_INT32),
-      col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32) {}
+      col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32) {
+  bufferType_ = TENSOR_SPARSE;
+}
 
 SparseMatrixArg::SparseMatrixArg(const GpuSparseMatrix& sparse, ArgType argType)
     : BufferArg(sparse, argType),
       row_(reinterpret_cast<void*>(sparse.getRows()), VALUE_TYPE_INT32),
-      col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32) {}
+      col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32) {
+  bufferType_ = TENSOR_SPARSE;
+}
 
 }  // namespace paddle
