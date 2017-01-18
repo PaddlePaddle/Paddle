@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "MulOp.h"
+/// todo(tianbing), delete it
+#include <iostream>
 #include "paddle/math/MathFunctions.h"
 #include "paddle/math/SIMDFunctions.h"
 #include "paddle/utils/ThreadLocal.h"
@@ -496,16 +498,48 @@ public:
     CHECK_EQ(outputs[0].shape().ndims(), (size_t)2);
     CHECK_EQ(outputs[0].getArgType(), ADD_TO);
 
-    auto in1_mat = inputs[0].matrix<Device>();
-    if (inputs[0].isSparseArg()) {
-      in1_mat = inputs[0].sparse().SparseMatrix<Device>();
-    }
-    auto in2_mat = inputs[1].matrix<Device>();
-    if (inputs[1].isSparseArg()) {
-      in2_mat = inputs[1].sparse().SparseMatrix<Device>();
-    }
+    /// todo(tianbing), support SparseMatrixArg for out_mat
     auto out_mat = outputs[0].matrix<Device>();
-    MulOp<Device>(out_mat, in1_mat, in2_mat, alpha_, beta_);
+    LOG(INFO) << "out_mat:";
+    out_mat.print(std::cout);
+    if (!inputs[0].isSparseArg() && !inputs[1].isSparseArg()) {
+      LOG(INFO) << "in1_mat:";
+      inputs[0].matrix<Device>().print(std::cout);
+      LOG(INFO) << "in2_mat:";
+      inputs[1].matrix<Device>().print(std::cout);
+      MulOp<Device>(out_mat,
+                    inputs[0].matrix<Device>(),
+                    inputs[1].matrix<Device>(),
+                    alpha_,
+                    beta_);
+      return;
+    }
+
+    if (!inputs[0].isSparseArg() && inputs[1].isSparseArg()) {
+      LOG(INFO) << "in1_mat:";
+      inputs[0].matrix<Device>().print(std::cout);
+      LOG(INFO) << "in2_mat:";
+      inputs[1].sparse().SparseMatrix<Device>().print(std::cout);
+      MulOp<Device>(out_mat,
+                    inputs[0].matrix<Device>(),
+                    inputs[1].sparse().SparseMatrix<Device>(),
+                    alpha_,
+                    beta_);
+      return;
+    }
+
+    if (inputs[0].isSparseArg() && !inputs[1].isSparseArg()) {
+      LOG(INFO) << "in1_mat:";
+      inputs[0].sparse().SparseMatrix<Device>().print(std::cout);
+      LOG(INFO) << "in2_mat:";
+      inputs[1].matrix<Device>().print(std::cout);
+      MulOp<Device>(out_mat,
+                    inputs[0].sparse().SparseMatrix<Device>(),
+                    inputs[1].matrix<Device>(),
+                    alpha_,
+                    beta_);
+      return;
+    }
   }
 
 private:

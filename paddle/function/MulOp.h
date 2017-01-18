@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "Function.h"
+/// todo(tianbing), delete
+#include <iostream>
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
 

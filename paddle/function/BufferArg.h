@@ -30,13 +30,6 @@ enum BufferType {
   TENSOR_SPARSE = 4
 };
 
-enum SparseDataType {
-  SPARSE_NO_VALUE = 0,  // do not need value pointer, all values are 1
-  SPARSE_FLOAT_VALUE = 1
-};
-
-enum SparseDataFormat { SPARSE_CSR_FORMAT = 0, SPARSE_CSC_FORMAT = 1 };
-
 class BufferArg;
 class SequenceArg;
 class SparseMatrixArg;
@@ -272,8 +265,8 @@ public:
                   const BufferArg& row,
                   const BufferArg& col,
                   size_t nnz,
-                  SparseDataFormat format,
-                  SparseDataType type,
+                  SparseFormat format,
+                  SparseValueType type,
                   ArgType argType = UNSPECIFIED)
       : BufferArg(buf, valueType, shape, argType),
         row_(row),
@@ -286,9 +279,9 @@ public:
     CHECK_EQ(shape_.ndims(), (size_t)2);
     CHECK_EQ(row_.shape().ndims(), (size_t)1);
     CHECK_EQ(col_.shape().ndims(), (size_t)1);
-    if (format == SPARSE_CSR_FORMAT) {
+    if (format == SPARSE_CSR) {
       CHECK_EQ(nnz, col.shape()[0]);
-    } else if (format == SPARSE_CSC_FORMAT) {
+    } else if (format == SPARSE_CSC) {
       CHECK_EQ(nnz, row.shape()[0]);
     }
   }
@@ -310,8 +303,8 @@ public:
         shape_[0],
         shape_[1],
         nnz_,
-        static_cast<SparseValueType>(type_),
-        static_cast<SparseFormat>(format_),
+        type_,
+        format_,
         trans_);
   }
 
@@ -323,16 +316,16 @@ public:
 
   size_t nnz() const { return nnz_; }
 
-  SparseDataFormat dataFormat() const { return format_; }
+  SparseFormat dataFormat() const { return format_; }
 
-  SparseDataType dataType() const { return type_; }
+  SparseValueType dataType() const { return type_; }
 
 private:
   BufferArg row_;
   BufferArg col_;
   size_t nnz_;
-  SparseDataFormat format_;
-  SparseDataType type_;
+  SparseFormat format_;
+  SparseValueType type_;
 };
 
 }  // namespace paddle
