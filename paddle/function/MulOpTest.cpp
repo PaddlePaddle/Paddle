@@ -24,9 +24,10 @@ limitations under the License. */
 using namespace paddle;  // NOLINT
 
 /**
- *  C = alpha * C + beta * (A * B)
+ *  C = alpha * C + beta * (A * B), A, B, C dense matrix
+ *  dense = dense * dense
  */
-void testMatrixMul(bool transa, bool transb, int dimM, int dimN, int dimK) {
+void testDDDMatrix(bool transa, bool transb, int dimM, int dimN, int dimK) {
   real alpha = 1.5;
   real beta = 2.0;
 
@@ -73,7 +74,7 @@ void testMatrixMul(bool transa, bool transb, int dimM, int dimN, int dimK) {
   autotest::TensorCheckErr(*cpuC, *gpuC);
 }
 
-TEST(Matrix, mul) {
+TEST(Matrix, DDDMul) {
   LOG(INFO) << "test for dense = dense * dense matrix";
   for (auto transa : {false, true}) {
     for (auto transb : {false, true}) {
@@ -89,7 +90,7 @@ TEST(Matrix, mul) {
                     << " dimN=" << std::setw(5) << dimN
                     << " dimK=" << std::setw(5) << dimK;
 
-            testMatrixMul(transa, transb, dimM, dimN, dimK);
+            testDDDMatrix(transa, transb, dimM, dimN, dimK);
           }
         }
       }
@@ -97,19 +98,12 @@ TEST(Matrix, mul) {
   }
 }
 
-struct MatrixPara {
-  size_t height;
-  size_t width;
-  bool trans;
-  bool sparse;
-  size_t nnz;
-  SparseFormat format;
-};
-
 /**
-  * C += A * B, A, C dense, B sparse
+  * C += A * B, B, C dense, A sparse
+  * dense = sparse * dense
   */
-void testDSparseDMatrix() {
+void testDSparseDMatrix(
+    size_t dimM, size_t dimN, size_t dimK, size_t nnz, SparseFormat FORMAT) {
   real alpha = 1.0;
   real beta = 1.0;
   const auto cpuFunc = FunctionBase::funcRegistrar_.createByType("MulOp-CPU");
@@ -117,46 +111,107 @@ void testDSparseDMatrix() {
   const auto gpuFunc = FunctionBase::funcRegistrar_.createByType("MulOp-GPU");
   gpuFunc->init(FuncConfig().set("scaleAB", alpha).set("scaleT", beta));
 
-  constexpr size_t dimM = 2;
-  constexpr size_t dimN = 2;
-  constexpr size_t dimK = 3;
-  constexpr size_t NNZ = 3;
-  constexpr SparseFormat FORMAT = SPARSE_CSC;
+  CpuSparseMatrix cpuMatrixA(dimM, dimK, nnz, FLOAT_VALUE, FORMAT, false);
+  GpuSparseMatrix gpuMatrixA(dimM, dimK, nnz, FLOAT_VALUE, FORMAT, false);
+  CpuMatrix cpuDenseA(dimM, dimK, false);
 
-  MatrixPara paraA{dimM, dimK, /*trans*/ false, /*sparse*/ false, NNZ, FORMAT};
-  MatrixPara paraB{dimK, dimN, /*trans*/ false, /*sparse*/ true, NNZ, FORMAT};
-  MatrixPara paraC{dimM, dimN, /*trans*/ false, /*sparse*/ false, NNZ, FORMAT};
+  auto cpuMatrixB = Matrix::create(dimK, dimN, false, false);
+  auto gpuMatrixB = Matrix::create(dimK, dimN, false, true);
+  auto cpuDenseB = Matrix::create(dimK, dimN, false, false);
 
-  auto cpuMatrixA =
-      Matrix::create(paraA.height, paraA.width, paraA.trans, false);
-  auto gpuMatrixA =
-      Matrix::create(paraA.height, paraA.width, paraA.trans, true);
-  auto cpuDenseA =
-      Matrix::create(paraA.height, paraA.width, paraA.trans, false);
-  CpuSparseMatrix cpuMatrixB(paraB.height,
-                             paraB.width,
-                             paraB.nnz,
-                             FLOAT_VALUE,
-                             paraB.format,
-                             paraB.trans);
+  auto cpuMatrixC = Matrix::create(dimM, dimN, false, false);
+  auto gpuMatrixC = Matrix::create(dimM, dimN, false, true);
+  auto cpuDenseC = Matrix::create(dimM, dimN, false, false);
 
-  GpuSparseMatrix gpuMatrixB(paraB.height,
-                             paraB.width,
-                             paraB.nnz,
-                             FLOAT_VALUE,
-                             paraB.format,
-                             paraB.trans);
+  /*matrix init*/
+  hl_stream_t stream(HPPL_STREAM_1);
+  cpuMatrixA.randomizeUniform();
+  cpuMatrixB->randomizeUniform();
+  cpuMatrixC->randomizeUniform();
 
-  auto cpuDenseB =
-      Matrix::create(paraB.height, paraB.width, paraB.trans, false);
-  auto cpuMatrixC =
-      Matrix::create(paraC.height, paraC.width, paraC.trans, false);
-  auto gpuMatrixC =
-      Matrix::create(paraC.height, paraC.width, paraC.trans, true);
-  auto cpuDenseC =
-      Matrix::create(paraC.height, paraC.width, paraC.trans, false);
-  auto gpuMatrixC_d2h =
-      Matrix::create(paraC.height, paraC.width, paraC.trans, false);
+  gpuMatrixA.copyFrom(cpuMatrixA, stream);
+  gpuMatrixB->copyFrom(*cpuMatrixB, stream);
+  gpuMatrixC->copyFrom(*cpuMatrixC, stream);
+
+  cpuDenseA.copyFrom(cpuMatrixA);
+  cpuDenseB->copyFrom(*cpuMatrixB);
+  cpuDenseC->copyFrom(*cpuMatrixC);
+  hl_stream_synchronize(stream);
+
+  /*matrix mul*/
+  BufferArgs cpuInputs;
+  BufferArgs cpuOutputs;
+  cpuInputs.addArg(cpuMatrixA);
+  cpuInputs.addArg(*cpuMatrixB);
+  cpuOutputs.addArg(*cpuMatrixC, ADD_TO);
+  cpuFunc->calc(cpuInputs, cpuOutputs);
+
+  BufferArgs gpuInputs;
+  BufferArgs gpuOutputs;
+  gpuInputs.addArg(gpuMatrixA);
+  gpuInputs.addArg(*gpuMatrixB);
+  gpuOutputs.addArg(*gpuMatrixC, ADD_TO);
+  gpuFunc->calc(gpuInputs, gpuOutputs);
+
+  BufferArgs denseInputs;
+  BufferArgs denseOutputs;
+  denseInputs.addArg(cpuDenseA);
+  denseInputs.addArg(*cpuDenseB);
+  denseOutputs.addArg(*cpuDenseC, ADD_TO);
+  cpuFunc->calc(denseInputs, denseOutputs);
+
+  /*check result*/
+  autotest::TensorCheckErr(*cpuMatrixC, *cpuDenseC);
+  autotest::TensorCheckErr(*cpuMatrixC, *gpuMatrixC);
+}
+
+TEST(Matrix, DSparseDMul) {
+  LOG(INFO) << "test for dense = sparse * dense matrix";
+  for (const auto dimM : {10, 100, 1000}) {
+    for (const auto dimN : {10, 100}) {
+      for (const auto dimK : {3, 10}) {
+        for (const auto nnz : {3, 10}) {
+          for (const auto FORMAT : {SPARSE_CSR}) {
+            VLOG(3) << setiosflags(std::ios::left) << std::setfill(' ')
+                    << " dimM=" << std::setw(5) << dimM
+                    << " dimN=" << std::setw(5) << dimN
+                    << " dimK=" << std::setw(5) << dimK
+                    << " nnz=" << std::setw(5) << nnz
+                    << " format=" << std::setw(5) << FORMAT;
+            testDSparseDMatrix(dimM, dimN, dimK, nnz, FORMAT);
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+  * C += A * B, A, C dense, B sparse
+  * dense = dense * sparse
+  */
+void testDDSparseMatrix(
+    size_t dimM, size_t dimN, size_t dimK, size_t nnz, SparseFormat FORMAT) {
+  real alpha = 1.0;
+  real beta = 1.0;
+  const auto cpuFunc = FunctionBase::funcRegistrar_.createByType("MulOp-CPU");
+  cpuFunc->init(FuncConfig().set("scaleAB", alpha).set("scaleT", beta));
+  const auto gpuFunc = FunctionBase::funcRegistrar_.createByType("MulOp-GPU");
+  gpuFunc->init(FuncConfig().set("scaleAB", alpha).set("scaleT", beta));
+
+  auto cpuMatrixA = Matrix::create(dimM, dimK, false, false);
+  auto gpuMatrixA = Matrix::create(dimM, dimK, false, true);
+  auto cpuDenseA = Matrix::create(dimM, dimK, false, false);
+
+  CpuSparseMatrix cpuMatrixB(dimK, dimN, nnz, FLOAT_VALUE, FORMAT, false);
+
+  GpuSparseMatrix gpuMatrixB(dimK, dimN, nnz, FLOAT_VALUE, FORMAT, false);
+
+  auto cpuDenseB = Matrix::create(dimK, dimN, false, false);
+  auto cpuMatrixC = Matrix::create(dimM, dimN, false, false);
+  auto gpuMatrixC = Matrix::create(dimM, dimN, false, true);
+  auto cpuDenseC = Matrix::create(dimM, dimN, false, false);
+
   /*matrix init*/
   hl_stream_t stream(HPPL_STREAM_1);
   cpuMatrixA->randomizeUniform();
@@ -171,27 +226,6 @@ void testDSparseDMatrix() {
   cpuDenseB->copyFrom(cpuMatrixB);
   cpuDenseC->copyFrom(*cpuMatrixC);
   hl_stream_synchronize(stream);
-
-  LOG(INFO) << "cpuMatrixA: ";
-  cpuMatrixA->print(std::cout);
-  LOG(INFO) << "cpuMatrixB: ";
-  (&cpuMatrixB)->print(std::cout);
-  LOG(INFO) << "cpuMatrixC: ";
-  cpuMatrixC->print(std::cout);
-
-  LOG(INFO) << "cpuDenseA: ";
-  cpuDenseA->print(std::cout);
-  LOG(INFO) << "cpuDenseB: ";
-  cpuDenseB->print(std::cout);
-  LOG(INFO) << "cpuDenseC: ";
-  cpuDenseC->print(std::cout);
-
-  LOG(INFO) << "gpuMatrixA: ";
-  gpuMatrixA->print(std::cout);
-  LOG(INFO) << "gpuMatrixB: ";
-  (&gpuMatrixB)->print(std::cout);
-  LOG(INFO) << "gpuMatrixC: ";
-  gpuMatrixC->print(std::cout);
 
   /*matrix mul*/
   BufferArgs cpuInputs;
@@ -215,15 +249,120 @@ void testDSparseDMatrix() {
   denseOutputs.addArg(*cpuDenseC, ADD_TO);
   cpuFunc->calc(denseInputs, denseOutputs);
 
-  gpuMatrixC_d2h->copyFrom(*gpuMatrixC, stream);
-  hl_stream_synchronize(stream);
   /*check result*/
-  // autotest::TensorCheckErr(*cpuMatrixC, *gpuMatrixC);
-  checkMatrixEqual(cpuMatrixC, cpuDenseC);
-  checkMatrixEqual(cpuMatrixC, gpuMatrixC_d2h);
+  autotest::TensorCheckErr(*cpuMatrixC, *cpuDenseC);
+  autotest::TensorCheckErr(*cpuMatrixC, *gpuMatrixC);
 }
 
-TEST(Matrix, SparseMatrixMul) {
+TEST(Matrix, DDSparseMul) {
   LOG(INFO) << "test for dense = dense * sparse matrix";
-  testDSparseDMatrix();
+  for (const auto dimM : {10, 100, 1000}) {
+    for (const auto dimN : {10, 100}) {
+      for (const auto dimK : {3, 10}) {
+        for (const auto nnz : {3, 10}) {
+          for (const auto FORMAT : {SPARSE_CSR, SPARSE_CSC}) {
+            VLOG(3) << setiosflags(std::ios::left) << std::setfill(' ')
+                    << " dimM=" << std::setw(5) << dimM
+                    << " dimN=" << std::setw(5) << dimN
+                    << " dimK=" << std::setw(5) << dimK
+                    << " nnz=" << std::setw(5) << nnz
+                    << " format=" << std::setw(5) << FORMAT;
+            testDDSparseMatrix(dimM, dimN, dimK, nnz, FORMAT);
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+  * C += A * B, A sparse, B, C dense
+  * sparse = dense * dense
+  */
+void testSparseDDMatrix(
+    size_t dimM, size_t dimN, size_t dimK, size_t nnz, SparseFormat FORMAT) {
+  real alpha = 1.0;
+  real beta = 1.0;
+  const auto cpuFunc = FunctionBase::funcRegistrar_.createByType("MulOp-CPU");
+  cpuFunc->init(FuncConfig().set("scaleAB", alpha).set("scaleT", beta));
+  const auto gpuFunc = FunctionBase::funcRegistrar_.createByType("MulOp-GPU");
+  gpuFunc->init(FuncConfig().set("scaleAB", alpha).set("scaleT", beta));
+
+  auto cpuMatrixA = Matrix::create(dimM, dimK, false, false);
+  auto gpuMatrixA = Matrix::create(dimM, dimK, false, true);
+  auto cpuDenseA = Matrix::create(dimM, dimK, false, false);
+
+  auto cpuMatrixB = Matrix::create(dimK, dimN, false, false);
+  auto gpuMatrixB = Matrix::create(dimK, dimN, false, true);
+  auto cpuDenseB = Matrix::create(dimK, dimN, false, false);
+
+  CpuSparseMatrix cpuMatrixC(dimM, dimN, nnz, FLOAT_VALUE, FORMAT, false);
+  CpuSparseMatrix gpuMatrixC_d2h(dimM, dimN, nnz, FLOAT_VALUE, FORMAT, false);
+  GpuSparseMatrix gpuMatrixC(dimM, dimN, nnz, FLOAT_VALUE, FORMAT, false);
+  CpuMatrix cpuDenseC(dimM, dimN, false);
+
+  /*matrix init*/
+  hl_stream_t stream(HPPL_STREAM_1);
+  cpuMatrixA->randomizeUniform();
+  cpuMatrixB->randomizeUniform();
+  cpuMatrixC.randomizeUniform();
+
+  gpuMatrixA->copyFrom(*cpuMatrixA, stream);
+  gpuMatrixB->copyFrom(*cpuMatrixB, stream);
+  gpuMatrixC.copyFrom(cpuMatrixC, stream);
+
+  cpuDenseA->copyFrom(*cpuMatrixA);
+  cpuDenseB->copyFrom(*cpuMatrixB);
+  cpuDenseC.copyFrom(cpuMatrixC);
+  hl_stream_synchronize(stream);
+
+  /*matrix mul*/
+  BufferArgs cpuInputs;
+  BufferArgs cpuOutputs;
+  cpuInputs.addArg(*cpuMatrixA);
+  cpuInputs.addArg(*cpuMatrixB);
+  cpuOutputs.addArg(cpuMatrixC, ADD_TO);
+  cpuFunc->calc(cpuInputs, cpuOutputs);
+
+  BufferArgs gpuInputs;
+  BufferArgs gpuOutputs;
+  gpuInputs.addArg(*gpuMatrixA);
+  gpuInputs.addArg(*gpuMatrixB);
+  gpuOutputs.addArg(gpuMatrixC, ADD_TO);
+  gpuFunc->calc(gpuInputs, gpuOutputs);
+
+  BufferArgs denseInputs;
+  BufferArgs denseOutputs;
+  denseInputs.addArg(*cpuDenseA);
+  denseInputs.addArg(*cpuDenseB);
+  denseOutputs.addArg(cpuDenseC, ADD_TO);
+  cpuFunc->calc(denseInputs, denseOutputs);
+
+  gpuMatrixC_d2h.copyFrom(gpuMatrixC, stream);
+  hl_stream_synchronize(stream);
+
+  /*check result*/
+  checkSMatrixEqual(cpuMatrixC, gpuMatrixC_d2h);
+  checkSMatrixEqual2Dense(cpuMatrixC, cpuDenseC);
+}
+
+TEST(Matrix, SparseDDMul) {
+  LOG(INFO) << "test for sparse = dense * dense matrix";
+  for (const auto dimM : {10, 100, 1000}) {
+    for (const auto dimN : {10, 100}) {
+      for (const auto dimK : {3, 10}) {
+        for (const auto nnz : {3, 10}) {
+          for (const auto FORMAT : {SPARSE_CSC, SPARSE_CSR}) {
+            VLOG(3) << setiosflags(std::ios::left) << std::setfill(' ')
+                    << " dimM=" << std::setw(5) << dimM
+                    << " dimN=" << std::setw(5) << dimN
+                    << " dimK=" << std::setw(5) << dimK
+                    << " nnz=" << std::setw(5) << nnz
+                    << " format=" << std::setw(5) << FORMAT;
+            testSparseDDMatrix(dimM, dimN, dimK, nnz, FORMAT);
+          }
+        }
+      }
+    }
+  }
 }

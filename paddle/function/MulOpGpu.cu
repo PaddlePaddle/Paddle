@@ -176,7 +176,36 @@ void MulOp<DEVICE_TYPE_GPU>(GpuSparseMatrix& out,
                             const GpuMatrix& b,
                             real scale_ab,
                             real scale_t) {
-/// todo(tianbing), implement it
+  /// todo(tianbing), clean the code
+  CHECK(a.useGpu_ && b.useGpu_) << "type not match";
+  CHECK(!out.trans_) << "trans not supported";
+  real* a_data = const_cast<real*>(a.getData());
+  real* b_data = const_cast<real*>(b.getData());
+  hl_sparse_matrix_s out_data = out.sMatrix_.get();
+  hl_trans_op_t a_trans = a.trans_ ? HPPL_OP_T : HPPL_OP_N;
+  hl_trans_op_t b_trans = b.trans_ ? HPPL_OP_T : HPPL_OP_N;
+
+  if (!a.trans_ && !b.trans_) {
+    CHECK(out.height_ == a.getHeight());
+    CHECK(out.width_ == b.getWidth());
+    CHECK(a.getWidth() == b.getHeight());
+  } else if (a.trans_ && !b.trans_) {
+    CHECK(out.height_ == a.getWidth());
+    CHECK(out.width_ == b.getWidth());
+    CHECK(a.getHeight() == b.getHeight());
+  } else if (!a.trans_ && b.trans_) {
+    CHECK(out.height_ == a.getHeight());
+    CHECK(out.width_ == b.getHeight());
+    CHECK(a.getWidth() == b.getWidth());
+  } else {
+    LOG(INFO) << "Not support";
+  }
+  int dim_m = out.height_;
+  int dim_n = out.width_;
+  int dim_k = !b.trans_ ? b.getHeight() : b.getWidth();
+  hl_sparse_matrix_mul(
+      a_data, a_trans, b_data, b_trans, out_data,
+      dim_m, dim_n, dim_k, scale_ab, scale_t);
 }
 
 }  // namespace paddle
