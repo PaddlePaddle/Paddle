@@ -169,7 +169,7 @@ Argument argument_;
 public:
 Error __must_check forward(Argument& act) {
   if (act.value->getWidth() != 1UL) {
-    return ErrorF(
+    return Error(
         "Input width for each timestep of sequence softmax should be 1");
   }
 
@@ -193,7 +193,7 @@ Error __must_check forward(Argument& act) {
 
 Error __must_check backward(Argument& act) {
   if (act.value->getWidth() != 1UL) {
-    return ErrorF(
+    return Error(
         "Input width for each timestep of sequence softmax should be 1");
   }
 
@@ -208,7 +208,7 @@ Error __must_check backward(Argument& act) {
     argument_.grad->setData(act.grad->getData() + offset, 1UL, size);
 
     Error status = softmax_.backward(argument_);
-    if (!status.isOK()) return status;
+    if (!status) return status;
   }
   return Error();
 }

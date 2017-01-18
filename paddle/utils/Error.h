@@ -23,14 +23,12 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * Status is Paddle error code. It only contain a std::string as error message.
- * Although Status inherits the std::exception, but do not throw it except you
- * know what you are doing.
+ * Error is Paddle error code. It only contain a std::string as error message.
  *
  *
- * There are two styles to return status in Paddle.
+ * There are two styles to return error in Paddle.
  *
- * 1. Return Status
+ * 1. Return Error
  *    When method return a status, the return must use `__must_check` attribute.
  *    Example as below.
  * @code{cpp}
@@ -39,29 +37,29 @@ namespace paddle {
  * Error __must_check bar() {
  *   // do something.
  *   Status s = foo();  // invoke other method return status.
- *   if (!s.isOK()) return s;
+ *   if (!s) return s;
  *   // do something else.
  *   return Status();
  * }
  * @endcode{cpp}
  *
  * 2. Return by parameter.
- *    It is another way to return a status, by using a pointer parameter.
+ *    It is another way to return an error, by using a pointer parameter.
  *    Example as below.
  *
  * @code{cpp}
  * Error bar();
  *
- * int foo(Error* status) {
+ * int foo(Error* error) {
  *   // Do something.
- *   Status s = bar();
- *   if (!s.isOK()) {
- *     *status = s;
+ *   Error s = bar();
+ *   if (!s) {
+ *     *error = s;
  *     return 0;
  *   }
  *   // Do something else.
  *   if (someInternalErrorHappend) {
- *     *status = ErrorF("Some dimension is too large, %d", dimension);
+ *     *error = Error("Some dimension is too large, %d", dimension);
  *     return 0;
  *   }
  *   // End of method.
@@ -72,7 +70,7 @@ namespace paddle {
  *   Error s;
  *   // do something.
  *   foo(&s);
- *   if (!s.isOK()) return s;
+ *   if (!s) return s;
  * }
  * @endcode{cpp}
  *
@@ -81,17 +79,31 @@ namespace paddle {
  * use log(FATAL) or CHECK to make program exit before. When we clean all
  * log(FATAL) and CHECK in Paddle, 'check' method will be removed.
  */
-class Error final : public std::exception {
+class Error final {
 public:
   /**
    * Default Status. OK
    */
-  Error() noexcept {}
+  inline Error() {}
 
   /**
-   * @brief what will return the error message. If status is OK, return nullptr.
+   * @brief Create an Error use printf syntax.
    */
-  const char* what() const noexcept override {
+  inline explicit Error(const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    constexpr size_t kBufferSize = 1024;
+    this->errMsg_.reset(new std::string(kBufferSize, 0));
+    auto sz = vsnprintf(&(*errMsg_)[0], kBufferSize, fmt, ap);
+    this->errMsg_->resize(sz);
+    this->errMsg_->shrink_to_fit();
+    va_end(ap);
+  }
+
+  /**
+   * @brief what will return the error message. If no error, return nullptr.
+   */
+  inline const char* msg() const {
     if (errMsg_) {
       return errMsg_->data();
     } else {
@@ -100,58 +112,18 @@ public:
   }
 
   /**
-   * @brief isOK
-   * @return true if OK.
+   * @brief operator bool, return True if there is no error.
    */
-  inline bool isOK() const noexcept { return errMsg_ == nullptr; }
-
+  inline operator bool() const { return !errMsg_; }
   /**
    * @brief check this status by glog.
    * @note It is a temp method used during cleaning Paddle code. It will be
    *       removed later.
    */
-  inline void check() const { CHECK(isOK()) << what(); }
-
-  /**
-   * friend method to create Error.
-   */
-  template <typename... ARGS>
-  friend Error __must_check ErrorF(const char* fmt, ARGS... args);
+  inline void check() const { CHECK(*this) << msg(); }
 
 private:
   std::shared_ptr<std::string> errMsg_;
 };
-
-/**
- * ErrorF will create an Error by printf syntax.
- *
- * Specialize this method because clang will give a warning when use printf(fmt)
- * without arguments.
- */
-template <>
-inline Error __must_check ErrorF(const char* msg) {
-  Error e;
-  e.errMsg_.reset(new std::string(msg));
-  return e;
-}
-
-/**
- * ErrorF will create an Error by printf syntax.
- *
- * Examples:
- * @code{cpp}
- * auto err = ErrorF("SomeError");
- * auto err2 = ErrorF("SomeErrorWithParameter %f %d", real_val, int_val);
- * @endcode{cpp}
- */
-template <typename... ARGS>
-inline Error __must_check ErrorF(const char* fmt, ARGS... args) {
-  constexpr size_t kBufferSize = 1024;
-  char buffer[kBufferSize];
-  snprintf(buffer, kBufferSize, fmt, args...);
-  Error e;
-  e.errMsg_.reset(new std::string(buffer));
-  return e;
-}
 
 }  // namespace paddle
