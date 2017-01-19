@@ -82,7 +82,7 @@ namespace paddle {
 class Error {
 public:
   /**
-   * Construct an no-error value.
+   * Construct a no-error value.
    */
   Error() {}
 
@@ -100,7 +100,7 @@ public:
   }
 
   /**
-   * @brief what will return the error message. If no error, return nullptr.
+   * @brief msg will return the error message. If no error, return nullptr.
    */
   const char* msg() const {
     if (msg_) {
@@ -114,6 +114,7 @@ public:
    * @brief operator bool, return True if there is no error.
    */
   operator bool() const { return !msg_; }
+
   /**
    * @brief check this status by glog.
    * @note It is a temp method used during cleaning Paddle code. It will be
