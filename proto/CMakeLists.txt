@@ -5,7 +5,8 @@ set(proto_filenames
     ParameterConfig.proto
     ParameterService.proto
     TrainerConfig.proto
-    ParameterServerConfig.proto)
+    ParameterServerConfig.proto
+    CMDArguments.proto)
 
 set(PROTO_GEN)
 set(PROTO_GEN_PY)

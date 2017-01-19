@@ -45,7 +45,7 @@ Layer::Layer(const LayerConfig& config, bool useGpu)
       needSequenceInfo_(true) {}
 
 bool Layer::init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
-  if (useGpu_ && FLAGS_parallel_nn) {
+  if (useGpu_ && config_.cmd_args().parallel_nn()) {
     /* gpu environment is specified by device property */
     deviceId_ = config_.device();
     if (deviceId_ < 0) {

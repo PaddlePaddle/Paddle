@@ -42,7 +42,7 @@ GradientMachine* GradientMachine::create(
     if (config.type() == "multi_nn") {
       /* multi submodel calculate, thread(s) will be initialized inside */
       nn = new MultiNetwork("root");
-    } else if (FLAGS_parallel_nn) {
+    } else if (config.cmd_args().parallel_nn()) {
       /* multi threads calculate */
       nn = new ParallelNeuralNetwork();
     } else {
