@@ -5,16 +5,37 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG UBUNTU_MIRROR
 RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
 
-RUN apt-get update \
-    && apt-get install -y cmake libprotobuf-dev protobuf-compiler git \
+RUN apt-get update
+
+# Paddle development tools.
+RUN apt-get install -y coreutils git cmake g++ m4 python-pip swig
+
+# Paddle data tools.
+RUN apt-get install -y wget unzip tar xz-utils bzip2 gzip sed grep graphviz
+
+# Paddle documentation tools.
+RUN apt-get install -y doxygen
+
+# Paddle code auto-reformat tools.
+RUN apt-get install -y clang-3.8 llvm-3.8 libclang-3.8-dev clang-format-3.8 clang-tidy-3.8
+
+# Paddle prerequisites.
+RUN apt-get install -y \
+    libprotobuf-dev protobuf-compiler \
     libgoogle-glog-dev libgflags-dev libgtest-dev \
-    libatlas-dev libatlas3-base g++ m4 python-pip \
-    python-protobuf python-numpy python-dev swig openssh-server \
-    wget unzip python-matplotlib tar xz-utils bzip2 gzip coreutils \
-    sed grep graphviz libjpeg-dev zlib1g-dev doxygen \
-    clang-3.8 llvm-3.8 libclang-3.8-dev clang-format-3.8 clang-tidy-3.8 \
-    && apt-get clean -y
+    libatlas-dev libatlas3-base  \
+    python-protobuf python-numpy python-dev python-matplotlib \
+    libjpeg-dev zlib1g-dev
+
+# Development environment:
+RUN apt-get install -y openssh-server
+
+RUN apt-get clean -y
+
+# Build Google test
 RUN cd /usr/src/gtest && cmake . && make && cp *.a /usr/lib
+
+# Python dependencies.
 RUN pip install -U BeautifulSoup docopt PyYAML pillow \
     sphinx sphinx_rtd_theme recommonmark jupyter
 
@@ -38,10 +59,4 @@ RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 EXPOSE 22
 
-# Jupyter Notebook directory.
-RUN mkdir /notes/
-WORKDIR "/notes"
-EXPOSE 8888
-
-RUN mkdir -p /opt/bin
-COPY ./paddle/scripts/docker/entrypoint /opt/bin/
+CMD ["/usr/sbin/sshd", "-D"]
