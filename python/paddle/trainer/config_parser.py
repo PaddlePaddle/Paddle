@@ -1610,6 +1610,38 @@ class PriorBoxLayer(LayerBase):
         self.config.size = size
 
 
+@config_layer('multibox_loss')
+class MultiBoxLossLayer(LayerBase):
+    def __init__(self, name, inputs, input_num, num_classes, loc_weight,
+                 overlap_threshold, neg_pos_ratio, neg_overlap, background_id):
+        super(MultiBoxLossLayer, self).__init__(name, 'multibox_loss', 0,
+                                                inputs)
+        config_assert(
+            len(inputs) == (input_num * 2 + 2),
+            'MultiBoxLossLayer does not have enough inputs')
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].multibox_loss_conf.num_classes = num_classes
+        self.config.inputs[0].multibox_loss_conf.loc_weight = loc_weight
+        self.config.inputs[
+            0].multibox_loss_conf.overlap_threshold = overlap_threshold
+        self.config.inputs[0].multibox_loss_conf.neg_pos_ratio = neg_pos_ratio
+        self.config.inputs[0].multibox_loss_conf.neg_overlap = neg_overlap
+        self.config.inputs[0].multibox_loss_conf.background_id = background_id
+        self.config.inputs[0].multibox_loss_conf.input_num = input_num
+        self.config.size = 1
+
+
+@config_layer('normalize')
+class NormalizeLayer(LayerBase):
+    def __init__(self, name, inputs, size, num_filters, **xargs):
+        super(NormalizeLayer, self).__init__(name, 'normalize', 0, inputs,
+                                             **xargs)
+        self.config.size = size
+        self.config.num_filters = num_filters
+        self.create_input_parameter(0, num_filters, [num_filters, 1])
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self, name, size, height=None, width=None, device=None):
