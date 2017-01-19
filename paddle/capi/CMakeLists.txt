@@ -55,6 +55,10 @@ add_custom_target(paddle_capi_whole ALL
 set_target_properties(paddle_capi_whole
   PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/${capi_whole_library})
 
+add_library(paddle_capi_shared SHARED ${CAPI_SOURCES})
+target_include_directories(paddle_capi_shared PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+link_paddle_exe(paddle_capi_shared)
+
 # install library & headers.
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${capi_whole_library} DESTINATION lib)
 install(FILES ${CAPI_HEADER} DESTINATION include/paddle)

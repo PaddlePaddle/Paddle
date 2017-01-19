@@ -38,7 +38,7 @@ NeuralNetwork* newCustomNerualNetwork(const std::string& name,
 }  // namespace paddle
 
 extern "C" {
-int PDGradientMachineCreateForPredict(PD_GradiemtMachine* machine,
+int PDGradientMachineCreateForPredict(PD_GradientMachine* machine,
                                       void* modelConfigProtobuf,
                                       int size) {
   if (modelConfigProtobuf == nullptr) return kPD_NULLPTR;
@@ -55,12 +55,12 @@ int PDGradientMachineCreateForPredict(PD_GradiemtMachine* machine,
   return kPD_NO_ERROR;
 }
 
-int PDGradientMachineDestroy(PD_GradiemtMachine machine) {
+int PDGradientMachineDestroy(PD_GradientMachine machine) {
   delete cast(machine);
   return kPD_NO_ERROR;
 }
 
-int PDGradientMachineLoadParameterFromDisk(PD_GradiemtMachine machine,
+int PDGradientMachineLoadParameterFromDisk(PD_GradientMachine machine,
                                            const char* path) {
   auto m = cast(machine);
   if (m == nullptr || path == nullptr || m->machine == nullptr)
@@ -69,7 +69,7 @@ int PDGradientMachineLoadParameterFromDisk(PD_GradiemtMachine machine,
   return kPD_NO_ERROR;
 }
 
-int PDGradientMachineForward(PD_GradiemtMachine machine,
+int PDGradientMachineForward(PD_GradientMachine machine,
                              PD_Arguments inArgs,
                              PD_Arguments outArgs,
                              bool isTrain) {
@@ -83,10 +83,10 @@ int PDGradientMachineForward(PD_GradiemtMachine machine,
   return kPD_NO_ERROR;
 }
 
-int PDGradientMachineCreateSharedParam(PD_GradiemtMachine origin,
+int PDGradientMachineCreateSharedParam(PD_GradientMachine origin,
                                        void* modelConfigProtobuf,
                                        int size,
-                                       PD_GradiemtMachine* slave) {
+                                       PD_GradientMachine* slave) {
   auto o = cast(origin);
   if (origin == nullptr || slave == nullptr || o->machine == nullptr) {
     return kPD_NULLPTR;
