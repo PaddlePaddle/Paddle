@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <memory>
 #include <string>
@@ -113,7 +114,7 @@ public:
   /**
    * @brief operator bool, return True if there is no error.
    */
-  operator bool() const { return !msg_; }
+  operator bool() const { return msg_ == nullptr; }
 
   /**
    * @brief check this status by glog.
