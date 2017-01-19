@@ -21,6 +21,7 @@ ELSE(WIN32)
         SET(MACOS_VERSION ${VERSION})
         SET(HOST_SYSTEM "macosx")
     ELSE(APPLE)
+
         IF(EXISTS "/etc/issue")
             FILE(READ "/etc/issue" LINUX_ISSUE)
             IF(LINUX_ISSUE MATCHES "CentOS")
@@ -31,6 +32,14 @@ ELSE(WIN32)
                 SET(HOST_SYSTEM "ubuntu")
             ENDIF()
         ENDIF(EXISTS "/etc/issue")
+
+        IF(EXISTS "/etc/redhat-release")
+            FILE(READ "/etc/redhat-release" LINUX_ISSUE)
+            IF(LINUX_ISSUE MATCHES "CentOS")
+                SET(HOST_SYSTEM "centos")
+            ENDIF()
+        ENDIF(EXISTS "/etc/redhat-release")
+
     ENDIF(APPLE)
 ENDIF(WIN32)
 
@@ -47,7 +56,7 @@ SET(EXTERNAL_PROJECT_LOG_ARGS
     LOG_DOWNLOAD    0     # Wrap download in script to log output
     LOG_UPDATE      1     # Wrap update in script to log output
     LOG_CONFIGURE   1     # Wrap configure in script to log output
-    LOG_BUILD       1     # Wrap build in script to log output
+    LOG_BUILD       0     # Wrap build in script to log output
     LOG_TEST        1     # Wrap test in script to log output
-    LOG_INSTALL     1     # Wrap install in script to log output
+    LOG_INSTALL     0     # Wrap install in script to log output
 )
