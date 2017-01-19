@@ -193,7 +193,8 @@ public:
       forwardOneInput(l);
     }
 
-    activation_->forward(sampleOut_);
+    auto status = activation_->forward(sampleOut_);
+    status.check();
 
     forwardCost();
   }
@@ -207,7 +208,8 @@ public:
 
     backwardCost();
 
-    activation_->backward(sampleOut_);
+    auto status = activation_->backward(sampleOut_);
+    status.check();
 
     if (biases_->getWGrad()) {
       backwardBias(callback);
