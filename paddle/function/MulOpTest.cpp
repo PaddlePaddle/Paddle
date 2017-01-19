@@ -76,12 +76,12 @@ void testDDDMatrix(bool transa, bool transb, int dimM, int dimN, int dimK) {
 
 TEST(Matrix, DDDMul) {
   LOG(INFO) << "test for dense = dense * dense matrix";
-  for (auto transa : {false, true}) {
-    for (auto transb : {false, true}) {
-      for (auto dimM : {1, 10, 100}) {
-        for (auto dimN : {1, 10}) {
-          for (auto dimK : {8}) {
-            if (true == transa && true == transb) {
+  for (const auto transa : {false, true}) {
+    for (const auto transb : {false, true}) {
+      for (const auto dimM : {1, 10, 100}) {
+        for (const auto dimN : {1, 10}) {
+          for (const auto dimK : {8}) {
+            if (transa && transb) {
               continue;
             }
             VLOG(3) << setiosflags(std::ios::left) << std::setfill(' ')
@@ -89,7 +89,6 @@ TEST(Matrix, DDDMul) {
                     << " dimM=" << std::setw(5) << dimM
                     << " dimN=" << std::setw(5) << dimN
                     << " dimK=" << std::setw(5) << dimK;
-
             testDDDMatrix(transa, transb, dimM, dimN, dimK);
           }
         }
