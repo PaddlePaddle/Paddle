@@ -191,8 +191,8 @@ class SequenceIdArg : public BufferArg {
 public:
   SequenceIdArg(const TensorShape& shape, ArgType argType = UNSPECIFIED)
       : BufferArg(VALUE_TYPE_INT32, shape, argType) {
-    CHECK_EQ(shape_.ndims(), (size_t)1);
-    CHECK_GT(shape_[0], 1);
+    CHECK_EQ(shape_.ndims(), 1UL);
+    CHECK_GT(shape_[0], 1UL);
     numSeqs_ = shape_[0] - 1;
   }
 
@@ -201,7 +201,7 @@ public:
                 ArgType argType = UNSPECIFIED)
       : BufferArg(buf, VALUE_TYPE_INT32, shape, argType) {
     bufferType_ = TENSOR_SEQUENCE_ID;
-    CHECK_EQ(shape_.ndims(), (size_t)1);
+    CHECK_EQ(shape_.ndims(), 1UL);
     numSeqs_ = shape_[0] - 1;
   }
 
@@ -280,9 +280,9 @@ public:
         type_(type) {
     bufferType_ = TENSOR_SPARSE;
     CHECK((valueType == VALUE_TYPE_FLOAT) || (valueType == VALUE_TYPE_DOUBLE));
-    CHECK_EQ(shape_.ndims(), (size_t)2);
-    CHECK_EQ(row_.shape().ndims(), (size_t)1);
-    CHECK_EQ(col_.shape().ndims(), (size_t)1);
+    CHECK_EQ(shape_.ndims(), 2UL);
+    CHECK_EQ(row_.shape().ndims(), 1UL);
+    CHECK_EQ(col_.shape().ndims(), 1UL);
     if (format == SPARSE_CSR_FORMAT) {
       CHECK_EQ(nnz, col.shape()[0]);
     } else if (format == SPARSE_CSC_FORMAT) {

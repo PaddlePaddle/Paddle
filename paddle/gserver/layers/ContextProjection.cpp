@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "ContextProjection.h"
+#include "paddle/function/Function.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
