@@ -171,6 +171,33 @@ def config_func(func):
     g_config_funcs[func.func_name] = func
     return func
 
+def call_only_once(func):
+    """
+    Some global function should be called only once in model config. For
+    history reason, global momentum is set with default_momentum, but
+    momentum also can be set as property of optimizer in
+    trainer_config_helper as well. This decorator tries to fix it.
+    Discussion: https://github.com/PaddlePaddle/Paddle/pull/1129
+    """
+
+    assert not hasattr(func, "is_called"), \
+        func.func_name + " already has is_called attribute"
+    setattr(func, "is_called", False)
+
+    def wrapper(*args, **kargs):
+        assert not func.is_called, \
+              "executing " + func.func_name + " more than one time"
+        setattr(func, "is_called", True)
+
+        return func(*args, **kargs)
+
+    # rename wrapper to func.func_name for @config_func, otherwise the
+    # function decorated by call_only_once can not be used in model
+    # config file.
+    wrapper.func_name = func.func_name
+
+    return wrapper
+
 
 # decorator for indicating a class which can be used in config file
 def config_class(cls):
@@ -1905,8 +1932,8 @@ class BatchNormLayer(LayerBase):
         image_conf = self.config.inputs[0].image_conf
         parse_image(self.inputs[0].image, input_layer.name, image_conf)
 
-        # Only pass the width and height of input to batch_norm layer 
-        # when either of it is non-zero. 
+        # Only pass the width and height of input to batch_norm layer
+        # when either of it is non-zero.
         if input_layer.width != 0 or input_layer.height != 0:
             self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
                                image_conf.channels, False)
@@ -3193,66 +3220,77 @@ def Parameter(name,
 
 
 @config_func
+@call_only_once
 def default_initial_std(val):
     global g_default_initial_std
     g_default_initial_std = val
 
 
 @config_func
+@call_only_once
 def default_initial_mean(val):
     global g_default_initial_mean
     g_default_initial_mean = val
 
 
 @config_func
+@call_only_once
 def default_initial_strategy(val):
     global g_default_initial_strategy
     g_default_initial_strategy = val
 
 
 @config_func
+@call_only_once
 def default_initial_smart(val):
     global g_default_initial_smart
     g_default_initial_smart = val
 
 
 @config_func
+@call_only_once
 def default_momentum(val):
     global g_default_momentum
     g_default_momentum = val
 
 
 @config_func
+@call_only_once
 def default_decay_rate(val):
     global g_default_decay_rate
     g_default_decay_rate = val
 
 
 @config_func
+@call_only_once
 def default_num_batches_regularization(val):
     global g_default_num_batches_regularization
     g_default_num_batches_regularization = val
 
 
 @config_func
+@call_only_once
 def default_gradient_clipping_threshold(val):
     global g_default_gradient_clipping_threshold
     g_default_gradient_clipping_threshold = val
 
 
 @config_func
+@call_only_once
 def default_device(val):
     global g_default_device
     g_default_device = val
 
 
 @config_func
+@call_only_once
 def default_update_hooks(val):
     global g_default_update_hooks
     g_default_update_hooks = val
 
 
 @config_func
+@call_only_once
 def default_compact_func(val):
     global g_default_compact_func
     g_default_compact_func = val
