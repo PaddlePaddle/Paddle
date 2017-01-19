@@ -79,33 +79,32 @@ namespace paddle {
  * use log(FATAL) or CHECK to make program exit before. When we clean all
  * log(FATAL) and CHECK in Paddle, 'check' method will be removed.
  */
-class Error final {
+class Error {
 public:
   /**
-   * Default Status. OK
+   * Construct an no-error value.
    */
-  inline Error() {}
+  Error() {}
 
   /**
    * @brief Create an Error use printf syntax.
    */
-  inline explicit Error(const char* fmt, ...) {
+  explicit Error(const char* fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     constexpr size_t kBufferSize = 1024;
-    this->errMsg_.reset(new std::string(kBufferSize, 0));
-    auto sz = vsnprintf(&(*errMsg_)[0], kBufferSize, fmt, ap);
-    this->errMsg_->resize(sz);
-    this->errMsg_->shrink_to_fit();
+    char buffer[kBufferSize];
+    vsnprintf(buffer, kBufferSize, fmt, ap);
+    this->msg_.reset(new std::string(buffer));
     va_end(ap);
   }
 
   /**
    * @brief what will return the error message. If no error, return nullptr.
    */
-  inline const char* msg() const {
-    if (errMsg_) {
-      return errMsg_->data();
+  const char* msg() const {
+    if (msg_) {
+      return msg_->c_str();
     } else {
       return nullptr;
     }
@@ -114,16 +113,16 @@ public:
   /**
    * @brief operator bool, return True if there is no error.
    */
-  inline operator bool() const { return !errMsg_; }
+  operator bool() const { return !msg_; }
   /**
    * @brief check this status by glog.
    * @note It is a temp method used during cleaning Paddle code. It will be
    *       removed later.
    */
-  inline void check() const { CHECK(*this) << msg(); }
+  void check() const { CHECK(*this) << msg(); }
 
 private:
-  std::shared_ptr<std::string> errMsg_;
+  std::shared_ptr<std::string> msg_;
 };
 
 }  // namespace paddle
