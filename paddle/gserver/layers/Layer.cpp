@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Util.h"
-
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Error.h"
 #include "paddle/utils/Logging.h"
+#include "paddle/utils/ProtoCMDArgs.h"
+#include "paddle/utils/Util.h"
 
 #include "AddtoLayer.h"
 #include "CRFLayer.h"
@@ -95,7 +95,8 @@ bool Layer::init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
 
   /* specify the activation function according to the configuration */
   std::string action_type = config_.active_type();
-  activation_.reset(ActivationFunction::create(action_type));
+  activation_.reset(
+      ActivationFunction::create(action_type, config_.cmd_args()));
   CHECK(activation_);
 
   initNeedFlags();
@@ -130,15 +131,21 @@ void Layer::resetSpecifyOutput(Argument& output,
                                bool isGradClean) {
   SetDevice device(output.deviceId);
 
-  Matrix::resizeOrCreate(
-      output.value, height, width, /* trans */ false, useGpu(output.deviceId));
+  Matrix::resizeOrCreate(output.value,
+                         height,
+                         width,
+                         /* trans */ false,
+                         useGPU(config_, output.deviceId));
   if (isValueClean) {
     output.value->zeroMem();
   }
 
   if (passType_ != PASS_TEST && needGradient()) {
-    Matrix::resizeOrCreate(
-        output.grad, height, width, /* trans */ false, useGpu(output.deviceId));
+    Matrix::resizeOrCreate(output.grad,
+                           height,
+                           width,
+                           /* trans */ false,
+                           useGPU(config_, output.deviceId));
     if (isGradClean) {
       output.grad->zeroMem();
     }
@@ -234,7 +241,7 @@ void Layer::waitAndMergeOutputGrad() {
                          output_.grad->getHeight(),
                          output_.grad->getWidth(),
                          /* trans */ false,
-                         useGpu(output_.deviceId));
+                         useGPU(config_, output_.deviceId));
 
   for (; i != outputOtherDevice_.size(); i++) {
     tmpGrad_->copyFrom(*outputOtherDevice_[i].grad, HPPL_STREAM_1);
@@ -388,15 +395,17 @@ void Layer::forwardDropOut() {
                            outV->getHeight(),
                            outV->getWidth(),
                            false,
-                           useGpu(deviceId_));
+                           useGPU(config_, deviceId_));
     dropOutMask_->randomizeUniform();  // generate a uniform random matrix
     dropOutMask_->biggerThanScalar(config_.drop_rate());  // random mask
     outV->dotMul(*outV, *dropOutMask_);                   // dropout
   } else if (passType_ == PASS_GC) {
     // only initialize once
     if (!dropOutMask_) {
-      dropOutMask_ = Matrix::create(
-          outV->getHeight(), outV->getWidth(), false, useGpu(deviceId_));
+      dropOutMask_ = Matrix::create(outV->getHeight(),
+                                    outV->getWidth(),
+                                    false,
+                                    useGPU(config_, deviceId_));
       // We use cpu matrix to generate mask so that the mask
       // will be same for both gpu version and cpu version.
       // This will help unittest to make sure they have same result.

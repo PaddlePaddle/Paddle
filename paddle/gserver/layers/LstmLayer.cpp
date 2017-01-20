@@ -93,7 +93,7 @@ bool LstmLayer::init(const LayerMap &layerMap,
   reversed_ = config_.reversed();
 
   // create IdentityActivation for using drop_rate
-  activation_.reset(ActivationFunction::create(""));
+  activation_.reset(ActivationFunction::create("", config_.cmd_args()));
 
   LstmCompute::init(config_);
   useBatch_ = true;

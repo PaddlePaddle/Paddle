@@ -124,6 +124,10 @@ void TrainerConfigHelper::updateConfigFromFlags() {
   for (auto paramConf : *m->conf.mutable_model_config()->mutable_parameters()) {
     updateCMDArgs(&paramConf);
   }
+  for (auto evaluatorConf :
+       *m->conf.mutable_model_config()->mutable_evaluators()) {
+    updateCMDArgs(&evaluatorConf);
+  }
 }
 
 void TrainerConfigHelper::disableRemoteSparseUpdater() {

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "DataLayer.h"
-
+#include "paddle/utils/ProtoCMDArgs.h"
 namespace paddle {
 
 REGISTER_LAYER(data, DataLayer);
@@ -30,7 +30,7 @@ void DataLayer::copyDataToOutput(Argument& output) {
       if (!output.value) {
         output.value = data_.value->clone(data_.value->getHeight(),
                                           data_.value->getWidth(),
-                                          useGpu(output.deviceId));
+                                          useGPU(config_, output.deviceId));
       } else {
         output.value->resize(data_.value->getHeight(), data_.value->getWidth());
       }
@@ -41,11 +41,11 @@ void DataLayer::copyDataToOutput(Argument& output) {
                              data_.grad->getHeight(),
                              data_.grad->getWidth(),
                              /* trans= */ false,
-                             useGpu(output.deviceId));
+                             useGPU(config_, output.deviceId));
     }
     if (data_.ids) {
       IVector::resizeOrCreate(
-          output.ids, data_.ids->getSize(), useGpu(output.deviceId));
+          output.ids, data_.ids->getSize(), useGPU(config_, output.deviceId));
       output.ids->copyFrom(*data_.ids);
     }
   }

@@ -471,6 +471,9 @@ message EvaluatorConfig {
   // Used by ChunkEvaluator
   // chunk of these types are not counted
   repeated int32 excluded_chunk_types = 12;
+
+  // To pass command line through Paddle codes.
+  optional CMDArguments cmd_args = 13;
 }
 
 message LinkConfig {

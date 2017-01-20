@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/gserver/evaluators/Evaluator.h"
-#include "paddle/utils/Stat.h"
-
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
+#include "paddle/utils/ProtoCMDArgs.h"
+#include "paddle/utils/Stat.h"
 
 DECLARE_int32(trainer_id);
 
@@ -72,10 +72,11 @@ public:
       CHECK_EQ((size_t)1, weight->getWidth());
     }
 
-    const MatrixPtr errorMat = Matrix::create(output->getHeight(),
-                                              1,
-                                              /* trans= */ false,
-                                              useGpu(arguments[0].deviceId));
+    const MatrixPtr errorMat =
+        Matrix::create(output->getHeight(),
+                       1,
+                       /* trans= */ false,
+                       useGPU(config_, arguments[0].deviceId));
     errorMat->zeroMem();
     if (label != nullptr) {
       errorMat->classificationError(*output, *label);
