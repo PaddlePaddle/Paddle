@@ -71,7 +71,7 @@ def fetch(category=None, directory=None):
 
     if directory is None:
         directory = os.path.expanduser(
-            os.path.join('~', 'paddle_data', 'amazon'))
+            os.path.join('~', 'paddle_data', 'semantic'))
 
     if not os.path.exists(directory):
         os.makedirs(directory)
