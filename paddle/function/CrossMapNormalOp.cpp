@@ -112,11 +112,31 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
 }
 
 /**
- * \brief {o_0, o_1} = calc(i_0)
+ * \brief Normalization with across maps.
  *
- * \param inputs[0] input value.
- * \param outputs[0] output value.
- * \param outputs[1] denoms.
+ * This Function comes from the paper
+ * "ImageNet Classification with Deep Convolutional Neural Networks".
+ *
+ * The original formula is:
+ *
+ *                                 Input(x, y)
+ * Output(x, y) = ------------------------------------------------
+ *                       alpha   /min(F, f-[N/2] + N)
+ *                  (1 + ----- * |    (Input(x, y))^2 ) ^ (beta)
+ *                         N     /max(0, f-[N/2])
+ *
+ * Argument in the Function:
+ * \param size_      represent N
+ * \param scale_     represent alpha / N
+ * \param pow_       represent beta
+ * \param inputs[0]  represent Input
+ * \param outputs[0] represent Output
+ * \param outputs[1] represent The denominator in the formula(except beta)
+ *
+ * note:
+ * Save output[1] is to simplify the backward calculation.
+ * So, if only consider the forward calculation, we can optimize to
+ * remove the output[1].
  */
 template <DeviceType Device>
 class CrossMapNormalFunc : public FunctionBase {
@@ -161,13 +181,27 @@ private:
 };
 
 /**
- * \brief {o_0} = calc(i_0, i_1, i_2, i_3)
+ * \brief Backward calculation for normalization with across maps.
  *
- * \param inputs[0] input value.
- * \param inputs[1] output value.
- * \param inputs[2] output grad.
- * \param inputs[3] denoms.
- * \param outputs[0] input grad.
+ * The implementation of this Function is derived from the
+ * CrossMapNormalFunc implementation.
+ *
+ * InputGrad = OutputGrad * denoms ^ (-beta)
+ *    /
+ *  + | (OutputGrad * OutputValue * (-2 * alpha * beta) / denoms) * InputValue
+ *    /
+ *
+ * Argument in the Function:
+ * \param size_      represent N
+ * \param scale_     represent alpha / N
+ * \param pow_       represent beta
+ * \param inputs[0]  represent InputValue, inputs[0] of CrossMapNormalFunc
+ * \param inputs[1]  represent OutputValue, outputs[0] of CrossMapNormalFunc
+ * \param inputs[2]  represent OutputGrad
+ * \param inputs[3]  represent denoms, outputs[1] of CrossMapNormalFunc
+ *                   This is the intermediate result that is
+ *                   preserved in the forward calculation.
+ * \param outputs[0] represent InputGrad
  */
 template <DeviceType Device>
 class CrossMapNormalGradFunc : public FunctionBase {
