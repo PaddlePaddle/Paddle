@@ -13,3 +13,6 @@ data/pred.txt
 dataprovider_copy_1.py
 train.log
 output
+*.w0
+*.wbias
+*.pkl
