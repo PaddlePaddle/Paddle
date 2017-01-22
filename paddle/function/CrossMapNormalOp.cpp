@@ -120,25 +120,36 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
  * The original formula is:
  *
  *                                 Input(x, y)
- * Output(x, y) = ------------------------------------------------
- *                       alpha   /min(F, f-[N/2] + N)
- *                  (1 + ----- * |    (Input(x, y))^2 ) ^ (beta)
- *                         N     /max(0, f-[N/2])
+ * Output(x, y) = ---------------------------------------------
+ *                               -- upper
+ *                  (k + alpha * >  (Input(x, y))^2) ^ (beta)
+ *                               -- lower
  *
- * Argument in the Function:
- * Input is NCHW format, while input.shape.ndims() is equal 4.
+ * upper is `min(F, f-[N/2] + N)`
+ * lower if `max(0, f-[N/2])`
+ *
+ * Function implementation:
+ *
+ * inputs and outpus is NCHW format, while input.shape.ndims() is equal 4.
  * And the meaning of each dimension(0-3) is respectively batch size,
  * feature maps, rows and columns.
- * The above formula is for each image.
+ *
+ * Input and Output in the above formula is for each map of one image, and
+ * Input(x, y), Output(x, y) represents an element in an image.
+ *
+ * In the implementation of Function, k is equal to 1,
+ * so Function has no argument for k.
+ *
+ * Function Arguments:
  *
  * \param size_      represent N
- * \param scale_     represent alpha / N
+ * \param scale_     represent alpha
  * \param pow_       represent beta
  * \param inputs[0]  represent Input
  * \param outputs[0] represent Output
  * \param outputs[1] represent The denominator in the formula(except beta)
  *
- * note:
+ * Note:
  * Save output[1] is to simplify the backward calculation.
  * TODO, if only consider the forward calculation, we can optimize to
  * remove the output[1].
