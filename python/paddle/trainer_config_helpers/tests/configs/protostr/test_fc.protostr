@@ -50,6 +50,7 @@ layers {
 parameters {
   name: "___fc_layer_0__.w0"
   size: 10000
+  momentum: 0.9
   initial_mean: 0.0
   initial_std: 0.1
   dims: 100
@@ -60,6 +61,7 @@ parameters {
 parameters {
   name: "___selective_fc_layer_0__.w0"
   size: 10000
+  momentum: 0.9
   initial_mean: 0.0
   initial_std: 0.1
   dims: 100
@@ -71,6 +73,7 @@ parameters {
 parameters {
   name: "___selective_fc_layer_0__.wbias"
   size: 100
+  momentum: 0.9
   initial_mean: 0.0
   initial_std: 0.0
   dims: 1
