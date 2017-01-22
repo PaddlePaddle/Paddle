@@ -185,8 +185,9 @@ def call_only_once(func):
     setattr(func, "is_called", False)
 
     def wrapper(*args, **kargs):
-        assert not func.is_called, \
-              "executing " + func.func_name + " more than one time"
+        if func.is_called:
+            logger.warning(
+                "executing " + func.func_name + " more than one time")
         setattr(func, "is_called", True)
 
         return func(*args, **kargs)
