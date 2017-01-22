@@ -29,17 +29,12 @@ IF(WIN32)
         "${PROTOBUF_INSTALL_DIR}/lib/libprotoc.lib" CACHE FILEPATH "protoc library." FORCE)
   SET(PROTOBUF_PROTOC_EXECUTABLE "${PROTOBUF_INSTALL_DIR}/bin/protoc.exe" CACHE FILEPATH "protobuf executable." FORCE)
 ELSE(WIN32)
-  IF(${HOST_SYSTEM} STREQUAL "centos")
-    SET(LIB "lib64")
-  ELSE()
-    SET(LIB "lib")
-  ENDIF()
   SET(PROTOBUF_LITE_LIBRARY
-        "${PROTOBUF_INSTALL_DIR}/${LIB}/libprotobuf-lite.a" CACHE FILEPATH "protobuf lite library." FORCE)
+        "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite.a" CACHE FILEPATH "protobuf lite library." FORCE)
   SET(PROTOBUF_LIBRARY
-        "${PROTOBUF_INSTALL_DIR}/${LIB}/libprotobuf.a" CACHE FILEPATH "protobuf library." FORCE)
+        "${PROTOBUF_INSTALL_DIR}/lib/libprotobuf.a" CACHE FILEPATH "protobuf library." FORCE)
   SET(PROTOBUF_PROTOC_LIBRARY
-        "${PROTOBUF_INSTALL_DIR}/${LIB}/libprotoc.a" CACHE FILEPATH "protoc library." FORCE)
+        "${PROTOBUF_INSTALL_DIR}/lib/libprotoc.a" CACHE FILEPATH "protoc library." FORCE)
   SET(PROTOBUF_PROTOC_EXECUTABLE "${PROTOBUF_INSTALL_DIR}/bin/protoc" CACHE FILEPATH "protobuf executable." FORCE)
 ENDIF(WIN32)
 
@@ -58,6 +53,7 @@ ExternalProject_Add(
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
+    -DCMAKE_INSTALL_LIBDIR=lib
 )
 
 LIST(APPEND external_project_dependencies protobuf)
