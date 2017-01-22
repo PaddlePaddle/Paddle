@@ -126,6 +126,11 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
  *                         N     /max(0, f-[N/2])
  *
  * Argument in the Function:
+ * Input is NCHW format, while input.shape.ndims() is equal 4.
+ * And the meaning of each dimension(0-3) is respectively batch size,
+ * feature maps, rows and columns.
+ * The above formula is for each image.
+ *
  * \param size_      represent N
  * \param scale_     represent alpha / N
  * \param pow_       represent beta
@@ -135,7 +140,7 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
  *
  * note:
  * Save output[1] is to simplify the backward calculation.
- * So, if only consider the forward calculation, we can optimize to
+ * TODO, if only consider the forward calculation, we can optimize to
  * remove the output[1].
  */
 template <DeviceType Device>
@@ -192,6 +197,9 @@ private:
  *    /
  *
  * Argument in the Function:
+ * The data of inputs/outputs format is the same as the forward interface
+ * and is NCHW.
+ *
  * \param size_      represent N
  * \param scale_     represent alpha / N
  * \param pow_       represent beta
