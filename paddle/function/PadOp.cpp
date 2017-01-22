@@ -79,10 +79,10 @@ void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
  *
  * Argument in this Function:
  * \param pad_    A struct object contains the padding size in each dimension.
- *                It has six integers. The channelStart and channelEnd indicates
+ *                It has six integers. The channelStart and channelEnd indicate
  *                how many zeros to add before and after the input in channel
- *                dimension. And the heightStart and heightEnd indicates padding
- *                in height dimension. The widthStart and widthEnd indicates the
+ *                dimension. And the heightStart and heightEnd indicate padding
+ *                in height dimension. The widthStart and widthEnd indicate the
  *                padding in width dimension.
  * \param inputs  A 4D tensor, only one input.
  * \param outputs A 4D tensor, the output value after padding.

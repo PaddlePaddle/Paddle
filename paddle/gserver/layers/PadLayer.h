@@ -19,8 +19,9 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * @brief response normalization across feature maps
- * namely normalize in number of size_ channels
+ * \brief  This layer pads zeros to inputs according to the specify dimension.
+ *         The input and output is a 4D tensor. Padding zeros from the 2nd to
+ *         the 4th dimenstion according padc_, padh_ and padw_.
  */
 class PadLayer : public Layer {
 public:
