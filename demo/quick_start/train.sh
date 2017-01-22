@@ -31,3 +31,4 @@ paddle train \
   --show_parameter_stats_period=100 \
   --test_all_data_in_one_period=1 \
   2>&1 | tee 'train.log'
+paddle usage -l "train.log" -e $? -n "quick_start_${cfg}" >/dev/null 2>&1

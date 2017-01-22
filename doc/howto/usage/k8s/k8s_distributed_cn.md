@@ -159,6 +159,8 @@ docker build -t your_repo/paddle:mypaddle .
 docker push  your_repo/paddle:mypaddle
 ```
 
+注意上述命令中`your_repo`表示读者所使用的Docker镜像仓库地址，读者需要替换成自己使用的仓库地址。下文使用`your_repo/paddle:mypaddle`这个地址来表示此步骤所构建出的镜像。
+
 ### 上传训练文件
 
 本文使用PaddlePaddle官方的[recommendation demo](http://www.paddlepaddle.org/doc/demo/index.html#recommendation)作为这次训练的内容，我们将训练文件与数据放在一个job name命名的目录中，上传到MFS共享存储。完成后MFS上的文件内容大致如下：
@@ -243,6 +245,8 @@ spec:
 `CONF_PADDLE_PORTS_NUM_SPARSE`表示稀疏更新的端口数量，也就是`--ports_num_for_sparse`参数。
 
 `CONF_PADDLE_GRADIENT_NUM`表示训练节点数量，即`--num_gradient_servers`参数
+
+这些参数的具体描述，读者可以查看[这里](http://www.paddlepaddle.org/doc/ui/cmd_argument/detail_introduction.html#parameter-server-and-distributed-communication)。
 
 编写完YAML文件后，可以使用Kubernetes的命令行工具创建job。
 

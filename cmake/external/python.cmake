@@ -26,7 +26,12 @@ IF(PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND)
     find_python_module(wheel REQUIRED)
     find_python_module(google.protobuf REQUIRED)
     FIND_PACKAGE(NumPy REQUIRED)
+    IF(${PY_GOOGLE.PROTOBUF_VERSION} AND ${PY_GOOGLE.PROTOBUF_VERSION} VERSION_LESS "3.0.0")
+        MESSAGE(FATAL_ERROR "Found Python Protobuf ${PY_GOOGLE.PROTOBUF_VERSION} < 3.0.0, "
+        "please use pip to upgrade protobuf. pip install -U protobuf")
+    ENDIF()
 ELSE(PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND)
+    MESSAGE(FATAL_ERROR "Please install python 2.7 before building PaddlePaddle.")
     ##################################### PYTHON ########################################
     SET(PYTHON_SOURCES_DIR ${THIRD_PARTY_PATH}/python)
     SET(PYTHON_INSTALL_DIR ${THIRD_PARTY_PATH}/install/python)

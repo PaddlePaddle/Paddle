@@ -41,6 +41,6 @@ public:
   void backward(const UpdateCallback& callback = nullptr);
 
 protected:
-  Dims dims_;
+  TensorShape shape_;
 };
 }  // namespace paddle

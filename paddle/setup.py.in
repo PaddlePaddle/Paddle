@@ -70,6 +70,6 @@ setup(name="py_paddle",
   include_dirs = include_dirs,
   install_requires = [
     'numpy>=1.8.0',      # The numpy is required.
-    'protobuf>=2.4.1' # The paddle protobuf version
+    'protobuf>=3.0.0'    # The paddle protobuf version
   ],
 )
