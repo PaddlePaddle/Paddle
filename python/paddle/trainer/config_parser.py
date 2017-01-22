@@ -171,6 +171,7 @@ def config_func(func):
     g_config_funcs[func.func_name] = func
     return func
 
+
 def call_only_once(func):
     """
     Some global function should be called only once in model config. For
@@ -186,8 +187,8 @@ def call_only_once(func):
 
     def wrapper(*args, **kargs):
         if func.is_called:
-            logger.warning(
-                "executing " + func.func_name + " more than one time")
+            logger.warning("executing " + func.func_name +
+                           " more than one time")
         setattr(func, "is_called", True)
 
         return func(*args, **kargs)
