@@ -6,22 +6,16 @@ passed to C++ side of Paddle.
 
 The user api could be simpler and carefully designed.
 """
-import py_paddle.swig_paddle as api
-from py_paddle import DataProviderConverter
-import paddle.trainer.PyDataProvider2 as dp
-import numpy as np
 import random
-from mnist_util import read_from_mnist
+
+import numpy as np
+import paddle.v2 as paddle_v2
+import paddle.trainer.PyDataProvider2 as dp
+import py_paddle.swig_paddle as api
 from paddle.trainer_config_helpers import *
+from py_paddle import DataProviderConverter
 
-
-def optimizer_config():
-    settings(
-        learning_rate=1e-4,
-        learning_method=AdamOptimizer(),
-        batch_size=1000,
-        model_average=ModelAverage(average_window=0.5),
-        regularization=L2Regularization(rate=0.5))
+from mnist_util import read_from_mnist
 
 
 def network_config():
@@ -79,15 +73,18 @@ def main():
     # enable_types = [value, gradient, momentum, etc]
     # For each optimizer(SGD, Adam), GradientMachine should enable different
     # buffers.
-    opt_config_proto = parse_optimizer_config(optimizer_config)
-    opt_config = api.OptimizationConfig.createFromProto(opt_config_proto)
-    _temp_optimizer_ = api.ParameterOptimizer.create(opt_config)
-    enable_types = _temp_optimizer_.getParameterTypes()
+    optimizer = paddle_v2.optimizer.Optimizer(
+        learning_method=paddle_v2.optimizer_types.AdamOptimizer(),
+        learning_rate=1e-4,
+        model_average=paddle_v2.optimizer_types.ModelAverage(
+            average_window=0.5),
+        regularization=paddle_v2.optimizer_types.L2Regularization(rate=0.5))
 
     # Create Simple Gradient Machine.
     model_config = parse_network_config(network_config)
-    m = api.GradientMachine.createFromConfigProto(
-        model_config, api.CREATE_MODE_NORMAL, enable_types)
+    m = api.GradientMachine.createFromConfigProto(model_config,
+                                                  api.CREATE_MODE_NORMAL,
+                                                  optimizer.enable_types())
 
     # This type check is not useful. Only enable type hint in IDE.
     # Such as PyCharm
@@ -99,7 +96,7 @@ def main():
     # Create Local Updater. Local means not run in cluster.
     # For a cluster training, here we can change to createRemoteUpdater
     # in future.
-    updater = api.ParameterUpdater.createLocalUpdater(opt_config)
+    updater = optimizer.create_local_updater()
     assert isinstance(updater, api.ParameterUpdater)
 
     # Initialize ParameterUpdater.
