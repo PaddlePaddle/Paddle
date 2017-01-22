@@ -172,6 +172,7 @@ public:
   bool isTransposed() const { return trans_; }
   bool isSparseArg() const { return TENSOR_SPARSE == bufferType_; }
   bool isSequenceArg() const { return TENSOR_SEQUENCE_DATA == bufferType_; }
+  virtual size_t numElements() const { return shape_.getElements(); }
 
   const SequenceArg& sequence() const;
   const SparseMatrixArg& sparse() const;
@@ -352,6 +353,8 @@ public:
   void* getColBuf() const { return col_.data(); }
 
   size_t nnz() const { return nnz_; }
+
+  size_t numElements() const override { return nnz_; }
 
   SparseFormat dataFormat() const { return format_; }
 

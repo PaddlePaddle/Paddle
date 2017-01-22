@@ -101,6 +101,34 @@ public:
         output.isTransposed()));
   }
 
+  /// add and init output sparse matrix
+  void addOutputs(const SparseMatrixArg& output, ArgType argType = ASSIGN_TO) {
+    cpuSparse_ = std::make_shared<CpuSparseMatrix>(output.shape()[0],
+                                                   output.shape()[1],
+                                                   output.nnz(),
+                                                   output.dataType(),
+                                                   output.dataFormat(),
+                                                   output.isTransposed());
+
+    gpuSparse_ = std::make_shared<GpuSparseMatrix>(output.shape()[0],
+                                                   output.shape()[1],
+                                                   output.nnz(),
+                                                   output.dataType(),
+                                                   output.dataFormat(),
+                                                   output.isTransposed());
+
+    /// init sparse matrix
+    hl_stream_t stream(HPPL_STREAM_1);
+    cpuSparse_->randomizeUniform();
+    gpuSparse_->copyFrom(*cpuSparse_, stream);
+    hl_stream_synchronize(stream);
+
+    cpuOutputs_.emplace_back(
+        std::make_shared<SparseMatrixArg>(*cpuSparse_, argType));
+    gpuOutputs_.emplace_back(
+        std::make_shared<SparseMatrixArg>(*gpuSparse_, argType));
+  }
+
   void addInputs(const SequenceArg& input) {
     size_t batchSize = input.shape()[0];
     size_t numSeqs = batchSize / 10 + 1;
@@ -199,8 +227,7 @@ protected:
   void initOutputs() {
     for (size_t i = 0; i < cpuOutputs_.size(); i++) {
       if (cpuOutputs_[i]->isSparseArg()) {
-        LOG(INFO) << "output sparse matrix already init";
-        continue;
+        continue;  /// sparse matrix already init
       }
 
       initArg(*cpuOutputs_[i]);
@@ -218,10 +245,11 @@ protected:
   void compareOutputs() {
     for (size_t i = 0; i < cpuOutputs_.size(); i++) {
       // TODO, Need a BufferCheck used to compare the two buffers.
-      auto cpu = cpuOutputs_[i];
-      auto gpu = gpuOutputs_[i];
-      CpuVector cpuVector(cpu->shape().getElements(), (real*)cpu->data());
-      GpuVector gpuVector(cpu->shape().getElements(), (real*)gpu->data());
+      const auto cpu = cpuOutputs_[i];
+      const auto gpu = gpuOutputs_[i];
+      CHECK_EQ(cpu->numElements(), gpu->numElements());
+      CpuVector cpuVector(cpu->numElements(), (real*)cpu->data());
+      GpuVector gpuVector(gpu->numElements(), (real*)gpu->data());
       autotest::TensorCheckErr(cpuVector, gpuVector);
     }
   }

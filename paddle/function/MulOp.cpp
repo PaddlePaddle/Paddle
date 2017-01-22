@@ -319,6 +319,13 @@ public:
     auto outSparseMat = outputs[0].sparse().SparseMatrix<Device>();
     if (!inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
         outputs[0].isSparseArg()) {
+      /*
+      LOG(INFO) << "input0";
+      inputs[0].matrix<Device>().print(std::cout);
+      LOG(INFO) << "input1";
+      inputs[1].matrix<Device>().print(std::cout);
+      LOG(INFO) << "output sparse matrix";
+      outSparseMat.print(std::cout); */
       MulOp<Device>(outSparseMat,
                     inputs[0].matrix<Device>(),
                     inputs[1].matrix<Device>(),
