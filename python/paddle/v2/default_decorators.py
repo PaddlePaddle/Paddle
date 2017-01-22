@@ -16,7 +16,7 @@ import functools
 import inspect
 from .attrs import ParamAttr
 from .activations import TanhActivation
-from paddle.trainer.config_parser import *
+from .logger import logger
 
 __all__ = [
     'wrap_name_default', 'wrap_param_attr_default', 'wrap_bias_attr_default',
@@ -90,7 +90,8 @@ def reset_hook():
         factory.reset()
 
 
-register_parse_config_hook(reset_hook)
+# TODO need to fix.
+# register_parse_config_hook(reset_hook)
 
 
 def wrap_name_default(name_prefix=None):

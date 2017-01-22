@@ -4,11 +4,13 @@ set(OUTPUT_DIR
 file(GLOB TRAINER_PY_FILES . ./paddle/trainer/*.py)
 file(GLOB HELPERS_PY_FILES . ./paddle/trainer_config_helpers/*.py)
 file(GLOB UTILS_PY_FILES . ./paddle/utils/*.py)
+file(GLOB V2_PY_FILES . ./paddle/v2/*.py)
 
 set(PY_FILES paddle/__init__.py
              ${TRAINER_PY_FILES}
              ${HELPERS_PY_FILES}
-             ${UTILS_PY_FILES})
+             ${UTILS_PY_FILES}
+             ${V2_PY_FILES})
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)

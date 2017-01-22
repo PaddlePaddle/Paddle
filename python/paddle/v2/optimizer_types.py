@@ -12,20 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.trainer.config_parser import Settings, default_decay_rate, \
+from paddle.trainer.config_parser import default_decay_rate, \
     default_gradient_clipping_threshold, default_momentum
 
-from .default_decorators import wrap_param_default
-
 __all__ = [
-    'Optimizer', 'BaseSGDOptimizer', 'MomentumOptimizer', 'AdamaxOptimizer',
+    'OptimizerType', 'BaseSGDOptimizer', 'MomentumOptimizer', 'AdamaxOptimizer',
     'AdamOptimizer', 'AdaGradOptimizer', 'RMSPropOptimizer',
     'DecayedAdaGradOptimizer', 'AdaDeltaOptimizer', 'BaseRegularization',
     'L2Regularization', 'settings', 'ModelAverage'
 ]
 
 
-class Optimizer(object):
+class OptimizerType(object):
     def to_setting_kwargs(self):
         raise NotImplementedError()
 
@@ -37,7 +35,7 @@ class Optimizer(object):
         return True
 
 
-class BaseSGDOptimizer(Optimizer):
+class BaseSGDOptimizer(OptimizerType):
     """
     SGD Optimizer.
 
@@ -291,7 +289,7 @@ class AdaDeltaOptimizer(BaseSGDOptimizer):
         self.epsilon = epsilon
 
 
-class BaseRegularization(Optimizer):
+class BaseRegularization(OptimizerType):
     def __init__(self):
         self.algorithm = ""
         self.learning_method = ""
@@ -316,7 +314,7 @@ class L2Regularization(BaseRegularization):
             default_decay_rate(self.decay_rate)
 
 
-class ModelAverage(Optimizer):
+class ModelAverage(OptimizerType):
     def to_setting_kwargs(self):
         return {
             'average_window': self.average_window,
@@ -333,7 +331,7 @@ class ModelAverage(Optimizer):
         self.do_average_in_cpu = do_average_in_cpu
 
 
-class GradientClippingThreshold(Optimizer):
+class GradientClippingThreshold(OptimizerType):
     def extra_settings(self):
         default_gradient_clipping_threshold(self.threshold)
 
@@ -342,100 +340,3 @@ class GradientClippingThreshold(Optimizer):
 
     def to_setting_kwargs(self):
         return dict()
-
-
-def __extends__(dict1, dict2):
-    for key in dict2:
-        assert key not in dict1
-        dict1[key] = dict2[key]
-    return dict1
-
-
-@wrap_param_default(
-    ['learning_method'], default_factory=lambda _: MomentumOptimizer())
-@wrap_param_default(
-    ['regularization'], default_factory=lambda _: BaseRegularization())
-def settings(batch_size,
-             learning_rate=1e-3,
-             learning_rate_decay_a=0.,
-             learning_rate_decay_b=0.,
-             learning_rate_schedule='poly',
-             learning_rate_args='',
-             learning_method=None,
-             regularization=None,
-             is_async=False,
-             model_average=None,
-             gradient_clipping_threshold=None):
-    """
-    Set the optimization method, learning rate, batch size, and other training
-    settings. The currently supported algorithms are SGD and Async-SGD.
-
-    ..  warning::
-
-        Note that the 'batch_size' in PaddlePaddle is not equal to global
-        training batch size. It represents the single training process's batch
-        size. If you use N processes to train one model, for example use three
-        GPU machines, the global batch size is N*'batch_size'.
-
-    :param batch_size: batch size for one training process.
-    :type batch_size: int
-    :param learning_rate: learning rate for SGD
-    :type learning_rate: float
-    :param learning_method: The extension optimization algorithms of gradient
-                            descent, such as momentum, adagrad, rmsprop, etc.
-                            Note that it should be instance with base type
-                            BaseSGDOptimizer.
-    :type learning_method: BaseSGDOptimizer
-    :param regularization: The regularization method.
-    :type regularization: BaseRegularization
-    :param is_async: Is Async-SGD or not. Default value is False.
-    :type is_async: bool
-    :param model_average: Model Average Settings.
-    :type model_average: ModelAverage
-    :param gradient_clipping_threshold: gradient clipping threshold. If gradient
-                                        value larger than some value, will be
-                                        clipped.
-    :type gradient_clipping_threshold: float
-    """
-    if isinstance(regularization, BaseRegularization):
-        regularization = [regularization]
-
-    assert isinstance(learning_method, Optimizer)
-    if isinstance(learning_method, BaseSGDOptimizer):
-        algorithm = 'async_sgd' if is_async else 'sgd'
-    else:
-        algorithm = 'owlqn'
-
-    args = [
-        'batch_size', 'learning_rate', 'learning_rate_decay_a',
-        'learning_rate_decay_b', 'learning_rate_schedule', 'learning_rate_args'
-    ]
-    kwargs = dict()
-    kwargs['algorithm'] = algorithm
-    for arg in args:
-        kwargs[arg] = locals()[arg]
-
-    kwargs = __extends__(kwargs, learning_method.to_setting_kwargs())
-    learning_method.extra_settings()
-
-    for regular in regularization:
-        assert isinstance(regular, BaseRegularization)
-        regular.algorithm = algorithm
-        regular.learning_method = kwargs['learning_method']
-        kwargs = __extends__(kwargs, regular.to_setting_kwargs())
-        regular.extra_settings()
-
-    if gradient_clipping_threshold is not None:
-        gradient_clipping_threshold = GradientClippingThreshold(
-            threshold=gradient_clipping_threshold)
-
-    for each in [model_average, gradient_clipping_threshold]:
-        if each is not None:
-            assert isinstance(each, Optimizer)
-            each.algorithm = algorithm
-            each.learning_method = kwargs['learning_method']
-            kwargs = __extends__(kwargs, each.to_setting_kwargs())
-            each.extra_settings()
-
-    # Do Check?
-    Settings(**kwargs)

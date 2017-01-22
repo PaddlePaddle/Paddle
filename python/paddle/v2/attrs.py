@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.trainer.config_parser import *
+from paddle.trainer.config_parser import Bias
 __all__ = [
     'ParamAttr', 'ExtraAttr', 'ParameterAttribute', 'ExtraLayerAttribute'
 ]
