@@ -33,7 +33,6 @@ SparseMatrixArg::SparseMatrixArg(const CpuSparseMatrix& sparse, ArgType argType)
     : BufferArg(sparse, argType),
       row_(reinterpret_cast<void*>(sparse.getRows()), VALUE_TYPE_INT32),
       col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32),
-      /// todo(tianbing), make sure how to get NNZ
       nnz_(sparse.getElementCnt()),
       format_(sparse.getFormat()),
       type_(sparse.getValueType()) {
@@ -44,7 +43,6 @@ SparseMatrixArg::SparseMatrixArg(const GpuSparseMatrix& sparse, ArgType argType)
     : BufferArg(sparse, argType),
       row_(reinterpret_cast<void*>(sparse.getRows()), VALUE_TYPE_INT32),
       col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32),
-      /// todo(tianbing), make sure how to get NNZ
       nnz_(sparse.getElementCnt()),
       format_(sparse.getFormat()),
       type_(sparse.getValueType()) {

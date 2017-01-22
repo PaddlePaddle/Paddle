@@ -71,17 +71,24 @@ public:
 public:
   BufferArg(ValueType valueType,
             const TensorShape& shape,
-            ArgType argType = UNSPECIFIED)
+            ArgType argType = UNSPECIFIED,
+            bool trans = false)
       : buf_(nullptr),
         valueType_(valueType),
         shape_(shape),
-        argType_(argType) {}
+        argType_(argType),
+        trans_(trans) {}
 
   BufferArg(void* buf,
             ValueType valueType,
             const TensorShape& shape,
-            ArgType argType = UNSPECIFIED)
-      : buf_(buf), valueType_(valueType), shape_(shape), argType_(argType) {}
+            ArgType argType = UNSPECIFIED,
+            bool trans = false)
+      : buf_(buf),
+        valueType_(valueType),
+        shape_(shape),
+        argType_(argType),
+        trans_(trans) {}
 
   BufferArg(void* buf, ValueType valueType)
       : buf_(buf), valueType_(valueType) {}
@@ -162,6 +169,7 @@ public:
   ValueType valueType() const { return valueType_; }
   BufferType bufferType() const { return bufferType_; }
   const TensorShape& shape() const { return shape_; }
+  bool isTransposed() const { return trans_; }
   bool isSparseArg() const { return TENSOR_SPARSE == bufferType_; }
   bool isSequenceArg() const { return TENSOR_SEQUENCE_DATA == bufferType_; }
 
@@ -175,6 +183,7 @@ protected:
   BufferType bufferType_{TENSOR_UNKNOWN};
   ArgType argType_{UNSPECIFIED};
   bool trans_{false};
+  // todo(tianbing), add deviceType_
   // leading dimensions. The size is dims_.size()
   // Dims lds_;
 };
@@ -267,8 +276,9 @@ public:
                   size_t nnz,
                   SparseFormat format,
                   SparseValueType type,
-                  ArgType argType = UNSPECIFIED)
-      : BufferArg(buf, valueType, shape, argType),
+                  ArgType argType = UNSPECIFIED,
+                  bool trans = false)
+      : BufferArg(buf, valueType, shape, argType, trans),
         row_(row),
         col_(col),
         nnz_(nnz),
@@ -284,6 +294,33 @@ public:
     } else if (format == SPARSE_CSC) {
       CHECK_EQ(nnz, row.shape()[0]);
     }
+  }
+
+  SparseMatrixArg(ValueType valueType,
+                  const TensorShape& shape,
+                  size_t nnz,
+                  SparseFormat format,
+                  SparseValueType type,
+                  ArgType argType = UNSPECIFIED,
+                  bool trans = false)
+      : BufferArg(valueType, shape, argType, trans),
+        /// len of row_ : height + 1 (CSR), buf_ == nullptr
+        row_(format == SPARSE_CSR
+                 ? BufferArg(VALUE_TYPE_INT32, TensorShape{shape[0] + 1})
+                 : BufferArg(VALUE_TYPE_INT32, TensorShape{nnz})),
+        /// len of col_ :  width + 1 (CSC), buf_ == nullptr
+        col_(format == SPARSE_CSR
+                 ? BufferArg(VALUE_TYPE_INT32, TensorShape{nnz})
+                 : BufferArg(VALUE_TYPE_INT32, TensorShape{shape[1] + 1})),
+        nnz_(nnz),
+        format_(format),
+        type_(type) {
+    bufferType_ = TENSOR_SPARSE;
+    /// todo(tianbing)
+    /// valueType and shape_.ndims() == 2 need to check before
+    /// this constructor to make sure row_ and col_ are right
+    CHECK((valueType == VALUE_TYPE_FLOAT) || (valueType == VALUE_TYPE_DOUBLE));
+    CHECK_EQ(shape_.ndims(), (size_t)2);
   }
 
   SparseMatrixArg(const CpuSparseMatrix& sparse, ArgType argType = UNSPECIFIED);
