@@ -12,5 +12,6 @@ production.
 """
 
 import optimizer
+import optimizer_types
 
-__all__ = ['optimizer']
+__all__ = ['optimizer', 'optimizer_types']
