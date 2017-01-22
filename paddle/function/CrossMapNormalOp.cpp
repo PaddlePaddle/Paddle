@@ -119,14 +119,14 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
  *
  * The original formula is:
  *
- *                                 Input(x, y)
- * Output(x, y) = ---------------------------------------------
- *                               -- upper
- *                  (k + alpha * >  (Input(x, y))^2) ^ (beta)
- *                               -- lower
+ *                                Input(i, x, y)
+ * Output(i, x, y) = ----------------------------------------------
+ *                                 -- upper
+ *                    (k + alpha * >  (Input(j, x, y))^2) ^ (beta)
+ *                                 -- j = lower
  *
- * upper is `min(F, f-[N/2] + N)`
- * lower if `max(0, f-[N/2])`
+ * upper is `min(C, c + N/2)`
+ * lower if `max(0, c - N/2)`
  *
  * Function implementation:
  *
@@ -134,8 +134,12 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
  * And the meaning of each dimension(0-3) is respectively batch size,
  * feature maps, rows and columns.
  *
- * Input and Output in the above formula is for each map of one image, and
- * Input(x, y), Output(x, y) represents an element in an image.
+ * Input and Output in the above formula is for each map(i) of one image, and
+ * Input(i, x, y), Output(i, x, y) represents an element in an image.
+ *
+ * C is the number of feature maps of one image, and N is a hyper-parameters
+ * is configured when Function is initialized. The sum in the denominator
+ * is the sum of the same position in the neighboring maps.
  *
  * In the implementation of Function, k is equal to 1,
  * so Function has no argument for k.
@@ -199,20 +203,26 @@ private:
 /**
  * \brief Backward calculation for normalization with across maps.
  *
+ * Function implementation:
+ *
  * The implementation of this Function is derived from the
  * CrossMapNormalFunc implementation.
  *
  * InputGrad = OutputGrad * denoms ^ (-beta)
- *    /
- *  + | (OutputGrad * OutputValue * (-2 * alpha * beta) / denoms) * InputValue
- *    /
+ *    -- upper
+ *  + > (OutputGrad * OutputValue * (-2 * alpha * beta) / denoms) * InputValue
+ *    -- lower
  *
- * Argument in the Function:
  * The data of inputs/outputs format is the same as the forward interface
  * and is NCHW.
  *
+ * The upper and lower is the same as forward. The logic of the sum
+ * is also the same as forward.
+ *
+ * Function Arguments:
+ *
  * \param size_      represent N
- * \param scale_     represent alpha / N
+ * \param scale_     represent alpha
  * \param pow_       represent beta
  * \param inputs[0]  represent InputValue, inputs[0] of CrossMapNormalFunc
  * \param inputs[1]  represent OutputValue, outputs[0] of CrossMapNormalFunc
