@@ -1,5 +1,4 @@
 from paddle.trainer_config_helpers import *
-
 """
 For testing optimizer with momentum setting
 
@@ -19,9 +18,10 @@ In theory any optimizer with momentum setting do not work with sparse upate
 except MomentumOptimizer which has implemented specical algorithm.
 """
 
-settings(batch_size=1000,
-         learning_method=AdaGradOptimizer(momentum=0.9),
-         learning_rate=1e-5)
+settings(
+    batch_size=1000,
+    learning_method=AdaGradOptimizer(momentum=0.9),
+    learning_rate=1e-5)
 
 din = data_layer(name='data', size=100)
 
