@@ -49,21 +49,21 @@ bool PadLayer::init(const LayerMap& layerMap,
   createFunction(forward_,
                  "Pad",
                  FuncConfig()
-                     .set("padc0", padc_[0])
-                     .set("padc1", padc_[1])
-                     .set("padh0", padh_[0])
-                     .set("padh1", padh_[1])
-                     .set("padw0", padw_[0])
-                     .set("padw1", padw_[1]));
+                     .set("cstart", padc_[0])
+                     .set("cend", padc_[1])
+                     .set("hstart", padh_[0])
+                     .set("hend", padh_[1])
+                     .set("wstart", padw_[0])
+                     .set("wend", padw_[1]));
   createFunction(backward_,
                  "PadGrad",
                  FuncConfig()
-                     .set("padc0", padc_[0])
-                     .set("padc1", padc_[1])
-                     .set("padh0", padh_[0])
-                     .set("padh1", padh_[1])
-                     .set("padw0", padw_[0])
-                     .set("padw1", padw_[1]));
+                     .set("cstart", padc_[0])
+                     .set("cend", padc_[1])
+                     .set("hstart", padh_[0])
+                     .set("hend", padh_[1])
+                     .set("wstart", padw_[0])
+                     .set("wend", padw_[1]));
 
   return true;
 }

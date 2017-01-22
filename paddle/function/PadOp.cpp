@@ -24,20 +24,19 @@ void Pad<DEVICE_TYPE_CPU>(real* outputs,
                           const int inC,
                           const int inH,
                           const int inW,
-                          const int padc0,
-                          const int padc1,
-                          const int padh0,
-                          const int padh1,
-                          const int padw0,
-                          const int padw1) {
-  int outC = inC + padc0 + padc1;
-  int outH = inH + padh0 + padh1;
-  int outW = inW + padw0 + padw1;
+                          const PadConf& pad) {
+  int cstart = pad.channelStart, cend = pad.channelEnd;
+  int hstart = pad.heightStart, hend = pad.heightEnd;
+  int wstart = pad.widthStart, wend = pad.widthEnd;
+  int outC = inC + cstart + cend;
+  int outH = inH + hstart + hend;
+  int outW = inW + wstart + wend;
   for (int i = 0; i < num; i++) {
     for (int c = 0; c < inC; c++) {
       for (int h = 0; h < inH; h++) {
         int inoff = ((i * inC + c) * inH + h) * inW;
-        int outoff = ((i * outC + c + padc0) * outH + h + padh0) * outW + padw0;
+        int outoff =
+            ((i * outC + c + cstart) * outH + h + hstart) * outW + wstart;
         memcpy(outputs + outoff, inputs + inoff, inW * sizeof(real));
       }
     }
@@ -51,20 +50,19 @@ void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
                               const int inC,
                               const int inH,
                               const int inW,
-                              const int padc0,
-                              const int padc1,
-                              const int padh0,
-                              const int padh1,
-                              const int padw0,
-                              const int padw1) {
-  int outC = inC + padc0 + padc1;
-  int outH = inH + padh0 + padh1;
-  int outW = inW + padw0 + padw1;
+                              const PadConf& pad) {
+  int cstart = pad.channelStart, cend = pad.channelEnd;
+  int hstart = pad.heightStart, hend = pad.heightEnd;
+  int wstart = pad.widthStart, wend = pad.widthEnd;
+  int outC = inC + cstart + cend;
+  int outH = inH + hstart + hend;
+  int outW = inW + wstart + wend;
   for (int i = 0; i < num; i++) {
     for (int c = 0; c < inC; c++) {
       for (int h = 0; h < inH; h++) {
         int inoff = ((i * inC + c) * inH + h) * inW;
-        int outoff = ((i * outC + c + padc0) * outH + h + padh0) * outW + padw0;
+        int outoff =
+            ((i * outC + c + cstart) * outH + h + hstart) * outW + wstart;
         CpuVector inG = CpuVector(inW, inGrad + inoff);
         CpuVector outG = CpuVector(inW, const_cast<real*>(outGrad + outoff));
         inG += outG;
@@ -73,22 +71,71 @@ void PadGrad<DEVICE_TYPE_CPU>(real* inGrad,
   }
 }
 
+/**
+ * \brief Padding zeros to input according to the specify dimension.
+ *        The struct pad_ contains the padding size in each dimension.
+ *        The input and output is a 4D tensor. In PadFunc, we only
+ *        pad zeros to the 2nd to 4th dimension.
+ *
+ * Argument in this Function:
+ * \param pad_    A struct object contains the padding size in each dimension.
+ *                It has six integers. The channelStart and channelEnd indicates
+ *                how many zeros to add before and after the input in channel
+ *                dimension. And the heightStart and heightEnd indicates padding
+ *                in height dimension. The widthStart and widthEnd indicates the
+ *                padding in width dimension.
+ * \param inputs  A 4D tensor, only one input.
+ * \param outputs A 4D tensor, the output value after padding.
+ *
+ * For example,
+ * Input(2,2,2,3) = [
+ *                    [ [[1,2,3], [3,4,5]],
+ *                      [[2,3,5], [1,6,7]] ],
+ *                    [ [[4,3,1], [1,8,7]],
+ *                      [[3,8,9], [2,3,5]] ]
+ *                  ] # the shape is (1,2,2,3)
+ *
+ * pad_: if channelStart = channelEnd = 1, others are 0.
+ * Output(2,4,2,3) = [
+ *                    [ [[0,0,0], [0,0,0]],
+ *                      [[1,2,3], [3,4,5]],
+ *                      [[2,3,5], [1,6,7]],
+ *                      [[0,0,0], [0,0,0]] ],
+ *                    [ [[0,0,0], [0,0,0]],
+ *                      [[4,3,1], [1,8,7]],
+ *                      [[3,8,9], [2,3,5]],
+ *                      [[0,0,0], [0,0,0]] ]
+ *                   ] # the shape is (2,4,2,3)
+ *
+ * pad_: if widthStart = 1, widthEnd = 2, others are 0.
+ * Output(2,2,2,6) = [
+ *                     [ [[0,1,2,3,0,0], [0,3,4,5,0,0]],
+ *                       [[0,2,3,5,0,0], [0,1,6,7,0,0]] ],
+ *                     [ [[0,4,3,1,0,0], [0,1,8,7,0,0]],
+ *                       [[0,3,8,9,0,0], [0,2,3,5,0,0]] ],
+ *                   ] # the shape is (2,2,2,6)
+ *
+ * pad_: if heightStart = 1, heightEnd = 1, others are 0.
+ * Output(2,2,4,3) = [
+ *                     [ [[0,0,0], [1,2,3], [3,4,5], [0,0,0]],
+ *                       [[0,0,0], [2,3,5], [1,6,7], [0,0,0]] ],
+ *                     [ [[0,0,0], [4,3,1], [1,8,7], [0,0,0]],
+ *                       [[0,0,0], [3,8,9], [2,3,5], [0,0,0]] ],
+ *                   ] # the shape is (2,2,4,3)
+ */
+
 template <DeviceType Device>
 class PadFunc : public FunctionBase {
 public:
   void init(const FuncConfig& config) override {
-    padc0_ = config.get<int>("padc0");
-    padc1_ = config.get<int>("padc1");
-    padh0_ = config.get<int>("padh0");
-    padh1_ = config.get<int>("padh1");
-    padw0_ = config.get<int>("padw0");
-    padw1_ = config.get<int>("padw1");
+    pad_.channelStart = config.get<int>("cstart");
+    pad_.channelEnd = config.get<int>("cend");
+    pad_.heightStart = config.get<int>("hstart");
+    pad_.heightEnd = config.get<int>("hend");
+    pad_.widthStart = config.get<int>("wstart");
+    pad_.widthEnd = config.get<int>("wend");
   }
 
-  /**
-   * \param inputs[0] input value.
-   * \param outputs[0] output value.
-   */
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(1UL, inputs.size());
     CHECK_EQ(1UL, outputs.size());
@@ -108,39 +155,35 @@ public:
                 inC,
                 inH,
                 inW,
-                padc0_,
-                padc1_,
-                padh0_,
-                padh1_,
-                padw0_,
-                padw1_);
+                pad_);
   }
 
 private:
-  int padc0_;
-  int padc1_;
-  int padh0_;
-  int padh1_;
-  int padw0_;
-  int padw1_;
+  PadConf pad_;
 };
+
+/**
+ * \brief The backward propagation of padding Function. Remove the elements
+ *        in the padding positions of forward.
+ *
+ * Argument in this Function:
+ * \param pad_    The same meaning as it in PadFunc.
+ * \param inputs  The gradient with respect to the output value of PadFunc.
+ * \param outputs The gradient with respect to the input value of PadFunc.
+ */
 
 template <DeviceType Device>
 class PadGradFunc : public FunctionBase {
 public:
   void init(const FuncConfig& config) override {
-    padc0_ = config.get<int>("padc0");
-    padc1_ = config.get<int>("padc1");
-    padh0_ = config.get<int>("padh0");
-    padh1_ = config.get<int>("padh1");
-    padw0_ = config.get<int>("padw0");
-    padw1_ = config.get<int>("padw1");
+    pad_.channelStart = config.get<int>("cstart");
+    pad_.channelEnd = config.get<int>("cend");
+    pad_.heightStart = config.get<int>("hstart");
+    pad_.heightEnd = config.get<int>("hend");
+    pad_.widthStart = config.get<int>("wstart");
+    pad_.widthEnd = config.get<int>("wend");
   }
 
-  /**
-   * \param inputs[0] output grad.
-   * \param inouts[0] input grad.
-   */
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(1UL, inputs.size());
     CHECK_EQ(1UL, outputs.size());
@@ -163,21 +206,11 @@ public:
                     inC,
                     inH,
                     inW,
-                    padc0_,
-                    padc1_,
-                    padh0_,
-                    padh1_,
-                    padw0_,
-                    padw1_);
+                    pad_);
   }
 
 private:
-  int padc0_;
-  int padc1_;
-  int padh0_;
-  int padh1_;
-  int padw0_;
-  int padw1_;
+  PadConf pad_;
 };
 
 REGISTER_TYPED_FUNC(Pad, CPU, PadFunc);

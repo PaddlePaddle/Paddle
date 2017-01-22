@@ -27,12 +27,12 @@ TEST(Pad, real) {
 
           FunctionCompare compare("Pad",
                                   FuncConfig()
-                                      .set("padc0", 2)
-                                      .set("padc1", 3)
-                                      .set("padh0", 1)
-                                      .set("padh1", 2)
-                                      .set("padw0", 3)
-                                      .set("padw1", 2));
+                                      .set("cstart", 2)
+                                      .set("cend", 3)
+                                      .set("hstart", 1)
+                                      .set("hend", 2)
+                                      .set("wstart", 3)
+                                      .set("wend", 2));
           TensorShape inDims{numSamples, channels, imgSizeH, imgSizeW};
           TensorShape outDims{
               numSamples, channels + 5, imgSizeH + 3, imgSizeW + 5};
@@ -54,12 +54,12 @@ TEST(PadGrad, real) {
                   << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW;
           FunctionCompare compare("PadGrad",
                                   FuncConfig()
-                                      .set("padc0", 2)
-                                      .set("padc1", 3)
-                                      .set("padh0", 1)
-                                      .set("padh1", 2)
-                                      .set("padw0", 3)
-                                      .set("padw1", 2));
+                                      .set("cstart", 2)
+                                      .set("cend", 3)
+                                      .set("hstart", 1)
+                                      .set("hend", 2)
+                                      .set("wstart", 3)
+                                      .set("wend", 2));
           TensorShape inDims{numSamples, channels, imgSizeH, imgSizeW};
           TensorShape outDims{
               numSamples, channels + 5, imgSizeH + 3, imgSizeW + 5};

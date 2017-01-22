@@ -40,20 +40,18 @@ void Pad<DEVICE_TYPE_GPU>(real* outputs,
                           const int inC,
                           const int inH,
                           const int inW,
-                          const int padc0,
-                          const int padc1,
-                          const int padh0,
-                          const int padh1,
-                          const int padw0,
-                          const int padw1) {
+                          const PadConf& pad) {
   size_t nth = num * inC * inH * inW;
   int blockSize = 1024;
   int gridSize = (nth + 1024 - 1) / 1024;
-  int outC = inC + padc0 + padc1;
-  int outH = inH + padh0 + padh1;
-  int outW = inW + padw0 + padw1;
+  int cstart = pad.channelStart, cend = pad.channelEnd;
+  int hstart = pad.heightStart, hend = pad.heightEnd;
+  int wstart = pad.widthStart, wend = pad.widthEnd;
+  int outC = inC + cstart + cend;
+  int outH = inH + hstart + hend;
+  int outW = inW + wstart + wend;
   KePad<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (outputs, inputs, inC, inH, inW, padc0, padh0, padw0,
+    (outputs, inputs, inC, inH, inW, cstart, hstart, wstart,
      outC, outH, outW, nth);
   CHECK_SYNC("Pad");
 }
@@ -81,20 +79,18 @@ void PadGrad<DEVICE_TYPE_GPU>(real* inGrad,
                               const int inC,
                               const int inH,
                               const int inW,
-                              const int padc0,
-                              const int padc1,
-                              const int padh0,
-                              const int padh1,
-                              const int padw0,
-                              const int padw1) {
+                              const PadConf& pad) {
   int nth = num * inC * inH * inW;
   int blockSize = 1024;
   int gridSize = (nth + 1024 - 1) / 1024;
-  int outC = inC + padc0 + padc1;
-  int outH = inH + padh0 + padh1;
-  int outW = inW + padw0 + padw1;
+  int cstart = pad.channelStart, cend = pad.channelEnd;
+  int hstart = pad.heightStart, hend = pad.heightEnd;
+  int wstart = pad.widthStart, wend = pad.widthEnd;
+  int outC = inC + cstart + cend;
+  int outH = inH + hstart + hend;
+  int outW = inW + wstart + wend;
   KePadDiff <<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (inGrad, outGrad, inC, inH, inW, padc0, padh0, padw0,
+    (inGrad, outGrad, inC, inH, inW, cstart, hstart, wstart,
      outC, outH, outW, nth);
   CHECK_SYNC("PadGrad");
 }

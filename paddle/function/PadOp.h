@@ -18,29 +18,34 @@ limitations under the License. */
 
 namespace paddle {
 
+struct PadConf {
+  /// how many values to add before the data along channel dimension.
+  int channelStart;
+  /// how many values to add after the data along channel dimension.
+  int channelEnd;
+  /// how many values to add before the data along height dimension.
+  int heightStart;
+  /// how many values to add after the data along height dimension.
+  int heightEnd;
+  /// how many values to add before the data along width dimension.
+  int widthStart;
+  /// how many values to add after the data along width dimension.
+  int widthEnd;
+};
+
 /**
  * \brief  This funtion pads zeros to inputs according to the specify dimension.
- *         The data structure of image data is NCHW.
+ *         The input and output is a 4D tensor. Padding zeros from the 2nd to
+ *         the 4th dimenstion according argument of pad.
  *
- * \param[out]  outputs  save results.
- * \param[in]   inputs   input data.
- * \param[in]   num      batch size of input data.
- * \param[in]   inC      channel number of input data.
- * \param[in]   inH      height of input data.
- * \param[in]   inH      with of input data.
- * \param[in]   padc0    how many values to add before the data in dimension of
- * channel.
- * \param[in]   padc1    how many values to add after the data in dimension of
- * channel.
- * \param[in]   padh0    how many values to add before the data in dimension of
- * height.
- * \param[in]   padh1    how many values to add after the data in dimension of
- * height.
- * \param[in]   padw0    how many values to add before the data in dimension of
- * width.
- * \param[in]   padw1    how many values to add after the data in dimension of
- * width.
- *
+ * \param[out] outputs save results.
+ * \param[in]  inputs  input data.
+ * \param[in]  num     batch size of input data.
+ * \param[in]  inC     channel number of input data.
+ * \param[in]  inH     height of input data.
+ * \param[in]  inH     with of input data.
+ * \param[in]  pad     the padding config, contains the size along the
+ *                     specify dimension.
  */
 template <DeviceType Device>
 void Pad(real* outputs,
@@ -49,36 +54,19 @@ void Pad(real* outputs,
          const int inC,
          const int inH,
          const int inW,
-         const int padc0,
-         const int padc1,
-         const int padh0,
-         const int padh1,
-         const int padw0,
-         const int padw1);
+         const PadConf& pad);
 
 /**
  * \brief   Padding operation backward.
- *          The data structure of image data is NCHW.
  *
- * \param[out]  inGrad   gradients of previous layer.
- * \param[in]   outGrad  output gradients.
- * \param[in]   num      batch size of input data.
- * \param[in]   inC      channel number of input data.
- * \param[in]   inH      height of input data.
- * \param[in]   inH      with of input data.
- * \param[in]   padc0    how many values to add before the data in dimension of
- * channel.
- * \param[in]   padc1    how many values to add after the data in dimension of
- * channel.
- * \param[in]   padh0    how many values to add before the data in dimension of
- * height.
- * \param[in]   padh1    how many values to add after the data in dimension of
- * height.
- * \param[in]   padw0    how many values to add before the data in dimension of
- * width.
- * \param[in]   padw1    how many values to add after the data in dimension of
- * width.
- *
+ * \param[out] inGrad  gradients of previous layer.
+ * \param[in]  outGrad output gradients.
+ * \param[in]  num     batch size of input data.
+ * \param[in]  inC     channel number of input data.
+ * \param[in]  inH     height of input data.
+ * \param[in]  inH     with of input data.
+ * \param[in]  pad     the padding config, contains the size along the
+ *                     specify dimension.
  */
 template <DeviceType Device>
 void PadGrad(real* inGrad,
@@ -87,10 +75,5 @@ void PadGrad(real* inGrad,
              const int inC,
              const int inH,
              const int inW,
-             const int padc0,
-             const int padc1,
-             const int padh0,
-             const int padh1,
-             const int padw0,
-             const int padw1);
+             const PadConf& pad);
 }  // namespace paddle
