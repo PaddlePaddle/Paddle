@@ -48,23 +48,26 @@ bool PriorBoxLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
   Layer::init(layerMap, parameterMap);
   auto pbConf = config_.inputs(0).priorbox_conf();
+  std::vector<real> tmp;
+  aspectRatio_.push_back(1.);
   std::copy(pbConf.min_size().begin(),
             pbConf.min_size().end(),
             std::back_inserter(minSize_));
   std::copy(pbConf.max_size().begin(),
             pbConf.max_size().end(),
             std::back_inserter(maxSize_));
-  std::copy(pbConf.aspect_ratio().begin(),
-            pbConf.aspect_ratio().end(),
-            std::back_inserter(aspectRatio_));
   std::copy(pbConf.variance().begin(),
             pbConf.variance().end(),
             std::back_inserter(variance_));
+  std::copy(pbConf.aspect_ratio().begin(),
+            pbConf.aspect_ratio().end(),
+            std::back_inserter(tmp));
   // flip
-  int inputRatioLength = aspectRatio_.size();
-  for (int index = 0; index < inputRatioLength; index++)
-    aspectRatio_.push_back(1 / aspectRatio_[index]);
-  aspectRatio_.push_back(1.);
+  int inputRatioLength = tmp.size();
+  for (int index = 0; index < inputRatioLength; index++) {
+    aspectRatio_.push_back(tmp[index]);
+    aspectRatio_.push_back(1 / tmp[index]);
+  }
   numPriors_ = aspectRatio_.size();
   if (maxSize_.size() > 0) numPriors_++;
   return true;

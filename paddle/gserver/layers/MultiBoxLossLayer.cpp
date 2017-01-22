@@ -137,7 +137,7 @@ void MultiBoxLossLayer::forward(PassType passType) {
   // | class1_1 | xmin1_1 | ymin1_1 | xmax1_1 | ymax1_1 | class1_2 | ......
   // | classN_M | xminN_M | yminN_M | xmaxN_M | ymaxN_M |
   MatrixPtr labelValue;
-  // Copy data from GPU to CPU if not use GPU
+  // Copy data from GPU to CPU if use GPU
   if (useGpu_) {
     Matrix::resizeOrCreate(locCpuBuffer_, 1, locSizeSum_, false, false);
     Matrix::resizeOrCreate(confCpuBuffer_, 1, confSizeSum_, false, false);
@@ -293,6 +293,8 @@ void MultiBoxLossLayer::forward(PassType passType) {
   MatrixPtr outV = getOutputValue();
   vector<real> tmp(batchSize, loss);
   outV->copyFrom(&tmp[0], batchSize);
+  std::cout << numMatches_ << "!!! " << locLoss_ << " " << confLoss_
+            << std::endl;
 }
 
 void MultiBoxLossLayer::backward(const UpdateCallback& callback) {
@@ -541,7 +543,6 @@ void MultiBoxLossLayer::matchBBox(const real* priorData,
                                   vector<int>* matchIndices,
                                   vector<real>* matchOverlaps) {
   map<size_t, map<size_t, real>> overlaps;
-
   for (size_t i = 0; i < numPriors; i++)
     for (size_t j = 0; j < bboxNum; j++) {
       real overlap = jaccardOverlap(priorData + i * 8, labelData + j * 5);
@@ -577,6 +578,7 @@ void MultiBoxLossLayer::matchBBox(const real* priorData,
     } else {
       (*matchIndices)[maxPriorIdx] = maxGtIdx;
       (*matchOverlaps)[maxPriorIdx] = maxOverlap;
+      gtMask[maxGtIdx] = false;
       bboxCount--;
     }
   }
