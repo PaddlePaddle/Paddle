@@ -64,22 +64,14 @@ public:
     cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
     gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
 
-    cpuInputs_.emplace_back(
-        std::make_shared<BufferArg>(cpuMemory_.back()->getBuf(),
-                                    input.valueType(),
-                                    input.shape(),
-                                    UNSPECIFIED,
-                                    input.isTransposed()));
-    gpuInputs_.emplace_back(
-        std::make_shared<BufferArg>(gpuMemory_.back()->getBuf(),
-                                    input.valueType(),
-                                    input.shape(),
-                                    UNSPECIFIED,
-                                    input.isTransposed()));
+    cpuInputs_.emplace_back(std::make_shared<BufferArg>(
+        cpuMemory_.back()->getBuf(), input.valueType(), input.shape()));
+    gpuInputs_.emplace_back(std::make_shared<BufferArg>(
+        gpuMemory_.back()->getBuf(), input.valueType(), input.shape()));
   }
 
   // output need only contains shape, do not contains data.
-  void addOutputs(const BufferArg& output, ArgType argType = ASSIGN_TO) {
+  void addOutputs(const BufferArg& output, ArgType argType = ADD_TO) {
     size_t size =
         output.shape().getElements() * sizeOfValuType(output.valueType());
     cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
@@ -89,16 +81,14 @@ public:
         cpuMemory_.back()->getBuf(),
         output.valueType(),
         output.shape(),
-        // todo(tianbing), argType = output.getArgType(), but default ASSIGN_TO
-        argType,
-        output.isTransposed()));
+        // todo(tianbing), argType = output.getArgType(), but default ADD_TO
+        argType));
     gpuOutputs_.emplace_back(std::make_shared<BufferArg>(
         gpuMemory_.back()->getBuf(),
         output.valueType(),
         output.shape(),
-        // todo(tianbing), argType = output.getArgType(), but default ASSIGN_TO
-        argType,
-        output.isTransposed()));
+        // todo(tianbing), argType = output.getArgType(), but default ADD_TO
+        argType));
   }
 
   /// add and init output sparse matrix
@@ -107,15 +97,13 @@ public:
                                                    output.shape()[1],
                                                    output.nnz(),
                                                    output.dataType(),
-                                                   output.dataFormat(),
-                                                   output.isTransposed());
+                                                   output.dataFormat());
 
     gpuSparse_ = std::make_shared<GpuSparseMatrix>(output.shape()[0],
                                                    output.shape()[1],
                                                    output.nnz(),
                                                    output.dataType(),
-                                                   output.dataFormat(),
-                                                   output.isTransposed());
+                                                   output.dataFormat());
 
     /// init sparse matrix
     hl_stream_t stream(HPPL_STREAM_1);
@@ -154,15 +142,13 @@ public:
                                                    input.shape()[1],
                                                    input.nnz(),
                                                    input.dataType(),
-                                                   input.dataFormat(),
-                                                   input.isTransposed());
+                                                   input.dataFormat());
 
     gpuSparse_ = std::make_shared<GpuSparseMatrix>(input.shape()[0],
                                                    input.shape()[1],
                                                    input.nnz(),
                                                    input.dataType(),
-                                                   input.dataFormat(),
-                                                   input.isTransposed());
+                                                   input.dataFormat());
 
     /// init sparse matrix
     hl_stream_t stream(HPPL_STREAM_1);

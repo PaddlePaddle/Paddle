@@ -26,55 +26,79 @@ void MulOp(CpuMatrix& out,
            const CpuMatrix& a,
            const CpuMatrix& b,
            real scaleAB,
-           real scaleT);
+           real scaleT,
+           bool aTrans,
+           bool bTrans,
+           bool cTrans);
 
 template <DeviceType DType>
 void MulOp(CpuMatrix& out,
            const CpuSparseMatrix& a,
            const CpuMatrix& b,
            real scaleAB,
-           real scaleT);
+           real scaleT,
+           bool aTrans,
+           bool bTrans,
+           bool cTrans);
 
 template <DeviceType DType>
 void MulOp(CpuMatrix& out,
            const CpuMatrix& a,
            const CpuSparseMatrix& b,
            real scaleAB,
-           real scaleT);
+           real scaleT,
+           bool aTrans,
+           bool bTrans,
+           bool cTrans);
 
 template <DeviceType DType>
 void MulOp(CpuSparseMatrix& out,
            const CpuMatrix& a,
            const CpuMatrix& b,
            real scaleAB,
-           real scaleT);
+           real scaleT,
+           bool aTrans,
+           bool bTrans,
+           bool cTrans);
 
 template <DeviceType DType>
 void MulOp(GpuMatrix& out,
            const GpuMatrix& a,
            const GpuMatrix& b,
            real scaleAB,
-           real scaleT);
+           real scaleT,
+           bool aTrans,
+           bool bTrans,
+           bool cTrans);
 
 template <DeviceType DType>
 void MulOp(GpuMatrix& out,
            const GpuSparseMatrix& a,
            const GpuMatrix& b,
            real scaleAB,
-           real scaleT);
+           real scaleT,
+           bool aTrans,
+           bool bTrans,
+           bool cTrans);
 
 template <DeviceType DType>
 void MulOp(GpuMatrix& out,
            const GpuMatrix& a,
            const GpuSparseMatrix& b,
            real scaleAB,
-           real scaleT);
+           real scaleT,
+           bool aTrans,
+           bool bTrans,
+           bool cTrans);
 
 template <DeviceType DType>
 void MulOp(GpuSparseMatrix& out,
            const GpuMatrix& a,
            const GpuMatrix& b,
            real scaleAB,
-           real scaleT);
+           real scaleT,
+           bool aTrans,
+           bool bTrans,
+           bool cTrans);
 
 }  // namespace paddle

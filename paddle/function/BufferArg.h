@@ -71,24 +71,17 @@ public:
 public:
   BufferArg(ValueType valueType,
             const TensorShape& shape,
-            ArgType argType = UNSPECIFIED,
-            bool trans = false)
+            ArgType argType = UNSPECIFIED)
       : buf_(nullptr),
         valueType_(valueType),
         shape_(shape),
-        argType_(argType),
-        trans_(trans) {}
+        argType_(argType) {}
 
   BufferArg(void* buf,
             ValueType valueType,
             const TensorShape& shape,
-            ArgType argType = UNSPECIFIED,
-            bool trans = false)
-      : buf_(buf),
-        valueType_(valueType),
-        shape_(shape),
-        argType_(argType),
-        trans_(trans) {}
+            ArgType argType = UNSPECIFIED)
+      : buf_(buf), valueType_(valueType), shape_(shape), argType_(argType) {}
 
   BufferArg(void* buf, ValueType valueType)
       : buf_(buf), valueType_(valueType) {}
@@ -98,8 +91,7 @@ public:
             const_cast<void*>(reinterpret_cast<const void*>(matrix.getData()))),
         valueType_(DataType<real>::value),
         shape_(2),
-        argType_(argType),
-        trans_(matrix.isTransposed()) {
+        argType_(argType) {
     bufferType_ = TENSOR_NORMAL;
     shape_.setDim(0, matrix.getHeight());
     shape_.setDim(1, matrix.getWidth());
@@ -112,8 +104,7 @@ public:
             const_cast<void*>(reinterpret_cast<const void*>(matrix.getData()))),
         valueType_(DataType<real>::value),
         shape_(shape),
-        argType_(argType),
-        trans_(matrix.isTransposed()) {
+        argType_(argType) {
     bufferType_ = TENSOR_NORMAL;
     CHECK_EQ(matrix.getElementCnt(), shape.getElements());
   }
@@ -145,7 +136,7 @@ public:
     // CHECK(deviceType_ == DType);
     CHECK_EQ((size_t)2, shape_.ndims());
     return typename Tensor<real, DType>::Matrix(
-        reinterpret_cast<real*>(buf_), shape_[0], shape_[1], trans_);
+        reinterpret_cast<real*>(buf_), shape_[0], shape_[1]);
   }
 
   template <typename VType, DeviceType DType>
@@ -169,7 +160,6 @@ public:
   ValueType valueType() const { return valueType_; }
   BufferType bufferType() const { return bufferType_; }
   const TensorShape& shape() const { return shape_; }
-  bool isTransposed() const { return trans_; }
   bool isSparseArg() const { return TENSOR_SPARSE == bufferType_; }
   bool isSequenceArg() const { return TENSOR_SEQUENCE_DATA == bufferType_; }
   virtual size_t numElements() const { return shape_.getElements(); }
@@ -183,7 +173,6 @@ protected:
   TensorShape shape_;
   BufferType bufferType_{TENSOR_UNKNOWN};
   ArgType argType_{UNSPECIFIED};
-  bool trans_{false};
   // todo(tianbing), add deviceType_
   // leading dimensions. The size is dims_.size()
   // Dims lds_;
@@ -277,9 +266,8 @@ public:
                   size_t nnz,
                   SparseFormat format,
                   SparseValueType type,
-                  ArgType argType = UNSPECIFIED,
-                  bool trans = false)
-      : BufferArg(buf, valueType, shape, argType, trans),
+                  ArgType argType = UNSPECIFIED)
+      : BufferArg(buf, valueType, shape, argType),
         row_(row),
         col_(col),
         nnz_(nnz),
@@ -302,9 +290,8 @@ public:
                   size_t nnz,
                   SparseFormat format,
                   SparseValueType type,
-                  ArgType argType = UNSPECIFIED,
-                  bool trans = false)
-      : BufferArg(valueType, shape, argType, trans),
+                  ArgType argType = UNSPECIFIED)
+      : BufferArg(valueType, shape, argType),
         /// len of row_ : height + 1 (CSR), buf_ == nullptr
         row_(format == SPARSE_CSR
                  ? BufferArg(VALUE_TYPE_INT32, TensorShape{shape[0] + 1})
@@ -343,7 +330,7 @@ public:
         nnz_,
         type_,
         format_,
-        trans_);
+        false);
   }
 
   ~SparseMatrixArg() {}

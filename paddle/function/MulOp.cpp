@@ -46,21 +46,11 @@ void MulOp<DEVICE_TYPE_CPU>(CpuSparseMatrix& out,
                             const CpuMatrix& a,
                             const CpuMatrix& b,
                             real scaleAB,
-                            real scaleT) {
-  CHECK(!out.isTransposed()) << "Not supported";
+                            real scaleT,
+                            bool aTrans,
+                            bool bTrans,
+                            bool cTrans) {
   CHECK_EQ(out.getValueType(), FLOAT_VALUE);
-  CHECK(!a.isTransposed() || !b.isTransposed())
-      << "Not support both a and b are transpose matrices";
-
-  size_t height = out.getHeight();
-  size_t width = out.getWidth();
-  size_t aRow = !a.isTransposed() ? a.getHeight() : a.getWidth();
-  size_t aCol = !a.isTransposed() ? a.getWidth() : a.getHeight();
-  size_t bRow = !b.isTransposed() ? b.getHeight() : b.getWidth();
-  size_t bCol = !b.isTransposed() ? b.getWidth() : b.getHeight();
-  /// C = A * B, for matrix format
-  CHECK(aCol == bRow && aRow == height && bCol == width);
-
   if (scaleT == 0) {
     out.zeroMem();
   }
@@ -69,12 +59,14 @@ void MulOp<DEVICE_TYPE_CPU>(CpuSparseMatrix& out,
   real* C = out.getValue();
   int* rows = out.getRows();
   int* cols = out.getCols();
+  size_t width = out.getWidth();
+  size_t height = out.getHeight();
 
   /// SPARSE_CSC, {a any, b not trans}
   if (out.getFormat() == SPARSE_CSC) {
     /// b not trans and a any
-    CHECK(!b.isTransposed());
-    size_t m = !a.isTransposed() ? a.getWidth() : a.getHeight();
+    CHECK(!bTrans);
+    size_t m = !aTrans ? a.getWidth() : a.getHeight();
     for (size_t i = 0; i < width; i++) {
       size_t start = out.getColStartIdx(i);
       size_t end = out.getColStartIdx(i + 1);
@@ -82,9 +74,8 @@ void MulOp<DEVICE_TYPE_CPU>(CpuSparseMatrix& out,
         real sum = 0;
         size_t rowIdx = rows[j];
         for (size_t k = 0; k < m; k++) {
-          sum +=
-              (!a.isTransposed() ? A[rowIdx * m + k] : A[k * height + rowIdx]) *
-              B[k * width + i];
+          sum += (!aTrans ? A[rowIdx * m + k] : A[k * height + rowIdx]) *
+                 B[k * width + i];
         }
         C[j] = scaleAB * sum + scaleT * C[j];
       }
@@ -95,7 +86,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuSparseMatrix& out,
   /// SPARSE_CSR, {a any, b not trans} or {a not trans, b trans}
   if (out.getFormat() == SPARSE_CSR) {
     /// a and b can not both transpose
-    CHECK(!(a.isTransposed() && b.isTransposed()));
+    CHECK(!(aTrans && bTrans));
     size_t m = a.getWidth();
     for (size_t i = 0; i < height; i++) {
       size_t start = out.getRowStartIdx(i);
@@ -104,9 +95,8 @@ void MulOp<DEVICE_TYPE_CPU>(CpuSparseMatrix& out,
         real sum = 0;
         size_t colIdx = cols[j];
         for (size_t k = 0; k < m; k++) {
-          sum +=
-              (!a.isTransposed() ? A[i * m + k] : A[k * height + i]) *
-              (!b.isTransposed() ? B[k * width + colIdx] : B[colIdx * m + k]);
+          sum += (!aTrans ? A[i * m + k] : A[k * height + i]) *
+                 (!bTrans ? B[k * width + colIdx] : B[colIdx * m + k]);
         }
         C[j] = scaleAB * sum + scaleT * C[j];
       }
@@ -120,25 +110,15 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
                             const CpuMatrix& a,
                             const CpuMatrix& b,
                             real scaleAB,
-                            real scaleT) {
-  CHECK(!out.isTransposed()) << "out matrix transpose not supported";
-  CBLAS_TRANSPOSE aTrans = a.isTransposed() ? CblasTrans : CblasNoTrans;
-  size_t aRow = a.isTransposed() ? a.getWidth() : a.getHeight();
-  size_t aCol = a.isTransposed() ? a.getHeight() : a.getWidth();
-  CBLAS_TRANSPOSE bTrans = b.isTransposed() ? CblasTrans : CblasNoTrans;
-  size_t bRow = b.isTransposed() ? b.getWidth() : b.getHeight();
-  size_t bCol = b.isTransposed() ? b.getHeight() : b.getWidth();
-
-  /// C = A * B, for matrix format
-  CHECK_EQ(aCol, bRow);
-  CHECK_EQ(aRow, out.getHeight());
-  CHECK_EQ(bCol, out.getWidth());
-
-  GEMM(aTrans,
-       bTrans,
+                            real scaleT,
+                            bool aTrans,
+                            bool bTrans,
+                            bool cTrans) {
+  GEMM(aTrans ? CblasTrans : CblasNoTrans,
+       bTrans ? CblasTrans : CblasNoTrans,
        out.getHeight(),
        out.getWidth(),
-       aCol,
+       !aTrans ? a.getWidth() : a.getHeight(),
        scaleAB,
        a.getData(),
        a.getStride(),
@@ -154,21 +134,12 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
                             const CpuSparseMatrix& a,
                             const CpuMatrix& b,
                             real scaleAB,
-                            real scaleT) {
-  CHECK(!out.isTransposed()) << "Not supported";
-  CHECK(!b.isTransposed()) << "Not supported";
-  CHECK(scaleT == 0 || scaleT == 1) << "Not support";
-  CHECK_EQ(scaleAB, static_cast<real>(1.0)) << "Not supported";
-  CHECK_EQ(a.getFormat(), SPARSE_CSR) << "Not supported";
-
-  if (!a.isTransposed()) {
-    CHECK(b.getHeight() == a.getWidth() && a.getHeight() == out.getHeight() &&
-          b.getWidth() == out.getWidth());
-  } else {
-    CHECK(b.getHeight() == a.getHeight() && a.getWidth() == out.getHeight() &&
-          b.getWidth() == out.getWidth());
-  }
-
+                            real scaleT,
+                            bool aTrans,
+                            bool bTrans,
+                            bool cTrans) {
+  CHECK_EQ(a.getFormat(), SPARSE_CSR)
+      << "Not supported SPARSE_CSR format for a";
   if (scaleT == 0) {
     out.zeroMem();
   }
@@ -185,9 +156,9 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
     const int start = a.getRowStartIdx(i);
     const int end = a.getRowStartIdx(i + 1);
     for (int j = start; j < end; ++j) {
-      vecAddTo(!a.isTransposed() ? out.getRow(i) : out.getRow(cols[j]),
-               !a.isTransposed() ? const_cast<CpuMatrix&>(b).getRow(cols[j])
-                                 : const_cast<CpuMatrix&>(b).getRow(i),
+      vecAddTo(!aTrans ? out.getRow(i) : out.getRow(cols[j]),
+               !aTrans ? const_cast<CpuMatrix&>(b).getRow(cols[j])
+                       : const_cast<CpuMatrix&>(b).getRow(i),
                (a.getValueType() == FLOAT_VALUE) ? values[j] : (real)1.0,
                out.getWidth());
     }
@@ -199,19 +170,10 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
                             const CpuMatrix& a,
                             const CpuSparseMatrix& b,
                             real scaleAB,
-                            real scaleT) {
-  CHECK(!out.trans_) << "Not supported";
-  CHECK(!a.isTransposed()) << "Not supported";
-  CHECK(scaleT == 0 || scaleT == 1);
-  CHECK_EQ(scaleAB, static_cast<real>(1.0));
-  if (!b.isTransposed()) {  /// b is not Transpose
-    CHECK(b.getHeight() == a.getWidth() && a.getHeight() == out.getHeight() &&
-          b.getWidth() == out.getWidth());
-  } else {
-    CHECK(b.getHeight() == out.getWidth() && a.getHeight() == out.getHeight() &&
-          b.getWidth() == a.getWidth());
-  }
-
+                            real scaleT,
+                            bool aTrans,
+                            bool bTrans,
+                            bool cTrans) {
   if (scaleT == 0) {
     out.zeroMem();
   }
@@ -227,8 +189,8 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
       int start = b.getColStartIdx(j);
       int end = b.getColStartIdx(j + 1);
       for (int i = start; i < end; ++i) {
-        colVecAddTo(!b.isTransposed() ? C + j : C + rows[i],
-                    !b.isTransposed() ? A + rows[i] : A + j,
+        colVecAddTo(!bTrans ? C + j : C + rows[i],
+                    !bTrans ? A + rows[i] : A + j,
                     (b.getValueType() == NO_VALUE) ? (real)1.0 : B[i],
                     out.getHeight(),
                     out.getWidth(),
@@ -244,8 +206,8 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
       int start = b.getRowStartIdx(j);
       int end = b.getRowStartIdx(j + 1);
       for (int i = start; i < end; ++i) {
-        colVecAddTo(!b.isTransposed() ? C + cols[i] : C + j,
-                    !b.isTransposed() ? A + j : A + cols[i],
+        colVecAddTo(!bTrans ? C + cols[i] : C + j,
+                    !bTrans ? A + j : A + cols[i],
                     (b.getValueType() == NO_VALUE) ? (real)1.0 : B[i],
                     out.getHeight(),
                     out.getWidth(),
@@ -270,16 +232,43 @@ public:
   void init(const FuncConfig& config) override {
     alpha_ = config.get<real>("scaleAB");
     beta_ = config.get<real>("scaleT");
+    aTrans_ = config.get<bool>("aTrans");
+    bTrans_ = config.get<bool>("bTrans");
+    cTrans_ = config.get<bool>("cTrans");
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK(!cTrans_) << "output matrix should not be transposed";
+    CHECK(!aTrans_ || !bTrans_)
+        << "Not support both a and b are transpose matrices";
+
     CHECK_EQ((size_t)2, inputs.size());
     CHECK_EQ((size_t)1, outputs.size());
     CHECK(inputs[0].data() && inputs[1].data() && outputs[0].data());
     CHECK_EQ(inputs[0].shape().ndims(), (size_t)2);
     CHECK_EQ(inputs[1].shape().ndims(), (size_t)2);
     CHECK_EQ(outputs[0].shape().ndims(), (size_t)2);
-    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
+
+    size_t aRow = !aTrans_ ? inputs[0].shape()[0] : inputs[0].shape()[1];
+    size_t aCol = !aTrans_ ? inputs[0].shape()[1] : inputs[0].shape()[0];
+    size_t bRow = !bTrans_ ? inputs[1].shape()[0] : inputs[1].shape()[1];
+    size_t bCol = !bTrans_ ? inputs[1].shape()[1] : inputs[1].shape()[0];
+    /// C = A * B, or C += A * B, for matrix format
+    CHECK_EQ(aCol, bRow);
+    CHECK_EQ(aRow, outputs[0].shape()[0]);
+    CHECK_EQ(bCol, outputs[0].shape()[1]);
+
+    /// only support C = A * B or C += A * B
+    CHECK_EQ(alpha_, static_cast<real>(1.0));
+    CHECK((beta_ == 0 && outputs[0].getArgType() == ASSIGN_TO) ||
+          (beta_ == 1 && outputs[0].getArgType() == ADD_TO));
+
+    /// support dense = not both sparse * sparse
+    /// or sparse = dense * dense
+    CHECK((!outputs[0].isSparseArg() &&
+           !(inputs[0].isSparseArg() && inputs[1].isSparseArg())) ||
+          (outputs[0].isSparseArg() && !inputs[0].isSparseArg() &&
+           !inputs[1].isSparseArg()));
 
     auto outMat = outputs[0].matrix<Device>();
     /// matrix = matrix * matrix
@@ -289,29 +278,40 @@ public:
                     inputs[0].matrix<Device>(),
                     inputs[1].matrix<Device>(),
                     alpha_,
-                    beta_);
+                    beta_,
+                    aTrans_,
+                    bTrans_,
+                    cTrans_);
       return;
     }
 
     /// matrix = matrix * sparse matrix
     if (!inputs[0].isSparseArg() && inputs[1].isSparseArg() &&
         !outputs[0].isSparseArg()) {
+      CHECK(!aTrans_) << "Not supported a transpose";
       MulOp<Device>(outMat,
                     inputs[0].matrix<Device>(),
                     inputs[1].sparse().SparseMatrix<Device>(),
                     alpha_,
-                    beta_);
+                    beta_,
+                    aTrans_,
+                    bTrans_,
+                    cTrans_);
       return;
     }
 
     /// matrix = sparse matrix * matrix
     if (inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
         !outputs[0].isSparseArg()) {
+      CHECK(!bTrans_) << "Not supported b transpose";
       MulOp<Device>(outMat,
                     inputs[0].sparse().SparseMatrix<Device>(),
                     inputs[1].matrix<Device>(),
                     alpha_,
-                    beta_);
+                    beta_,
+                    aTrans_,
+                    bTrans_,
+                    cTrans_);
       return;
     }
 
@@ -319,18 +319,14 @@ public:
     auto outSparseMat = outputs[0].sparse().SparseMatrix<Device>();
     if (!inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
         outputs[0].isSparseArg()) {
-      /*
-      LOG(INFO) << "input0";
-      inputs[0].matrix<Device>().print(std::cout);
-      LOG(INFO) << "input1";
-      inputs[1].matrix<Device>().print(std::cout);
-      LOG(INFO) << "output sparse matrix";
-      outSparseMat.print(std::cout); */
       MulOp<Device>(outSparseMat,
                     inputs[0].matrix<Device>(),
                     inputs[1].matrix<Device>(),
                     alpha_,
-                    beta_);
+                    beta_,
+                    aTrans_,
+                    bTrans_,
+                    cTrans_);
       return;
     }
   }
@@ -338,6 +334,9 @@ public:
 private:
   real alpha_;
   real beta_;
+  bool aTrans_;
+  bool bTrans_;
+  bool cTrans_;
 };
 
 REGISTER_TYPED_FUNC(MulOp, CPU, MulFunc);
