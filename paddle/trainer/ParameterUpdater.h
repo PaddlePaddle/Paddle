@@ -184,7 +184,6 @@ protected:
    * @param para
    */
   virtual void updateImpl(Parameter* para) {}
-  virtual void update(Parameter* para) {}
 };
 
 /**
