@@ -153,7 +153,20 @@ public:
 
   virtual void calc(const BufferArgs& inputs, const BufferArgs& outputs) {}
 
+  int getNumInputs() const { return numInputs_; }
+
+  int getNumOutputs() const { return numOutputs_; }
+
   static ClassRegistrar<FunctionBase> funcRegistrar_;
+
+protected:
+  // numInputs_ and numOutputs_ represents the maximum
+  // input and output supported by Function.
+  // Some functions are optimized for input and output,
+  // so when comparing the number of arguments, for these functions
+  // inputs.size() <= numInputs_ or outputs.size() <= numOutputs_
+  size_t numInputs_;
+  size_t numOutputs_;
 };
 
 #define FUNC_NAME(typeName, deviceName) #typeName "-" #deviceName
