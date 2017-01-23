@@ -108,6 +108,7 @@ __all__ = [
     'print_layer',
     'priorbox_layer',
     'spp_layer',
+    'pad_layer',
 ]
 
 
@@ -170,6 +171,7 @@ class LayerType(object):
     BLOCK_EXPAND = "blockexpand"
     MAXOUT = "maxout"
     SPP_LAYER = "spp"
+    PAD_LAYER = "pad"
 
     PRINT_LAYER = "print"
     PRIORBOX_LAYER = "priorbox"
@@ -1979,7 +1981,8 @@ def img_pool_layer(input,
                    layer_attr=None,
                    pool_size_y=None,
                    stride_y=None,
-                   padding_y=None):
+                   padding_y=None,
+                   ceil_mode=True):
     """
     Image pooling Layer.
 
@@ -2010,6 +2013,23 @@ def img_pool_layer(input,
     :type stride_y: int|None
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param ceil_mode: Wether to use ceil mode to calculate output height and with.
+                      Defalut is True. If set false, Otherwise use floor.
+
+                      - ceil_mode=True:
+
+                      ..  math::
+
+                          w = 1 + int(ceil(input_width + 2 * padding - pool_size) / float(stride))
+                          h = 1 + int(ceil(input_height + 2 * padding_y - pool_size_y) / float(stride_y))
+
+                      - ceil_mode=False:
+
+                      ..  math::
+
+                          w = 1 + int(floor(input_width + 2 * padding - pool_size) / float(stride))
+                          h = 1 + int(floor(input_height + 2 * padding_y - pool_size_y) / float(stride_y))
+    :type ceil_mode: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2047,6 +2067,7 @@ def img_pool_layer(input,
                     stride_y=stride_y,
                     padding_y=padding_y))
         ],
+        ceil_mode=ceil_mode,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -3488,9 +3509,6 @@ def conv_projection(input,
                     groups=1,
                     param_attr=None):
     """
-    ConvProjection with a layer as input.
-    It performs element-wise multiplication with weight.
-
     Different from img_conv_layer and conv_op, conv_projection is an Projection,
     which can be used in mixed_layer and conat_layer. It use cudnn to implement
     conv and only support GPU mode.
@@ -3499,7 +3517,7 @@ def conv_projection(input,
 
     .. code-block:: python
 
-       proj = conv_projection(img=input1,
+       proj = conv_projection(input=input1,
                               filter_size=3,
                               num_filters=64,
                               num_channels=64)
@@ -3580,6 +3598,109 @@ def conv_projection(input,
 
     proj.origin = input
     return proj
+
+
+@wrap_name_default("pad")
+@layer_support()
+def pad_layer(input,
+              pad_c=None,
+              pad_h=None,
+              pad_w=None,
+              name=None,
+              layer_attr=None):
+    """
+    This operation pads zeros to the input data according to pad_c,pad_h
+    and pad_w. pad_c, pad_h, pad_w specifies the which dimension and size
+    of padding. And the input data shape is NCHW.
+
+    For example, pad_c=[2,3] means padding 2 zeros before the
+    input data and 3 zeros after the input data in channel dimension.
+    pad_h means padding zeros in height dimension. pad_w means padding zeros
+    in width dimension.
+    
+    For example,
+    
+    .. code-block::
+
+      input(2,2,2,3)  = [
+                          [ [[1,2,3], [3,4,5]],
+                            [[2,3,5], [1,6,7]] ],
+                          [ [[4,3,1], [1,8,7]],
+                            [[3,8,9], [2,3,5]] ]
+                        ]
+ 
+      pad_c=[1,1], pad_h=[0,0], pad_w=[0,0]
+      output(2,4,2,3) = [
+                          [ [[0,0,0], [0,0,0]],
+                            [[1,2,3], [3,4,5]],
+                            [[2,3,5], [1,6,7]],
+                            [[0,0,0], [0,0,0]] ],
+                          [ [[0,0,0], [0,0,0]],
+                            [[4,3,1], [1,8,7]],
+                            [[3,8,9], [2,3,5]],
+                            [[0,0,0], [0,0,0]] ]
+                        ]
+
+    The simply usage is:
+
+    .. code-block:: python
+
+       pad = pad_layer(input=ipt,
+                       pad_c=[4,4],
+                       pad_h=[0,0],
+                       pad_w=[2,2])
+
+    :param input: layer's input.
+    :type input: LayerOutput
+    :param pad_c: padding size in channel dimension.
+    :type pad_c: list|None
+    :param pad_h: padding size in height dimension.
+    :type pad_h: list|None
+    :param pad_w: padding size in width dimension.
+    :type pad_w: list|None
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :param name: layer name.
+    :type name: basestring
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    if pad_c is not None:
+        assert isinstance(pad_c, collections.Sequence) and len(pad_c) == 2
+    else:
+        pad_c = [0, 0]
+
+    if pad_h is not None:
+        assert isinstance(pad_h, collections.Sequence) and len(pad_h) == 2
+    else:
+        pad_h = [0, 0]
+
+    if pad_w is not None:
+        assert isinstance(pad_w, collections.Sequence) and len(pad_w) == 2
+    else:
+        pad_w = [0, 0]
+
+    assert input.num_filters is not None
+    in_ch = input.num_filters
+    out_ch = in_ch + pad_c[0] + pad_c[1]
+
+    l = Layer(
+        name=name,
+        type=LayerType.PAD_LAYER,
+        inputs=Input(
+            input.name,
+            pad=Pad(
+                channels=in_ch,
+                pad_c=pad_c,
+                pad_h=pad_h,
+                pad_w=pad_w, )),
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name,
+        layer_type=LayerType.PAD_LAYER,
+        parents=[input],
+        num_filters=out_ch,
+        size=l.config.size)
 
 
 @wrap_name_default()
