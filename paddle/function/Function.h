@@ -153,6 +153,13 @@ public:
 
   virtual void calc(const BufferArgs& inputs, const BufferArgs& outputs) {}
 
+  // Calculate the number of floating-point operations of this Function.
+  // The inputs and outputs arguments do not need to contain the actual data,
+  // only the shape.
+  virtual size_t ops(const BufferArgs& inputs, const BufferArgs& outputs) {
+    return 0;
+  }
+
   int getNumInputs() const { return numInputs_; }
 
   int getNumOutputs() const { return numOutputs_; }

@@ -182,21 +182,35 @@ public:
 
     CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
     CHECK_EQ(outputs[1].getArgType(), ASSIGN_TO);
-    size_t samples = inputs[0].shape()[0];
-    size_t channels = inputs[0].shape()[1];
-    size_t height = inputs[0].shape()[2];
-    size_t width = inputs[0].shape()[3];
+    size_t batchSize = inputs[0].shape()[0];
+    size_t maps = inputs[0].shape()[1];
+    size_t rows = inputs[0].shape()[2];
+    size_t columns = inputs[0].shape()[3];
 
     CrossMapNormal<Device>(outputs[0].data<real>(),
                            outputs[1].data<real>(),
                            inputs[0].data<real>(),
-                           samples,
-                           channels,
-                           height,
-                           width,
+                           batchSize,
+                           maps,
+                           rows,
+                           columns,
                            size_,
                            scale_,
                            pow_);
+  }
+
+  // Only need the shape of the input, can calculate the
+  // floating-point operation.
+  size_t ops(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK_EQ((size_t)numInputs_, inputs.size());
+    size_t batchSize = inputs[0].shape()[0];
+    size_t maps = inputs[0].shape()[1];
+    size_t rows = inputs[0].shape()[2];
+    size_t columns = inputs[0].shape()[3];
+
+    // number of floating-point operations
+    // an approximate value
+    size_t ops = batchSize * maps * ((rows * columns) * size_);
   }
 
 private:
