@@ -156,12 +156,15 @@ public:
   // This member function is used to check whether the BufferType and shape of
   // the inputs and outputs arguments of the Function are correct.
   // General calc function which will call this check to do arguments check.
-  // Also before the call calc, the caller can also check their own arguments.
+  // And before the calc called, the caller can also check their own arguments.
   virtual void check(const BufferArgs& inputs, const BufferArgs& outputs) {}
 
   // Calculate the number of floating-point operations of this Function.
   // The inputs and outputs arguments do not need to contain the actual data,
   // only the shape.
+  // And some Functions have the same input and output shapes,
+  // so you may not need to enter the complete number of arguments.
+  // But entering the full arguments is always correct for this interface.
   virtual size_t ops(const BufferArgs& inputs, const BufferArgs& outputs) {
     return 0;
   }
