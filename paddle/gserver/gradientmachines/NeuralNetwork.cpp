@@ -81,22 +81,20 @@ void NeuralNetwork::init(const ModelConfig& config,
   }
   config_ = config;
 
-  auto paramCreate =
-      [&](const ParameterPtr& parameter) {
-        paramCallback(parameters_.size(), parameter.get());
-        if (!callback) {
-          for (ParameterType type :
-               (parameter->isStatic()
-                    ? std::vector<ParameterType>{PARAMETER_VALUE}
-                    : parameterTypes)) {
-            if (type != PARAMETER_VALUE && type != PARAMETER_GRADIENT) {
-              parameter->enableType(type);
-            }
-          }
+  auto paramCreate = [&](const ParameterPtr& parameter) {
+    paramCallback(parameters_.size(), parameter.get());
+    if (!callback) {
+      for (ParameterType type :
+           (parameter->isStatic() ? std::vector<ParameterType>{PARAMETER_VALUE}
+                                  : parameterTypes)) {
+        if (type != PARAMETER_VALUE && type != PARAMETER_GRADIENT) {
+          parameter->enableType(type);
         }
-        parameter->setID(parameters_.size());
-        parameters_.push_back(parameter);
       }
+    }
+    parameter->setID(parameters_.size());
+    parameters_.push_back(parameter);
+  };
 
   if (rootNetwork_ != nullptr) {
     // direct use parameters_ and parameterMap_ from base network
@@ -104,8 +102,7 @@ void NeuralNetwork::init(const ModelConfig& config,
              rootNetwork_->getParameters().size());
     parameters_ = rootNetwork_->getParameters();
     parameterMap_ = *(rootNetwork_->getParameterMap());
-  }
-  else {
+  } else {
     parameters_.reserve(config.parameters_size());
     for (const auto& para_config : config.parameters()) {
       auto parameter = std::make_shared<Parameter>(para_config,
@@ -167,12 +164,10 @@ void NeuralNetwork::init(const ModelConfig& config,
   }
 
   for (const auto& layer : layers_) {
-    auto& paras = layer->initParamHook();
-    if (paras) {
-      CHECK(!rootNetwork_) << "initParamHook not support rootNetwork.";
-    }
+    layer->createParameters();
+    auto paras = layer->getParameters();
     for (const auto& para : paras) {
-      paramCreate(parameter);
+      paramCreate(para);
     }
   }
 

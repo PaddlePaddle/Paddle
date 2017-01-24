@@ -21,9 +21,9 @@ REGISTER_LAYER(caffe, CaffeLayer);
 
 bool CaffeLayer::init(const LayerMap& layerMap,
                       const ParameterMap& parameterMap) {
-  /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
 
+  weightNums_ = config_.caffe_conf().num_weights();
   // create caffe layer
   auto param = getLayerParameter(config_.caffe_conf().prototxt());
   caffeOp_ = LayerRegistry<real>::CreateLayer(*param);
@@ -31,8 +31,7 @@ bool CaffeLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-std::vector<ParameterPtr>& CaffeLayer::std::vector<ParameterPtr>&
-initParamHook() {
+std::vector<ParameterPtr>& CaffeLayer::createParamemeters() {
   // set bottom
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
     auto blob = new Blob<float>();
@@ -59,24 +58,22 @@ initParamHook() {
     // The parameter initialization remain consistent with Caffe
     conf->set_initial_strategy(PARAMETER_INIT_SKIP);
     paramconfig_.emplace_back(conf);
-    // initialize = true, means the constructor will allocate buffer
+    // if initialize = true, the constructor will allocate buffer
     auto parameter = std::make_shared<Parameter>(paramconfig_[0].get(),
                                                  useGpu_,
                                                  /*initialize=*/true);
     parameters_.push_back(parameter);
-    copyBlobToParameter(DATA, caffeOp_->blobs()[i], parameter, useGpu_);
+    copyBlobToParameter(VALUE, caffeOp_->blobs()[i], parameter, useGpu_);
 
     wDims_->push_back(w->shape());
     wei_->push_back(new ::caffe::Blob<Dtype>());
-    parameterToBlob(DATA, parameter, wei_[i], wDims_[i], useGpu_);
+    parameterToBlob(VALUE, parameter, wei_[i], wDims_[i], useGpu_);
   }
 
   CHECK_EQ(caffeOp_->blobs().size(), wei_.size());
   for (int i = 0; i < wei_.size(); ++i) {
     caffeOp_->blobs()[i].reset(wei_[i]);
   }
-
-  return parameters_;
 }
 
 void CaffeLayer::caffeLayerSetup(int curBatchSize) {
@@ -89,8 +86,8 @@ void CaffeLayer::caffeLayerSetup(int curBatchSize) {
   if (curBatchSize != batchSize_) {
     caffeOp_->SetUp(bot_, top_);
     batchSize_ = curBatchSize;
-    // set output
-    setDataToArg(top_[0], getOutput(), useGpu_);
+    // The memory is shared between output_.value and top_[0].
+    blobToArg(VALUE, top_[0], getOutput(), useGpu_);
   }
 }
 
@@ -100,9 +97,9 @@ void CaffeLayer::forward(PassType passType) {
 
   int batchSize = getInput(0).getBatchSize();
 
-  // set bottom
   for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    setDataToBlob(getInput(i), bot_[i], useGpu_);
+    // setting bottom. The memory is shared between Input(i) and bot_[i].
+    argToBlob(VALUE, getInput(i), bot_[i], useGpu_);
   }
   caffeLayerSetup(batchSize);
 
@@ -119,9 +116,12 @@ void CaffeLayer::backward(const UpdateCallback& callback) {
     backwardActivation();
   }
 
-  // set diff of bot_, top_
-  // Argument2CaffeBlob
   // set propagateDown_
+
+  // set bottom diff
+  for (size_t i = 0; i != inputLayers_.size(); ++i) {
+    argToBlob(GRAD, getInput(i), bot_[i], useGpu_);
+  }
 
   caffeOp_->Backward(top_, propagateDown_, bot_);
 

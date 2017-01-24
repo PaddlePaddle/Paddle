@@ -19,8 +19,8 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "paddle/utils/Common.h"
 #include "paddle/utils/GlobalConstants.h"
-#include "paddle/utils/common.h"
 
 /// Import PaddlePaddle's enumeration into global namespace.
 using namespace paddle::enumeration_wrapper;  // NOLINT
@@ -450,6 +450,8 @@ public:
                                         IVector* vec) throw(RangeError);
   void setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError);
 
+  float sumCosts() const;
+
 private:
   static Arguments* createByPaddleArgumentVector(void* ptr);
   void* getInternalArgumentsPtr() const;
@@ -545,6 +547,10 @@ public:
 
   ParameterConfig* getConfig();
   void setValueUpdated();
+
+  bool save(const std::string& filename) const;
+
+  bool load(const std::string& filename) const;
 
   size_t getSize() const;
 

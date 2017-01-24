@@ -29,7 +29,6 @@ void* warpctc_dso_handle = nullptr;
  * false, you need to add the path of libwarp-ctc.so to
  * the linked-libs of paddle or to LD_PRELOAD.
  */
-#ifdef PADDLE_USE_DSO
 #define DYNAMIC_LOAD_WARPCTC_WRAP(__name)                              \
   struct DynLoad__##__name {                                           \
     template <typename... Args>                                        \
@@ -41,15 +40,6 @@ void* warpctc_dso_handle = nullptr;
       return reinterpret_cast<warpctcFunc>(p_##_name)(args...);        \
     }                                                                  \
   } __name;  // struct DynLoad__##__name
-#else
-#define DYNAMIC_LOAD_WARPCTC_WRAP(__name)                        \
-  struct DynLoad__##__name {                                     \
-    template <typename... Args>                                  \
-    auto operator()(Args... args) -> decltype(__name(args...)) { \
-      return __name(args...);                                    \
-    }                                                            \
-  } __name;  // struct DynLoad__##__name
-#endif
 
 // include all needed warp-ctc functions
 DYNAMIC_LOAD_WARPCTC_WRAP(get_warpctc_version)

@@ -24,7 +24,7 @@ function(target_circle_link_libraries TARGET_NAME)
                 list(APPEND libsInArgn ${arg})
             endif()
         endforeach()
-        if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
             list(APPEND LIBS "-undefined dynamic_lookup")
         endif()
         list(REVERSE libsInArgn)
@@ -81,24 +81,8 @@ function(link_paddle_exe TARGET_NAME)
         set(METRIC_LIBS "")
     endif()
 
-    if(PADDLE_WITH_INTERNAL)
-        set(INTERAL_LIBS paddle_internal_gserver paddle_internal_parameter)
-        target_circle_link_libraries(${TARGET_NAME}
-            ARCHIVE_START
-            paddle_internal_gserver
-            paddle_internal_owlqn
-            ARCHIVE_END
-            paddle_internal_parameter)
-    else()
-        set(INTERAL_LIBS "")
-    endif()
-
     if(USE_CAFFE)
         set(CAFFE_LIBS paddle_plugin_caffe)
-        target_circle_link_libraries(${TARGET_NAME}
-            ARCHIVE_START
-            paddle_plugin_caffe
-            ARCHIVE_END)
     else()
         set(CAFFE_LIBS "")
     endif()
@@ -119,28 +103,20 @@ function(link_paddle_exe TARGET_NAME)
         paddle_proto
         paddle_cuda
         ${METRIC_LIBS}
-        ${PROTOBUF_LIBRARY}
-        ${LIBGLOG_LIBRARY}
-        ${GFLAGS_LIBRARIES}
+        ${EXTERNAL_LIBS}
         ${CMAKE_THREAD_LIBS_INIT}
-        ${CBLAS_LIBS}
-        ${ZLIB_LIBRARIES}
-        ${INTERAL_LIBS}
-        ${CAFFE_LIBS}
-        ${CMAKE_DL_LIBS})
-
-    if(WITH_RDMA)
-        target_link_libraries(${TARGET_NAME}
-            ${RDMA_LD_FLAGS}
-            ${RDMA_LIBS})
-    endif()
+        ${CMAKE_DL_LIBS}
+        ${RDMA_LD_FLAGS}
+        ${RDMA_LIBS}
+        ${CAFFE_LIBS})
 
     if(WITH_PYTHON)
         target_link_libraries(${TARGET_NAME}
-            ${PYTHON_LIBRARIES})
+            ${PYTHON_LIBRARIES} util)
     endif()
 
     if(WITH_GPU)
+        target_link_libraries(${TARGET_NAME} ${CUDA_CUDART_LIBRARY})
         if(NOT WITH_DSO OR WITH_METRIC)
             target_link_libraries(${TARGET_NAME}
                 ${CUDNN_LIBRARY}
@@ -154,10 +130,7 @@ function(link_paddle_exe TARGET_NAME)
         endif()
     endif()
 
-    if(NOT WITH_DSO)
-        target_link_libraries(${TARGET_NAME}
-            ${WARPCTC_LIBRARY})
-    endif()
+    add_dependencies(${TARGET_NAME} ${external_project_dependencies})
 endfunction()
 
 # link_paddle_test
@@ -168,6 +141,7 @@ function(link_paddle_test TARGET_NAME)
     link_paddle_exe(${TARGET_NAME})
     target_link_libraries(${TARGET_NAME}
                           paddle_test_main
+                          paddle_test_util
                           ${GTEST_LIBRARIES})
 endfunction()
 

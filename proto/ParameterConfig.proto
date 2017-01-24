@@ -78,4 +78,6 @@ message ParameterConfig {
   optional bool is_shared = 23 [default = false];
   // parameter block size
   optional uint64 parameter_block_size = 24 [default = 0];
+
+  optional bool init_skip = 25 [default = false];
 }

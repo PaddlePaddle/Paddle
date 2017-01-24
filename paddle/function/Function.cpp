@@ -46,30 +46,58 @@ bool FuncConfig::get<bool>(const std::string& key) const {
 
 template <>
 FuncConfig& FuncConfig::set<size_t>(const std::string& key, size_t v) {
-  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
+  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
+                                                      << key;
   valueMap_[key].s = v;
   return *this;
 }
 
 template <>
 FuncConfig& FuncConfig::set<real>(const std::string& key, real v) {
-  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
+  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
+                                                      << key;
   valueMap_[key].r = v;
   return *this;
 }
 
 template <>
 FuncConfig& FuncConfig::set<int>(const std::string& key, int v) {
-  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
+  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
+                                                      << key;
   valueMap_[key].i = v;
   return *this;
 }
 
 template <>
 FuncConfig& FuncConfig::set<bool>(const std::string& key, bool v) {
-  CHECK_EQ(valueMap_.count(key), 0) << "Duplicated value: " << key;
+  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
+                                                      << key;
   valueMap_[key].b = v;
   return *this;
+}
+
+void BufferArgs::addArg(const Matrix& arg,
+                        const TensorShape& shape,
+                        ArgType argType) {
+  _args_.push_back(new BufferArg(arg, shape, argType));
+  addArg(*_args_.back());
+}
+
+void BufferArgs::addArg(const CpuSparseMatrix& arg, ArgType argType) {
+  _args_.push_back(new SparseMatrixArg(arg, argType));
+  addArg(*_args_.back());
+}
+
+void BufferArgs::addArg(const GpuSparseMatrix& arg, ArgType argType) {
+  _args_.push_back(new SparseMatrixArg(arg, argType));
+  addArg(*_args_.back());
+}
+
+void BufferArgs::addArg(const Matrix& matrix,
+                        const IVector& vector,
+                        ArgType argType) {
+  _args_.push_back(new SequenceArg(matrix, vector, argType));
+  addArg(*_args_.back());
 }
 
 ClassRegistrar<FunctionBase> FunctionBase::funcRegistrar_;

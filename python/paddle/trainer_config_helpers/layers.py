@@ -1675,7 +1675,7 @@ def trans_layer(input, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
-def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
+def cos_sim(a, b, scale=1, size=1, name=None, layer_attr=None):
     """
     Cosine Similarity Layer. The cosine similarity equation is here.
 
@@ -4083,19 +4083,43 @@ def maxout_layer(input,
 
 
 @wrap_name_default()
+@wrap_param_attr_default()
 @layer_support()
 def caffe_layer(input,
                 prototxt=None,
                 num_weights=0,
                 name=None,
-                bias=False,
+                param_attr=None,
                 act=None,
                 layer_attr=None):
+    '''
+    An interface to wrapper CaffeLayer.
+
+    :param input: one or more input layers.
+    :type input: LayerOutput|list
+
+    
+    '''
+
+    if isinstance(input, LayerOutput):
+        input = [input]
+
+    if num_weights > 0:
+        if not isinstance(param_attr, collections.Sequence):
+            param_attr = [param_attr] * num_weights
+        else:
+            assert len(param_attr) == num_weights
+
+    assert len(input) <= num_weights
+    ipts = [ipt.name for ipt in input]
+    ipts += ipts[0] * (num_weights - len(input))
+
     Layer(
         name=name,
-        inputs=Input(input.name),
+        inputs=[
+            Input(name, **attr.attr) for name, attr in zip(ipts, param_attr)
+        ],
         type=LayerType.CAFFE_LAYER,
-        bias=bias,
         prototxt=prototxt,
         num_weights=num_weights,
         active_type=act.name,

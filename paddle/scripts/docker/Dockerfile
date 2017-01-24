@@ -4,28 +4,32 @@ MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 ARG DEBIAN_FRONTEND=noninteractive
 ARG UBUNTU_MIRROR
 RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
-RUN apt-get update \
-    && apt-get install -y cmake libprotobuf-dev protobuf-compiler git \
-    libgoogle-glog-dev libgflags-dev libgtest-dev \
-    libatlas-dev libatlas3-base g++ m4 python-pip \
-    python-protobuf python-numpy python-dev swig openssh-server \
-    wget unzip python-matplotlib tar xz-utils bzip2 gzip coreutils \
-    sed grep graphviz libjpeg-dev zlib1g-dev doxygen \
-    clang-3.8 llvm-3.8 libclang-3.8-dev \
-    && apt-get clean -y
-RUN cd /usr/src/gtest && cmake . && make && cp *.a /usr/lib
-RUN pip install -U BeautifulSoup docopt PyYAML pillow \
-    sphinx sphinx_rtd_theme recommonmark
+
+RUN apt-get update && \
+    apt-get install -y git python-pip python-dev openssh-server bison && \
+    apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
+    apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
+    apt-get install -y python-numpy python-matplotlib gcc g++ gfortran && \
+    apt-get install -y automake clang-3.8 llvm-3.8 libclang-3.8-dev && \
+    apt-get clean -y
+
+RUN pip install --upgrade pip && \ 
+    pip install 'protobuf==3.1.0.post1' && \
+    pip install -U wheel pillow BeautifulSoup && \
+    pip install -U docopt PyYAML sphinx && \
+    pip install -U sphinx_rtd_theme recommonmark jupyter
+
+RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
+    cd cmake-3.4.1 && ./bootstrap && make -j4 && make install && \
+    cd .. && rm -rf cmake-3.4.1
 
 ARG WITH_AVX
 ARG WITH_DOC
-ARG WITH_SWIG_PY
 ARG WITH_STYLE_CHECK
 
 ENV WITH_GPU=OFF
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV WITH_DOC=${WITH_DOC:-ON}
-ENV WITH_SWIG_PY=${WITH_SWIG_PY:-ON}
 ENV WITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
 
 RUN mkdir /paddle
@@ -43,4 +47,13 @@ RUN echo 'root:root' | chpasswd
 RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 EXPOSE 22
-CMD ["/usr/sbin/sshd", "-D"]
+
+# Jupyter Notebook directory.
+RUN mkdir /notes/
+WORKDIR "/notes"
+EXPOSE 8888
+
+RUN mkdir -p /opt/bin
+COPY ./paddle/scripts/docker/entrypoint /opt/bin/
+
+CMD ["/opt/bin/entrypoint"]

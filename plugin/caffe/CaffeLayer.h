@@ -24,14 +24,13 @@ namespace paddle {
 
 class CaffeLayer : public Layer {
 protected:
-  WeightList weights_;
-  std::unique_ptr<Weight> biases_;
   ::caffe::Layer<real>* caffeOp_;
   std::vector<::caffe::Blob<real> *> bot_, top_, wei_;
   std::vector<bool> propagateDown_;
   std::vector<std::vector<int>> wDims_;
   int batchSize_;
-  int initW_;
+  int weightNums_;
+  bool initW_;
 
   std::vector<std::unique_ptr<ParameterConfig>> paramconfig_;
 
@@ -41,9 +40,7 @@ public:
   ~CaffeLayer() {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-  std::vector<ParameterPtr>& initParamHook();
-
-  Weight& getWeight(int idx) { return *weights_[idx]; }
+  std::vector<ParameterPtr>& createParameters();
 
   void forward(PassType passType);
   void backward(const UpdateCallback& callback = nullptr);

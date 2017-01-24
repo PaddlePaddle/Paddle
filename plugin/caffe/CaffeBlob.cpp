@@ -68,7 +68,7 @@ std::vector<int> argShape2Vector(const Argument& arg) {
 }
 
 void setBlob(MemoryTypes memType, real* d, bool useGpu) {
-  if (memType == DATA) {
+  if (memType == VALUE) {
     if (useGpu) {
       blob->set_gpu_data(d);
     } else {
@@ -89,7 +89,7 @@ void argToBlob(MemoryTypes memType,
                bool useGpu) {
   std::vector<int> shape = argShape2Vector(arg);
   blob->Reshape(shape);
-  real* d = memType == DATA ? arg.value->getData() : arg.grad->getData();
+  real* d = memType == VALUE ? arg.value->getData() : arg.grad->getData();
   setBlob(memType, d, useGpu);
 }
 
@@ -105,7 +105,7 @@ void blobToArg(MemoryTypes memType,
     arg.setFrameWidth(shape[3]);
   }
   CHECK_LE(shape.size(), 4) << "Now only support 4-dimension at most";
-  if (memType == DATA) {
+  if (memType == VALUE) {
     real* data = useGpu ? blob->mutable_gpu_data() : blob->mutable_cpu_data();
     arg.value = Matrix::create(data, h, w, false, useGpu);
   } else {
@@ -119,7 +119,7 @@ void copyBlobToParameter(MemoryTypes memType,
                          ParameterPtr para,
                          bool useGpu) {
   int size = blob->count();
-  if (memType == DATA) {
+  if (memType == VALUE) {
     real* d = useGpu ? blob->mutable_gpu_data() : blob->mutable_cpu_data();
     para->getBuf(PARAMETER_VALUE)->copyFrom(d, size);
   } else {
@@ -134,8 +134,8 @@ void parameterToBlob(MemoryTypes memType,
                      const std::vector<int>& shape,
                      bool useGpu) {
   blob->Reshape(shape);
-  real* d = memType == DATA ? para->getBuf(PARAMETER_VALUE)
-                            : para->getBuf(PARAMETER_GRADIENT);
+  real* d = memType == VALUE ? para->getBuf(PARAMETER_VALUE)
+                             : para->getBuf(PARAMETER_GRADIENT);
   setBlob(memType, d, useGpu);
 }
 

@@ -12,5 +12,4 @@ Makefile
 
 *~
 bazel-*
-
-warp-ctc
+third_party/

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/gserver/layers/Layer.h"
 #include "paddle/gserver/layers/WarpCTCLayer.h"
 
-#include "TestUtil.h"
+#include "paddle/testing/TestUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -148,11 +148,11 @@ LayerPtr createCTCLayer(string name,
 
   ActivationFunction* softmaxActivation = ActivationFunction::create("softmax");
 
-  softmaxActivation->forward(dataLayer->getOutput());
+  softmaxActivation->forward(dataLayer->getOutput()).check();
   layer->forward(PASS_GC);
 
   layer->backward();
-  softmaxActivation->backward(dataLayer->getOutput());
+  softmaxActivation->backward(dataLayer->getOutput()).check();
 
   return layer;
 }

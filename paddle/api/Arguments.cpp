@@ -137,6 +137,10 @@ void Arguments::setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError) {
   a.cpuSequenceDims = m->cast<paddle::IVector>(vec->getSharedPtr());
 }
 
+float Arguments::sumCosts() const {
+  return paddle::Argument::sumCosts(m->outputs);
+}
+
 int64_t Arguments::getBatchSize(size_t idx) const throw(RangeError) {
   auto& a = m->getArg(idx);
   return a.getBatchSize();

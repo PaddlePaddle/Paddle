@@ -257,6 +257,7 @@ message PriorBoxConfig {
 
 message CaffeConfig {
   required string prototxt = 1;
+  optional ParameterConfig parameter = 3;
 }
 
 

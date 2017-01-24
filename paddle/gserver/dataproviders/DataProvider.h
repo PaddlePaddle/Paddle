@@ -30,12 +30,12 @@ limitations under the License. */
 #include "paddle/math/Vector.h"
 #include "paddle/parameter/Argument.h"
 #include "paddle/utils/ClassRegistrar.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/Locks.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Queue.h"
 #include "paddle/utils/ThreadLocal.h"
 #include "paddle/utils/Util.h"
-#include "paddle/utils/common.h"
 
 namespace paddle {
 /**

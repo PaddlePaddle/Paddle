@@ -2628,7 +2628,7 @@ class AverageLayer(LayerBase):
 
 @config_layer('cos')
 class CosSimLayer(LayerBase):
-    def __init__(self, name, inputs, cos_scale=5, device=None):
+    def __init__(self, name, inputs, cos_scale=1, device=None):
         super(CosSimLayer, self).__init__(
             name, 'cos', 1, inputs=inputs, device=device)
         config_assert(len(self.inputs) == 2, 'CosSimLayer must have 2 inputs')
@@ -3058,12 +3058,21 @@ class RecurrentLayerGroup(LayerBase):
 
 @config_layer('caffe')
 class CaffeLayer(LayerBase):
-    def __init__(self, name, inputs, prototxt, **xargs):
+    def __init__(self, name, inputs, prototxt, num_weights=0, **xargs):
         super(CaffeLayer, self).__init__(
             name, 'caffe', 0, inputs=inputs, **xargs)
 
         caffe_conf = self.config.caffe_conf
         caffe_conf.prototxt = prototxt
+        caffe_conf.num_weights = num_weights
+
+        if num_weights > 0:
+            assert num_weights == len(inputs)
+            for i in xrange(num_weights):
+                input_layer = self.get_input_layer(i)
+                dims = [1, 1]
+                # fake weight, it will be resized in Layer.
+                self.create_input_parameter(i, 1, dims)
 
 
 # Deprecated, use a new layer specific class instead

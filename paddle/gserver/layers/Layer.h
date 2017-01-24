@@ -276,19 +276,19 @@ public:
   /**
    * Get the size of inputLayer[i].
    */
+  const LayerPtr& getPrev(size_t i) { return inputLayers_[i]; }
+
+  /**
+   * Get the size of inputLayer[i].
+   */
   const LayerConfig& getConfig(size_t i) { return config_; }
 
   /**
    * Get the config of inputLayer[i].
    */
   const LayerConfig& getPrevConfig(size_t i) {
-    return inputLayers_[i].getConfig(i);
+    return inputLayers_[i]->getConfig(i);
   }
-
-  /**
-   * Get the config of inputLayer[i].
-   */
-  const LayerConfig& getPrevConfig(size_t i) { return inputLayers_[i]; }
 
   /**
    * Get the forward-output value.
@@ -389,10 +389,10 @@ public:
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
   /**
-   * Parameters can be builded in c++ Layer code rather than config parser.
-   * Then used this interface to
+   * Parameters can be builded in c++ Layer code rather than config parser in
+   * Python code. So this interface is use to create parameters inside layers.
    */
-  virtual std::vector<ParameterPtr>& initParamHook() { return nullptr; }
+  virtual void createParameters() {}
 
   /**
    * Intialization for sub network if there has sub network.
