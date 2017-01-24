@@ -81,21 +81,6 @@ void NeuralNetwork::init(const ModelConfig& config,
   }
   config_ = config;
 
-  auto paramCreate = [&](const ParameterPtr& parameter) {
-    paramCallback(parameters_.size(), parameter.get());
-    if (!callback) {
-      for (ParameterType type :
-           (parameter->isStatic() ? std::vector<ParameterType>{PARAMETER_VALUE}
-                                  : parameterTypes)) {
-        if (type != PARAMETER_VALUE && type != PARAMETER_GRADIENT) {
-          parameter->enableType(type);
-        }
-      }
-    }
-    parameter->setID(parameters_.size());
-    parameters_.push_back(parameter);
-  };
-
   if (rootNetwork_ != nullptr) {
     // direct use parameters_ and parameterMap_ from base network
     CHECK_EQ((size_t)config.parameters_size(),
@@ -108,7 +93,21 @@ void NeuralNetwork::init(const ModelConfig& config,
       auto parameter = std::make_shared<Parameter>(para_config,
                                                    useGpu,
                                                    /*initialize=*/false);
-      paramCreate(parameter);
+      paramCallback(parameters_.size(), parameter.get());
+      if (!callback) {
+        for (ParameterType type :
+             (parameter->isStatic()
+                  ? std::vector<ParameterType>{PARAMETER_VALUE}
+                  : parameterTypes)) {
+          if (type != PARAMETER_VALUE && type != PARAMETER_GRADIENT) {
+            parameter->enableType(type);
+          }
+        }
+      }
+      parameter->setID(parameters_.size());
+      parameters_.push_back(parameter);
+      CHECK(!parameterMap_.count(parameter->getName()));
+      parameterMap_[parameter->getName()] = parameter;
     }
   }
 
@@ -161,14 +160,6 @@ void NeuralNetwork::init(const ModelConfig& config,
   for (const auto& layer : layers_) {
     layer->init(layerMap_, parameterMap_);
     layer->initSubNetwork(this /*root*/, config_, parameterTypes, useGpu);
-  }
-
-  for (const auto& layer : layers_) {
-    layer->createParameters();
-    auto paras = layer->getParameters();
-    for (const auto& para : paras) {
-      paramCreate(para);
-    }
   }
 
   for (const auto& layer_name :
