@@ -34,8 +34,8 @@ SparseMatrixArg::SparseMatrixArg(const CpuSparseMatrix& sparse, ArgType argType)
       row_(reinterpret_cast<void*>(sparse.getRows()), VALUE_TYPE_INT32),
       col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32),
       nnz_(sparse.getElementCnt()),
-      format_(sparse.getFormat()),
-      type_(sparse.getValueType()) {
+      format_(static_cast<SparseDataFormat>(sparse.getFormat())),
+      type_(static_cast<SparseDataType>(sparse.getValueType())) {
   bufferType_ = TENSOR_SPARSE;
 }
 
@@ -44,8 +44,8 @@ SparseMatrixArg::SparseMatrixArg(const GpuSparseMatrix& sparse, ArgType argType)
       row_(reinterpret_cast<void*>(sparse.getRows()), VALUE_TYPE_INT32),
       col_(reinterpret_cast<void*>(sparse.getCols()), VALUE_TYPE_INT32),
       nnz_(sparse.getElementCnt()),
-      format_(sparse.getFormat()),
-      type_(sparse.getValueType()) {
+      format_(static_cast<SparseDataFormat>(sparse.getFormat())),
+      type_(static_cast<SparseDataType>(sparse.getValueType())) {
   bufferType_ = TENSOR_SPARSE;
 }
 

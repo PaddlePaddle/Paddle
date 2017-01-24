@@ -31,6 +31,10 @@ enum DeviceType {
   DEVICE_TYPE_GPU = 2
 };
 
+enum SparseDataType { T_NO_VALUE = 0, T_FLOAT_VALUE = 1 };
+
+enum SparseDataFormat { T_SPARSE_CSR = 0, T_SPARSE_CSC = 1 };
+
 inline int sizeOfValuType(ValueType valueType) {
   if (valueType == VALUE_TYPE_INT32) {
     return 4;

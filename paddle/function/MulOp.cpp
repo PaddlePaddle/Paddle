@@ -41,6 +41,7 @@ inline void colVecAddTo(
 }  // namespace
 
 namespace paddle {
+/// sparse matrix (+)= dense matrix * dense matrix
 template <>
 void MulOp<DEVICE_TYPE_CPU>(CpuSparseMatrix& out,
                             const CpuMatrix& a,
@@ -105,6 +106,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuSparseMatrix& out,
   }
 }
 
+/// dense matrix (+)= dense matrix * dense matrix
 template <>
 void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
                             const CpuMatrix& a,
@@ -129,6 +131,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
        out.getStride());
 }
 
+/// dense matrix (+)= sparse matrix * dense matrix
 template <>
 void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
                             const CpuSparseMatrix& a,
@@ -138,8 +141,6 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
                             bool aTrans,
                             bool bTrans,
                             bool cTrans) {
-  CHECK_EQ(a.getFormat(), SPARSE_CSR)
-      << "Not supported SPARSE_CSR format for a";
   if (scaleT == 0) {
     out.zeroMem();
   }
@@ -165,6 +166,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
   }
 }
 
+/// dense matrix (+)= dense matrix * sparse matrix
 template <>
 void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
                             const CpuMatrix& a,
@@ -183,7 +185,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
   int* rows = b.getRows();
   int* cols = b.getCols();
 
-  /// b.getFormat() == SPARSE_CSC
+  /// SPARSE_CSC format
   if (b.getFormat() == SPARSE_CSC) {
     for (size_t j = 0; j < b.getWidth(); ++j) {
       int start = b.getColStartIdx(j);
@@ -200,7 +202,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
     return;
   }
 
-  /// b.getFormat() == SPARSE_CSR
+  /// SPARSE_CSR format
   if (b.getFormat() == SPARSE_CSR) {
     for (size_t j = 0; j < b.getHeight(); ++j) {
       int start = b.getRowStartIdx(j);
@@ -220,11 +222,32 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
 
 /**
  * mul operator
- * out = scaleT * out + scaleAB*(in1 * in2)
+ * out = scaleT * out + scaleAB * (in1 * in2)
+ * here, scaleT in {0, 1}, scaleAB == 1,
+ * out = in1 (A) * in2 (B), ASSIGN_TO
+ * out += in1 (A) * in2 (B), ADD_TO
  *
- * \param outputs[0]      output matrix, M * N
- * \param inputs[0]       first input (sparse) matrix,  M * K (if non-trans)
- * \param inputs[1]       second input matrix, K * N (if non-trans)
+ *
+ * \param outputs[0]      output matrix (out), M * N,
+ *                        could be either Sparse or Dense Matrix
+ *                        M is num of rows, N is num of columns
+ * \param inputs[0]       first input matrix (A),  M * K (if non-trans)
+ *                        could be either Sparse or Dense Matrix
+ *                        M is num of rows, K is num of columns
+ * \param inputs[1]       second input matrix (B), K * N (if non-trans)
+ *                        could be either Sparse or Dense Matrix
+ *                        K is num of rows, N is num of columns
+ *
+ * Support eight Mul operators, with both GPU and CPU devices
+ * For each device, four Mul operators are supported:
+ * 1. dense (out) = dense (A) * dense (B)
+ * 2. dense (out) = sparse (A) * dense (B)
+ *    sparse matrix only support SPARSE_CSR format
+ * 3. dense (out) = dense (A) * sparse (B)
+ *    sparse matrix support SPARSE_CSC and SPARSE_CSR formats
+ * 4. sparse (out) = dense (A) * dense (B)
+ *    sparse matrix support SPARSE_CSC and SPARSE_CSR formats
+ *
  */
 template <DeviceType Device>
 class MulFunc : public FunctionBase {
@@ -271,7 +294,7 @@ public:
            !inputs[1].isSparseArg()));
 
     auto outMat = outputs[0].matrix<Device>();
-    /// matrix = matrix * matrix
+    /// dense matrix = dense matrix * dense matrix
     if (!inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
         !outputs[0].isSparseArg()) {
       MulOp<Device>(outMat,
@@ -285,7 +308,7 @@ public:
       return;
     }
 
-    /// matrix = matrix * sparse matrix
+    /// dense matrix = dense matrix * sparse matrix
     if (!inputs[0].isSparseArg() && inputs[1].isSparseArg() &&
         !outputs[0].isSparseArg()) {
       CHECK(!aTrans_) << "Not supported a transpose";
@@ -300,10 +323,12 @@ public:
       return;
     }
 
-    /// matrix = sparse matrix * matrix
+    /// dense matrix = sparse matrix * dense matrix
     if (inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
         !outputs[0].isSparseArg()) {
       CHECK(!bTrans_) << "Not supported b transpose";
+      CHECK_EQ(inputs[0].sparse().dataFormat(), T_SPARSE_CSR)
+          << "Only supported SPARSE_CSR format for sparse matrix a";
       MulOp<Device>(outMat,
                     inputs[0].sparse().SparseMatrix<Device>(),
                     inputs[1].matrix<Device>(),
@@ -315,7 +340,7 @@ public:
       return;
     }
 
-    /// sparse matrix = matrix * matrix
+    /// sparse matrix = dense matrix * dense matrix
     auto outSparseMat = outputs[0].sparse().SparseMatrix<Device>();
     if (!inputs[0].isSparseArg() && !inputs[1].isSparseArg() &&
         outputs[0].isSparseArg()) {

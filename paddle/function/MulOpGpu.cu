@@ -18,10 +18,7 @@ limitations under the License. */
 #include "paddle/math/SparseMatrix.h"
 
 namespace paddle {
-/**
- * out = scaleT * out + scaleAB * (a * b)
- * out : output matrix, M * N
- */
+/// dense matrix (+)= dense matrix * dense matrix
 template <>
 void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
                             const GpuMatrix& a,
@@ -32,14 +29,11 @@ void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
                             bool bTrans,
                             bool cTrans) {
   CHECK(a.useGpu_ && b.useGpu_) << "matrix device type not match";
-  real* aData = const_cast<real*>(a.getData());
-  real* bData = const_cast<real*>(b.getData());
-  real* outData = const_cast<real*>(out.getData());
-  hl_matrix_mul(aData,
+  hl_matrix_mul(const_cast<real*>(a.getData()),
                 !aTrans ? HPPL_OP_N : HPPL_OP_T,
-                bData,
+                const_cast<real*>(b.getData()),
                 !bTrans ? HPPL_OP_N : HPPL_OP_T,
-                outData,
+                const_cast<real*>(out.getData()),
                 out.getHeight(),
                 out.getWidth(),
                 !aTrans ? a.getWidth() : a.getHeight(),
@@ -50,10 +44,7 @@ void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
                 out.getStride());
 }
 
-/**
- * out = scaleT * out + scaleAB * (a * b)
- * out : M * N
- */
+/// dense matrix (+)= sparse matrix * dense matrix
 template <>
 void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
                             const GpuSparseMatrix& a,
@@ -66,15 +57,11 @@ void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
   CHECK(out.isContiguous());
   CHECK(b.isContiguous());
   CHECK(a.useGpu_ && b.useGpu_) << "matrix device type not match";
-
-  hl_sparse_matrix_s aData = a.sMatrix_.get();
-  real* bData = const_cast<real*>(b.getData());
-  real* outData = const_cast<real*>(out.getData());
-  hl_matrix_csr_mul_dense(aData,
+  hl_matrix_csr_mul_dense(a.sMatrix_.get(),
                           aTrans ? HPPL_OP_T : HPPL_OP_N,
-                          bData,
+                          const_cast<real*>(b.getData()),
                           HPPL_OP_N,
-                          outData,
+                          const_cast<real*>(out.getData()),
                           out.getHeight(),
                           out.getWidth(),
                           b.getHeight(),
@@ -82,10 +69,7 @@ void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
                           scaleT);
 }
 
-/**
- * out = scaleT * out + scaleAB * (a * b)
- * out : M * N
- */
+/// dense matrix (+)= dense matrix * sparse matrix
 template <>
 void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
                             const GpuMatrix& a,
@@ -99,27 +83,23 @@ void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
   CHECK(a.isContiguous());
   CHECK(a.useGpu_ && b.useGpu_) << "matrix device type not match";
 
-  hl_sparse_matrix_s bData = b.sMatrix_.get();
-  real* aData = const_cast<real*>(a.getData());
-  real* outData = const_cast<real*>(out.getData());
-
   if (b.format_ == SPARSE_CSC) {
-    hl_matrix_dense_mul_csc(aData,
+    hl_matrix_dense_mul_csc(const_cast<real*>(a.getData()),
                             HPPL_OP_N,
-                            bData,
+                            b.sMatrix_.get(),
                             bTrans ? HPPL_OP_T : HPPL_OP_N,
-                            outData,
+                            const_cast<real*>(out.getData()),
                             out.getHeight(),
                             out.getWidth(),
                             a.getWidth(),
                             scaleAB,
                             scaleT);
   } else {
-    hl_matrix_dense_mul_csr(aData,
+    hl_matrix_dense_mul_csr(const_cast<real*>(a.getData()),
                             HPPL_OP_N,
-                            bData,
+                            b.sMatrix_.get(),
                             bTrans ? HPPL_OP_T : HPPL_OP_N,
-                            outData,
+                            const_cast<real*>(out.getData()),
                             out.getHeight(),
                             out.getWidth(),
                             a.getWidth(),
@@ -128,6 +108,7 @@ void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
   }
 }
 
+/// sparse matrix (+)= dense matrix * dense matrix
 template <>
 void MulOp<DEVICE_TYPE_GPU>(GpuSparseMatrix& out,
                             const GpuMatrix& a,
@@ -138,16 +119,11 @@ void MulOp<DEVICE_TYPE_GPU>(GpuSparseMatrix& out,
                             bool bTrans,
                             bool cTrans) {
   CHECK(a.useGpu_ && b.useGpu_) << "matrix device type not match";
-
-  real* aData = const_cast<real*>(a.getData());
-  real* bData = const_cast<real*>(b.getData());
-  hl_sparse_matrix_s outData = out.sMatrix_.get();
-
-  hl_sparse_matrix_mul(aData,
+  hl_sparse_matrix_mul(const_cast<real*>(a.getData()),
                        aTrans ? HPPL_OP_T : HPPL_OP_N,
-                       bData,
+                       const_cast<real*>(b.getData()),
                        bTrans ? HPPL_OP_T : HPPL_OP_N,
-                       outData,
+                       out.sMatrix_.get(),
                        out.getHeight(),
                        out.getWidth(),
                        !bTrans ? b.getHeight() : b.getWidth(),

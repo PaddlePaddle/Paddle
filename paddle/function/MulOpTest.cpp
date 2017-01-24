@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-/// todo(tianbing), delete
-#include <iostream>
 #include "FunctionTest.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"

@@ -15,7 +15,6 @@ limitations under the License. */
 #include "Function.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
-#include "paddle/math/Vector.h"
 #include "paddle/math/tests/TensorCheck.h"
 #include "paddle/testing/TestUtil.h"
 
@@ -77,33 +76,33 @@ public:
     cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
     gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
 
-    cpuOutputs_.emplace_back(std::make_shared<BufferArg>(
-        cpuMemory_.back()->getBuf(),
-        output.valueType(),
-        output.shape(),
-        // todo(tianbing), argType = output.getArgType(), but default ADD_TO
-        argType));
-    gpuOutputs_.emplace_back(std::make_shared<BufferArg>(
-        gpuMemory_.back()->getBuf(),
-        output.valueType(),
-        output.shape(),
-        // todo(tianbing), argType = output.getArgType(), but default ADD_TO
-        argType));
+    cpuOutputs_.emplace_back(
+        std::make_shared<BufferArg>(cpuMemory_.back()->getBuf(),
+                                    output.valueType(),
+                                    output.shape(),
+                                    argType));
+    gpuOutputs_.emplace_back(
+        std::make_shared<BufferArg>(gpuMemory_.back()->getBuf(),
+                                    output.valueType(),
+                                    output.shape(),
+                                    argType));
   }
 
   /// add and init output sparse matrix
   void addOutputs(const SparseMatrixArg& output, ArgType argType = ASSIGN_TO) {
-    cpuSparse_ = std::make_shared<CpuSparseMatrix>(output.shape()[0],
-                                                   output.shape()[1],
-                                                   output.nnz(),
-                                                   output.dataType(),
-                                                   output.dataFormat());
+    cpuSparse_ = std::make_shared<CpuSparseMatrix>(
+        output.shape()[0],
+        output.shape()[1],
+        output.nnz(),
+        static_cast<SparseValueType>(output.dataType()),
+        static_cast<SparseFormat>(output.dataFormat()));
 
-    gpuSparse_ = std::make_shared<GpuSparseMatrix>(output.shape()[0],
-                                                   output.shape()[1],
-                                                   output.nnz(),
-                                                   output.dataType(),
-                                                   output.dataFormat());
+    gpuSparse_ = std::make_shared<GpuSparseMatrix>(
+        output.shape()[0],
+        output.shape()[1],
+        output.nnz(),
+        static_cast<SparseValueType>(output.dataType()),
+        static_cast<SparseFormat>(output.dataFormat()));
 
     /// init sparse matrix
     hl_stream_t stream(HPPL_STREAM_1);
@@ -138,17 +137,19 @@ public:
   }
 
   void addInputs(const SparseMatrixArg& input) {
-    cpuSparse_ = std::make_shared<CpuSparseMatrix>(input.shape()[0],
-                                                   input.shape()[1],
-                                                   input.nnz(),
-                                                   input.dataType(),
-                                                   input.dataFormat());
+    cpuSparse_ = std::make_shared<CpuSparseMatrix>(
+        input.shape()[0],
+        input.shape()[1],
+        input.nnz(),
+        static_cast<SparseValueType>(input.dataType()),
+        static_cast<SparseFormat>(input.dataFormat()));
 
-    gpuSparse_ = std::make_shared<GpuSparseMatrix>(input.shape()[0],
-                                                   input.shape()[1],
-                                                   input.nnz(),
-                                                   input.dataType(),
-                                                   input.dataFormat());
+    gpuSparse_ = std::make_shared<GpuSparseMatrix>(
+        input.shape()[0],
+        input.shape()[1],
+        input.nnz(),
+        static_cast<SparseValueType>(input.dataType()),
+        static_cast<SparseFormat>(input.dataFormat()));
 
     /// init sparse matrix
     hl_stream_t stream(HPPL_STREAM_1);

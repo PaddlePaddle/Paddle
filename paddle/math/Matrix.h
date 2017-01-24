@@ -31,6 +31,7 @@ limitations under the License. */
 
 namespace paddle {
 
+/// TODO(tianbing), move to paddle/function/TensorType.h
 enum SparseValueType { NO_VALUE = 0, FLOAT_VALUE = 1 };
 
 /**
@@ -56,6 +57,7 @@ enum SparseValueType { NO_VALUE = 0, FLOAT_VALUE = 1 };
  *            value [1, 1, 2, 2, 5]
  * @endcode
  */
+/// TODO(tianbing), move to paddle/function/TensorType.h
 enum SparseFormat { SPARSE_CSR = 0, SPARSE_CSC = 1 };
 
 class Matrix;

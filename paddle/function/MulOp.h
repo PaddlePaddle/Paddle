@@ -15,12 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include "Function.h"
-/// todo(tianbing), delete it
-#include <iostream>
 #include "paddle/math/Matrix.h"
 #include "paddle/math/SparseMatrix.h"
 
 namespace paddle {
+/// CPU, dense matrix (+)= dense matrix * dense matrix
 template <DeviceType DType>
 void MulOp(CpuMatrix& out,
            const CpuMatrix& a,
@@ -31,6 +30,7 @@ void MulOp(CpuMatrix& out,
            bool bTrans,
            bool cTrans);
 
+/// CPU, dense matrix (+)= sparse matrix * dense matrix
 template <DeviceType DType>
 void MulOp(CpuMatrix& out,
            const CpuSparseMatrix& a,
@@ -41,6 +41,7 @@ void MulOp(CpuMatrix& out,
            bool bTrans,
            bool cTrans);
 
+/// CPU, dense matrix (+)= dense matrix * sparse matrix
 template <DeviceType DType>
 void MulOp(CpuMatrix& out,
            const CpuMatrix& a,
@@ -51,6 +52,7 @@ void MulOp(CpuMatrix& out,
            bool bTrans,
            bool cTrans);
 
+/// CPU, sparse matrix (+)= dense matrix * dense matrix
 template <DeviceType DType>
 void MulOp(CpuSparseMatrix& out,
            const CpuMatrix& a,
@@ -61,6 +63,7 @@ void MulOp(CpuSparseMatrix& out,
            bool bTrans,
            bool cTrans);
 
+/// GPU, dense matrix (+)= dense matrix * dense matrix
 template <DeviceType DType>
 void MulOp(GpuMatrix& out,
            const GpuMatrix& a,
@@ -71,6 +74,7 @@ void MulOp(GpuMatrix& out,
            bool bTrans,
            bool cTrans);
 
+/// GPU, dense matrix (+)= sparse matrix * dense matrix
 template <DeviceType DType>
 void MulOp(GpuMatrix& out,
            const GpuSparseMatrix& a,
@@ -81,6 +85,7 @@ void MulOp(GpuMatrix& out,
            bool bTrans,
            bool cTrans);
 
+/// GPU, dense matrix (+)= dense matrix * sparse matrix
 template <DeviceType DType>
 void MulOp(GpuMatrix& out,
            const GpuMatrix& a,
@@ -90,7 +95,7 @@ void MulOp(GpuMatrix& out,
            bool aTrans,
            bool bTrans,
            bool cTrans);
-
+/// GPU, sparse matrix (+)= dense matrix * dense matrix
 template <DeviceType DType>
 void MulOp(GpuSparseMatrix& out,
            const GpuMatrix& a,
