@@ -161,15 +161,8 @@ TEST(ProtoServer, extended) {
 int main(int argc, char** argv) {
   paddle::initMain(argc, argv);
   testing::InitGoogleTest(&argc, argv);
-
-  std::unique_ptr<MyServer> server;
-  if (FLAGS_rdma_tcp == "rdma") {
-    server.reset(new MyServer(FLAGS_port, 0));
-  } else {
-    server.reset(new MyServer(FLAGS_port));
-  }
-
-  server->start();
+  MyServer server(FLAGS_port, FLAGS_rdma_tcp == "rdma" ? 0 : -1);
+  server.start();
   usleep(10000);
 
   return RUN_ALL_TESTS();
