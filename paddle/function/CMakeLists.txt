@@ -25,6 +25,7 @@ if(WITH_TESTING)
     add_simple_unittest(BufferArgTest)
     add_simple_unittest(FunctionTest)
     add_simple_unittest(ContextProjectionOpTest)
+    add_simple_unittest(PadOpTest)
 endif()
 endif()
 
