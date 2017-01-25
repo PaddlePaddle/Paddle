@@ -389,12 +389,6 @@ public:
   virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
   /**
-   * Parameters can be builded in c++ Layer code rather than config parser in
-   * Python code. So this interface is use to create parameters inside layers.
-   */
-  virtual void createParameters() {}
-
-  /**
    * Intialization for sub network if there has sub network.
    * @param rootNetwork root network
    * @param config model config

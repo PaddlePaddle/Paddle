@@ -83,6 +83,10 @@ function(link_paddle_exe TARGET_NAME)
 
     if(USE_CAFFE)
         set(CAFFE_LIBS paddle_plugin_caffe)
+        target_circle_link_libraries(${TARGET_NAME}
+            ARCHIVE_START
+            paddle_plugin_caffe
+            ARCHIVE_END)
     else()
         set(CAFFE_LIBS "")
     endif()
@@ -107,8 +111,7 @@ function(link_paddle_exe TARGET_NAME)
         ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_DL_LIBS}
         ${RDMA_LD_FLAGS}
-        ${RDMA_LIBS}
-        ${CAFFE_LIBS})
+        ${RDMA_LIBS})
 
     if(WITH_PYTHON)
         target_link_libraries(${TARGET_NAME}

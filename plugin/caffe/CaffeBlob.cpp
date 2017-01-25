@@ -12,35 +12,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include <paddle/parameter/Argument.h>
+#include "CaffeBlob.h"
+#include "paddle/parameter/Argument.h"
 
 #include <caffe/blob.hpp>
 #include <caffe/layer.hpp>
 
 namespace paddle {
 
-// After reconstructing the data shape in paddle,
-// this functions can be simplified.
-std::vector<int> layerConfig2BlobShape(const batch, const LayerConfig& config) {
+std::vector<int> layerConfigToBlobShape(const int batch,
+                                        const LayerConfig& config) {
   std::vector<int> shape;
   shape.push_back(batch);
   int h = config.height();
   int w = config.width();
   int size = config.size();
-  if (h && w) {
+  if (h > 1 || w > 1) {
     int c = size / h / w;
     CHECK_EQ(c * h * w, size);
-    shape.push(c);
-    shape.push(h);
-    shape.push(w);
+    shape.push_back(c);
+    shape.push_back(h);
+    shape.push_back(w);
   } else {
-    shape.push(size);
+    shape.push_back(size);
   }
+  return shape;
 }
 
-std::vector<int> argShape2Vector(const Argument& arg) {
+std::vector<int> argShapeToVector(const Argument& arg) {
   std::vector<int> shape;
   shape.push_back(arg.getBatchSize());
   int frameHeight = arg.getFrameHeight();
@@ -55,8 +54,8 @@ std::vector<int> argShape2Vector(const Argument& arg) {
   // Paddle only support 4 dimension at most.
   // s1 means channel number for convolution layer,
   // means hidden dimension for other layers.
-  int s1 = 0;
-  if (frameHeight && frameWidth) {
+  int s1 = dim;
+  if (frameHeight > 1 || frameWidth > 1) {
     s1 = dim / frameHeight / frameWidth;
     CHECK(s1);
     CHECK_EQ(dim, s1 * frameHeight * frameWidth);
@@ -67,7 +66,10 @@ std::vector<int> argShape2Vector(const Argument& arg) {
   return shape;
 }
 
-void setBlob(MemoryTypes memType, real* d, bool useGpu) {
+void setBlob(MemoryTypes memType,
+             ::caffe::Blob<real>* blob,
+             real* d,
+             bool useGpu) {
   if (memType == VALUE) {
     if (useGpu) {
       blob->set_gpu_data(d);
@@ -87,21 +89,22 @@ void argToBlob(MemoryTypes memType,
                const Argument& arg,
                ::caffe::Blob<real>* blob,
                bool useGpu) {
-  std::vector<int> shape = argShape2Vector(arg);
+  std::vector<int> shape = argShapeToVector(arg);
   blob->Reshape(shape);
-  real* d = memType == VALUE ? arg.value->getData() : arg.grad->getData();
-  setBlob(memType, d, useGpu);
+  auto& mat = memType == VALUE ? arg.value : arg.grad;
+  CHECK(mat);
+  setBlob(memType, blob, mat->getData(), useGpu);
 }
 
 void blobToArg(MemoryTypes memType,
-               const ::caffe::Blob<real>* blob,
+               ::caffe::Blob<real>* blob,
                Argument& arg,
                bool useGpu) {
   auto& shape = blob->shape();
-  int h = shape(0);
+  int h = shape[0];
   int w = blob->count(1);
   if (shape.size() == 4) {
-    arg.setFrameHeight(shape[3]);
+    arg.setFrameHeight(shape[2]);
     arg.setFrameWidth(shape[3]);
   }
   CHECK_LE(shape.size(), 4) << "Now only support 4-dimension at most";
@@ -115,7 +118,7 @@ void blobToArg(MemoryTypes memType,
 }
 
 void copyBlobToParameter(MemoryTypes memType,
-                         const ::caffe::Blob<real>* blob,
+                         ::caffe::Blob<real>* blob,
                          ParameterPtr para,
                          bool useGpu) {
   int size = blob->count();
@@ -129,14 +132,14 @@ void copyBlobToParameter(MemoryTypes memType,
 }
 
 void parameterToBlob(MemoryTypes memType,
-                     const ParameterPtr para,
+                     ParameterPtr para,
                      ::caffe::Blob<real>* blob,
                      const std::vector<int>& shape,
                      bool useGpu) {
   blob->Reshape(shape);
-  real* d = memType == VALUE ? para->getBuf(PARAMETER_VALUE)
-                             : para->getBuf(PARAMETER_GRADIENT);
-  setBlob(memType, d, useGpu);
+  auto& buf = memType == VALUE ? para->getBuf(PARAMETER_VALUE)
+                               : para->getBuf(PARAMETER_GRADIENT);
+  setBlob(memType, blob, buf->getData(), useGpu);
 }
 
 }  // namespace paddle

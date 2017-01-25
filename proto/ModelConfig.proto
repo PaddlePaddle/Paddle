@@ -257,7 +257,8 @@ message PriorBoxConfig {
 
 message CaffeConfig {
   required string prototxt = 1;
-  optional ParameterConfig parameter = 3;
+  required uint32 num_weights = 2;
+  required uint32 num_input = 3;
 }
 
 message PadConfig {

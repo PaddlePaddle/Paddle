@@ -14,18 +14,22 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/parameter/Argument.h>
+#include "CaffeUtil.h"
+#include "paddle/parameter/Argument.h"
 
 #include <caffe/blob.hpp>
 #include <caffe/layer.hpp>
 
 namespace paddle {
 
-std::vector<int> layerConfig2BlobShape(const batch,
-                                       const LayerConfig& preConfig);
-std::vector<int> argShape2Vector(const Argument& arg);
+std::vector<int> layerConfigToBlobShape(const int batch,
+                                        const LayerConfig& preConfig);
+std::vector<int> argShapeToVector(const Argument& arg);
 
-void setBlob(MemoryTypes memType, real* d, bool useGpu);
+void setBlob(MemoryTypes memType,
+             ::caffe::Blob<real>* blob,
+             real* d,
+             bool useGpu);
 
 void argToBlob(MemoryTypes memType,
                const Argument& arg,
@@ -33,18 +37,19 @@ void argToBlob(MemoryTypes memType,
                bool useGpu);
 
 void blobToArg(MemoryTypes memType,
-               const ::caffe::Blob<real>* blob,
+               ::caffe::Blob<real>* blob,
                Argument& arg,
                bool useGpu);
 
 void copyBlobToParameter(MemoryTypes memType,
-                         const ::caffe::Blob<real>* blob,
+                         ::caffe::Blob<real>* blob,
                          ParameterPtr para,
                          bool useGpu);
 
 void parameterToBlob(MemoryTypes memType,
-                     const ParameterPtr para,
+                     ParameterPtr para,
                      ::caffe::Blob<real>* blob,
+                     const std::vector<int>& shape,
                      bool useGpu);
 
 }  // namespace paddle

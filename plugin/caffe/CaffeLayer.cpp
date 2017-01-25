@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
+using ::caffe::Blob;
 
 REGISTER_LAYER(caffe, CaffeLayer);
 
@@ -23,57 +24,58 @@ bool CaffeLayer::init(const LayerMap& layerMap,
                       const ParameterMap& parameterMap) {
   Layer::init(layerMap, parameterMap);
 
-  weightNums_ = config_.caffe_conf().num_weights();
   // create caffe layer
   auto param = getLayerParameter(config_.caffe_conf().prototxt());
   caffeOp_ = LayerRegistry<real>::CreateLayer(*param);
-  propagateDown_.resize(inputLayers_.size());
+  weightNums_ = config_.caffe_conf().num_weights();
+  inputNums_ = config_.caffe_conf().num_input();
+  CHECK_EQ(weightNums_, static_cast<int>(parameters_.size()));
+  resetParameters();
+  propagateDown_.assign(inputLayers_.size(), true);
+  top_.push_back(new Blob<real>());
+
   return true;
 }
 
-std::vector<ParameterPtr>& CaffeLayer::createParamemeters() {
+void CaffeLayer::resetParameters() {
   // set bottom
-  for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    auto blob = new Blob<float>();
-    blob->Reshape(layerConfig2BlobShape(1, getPrevConfig(i)));
+  for (int i = 0; i != inputNums_; ++i) {
+    auto blob = new Blob<real>();
+    blob->Reshape(layerConfigToBlobShape(1, getPrevConfig(i)));
     bot_.push_back(blob);
   }
 
   // set top
-  top_.push_back(new Blob<float>());
+  std::vector<Blob<real>*> top;
+  top.push_back(new Blob<real>());
 
   // the parameter shape can only be obtained after setup
-  caffeOp_->SetUp(bot_, top_);
+  caffeOp_->SetUp(bot_, top);
+  CHECK_LE(top.size(), 1);
 
-  for (int i = 0; i < caffeOp_->blobs().size(); ++i) {
-    auto& w = caffeOp_->blobs()[i];
-    int h = w->shape()[0];
-    int w = w->count(1);
-    ParameterConfig* conf = new ParameterConfig();
-    std::string pname = getName() + "_.w" + std::to_string(i);
-    conf->set_name(pname);
-    conf->set_size(w->count());
-    conf->add_dims(h);
-    conf->add_dims(w);
-    // The parameter initialization remain consistent with Caffe
+  CHECK_EQ(weightNums_, static_cast<int>(caffeOp_->blobs().size()));
+  for (size_t i = 0; i < caffeOp_->blobs().size(); ++i) {
+    auto& wblob = caffeOp_->blobs()[i];
+    std::vector<int> dim(2);
+    dim[0] = wblob->shape()[0];
+    dim[1] = wblob->count(1);
+    ParameterConfig* conf = &(parameters_[i]->getConfig());
     conf->set_initial_strategy(PARAMETER_INIT_SKIP);
-    paramconfig_.emplace_back(conf);
-    // if initialize = true, the constructor will allocate buffer
-    auto parameter = std::make_shared<Parameter>(paramconfig_[0].get(),
-                                                 useGpu_,
-                                                 /*initialize=*/true);
-    parameters_.push_back(parameter);
-    copyBlobToParameter(VALUE, caffeOp_->blobs()[i], parameter, useGpu_);
-
-    wDims_->push_back(w->shape());
-    wei_->push_back(new ::caffe::Blob<Dtype>());
-    parameterToBlob(VALUE, parameter, wei_[i], wDims_[i], useGpu_);
+    parameters_[i]->resize(wblob->count(), dim);
+    copyBlobToParameter(
+        VALUE, caffeOp_->blobs()[i].get(), parameters_[i], useGpu_);
+    wei_.push_back(new ::caffe::Blob<real>());
+    parameterToBlob(VALUE, parameters_[i], wei_[i], wblob->shape(), useGpu_);
   }
 
   CHECK_EQ(caffeOp_->blobs().size(), wei_.size());
-  for (int i = 0; i < wei_.size(); ++i) {
+  for (size_t i = 0; i < wei_.size(); ++i) {
     caffeOp_->blobs()[i].reset(wei_[i]);
+    ParameterConfig conf = parameters_[i]->getConfig();
+    bool prop = (!conf.is_static()) && conf.learning_rate() > 0.0;
+    caffeOp_->set_param_propagate_down(i, prop);
   }
+  for (auto blob : top) delete blob;
 }
 
 void CaffeLayer::caffeLayerSetup(int curBatchSize) {
@@ -84,10 +86,14 @@ void CaffeLayer::caffeLayerSetup(int curBatchSize) {
   // Whether it need to reset depending on the changes of batch size now.
   // If the frameHeight and frameWidth changes, it also needs to reset.
   if (curBatchSize != batchSize_) {
-    caffeOp_->SetUp(bot_, top_);
+    std::vector<Blob<real>*> top;
+    top.push_back(new Blob<real>());
+    caffeOp_->SetUp(bot_, top);
     batchSize_ = curBatchSize;
-    // The memory is shared between output_.value and top_[0].
-    blobToArg(VALUE, top_[0], getOutput(), useGpu_);
+    int width = top[0]->count(1);
+    resetOutput(curBatchSize, width);
+    argToBlob(VALUE, getOutput(), top_[0], useGpu_);
+    for (auto blob : top) delete blob;
   }
 }
 
@@ -97,13 +103,17 @@ void CaffeLayer::forward(PassType passType) {
 
   int batchSize = getInput(0).getBatchSize();
 
-  for (size_t i = 0; i != inputLayers_.size(); ++i) {
+  for (int i = 0; i != inputNums_; ++i) {
     // setting bottom. The memory is shared between Input(i) and bot_[i].
     argToBlob(VALUE, getInput(i), bot_[i], useGpu_);
   }
   caffeLayerSetup(batchSize);
 
   caffeOp_->Forward(bot_, top_);
+
+  // Output shared memory with top_[0]
+  blobToArg(VALUE, top_[0], getOutput(), useGpu_);
+
   /* activation */ {
     REGISTER_TIMER_INFO("FwAtvTimer", getName().c_str());
     forwardActivation();
@@ -116,18 +126,30 @@ void CaffeLayer::backward(const UpdateCallback& callback) {
     backwardActivation();
   }
 
-  // set propagateDown_
+  // set top diff
+  argToBlob(GRAD, getOutput(), top_[0], useGpu_);
 
   // set bottom diff
-  for (size_t i = 0; i != inputLayers_.size(); ++i) {
+  for (int i = 0; i != inputNums_; ++i) {
     argToBlob(GRAD, getInput(i), bot_[i], useGpu_);
+    if (!getInputGrad(i)) {
+      propagateDown_[i] = false;
+    }
+  }
+
+  // set blob diff
+  for (size_t i = 0; i < wei_.size(); ++i) {
+    if (parameters_[i]->getBuf(PARAMETER_GRADIENT)) {
+      parameterToBlob(GRAD, parameters_[i], wei_[i], wei_[i]->shape(), useGpu_);
+    }
   }
 
   caffeOp_->Backward(top_, propagateDown_, bot_);
 
   // might need to add bot_ diff to input grad.
-
-  // parameter updater
+  for (int i = 0; i < weightNums_; ++i) {
+    parameters_[i]->incUpdate(callback);
+  }
 }
 
 }  // namespace paddle

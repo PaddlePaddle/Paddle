@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "CaffeUtil.h"
+#include "CaffeBlob.h"
 #include "paddle/gserver/layers/Layer.h"
 
 namespace paddle {
@@ -27,20 +27,19 @@ protected:
   ::caffe::Layer<real>* caffeOp_;
   std::vector<::caffe::Blob<real> *> bot_, top_, wei_;
   std::vector<bool> propagateDown_;
-  std::vector<std::vector<int>> wDims_;
+  // std::vector<std::vector<int>> wDims_;
   int batchSize_;
   int weightNums_;
-  bool initW_;
-
-  std::vector<std::unique_ptr<ParameterConfig>> paramconfig_;
+  /// The number of input. It is not always equal to weightNums_.
+  int inputNums_;
 
 public:
   explicit CaffeLayer(const LayerConfig& config)
-      : Layer(config), batchSize_(0), initW_(false) {}
+      : Layer(config), batchSize_(0) {}
   ~CaffeLayer() {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-  std::vector<ParameterPtr>& createParameters();
+  void resetParameters();
 
   void forward(PassType passType);
   void backward(const UpdateCallback& callback = nullptr);
@@ -51,8 +50,6 @@ public:
    * the output of this layer.
    */
   void caffeLayerSetup(int curBatchSize);
-
-  void onPassEnd() { initW_ = false; }
 };
 
 }  // namespace paddle

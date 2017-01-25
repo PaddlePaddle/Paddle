@@ -4233,7 +4233,10 @@ def caffe_layer(input,
 
     assert len(input) <= num_weights
     ipts = [ipt.name for ipt in input]
-    ipts += ipts[0] * (num_weights - len(input))
+    for i in xrange(num_weights - len(input)):
+        ipts.append(ipts[0])
+
+    logger.info(ipts)
 
     Layer(
         name=name,
@@ -4242,10 +4245,11 @@ def caffe_layer(input,
         ],
         type=LayerType.CAFFE_LAYER,
         prototxt=prototxt,
+        num_input=len(input),
         num_weights=num_weights,
         active_type=act.name,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
-    return LayerOutput(name, LayerType.CAFFE_LAYER, parents=[input], size=1)
+    return LayerOutput(name, LayerType.CAFFE_LAYER, parents=input, size=1)
 
 
 @wrap_name_default()

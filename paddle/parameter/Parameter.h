@@ -404,7 +404,49 @@ public:
   typedef std::function<void(const VectorPtr vecs[])> ExecFunc;
   void exec(ExecFunc func);
 
-  void resetBuf() {}
+  void resize(int size,
+              const std::vector<int>& dim,
+              MatType matType = MAT_NORMAL) {
+    CHECK_LE(dim.size(), 2UL) << "parameter only support 2-dimension now.";
+    int cnt = 1;
+    // reset ParameterConfig
+    config_.set_size(size);
+    config_.clear_dims();
+    for (size_t i = 0; i < dim.size(); ++i) {
+      cnt *= dim[i];
+      config_.add_dims(dim[i]);
+    }
+    CHECK_EQ(size, cnt);
+
+    // reset PARAMETER_VALUE
+    auto& valueBuf = getBuf(PARAMETER_VALUE);
+    valueBuf->resize(size);
+    if (mats_[PARAMETER_VALUE]) {
+      mats_[PARAMETER_VALUE] = NULL;
+      setMat(PARAMETER_VALUE, matType);
+    }
+
+    // reset PARAMETER_GRADIENT
+    auto& gradBuf = getBuf(PARAMETER_GRADIENT);
+    if (gradBuf) {
+      gradBuf->resize(size);
+    }
+    if (mats_[PARAMETER_GRADIENT]) {
+      mats_[PARAMETER_GRADIENT] = NULL;
+      setMat(PARAMETER_GRADIENT, matType);
+    }
+
+    // reset PARAMETER_MOMENTUM
+    auto& momBuf = getBuf(PARAMETER_MOMENTUM);
+    if (momBuf) {
+      momBuf->resize(size);
+      momBuf->zeroMem();
+    }
+    if (mats_[PARAMETER_MOMENTUM]) {
+      mats_[PARAMETER_MOMENTUM] = NULL;
+      setMat(PARAMETER_MOMENTUM, matType);
+    }
+  }
 };
 
 typedef std::map<std::string, ParameterPtr> ParameterMap;

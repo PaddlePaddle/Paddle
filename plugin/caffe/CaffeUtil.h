@@ -27,8 +27,8 @@ namespace paddle {
 
 enum MemoryTypes { VALUE, GRAD };
 
-bool readProtoFromTextContent(const std::string& text,
-                              ::google::protobuf::Message* proto) {
+static bool readProtoFromTextContent(const std::string& text,
+                                     ::google::protobuf::Message* proto) {
   bool success = google::protobuf::TextFormat::ParseFromString(text, proto);
   return success;
 }
@@ -43,7 +43,7 @@ inline caffe::LayerParameter* getLayerParameter(const std::string& value) {
   return new caffe::LayerParameter(net_param.layer(0));
 }
 
-void setMode(bool useGpu) {
+static void setMode(bool useGpu) {
   if (useGpu) {
     ::caffe::Caffe::set_mode(::caffe::Caffe::GPU);
   } else {
