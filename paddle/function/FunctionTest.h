@@ -157,6 +157,7 @@ public:
     cpuSparse_->randomizeUniform();
     gpuSparse_->copyFrom(*cpuSparse_, stream);
     hl_stream_synchronize(stream);
+
   void addInputs(const SequenceArg& input) {
     size_t batchSize = input.shape()[0];
     size_t numSeqs = batchSize / 10 + 1;
@@ -301,6 +302,21 @@ protected:
 
   void initOutputs() {
     for (size_t i = 0; i < cpuOutputs_.size(); i++) {
+      initArg(*cpuOutputs_[i]);
+
+      // TODO: Need a BufferCopy used to copy from one BufferArg to another.
+      CpuVector cpuVector(cpuOutputs_[i]->shape().getElements(),
+                          (real*)cpuOutputs_[i]->data());
+      GpuVector gpuVector(gpuOutputs_[i]->shape().getElements(),
+                          (real*)gpuOutputs_[i]->data());
+
+      gpuVector.copyFrom(cpuVector);
+    }
+  }
+
+  void compareOutputs() {
+>>>>>>> rewrite unit test using Daoyuan's new FunctionTest.
+    for (size_t i = 0; i < cpuOutputs_.size(); i++) {
       if (cpuOutputs_[i]->isSparseArg()) {
         continue;  /// sparse matrix already init
       }
@@ -334,7 +350,6 @@ protected:
   }
 
 protected:
-<<<<<<< HEAD
   std::shared_ptr<FunctionBase> cpuFunc_;
   std::shared_ptr<FunctionBase> gpuFunc_;
   std::vector<CpuMemHandlePtr> cpuMemory_;

@@ -76,12 +76,12 @@ class CosSimForwardFunc : public FunctionBase {
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(inputs.size(), 2);
-    CHECK_EQ(outputs.size(), 1);
+    CHECK_EQ(inputs.size(), 2UL);
+    CHECK_EQ(outputs.size(), 1UL);
 
-    CHECK_EQ(inputs[0].shape().ndims(), (size_t)2);
-    CHECK_EQ(inputs[1].shape().ndims(), (size_t)2);
-    CHECK_EQ(outputs[0].shape().ndims(), (size_t)2);
+    CHECK_EQ(inputs[0].shape().ndims(), 2UL);
+    CHECK_EQ(inputs[1].shape().ndims(), 2UL);
+    CHECK_EQ(outputs[0].shape().ndims(), 2UL);
 
     CHECK_EQ(inputs[0].shape()[0], outputs[0].shape()[0]);
     CHECK_EQ(inputs[0].shape()[1], inputs[1].shape()[1]);
@@ -196,8 +196,8 @@ class CosSimBackwardFunc : public FunctionBase {
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(inputs.size(), 4);
-    CHECK_EQ(outputs.size(), 2);
+    CHECK_EQ(inputs.size(), 4UL);
+    CHECK_EQ(outputs.size(), 2UL);
     /// dim of out_grad and out_val == 1, column vector
     CHECK_EQ(inputs[0].shape()[1], 1UL);
     CHECK_EQ(inputs[1].shape()[1], 1UL);
