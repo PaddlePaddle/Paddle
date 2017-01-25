@@ -226,7 +226,8 @@ public:
   SequenceArg(ValueType valueType,
               const TensorShape& shape,
               ArgType argType = UNSPECIFIED)
-      : BufferArg(valueType, shape, argType), startPositions_(TensorShape()) {
+      : BufferArg(valueType, shape, argType),
+        startPositions_(TensorShape({shape[0]})) {
     bufferType_ = TENSOR_SEQUENCE_DATA;
   }
 
