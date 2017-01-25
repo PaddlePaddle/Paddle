@@ -132,7 +132,7 @@ public:
     auto out_mat = out_seq.matrix<Device>();
     const auto in_mat = val_seqs.matrix<Device>();
     const auto w_mat =
-        (2UL == inputs.size())
+        (2UL == inputs.size() && inputs[1].data())
             ? inputs[1].matrix<Device>()
             : typename Tensor<real, Device>::Matrix(nullptr, 0, 0);
     const auto seq_vec = val_seqs.getSequenceId().vector<int, Device>();
@@ -263,7 +263,7 @@ public:
         !out_seq.data() ? typename Tensor<real, Device>::Matrix(nullptr, 0, 0)
                         : out_seq.matrix<Device>();
     auto w_grad_mat =
-        (2UL == outputs.size())
+        (2UL == outputs.size() && outputs[1].data())
             ? outputs[1].matrix<Device>()
             : typename Tensor<real, Device>::Matrix(nullptr, 0, 0);
 
