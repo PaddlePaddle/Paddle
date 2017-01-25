@@ -70,7 +70,7 @@ public:
   }
 
   // output need only contains shape, do not contains data.
-  void addOutputs(const BufferArg& output, ArgType argType = ADD_TO) {
+  void addOutputs(const BufferArg& output, ArgType argType = ASSIGN_TO) {
     size_t size =
         output.shape().getElements() * sizeOfValuType(output.valueType());
     cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));

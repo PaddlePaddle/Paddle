@@ -26,8 +26,7 @@ void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
                             real scaleAB,
                             real scaleT,
                             bool aTrans,
-                            bool bTrans,
-                            bool cTrans) {
+                            bool bTrans) {
   CHECK(a.useGpu_ && b.useGpu_) << "matrix device type not match";
   hl_matrix_mul(const_cast<real*>(a.getData()),
                 !aTrans ? HPPL_OP_N : HPPL_OP_T,
@@ -52,8 +51,7 @@ void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
                             real scaleAB,
                             real scaleT,
                             bool aTrans,
-                            bool bTrans,
-                            bool cTrans) {
+                            bool bTrans) {
   CHECK(out.isContiguous());
   CHECK(b.isContiguous());
   CHECK(a.useGpu_ && b.useGpu_) << "matrix device type not match";
@@ -77,8 +75,7 @@ void MulOp<DEVICE_TYPE_GPU>(GpuMatrix& out,
                             real scaleAB,
                             real scaleT,
                             bool aTrans,
-                            bool bTrans,
-                            bool cTrans) {
+                            bool bTrans) {
   CHECK(out.isContiguous());
   CHECK(a.isContiguous());
   CHECK(a.useGpu_ && b.useGpu_) << "matrix device type not match";
@@ -116,8 +113,7 @@ void MulOp<DEVICE_TYPE_GPU>(GpuSparseMatrix& out,
                             real scaleAB,
                             real scaleT,
                             bool aTrans,
-                            bool bTrans,
-                            bool cTrans) {
+                            bool bTrans) {
   CHECK(a.useGpu_ && b.useGpu_) << "matrix device type not match";
   hl_sparse_matrix_mul(const_cast<real*>(a.getData()),
                        aTrans ? HPPL_OP_T : HPPL_OP_N,

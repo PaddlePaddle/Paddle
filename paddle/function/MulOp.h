@@ -27,8 +27,7 @@ void MulOp(CpuMatrix& out,
            real scaleAB,
            real scaleT,
            bool aTrans,
-           bool bTrans,
-           bool cTrans);
+           bool bTrans);
 
 /// CPU, dense matrix (+)= sparse matrix * dense matrix
 template <DeviceType DType>
@@ -38,8 +37,7 @@ void MulOp(CpuMatrix& out,
            real scaleAB,
            real scaleT,
            bool aTrans,
-           bool bTrans,
-           bool cTrans);
+           bool bTrans);
 
 /// CPU, dense matrix (+)= dense matrix * sparse matrix
 template <DeviceType DType>
@@ -49,8 +47,7 @@ void MulOp(CpuMatrix& out,
            real scaleAB,
            real scaleT,
            bool aTrans,
-           bool bTrans,
-           bool cTrans);
+           bool bTrans);
 
 /// CPU, sparse matrix (+)= dense matrix * dense matrix
 template <DeviceType DType>
@@ -60,8 +57,7 @@ void MulOp(CpuSparseMatrix& out,
            real scaleAB,
            real scaleT,
            bool aTrans,
-           bool bTrans,
-           bool cTrans);
+           bool bTrans);
 
 /// GPU, dense matrix (+)= dense matrix * dense matrix
 template <DeviceType DType>
@@ -71,8 +67,7 @@ void MulOp(GpuMatrix& out,
            real scaleAB,
            real scaleT,
            bool aTrans,
-           bool bTrans,
-           bool cTrans);
+           bool bTrans);
 
 /// GPU, dense matrix (+)= sparse matrix * dense matrix
 template <DeviceType DType>
@@ -82,8 +77,7 @@ void MulOp(GpuMatrix& out,
            real scaleAB,
            real scaleT,
            bool aTrans,
-           bool bTrans,
-           bool cTrans);
+           bool bTrans);
 
 /// GPU, dense matrix (+)= dense matrix * sparse matrix
 template <DeviceType DType>
@@ -93,8 +87,8 @@ void MulOp(GpuMatrix& out,
            real scaleAB,
            real scaleT,
            bool aTrans,
-           bool bTrans,
-           bool cTrans);
+           bool bTrans);
+
 /// GPU, sparse matrix (+)= dense matrix * dense matrix
 template <DeviceType DType>
 void MulOp(GpuSparseMatrix& out,
@@ -103,7 +97,6 @@ void MulOp(GpuSparseMatrix& out,
            real scaleAB,
            real scaleT,
            bool aTrans,
-           bool bTrans,
-           bool cTrans);
+           bool bTrans);
 
 }  // namespace paddle

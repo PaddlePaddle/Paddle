@@ -27,8 +27,7 @@ using namespace paddle;  // NOLINT
  */
 void testFuncDDDMatrix(
     bool transa, bool transb, size_t dimM, size_t dimN, size_t dimK) {
-  real alpha = 1.0;
-  real beta = 1.0;
+  real scaleT = 1.0;
   size_t heightA = (transa == false) ? dimM : dimK;
   size_t widthA = (transa == false) ? dimK : dimM;
   size_t heightB = (transb == false) ? dimK : dimN;
@@ -36,13 +35,8 @@ void testFuncDDDMatrix(
   size_t heightC = dimM;
   size_t widthC = dimN;
   // init Test object
-  FunctionCompare test("MulOp",
-                       FuncConfig()
-                           .set("scaleAB", alpha)
-                           .set("scaleT", beta)
-                           .set("aTrans", transa)
-                           .set("bTrans", transb)
-                           .set("cTrans", false));
+  FunctionCompare test(
+      "MulOp", FuncConfig().set("aTrans", transa).set("bTrans", transb));
   // prepare input arguments
   /// matrix A : HA * WA
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{heightA, widthA}));
@@ -51,7 +45,7 @@ void testFuncDDDMatrix(
 
   /// output matrix C: HC * WC
   test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{heightC, widthC}),
-                  beta == 1.0 ? ADD_TO : ASSIGN_TO);
+                  scaleT == 1.0 ? ADD_TO : ASSIGN_TO);
   // run Function
   test.run();
 }
@@ -85,16 +79,10 @@ TEST(MulOp, DDDMatrixMul) {
   */
 void testFuncDSparseDMatrix(
     size_t dimM, size_t dimN, size_t dimK, size_t nnz, SparseFormat FORMAT) {
-  real alpha = 1.0;
-  real beta = 1.0;
+  real scaleT = 1.0;
   // init Test object
   FunctionCompare test("MulOp",
-                       FuncConfig()
-                           .set("scaleAB", alpha)
-                           .set("scaleT", beta)
-                           .set("aTrans", false)
-                           .set("bTrans", false)
-                           .set("cTrans", false));
+                       FuncConfig().set("aTrans", false).set("bTrans", false));
   // prepare input arguments
   /// sparse matrix A : M * K
   test.addInputs(SparseMatrixArg(
@@ -104,7 +92,7 @@ void testFuncDSparseDMatrix(
 
   /// output matrix C: M * N
   test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{dimM, dimN}),
-                  beta == 1.0 ? ADD_TO : ASSIGN_TO);
+                  scaleT == 1.0 ? ADD_TO : ASSIGN_TO);
   // run Function
   test.run();
 }
@@ -136,16 +124,10 @@ TEST(MuLOp, DSparseDMul) {
   */
 void testFuncDDSparseMatrix(
     size_t dimM, size_t dimN, size_t dimK, size_t nnz, SparseFormat FORMAT) {
-  real alpha = 1.0;
-  real beta = 1.0;
+  real scaleT = 1.0;
   // init Test object
   FunctionCompare test("MulOp",
-                       FuncConfig()
-                           .set("scaleAB", alpha)
-                           .set("scaleT", beta)
-                           .set("aTrans", false)
-                           .set("bTrans", false)
-                           .set("cTrans", false));
+                       FuncConfig().set("aTrans", false).set("bTrans", false));
   // prepare input arguments
   /// matrix A : M * K
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{dimM, dimK}));
@@ -156,7 +138,7 @@ void testFuncDDSparseMatrix(
 
   /// output matrix C: M * N
   test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{dimM, dimN}),
-                  beta == 1.0 ? ADD_TO : ASSIGN_TO);
+                  scaleT == 1.0 ? ADD_TO : ASSIGN_TO);
   // run Function
   test.run();
 }
@@ -188,16 +170,10 @@ TEST(MulOp, DDSparseMul) {
   */
 void testFuncSparseDDMatrix(
     size_t dimM, size_t dimN, size_t dimK, size_t nnz, SparseFormat FORMAT) {
-  real alpha = 1.0;
-  real beta = 1.0;
+  real scaleT = 1.0;
   // init Test object
   FunctionCompare test("MulOp",
-                       FuncConfig()
-                           .set("scaleAB", alpha)
-                           .set("scaleT", beta)
-                           .set("aTrans", false)
-                           .set("bTrans", false)
-                           .set("cTrans", false));
+                       FuncConfig().set("aTrans", false).set("bTrans", false));
   // prepare input arguments
   /// matrix A : M * K
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{dimM, dimK}));
@@ -209,7 +185,7 @@ void testFuncSparseDDMatrix(
   test.addOutputs(
       SparseMatrixArg(
           VALUE_TYPE_FLOAT, TensorShape{dimM, dimN}, nnz, FORMAT, FLOAT_VALUE),
-      beta == 1.0 ? ADD_TO : ASSIGN_TO);
+      scaleT == 1.0 ? ADD_TO : ASSIGN_TO);
   // run Function
   test.run();
 }

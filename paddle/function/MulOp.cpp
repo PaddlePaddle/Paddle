@@ -49,8 +49,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuSparseMatrix& out,
                             real scaleAB,
                             real scaleT,
                             bool aTrans,
-                            bool bTrans,
-                            bool cTrans) {
+                            bool bTrans) {
   CHECK_EQ(out.getValueType(), FLOAT_VALUE);
   if (scaleT == 0) {
     out.zeroMem();
@@ -114,8 +113,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
                             real scaleAB,
                             real scaleT,
                             bool aTrans,
-                            bool bTrans,
-                            bool cTrans) {
+                            bool bTrans) {
   GEMM(aTrans ? CblasTrans : CblasNoTrans,
        bTrans ? CblasTrans : CblasNoTrans,
        out.getHeight(),
@@ -139,8 +137,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
                             real scaleAB,
                             real scaleT,
                             bool aTrans,
-                            bool bTrans,
-                            bool cTrans) {
+                            bool bTrans) {
   if (scaleT == 0) {
     out.zeroMem();
   }
@@ -174,8 +171,7 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
                             real scaleAB,
                             real scaleT,
                             bool aTrans,
-                            bool bTrans,
-                            bool cTrans) {
+                            bool bTrans) {
   if (scaleT == 0) {
     out.zeroMem();
   }
@@ -222,10 +218,10 @@ void MulOp<DEVICE_TYPE_CPU>(CpuMatrix& out,
 
 /**
  * mul operator
- * out = scaleT * out + scaleAB * (in1 * in2)
+ * out = scaleT * out + scaleAB * (A * B)
  * here, scaleT in {0, 1}, scaleAB == 1,
- * out = in1 (A) * in2 (B), ASSIGN_TO
- * out += in1 (A) * in2 (B), ADD_TO
+ * out = A * B, ASSIGN_TO
+ * out += A * B, ADD_TO
  *
  *
  * \param outputs[0]      output matrix (out), M * N,
@@ -253,15 +249,11 @@ template <DeviceType Device>
 class MulFunc : public FunctionBase {
 public:
   void init(const FuncConfig& config) override {
-    alpha_ = config.get<real>("scaleAB");
-    beta_ = config.get<real>("scaleT");
     aTrans_ = config.get<bool>("aTrans");
     bTrans_ = config.get<bool>("bTrans");
-    cTrans_ = config.get<bool>("cTrans");
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK(!cTrans_) << "output matrix should not be transposed";
     CHECK(!aTrans_ || !bTrans_)
         << "Not support both a and b are transpose matrices";
 
@@ -281,10 +273,8 @@ public:
     CHECK_EQ(aRow, outputs[0].shape()[0]);
     CHECK_EQ(bCol, outputs[0].shape()[1]);
 
-    /// only support C = A * B or C += A * B
-    CHECK_EQ(alpha_, static_cast<real>(1.0));
-    CHECK((beta_ == 0 && outputs[0].getArgType() == ASSIGN_TO) ||
-          (beta_ == 1 && outputs[0].getArgType() == ADD_TO));
+    /// only support C = A * B (ASSIGN_TO) or C += A * B (ADD_TO)
+    real scaleT = (outputs[0].getArgType() == ADD_TO) ? 1.0 : 0.0;
 
     /// support dense = not both sparse * sparse
     /// or sparse = dense * dense
@@ -300,11 +290,10 @@ public:
       MulOp<Device>(outMat,
                     inputs[0].matrix<Device>(),
                     inputs[1].matrix<Device>(),
-                    alpha_,
-                    beta_,
+                    1.0,  // scaleAB
+                    scaleT,
                     aTrans_,
-                    bTrans_,
-                    cTrans_);
+                    bTrans_);
       return;
     }
 
@@ -315,11 +304,10 @@ public:
       MulOp<Device>(outMat,
                     inputs[0].matrix<Device>(),
                     inputs[1].sparse().SparseMatrix<Device>(),
-                    alpha_,
-                    beta_,
+                    1.0,  // scaleAB
+                    scaleT,
                     aTrans_,
-                    bTrans_,
-                    cTrans_);
+                    bTrans_);
       return;
     }
 
@@ -332,11 +320,10 @@ public:
       MulOp<Device>(outMat,
                     inputs[0].sparse().SparseMatrix<Device>(),
                     inputs[1].matrix<Device>(),
-                    alpha_,
-                    beta_,
+                    1.0,  // scaleAB
+                    scaleT,
                     aTrans_,
-                    bTrans_,
-                    cTrans_);
+                    bTrans_);
       return;
     }
 
@@ -347,21 +334,17 @@ public:
       MulOp<Device>(outSparseMat,
                     inputs[0].matrix<Device>(),
                     inputs[1].matrix<Device>(),
-                    alpha_,
-                    beta_,
+                    1.0,  // scaleAB
+                    scaleT,
                     aTrans_,
-                    bTrans_,
-                    cTrans_);
+                    bTrans_);
       return;
     }
   }
 
 private:
-  real alpha_;
-  real beta_;
   bool aTrans_;
   bool bTrans_;
-  bool cTrans_;
 };
 
 REGISTER_TYPED_FUNC(MulOp, CPU, MulFunc);
