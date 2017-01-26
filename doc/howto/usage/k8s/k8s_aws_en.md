@@ -489,7 +489,7 @@ NAME          DESIRED   SUCCESSFUL   AGE
 paddle-data   1         1            6m
 ```
 
-Data preparation is done by docker image `paddledev/paddle-tutorial:k8s_data`, see [here](src/k8s_data/) for how to build this docker image and source code.
+Data preparation is done by docker image `paddledev/paddle-tutorial:k8s_data`, see [here](src/k8s_data/README.md) for how to build this docker image and source code.
 
 #### Start Training
 
@@ -584,7 +584,7 @@ kubectl --kubeconfig=kubeconfig log -f POD_NAME
 
 Run `kubectl --kubeconfig=kubeconfig describe job paddle-cluster-job` to check training job status. It will complete in around 20 minutes.
 
-The details for start `pserver` and `trainer` are hidden inside docker image `paddledev/paddle-tutorial:k8s_train`, see [here](src/k8s_train/) for how to build the docker image and source code.
+The details for start `pserver` and `trainer` are hidden inside docker image `paddledev/paddle-tutorial:k8s_train`, see [here](src/k8s_train/README.md) for how to build the docker image and source code.
 
 #### Inspect Training Output
 
