@@ -34,6 +34,10 @@ class IScanner(object):
 
 
 class DenseScanner(IScanner):
+    """
+    :type __mat__: numpy.ndarray
+    """
+
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__mat__ = None
@@ -47,6 +51,8 @@ class DenseScanner(IScanner):
     def finish_scan(self, argument):
         assert isinstance(argument, swig_paddle.Arguments)
         assert isinstance(self.input_type, dp2.InputType)
+        if self.__mat__.dtype != numpy.float32:
+            self.__mat__ = self.__mat__.astype(numpy.float32)
         m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True, False)
         argument.setSlotValue(self.pos, m)
 

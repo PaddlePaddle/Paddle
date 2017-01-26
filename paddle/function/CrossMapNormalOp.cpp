@@ -112,11 +112,51 @@ void CrossMapNormalGrad<DEVICE_TYPE_CPU>(real* inputsGrad,
 }
 
 /**
- * \brief {o_0, o_1} = calc(i_0)
+ * \brief Normalization with across maps.
  *
- * \param inputs[0] input value.
- * \param outputs[0] output value.
- * \param outputs[1] denoms.
+ * This Function comes from the paper
+ * "ImageNet Classification with Deep Convolutional Neural Networks".
+ *
+ * The original formula is:
+ *
+ *                                Input(i, x, y)
+ * Output(i, x, y) = ----------------------------------------------
+ *                                 -- upper
+ *                    (k + alpha * >  (Input(j, x, y))^2) ^ (beta)
+ *                                 -- j = lower
+ *
+ * upper is `min(C, c + N/2)`
+ * lower if `max(0, c - N/2)`
+ *
+ * Function implementation:
+ *
+ * inputs and outpus is NCHW format, while input.shape.ndims() is equal 4.
+ * And the meaning of each dimension(0-3) is respectively batch size,
+ * feature maps, rows and columns.
+ *
+ * Input and Output in the above formula is for each map(i) of one image, and
+ * Input(i, x, y), Output(i, x, y) represents an element in an image.
+ *
+ * C is the number of feature maps of one image, and N is a hyper-parameters
+ * is configured when Function is initialized. The sum in the denominator
+ * is the sum of the same position in the neighboring maps.
+ *
+ * In the implementation of Function, k is equal to 1,
+ * so Function has no argument for k.
+ *
+ * Function Arguments:
+ *
+ * \param size_      represent N
+ * \param scale_     represent alpha
+ * \param pow_       represent beta
+ * \param inputs[0]  represent Input
+ * \param outputs[0] represent Output
+ * \param outputs[1] represent The denominator in the formula(except beta)
+ *
+ * Note:
+ * Save output[1] is to simplify the backward calculation.
+ * TODO, if only consider the forward calculation, we can optimize to
+ * remove the output[1].
  */
 template <DeviceType Device>
 class CrossMapNormalFunc : public FunctionBase {
@@ -161,13 +201,36 @@ private:
 };
 
 /**
- * \brief {o_0} = calc(i_0, i_1, i_2, i_3)
+ * \brief Backward calculation for normalization with across maps.
  *
- * \param inputs[0] input value.
- * \param inputs[1] output value.
- * \param inputs[2] output grad.
- * \param inputs[3] denoms.
- * \param outputs[0] input grad.
+ * Function implementation:
+ *
+ * The implementation of this Function is derived from the
+ * CrossMapNormalFunc implementation.
+ *
+ * InputGrad = OutputGrad * denoms ^ (-beta)
+ *    -- upper
+ *  + > (OutputGrad * OutputValue * (-2 * alpha * beta) / denoms) * InputValue
+ *    -- lower
+ *
+ * The data of inputs/outputs format is the same as the forward interface
+ * and is NCHW.
+ *
+ * The upper and lower is the same as forward. The logic of the sum
+ * is also the same as forward.
+ *
+ * Function Arguments:
+ *
+ * \param size_      represent N
+ * \param scale_     represent alpha
+ * \param pow_       represent beta
+ * \param inputs[0]  represent InputValue, inputs[0] of CrossMapNormalFunc
+ * \param inputs[1]  represent OutputValue, outputs[0] of CrossMapNormalFunc
+ * \param inputs[2]  represent OutputGrad
+ * \param inputs[3]  represent denoms, outputs[1] of CrossMapNormalFunc
+ *                   This is the intermediate result that is
+ *                   preserved in the forward calculation.
+ * \param outputs[0] represent InputGrad
  */
 template <DeviceType Device>
 class CrossMapNormalGradFunc : public FunctionBase {
@@ -188,8 +251,13 @@ public:
     CHECK(inputs[0].shape() == inputs[3].shape());
     CHECK(inputs[0].shape() == outputs[0].shape());
 
-    // TODO(hedaoyuan): need support ASSIGN_TO mode.
-    CHECK_EQ(outputs[0].getArgType(), ADD_TO);
+    if (outputs[0].getArgType() != ADD_TO) {
+      // Currently, some algorithm implementations are ASSIGN_TO mode,
+      // if need to support the ADD_TO calculation, need to clear the output.
+      typename Tensor<real, Device>::Vector tmp(
+          outputs[0].shape().getElements(), outputs[0].data<real>());
+      tmp.zero();
+    }
 
     size_t samples = inputs[0].shape()[0];
     size_t channels = inputs[0].shape()[1];

@@ -1,11 +1,11 @@
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,12 +29,14 @@ INCLUDE_DIRECTORIES(${GLOG_INCLUDE_DIR})
 ExternalProject_Add(
     glog
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    DEPENDS gflags
     GIT_REPOSITORY  "https://github.com/google/glog.git"
     PREFIX          ${GLOG_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX=${GLOG_INSTALL_DIR}
     CMAKE_ARGS      -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-    CMAKE_ARGS      -DWITH_GFLAGS=OFF
+    CMAKE_ARGS      -DWITH_GFLAGS=ON
+    CMAKE_ARGS      -Dgflags_DIR=${GFLAGS_INSTALL_DIR}/lib/cmake/gflags
     CMAKE_ARGS      -DBUILD_TESTING=OFF
 )
 

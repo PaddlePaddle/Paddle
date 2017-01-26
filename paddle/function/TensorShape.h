@@ -55,6 +55,15 @@ public:
     numElements();
   }
 
+  void reshape(std::initializer_list<size_t> dims) {
+    ndims_ = dims.size();
+    if (ndims_ > kMinDims) {
+      dims_.resize(ndims_);
+    }
+    dims_.assign(dims);
+    numElements();
+  }
+
   // number of dimensions of the tensor
   size_t ndims() const { return ndims_; }
 
@@ -82,7 +91,7 @@ private:
 
   // init dims_
   void initDims(size_t ndims) {
-    size_t count = ndims < 4 ? 4 : ndims;
+    size_t count = ndims < kMinDims ? kMinDims : ndims;
     dims_.assign(count, 1);
   }
 
@@ -92,6 +101,7 @@ private:
   // number of elements
   size_t nelements_;
   std::vector<size_t> dims_;
+  static const size_t kMinDims = 4;
 };
 
 }  // namespace paddle
