@@ -13,8 +13,8 @@ RUN apt-get update && \
     apt-get install -y automake clang-3.8 llvm-3.8 libclang-3.8-dev && \
     apt-get clean -y
 
-RUN pip install --upgrade pip && \ 
-    pip install 'protobuf==3.1.0.post1' && \
+RUN pip install --upgrade pip && \
+    pip install -U protobuf && \
     pip install -U wheel pillow BeautifulSoup && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx_rtd_theme recommonmark jupyter
@@ -23,10 +23,12 @@ RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd cmake-3.4.1 && ./bootstrap && make -j4 && make install && \
     cd .. && rm -rf cmake-3.4.1
 
+ARG BUILD_AND_INSTALL
 ARG WITH_AVX
 ARG WITH_DOC
 ARG WITH_STYLE_CHECK
 
+ENV BUILD_AND_INSTALL=${BUILD_AND_INSTALL:-OFF}
 ENV WITH_GPU=OFF
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV WITH_DOC=${WITH_DOC:-ON}
@@ -36,10 +38,6 @@ RUN mkdir /paddle
 COPY . /paddle/
 RUN /paddle/paddle/scripts/docker/build.sh
 VOLUME ["/usr/share/nginx/html/data", "/usr/share/nginx/html/paddle"]
-
-RUN echo 'export LD_LIBRARY_PATH=/usr/lib64:${LD_LIBRARY_PATH}' >> /etc/profile
-RUN pip install /usr/local/opt/paddle/share/wheels/*.whl
-RUN paddle version  # print version after build
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd
