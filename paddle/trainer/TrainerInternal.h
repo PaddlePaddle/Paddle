@@ -51,7 +51,8 @@ public:
    * @param stats training stats
    * @param testing if it is in testing phase
    */
-  void init(const std::shared_ptr<TrainerConfigHelper>& config,
+  void init(const GradientMachineAttrPtr& attr,
+            const std::shared_ptr<TrainerConfigHelper>& config,
             const GradientMachinePtr& machine,
             std::unique_ptr<TrainerInternalConfig>&& intconfig,
             const std::shared_ptr<TrainerStats>& stats,

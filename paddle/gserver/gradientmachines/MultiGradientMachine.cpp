@@ -39,9 +39,11 @@ static void fillMergeTypes(PassType passType,
   }
 }
 
-MultiGradientMachine::MultiGradientMachine(const ModelConfig& config,
+MultiGradientMachine::MultiGradientMachine(const GradientMachineAttrPtr& attrs,
+                                           const ModelConfig& config,
                                            bool useGpu)
-    : useGpu_(useGpu),
+    : GradientMachine(attrs),
+      useGpu_(useGpu),
       trainerBarrier_(FLAGS_trainer_count),
       allBarrier_(FLAGS_trainer_count + 1),
       inArgsCopied_(false) {
@@ -89,7 +91,7 @@ MultiGradientMachine::MultiGradientMachine(const ModelConfig& config,
     }
   };
 
-  NeuralNetwork* nn = NeuralNetwork::create(config);
+  NeuralNetwork* nn = NeuralNetwork::create(getAttribute(), config);
   nn->init(config, mainParamInitCb);
   gradientMachine_.reset(nn);
   parameters_ = gradientMachine_->getParameters();
@@ -400,9 +402,9 @@ TrainerThread::TrainerThread(const ModelConfig& config,
 
   NeuralNetwork* nn = nullptr;
   if (!multiMachine->useGpu() || !FLAGS_parallel_nn) {
-    nn = NeuralNetwork::create(config);
+    nn = NeuralNetwork::create(multiMachine->getAttribute(), config);
   } else {
-    nn = new ParallelNeuralNetwork();
+    nn = new ParallelNeuralNetwork(multiMachine->getAttribute());
     for (auto& paraConfig : *config_.mutable_parameters()) {
       if (paraConfig.device() != -1) {
         paraConfig.set_device(multiMachine_->logicalDeviceId2RealDeviceId(

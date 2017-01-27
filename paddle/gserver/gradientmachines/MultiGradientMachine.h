@@ -174,7 +174,9 @@ public:
     TASK_COPY_IN_ARGS = 3,
   };
 
-  explicit MultiGradientMachine(const ModelConfig& config, bool useGpu);
+  explicit MultiGradientMachine(const GradientMachineAttrPtr& attrs,
+                                const ModelConfig& config,
+                                bool useGpu);
 
   virtual void prefetch(const std::vector<Argument>& inArgs);
 

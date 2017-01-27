@@ -126,8 +126,10 @@ public:
 };
 
 RecurrentGradientMachine::RecurrentGradientMachine(
-    const std::string& subModelName, NeuralNetwork* rootNetwork)
-    : NeuralNetwork(subModelName),
+    const GradientMachineAttrPtr& attr,
+    const std::string& subModelName,
+    NeuralNetwork* rootNetwork)
+    : NeuralNetwork(attr, subModelName),
       rootNetwork_(rootNetwork),
       beamSearchCtrlCallbacks_(nullptr),
       beamSearchStatistics_(nullptr) {
@@ -333,7 +335,7 @@ void RecurrentGradientMachine::resizeOrCreateFrames(int numFrames) {
 
   for (int i = frames_.size(); i < numFrames; ++i) {
     std::unique_ptr<NeuralNetwork> frame(
-        NeuralNetwork::newNeuralNetwork(subModelName_));
+        NeuralNetwork::newNeuralNetwork(getAttribute(), subModelName_));
     frame->init(config_, subParamInitCb);
 
     for (auto& inFrameLine : inFrameLines_) {

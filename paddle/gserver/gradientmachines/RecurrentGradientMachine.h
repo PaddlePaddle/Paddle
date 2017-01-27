@@ -31,7 +31,8 @@ class BeamSearchStatisticsCallbacks;
 
 class RecurrentGradientMachine : public NeuralNetwork {
 public:
-  RecurrentGradientMachine(const std::string& subModelName,
+  RecurrentGradientMachine(const GradientMachineAttrPtr& attr,
+                           const std::string& subModelName,
                            NeuralNetwork* rootNetwork);
 
   // Disable copy and assign.

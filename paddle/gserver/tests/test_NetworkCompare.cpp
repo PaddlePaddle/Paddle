@@ -19,6 +19,7 @@ limitations under the License. */
 #include <cstdlib>
 
 #include "paddle/testing/TestUtil.h"
+#include "paddle/trainer/ReadFlags.h"
 #include "paddle/trainer/Trainer.h"
 #include "paddle/utils/Stat.h"
 
@@ -98,7 +99,7 @@ void calcGradient(DataIn& in, DataOut& out, const std::string& configPath) {
 
   Trainer trainer;
   auto config = std::make_shared<TrainerConfigHelper>(configPath);
-  trainer.init(config, false);
+  trainer.init(paddle::createGradientMachineAttrFromFlags(), config, false);
 
   std::vector<ParameterPtr> parameters;
   vector<Argument> outArgs;

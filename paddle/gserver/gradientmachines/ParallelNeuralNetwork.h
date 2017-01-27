@@ -33,9 +33,10 @@ enum TaskType {
  */
 class ParallelNeuralNetwork : public NeuralNetwork {
 public:
-  ParallelNeuralNetwork(std::string subModelName = "",
+  ParallelNeuralNetwork(const GradientMachineAttrPtr &attr,
+                        std::string subModelName = "",
                         NeuralNetwork *rootNetwork = nullptr)
-      : NeuralNetwork(subModelName, rootNetwork) {}
+      : NeuralNetwork(attr, subModelName, rootNetwork) {}
 
   virtual void init(const ModelConfig &config,
                     ParamInitCallback callback = nullptr,

@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/utils/GlobalConstants.h>
-#include <paddle/utils/PythonUtil.h>
+#include <gtest/gtest.h>
+#include "paddle/pserver/ParameterServer2.h"
+#include "paddle/trainer/ReadFlags.h"
 #include "paddle/trainer/Trainer.h"
 #include "paddle/trainer/TrainerInternal.h"
-
-#include <gtest/gtest.h>
-#include <paddle/pserver/ParameterServer2.h>
+#include "paddle/utils/GlobalConstants.h"
+#include "paddle/utils/PythonUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -72,7 +72,7 @@ void trainerOnePassTest(const string& configFile,
     config->getOptConfig().set_average_window(averageWindow);
     config->getOptConfig().set_do_average_in_cpu(doAverageInCpu);
   }
-  trainer.init(config);
+  trainer.init(createGradientMachineAttrFromFlags(), config);
   trainer.train();
 }
 
@@ -252,7 +252,7 @@ void checkRemoteParameterUpdaterTest(const string& configFile,
   auto config = TrainerConfigHelper::createFromFlagConfig();
   config->getOptConfig().set_num_batches_per_get_parameter(
       num_batches_per_get_parameter);
-  trainer.init(config);
+  trainer.init(createGradientMachineAttrFromFlags(), config);
   EXPECT_EQ(checkRemoteParameterUpdater(trainer), 0);
 
   FLAGS_local = 1;

@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
 #include "paddle/trainer/ParamUtil.h"
+#include "paddle/trainer/ReadFlags.h"
 #include "paddle/trainer/Trainer.h"
 #include "paddle/trainer/TrainerInternal.h"
 #include "paddle/utils/Flags.h"
@@ -47,7 +48,7 @@ struct TrainerPrivate : public paddle::Trainer {
 Trainer::Trainer() : m(new TrainerPrivate()) {
   auto conf = paddle::TrainerConfigHelper::createFromFlags();
   if (conf != nullptr) {
-    m->init(conf);
+    m->init(paddle::createGradientMachineAttrFromFlags(), conf);
   }
 }
 
@@ -64,7 +65,10 @@ Trainer* Trainer::createByCommandLine() throw(IOError) {
 
 Trainer::Trainer(TrainerConfig* config, GradientMachine* gm)
     : m(new TrainerPrivate()) {
-  m->init(config->m->conf, /* testing= */ false, gm ? gm->m->machine : nullptr);
+  m->init(paddle::createGradientMachineAttrFromFlags(),
+          config->m->conf,
+          /* testing= */ false,
+          gm ? gm->m->machine : nullptr);
 }
 
 Trainer* Trainer::create(TrainerConfig* config,

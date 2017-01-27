@@ -90,7 +90,8 @@ DEFINE_string(model_list, "", "File that saves the model list when evaluation");
 
 namespace paddle {
 
-void Trainer::init(const std::shared_ptr<TrainerConfigHelper>& config,
+void Trainer::init(const GradientMachineAttrPtr& gmAttrs,
+                   const std::shared_ptr<TrainerConfigHelper>& config,
                    bool testing,
                    const std::shared_ptr<GradientMachine>& gradientMachine,
                    const std::shared_ptr<DataProvider>& dataProvider,
@@ -166,7 +167,8 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper>& config,
   }
 
   // initialize trainer internal
-  trainerInternal_.init(config_,
+  trainerInternal_.init(gmAttrs,
+                        config_,
                         gradientMachine,
                         TrainerInternalConfig::createFromMode(mode_),
                         stats_,
@@ -184,7 +186,7 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper>& config,
                                 trainerInternal_.getParameterUpdater()));
 
   bool gpuData =
-      FLAGS_use_gpu && (!FLAGS_parallel_nn) &&
+      FLAGS_use_gpu && (!gmAttrs->parallelNeuralNetowrk) &&
       (!IGradientMachineMode::dataMustInCpu(mode_, FLAGS_trainer_count));
 
   dataProvider_ = dataProvider;

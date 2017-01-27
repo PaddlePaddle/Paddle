@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <cstdlib>
 
+#include "paddle/trainer/ReadFlags.h"
 #include "paddle/trainer/Trainer.h"
 
 using namespace paddle;  // NOLINT
@@ -57,7 +58,9 @@ void calcGradient(ComData& data, const string configFile) {
   srand(0);
 
   Trainer trainer;
-  trainer.init(TrainerConfigHelper::createFromFlagConfig(), false);
+  trainer.init(createGradientMachineAttrFromFlags(),
+               TrainerConfigHelper::createFromFlagConfig(),
+               false);
 
   data.parameters = trainer.getGradientMachine()->getParameters();
   trainer.getDataProvider()->setSkipShuffle();

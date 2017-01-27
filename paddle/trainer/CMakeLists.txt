@@ -4,6 +4,7 @@ set(TRAINER_SOURCES
         ParameterUpdater.cpp
         ParamUtil.cpp
         RemoteParameterUpdater.cpp
+        ReadFlags.cpp
         Tester.cpp
         Trainer.cpp
         TrainerInternal.cpp
@@ -16,6 +17,7 @@ set(TRAINER_HEADERS
         ParameterUpdater.h
         ParamUtil.h
         RemoteParameterUpdater.h
+        ReadFlags.h
         Tester.h
         TesterConfig.h
         Trainer.h

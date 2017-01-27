@@ -70,8 +70,8 @@ void RecurrentLayerGroup::initSubNetwork(
     const std::vector<ParameterType>& parameterTypes,
     bool useGpu) {
   setNeedGradient(true);
-
-  network_.reset(new RecurrentGradientMachine(config_.name(), rootNetwork));
+  network_.reset(new RecurrentGradientMachine(
+      rootNetwork->getAttribute(), config_.name(), rootNetwork));
   ParamInitCallback cb = [this, rootNetwork](int paramId, Parameter* para) {
     para->enableSharedType(
         PARAMETER_VALUE,

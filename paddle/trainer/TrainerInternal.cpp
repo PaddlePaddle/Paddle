@@ -36,7 +36,8 @@ limitations under the License. */
 
 namespace paddle {
 
-void TrainerInternal::init(const std::shared_ptr<TrainerConfigHelper>& config,
+void TrainerInternal::init(const GradientMachineAttrPtr& attr,
+                           const std::shared_ptr<TrainerConfigHelper>& config,
                            const GradientMachinePtr& gradientMachine,
                            std::unique_ptr<TrainerInternalConfig>&& intconfig,
                            const std::shared_ptr<TrainerStats>& stats,
@@ -58,6 +59,7 @@ void TrainerInternal::init(const std::shared_ptr<TrainerConfigHelper>& config,
         << "Missing model_config in trainer_config";
     gradientMachine_.reset(
         GradientMachine::create(config_->getConfig().model_config(),
+                                attr,
                                 intconfig_->mode,
                                 parameterUpdater_->getParameterTypes()));
   }

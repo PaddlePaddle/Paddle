@@ -23,8 +23,9 @@ namespace paddle {
 
 class MultiNetwork : public NeuralNetwork {
 public:
-  explicit MultiNetwork(std::string subModelName = "")
-      : NeuralNetwork(subModelName) {}
+  explicit MultiNetwork(const GradientMachineAttrPtr& attrs,
+                        std::string subModelName = "")
+      : NeuralNetwork(attrs, subModelName) {}
 
   virtual void init(const ModelConfig& config,
                     ParamInitCallback callback,

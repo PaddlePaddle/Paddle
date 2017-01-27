@@ -29,25 +29,26 @@ namespace paddle {
 
 GradientMachine* GradientMachine::create(
     const ModelConfig& config,
+    const GradientMachineAttrPtr& attributes,
     int mode,
     const std::vector<ParameterType>& parameterTypes) {
   if (auto gm = IGradientMachineMode::tryCreateGradientMachine(mode, config)) {
     return gm;
   }
   if (FLAGS_trainer_count > 1) {
-    return new MultiGradientMachine(config, FLAGS_use_gpu);
+    return new MultiGradientMachine(attributes, config, FLAGS_use_gpu);
   }
   if (FLAGS_trainer_count == 1) {  // single
     NeuralNetwork* nn;
     if (config.type() == "multi_nn") {
       /* multi submodel calculate, thread(s) will be initialized inside */
-      nn = new MultiNetwork("root");
-    } else if (FLAGS_parallel_nn) {
+      nn = new MultiNetwork(attributes, "root");
+    } else if (attributes->parallelNeuralNetowrk) {
       /* multi threads calculate */
-      nn = new ParallelNeuralNetwork();
+      nn = new ParallelNeuralNetwork(attributes);
     } else {
       /* single thread calculate */
-      nn = NeuralNetwork::create(config);
+      nn = NeuralNetwork::create(attributes, config);
     }
     ParamInitCallback testParamInitCb = [](int paramId, Parameter* para) {
       para->enableType(PARAMETER_VALUE);

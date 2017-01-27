@@ -65,6 +65,7 @@ public:
    * @param testDataProvider Test Data Provider. null if create from config.
    */
   virtual void init(
+      const GradientMachineAttrPtr& gmAttrs,
       const std::shared_ptr<TrainerConfigHelper>& config,
       bool testing = false,
       const std::shared_ptr<GradientMachine>& gradientMachine = nullptr,

@@ -40,10 +40,10 @@ void MultiNetwork::init(const ModelConfig& config,
     std::string subModelName = config.sub_models(i).name();
     if (FLAGS_parallel_nn) {
       subNetworks_[i - 1] = std::unique_ptr<ParallelNeuralNetwork>(
-          new ParallelNeuralNetwork(subModelName, this));
+          new ParallelNeuralNetwork(getAttribute(), subModelName, this));
     } else {
       subNetworks_[i - 1] = std::unique_ptr<NeuralNetwork>(
-          NeuralNetwork::newNeuralNetwork(subModelName, this));
+          NeuralNetwork::newNeuralNetwork(getAttribute(), subModelName, this));
     }
     subNetworks_[i - 1]->init(config);
   }

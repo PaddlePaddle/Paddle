@@ -108,7 +108,8 @@ public:
   /// get machine state
   virtual void getState(MachineState& machineState);
 
-  static NeuralNetwork* create(const ModelConfig& config);
+  static NeuralNetwork* create(const GradientMachineAttrPtr& attrs,
+                               const ModelConfig& config);
 
   ParameterMap* getParameterMap() { return &parameterMap_; }
 
@@ -125,7 +126,8 @@ public:
     }
   }
 
-  static NeuralNetwork* newNeuralNetwork(const std::string& name = "",
+  static NeuralNetwork* newNeuralNetwork(const GradientMachineAttrPtr& attrs,
+                                         const std::string& name = "",
                                          NeuralNetwork* rootNetwork = nullptr);
 
 protected:
@@ -137,9 +139,12 @@ protected:
    * @param subModelName The name of sub-model.
    * @param rootNetwork  It used in MultiNetwork.
    */
-  NeuralNetwork(std::string subModelName = "",
+  NeuralNetwork(const GradientMachineAttrPtr& attrs,
+                std::string subModelName = "",
                 NeuralNetwork* rootNetwork = nullptr)
-      : subModelName_(subModelName), rootNetwork_(rootNetwork) {}
+      : GradientMachine(attrs),
+        subModelName_(subModelName),
+        rootNetwork_(rootNetwork) {}
 
   std::string subModelName_;
   ModelConfig config_;

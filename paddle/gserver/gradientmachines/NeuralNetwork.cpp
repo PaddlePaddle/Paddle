@@ -53,13 +53,14 @@ void parameterInitNN(int paramId,
   }
 }
 
-NeuralNetwork* NeuralNetwork::create(const ModelConfig& config) {
+NeuralNetwork* NeuralNetwork::create(const GradientMachineAttrPtr& attrs,
+                                     const ModelConfig& config) {
   if (config.type() == "recurrent_nn") {
-    return newNeuralNetwork("root");
+    return newNeuralNetwork(attrs, "root");
   } else if (config.type() == "multi_nn") {
-    return new MultiNetwork("root");
+    return new MultiNetwork(attrs, "root");
   } else {
-    return newNeuralNetwork();
+    return newNeuralNetwork(attrs);
   }
 }
 
@@ -396,12 +397,14 @@ extern NeuralNetwork* newCustomNerualNetwork(const std::string& name,
                                              NeuralNetwork* network)
     __attribute__((weak));
 
-NeuralNetwork* NeuralNetwork::newNeuralNetwork(const std::string& name,
-                                               NeuralNetwork* rootNetwork) {
+NeuralNetwork* NeuralNetwork::newNeuralNetwork(
+    const GradientMachineAttrPtr& attrs,
+    const std::string& name,
+    NeuralNetwork* rootNetwork) {
   if (newCustomNerualNetwork) {
     return newCustomNerualNetwork(name, rootNetwork);
   } else {
-    return new NeuralNetwork(name, rootNetwork);
+    return new NeuralNetwork(attrs, name, rootNetwork);
   }
 }
 

@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/utils/PythonUtil.h>
-
-#include "paddle/trainer/Trainer.h"
-
 #include <gtest/gtest.h>
 #include <cstdlib>
+#include "paddle/trainer/ReadFlags.h"
+#include "paddle/trainer/Trainer.h"
+#include "paddle/utils/PythonUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -41,7 +40,8 @@ void calcGradient(bool useGpu, comData& Data) {
   *ThreadLocalRand::getSeed() = 0;
   srand(0);
   Trainer trainer;
-  trainer.init(TrainerConfigHelper::createFromFlagConfig());
+  trainer.init(createGradientMachineAttrFromFlags(),
+               TrainerConfigHelper::createFromFlagConfig());
 
   Data.parameters = trainer.getGradientMachine()->getParameters();
   DataBatch dataBatch;

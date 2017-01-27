@@ -17,6 +17,7 @@ limitations under the License. */
 #include "ParamUtil.h"
 #include "Trainer.h"
 #include "paddle/pserver/ParameterServer2.h"
+#include "paddle/trainer/ReadFlags.h"
 #include "paddle/utils/PythonUtil.h"
 
 DEFINE_string(model_dir, "", "Directory for separated model files");
@@ -33,7 +34,8 @@ int main(int argc, char** argv) {
   FLAGS_use_gpu = false;
 #endif
   auto config = std::make_shared<TrainerConfigHelper>(confFile);
-  unique_ptr<GradientMachine> gradientMachine(GradientMachine::create(*config));
+  unique_ptr<GradientMachine> gradientMachine(
+      GradientMachine::create(*config, createGradientMachineAttrFromFlags()));
   gradientMachine->loadParameters(FLAGS_model_dir);
 
   ofstream os(FLAGS_model_file);

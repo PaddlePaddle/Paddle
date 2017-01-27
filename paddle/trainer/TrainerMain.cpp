@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <fenv.h>
+#include "ParamUtil.h"
+#include "ReadFlags.h"
+#include "Trainer.h"
 #include "paddle/pserver/ParameterServerController.h"
 #include "paddle/utils/PythonUtil.h"
-
-#include "ParamUtil.h"
-#include "Trainer.h"
 
 DEFINE_bool(start_pserver, false, "Whether to start pserver");
 DECLARE_int32(gpu_id);
@@ -47,7 +47,9 @@ int main(int argc, char** argv) {
   CHECK(config != nullptr) << "no valid config";
 
   feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW);
-  trainer.init(config, FLAGS_job == "test");
+  trainer.init(paddle::createGradientMachineAttrFromFlags(),
+               config,
+               FLAGS_job == "test");
 
   if (FLAGS_job == "train") {
     trainer.train();

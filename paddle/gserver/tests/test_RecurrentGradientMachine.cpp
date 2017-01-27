@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <paddle/gserver/gradientmachines/GradientMachine.h>
+#include <paddle/trainer/ReadFlags.h>
 #include <paddle/trainer/Trainer.h>
 #include <paddle/trainer/TrainerInternal.h>
 #include <paddle/utils/PythonUtil.h>
@@ -57,7 +58,7 @@ void CalCost(const string& conf,
              int num_passes) {
   auto config = std::make_shared<TrainerConfigHelper>(conf);
   TrainerForTest trainer;
-  trainer.init(config);
+  trainer.init(paddle::createGradientMachineAttrFromFlags(), config);
   mkDir(dir.c_str());
   config->setSaveDir(dir);
   auto dataProvider = trainer.getDataProvider();

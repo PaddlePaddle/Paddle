@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <fstream>
-
-#include <paddle/trainer/Trainer.h>
-#include <paddle/utils/PythonUtil.h>
-
 #include <gtest/gtest.h>
+#include <fstream>
+#include "paddle/trainer/ReadFlags.h"
+#include "paddle/trainer/Trainer.h"
+#include "paddle/utils/PythonUtil.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -95,7 +94,8 @@ void testGeneration(const string& configFile,
                     const string& expRetFile) {
   FLAGS_use_gpu = useGpu;
   auto config = std::make_shared<TrainerConfigHelper>(configFile);
-  unique_ptr<GradientMachine> gradientMachine(GradientMachine::create(*config));
+  unique_ptr<GradientMachine> gradientMachine(
+      GradientMachine::create(*config, createGradientMachineAttrFromFlags()));
   gradientMachine->loadParameters(modelDir);
   vector<Argument> inArgs(2);
 

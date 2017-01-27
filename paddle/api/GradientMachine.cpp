@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "Internal.h"
 #include "paddle/gserver/gradientmachines/NeuralNetwork.h"
+#include "paddle/trainer/ReadFlags.h"
 
 std::vector<int> GradientMachine::defaultParamTypes = {
     PARAMETER_VALUE, PARAMETER_GRADIENT, PARAMETER_MOMENTUM};
@@ -32,7 +33,8 @@ GradientMachine* GradientMachine::createFromPaddleModelPtr(
   auto& conf = *(const paddle::ModelConfig*)(confPtr);
   std::vector<ParameterType> realTypes;
   staticCastVector(&realTypes, types);
-  auto machineRawPtr = paddle::GradientMachine::create(conf, mode, realTypes);
+  auto machineRawPtr = paddle::GradientMachine::create(
+      conf, paddle::createGradientMachineAttrFromFlags(), mode, realTypes);
   auto machinePtr = std::shared_ptr<paddle::GradientMachine>(machineRawPtr);
   if (machinePtr != nullptr) {
     auto machine = new GradientMachine();

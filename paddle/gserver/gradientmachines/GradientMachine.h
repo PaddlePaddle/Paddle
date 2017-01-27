@@ -69,6 +69,14 @@ class GradientMachine;
 
 typedef std::shared_ptr<GradientMachine> GradientMachinePtr;
 
+struct GradientMachineAttributes {
+  //! GradientMachine uses Model Parallel or not. It should be set by
+  //! FLAGS_parallel_nn.
+  bool parallelNeuralNetowrk;
+};
+
+typedef std::shared_ptr<GradientMachineAttributes> GradientMachineAttrPtr;
+
 class GradientMachine {
 public:
   enum CreateMode {
@@ -77,6 +85,8 @@ public:
     kTesting = 4,
     kCustom = 10
   };
+  explicit GradientMachine(const GradientMachineAttrPtr& attrs)
+      : attrs_(attrs) {}
 
   /**
    * Create a gradient machine from ModelConfig
@@ -84,6 +94,7 @@ public:
    */
   static GradientMachine* create(
       const ModelConfig& config,
+      const GradientMachineAttrPtr& attributes,
       int mode = kNormal,
       const std::vector<ParameterType>& parameterTypes =
           std::vector<ParameterType>{
@@ -226,11 +237,16 @@ public:
     (void)numProcessed;
   }
 
+  const GradientMachineAttrPtr& getAttribute() const { return attrs_; }
+
 protected:
   virtual void onLoadParameter() {}
 
   std::vector<ParameterPtr> parameters_;
   std::vector<ParameterPtr> nonStaticParameters_;
+
+private:
+  GradientMachineAttrPtr attrs_;
 };
 
 }  // namespace paddle

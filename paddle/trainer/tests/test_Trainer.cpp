@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <paddle/utils/PythonUtil.h>
 #include <paddle/utils/Version.h>
+#include "paddle/trainer/ReadFlags.h"
 #include "paddle/trainer/Trainer.h"
 
 #include <gtest/gtest.h>
@@ -45,7 +46,8 @@ void checkGradientTest(const string& configFile,
             << " configFile=" << configFile;
 
   Trainer trainer;
-  trainer.init(TrainerConfigHelper::createFromFlagConfig());
+  trainer.init(createGradientMachineAttrFromFlags(),
+               TrainerConfigHelper::createFromFlagConfig());
   EXPECT_LE(fabs(trainer.checkGradient()), 0.02);
 }
 
