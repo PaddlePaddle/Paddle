@@ -3,12 +3,6 @@
 
 We will show you step by step on how to run distributed PaddlePaddle training on AWS cluster with Kubernetes. Let's start from core concepts.
 
-## Choose AWS Service Region
-This tutorial requires several AWS services work in the same region. Before we create anything in AWS, please check the following link
-https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/
-Choose a region which has the following services available: EC2, EFS, VPS, CloudFormation, KMS, VPC, S3.
-In this tutorial, we use "Oregon(us-west-2)" as example.
-
 ## Distributed PaddlePaddle Training Core Concepts
 
 ### Distributed Training Job
@@ -50,6 +44,12 @@ We rank each pod by sorting them by their ips. The rank of each pod could be the
 
 ## PaddlePaddle on AWS with Kubernetes
 
+### Choose AWS Service Region
+This tutorial requires several AWS services work in the same region. Before we create anything in AWS, please check the following link
+https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/
+Choose a region which has the following services available: EC2, EFS, VPS, CloudFormation, KMS, VPC, S3.
+In this tutorial, we use "Oregon(us-west-2)" as example.
+
 ### Create AWS Account and IAM Account
 
 Under each AWS account, we can create multiple [IAM](http://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html) users. This allows us to grant some privileges to each IAM user and to create/operate AWS clusters as an IAM user.
@@ -80,7 +80,7 @@ Please be aware that this tutorial needs the following privileges for the user i
 #### kube-aws
 
 [kube-aws](https://github.com/coreos/kube-aws) is a CLI tool to automate cluster deployment to AWS.
-##### Verify integrity of kube-aws downloaded
+##### Verify kube-aws integrity
 Note: if you are using a non-official release (e.g RC release) kube-aws, you can skip this setp.
 Import the CoreOS Application Signing Public Key:
 
@@ -265,10 +265,7 @@ When the cluster is created, the controller will expose the TLS-secured API on a
 
 DNS name should have a CNAME points to cluster DNS name or an A record points to the cluster IP address.
 
-
-We will need to use DNS name later in tutorial. If you don't already own one, you can choose any DNS name (e.g., `paddle`) and modify `/etc/hosts` to associate cluster ip with that DNS name. We will find the ip to map to `paddle` in later steps. Also in this case, will have to add name service (route53) in aws cluster in later step.
-=======
-We will need to use DNS name later in tutorial.
+We will need to use DNS name later in tutorial. If you don't already own one, you can choose any DNS name (e.g., `paddle`) and modify `/etc/hosts` to associate cluster IP with that DNS name for your local machine. And add name service (route53) in aws to associate the IP to paddle for cluster. We will find the cluster IP in later steps.
 
 #### S3 bucket
 
@@ -382,7 +379,7 @@ In the above output, both ip `54.241.164.52`, `54.67.102.112` will work.
 ##### Update local DNS association
 Edit `/etc/hosts` to associate above ip with the DNS name.
 ##### Add Route53 private name service in VPC
- - Open Route53 web console
+ - Open [Route53 Console](https://console.aws.amazon.com/route53/home)
  - Create hosted zone with following config
    - Domain name: "paddle"
    - Type: "Private hosted zone for amazon VPC"
