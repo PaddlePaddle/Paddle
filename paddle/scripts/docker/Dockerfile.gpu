@@ -13,8 +13,8 @@ RUN apt-get update && \
     apt-get install -y automake clang-3.8 llvm-3.8 libclang-3.8-dev && \
     apt-get clean -y
 
-RUN pip install --upgrade pip && \ 
-    pip install 'protobuf==3.1.0.post1' && \
+RUN pip install --upgrade pip
+RUN pip install 'protobuf==3.1.0.post1' && \
     pip install -U wheel pillow BeautifulSoup && \
     pip install -U docopt PyYAML sphinx && \
     pip install -U sphinx_rtd_theme recommonmark jupyter
