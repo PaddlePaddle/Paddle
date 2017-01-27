@@ -71,7 +71,6 @@ __all__ = [
     'bilinear_interp_layer',
     'trans_layer',
     'rotate_layer',
-    'flip_layer',
     'sum_to_one_norm_layer',
     'get_output_layer',
     'LayerType',
@@ -1718,46 +1717,6 @@ def rotate_layer(input, height, name=None, layer_attr=None):
         layer_type=LayerType.ROTATE_LAYER,
         parents=[input],
         size=l.config.size)
-
-
-@wrap_name_default()
-@layer_support()
-def flip_layer(input, height, name=None, layer_attr=None):
-    """
-    A layer for flipping the matrix w.r.t the matrix center.
-    It's essentially rotating the matrix twice.
-    Used for input as image or map.
-
-    .. math::
-       y(i,j) = x(M-i-1, N-j-1)
-
-    where :math:`x` is (M x N) input, and :math:`y` is (M x N) output.
-
-    The example usage is:
-
-    .. code-block:: python
-
-       flip = flip_layer(input=layer,
-                         height=100)
-
-    :param input: Input layer.
-    :type input: LayerOutput
-    :param height: The height of the sample matrix
-    :type height: int
-    :param name: Layer name.
-    :type name: basestring
-    :param layer_attr: extra layer attributes.
-    :type layer_attr: ExtraLayerAttribute.
-    :return: LayerOutput object.
-    :rtype: LayerOutput
-    """
-    assert isinstance(input, LayerOutput)
-    return rotate_layer(
-        input=rotate_layer(
-            input=input, height=height),
-        height=height,
-        name=name,
-        layer_attr=layer_attr)
 
 
 @wrap_name_default()
