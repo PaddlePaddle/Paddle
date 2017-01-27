@@ -1,7 +1,7 @@
 file(GLOB h_files . *Op.h)
 file(GLOB cpp_files . *Op.cpp)
 
-list(APPEND h_files Function.h)
+list(APPEND h_files Function.h FunctionBase.h)
 list(APPEND cpp_files Function.cpp)
 list(APPEND cpp_files BufferArg.cpp)
 

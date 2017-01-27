@@ -18,7 +18,7 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 #include "ModelConfig.pb.h"
-#include "paddle/function/Function.h"
+#include "paddle/function/FunctionBase.h"
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/utils/ClassRegistrar.h"
