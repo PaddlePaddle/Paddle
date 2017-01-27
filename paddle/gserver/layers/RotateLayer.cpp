@@ -40,19 +40,17 @@ void RotateLayer::forward(PassType passType) {
 
   MatrixPtr outV = getOutputValue();
 
-  for (int b = 0; b < batchSize_; b ++) {
-    MatrixPtr inputSample
-            = Matrix::create(input->getData() + b * sampleSize_,
-                             sampleHeight_,
-                             sampleWidth_,
-                             false,
-                             useGpu_);
-    MatrixPtr outputSample
-            = Matrix::create(outV->getData() + b * sampleSize_,
-                             sampleWidth_,
-                             sampleHeight_,
-                             false,
-                             useGpu_);
+  for (int b = 0; b < batchSize_; b++) {
+    MatrixPtr inputSample = Matrix::create(input->getData() + b * sampleSize_,
+                                           sampleHeight_,
+                                           sampleWidth_,
+                                           false,
+                                           useGpu_);
+    MatrixPtr outputSample = Matrix::create(outV->getData() + b * sampleSize_,
+                                            sampleWidth_,
+                                            sampleHeight_,
+                                            false,
+                                            useGpu_);
     inputSample->rotate(outputSample, false, true);
   }
 
@@ -71,21 +69,21 @@ void RotateLayer::backward(const UpdateCallback& callback) {
   // the grad should be rotated in the reverse direction
   MatrixPtr preGrad = getInputGrad(0);
 
-  for (int b = 0; b < batchSize_; b ++) {
-    MatrixPtr inputSampleGrad
-            = Matrix::create(preGrad->getData() + b * sampleSize_,
-                             sampleHeight_,
-                             sampleWidth_,
-                             false,
-                             useGpu_);
-    MatrixPtr outputSampleGrad
-            = Matrix::create(outputGrad->getData() + b * sampleSize_,
-                             sampleWidth_,
-                             sampleHeight_,
-                             false,
-                             useGpu_);
-    MatrixPtr tmpGrad
-            = Matrix::create(sampleHeight_, sampleWidth_, false, useGpu_);
+  for (int b = 0; b < batchSize_; b++) {
+    MatrixPtr inputSampleGrad =
+        Matrix::create(preGrad->getData() + b * sampleSize_,
+                       sampleHeight_,
+                       sampleWidth_,
+                       false,
+                       useGpu_);
+    MatrixPtr outputSampleGrad =
+        Matrix::create(outputGrad->getData() + b * sampleSize_,
+                       sampleWidth_,
+                       sampleHeight_,
+                       false,
+                       useGpu_);
+    MatrixPtr tmpGrad =
+        Matrix::create(sampleHeight_, sampleWidth_, false, useGpu_);
     outputSampleGrad->rotate(tmpGrad, false, false);
     inputSampleGrad->add(*tmpGrad);
   }

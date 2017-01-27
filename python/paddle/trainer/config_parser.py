@@ -1833,7 +1833,6 @@ class PoolLayer(LayerBase):
                                pool_conf.channels)
 
 
-
 @config_layer('spp')
 class SpatialPyramidPoolLayer(LayerBase):
     def __init__(self, name, inputs, **xargs):

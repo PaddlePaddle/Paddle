@@ -1707,15 +1707,17 @@ def rotate_layer(input, height, name=None, layer_attr=None):
     :rtype: LayerOutput
     """
     assert isinstance(input, LayerOutput)
-    l = Layer(name=name,
-              height=height,
-              type=LayerType.ROTATE_LAYER,
-              inputs=[input.name],
-              **ExtraLayerAttribute.to_kwargs(layer_attr))
-    return LayerOutput(name=name,
-                       layer_type=LayerType.ROTATE_LAYER,
-                       parents=[input],
-                       size=l.config.size)
+    l = Layer(
+        name=name,
+        height=height,
+        type=LayerType.ROTATE_LAYER,
+        inputs=[input.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.ROTATE_LAYER,
+        parents=[input],
+        size=l.config.size)
 
 
 @wrap_name_default()
@@ -1750,11 +1752,12 @@ def flip_layer(input, height, name=None, layer_attr=None):
     :rtype: LayerOutput
     """
     assert isinstance(input, LayerOutput)
-    return rotate_layer(input=rotate_layer(input=input,
-                                           height=height),
-                        height=height,
-                        name=name,
-                        layer_attr=layer_attr)
+    return rotate_layer(
+        input=rotate_layer(
+            input=input, height=height),
+        height=height,
+        name=name,
+        layer_attr=layer_attr)
 
 
 @wrap_name_default()
