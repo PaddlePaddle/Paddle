@@ -2682,6 +2682,7 @@ def lstm_step_layer(input,
 
 
 @wrap_bias_attr_default()
+@wrap_param_attr_default()
 @wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
 @wrap_act_default(act=TanhActivation())
 @wrap_name_default('gru_step')
@@ -2693,6 +2694,7 @@ def gru_step_layer(input,
                    name=None,
                    gate_act=None,
                    bias_attr=None,
+                   param_attr=None,
                    layer_attr=None):
     """
 
@@ -2714,7 +2716,7 @@ def gru_step_layer(input,
     Layer(
         name=name,
         type=LayerType.GRU_STEP_LAYER,
-        inputs=[input.name, output_mem.name],
+        inputs=[input.name, Input(output_mem.name, **param_attr.attr)],
         bias=ParamAttr.to_bias(bias_attr),
         size=size,
         active_type=act.name,

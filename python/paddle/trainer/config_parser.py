@@ -2996,7 +2996,7 @@ class GruStepLayer(LayerBase):
         config_assert(input_layer1.size == size,
                       'input_layer1.size != layer.size')
         self.config.active_gate_type = active_gate_type
-        self.create_input_parameter(0, size * size * 3, [size, size * 3])
+        self.create_input_parameter(1, size * size * 3, [size, size * 3])
         self.create_bias_parameter(bias, size * 3)
 
 
