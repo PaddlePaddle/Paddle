@@ -20,9 +20,9 @@ Windows -- in a consistent way.
 
    .. code-block:: bash
 
-   git clone --recursive https://github.com/PaddlePaddle/Paddle
-   cd Paddle
-   docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile .
+      git clone --recursive https://github.com/PaddlePaddle/Paddle
+      cd Paddle
+      docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile .
 
 
    Note that by default :code:`docker build` wouldn't import source
