@@ -26,6 +26,7 @@ if(WITH_TESTING)
     add_simple_unittest(FunctionTest)
     add_simple_unittest(ContextProjectionOpTest)
     add_simple_unittest(PadOpTest)
+    add_simple_unittest(MulOpTest)
 endif()
 endif()
 

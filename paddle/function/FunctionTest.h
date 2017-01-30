@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Function.h"
-#include "paddle/math/Vector.h"
+#include "paddle/math/Matrix.h"
+#include "paddle/math/SparseMatrix.h"
 #include "paddle/math/tests/TensorCheck.h"
 #include "paddle/testing/TestUtil.h"
 
@@ -69,7 +70,7 @@ public:
   }
 
   // output need only contains shape, do not contains data.
-  void addOutputs(const BufferArg& output) {
+  void addOutputs(const BufferArg& output, ArgType argType = ASSIGN_TO) {
     size_t size =
         output.shape().getElements() * sizeOfValuType(output.valueType());
     cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
@@ -79,12 +80,40 @@ public:
         std::make_shared<BufferArg>(cpuMemory_.back()->getBuf(),
                                     output.valueType(),
                                     output.shape(),
-                                    ASSIGN_TO));
+                                    argType));
     gpuOutputs_.emplace_back(
         std::make_shared<BufferArg>(gpuMemory_.back()->getBuf(),
                                     output.valueType(),
                                     output.shape(),
-                                    ASSIGN_TO));
+                                    argType));
+  }
+
+  /// add and init output sparse matrix
+  void addOutputs(const SparseMatrixArg& output, ArgType argType = ASSIGN_TO) {
+    cpuSparse_ = std::make_shared<CpuSparseMatrix>(
+        output.shape()[0],
+        output.shape()[1],
+        output.nnz(),
+        static_cast<SparseValueType>(output.dataType()),
+        static_cast<SparseFormat>(output.dataFormat()));
+
+    gpuSparse_ = std::make_shared<GpuSparseMatrix>(
+        output.shape()[0],
+        output.shape()[1],
+        output.nnz(),
+        static_cast<SparseValueType>(output.dataType()),
+        static_cast<SparseFormat>(output.dataFormat()));
+
+    /// init sparse matrix
+    hl_stream_t stream(HPPL_STREAM_1);
+    cpuSparse_->randomizeUniform();
+    gpuSparse_->copyFrom(*cpuSparse_, stream);
+    hl_stream_synchronize(stream);
+
+    cpuOutputs_.emplace_back(
+        std::make_shared<SparseMatrixArg>(*cpuSparse_, argType));
+    gpuOutputs_.emplace_back(
+        std::make_shared<SparseMatrixArg>(*gpuSparse_, argType));
   }
 
   void addInputs(const SequenceArg& input) {
@@ -107,10 +136,36 @@ public:
     // TODO: need be implemented.
   }
 
+  void addInputs(const SparseMatrixArg& input) {
+    cpuSparse_ = std::make_shared<CpuSparseMatrix>(
+        input.shape()[0],
+        input.shape()[1],
+        input.nnz(),
+        static_cast<SparseValueType>(input.dataType()),
+        static_cast<SparseFormat>(input.dataFormat()));
+
+    gpuSparse_ = std::make_shared<GpuSparseMatrix>(
+        input.shape()[0],
+        input.shape()[1],
+        input.nnz(),
+        static_cast<SparseValueType>(input.dataType()),
+        static_cast<SparseFormat>(input.dataFormat()));
+
+    /// init sparse matrix
+    hl_stream_t stream(HPPL_STREAM_1);
+    cpuSparse_->randomizeUniform();
+    gpuSparse_->copyFrom(*cpuSparse_, stream);
+    hl_stream_synchronize(stream);
+
+    cpuInputs_.emplace_back(std::make_shared<SparseMatrixArg>(*cpuSparse_));
+    gpuInputs_.emplace_back(std::make_shared<SparseMatrixArg>(*gpuSparse_));
+  }
+
   void run() {
     // prepare cpu/gpu arguments
     initInputs();
 
+    initOutputs();
     // function calculate
     auto callFunction = [](FunctionBase* function,
                            std::vector<BufferArgPtr>& inputs,
@@ -129,7 +184,7 @@ public:
     callFunction(cpuFunc_.get(), cpuInputs_, cpuOutputs_);
     callFunction(gpuFunc_.get(), gpuInputs_, gpuOutputs_);
 
-    // check outputs and inouts
+    // check outputs
     compareOutputs();
   }
 
@@ -140,6 +195,10 @@ public:
 protected:
   void initInputs() {
     for (size_t i = 0; i < cpuInputs_.size(); i++) {
+      if (cpuInputs_[i]->isSparseArg()) {
+        continue;  /// sparse matrix already init
+      }
+
       initArg(*cpuInputs_[i]);
 
       // TODO: Need a BufferCopy used to copy from one BufferArg to another.
@@ -152,14 +211,32 @@ protected:
     }
   }
 
+  void initOutputs() {
+    for (size_t i = 0; i < cpuOutputs_.size(); i++) {
+      if (cpuOutputs_[i]->isSparseArg()) {
+        continue;  /// sparse matrix already init
+      }
+
+      initArg(*cpuOutputs_[i]);
+
+      // TODO: Need a BufferCopy used to copy from one BufferArg to another.
+      CpuVector cpuVector(cpuOutputs_[i]->shape().getElements(),
+                          (real*)cpuOutputs_[i]->data());
+      GpuVector gpuVector(gpuOutputs_[i]->shape().getElements(),
+                          (real*)gpuOutputs_[i]->data());
+
+      gpuVector.copyFrom(cpuVector);
+    }
+  }
+
   void compareOutputs() {
     for (size_t i = 0; i < cpuOutputs_.size(); i++) {
       // TODO, Need a BufferCheck used to compare the two buffers.
-      auto cpu = cpuOutputs_[i];
-      auto gpu = gpuOutputs_[i];
-      CpuVector cpuVector(cpu->shape().getElements(), (real*)cpu->data());
-      GpuVector gpuVector(cpu->shape().getElements(), (real*)gpu->data());
-
+      const auto cpu = cpuOutputs_[i];
+      const auto gpu = gpuOutputs_[i];
+      CHECK_EQ(cpu->numElements(), gpu->numElements());
+      CpuVector cpuVector(cpu->numElements(), (real*)cpu->data());
+      GpuVector gpuVector(gpu->numElements(), (real*)gpu->data());
       autotest::TensorCheckErr(cpuVector, gpuVector);
     }
   }
@@ -195,6 +272,8 @@ protected:
   std::vector<BufferArgPtr> cpuOutputs_;
   std::vector<BufferArgPtr> gpuInputs_;
   std::vector<BufferArgPtr> gpuOutputs_;
+  std::shared_ptr<CpuSparseMatrix> cpuSparse_;
+  std::shared_ptr<GpuSparseMatrix> gpuSparse_;
 };
 
 }  // namespace paddle
