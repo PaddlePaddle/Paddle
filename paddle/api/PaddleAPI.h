@@ -874,6 +874,28 @@ private:
   ParameterUpdaterPrivate* m;
 };
 
+struct ParameterServerPrivate;
+class ParameterServer {
+private:
+  ParameterServer();
+
+public:
+  static ParameterServer* createByConfigProtoPtr(const void* confPtr);
+  static ParameterServer* createByConfigProtoStr(const std::string& protoStr);
+
+  ~ParameterServer();
+
+  /**
+   * @brief initialize Parameter Server.
+   * @param gm
+   */
+  void start();
+  void wait();
+
+private:
+  ParameterServerPrivate* m;
+};
+
 struct EvaluatorPrivate;
 class Evaluator {
 private:

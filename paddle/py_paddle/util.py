@@ -15,17 +15,19 @@
 Some Useful method for py_paddle.
 """
 
-import swig_paddle
 import os
-import paddle.trainer.PyDataProviderWrapper
-import paddle.proto.ParameterConfig_pb2
-import paddle.proto.ModelConfig_pb2
-import paddle.proto.TrainerConfig_pb2
 import weakref
 import numpy
 import struct
 import sys
 import copy
+
+import swig_paddle
+import paddle.trainer.PyDataProviderWrapper
+import paddle.proto.ParameterConfig_pb2
+import paddle.proto.ModelConfig_pb2
+import paddle.proto.TrainerConfig_pb2
+import paddle.proto.ParameterServerConfig_pb2
 
 
 def initializePaddle(*args):
@@ -558,11 +560,29 @@ def __monkey_patch_trainer__():
     swig_paddle.Trainer.getForwardOutput = getForwardOutput
 
 
+def __monkeypatch_parameter_server__():
+    def createFromConfigProto(protoObj):
+        """
+        Create Parameter Server From Proto object.
+        :param protoObj: ParameterServer Config
+        :type protoObj: proto.ParameterServerConfig_pb2.ParameterServerConfig
+        :return: paddle.ParameterServer
+        """
+        assert isinstance(
+            protoObj,
+            paddle.proto.ParameterServerConfig_pb2.ParameterServerConfig)
+        return swig_paddle.ParameterServer.createByConfigProtoStr(
+            protoObj.SerializeToString())
+
+    swig_paddle.ParameterServer.createFromConfigProto = \
+        staticmethod(createFromConfigProto)
+
+
 def monkeypatches():
     patches = [
         __monkeypatch_init_paddle__, __monkeypatch_gradient_machine__,
         __monkey_patch_protobuf_objects__, __monkey_patch_parameter__,
-        __monkey_patch_trainer__
+        __monkey_patch_trainer__, __monkeypatch_parameter_server__
     ]
     for patch in patches:
         patch()
