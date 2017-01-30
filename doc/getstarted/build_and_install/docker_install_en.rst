@@ -31,7 +31,7 @@ Windows -- in a consistent way.
 
    .. code-block:: bash
 
-   docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile --build-arg BUILD_AND_INSTALL=ON .
+      docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile --build-arg BUILD_AND_INSTALL=ON .
 
 
 1. Run the Development Environment
@@ -41,7 +41,7 @@ Windows -- in a consistent way.
    runs the image:
 
    .. code-block:: bash
-   docker run -d -p 2202:22 -v $PWD:/paddle paddle:dev
+      docker run -d -p 2202:22 -v $PWD:/paddle paddle:dev
 
    This runs a container of the development environment Docker image
    with the local source tree mounted to :code:`/paddle` of the
@@ -53,13 +53,13 @@ Windows -- in a consistent way.
    this container with:
 
    .. code-block:: bash
-   ssh root@localhost -p 2202
+      ssh root@localhost -p 2202
 
    Usually, I run above commands on my Mac.  I can also run them on a
    GPU server :code:`xxx.yyy.zzz.www` and ssh from my Mac to it:
 
    .. code-block:: bash
-   my-mac$ ssh root@xxx.yyy.zzz.www -p 2202
+      my-mac$ ssh root@xxx.yyy.zzz.www -p 2202
 
 1. Build and Install Using the Development Environment
 
@@ -68,14 +68,14 @@ Windows -- in a consistent way.
    Paddle:
 
    .. code-block:: bash
-   /paddle/paddle/scripts/docker/build.sh
+      /paddle/paddle/scripts/docker/build.sh
 
    This builds everything about Paddle in :code:`/paddle/build`.  And
    we can run unit tests there:
 
    .. code-block:: bash
-   cd /paddle/build
-   ctest
+      cd /paddle/build
+      ctest
 
 
 CPU-only and GPU Images
