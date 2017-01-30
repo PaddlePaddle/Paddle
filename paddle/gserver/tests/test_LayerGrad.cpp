@@ -1404,9 +1404,9 @@ TEST(Layer, GruStepLayer) {
   config.biasSize = 12;
 
   config.inputDefs.push_back(
-      {INPUT_DATA, "layer_0", /* dim= */ 12, /* paraSize= */ 48});
+      {INPUT_DATA, "layer_0", /* dim= */ 12, /* paraSize= */ 0});
   config.inputDefs.push_back(
-      {INPUT_DATA, "layer_1", /* dim= */ 4, /* paraSize= */ 0});
+      {INPUT_DATA, "layer_1", /* dim= */ 4, /* paraSize= */ 48});
   config.layerConfig.add_inputs();
   config.layerConfig.add_inputs();
 
