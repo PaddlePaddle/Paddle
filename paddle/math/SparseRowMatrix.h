@@ -21,8 +21,6 @@ limitations under the License. */
 #include "RowBuffer.h"
 #include "paddle/utils/Util.h"
 
-DECLARE_bool(allow_inefficient_sparse_update);
-
 namespace paddle {
 
 /**
@@ -183,11 +181,10 @@ protected:
   inline void checkStoreSize() {
     if (buf_->isAutoGrowth()) {
       if (buf_->getRowCount() > 0.5 * height_) {
-        LOG(WARNING)
-            << "There are more than 0.5*height (" << localIndices_->size()
-            << ") rows are used for sparse "
-            << "update, which is not efficient. Considering not use "
-            << "sparse_update or set --allow_inefficient_sparse_update=true";
+        LOG(WARNING) << "There are more than 0.5*height ("
+                     << localIndices_->size() << ") rows are used for sparse "
+                     << "update, which is not efficient. Considering not use "
+                     << "sparse_update.";
       }
     } else {
       CHECK_LE(localIndices_->size(), buf_->getRowCount());

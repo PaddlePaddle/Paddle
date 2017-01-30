@@ -13,15 +13,7 @@ import numpy as np
 import random
 from mnist_util import read_from_mnist
 from paddle.trainer_config_helpers import *
-
-
-def optimizer_config():
-    settings(
-        learning_rate=1e-4,
-        learning_method=AdamOptimizer(),
-        batch_size=1000,
-        model_average=ModelAverage(average_window=0.5),
-        regularization=L2Regularization(rate=0.5))
+import paddle.v2
 
 
 def network_config():
@@ -75,19 +67,23 @@ def input_order_converter(generator):
 def main():
     api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
 
-    # get enable_types for each optimizer.
-    # enable_types = [value, gradient, momentum, etc]
-    # For each optimizer(SGD, Adam), GradientMachine should enable different
-    # buffers.
-    opt_config_proto = parse_optimizer_config(optimizer_config)
-    opt_config = api.OptimizationConfig.createFromProto(opt_config_proto)
-    _temp_optimizer_ = api.ParameterOptimizer.create(opt_config)
-    enable_types = _temp_optimizer_.getParameterTypes()
+    optimizer = paddle.v2.optimizer.Adam(
+        learning_rate=1e-4,
+        batch_size=1000,
+        model_average=ModelAverage(average_window=0.5),
+        regularization=L2Regularization(rate=0.5))
+
+    # Create Local Updater. Local means not run in cluster.
+    # For a cluster training, here we can change to createRemoteUpdater
+    # in future.
+    updater = optimizer.create_local_updater()
+    assert isinstance(updater, api.ParameterUpdater)
 
     # Create Simple Gradient Machine.
     model_config = parse_network_config(network_config)
-    m = api.GradientMachine.createFromConfigProto(
-        model_config, api.CREATE_MODE_NORMAL, enable_types)
+    m = api.GradientMachine.createFromConfigProto(model_config,
+                                                  api.CREATE_MODE_NORMAL,
+                                                  optimizer.enable_types())
 
     # This type check is not useful. Only enable type hint in IDE.
     # Such as PyCharm
@@ -95,12 +91,6 @@ def main():
 
     # Initialize Parameter by numpy.
     init_parameter(network=m)
-
-    # Create Local Updater. Local means not run in cluster.
-    # For a cluster training, here we can change to createRemoteUpdater
-    # in future.
-    updater = api.ParameterUpdater.createLocalUpdater(opt_config)
-    assert isinstance(updater, api.ParameterUpdater)
 
     # Initialize ParameterUpdater.
     updater.init(m)

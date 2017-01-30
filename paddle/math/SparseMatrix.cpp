@@ -177,7 +177,6 @@ GpuSparseMatrix::GpuSparseMatrix(real* value,
       hl_sparse_matrix_s_ptr tmp2(tmp, hl_destruct_sparse_matrix);
       sMatrix_ = tmp2;
     }
-    LOG(INFO) << "weight to matrix ";
   }
 }
 

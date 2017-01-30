@@ -153,7 +153,36 @@ public:
 
   virtual void calc(const BufferArgs& inputs, const BufferArgs& outputs) {}
 
+  // This member function is used to check whether the BufferType and shape of
+  // the inputs and outputs arguments of the Function are correct.
+  // General calc function which will call this check to do arguments check.
+  // And before the calc called, the caller can also check their own arguments.
+  virtual void check(const BufferArgs& inputs, const BufferArgs& outputs) {}
+
+  // Calculate the number of floating-point operations of this Function.
+  // The inputs and outputs arguments do not need to contain the actual data,
+  // only the shape.
+  // And some Functions have the same input and output shapes,
+  // so you may not need to enter the complete number of arguments.
+  // But entering the full arguments is always correct for this interface.
+  virtual size_t ops(const BufferArgs& inputs, const BufferArgs& outputs) {
+    return 0;
+  }
+
+  int getNumInputs() const { return numInputs_; }
+
+  int getNumOutputs() const { return numOutputs_; }
+
   static ClassRegistrar<FunctionBase> funcRegistrar_;
+
+protected:
+  // numInputs_ and numOutputs_ represents the maximum
+  // input and output supported by Function.
+  // Some functions are optimized for input and output,
+  // so when comparing the number of arguments, for these functions
+  // inputs.size() <= numInputs_ or outputs.size() <= numOutputs_
+  size_t numInputs_;
+  size_t numOutputs_;
 };
 
 #define FUNC_NAME(typeName, deviceName) #typeName "-" #deviceName

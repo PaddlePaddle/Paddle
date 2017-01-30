@@ -162,36 +162,62 @@ template <DeviceType Device>
 class CrossMapNormalFunc : public FunctionBase {
 public:
   void init(const FuncConfig& config) override {
+    // function arguments
     size_ = config.get<size_t>("size");
     scale_ = config.get<real>("scale");
     pow_ = config.get<real>("pow");
+
+    // number of inputs and outputs
+    numInputs_ = 1;
+    numOutputs_ = 2;
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ((size_t)1, inputs.size());
-    CHECK_EQ((size_t)2, outputs.size());
-
-    CHECK_EQ(inputs[0].shape().ndims(), (size_t)4);
-    CHECK(inputs[0].shape() == outputs[0].shape());
-    CHECK(inputs[0].shape() == outputs[1].shape());
-
+    check(inputs, outputs);
+    // ArgType check still on here,
+    // not sure whether it is better to put inside the check.
     CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
     CHECK_EQ(outputs[1].getArgType(), ASSIGN_TO);
-    size_t samples = inputs[0].shape()[0];
-    size_t channels = inputs[0].shape()[1];
-    size_t height = inputs[0].shape()[2];
-    size_t width = inputs[0].shape()[3];
+    size_t batchSize = inputs[0].shape()[0];
+    size_t maps = inputs[0].shape()[1];
+    size_t rows = inputs[0].shape()[2];
+    size_t columns = inputs[0].shape()[3];
 
     CrossMapNormal<Device>(outputs[0].data<real>(),
                            outputs[1].data<real>(),
                            inputs[0].data<real>(),
-                           samples,
-                           channels,
-                           height,
-                           width,
+                           batchSize,
+                           maps,
+                           rows,
+                           columns,
                            size_,
                            scale_,
                            pow_);
+  }
+
+  void check(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK_EQ(numInputs_, inputs.size());
+    CHECK_EQ(numOutputs_, outputs.size());
+
+    CHECK_EQ(inputs[0].shape().ndims(), (size_t)4);
+    CHECK(inputs[0].shape() == outputs[0].shape());
+    CHECK(inputs[0].shape() == outputs[1].shape());
+  }
+
+  // Only need the shape of the input, can calculate the
+  // floating-point operation.
+  size_t ops(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK_EQ((size_t)numInputs_, inputs.size());
+    size_t batchSize = inputs[0].shape()[0];
+    size_t maps = inputs[0].shape()[1];
+    size_t rows = inputs[0].shape()[2];
+    size_t columns = inputs[0].shape()[3];
+
+    // number of floating-point operations
+    // an approximate value
+    size_t ops = batchSize * maps * rows * columns * (size_ * 2 + 3);
+
+    return ops;
   }
 
 private:
@@ -236,21 +262,18 @@ template <DeviceType Device>
 class CrossMapNormalGradFunc : public FunctionBase {
 public:
   void init(const FuncConfig& config) override {
+    // function arguments
     size_ = config.get<size_t>("size");
     scale_ = config.get<real>("scale");
     pow_ = config.get<real>("pow");
+
+    // number of inputs and outputs
+    numInputs_ = 4;
+    numOutputs_ = 1;
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ((size_t)4, inputs.size());
-    CHECK_EQ((size_t)1, outputs.size());
-
-    CHECK_EQ(inputs[0].shape().ndims(), (size_t)4);
-    CHECK(inputs[0].shape() == inputs[1].shape());
-    CHECK(inputs[0].shape() == inputs[2].shape());
-    CHECK(inputs[0].shape() == inputs[3].shape());
-    CHECK(inputs[0].shape() == outputs[0].shape());
-
+    check(inputs, outputs);
     if (outputs[0].getArgType() != ADD_TO) {
       // Currently, some algorithm implementations are ASSIGN_TO mode,
       // if need to support the ADD_TO calculation, need to clear the output.
@@ -259,23 +282,50 @@ public:
       tmp.zero();
     }
 
-    size_t samples = inputs[0].shape()[0];
-    size_t channels = inputs[0].shape()[1];
-    size_t height = inputs[0].shape()[2];
-    size_t width = inputs[0].shape()[3];
+    size_t batchSize = inputs[0].shape()[0];
+    size_t maps = inputs[0].shape()[1];
+    size_t rows = inputs[0].shape()[2];
+    size_t columns = inputs[0].shape()[3];
 
     CrossMapNormalGrad<Device>(outputs[0].data<real>(),
                                inputs[0].data<real>(),
                                inputs[1].data<real>(),
                                inputs[2].data<real>(),
                                inputs[3].data<real>(),
-                               samples,
-                               channels,
-                               height,
-                               width,
+                               batchSize,
+                               maps,
+                               rows,
+                               columns,
                                size_,
                                scale_,
                                pow_);
+  }
+
+  void check(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK_EQ(numInputs_, inputs.size());
+    CHECK_EQ(numOutputs_, outputs.size());
+
+    CHECK_EQ(inputs[0].shape().ndims(), (size_t)4);
+    CHECK(inputs[0].shape() == inputs[1].shape());
+    CHECK(inputs[0].shape() == inputs[2].shape());
+    CHECK(inputs[0].shape() == inputs[3].shape());
+    CHECK(inputs[0].shape() == outputs[0].shape());
+  }
+
+  // Only need the shape of one input, can calculate the
+  // floating-point operation.
+  size_t ops(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    CHECK_LT((size_t)1, inputs.size());
+    size_t batchSize = inputs[0].shape()[0];
+    size_t maps = inputs[0].shape()[1];
+    size_t rows = inputs[0].shape()[2];
+    size_t columns = inputs[0].shape()[3];
+
+    // number of floating-point operations
+    // an approximate value
+    size_t ops = batchSize * maps * rows * columns * (size_ * 4 + 2);
+
+    return ops;
   }
 
 private:

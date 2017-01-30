@@ -128,11 +128,6 @@ It looks like there are a lot of arguments. However, most of them are for develo
 </tr>
 
 <tr>
-<td class="left">allow_inefficient_sparse_update</td>
-<td class="left">√</td><td class="left">√</td><td class="left"></td><td class="left"></td>
-</tr>
-
-<tr>
 <td class="left">start_pass</td>
 <td class="left">√</td><td class="left">√</td><td class="left"></td><td class="left"></td>
 </tr>
