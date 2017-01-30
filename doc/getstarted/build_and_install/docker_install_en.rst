@@ -34,7 +34,7 @@ Windows -- in a consistent way.
       docker build -t paddle:dev -f paddle/scripts/docker/Dockerfile --build-arg BUILD_AND_INSTALL=ON .
 
 
-1. Run the Development Environment
+2. Run the Development Environment
 
    Once we got the image :code:`paddle:dev`, we can use it to develop
    Paddle by mounting the local source code tree into a container that
@@ -64,7 +64,7 @@ Windows -- in a consistent way.
 
       my-mac$ ssh root@xxx.yyy.zzz.www -p 2202
 
-1. Build and Install Using the Development Environment
+3. Build and Install Using the Development Environment
 
    Once I am in the container, I can use
    :code:`paddle/scripts/docker/build.sh` to build, install, and test
