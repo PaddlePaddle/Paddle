@@ -19,6 +19,9 @@
 #   to use these units, import this module in your config_file:
 #     import trainer.recurrent_units 
 # 
+# The modules in this file are DEPRECATED.
+# If you would like to use lstm/gru
+# please use the functions defined in paddle.trainer_config_helpers.
 
 from paddle.trainer.config_parser import *
 
