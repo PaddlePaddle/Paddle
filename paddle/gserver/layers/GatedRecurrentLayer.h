@@ -80,11 +80,16 @@ protected:
 
 protected:
   std::unique_ptr<Weight> weight_;
+  /// (U_z, U_r) for update gate and reset gate
   std::unique_ptr<Weight> gateWeight_;
+  /// U for state weight
   std::unique_ptr<Weight> stateWeight_;
+  /// (b_z, b_r, b_o)
   std::unique_ptr<Weight> bias_;
 
+  /// gate_.value = {z_t, r_t, h_t}, init {x_z, x_r, x_i}
   Argument gate_;
+  /// resetOutput_.value dot(h_{t-1}, r_t)
   Argument resetOutput_;
 
   bool reversed_;
@@ -92,7 +97,7 @@ protected:
   std::unique_ptr<SequenceToBatch> batchValue_;
   std::unique_ptr<SequenceToBatch> batchGrad_;
   std::unique_ptr<ActivationFunction> activationGate_;
-
+  /// h_{t-1}
   MatrixPtr prevOutput_;
 };
 

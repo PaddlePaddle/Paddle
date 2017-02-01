@@ -45,6 +45,14 @@ bool FuncConfig::get<bool>(const std::string& key) const {
 }
 
 template <>
+hl_activation_mode_t FuncConfig::get<hl_activation_mode_t>(
+    const std::string& key) const {
+  auto it = valueMap_.find(key);
+  CHECK(it != valueMap_.end()) << "Cannot find value: '" << key << "'";
+  return it->second.a;
+}
+
+template <>
 FuncConfig& FuncConfig::set<size_t>(const std::string& key, size_t v) {
   CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
                                                       << key;
@@ -73,6 +81,15 @@ FuncConfig& FuncConfig::set<bool>(const std::string& key, bool v) {
   CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
                                                       << key;
   valueMap_[key].b = v;
+  return *this;
+}
+
+template <>
+FuncConfig& FuncConfig::set<hl_activation_mode_t>(const std::string& key,
+                                                  hl_activation_mode_t v) {
+  CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
+                                                      << key;
+  valueMap_[key].a = v;
   return *this;
 }
 

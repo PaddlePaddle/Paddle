@@ -28,9 +28,11 @@ namespace forward {
 class gru_resetOutput {
 public:
   /**
-   * @param[in,out]   valueUpdateGate  update gate
-   * @param[in,out]   valueResetGate   reset gate
-   * @param[in]       prevOut          previous output
+   * dot(h_{t-1}, r_t) = h_{t-1} * r_t
+   *
+   * @param[in,out]   valueUpdateGate  update gate (z_t)
+   * @param[in,out]   valueResetGate   reset gate (r_t)
+   * @param[in]       prevOut          previous output (h_{t-1})
    * @param[out]      valueResetOutput intermediate value for frame state
    * @param[in]       actGate          forward function of gate
    */
@@ -64,10 +66,13 @@ public:
 class gru_finalOutput {
 public:
   /**
-   * @param[in]     valueUpdateGate   update gate
+   * output hidden state value at time t
+   * h_t = (1 - z_t) * h_{t-1} + z_t * \tilde{h}_t
+   * \tilde{h}_t = f(\tilde{h}_t)
+   * @param[in]     valueUpdateGate   update gate (z_t)
    * @param[in,out] valueFrameState   frame state ({\tilde{h}_t})
-   * @param[in]     prevOut           previous output
-   * @param[out]    valueOutput       output
+   * @param[in]     prevOut           previous output (h_{t-1})
+   * @param[out]    valueOutput       output (h_t)
    * @param[in]     actInput          forward function of node
    */
   INLINE void operator()(real &valueUpdateGate,

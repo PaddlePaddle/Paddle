@@ -34,6 +34,7 @@ public:
     real r;
     int i;
     bool b;
+    hl_activation_mode_t a; /*activation mode*/
   };
 
   template <typename T>

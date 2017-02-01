@@ -25,8 +25,10 @@ namespace paddle {
  * batch matrix:    [C1_s ... C1_t | ...... | Cn_s ... Cn_t]
  * Cn_s is the state for sequence s at time n.
  *
- * Exampel:  sequence matrix = {{0, 0, 0, 0}, {1, 1, 1, 1, 1}, {2, 2, 2}}
+ * Example:  sequence matrix = {{0, 0, 0, 0}, {1, 1, 1, 1, 1}, {2, 2, 2}}
  *           s0: 0 0 0 0, s1: 1 1 1 1 1, s2: 2 2 2
+ *           first sort the sequences based on their lengths,
+ *           and the longer sequence is on the topper of the matrix.
  *           batch matrix = {{1, 0, 2}, {1, 0, 2}, {1, 0, 2}, {1, 0}, {1}}
  *           b0: 1 0 2, b1: 1 0 2, b2: 1 0 2, b3: 1 0, b4: 1
  *

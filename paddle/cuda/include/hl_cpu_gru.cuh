@@ -26,6 +26,14 @@ limitations under the License. */
 #define     CBLAS_GEMM     paddle::gemm<double>
 #endif
 
+/**
+ * dot(h_{t-1}, r_t) = h_{t-1} * r_t
+ * @param[in,out]   gateValue           (update gate(z_t), reset gate(r_t), h_t)
+ * @param[out]      resetOutputValue    intermediate value for frame state
+ * @param[in]       prevOutputValue     previous output (h_{t-1})
+ * @param[in]       frameSize           size of frame at t
+ * @param[in]       active_gate         forward gate function
+ */
 template<class OpResetOutput>
 void hl_naive_gru_forward_reset_output(OpResetOutput opResetOutput,
                                        real *gateValue,
@@ -59,6 +67,16 @@ void hl_naive_gru_forward_reset_output(OpResetOutput opResetOutput,
   }
 }
 
+/**
+ * output hidden state value at time t
+ * h_t = (1 - z_t) * h_{t-1} + z_t * \tilde{h}_t
+ * \tilde{h}_t = f(\tilde{h}_t)
+ * @param[in,out]   gateValue           (update gate(z_t), reset gate(r_t), h_t)
+ * @param[in]       prevOutputValue     previous output (h_{t-1})
+ * @param[in]       outputValue         output state value (h_t)
+ * @param[in]       frameSize           size of frame at t
+ * @param[in]       active_gate         forward gate function
+ */
 template<class OpFinalOutput>
 void hl_naive_gru_forward_final_output(OpFinalOutput opFinalOutput,
                                        real *gateValue,
@@ -160,6 +178,7 @@ void hl_avx_gru_forward_final_output(OpFinalOutput opFinalOutput,
 #endif
 }
 
+/// dot(h_{t-1}, r_t) = h_{t-1} * r_t, r_t = f(r_t), z_t = f(z_t)
 template<class OpResetOutput>
 inline void forward_reset_output(OpResetOutput opResetOutput,
                                  hl_gru_value value,
@@ -218,6 +237,7 @@ void hl_cpu_gru_forward(OpResetOutput opResetOutput,
                         int batchSize,
                         hl_activation_mode_t active_node,
                         hl_activation_mode_t active_gate) {
+  /// z_t = x_{z_t} + h_{t-1} * Uz, r_t = x_{r_t} + h_{t-1} * Ur
   if (value.prevOutValue) {
     CBLAS_GEMM(CblasNoTrans,
                CblasNoTrans,
@@ -234,8 +254,10 @@ void hl_cpu_gru_forward(OpResetOutput opResetOutput,
                frameSize * 3);
   }
 
+  /// dot(h_{t-1}, r_t) = h_{t-1} * r_t, r_t = f(r_t), z_t = f(z_t)
   forward_reset_output(opResetOutput, value, frameSize, batchSize, active_gate);
 
+  /// \tilde{h}_t = x_{i_t} + U * dot(h_{t-1}, r_t)
   if (value.prevOutValue) {
     CBLAS_GEMM(CblasNoTrans,
                CblasNoTrans,
@@ -252,6 +274,7 @@ void hl_cpu_gru_forward(OpResetOutput opResetOutput,
                frameSize * 3);
   }
 
+  /// h_t = (1 - z_t) * h_{t-1} + z_t * f(\tilde{h}_t)
   forward_final_output(opFinalOutput, value, frameSize, batchSize, active_node);
 }
 
