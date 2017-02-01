@@ -51,10 +51,10 @@ layers {
   active_type: "tanh"
   inputs {
     input_layer_name: "__simple_gru_0___transform@__simple_gru_0___recurrent_group"
+    input_parameter_name: "gru_param"
   }
   inputs {
     input_layer_name: "__simple_gru_0__+delay1@__simple_gru_0___recurrent_group"
-    input_parameter_name: "gru_param"
   }
   bias_parameter_name: "gru_bias"
   active_gate_type: "sigmoid"
@@ -105,10 +105,10 @@ layers {
   active_type: "tanh"
   inputs {
     input_layer_name: "__simple_gru_1___transform@__simple_gru_1___recurrent_group"
+    input_parameter_name: "gru_param"
   }
   inputs {
     input_layer_name: "__simple_gru_1__+delay1@__simple_gru_1___recurrent_group"
-    input_parameter_name: "gru_param"
   }
   bias_parameter_name: "gru_bias"
   active_gate_type: "sigmoid"
