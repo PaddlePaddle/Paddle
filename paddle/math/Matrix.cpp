@@ -388,6 +388,8 @@ void GpuMatrix::transpose(MatrixPtr& matTrans, bool memAlloc) {
     matTrans = std::make_shared<GpuMatrix>(width_, height_);
   } else {
     CHECK(matTrans != NULL);
+    CHECK_EQ(matTrans->getHeight(), width_);
+    CHECK_EQ(matTrans->getWidth(), height_);
   }
   real* dataTrans = matTrans->getData();
   real* data = getData();
@@ -402,15 +404,13 @@ void GpuMatrix::rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise) {
     matRot = std::make_shared<GpuMatrix>(width_, height_);
   } else {
     CHECK(matRot != NULL);
+    CHECK_EQ(matRot->getHeight(), width_);
+    CHECK_EQ(matRot->getWidth(), height_);
   }
 
-  MatrixPtr cpuMat = std::make_shared<CpuMatrix>(height_, width_);
-  cpuMat->copyFrom(*this);
-
-  MatrixPtr cpuMatRot = std::make_shared<CpuMatrix>(width_, height_);
-  cpuMat->rotate(cpuMatRot, false, clockWise);
-
-  matRot->copyFrom(*cpuMatRot);
+  real* dataRot = matRot->getData();
+  real* data = getData();
+  hl_matrix_rotate(data, dataRot, height_, width_, clockWise);
 }
 
 MatrixPtr GpuMatrix::getInverse() {
@@ -1723,6 +1723,8 @@ void CpuMatrix::transpose(MatrixPtr& matTrans, bool memAlloc) {
     matTrans = std::make_shared<CpuMatrix>(width_, height_);
   } else {
     CHECK(matTrans != NULL);
+    CHECK_EQ(matTrans->getHeight(), width_);
+    CHECK_EQ(matTrans->getWidth(), height_);
   }
   real* dataTrans = matTrans->getData();
   real* data = getData();
@@ -1741,18 +1743,18 @@ void CpuMatrix::rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise) {
     matRot = std::make_shared<CpuMatrix>(width_, height_);
   } else {
     CHECK(matRot != NULL);
+    CHECK_EQ(matRot->getHeight(), width_);
+    CHECK_EQ(matRot->getWidth(), height_);
   }
   real* dataRot = matRot->getData();
   real* data = getData();
-  int lda = getStride();
-  int ldc = matRot->getStride();
 
   for (size_t i = 0; i < height_; i++) {
     for (size_t j = 0; j < width_; j++) {
       if (clockWise) {
-        dataRot[j * ldc + i] = data[(height_ - i - 1) * lda + j];
+        dataRot[j * height_ + i] = data[(height_ - i - 1) * width_ + j];
       } else {
-        dataRot[j * ldc + i] = data[i * lda + (width_ - j - 1)];
+        dataRot[j * height_ + i] = data[i * width_ + (width_ - j - 1)];
       }
     }
   }

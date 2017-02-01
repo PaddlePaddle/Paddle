@@ -106,4 +106,8 @@ inline void hl_matrix_collect_shared_bias(real* B_d,
                                           const int dimM,
                                           const int dimN,
                                           real scale) {}
+
+inline void hl_matrix_rotate(
+    real* mat, real* matRot, int dimM, int dimN, bool clockWise);
+
 #endif  // HL_MATRIX_STUB_H_

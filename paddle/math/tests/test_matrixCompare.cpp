@@ -176,9 +176,27 @@ void testMatrixTranspose(int height, int width) {
   cpu->randomizeUniform();
   gpu->copyFrom(*cpu);
   cpu->transpose(cpuT, false);
-  gpu->transpose(gpuT, false);
+  gpu->transpose(gpuT, true);
 
   TensorCheckEqual(*cpuT, *gpuT);
+}
+
+void testMatrixRotate(int height, int width) {
+  MatrixPtr cpu = std::make_shared<CpuMatrix>(height, width);
+  MatrixPtr gpu = std::make_shared<GpuMatrix>(height, width);
+  MatrixPtr cpuR = std::make_shared<CpuMatrix>(width, height);
+  MatrixPtr gpuR = std::make_shared<GpuMatrix>(width, height);
+
+  cpu->randomizeUniform();
+  gpu->copyFrom(*cpu);
+
+  cpu->rotate(cpuR, false, true);
+  gpu->rotate(gpuR, true, true);
+  TensorCheckEqual(*cpuR, *gpuR);
+
+  cpu->rotate(cpuR, true, false);
+  gpu->rotate(gpuR, false, false);
+  TensorCheckEqual(*cpuR, *gpuR);
 }
 
 void testMatrixInverse(int height) {
@@ -215,6 +233,7 @@ TEST(Matrix, unary) {
       testMatrixZeroAtOffset(height, width);
       testMatrixGetSum(height, width);
       testMatrixTranspose(height, width);
+      testMatrixRotate(height, width);
     }
     // inverse
     testMatrixInverse(height);

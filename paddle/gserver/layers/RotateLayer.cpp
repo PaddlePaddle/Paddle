@@ -23,7 +23,8 @@ bool RotateLayer::init(const LayerMap& layerMap,
   Layer::init(layerMap, parameterMap);
 
   CHECK_EQ(inputLayers_.size(), 1UL);
-  sampleHeight_ = config_.height();
+  height_ = config_.height();
+  width_ = config_.width();
   return true;
 }
 
@@ -32,26 +33,31 @@ void RotateLayer::forward(PassType passType) {
 
   MatrixPtr input = getInputValue(0);
   batchSize_ = input->getHeight();
-  sampleSize_ = input->getWidth();
-  sampleWidth_ = sampleSize_ / sampleHeight_;
-  CHECK_EQ(sampleSize_ % sampleHeight_, 0);
+  size_ = input->getWidth();
+  CHECK_GE(size_, height_ * width_);
+  CHECK_EQ(size_ % (height_ * width_), 0)
+      << "The input's depth should be an int";
+  channels_ = size_ / (height_ * width_);
 
-  resizeOutput(batchSize_, sampleSize_);
+  resizeOutput(batchSize_, size_);
 
   MatrixPtr outV = getOutputValue();
-
-  for (int b = 0; b < batchSize_; b++) {
-    MatrixPtr inputSample = Matrix::create(input->getData() + b * sampleSize_,
-                                           sampleHeight_,
-                                           sampleWidth_,
-                                           false,
-                                           useGpu_);
-    MatrixPtr outputSample = Matrix::create(outV->getData() + b * sampleSize_,
-                                            sampleWidth_,
-                                            sampleHeight_,
-                                            false,
-                                            useGpu_);
-    inputSample->rotate(outputSample, false, true);
+  for (int b = 0; b < batchSize_; b++) {   // for each input feat map
+    for (int c = 0; c < channels_; c++) {  // for each feat channel
+      MatrixPtr inputSample =
+          Matrix::create(input->getData() + b * size_ + c * height_ * width_,
+                         height_,
+                         width_,
+                         false,
+                         useGpu_);
+      MatrixPtr outputSample =
+          Matrix::create(outV->getData() + b * size_ + c * height_ * width_,
+                         width_,
+                         height_,
+                         false,
+                         useGpu_);
+      inputSample->rotate(outputSample, false, true /* clock-wise */);
+    }
   }
 
   if (getInputGrad(0)) {
@@ -69,23 +75,24 @@ void RotateLayer::backward(const UpdateCallback& callback) {
   // the grad should be rotated in the reverse direction
   MatrixPtr preGrad = getInputGrad(0);
 
-  for (int b = 0; b < batchSize_; b++) {
-    MatrixPtr inputSampleGrad =
-        Matrix::create(preGrad->getData() + b * sampleSize_,
-                       sampleHeight_,
-                       sampleWidth_,
-                       false,
-                       useGpu_);
-    MatrixPtr outputSampleGrad =
-        Matrix::create(outputGrad->getData() + b * sampleSize_,
-                       sampleWidth_,
-                       sampleHeight_,
-                       false,
-                       useGpu_);
-    MatrixPtr tmpGrad =
-        Matrix::create(sampleHeight_, sampleWidth_, false, useGpu_);
-    outputSampleGrad->rotate(tmpGrad, false, false);
-    inputSampleGrad->add(*tmpGrad);
+  for (int b = 0; b < batchSize_; b++) {   // for each input feat map
+    for (int c = 0; c < channels_; c++) {  // for each feat channel
+      MatrixPtr inputSampleGrad =
+          Matrix::create(preGrad->getData() + b * size_ + c * height_ * width_,
+                         height_,
+                         width_,
+                         false,
+                         useGpu_);
+      MatrixPtr outputSampleGrad = Matrix::create(
+          outputGrad->getData() + b * size_ + c * height_ * width_,
+          width_,
+          height_,
+          false,
+          useGpu_);
+      MatrixPtr tmpGrad = nullptr;
+      outputSampleGrad->rotate(tmpGrad, true, false /* anti clock-wise */);
+      inputSampleGrad->add(*tmpGrad);
+    }
   }
 }
 

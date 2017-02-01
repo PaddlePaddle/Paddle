@@ -19,12 +19,13 @@ limitations under the License. */
 
 namespace paddle {
 /**
- * A layer for rotating an input sample (assume it's a matrix)
- * The rotation is in clock-wise
+ * A layer for rotating a multi-channel feature map (M x N x C) in the spatial
+ * domain
+ * The rotation is 90 degrees in clock-wise
  * \f[
- *   y(j,i) = x(M-i-1,j)
+ *   y(j,i,:) = x(M-i-1,j,:)
  * \f]
- * where \f$x\f$ is (M x N) input, and \f$y\f$ is (N x M) output.
+ * where \f$x\f$ is (M x N x C) input, and \f$y\f$ is (N x M x C) output.
  *
  * The config file api is rotate_layer
  *
@@ -41,9 +42,10 @@ public:
 
 private:
   int batchSize_;
-  int sampleSize_;
-  int sampleHeight_;
-  int sampleWidth_;
+  int size_;
+  int height_;
+  int width_;
+  int channels_;
 };
 
 }  // namespace paddle

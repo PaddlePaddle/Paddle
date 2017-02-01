@@ -377,9 +377,19 @@ public:
   }
 
   /**
-   * @brief  rotate clock-wise.
+   * @brief  rotate 90 degrees in clock-wise if clockWise=true;
+   *         otherwise rotate in anti clock-wise
+   * clock-wise:
+   * \f[
+   *   y(j,i) = x(M-i-1,j)
+   * \f]
+   * anti clock-wise:
+   * \f[
+   *   y(j,i) = x(i, N-1-j)
+   * \f]
+   * where \f$x\f$ is (M x N) input, and \f$y\f$ is (N x M) output.
    *
-   * allocate matTrans' memory outside, then set memAlloc as false;
+   * allocate matRot' memory outside, then set memAlloc as false;
    * else set as true.
    */
   virtual void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise) {
