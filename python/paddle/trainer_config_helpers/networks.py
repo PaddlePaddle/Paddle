@@ -737,12 +737,12 @@ def lstmemory_group(input,
                     lstm_layer_attr=None,
                     get_output_layer_attr=None):
     """
-    lstm_group is a recurrent layer group version Long Short Term Memory. It
+    lstm_group is a recurrent layer group version of Long Short Term Memory. It
     does exactly the same calculation as the lstmemory layer (see lstmemory in
     layers.py for the maths) does. A promising benefit is that LSTM memory
-    cell states, or hidden states in every time step are accessible to for the
+    cell states, or hidden states in every time step are accessible to the
     user. This is especially useful in attention model. If you do not need to
-    access to the internal states of the lstm, but merely use its outputs,
+    access the internal states of the lstm, but merely use its outputs,
     it is recommended to use the lstmemory, which is relatively faster than
     lstmemory_group.
 
@@ -878,11 +878,11 @@ def gru_group(input,
               gate_act=None,
               gru_layer_attr=None):
     """
-    gru_group is a recurrent layer group version Gated Recurrent Unit. It
+    gru_group is a recurrent layer group version of Gated Recurrent Unit. It
     does exactly the same calculation as the grumemory layer does. A promising
-    benefit is that gru hidden sates are accessible to for the user. This is
-    especially useful in attention model. If you do not need to access to
-    any internal state, but merely use the outputs of a GRU, it is recommanded
+    benefit is that gru hidden states are accessible to the user. This is
+    especially useful in attention model. If you do not need to access
+    any internal state, but merely use the outputs of a GRU, it is recommended
     to use the grumemory, which is relatively faster.
 
     Please see grumemory in layers.py for more detail about the maths.
