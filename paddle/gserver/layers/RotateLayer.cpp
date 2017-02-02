@@ -25,6 +25,8 @@ bool RotateLayer::init(const LayerMap& layerMap,
   CHECK_EQ(inputLayers_.size(), 1UL);
   height_ = config_.height();
   width_ = config_.width();
+  CHECK_GT(height_, 0);
+  CHECK_GT(width_, 0);
   return true;
 }
 

@@ -1969,13 +1969,13 @@ class ResizeLayer(LayerBase):
 
 @config_layer('rotate')
 class RotateLayer(LayerBase):
-    def __init__(self, name, inputs, height, device=None):
+    def __init__(self, name, inputs, height, width, device=None):
         super(RotateLayer, self).__init__(
             name, 'rotate', 0, inputs=inputs, device=device)
         config_assert(
             len(self.inputs) == 1,
             'RotateLayer must have one and only one input')
-        self.config.height = height
+        self.set_layer_height_width(height, width)
         self.set_layer_size(self.get_input_layer(0).size)
 
 
@@ -3007,7 +3007,7 @@ class GruStepLayer(LayerBase):
         config_assert(input_layer1.size == size,
                       'input_layer1.size != layer.size')
         self.config.active_gate_type = active_gate_type
-        self.create_input_parameter(1, size * size * 3, [size, size * 3])
+        self.create_input_parameter(0, size * size * 3, [size, size * 3])
         self.create_bias_parameter(bias, size * 3)
 
 

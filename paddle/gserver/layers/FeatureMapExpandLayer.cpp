@@ -95,6 +95,9 @@ void FeatureMapExpandLayer::forward(PassType passType) {
 
 void FeatureMapExpandLayer::backward(const UpdateCallback& callback) {
   MatrixPtr inGrad = getInputGrad(0);
+  if (NULL == inGrad) {
+    return;
+  }
   MatrixPtr outGrad = getOutputGrad();
   size_t batchSize = getInput(0).getBatchSize();
   int imgSize = inGrad->getWidth();

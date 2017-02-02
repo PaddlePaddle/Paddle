@@ -1677,22 +1677,23 @@ def trans_layer(input, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
-def rotate_layer(input, height, name=None, layer_attr=None):
+def rotate_layer(input, height, width, name=None, layer_attr=None):
     """
-    A layer for rotation (clock-wise), usually used when the input sample
-    is some image or map.
+    A layer for rotating 90 degrees (clock-wise), usually used when the input sample
+    is some image or feature map.
 
     .. math::
-       y(j,i) = x(M-i-1,j)
+       y(j,i,:) = x(M-i-1,j,:)
 
-    where :math:`x` is (M x N) input, and :math:`y` is (N x M) output.
+    where :math:`x` is (M x N x C) input, and :math:`y` is (N x M x C) output.
 
     The example usage is:
 
     .. code-block:: python
 
        rot = rotate_layer(input=layer,
-                          height=100)
+                          height=100,
+                          width=100)
 
     :param input: Input layer.
     :type input: LayerOutput
@@ -1709,6 +1710,7 @@ def rotate_layer(input, height, name=None, layer_attr=None):
     l = Layer(
         name=name,
         height=height,
+        width=width,
         type=LayerType.ROTATE_LAYER,
         inputs=[input.name],
         **ExtraLayerAttribute.to_kwargs(layer_attr))

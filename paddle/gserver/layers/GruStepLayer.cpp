@@ -68,8 +68,8 @@ bool GruStepLayer::init(const LayerMap& layerMap,
   if (!Layer::init(layerMap, parameterMap)) return false;
   CHECK_EQ(2U, inputLayers_.size());
 
-  CHECK_EQ(getSize() * getSize() * 3, parameters_[1]->getSize());
-  weight_.reset(new Weight(getSize(), getSize() * 3, parameters_[1]));
+  CHECK_EQ(getSize() * getSize() * 3, parameters_[0]->getSize());
+  weight_.reset(new Weight(getSize(), getSize() * 3, parameters_[0]));
 
   if (biasParameter_.get() != NULL) {
     CHECK_EQ(getSize() * 3, biasParameter_->getSize());
