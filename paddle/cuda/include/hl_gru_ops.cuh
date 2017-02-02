@@ -108,13 +108,13 @@ namespace backward {
 class gru_stateGrad {
 public:
   /**
-   * @param[in]     valueUpdateGate   update gate value
-   * @param[out]    gradUpdateGate    update gate grad
-   * @param[in]     valueFrameState   frame state value
+   * @param[in]     valueUpdateGate   update gate value, z_t
+   * @param[out]    gradUpdateGate    update gate grad, dL/dz
+   * @param[in]     valueFrameState   frame state value, \tilde{h}_t
    * @param[out]    gradFrameState    frame state grad
-   * @param[in]     valuePrevOut      previous output value
+   * @param[in]     valuePrevOut      previous output value, h_{t-1}
    * @param[in,out] gradPrevOut       previous output grad
-   * @param[in]     gradOutput        output grad
+   * @param[in]     gradOutput        output grad, h_t
    * @param[in]     actInput          backward function of frame state
    */
   INLINE void operator()(real &valueUpdateGate,
@@ -160,13 +160,14 @@ public:
 class gru_resetGrad {
 public:
   /**
-   * @param[in]     valueUpdateGate   update gate value
-   * @param[in,out] gradUpdateGate    update gate grad
-   * @param[in]     valueResetGate    reset gate value
-   * @param[out]    gradResetGate     reset gate grad
-   * @param[in]     valuePrevOut      previous output value
-   * @param[in,out] gradPrevOut       previous output grad
-   * @param[in]     gradResetOutput   reset output grad (temp val)
+   * @param[in]     valueUpdateGate   update gate value, z_t
+   * @param[in,out] gradUpdateGate    update gate grad, dLdz_t
+   * @param[in]     valueResetGate    reset gate value, r_t
+   * @param[out]    gradResetGate     reset gate grad, dLdr_t
+   * @param[in]     valuePrevOut      previous output value, h_{t-1}
+   * @param[in,out] gradPrevOut       previous output grad, dLdh_{t-1}
+   * @param[in]     gradResetOutput   reset output grad (temp val),
+   *                                  dot(r_t, h_{t-1})
    * @param[in]     actGate           backward function of gate
    */
   INLINE void operator()(real &valueUpdateGate,

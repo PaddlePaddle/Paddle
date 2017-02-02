@@ -87,7 +87,7 @@ protected:
   /// (b_z, b_r, b_o)
   std::unique_ptr<Weight> bias_;
 
-  /// gate_.value = {z_t, r_t, h_t}, init {x_z, x_r, x_i}
+  /// gate_.value = {z_t, r_t, \tilde{h}_t}, init {x_z, x_r, x_i}
   Argument gate_;
   /// resetOutput_.value dot(h_{t-1}, r_t)
   Argument resetOutput_;

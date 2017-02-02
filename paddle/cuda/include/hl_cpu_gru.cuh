@@ -278,6 +278,19 @@ void hl_cpu_gru_forward(OpResetOutput opResetOutput,
   forward_final_output(opFinalOutput, value, frameSize, batchSize, active_node);
 }
 
+/**
+ * dLdz_t = (\tilde{h}_t - h_{t-1}) * dLdh_t
+ * dLdh_{t-1} += (1 - z_t) * dLdh_t
+ * dLd\tilde{h}_t = dLdh_t * z_t * f'({h}_t)
+ *
+ * @param[in]       gateValue           (update gate(z_t), reset gate(r_t), h_t)
+ * @param[out]      gateGrad            (dLd{z_t}, dLd{r_t}, dLd{h}_t)
+ * @param[in]       prevOutValue        previous output (h_{t-1})
+ * @param[out]      prevOutGrad         dLdh_{t-1}
+ * @param[in]       outputGrad          dLdh_t
+ * @param[in]       frameSize           size of frame at t
+ * @param[in]       active_gate         backward gate function
+ */
 template<class OpStateGrad>
 void hl_naive_gru_backward_state_grad(OpStateGrad opStateGrad,
                                       real *gateValue,
@@ -327,6 +340,19 @@ void hl_naive_gru_backward_state_grad(OpStateGrad opStateGrad,
   }
 }
 
+/**
+ * dLd{r}_t = dLd\tilde{h}_t * h_{t-1} * f'(r_t)
+ * dLdz_t = dLdz_t * f'(z_t)
+ * dLdh_{t-1} += dLd\tilde{h}_t * r_t
+ *
+ * @param[in]       gateValue           (update gate(z_t), reset gate(r_t), h_t)
+ * @param[out]      gateGrad            (dLd{z_t}, dLd{r_t}, dLd{h}_t)
+ * @param[in]       prevOutValue        previous output (h_{t-1})
+ * @param[out]      prevOutGrad         dLdh_{t-1}
+ * @param[in]       resetOutputGrad     dLd{dot(r_t, h_{t-1})}
+ * @param[in]       frameSize           size of frame at t
+ * @param[in]       active_gate         backward gate function
+ */
 template<class OpResetGrad>
 void hl_naive_gru_backward_reset_grad(OpResetGrad opResetGrad,
                                       real *gateValue,
@@ -548,6 +574,23 @@ inline void backward_reset_grad(OpResetGrad opResetGrad,
   }
 }
 
+/**
+ * GRU backward
+ * 1. prevOutGrad : dLdh_{t-1} = dLdz_t * (U_z)' + dLdr_t * (U_r)'
+ *                 + dLd{dot(r_t, h_{t-1})} * r_t + (1 - z_t) * dLdh_t
+ * 2. stateWeightGrad : dLd\tilde{h}_t = dLdh_t * z_t * f'(\tilde{h}_t)
+ * 3. resetOutputGrad dLd{dot(r_t,h_{t-1})} = U' * dLd\tilde{h}_t
+ * 4. resetGateGrad dLd{r}_t = dLd\tilde{h}_t * h_{t-1} * f'(r_t)
+ * 5. updateGateGrad dLdz_t = (\tilde{h}_t - h_{t-1}) * dLdh_t * f'(z_t)
+ * 6. updateGateWeightGrad : dLdU_z = (h_{t-1})' * dLdz_t
+ * 7. resetGateWeightGrad : dLdU_r = (h_{t-1})' * dLdr_t
+ * 8. stateWeightGrad : dLdU = (dLd{dot})' * dLd\tilde{h}_t
+ *
+ * some parameter notation:
+ * gateValue        (update gate(z_t), reset gate(r_t), \tidle{h}_t)
+ * gateGrad         (dLd{z_t}, dLd{r_t}, dLd\tilde{h}_t)
+ * gateWeightGrad   (dLdU_z, dLdU_r)
+ */
 template<class OpStateGrad, class OpResetGrad>
 void hl_cpu_gru_backward(OpStateGrad opStateGrad,
                          OpResetGrad opResetGrad,
@@ -557,9 +600,11 @@ void hl_cpu_gru_backward(OpStateGrad opStateGrad,
                          int batchSize,
                          hl_activation_mode_t active_node,
                          hl_activation_mode_t active_gate) {
+  /// calculate dLdz_t, dLd\tilde{h}_t, dLdh_{t-1} (partial sum)
   backward_state_grad(opStateGrad, value, grad,
     frameSize, batchSize, active_node);
 
+  /// dLd{dot(r_t,h_{t-1})} = U' * dLd\tilde{h}_t
   if (value.prevOutValue && grad.prevOutGrad) {
     CBLAS_GEMM(CblasNoTrans,
                CblasTrans,
@@ -575,6 +620,7 @@ void hl_cpu_gru_backward(OpStateGrad opStateGrad,
                grad.resetOutputGrad,
                frameSize);
 
+    /// dLdU = (dLd{dot})' * dLd\tilde{h}_t
     if (grad.stateWeightGrad) {
       CBLAS_GEMM(CblasTrans,
                  CblasNoTrans,
@@ -592,9 +638,11 @@ void hl_cpu_gru_backward(OpStateGrad opStateGrad,
     }
   }
 
+  /// calculate dLdr_t, complete dLdz_t, increment dLdh_{t-1}
   backward_reset_grad(opResetGrad, value, grad,
     frameSize, batchSize, active_gate);
 
+  /// complete dLdh_{t-1} += dLdz_t * (U_z)' + dLdr_t * (U_r)'
   if (grad.prevOutGrad && value.prevOutValue) {
     CBLAS_GEMM(CblasNoTrans,
                CblasTrans,
@@ -610,6 +658,7 @@ void hl_cpu_gru_backward(OpStateGrad opStateGrad,
                grad.prevOutGrad,
                frameSize);
 
+    /// [dLdU_z, dLdU_r] = (h_{t-1})' * [dLdz_t, dLdr_t]
     if (grad.gateWeightGrad) {
       CBLAS_GEMM(CblasTrans,
                  CblasNoTrans,
