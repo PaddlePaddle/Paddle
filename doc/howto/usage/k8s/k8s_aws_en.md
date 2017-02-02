@@ -384,14 +384,16 @@ Edit `/etc/hosts` to associate above ip with the DNS name.
    - Domain name: "paddle"
    - Type: "Private hosted zone for amazon VPC"
    - VPC ID: `<Your VPC ID>`
-   - <center>![route53 zone setting](src/route53_create_zone.png =400x)</center>
+
+   ![route53 zone setting](src/route53_create_zone.png)
  - Add A record
     - Click on the zone "paddle" just created
     - Click the button "Create record set"
         - Name : leave blank
         - type: "A"
         - Value: `<kube-controller ec2 private ip>`
-        - <center>![route53 create recordset](src/route53_create_recordset.png =400x)</center>
+
+        ![route53 create recordset](src/route53_create_recordset.png)
  - Verify name service
     - Connect to any instance created by kube-aws via ssh
     - Run command "host paddle", see if the ip returned is the private ip of kube-controller
