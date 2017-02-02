@@ -307,10 +307,10 @@ layers {
   active_type: "tanh"
   inputs {
     input_layer_name: "__mixed_1__@__gru_group_0___recurrent_group"
+    input_parameter_name: "___gru_group_0__@__gru_group_0___recurrent_group.w0"
   }
   inputs {
     input_layer_name: "__gru_group_0__+delay1@__gru_group_0___recurrent_group"
-    input_parameter_name: "___gru_group_0__@__gru_group_0___recurrent_group.w1"
   }
   bias_parameter_name: "___gru_group_0__@__gru_group_0___recurrent_group.wbias"
   active_gate_type: "sigmoid"
@@ -462,7 +462,7 @@ parameters {
   initial_smart: false
 }
 parameters {
-  name: "___gru_group_0__@__gru_group_0___recurrent_group.w1"
+  name: "___gru_group_0__@__gru_group_0___recurrent_group.w0"
   size: 30000
   initial_mean: 0.0
   initial_std: 0.1

@@ -2706,6 +2706,8 @@ def gru_step_layer(input,
     :param name:
     :param gate_act:
     :param bias_attr:
+    :param param_attr: the parameter_attribute for transforming the output_mem 
+                       from previous step. 
     :param layer_attr:
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2716,7 +2718,12 @@ def gru_step_layer(input,
     Layer(
         name=name,
         type=LayerType.GRU_STEP_LAYER,
-        inputs=[input.name, Input(output_mem.name, **param_attr.attr)],
+        # The parameter here is for transforming the output_mem. The input has 
+        # already been transformed outside this module so it does not need 
+        # parameter associated with it. 
+        # The parameter here is instead grouped with input is due to 
+        # backward model compatibility.
+        inputs=[Input(input.name, **param_attr.attr), output_mem.name],
         bias=ParamAttr.to_bias(bias_attr),
         size=size,
         active_type=act.name,
