@@ -894,7 +894,7 @@ class MaxOut(Cfg):
         self.add_keys(locals())
 
 
-def DataBase(async_load_data=False,
+def create_data_config_proto(async_load_data=False,
              constant_slots=None,
              data_ratio=1,
              is_main_data=True,
@@ -924,7 +924,7 @@ def SimpleData(files=None,
                context_len=None,
                buffer_capacity=None,
                **xargs):
-    data_config = DataBase(**xargs)
+    data_config = create_data_config_proto(**xargs)
     data_config.type = 'simple'
     data_config.files = files
     data_config.feat_dim = feat_dim
@@ -946,7 +946,7 @@ def PyData(files=None,
            constant_slots=None,
            load_thread_num=None,
            **xargs):
-    data_config = DataBase(**xargs)
+    data_config = create_data_config_proto(**xargs)
     data_config.type = 'py'
     if load_data_module in g_py_module_name_list:
 
@@ -997,7 +997,7 @@ def ProtoData(files=None,
               constant_slots=None,
               load_thread_num=None,
               **xargs):
-    data_config = DataBase(**xargs)
+    data_config = create_data_config_proto(**xargs)
     if type is None:
         data_config.type = 'proto'
     else:
@@ -1036,7 +1036,7 @@ def Data(type,
          buffer_capacity=None,
          **xargs):
 
-    data_config = DataBase(**xargs)
+    data_config = create_data_config_proto(**xargs)
     data_config.type = type
     data_config.files = files
     data_config.feat_dim = feat_dim
@@ -1927,8 +1927,8 @@ class BatchNormLayer(LayerBase):
         image_conf = self.config.inputs[0].image_conf
         parse_image(self.inputs[0].image, input_layer.name, image_conf)
 
-        # Only pass the width and height of input to batch_norm layer 
-        # when either of it is non-zero. 
+        # Only pass the width and height of input to batch_norm layer
+        # when either of it is non-zero.
         if input_layer.width != 0 or input_layer.height != 0:
             self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
                                image_conf.channels, False)
