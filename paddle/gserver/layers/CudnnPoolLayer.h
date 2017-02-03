@@ -54,8 +54,8 @@ public:
    * So reshaping is needed.
    */
   void reshape(int batchSize);
-  virtual void forward(PassType passType) override;
-  virtual void backward(const UpdateCallback& callback = nullptr) override;
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 }  // namespace paddle
