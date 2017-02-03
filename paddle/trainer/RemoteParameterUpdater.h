@@ -65,10 +65,6 @@ public:
   }
 
   /**
-   * initialize the internal parameter client and itself.
-   */
-  virtual void init(const std::vector<ParameterPtr>& parameters);
-  /**
    * @brief start batch
    *
    * @note  one batch training exhibits stateful feature to help
@@ -102,6 +98,10 @@ public:
   virtual void restore();
 
 protected:
+  /**
+   * initialize the internal parameter client and itself.
+   */
+  virtual void init(const std::vector<ParameterPtr>& parameters);
   /**
    * control all pservers with all trainers for sync-sgd
    */
@@ -273,9 +273,6 @@ public:
     }
   }
 
-  /// initialization
-  virtual void init(const std::vector<ParameterPtr>& parameters);
-
   /// stateful batch control
   virtual PassType startBatch(int64_t batchSize);
   /// send all sparse related parameters to all pservers
@@ -304,6 +301,8 @@ public:
 #endif
 
 protected:
+  /// initialization
+  virtual void init(const std::vector<ParameterPtr>& parameters);
   /// update implimentation, not implemented
   virtual void updateImpl(Parameter* para) {}
 
@@ -359,6 +358,7 @@ public:
     syncThreadPool_.reset(new SyncThreadPool(NUMBER_UPDATERS - 1));
   }
 
+protected:
   /// initialization of dense and sparse updaters
   virtual void init(const std::vector<ParameterPtr>& parameters);
 };

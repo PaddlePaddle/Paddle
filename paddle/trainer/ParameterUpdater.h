@@ -58,25 +58,6 @@ public:
   }
 
   /**
-   * @brief Initialize parameters and optimizer_.
-   *        For example,
-   *           If optimizer need hassien vector, then parameter's hassien will
-   *           be initialized.
-   * @param parameters The parameter need to be initialized.
-   */
-  virtual void init(const std::vector<ParameterPtr>& parameters) {
-    ParameterUpdater::init(parameters);
-    optimizer_->init(parameters_.size(), nullptr);
-    // check no L1 decay in parameter configs
-    CHECK(std::find_if(parameters.begin(),
-                       parameters.end(),
-                       [](const ParameterPtr& para) {
-                         return para->getConfig().decay_rate_l1() > 0.0f;
-                       }) == parameters.end())
-        << "SgdLocalUpdater cannot support L1 decay in parameter";
-  }
-
-  /**
    * @brief Start a batch with current mini-batch size
    * @param current mini-batch size.
    * @return Always PASS_TRAIN.
@@ -132,6 +113,25 @@ public:
   }
 
 protected:
+  /**
+   * @brief Initialize parameters and optimizer_.
+   *        For example,
+   *           If optimizer need hassien vector, then parameter's hassien will
+   *           be initialized.
+   * @param parameters The parameter need to be initialized.
+   */
+  virtual void init(const std::vector<ParameterPtr>& parameters) {
+    ParameterUpdater::init(parameters);
+    optimizer_->init(parameters_.size(), nullptr);
+    // check no L1 decay in parameter configs
+    CHECK(std::find_if(parameters.begin(),
+                       parameters.end(),
+                       [](const ParameterPtr& para) {
+                         return para->getConfig().decay_rate_l1() > 0.0f;
+                       }) == parameters.end())
+        << "SgdLocalUpdater cannot support L1 decay in parameter";
+  }
+
   /**
    * @brief update method. Update value from gradient.
    * @param para parameter that will be updated.
@@ -203,12 +203,6 @@ public:
   explicit SgdUpdaterWithCpuAverager(const OptimizationConfig& optConfig);
   ~SgdUpdaterWithCpuAverager();
 
-  /**
-   * @brief init. Initialize cpu parameters, model average optimizer.
-   * @param parameters
-   */
-  virtual void init(const std::vector<ParameterPtr>& parameters);
-
   virtual PassType startBatch(int64_t batchSize) {
     averager_->startBatch(-1UL);
     return SgdLocalUpdater::startBatch(batchSize);
@@ -234,6 +228,12 @@ public:
   virtual void restore();
 
 protected:
+  /**
+   * @brief init. Initialize cpu parameters, model average optimizer.
+   * @param parameters
+   */
+  virtual void init(const std::vector<ParameterPtr>& parameters);
+
   virtual void updateImpl(Parameter* para);
 
   void updateFunc(Parameter* para);

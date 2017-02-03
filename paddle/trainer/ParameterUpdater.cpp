@@ -41,7 +41,8 @@ void SgdUpdaterWithCpuAverager::init(
   copyEvents_.resize(parameters_.size());
   for (auto& parameter : parameters) {
     SetDevice device(parameter->getDeviceId());
-    cpuParameters_.emplace_back(new Parameter(parameter->getConfig(),
+    cpuParameters_.emplace_back(new Parameter(gradientMachineAttrs_,
+                                              parameter->getConfig(),
                                               /* useGpu= */ false,
                                               /* doInit= */ false));
     if (parameter->useGpu()) {

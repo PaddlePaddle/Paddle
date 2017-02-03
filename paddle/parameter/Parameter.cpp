@@ -41,15 +41,19 @@ const std::string Parameter::kMissParameterFail = "fail";
 const std::string Parameter::kMissParameterRand = "rand";
 const std::string Parameter::kMissParameterZero = "zero";
 
-Parameter::Parameter(const ParameterConfig& config, bool useGpu, bool doInit)
+Parameter::Parameter(const GradientMachineAttrPtr& attrs,
+                     const ParameterConfig& config,
+                     bool useGpu,
+                     bool doInit)
     : config_(config),
       useGpu_(useGpu),
       deviceId_(-1),
       sharedCount_(0),
       updateCounter_(0),
-      updated_(false) {
+      updated_(false),
+      gradientMachineAttrs_(attrs) {
   setID(-1); /* capture uninitialized id */
-  if (useGpu_ && FLAGS_parallel_nn) {
+  if (useGpu_ && gradientMachineAttrs_->parallelNeuralNetowrk) {
     /* gpu environment is specified by device property */
     deviceId_ = config_.device();
     if (deviceId_ < 0) {

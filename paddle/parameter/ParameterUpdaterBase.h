@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "Parameter.h"
+#include "paddle/gserver/gradientmachines/GradientMachineAttributes.h"
 
 namespace paddle {
 
@@ -32,7 +33,11 @@ public:
     parameterTypes_.push_back(type);
   }
 
-  virtual void init(const std::vector<ParameterPtr>& parameters);
+  void init(const GradientMachineAttrPtr& attrs,
+            const std::vector<ParameterPtr>& parameters) {
+    this->gradientMachineAttrs_ = attrs;
+    this->init(parameters);
+  }
 
   // called by Trainer when starting a new pass
   virtual void startPass() {}
@@ -90,11 +95,13 @@ public:
 #endif
 
 protected:
+  virtual void init(const std::vector<ParameterPtr>& parameters);
   virtual void updateImpl(Parameter* para) = 0;
 
   std::vector<ParameterType> parameterTypes_;
   std::vector<ParameterPtr> parameters_;
   std::map<size_t, size_t> nonStaticParaIDMap_;
+  GradientMachineAttrPtr gradientMachineAttrs_;
 };
 
 // Composite of ParameterUpdaters, each ParameterUpdater handle
@@ -104,8 +111,6 @@ class ParameterUpdaterComposite : public ParameterUpdater {
 public:
   ParameterUpdaterComposite() {}
   virtual ~ParameterUpdaterComposite() {}
-
-  virtual void init(const std::vector<ParameterPtr>& parameters) = 0;
 
   virtual void startPass() {
     syncThreadPool_->execPlusOwner(
@@ -174,6 +179,7 @@ public:
   }
 
 protected:
+  virtual void init(const std::vector<ParameterPtr>& parameters) = 0;
   virtual void updateImpl(Parameter* para) {}
   std::vector<std::unique_ptr<ParameterUpdater>> updaters_;
   std::unique_ptr<SyncThreadPool> syncThreadPool_;

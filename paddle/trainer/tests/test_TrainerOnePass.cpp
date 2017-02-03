@@ -141,7 +141,9 @@ double checkRemoteParameterUpdater(TrainerForTest& trainer) {
   vector<ParameterPtr> parameterCheck;
   for (auto& parameter : parameters) {
     parameterCheck.emplace_back(
-        new Parameter(parameter->getConfig(), /* useGpu= */ false));
+        new Parameter(createGradientMachineAttrFromFlags(),
+                      parameter->getConfig(),
+                      /* useGpu= */ false));
     parameterCheck.back()
         ->getBuf(PARAMETER_VALUE)
         ->copyFrom(*parameter->getBuf(PARAMETER_VALUE));
@@ -157,7 +159,8 @@ double checkRemoteParameterUpdater(TrainerForTest& trainer) {
     LOG(INFO) << "unsupported algorithm in remote parameter check: " << alg;
     return -1.0;
   }
-  parameterUpdaterCheck->init(parameterCheck);
+  parameterUpdaterCheck->init(createGradientMachineAttrFromFlags(),
+                              parameterCheck);
 
   // gradientMachine->start(config, *dataProvider);
   DataBatch dataBatch;

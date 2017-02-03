@@ -13,10 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/pserver/ParameterClient2.h>
-#include <paddle/pserver/ParameterServer2.h>
-#include <paddle/utils/Flags.h>
-#include <paddle/utils/Util.h>
+#include "paddle/pserver/ParameterClient2.h"
+#include "paddle/pserver/ParameterServer2.h"
+#include "paddle/trainer/ReadFlags.h"
+#include "paddle/utils/Flags.h"
+#include "paddle/utils/Util.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -61,7 +62,8 @@ public:
     }
 
     for (auto& config : clientConfigs_) {
-      parameters_.emplace_back(new Parameter(config, /* useGpu= */ false));
+      parameters_.emplace_back(new Parameter(
+          createGradientMachineAttrFromFlags(), config, /* useGpu= */ false));
     }
 
     size_t id = 0;
@@ -141,7 +143,9 @@ void ParameterServer2Tester::sendParameterTest() {
 
   for (auto& parameter : parameters_) {
     parameterCopies.emplace_back(
-        new Parameter(parameter->getConfig(), /* useGpu= */ false));
+        new Parameter(createGradientMachineAttrFromFlags(),
+                      parameter->getConfig(),
+                      /* useGpu= */ false));
     parameterCopies.back()
         ->getBuf(PARAMETER_VALUE)
         ->copyFrom(*parameter->getBuf(PARAMETER_VALUE));

@@ -48,7 +48,7 @@ void RemoteParameterUpdater::init(const std::vector<ParameterPtr>& parameters) {
   ParameterUpdater::init(parameters);
 
   if (localUpdater_) {
-    localUpdater_->init(parameters);
+    localUpdater_->init(this->gradientMachineAttrs_, parameters);
 
     for (auto& parameter : parameters) {
       parameter->enableType(PARAMETER_DELTA);
@@ -71,7 +71,8 @@ void RemoteParameterUpdater::init(const std::vector<ParameterPtr>& parameters) {
     cpuParameters_ = parameters;
   } else {
     for (auto& parameter : parameters) {
-      cpuParameters_.emplace_back(new Parameter(parameter->getConfig(),
+      cpuParameters_.emplace_back(new Parameter(gradientMachineAttrs_,
+                                                parameter->getConfig(),
                                                 /* useGpu= */ false));
       cpuParameters_.back()->setID(parameter->getID());
       if (localUpdater_) {
@@ -826,7 +827,7 @@ void SparseRemoteParameterUpdaterComposite::init(
   CHECK(!parametersArray[UPDATER_NORMAL].empty());
 
   syncThreadPool_->execPlusOwner([&](int tid, size_t numThreads) {
-    updaters_[tid]->init(parametersArray[tid]);
+    updaters_[tid]->init(this->gradientMachineAttrs_, parametersArray[tid]);
   });
 
   parameterTypes_ = updaters_[UPDATER_NORMAL]->getParameterTypes();

@@ -49,7 +49,6 @@ public:
   // Use the finishPass() function of the base optimizer.
   virtual bool finishPass();
 
-  virtual void init(const std::vector<ParameterPtr>& parameters);
   virtual PassType startBatch(int64_t batchSize);
   // Call finishBatch for each optimizer.
   virtual void finishBatch(real cost);
@@ -58,6 +57,7 @@ public:
   virtual void restore();
 
 protected:
+  virtual void init(const std::vector<ParameterPtr>& parameters);
   // This is the function that will be eventualy called by the GradientMachine.
   // used only for GPU update.
   virtual void updateImpl(Parameter* para);

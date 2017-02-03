@@ -443,7 +443,10 @@ void initTestLayer(TestConfig testConf,
     paraConfig.set_initial_std(1);
     paraConfig.set_is_static(isStatic);
     auto para =
-        std::make_shared<Parameter>(paraConfig, FLAGS_use_gpu, initialize);
+        std::make_shared<Parameter>(createGradientMachineAttrFromFlags(),
+                                    paraConfig,
+                                    FLAGS_use_gpu,
+                                    initialize);
     para->enableType(PARAMETER_VALUE);
     if (!para->isStatic()) {
       para->enableType(PARAMETER_GRADIENT);

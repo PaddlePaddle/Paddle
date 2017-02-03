@@ -24,6 +24,7 @@ limitations under the License. */
 #include "TrainerConfig.pb.h"
 
 #include "ParameterUpdaterHook.h"
+#include "paddle/gserver/gradientmachines/GradientMachineAttributes.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/math/Vector.h"
 #include "paddle/utils/Common.h"
@@ -56,7 +57,10 @@ typedef std::shared_ptr<Parameter> ParameterPtr;
 
 class Parameter {
 public:
-  Parameter(const ParameterConfig& config, bool useGpu, bool doInit = true);
+  Parameter(const GradientMachineAttrPtr& attrs,
+            const ParameterConfig& config,
+            bool useGpu,
+            bool doInit = true);
   const std::string& getName() const { return config_.name(); }
 
   size_t getSize() const { return config_.size(); }
@@ -403,6 +407,9 @@ public:
    */
   typedef std::function<void(const VectorPtr vecs[])> ExecFunc;
   void exec(ExecFunc func);
+
+private:
+  GradientMachineAttrPtr gradientMachineAttrs_;
 };
 
 typedef std::map<std::string, ParameterPtr> ParameterMap;

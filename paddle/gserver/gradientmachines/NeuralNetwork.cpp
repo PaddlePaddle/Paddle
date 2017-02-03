@@ -91,7 +91,8 @@ void NeuralNetwork::init(const ModelConfig& config,
   } else {
     parameters_.reserve(config.parameters_size());
     for (const auto& para_config : config.parameters()) {
-      auto parameter = std::make_shared<Parameter>(para_config,
+      auto parameter = std::make_shared<Parameter>(this->getAttribute(),
+                                                   para_config,
                                                    useGpu,
                                                    /*initialize=*/false);
       paramCallback(parameters_.size(), parameter.get());

@@ -233,7 +233,7 @@ void Trainer::init(const GradientMachineAttrPtr& gmAttrs,
   std::vector<ParameterPtr>& parameters =
       trainerInternal_.getGradientMachine()->getNonStaticParameters();
   if (trainerInternal_.getParameterUpdater()) {
-    trainerInternal_.getParameterUpdater()->init(parameters);
+    trainerInternal_.getParameterUpdater()->init(gmAttrs, parameters);
 
     if (FLAGS_loadsave_parameters_in_pserver && FLAGS_trainer_id == 0) {
       if (testing) {

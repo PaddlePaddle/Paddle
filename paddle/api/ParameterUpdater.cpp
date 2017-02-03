@@ -39,7 +39,8 @@ ParameterUpdater *ParameterUpdater::createRemoteUpdater(
 ParameterUpdater::~ParameterUpdater() { delete m; }
 
 void ParameterUpdater::init(const GradientMachine &gm) {
-  m->updater->init(gm.m->machine->getNonStaticParameters());
+  m->updater->init(gm.m->machine->getAttribute(),
+                   gm.m->machine->getNonStaticParameters());
 }
 
 void ParameterUpdater::startPass() { m->updater->startPass(); }

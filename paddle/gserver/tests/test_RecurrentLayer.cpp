@@ -107,7 +107,10 @@ ParameterPtr creatParameter(string name,
   paraConfig.set_size(paraSize);
 
   ParameterPtr parameter =
-      std::make_shared<Parameter>(paraConfig, useGpu, /*initialize */ false);
+      std::make_shared<Parameter>(createGradientMachineAttrFromFlags(),
+                                  paraConfig,
+                                  useGpu,
+                                  /*initialize */ false);
   parameter->enableType(PARAMETER_VALUE);
   parameter->enableType(PARAMETER_GRADIENT);
   parameter->randomize();
@@ -126,7 +129,10 @@ ParameterPtr creatParameterBias(string name,
   paraConfig.set_initial_std(1);
 
   ParameterPtr parameter =
-      std::make_shared<Parameter>(paraConfig, useGpu, /*initialize */ true);
+      std::make_shared<Parameter>(createGradientMachineAttrFromFlags(),
+                                  paraConfig,
+                                  useGpu,
+                                  /*initialize */ true);
   parameter->randomize();
   parameter->setID(pid);
 
