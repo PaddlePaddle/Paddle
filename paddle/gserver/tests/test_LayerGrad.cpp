@@ -1320,9 +1320,10 @@ TEST(Layer, RotateLayer) {
   TestConfig config;
   config.biasSize = 0;
   config.layerConfig.set_type("rotate");
-  const int INPUT_SIZE = 64;  //  height * width * depth
+  const int CHANNEL = 2;
   const int HEIGHT = 8;
   const int WIDTH = 4;
+  const int INPUT_SIZE = HEIGHT * WIDTH * CHANNEL;
   config.layerConfig.set_size(INPUT_SIZE);
   config.layerConfig.set_height(HEIGHT);
   config.layerConfig.set_width(WIDTH);

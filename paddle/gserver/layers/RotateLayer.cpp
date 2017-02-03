@@ -38,7 +38,8 @@ void RotateLayer::forward(PassType passType) {
   size_ = input->getWidth();
   CHECK_GE(size_, height_ * width_);
   CHECK_EQ(size_ % (height_ * width_), 0)
-      << "The input's depth should be an int";
+      << "total size_ is not dividable by (height_ * width_), i.e., "
+      << "channel number should be an integer";
   channels_ = size_ / (height_ * width_);
 
   resizeOutput(batchSize_, size_);

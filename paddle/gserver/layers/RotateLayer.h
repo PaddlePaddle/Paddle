@@ -21,7 +21,7 @@ namespace paddle {
 /**
  * A layer for rotating a multi-channel feature map (M x N x C) in the spatial
  * domain
- * The rotation is 90 degrees in clock-wise
+ * The rotation is 90 degrees in clock-wise for each channel
  * \f[
  *   y(j,i,:) = x(M-i-1,j,:)
  * \f]

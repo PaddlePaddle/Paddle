@@ -1679,8 +1679,8 @@ def trans_layer(input, name=None, layer_attr=None):
 @layer_support()
 def rotate_layer(input, height, width, name=None, layer_attr=None):
     """
-    A layer for rotating 90 degrees (clock-wise), usually used when the input sample
-    is some image or feature map.
+    A layer for rotating 90 degrees (clock-wise) for each feature channel,
+    usually used when the input sample is some image or feature map.
 
     .. math::
        y(j,i,:) = x(M-i-1,j,:)
