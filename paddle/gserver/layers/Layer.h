@@ -56,10 +56,8 @@ typedef std::shared_ptr<LayerState> LayerStatePtr;
  * Define necessary variables and functions for every layer.
  */
 class Layer {
-private:
-  GradientMachineAttrPtr gradientMachineAttrs_;
-
 protected:
+  GradientMachineAttrPtr gradientMachineAttrs_;
   /// Layer config
   LayerConfig config_;
   /// whether to use GPU

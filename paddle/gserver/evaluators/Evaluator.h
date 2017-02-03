@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <fstream>
 #include "ModelConfig.pb.h"
+#include "paddle/gserver/gradientmachines/GradientMachineAttributes.h"
 #include "paddle/parameter/Argument.h"
 #include "paddle/pserver/ParameterClient2.h"
 #include "paddle/utils/ClassRegistrar.h"
@@ -40,7 +41,8 @@ class NeuralNetwork;
  */
 class Evaluator {
 public:
-  static Evaluator* create(const EvaluatorConfig& config);
+  static Evaluator* create(const GradientMachineAttrPtr& gradientMachineAttrs,
+                           const EvaluatorConfig& config);
 
   Evaluator() : numSamples_(0), totalScore_(0) {}
 
@@ -121,6 +123,7 @@ protected:
   EvaluatorConfig config_;
   double numSamples_;
   double totalScore_;
+  GradientMachineAttrPtr gradientMachineAttrs_;
 };
 
 class DummyEvaluator : public Evaluator {

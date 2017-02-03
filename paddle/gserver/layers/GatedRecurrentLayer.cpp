@@ -36,7 +36,8 @@ bool GatedRecurrentLayer::init(const LayerMap& layerMap,
   }
 
   reversed_ = config_.reversed();
-  activationGate_.reset(ActivationFunction::create(config_.active_gate_type()));
+  activationGate_.reset(ActivationFunction::create(this->gradientMachineAttrs_,
+                                                   config_.active_gate_type()));
 
   GruCompute::init(config_);
   useBatch_ = true;

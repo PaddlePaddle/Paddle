@@ -298,9 +298,10 @@ bool MDLstmLayer::init(const LayerMap& layerMap,
   for (int i = 0; i < numDims_; i++) {
     delays_.push_back(-1);
   }
-  activationGate_.reset(ActivationFunction::create(config_.active_gate_type()));
-  activationState_.reset(
-      ActivationFunction::create(config_.active_state_type()));
+  activationGate_.reset(ActivationFunction::create(this->gradientMachineAttrs_,
+                                                   config_.active_gate_type()));
+  activationState_.reset(ActivationFunction::create(
+      this->gradientMachineAttrs_, config_.active_state_type()));
 
   return true;
 }

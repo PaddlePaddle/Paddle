@@ -132,18 +132,18 @@ Error __must_check backward(Argument& act) {
                            outputG->getHeight(),
                            outputG->getWidth(),
                            /* trans */ false,
-                           useGpu(act.deviceId));
+                           gradientMachineAttrs_->useGPU(act.deviceId));
     Matrix::resizeOrCreate(sftMaxSum_,
                            outputG->getHeight(),
                            1,
                            /* trans */ false,
-                           useGpu(act.deviceId));
+                           gradientMachineAttrs_->useGPU(act.deviceId));
     if (!one_ || one_->getWidth() != outputG->getWidth()) {
       Matrix::resizeOrCreate(one_,
                              1,
                              outputG->getWidth(),
                              /* trans */ false,
-                             useGpu(act.deviceId));
+                             gradientMachineAttrs_->useGPU(act.deviceId));
       one_->one();
     }
 
@@ -174,19 +174,22 @@ Error __must_check forward(Argument& act) {
   }
 
   if (!argument_.value) {
-    argument_.value = Matrix::create(nullptr,
-                                     /* height= */ 1,
-                                     1,
-                                     /* trans= */ false,
-                                     useGpu(act.deviceId));
-    argument_.grad = Matrix::create(nullptr,
-                                    /* height= */ 1,
-                                    1,
-                                    /* trans= */ false,
-                                    useGpu(act.deviceId));
+    argument_.value =
+        Matrix::create(nullptr,
+                       /* height= */ 1,
+                       1,
+                       /* trans= */ false,
+                       gradientMachineAttrs_->useGPU(act.deviceId));
+    argument_.grad =
+        Matrix::create(nullptr,
+                       /* height= */ 1,
+                       1,
+                       /* trans= */ false,
+                       gradientMachineAttrs_->useGPU(act.deviceId));
   }
 
-  auto starts = act.sequenceStartPositions->getVector(useGpu(act.deviceId));
+  auto starts = act.sequenceStartPositions->getVector(
+      gradientMachineAttrs_->useGPU(act.deviceId));
   act.value->sequenceSoftmax(*act.value, *starts);
   return Error();
 }
@@ -339,7 +342,7 @@ Error __must_check forward(Argument& act) {
                          act.value->getHeight(),
                          act.value->getWidth(),
                          /* trans */ false,
-                         useGpu(act.deviceId));
+                         gradientMachineAttrs_->useGPU(act.deviceId));
 
   act.in->copyFrom(*act.value);
   act.value->abs2(*act.value);
@@ -365,7 +368,7 @@ Error __must_check forward(Argument& act) {
                          act.value->getHeight(),
                          act.value->getWidth(),
                          /* trans */ false,
-                         useGpu(act.deviceId));
+                         gradientMachineAttrs_->useGPU(act.deviceId));
 
   act.in->copyFrom(*act.value);
   act.value->square2(*act.value);
@@ -409,7 +412,7 @@ Error __must_check forward(Argument& act) {
                          act.value->getHeight(),
                          act.value->getWidth(),
                          /* trans */ false,
-                         useGpu(act.deviceId));
+                         gradientMachineAttrs_->useGPU(act.deviceId));
 
   act.in->copyFrom(*act.value);
   act.value->log2(*act.value);
@@ -422,8 +425,12 @@ Error __must_check backward(Argument& act) {
 }
 END_DEFINE_ACTIVATION(log)
 
-ActivationFunction* ActivationFunction::create(const std::string& type) {
-  return gActivationRegistrar.createByType(type);
+ActivationFunction* ActivationFunction::create(
+    const GradientMachineAttrPtr& gradientMachineAttrs,
+    const std::string& type) {
+  auto func = gActivationRegistrar.createByType(type);
+  func->gradientMachineAttrs_ = gradientMachineAttrs;
+  return func;
 }
 
 std::vector<std::string> ActivationFunction::getAllRegisteredTypes() {

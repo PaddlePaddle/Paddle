@@ -95,7 +95,8 @@ bool Layer::init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
 
   /* specify the activation function according to the configuration */
   std::string action_type = config_.active_type();
-  activation_.reset(ActivationFunction::create(action_type));
+  activation_.reset(
+      ActivationFunction::create(this->gradientMachineAttrs_, action_type));
   CHECK(activation_);
 
   initNeedFlags();
@@ -130,15 +131,21 @@ void Layer::resetSpecifyOutput(Argument& output,
                                bool isGradClean) {
   SetDevice device(output.deviceId);
 
-  Matrix::resizeOrCreate(
-      output.value, height, width, /* trans */ false, useGpu(output.deviceId));
+  Matrix::resizeOrCreate(output.value,
+                         height,
+                         width,
+                         /* trans */ false,
+                         gradientMachineAttrs_->useGPU(output.deviceId));
   if (isValueClean) {
     output.value->zeroMem();
   }
 
   if (passType_ != PASS_TEST && needGradient()) {
-    Matrix::resizeOrCreate(
-        output.grad, height, width, /* trans */ false, useGpu(output.deviceId));
+    Matrix::resizeOrCreate(output.grad,
+                           height,
+                           width,
+                           /* trans */ false,
+                           gradientMachineAttrs_->useGPU(output.deviceId));
     if (isGradClean) {
       output.grad->zeroMem();
     }
@@ -234,7 +241,7 @@ void Layer::waitAndMergeOutputGrad() {
                          output_.grad->getHeight(),
                          output_.grad->getWidth(),
                          /* trans */ false,
-                         useGpu(output_.deviceId));
+                         gradientMachineAttrs_->useGPU(output_.deviceId));
 
   for (; i != outputOtherDevice_.size(); i++) {
     tmpGrad_->copyFrom(*outputOtherDevice_[i].grad, HPPL_STREAM_1);
@@ -388,15 +395,17 @@ void Layer::forwardDropOut() {
                            outV->getHeight(),
                            outV->getWidth(),
                            false,
-                           useGpu(deviceId_));
+                           gradientMachineAttrs_->useGPU(deviceId_));
     dropOutMask_->randomizeUniform();  // generate a uniform random matrix
     dropOutMask_->biggerThanScalar(config_.drop_rate());  // random mask
     outV->dotMul(*outV, *dropOutMask_);                   // dropout
   } else if (passType_ == PASS_GC) {
     // only initialize once
     if (!dropOutMask_) {
-      dropOutMask_ = Matrix::create(
-          outV->getHeight(), outV->getWidth(), false, useGpu(deviceId_));
+      dropOutMask_ = Matrix::create(outV->getHeight(),
+                                    outV->getWidth(),
+                                    false,
+                                    gradientMachineAttrs_->useGPU(deviceId_));
       // We use cpu matrix to generate mask so that the mask
       // will be same for both gpu version and cpu version.
       // This will help unittest to make sure they have same result.

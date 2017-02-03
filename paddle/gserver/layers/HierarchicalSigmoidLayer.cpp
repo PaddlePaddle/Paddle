@@ -64,12 +64,12 @@ void HierarchicalSigmoidLayer::forward(PassType passType) {
                          batchSize,
                          codeLength_,
                          /* trans */ false,
-                         useGpu(deviceId_));
+                         gradientMachineAttrs_->useGPU(deviceId_));
   Matrix::resizeOrCreate(preOutput_.grad,
                          batchSize,
                          codeLength_,
                          /* trans */ false,
-                         useGpu(deviceId_));
+                         gradientMachineAttrs_->useGPU(deviceId_));
 
   IVectorPtr label = getInput(*getLabelLayer()).ids;
 
@@ -91,8 +91,10 @@ void HierarchicalSigmoidLayer::forward(PassType passType) {
                                  *output_.value,
                                  -1);  // scaleSum
   preOutput_.value->softrelu(*preOutput_.value);
-  MatrixPtr sum =
-      Matrix::create(batchSize, 1, /* trans= */ false, useGpu(deviceId_));
+  MatrixPtr sum = Matrix::create(batchSize,
+                                 1,
+                                 /* trans= */ false,
+                                 gradientMachineAttrs_->useGPU(deviceId_));
   preOutput_.value->rowSum(*sum);
   output_.value->add(*sum);
 }

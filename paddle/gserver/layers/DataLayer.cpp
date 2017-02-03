@@ -28,9 +28,10 @@ void DataLayer::copyDataToOutput(Argument& output) {
     SetDevice device(output.deviceId);
     if (data_.value) {
       if (!output.value) {
-        output.value = data_.value->clone(data_.value->getHeight(),
-                                          data_.value->getWidth(),
-                                          useGpu(output.deviceId));
+        output.value =
+            data_.value->clone(data_.value->getHeight(),
+                               data_.value->getWidth(),
+                               gradientMachineAttrs_->useGPU(output.deviceId));
       } else {
         output.value->resize(data_.value->getHeight(), data_.value->getWidth());
       }
@@ -41,11 +42,12 @@ void DataLayer::copyDataToOutput(Argument& output) {
                              data_.grad->getHeight(),
                              data_.grad->getWidth(),
                              /* trans= */ false,
-                             useGpu(output.deviceId));
+                             gradientMachineAttrs_->useGPU(output.deviceId));
     }
     if (data_.ids) {
-      IVector::resizeOrCreate(
-          output.ids, data_.ids->getSize(), useGpu(output.deviceId));
+      IVector::resizeOrCreate(output.ids,
+                              data_.ids->getSize(),
+                              gradientMachineAttrs_->useGPU(output.deviceId));
       output.ids->copyFrom(*data_.ids);
     }
   }

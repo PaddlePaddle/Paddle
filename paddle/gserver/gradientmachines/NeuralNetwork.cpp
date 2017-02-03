@@ -372,13 +372,14 @@ Evaluator* NeuralNetwork::makeEvaluator() const {
       bool validConfig = (thisEvalConfig != config_.evaluators().end());
       if (validConfig) {
         std::unique_ptr<Evaluator> evaluator(
-            Evaluator::create(*thisEvalConfig));
+            Evaluator::create(this->getAttribute(), *thisEvalConfig));
         combinedEvaluator->addEvaluator(std::move(evaluator));
       }
     }
   } else {
     for (const EvaluatorConfig& evalConfig : config_.evaluators()) {
-      std::unique_ptr<Evaluator> evaluator(Evaluator::create(evalConfig));
+      std::unique_ptr<Evaluator> evaluator(
+          Evaluator::create(this->getAttribute(), evalConfig));
       combinedEvaluator->addEvaluator(std::move(evaluator));
     }
   }

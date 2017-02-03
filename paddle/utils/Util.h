@@ -246,10 +246,6 @@ private:
   bool syncFlag_;
 };
 
-inline bool useGpu(int deviceId) {
-  return FLAGS_parallel_nn ? (deviceId >= 0 ? true : false) : FLAGS_use_gpu;
-}
-
 /*
  * hppl activation mode
  */

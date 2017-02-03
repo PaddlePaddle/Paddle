@@ -72,10 +72,11 @@ public:
       CHECK_EQ((size_t)1, weight->getWidth());
     }
 
-    const MatrixPtr errorMat = Matrix::create(output->getHeight(),
-                                              1,
-                                              /* trans= */ false,
-                                              useGpu(arguments[0].deviceId));
+    const MatrixPtr errorMat = Matrix::create(
+        output->getHeight(),
+        1,
+        /* trans= */ false,
+        this->gradientMachineAttrs_->useGPU(arguments[0].deviceId));
     errorMat->zeroMem();
     if (label != nullptr) {
       errorMat->classificationError(*output, *label);
@@ -865,7 +866,8 @@ void PnpairEvaluator::calc(std::vector<PredictionResult>& predictArray) {
 }
 
 ClassRegistrar<Evaluator> Evaluator::registrar_;
-Evaluator* Evaluator::create(const EvaluatorConfig& config) {
+Evaluator* Evaluator::create(const GradientMachineAttrPtr& gradientMachineAttrs,
+                             const EvaluatorConfig& config) {
   Evaluator* evaluator = nullptr;
   if (config.type() == "classification_error") {
     evaluator = new ClassificationErrorEvaluator();
@@ -879,6 +881,7 @@ Evaluator* Evaluator::create(const EvaluatorConfig& config) {
     evaluator = registrar_.createByType(config.type());
   }
   evaluator->init(config);
+  evaluator->gradientMachineAttrs_ = gradientMachineAttrs;
   return evaluator;
 }
 /**

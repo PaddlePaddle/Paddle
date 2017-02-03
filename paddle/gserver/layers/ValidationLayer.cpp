@@ -51,7 +51,7 @@ bool AucValidation::init(const LayerMap& layerMap,
   if (3 == inputLayers_.size()) {
     config.add_input_layers(inputLayers_[2]->getName());
   }
-  evaluator_.reset(Evaluator::create(config));
+  evaluator_.reset(Evaluator::create(this->gradientMachineAttrs_, config));
   passBegin_ = false;
   return ret;
 }
@@ -133,7 +133,7 @@ bool PnpairValidation::init(const LayerMap& layerMap,
   if (4 == inputLayers_.size()) {
     config.add_input_layers(inputLayers_[3]->getName());
   }
-  evaluator_.reset(Evaluator::create(config));
+  evaluator_.reset(Evaluator::create(this->gradientMachineAttrs_, config));
   passBegin_ = false;
   return true;
 }

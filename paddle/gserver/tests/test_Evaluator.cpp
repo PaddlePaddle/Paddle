@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "ModelConfig.pb.h"
 #include "paddle/testing/TestUtil.h"
+#include "paddle/trainer/ReadFlags.h"
 #include "paddle/trainer/Trainer.h"
 
 using namespace paddle;  // NOLINT
@@ -102,7 +103,8 @@ void testEvaluator(TestConfig testConf,
     arguments.push_back(data);
   }
 
-  Evaluator* testEvaluator = Evaluator::create(testConf.evaluatorConfig);
+  Evaluator* testEvaluator = Evaluator::create(
+      createGradientMachineAttrFromFlags(), testConf.evaluatorConfig);
   double totalScore = 0.0;
   testEvaluator->start();
   totalScore += testEvaluator->evalImp(arguments);

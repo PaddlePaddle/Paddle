@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <memory>
+#include "paddle/utils/Flags.h"
 
 namespace paddle {
 
@@ -23,8 +24,14 @@ struct GradientMachineAttributes {
   //! FLAGS_parallel_nn.
   bool parallelNeuralNetowrk;
 
+  inline bool useGPU(int deviceID) const {
+    return parallelNeuralNetowrk ? (deviceID >= 0 ? true : false)
+                                 : FLAGS_use_gpu;
+  }
+
   //! TODO(yuayng18): Add more flags here.
 };
 
 typedef std::shared_ptr<GradientMachineAttributes> GradientMachineAttrPtr;
+
 }  // namespace paddle

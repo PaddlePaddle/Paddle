@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
+#include "paddle/gserver/gradientmachines/GradientMachineAttributes.h"
 #include "paddle/utils/Error.h"
 
 namespace paddle {
@@ -32,7 +33,9 @@ struct Argument;
  */
 class ActivationFunction {
 public:
-  static ActivationFunction* create(const std::string& type);
+  static ActivationFunction* create(
+      const GradientMachineAttrPtr& gradientMachineAttrs,
+      const std::string& type);
   static std::vector<std::string> getAllRegisteredTypes();
 
   ActivationFunction() {}
@@ -61,6 +64,9 @@ public:
   virtual Error __must_check backward(Argument& act) = 0;
 
   virtual const std::string& getName() const = 0;
+
+protected:
+  GradientMachineAttrPtr gradientMachineAttrs_;
 };
 
 }  // namespace paddle

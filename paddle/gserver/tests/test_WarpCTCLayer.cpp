@@ -146,7 +146,8 @@ LayerPtr createCTCLayer(string name,
   layerMap[layer->getName()] = layer;
   layer->init(createGradientMachineAttrFromFlags(), layerMap, parameterMap);
 
-  ActivationFunction* softmaxActivation = ActivationFunction::create("softmax");
+  ActivationFunction* softmaxActivation = ActivationFunction::create(
+      createGradientMachineAttrFromFlags(), "softmax");
 
   softmaxActivation->forward(dataLayer->getOutput()).check();
   layer->forward(PASS_GC);
