@@ -38,12 +38,12 @@ protected:
   MatrixPtr tmpSrc_;
   MatrixPtr tmpDest_;
 
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
 public:
   explicit SequenceLastInstanceLayer(const LayerConfig& config)
       : SequencePoolLayer(config) {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

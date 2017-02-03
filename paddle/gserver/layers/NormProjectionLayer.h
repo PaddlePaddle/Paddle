@@ -32,16 +32,14 @@ public:
   explicit CMRProjectionNormLayer(const LayerConfig& config)
       : ResponseNormLayer(config) {}
 
-  ~CMRProjectionNormLayer() {}
-
   size_t getSize();
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
   TensorShape shape_;
 };
 }  // namespace paddle

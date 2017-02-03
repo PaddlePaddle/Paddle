@@ -33,13 +33,11 @@ protected:
   MatrixPtr tmpRow0;
   MatrixPtr tmpRow1;
 
-public:
-  explicit OuterProdLayer(const LayerConfig& config) : Layer(config) {}
-
-  ~OuterProdLayer() {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit OuterProdLayer(const LayerConfig& config) : Layer(config) {}
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

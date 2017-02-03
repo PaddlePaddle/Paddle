@@ -45,9 +45,6 @@ class RecurrentLayer : public Layer {
 public:
   explicit RecurrentLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forward(PassType passType) override;
 
   void backward(const UpdateCallback& callback) override;
@@ -59,6 +56,9 @@ public:
   LayerStatePtr getState() override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
   /**
    * @brief If user do not set --rnn_use_batch=true, it will
    * compute rnn forward one sequence by one sequence in default.

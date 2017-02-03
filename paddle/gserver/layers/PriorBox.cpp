@@ -30,13 +30,14 @@ namespace paddle {
 class PriorBoxLayer : public Layer {
 public:
   explicit PriorBoxLayer(const LayerConfig& config) : Layer(config) {}
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override {}
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
   int numPriors_;
   std::vector<int> minSize_;
   std::vector<int> maxSize_;

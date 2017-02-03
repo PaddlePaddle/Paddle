@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/utils/Version.h>
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/CTCLayer.h"
 #include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/gserver/layers/Layer.h"
 #include "paddle/gserver/layers/WarpCTCLayer.h"
-
 #include "paddle/testing/TestUtil.h"
+#include "paddle/trainer/ReadFlags.h"
+#include "paddle/utils/Version.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -144,7 +144,7 @@ LayerPtr createCTCLayer(string name,
 
   LayerPtr layer = LayerPtr(new CTCLayer(layerConfig));
   layerMap[layer->getName()] = layer;
-  layer->init(layerMap, parameterMap);
+  layer->init(createGradientMachineAttrFromFlags(), layerMap, parameterMap);
 
   ActivationFunction* softmaxActivation = ActivationFunction::create("softmax");
 
@@ -186,7 +186,7 @@ LayerPtr createWarpCTCLayer(string name,
 
   LayerPtr layer = LayerPtr(new WarpCTCLayer(layerConfig));
   layerMap[layer->getName()] = layer;
-  layer->init(layerMap, parameterMap);
+  layer->init(createGradientMachineAttrFromFlags(), layerMap, parameterMap);
 
   layer->forward(PASS_GC);
   layer->backward();

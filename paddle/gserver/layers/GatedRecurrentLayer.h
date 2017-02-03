@@ -50,9 +50,6 @@ class GatedRecurrentLayer : public Layer, public GruCompute {
 public:
   explicit GatedRecurrentLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forward(PassType passType) override;
 
   void backward(const UpdateCallback& callback) override;
@@ -64,6 +61,9 @@ public:
   LayerStatePtr getState() override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
   void forwardSequence(int batchSize,
                        size_t numSequences,
                        const int* starts,

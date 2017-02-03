@@ -26,13 +26,12 @@ class ConcatenateLayer : public Layer {
 public:
   explicit ConcatenateLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~ConcatenateLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 REGISTER_LAYER(concat, ConcatenateLayer);
@@ -100,15 +99,12 @@ class ConcatenateLayer2 : public Layer {
 public:
   explicit ConcatenateLayer2(const LayerConfig& config) : Layer(config) {}
 
-  ~ConcatenateLayer2() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
   std::vector<std::unique_ptr<Projection>> projections_;
   std::vector<Argument> projOutput_;
   std::vector<std::pair<size_t, size_t>> projCol_;

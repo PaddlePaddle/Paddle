@@ -42,14 +42,12 @@ protected:
   /// The transpose of output, which is an auxiliary matrix.
   MatrixPtr transOutValue_;
 
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
 public:
   explicit ExpandConvBaseLayer(const LayerConfig& config)
       : ConvBaseLayer(config) {}
-
-  ~ExpandConvBaseLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
 
   size_t getOutputSize();
   /**

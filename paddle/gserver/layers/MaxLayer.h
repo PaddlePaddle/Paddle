@@ -39,13 +39,13 @@ protected:
   // maxIndex_[i][j] = k : the value at (i, j) is from input[k].
   IVectorPtr maxIndex_;
 
-public:
-  explicit MaxLayer(const LayerConfig& config) : SequencePoolLayer(config) {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override {
     return SequencePoolLayer::init(layerMap, parameterMap);
   }
+
+public:
+  explicit MaxLayer(const LayerConfig& config) : SequencePoolLayer(config) {}
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

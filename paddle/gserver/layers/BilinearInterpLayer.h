@@ -32,14 +32,13 @@ protected:
   real ratioH_, ratioW_;
   size_t numChannels_;
 
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
 public:
   explicit BilinearInterpLayer(const LayerConfig& config) : Layer(config) {}
 
-  virtual ~BilinearInterpLayer() {}
-
   size_t getSize();
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 };

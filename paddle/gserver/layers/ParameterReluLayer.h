@@ -51,13 +51,11 @@ protected:
    */
   size_t partialSum_;
 
-public:
-  explicit ParameterReluLayer(const LayerConfig& config) : Layer(config) {}
-
-  ~ParameterReluLayer() {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit ParameterReluLayer(const LayerConfig& config) : Layer(config) {}
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

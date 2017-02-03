@@ -747,7 +747,9 @@ void TrainerThread::copyInArgs() {
         fullInArgs[i],
         startSeq,
         copySize,
-        FLAGS_parallel_nn ? false : multiMachine_->useGpu());
+        multiMachine_->getAttribute()->parallelNeuralNetowrk
+            ? false
+            : multiMachine_->useGpu());
   }
 }
 

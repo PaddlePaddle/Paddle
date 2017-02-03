@@ -159,7 +159,7 @@ void NeuralNetwork::init(const ModelConfig& config,
   }
 
   for (const auto& layer : layers_) {
-    layer->init(layerMap_, parameterMap_);
+    layer->init(this->getAttribute(), layerMap_, parameterMap_);
     layer->initSubNetwork(this /*root*/, config_, parameterTypes, useGpu);
   }
 

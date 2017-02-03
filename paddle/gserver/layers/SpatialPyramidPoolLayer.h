@@ -40,11 +40,11 @@ protected:
   std::vector<Argument> projOutput_;
   std::vector<std::pair<size_t, size_t>> projCol_;
 
-public:
-  explicit SpatialPyramidPoolLayer(const LayerConfig& config) : Layer(config) {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit SpatialPyramidPoolLayer(const LayerConfig& config) : Layer(config) {}
 
   ProjectionConfig getConfig(size_t sizeX_,
                              size_t sizeY_,

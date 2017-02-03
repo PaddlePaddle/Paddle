@@ -36,13 +36,12 @@ class CosSimLayer : public Layer {
 public:
   explicit CosSimLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~CosSimLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 }  // namespace paddle

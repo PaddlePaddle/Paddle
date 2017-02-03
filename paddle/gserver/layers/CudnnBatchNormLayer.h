@@ -35,17 +35,18 @@ public:
 
   ~CudnnBatchNormLayer();
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
   /**
-   * reshape tensor of ioDesc_.
-   */
+    * reshape tensor of ioDesc_.
+    */
   void reshape(int batchSize);
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
   /**
    * Epsilon value used in the batch normalization formula.
    * Minimum allowed value is CUDNN_BN_MIN_EPSILON defined in cudnn.h.

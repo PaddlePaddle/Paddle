@@ -38,15 +38,14 @@ protected:
   size_t featLen_;
   IVectorPtr maxoutId_;
 
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
 public:
   /// return imgSizeH_ * imgSizeW_ * outputChannels_;
   size_t getSize();
 
   explicit MaxOutLayer(const LayerConfig& config) : Layer(config) {}
-  virtual ~MaxOutLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

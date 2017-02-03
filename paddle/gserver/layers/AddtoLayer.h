@@ -42,12 +42,6 @@ public:
   ~AddtoLayer() {}
 
   /**
-   * Intialization of AddtoLayer.
-   */
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
-  /**
    * Forward propagation.
    * @note There is no weight matrix for each input,
    *       because it just a simple add operation.
@@ -58,6 +52,13 @@ public:
    * Backward propagation.
    */
   void backward(const UpdateCallback& callback = nullptr) override;
+
+protected:
+  /**
+   * Intialization of AddtoLayer.
+   */
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 }  // namespace paddle

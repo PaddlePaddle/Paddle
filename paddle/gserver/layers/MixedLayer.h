@@ -33,11 +33,6 @@ class MixedLayer : public Layer {
 public:
   explicit MixedLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~MixedLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void prefetch() override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
@@ -53,6 +48,9 @@ public:
   LayerStatePtr getState() override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
   std::vector<std::unique_ptr<Projection>> projections_;
   std::vector<std::unique_ptr<Operator>> operators_;
   /// the matrix size of projection state

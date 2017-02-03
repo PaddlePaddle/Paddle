@@ -64,11 +64,7 @@ public:
   explicit SelectiveFullyConnectedLayer(const LayerConfig& config)
       : Layer(config), selCols_(nullptr) {}
 
-  ~SelectiveFullyConnectedLayer() {}
   void prefetch() override;
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
 
   Weight& getWeight(int idx) { return *weights_[idx]; }
 
@@ -99,5 +95,9 @@ private:
    * @brief Make SelectiveFC act as FullyConnectedLayer
    */
   void fillFullySelectiveData() { fullOutput_ = true; }
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 }  // namespace paddle

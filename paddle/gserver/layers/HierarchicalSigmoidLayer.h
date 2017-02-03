@@ -61,12 +61,13 @@ class HierarchicalSigmoidLayer : public Layer {
 public:
   explicit HierarchicalSigmoidLayer(const LayerConfig& config)
       : Layer(config) {}
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
   /**
    * The last of inputs is label layer.
    */

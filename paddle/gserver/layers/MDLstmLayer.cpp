@@ -181,14 +181,13 @@ class MDLstmLayer : public LstmLayer {
 public:
   explicit MDLstmLayer(const LayerConfig& config) : LstmLayer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forward(PassType passType) override;
 
   void backward(const UpdateCallback& callback) override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
   void forwardOneSequence(int start, CoordIterator& coordIter);
   void backwardOneSequence(int start, CoordIterator& coordIter);
   void forwardGate2OutputSequence(int start, CoordIterator& coordIter);

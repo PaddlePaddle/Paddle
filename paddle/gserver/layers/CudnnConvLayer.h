@@ -39,14 +39,14 @@ protected:
   hl_tensor_descriptor outputDesc_;
   int biasOffset_;
   int outputOffset_;
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
 public:
   explicit CudnnConvLayer(const LayerConfig& config) : ConvBaseLayer(config) {}
 
   ~CudnnConvLayer();
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
   void addBiases();

@@ -32,9 +32,6 @@ class CostLayer : public Layer {
 public:
   explicit CostLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   LayerPtr getOutputLayer() { return inputLayers_[0]; }
 
   LayerPtr getLabelLayer() { return inputLayers_[1]; }
@@ -52,6 +49,8 @@ public:
                            Matrix& outputGrad) = 0;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
   LayerPtr weightLayer_;
   real coeff_;
 };
@@ -69,14 +68,15 @@ public:
   explicit MultiClassCrossEntropy(const LayerConfig& config)
       : CostLayer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
 
   void backwardImp(Matrix& outputValue,
                    Argument& label,
                    Matrix& outputGrad) override;
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 /**
@@ -99,9 +99,6 @@ public:
   explicit MultiClassCrossEntropyWithSelfNorm(const LayerConfig& config)
       : CostLayer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
 
   void backwardImp(Matrix& outputValue,
@@ -109,6 +106,8 @@ public:
                    Matrix& outputGrad) override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
   MatrixPtr sftMaxSum_;
   MatrixPtr sumInv_;
 };
@@ -124,9 +123,6 @@ public:
   explicit SoftBinaryClassCrossEntropy(const LayerConfig& config)
       : CostLayer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
 
   void backwardImp(Matrix& outputValue,
@@ -134,6 +130,8 @@ public:
                    Matrix& outputGrad) override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
   MatrixPtr targetPerDim_;
 };
 
@@ -149,14 +147,15 @@ public:
   explicit SumOfSquaresCostLayer(const LayerConfig& config)
       : CostLayer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
 
   void backwardImp(Matrix& outputValue,
                    Argument& label,
                    Matrix& outputGrad) override;
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 /**
@@ -174,9 +173,6 @@ public:
 class RankingCost : public Layer {
 public:
   explicit RankingCost(const LayerConfig& config) : Layer(config) {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
 
   LayerPtr getOutputLayer(size_t i) { return inputLayers_[i]; }
 
@@ -199,6 +195,10 @@ public:
     (void)label;
     (void)outputGrad;
   }
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
 private:
   double posPairCount_;
@@ -228,9 +228,6 @@ class LambdaCost : public Layer {
 public:
   explicit LambdaCost(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   LayerPtr getOutputLayer() { return inputLayers_[0]; }
 
   LayerPtr getScoreLayer() { return inputLayers_[1]; }
@@ -244,6 +241,10 @@ public:
                 const real* score,
                 real* gradData,
                 int size);
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
 private:
   MatrixPtr marginGrad_;
@@ -264,13 +265,12 @@ private:
 class MultiBinaryLabelCrossEntropy : public CostLayer {
 protected:
   MatrixPtr targetPerDim_;
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
 public:
   explicit MultiBinaryLabelCrossEntropy(const LayerConfig& config)
       : CostLayer(config) {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
 
   void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
 
@@ -298,9 +298,6 @@ class HuberTwoClass : public CostLayer {
 public:
   explicit HuberTwoClass(const LayerConfig& config) : CostLayer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forwardImp(Matrix& output, Argument& label, Matrix& cost) override;
 
   void forwardImpIn(Matrix& output, Argument& label, Matrix& cost);
@@ -310,6 +307,10 @@ public:
                    Matrix& outputGrad) override;
 
   void backwardImpIn(Matrix& outputValue, Argument& label, Matrix& outputGrad);
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 typedef std::shared_ptr<CostLayer> CostLayerPtr;

@@ -30,16 +30,6 @@ private:
 public:
   explicit MaxIdLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override {
-    bool ret = Layer::init(layerMap, parameterMap);
-    CHECK_EQ(1UL, inputLayers_.size());
-
-    beamSize_ = config_.has_beam_size() ? config_.beam_size() : FLAGS_beam_size;
-    CHECK_GE(beamSize_, 1LU);
-    return ret;
-  }
-
   void forward(PassType passType) override {
     Layer::forward(passType);
     const Argument& input = getInput(0);
@@ -55,6 +45,17 @@ public:
   }
 
   void backward(const UpdateCallback& callback) override {}
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
+    bool ret = Layer::init(layerMap, parameterMap);
+    CHECK_EQ(1UL, inputLayers_.size());
+
+    beamSize_ = config_.has_beam_size() ? config_.beam_size() : FLAGS_beam_size;
+    CHECK_GE(beamSize_, 1LU);
+    return ret;
+  }
 };
 
 REGISTER_LAYER(maxid, MaxIdLayer);

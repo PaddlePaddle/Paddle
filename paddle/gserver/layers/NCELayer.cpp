@@ -61,52 +61,6 @@ public:
         rand_(0, config.num_classes() - 1),
         prepared_(false) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override {
-    /* Initialize the basic parent class */
-    Layer::init(layerMap, parameterMap);
-
-    /* initialize the weightList */
-    size_t i;
-    for (i = 0; i < inputLayers_.size(); i++) {
-      if (!parameters_[i]) break;
-      size_t width = inputLayers_[i]->getSize();
-      // create a new weight
-      CHECK_EQ(parameters_[i]->getSize(), width * numClasses_);
-      Weight* w = new Weight(numClasses_, width, parameters_[i]);
-
-      // append the new weight to the list
-      weights_.emplace_back(w);
-    }
-
-    CHECK_EQ(1U, getSize());
-
-    numInputs_ = i;
-    CHECK_GE(numInputs_, 1)
-        << "Must have at least one input besides label and weight";
-    CHECK_LT(i, inputLayers_.size()) << "Missing label layer";
-    labelLayer_ = inputLayers_[i];
-    if (++i < inputLayers_.size()) {
-      weightLayer_ = inputLayers_[i];
-      ++i;
-    }
-    CHECK_EQ(i, inputLayers_.size());
-
-    /* initialize biases_ */
-    if (biasParameter_.get() != NULL) {
-      CHECK_EQ(biasParameter_->getSize(), (size_t)numClasses_);
-      biases_.reset(new Weight(1, numClasses_, biasParameter_));
-    }
-
-    if (config_.neg_sampling_dist_size()) {
-      CHECK_EQ(numClasses_, config_.neg_sampling_dist_size());
-      sampler_.reset(MultinomialSampler::create(
-          config_.neg_sampling_dist().data(), numClasses_));
-    }
-
-    return true;
-  }
-
   void prepareSamples() {
     CHECK(!useGpu_) << "GPU is not supported";
 
@@ -315,6 +269,53 @@ public:
       real w = samples_[i].weight;
       sampleGrad[i] = samples_[i].target ? -w * b / (o * (o + b)) : w / (o + b);
     }
+  }
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
+    /* Initialize the basic parent class */
+    Layer::init(layerMap, parameterMap);
+
+    /* initialize the weightList */
+    size_t i;
+    for (i = 0; i < inputLayers_.size(); i++) {
+      if (!parameters_[i]) break;
+      size_t width = inputLayers_[i]->getSize();
+      // create a new weight
+      CHECK_EQ(parameters_[i]->getSize(), width * numClasses_);
+      Weight* w = new Weight(numClasses_, width, parameters_[i]);
+
+      // append the new weight to the list
+      weights_.emplace_back(w);
+    }
+
+    CHECK_EQ(1U, getSize());
+
+    numInputs_ = i;
+    CHECK_GE(numInputs_, 1)
+        << "Must have at least one input besides label and weight";
+    CHECK_LT(i, inputLayers_.size()) << "Missing label layer";
+    labelLayer_ = inputLayers_[i];
+    if (++i < inputLayers_.size()) {
+      weightLayer_ = inputLayers_[i];
+      ++i;
+    }
+    CHECK_EQ(i, inputLayers_.size());
+
+    /* initialize biases_ */
+    if (biasParameter_.get() != NULL) {
+      CHECK_EQ(biasParameter_->getSize(), (size_t)numClasses_);
+      biases_.reset(new Weight(1, numClasses_, biasParameter_));
+    }
+
+    if (config_.neg_sampling_dist_size()) {
+      CHECK_EQ(numClasses_, config_.neg_sampling_dist_size());
+      sampler_.reset(MultinomialSampler::create(
+          config_.neg_sampling_dist().data(), numClasses_));
+    }
+
+    return true;
   }
 };
 

@@ -22,8 +22,6 @@ namespace paddle {
 class CTCLayer : public Layer {
 public:
   explicit CTCLayer(const LayerConfig& config) : Layer(config) {}
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void forwardImp(const Argument& softmaxSeqs, const Argument& labelSeqs);
   void backward(const UpdateCallback& callback) override;
@@ -32,6 +30,8 @@ public:
                    const Argument& labelSeqs);
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
   size_t numClasses_;
   bool normByTimes_;
   std::vector<LinearChainCTC> ctcs_;

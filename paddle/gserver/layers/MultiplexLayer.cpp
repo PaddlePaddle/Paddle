@@ -64,13 +64,11 @@ protected:
   /// Temporary matrix pointer to point to output data.
   MatrixPtr tmpDest_;
 
-public:
-  explicit MultiplexLayer(const LayerConfig& config) : Layer(config) {}
-
-  ~MultiplexLayer() {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit MultiplexLayer(const LayerConfig& config) : Layer(config) {}
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

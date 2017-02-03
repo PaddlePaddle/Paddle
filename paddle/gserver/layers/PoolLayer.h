@@ -38,6 +38,9 @@ protected:
 
   std::string poolType_;
 
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
 public:
   explicit PoolLayer(const LayerConfig& config) : Layer(config) {}
 
@@ -45,9 +48,6 @@ public:
    * @brief create pooling layer by pool_type
    */
   static Layer* create(const LayerConfig& config);
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
 };
 
 }  // namespace paddle

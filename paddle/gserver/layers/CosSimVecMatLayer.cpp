@@ -41,13 +41,11 @@ protected:
   MatrixPtr tmpRow2;
   MatrixPtr tmpRow3;
 
-public:
-  explicit CosSimVecMatLayer(const LayerConfig& config) : Layer(config) {}
-
-  ~CosSimVecMatLayer() {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit CosSimVecMatLayer(const LayerConfig& config) : Layer(config) {}
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

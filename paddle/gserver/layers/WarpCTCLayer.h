@@ -30,12 +30,12 @@ public:
   explicit WarpCTCLayer(const LayerConfig& config) : Layer(config) {}
   ~WarpCTCLayer() {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
   /**
    * sequence matrix and batch matrix copy:
    * sequence (s0, s0, s0, s0; s1, s1; s2, s2, s2; s3)

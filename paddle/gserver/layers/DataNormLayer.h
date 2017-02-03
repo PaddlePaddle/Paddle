@@ -42,15 +42,12 @@ public:
 
   explicit DataNormLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~DataNormLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
   int mode_;
   std::unique_ptr<Weight> weight_;
   MatrixPtr min_;

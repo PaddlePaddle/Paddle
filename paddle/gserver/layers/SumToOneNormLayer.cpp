@@ -38,11 +38,11 @@ protected:
   /// dotSum = output_.grad \f$.*\f$ output_.value
   MatrixPtr dotSum_;
 
-public:
-  explicit SumToOneNormLayer(const LayerConfig& config) : Layer(config) {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit SumToOneNormLayer(const LayerConfig& config) : Layer(config) {}
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

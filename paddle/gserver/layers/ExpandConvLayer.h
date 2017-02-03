@@ -33,13 +33,12 @@ public:
   explicit ExpandConvLayer(const LayerConfig& config)
       : ExpandConvBaseLayer(config) {}
 
-  ~ExpandConvLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 }  // namespace paddle

@@ -43,11 +43,11 @@ protected:
   size_t newBatchSize_;
   ICpuGpuVectorPtr startPositions_;
 
-public:
-  explicit SequencePoolLayer(const LayerConfig& config) : Layer(config) {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit SequencePoolLayer(const LayerConfig& config) : Layer(config) {}
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

@@ -48,13 +48,11 @@ protected:
   /// of input[1]
   ICpuGpuVectorPtr expandStartsPos_;
 
-public:
-  explicit ExpandLayer(const LayerConfig& config) : Layer(config) {}
-
-  ~ExpandLayer() {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit ExpandLayer(const LayerConfig& config) : Layer(config) {}
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

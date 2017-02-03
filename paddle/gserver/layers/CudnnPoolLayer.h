@@ -39,20 +39,19 @@ protected:
   hl_tensor_descriptor outputDesc_;
   /// A description of a pooling operation.
   hl_pooling_descriptor poolingDesc_;
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
 public:
   static bool typeCheck(const std::string& poolType,
                         hl_pooling_mode_t* mode = nullptr);
   explicit CudnnPoolLayer(const LayerConfig& config);
   ~CudnnPoolLayer();
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   /**
-   * Reshape input and output tensor descriptor.
-   * The batch size maybe change during training in last batch of each pass.
-   * So reshaping is needed.
-   */
+ * Reshape input and output tensor descriptor.
+ * The batch size maybe change during training in last batch of each pass.
+ * So reshaping is needed.
+ */
   void reshape(int batchSize);
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

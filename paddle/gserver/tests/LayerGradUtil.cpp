@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "LayerGradUtil.h"
-
+#include "paddle/trainer/ReadFlags.h"
 DECLARE_bool(thread_local_rand_use_global_seed);
 
 namespace paddle {
@@ -489,7 +489,8 @@ void initTestLayer(TestConfig testConf,
 
   *testLayer = Layer::create(testConfig);
   (*layerMap)[testConfig.name()] = *testLayer;
-  (*testLayer)->init((*layerMap), parameterMap);
+  (*testLayer)
+      ->init(createGradientMachineAttrFromFlags(), (*layerMap), parameterMap);
   (*testLayer)->setNeedGradient(true);
 }
 

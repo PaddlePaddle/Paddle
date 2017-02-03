@@ -19,6 +19,7 @@ limitations under the License. */
 #include "ModelConfig.pb.h"
 #include "paddle/function/Function.h"
 #include "paddle/gserver/activations/ActivationFunction.h"
+#include "paddle/gserver/gradientmachines/GradientMachineAttributes.h"
 #include "paddle/math/CpuSparseMatrix.h"
 #include "paddle/parameter/Argument.h"
 #include "paddle/parameter/ParallelParameter.h"
@@ -55,6 +56,9 @@ typedef std::shared_ptr<LayerState> LayerStatePtr;
  * Define necessary variables and functions for every layer.
  */
 class Layer {
+private:
+  GradientMachineAttrPtr gradientMachineAttrs_;
+
 protected:
   /// Layer config
   LayerConfig config_;
@@ -370,12 +374,6 @@ public:
   void zeroGrad();
 
   /**
-   * Intialization.
-   * For example, adding input layers from layerMap and parameterMap.
-   */
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  /**
    * Intialization for sub network if there has sub network.
    * @param rootNetwork root network
    * @param config model config
@@ -456,7 +454,19 @@ public:
    */
   virtual void onPassEnd() {}
 
+  bool init(const GradientMachineAttrPtr& gradientMachineAttr,
+            const LayerMap& layerMap,
+            const ParameterMap& parameterMap) {
+    this->gradientMachineAttrs_ = gradientMachineAttr;
+    return this->init(layerMap, parameterMap);
+  }
+
 protected:
+  /**
+   * Intialization.
+   * For example, adding input layers from layerMap and parameterMap.
+   */
+  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
   /**
    * Forward of activation function.
    */

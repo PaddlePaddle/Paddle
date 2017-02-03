@@ -32,11 +32,11 @@ protected:
   MatrixPtr tmpSrc_;
   MatrixPtr tmpDest_;
 
-public:
-  explicit SubSequenceLayer(const LayerConfig& config) : Layer(config) {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit SubSequenceLayer(const LayerConfig& config) : Layer(config) {}
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

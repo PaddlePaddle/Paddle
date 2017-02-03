@@ -27,14 +27,13 @@ class PadLayer : public Layer {
 public:
   explicit PadLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~PadLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+
   void setOutDims(const size_t batchSize);
   void setTensorDim(const size_t batchSize);
 

@@ -33,11 +33,6 @@ protected:
 public:
   explicit AgentLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~AgentLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   // if *numSamples* set,
   // real layer output will only use first *numSamples* rows
   void setRealLayer(LayerPtr layer, int numSamples = 0) {
@@ -47,6 +42,10 @@ public:
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override {}
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 /**
@@ -77,11 +76,6 @@ protected:
 public:
   explicit GatherAgentLayer(const LayerConfig& config) : Layer(config) {}
 
-  virtual ~GatherAgentLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   // call before addRealLayer
   void copyIdAndSequenceInfo(const Argument& input,
                              const IVectorPtr& allIds,
@@ -92,6 +86,10 @@ public:
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 /**
@@ -132,11 +130,6 @@ protected:
 
 public:
   explicit ScatterAgentLayer(const LayerConfig& config) : Layer(config) {}
-
-  virtual ~ScatterAgentLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
 
   /**
    * @brief set real layer in generation
@@ -187,6 +180,10 @@ public:
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 /**

@@ -30,16 +30,17 @@ class NormLayer : public Layer {
 public:
   explicit NormLayer(const LayerConfig& config) : Layer(config) {}
 
+  /**
+   * @brief create norm layer by norm_type
+   */
+  static Layer* create(const LayerConfig& config);
+
+protected:
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override {
     Layer::init(layerMap, parameterMap);
     return true;
   }
-
-  /**
-   * @brief create norm layer by norm_type
-   */
-  static Layer* create(const LayerConfig& config);
 };
 
 /**
@@ -53,12 +54,12 @@ protected:
   size_t channels_, size_, outputX_, imgSize_, outputY_, imgSizeY_;
   real scale_, pow_;
   MatrixPtr denoms_;
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
 public:
   explicit ResponseNormLayer(const LayerConfig& config) : NormLayer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
   void forward(PassType passType) override { LOG(FATAL) << "Not implemented"; }
   void backward(const UpdateCallback& callback = nullptr) override {
     LOG(FATAL) << "Not implemented";

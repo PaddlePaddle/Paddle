@@ -609,14 +609,6 @@ class SumCostLayer : public Layer {
 public:
   explicit SumCostLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override {
-    bool ret = Layer::init(layerMap, parameterMap);
-    if (!ret) return ret;
-    CHECK_EQ(inputLayers_.size(), 1UL);
-    return true;
-  }
-
   void forward(PassType passType) override {
     Layer::forward(passType);
     const MatrixPtr& input = getInputValue(0);
@@ -630,6 +622,15 @@ public:
 
   void backward(const UpdateCallback& callback = nullptr) override {
     getInputGrad(0)->add((real)1);
+  }
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
+    bool ret = Layer::init(layerMap, parameterMap);
+    if (!ret) return ret;
+    CHECK_EQ(inputLayers_.size(), 1UL);
+    return true;
   }
 };
 

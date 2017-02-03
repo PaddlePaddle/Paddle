@@ -77,11 +77,11 @@ protected:
   /// of output size.
   bool caffeMode_;
 
-public:
-  explicit ConvBaseLayer(const LayerConfig& config) : Layer(config) {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit ConvBaseLayer(const LayerConfig& config) : Layer(config) {}
 
   /**
    * imgSizeH_ and imgSizeW_ will be set according to the previous input layers

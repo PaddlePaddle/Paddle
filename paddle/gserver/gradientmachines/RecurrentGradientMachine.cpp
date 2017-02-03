@@ -157,17 +157,6 @@ protected:
 public:
   explicit BootBiasLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override {
-    if (!Layer::init(layerMap, parameterMap)) return false;
-
-    if (biasParameter_) {
-      biases_ =
-          std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_));
-    }
-    return true;
-  }
-
   void resetHeight(int height) {
     if (config_.has_bos_id()) {  // used as a constant id layerConfig
       IVector::resizeOrCreate(output_.ids, height, useGpu_);
@@ -191,6 +180,18 @@ public:
       biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
       biases_->getParameterPtr()->incUpdate(callback);
     }
+  }
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
+    if (!Layer::init(layerMap, parameterMap)) return false;
+
+    if (biasParameter_) {
+      biases_ =
+          std::unique_ptr<Weight>(new Weight(1, getSize(), biasParameter_));
+    }
+    return true;
   }
 };
 
@@ -248,7 +249,8 @@ void RecurrentGradientMachine::init(
           memoryConfig.is_sequence()
               ? new SequenceScatterAgentLayer(scatterConfig)
               : new ScatterAgentLayer(scatterConfig));
-      memoryFrameLines_[i].rootAgent->init(LayerMap(), parameterMap_);
+      memoryFrameLines_[i].rootAgent->init(
+          this->getAttribute(), LayerMap(), parameterMap_);
 
       memoryFrameLines_[i].bootLayer = memoryFrameLines_[i].rootAgent;
     } else {
@@ -261,7 +263,8 @@ void RecurrentGradientMachine::init(
         biasConfig.set_bos_id(memoryConfig.boot_with_const_id());
       }
       memoryFrameLines_[i].biasLayer.reset(new BootBiasLayer(biasConfig));
-      memoryFrameLines_[i].biasLayer->init(LayerMap(), parameterMap_);
+      memoryFrameLines_[i].biasLayer->init(
+          this->getAttribute(), LayerMap(), parameterMap_);
 
       memoryFrameLines_[i].bootLayer = memoryFrameLines_[i].biasLayer;
     }
@@ -272,7 +275,7 @@ void RecurrentGradientMachine::init(
         agent.reset(memoryConfig.is_sequence()
                         ? new SequenceScatterAgentLayer(*agentConfig)
                         : new ScatterAgentLayer(*agentConfig));
-        agent->init(LayerMap(), parameterMap_);
+        agent->init(this->getAttribute(), LayerMap(), parameterMap_);
       }
     }
   }

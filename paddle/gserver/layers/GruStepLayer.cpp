@@ -50,13 +50,11 @@ protected:
   std::unique_ptr<Weight> weight_;
   std::unique_ptr<Weight> bias_;
 
-public:
-  explicit GruStepLayer(const LayerConfig& config) : Layer(config) {}
-
-  ~GruStepLayer() {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit GruStepLayer(const LayerConfig& config) : Layer(config) {}
 
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;

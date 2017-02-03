@@ -27,13 +27,6 @@ class EosIdCheckLayer : public Layer {
 public:
   explicit EosIdCheckLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override {
-    bool ret = Layer::init(layerMap, parameterMap);
-    CHECK_EQ(1UL, inputLayers_.size());
-    return ret;
-  }
-
   void forward(PassType passType) override {
     Layer::forward(passType);
 
@@ -43,6 +36,14 @@ public:
   }
 
   void backward(const UpdateCallback& callback) override {}
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
+    bool ret = Layer::init(layerMap, parameterMap);
+    CHECK_EQ(1UL, inputLayers_.size());
+    return ret;
+  }
 };
 
 REGISTER_LAYER(eos_id, EosIdCheckLayer);

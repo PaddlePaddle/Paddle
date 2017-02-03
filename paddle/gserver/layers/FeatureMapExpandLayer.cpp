@@ -44,13 +44,12 @@ private:
 public:
   explicit FeatureMapExpandLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~FeatureMapExpandLayer() {}
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
-
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback = nullptr) override;
+
+protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 REGISTER_LAYER(featmap_expand, FeatureMapExpandLayer);

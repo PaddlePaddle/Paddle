@@ -43,17 +43,12 @@ class BatchNormBaseLayer : public Layer {
 public:
   explicit BatchNormBaseLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~BatchNormBaseLayer() {}
-
   /**
    * @brief Create BatchNorm layer by norm_type, including batch_norm and
    * cudnn_batch_norm. If do not set norm_type, it will automatically select
    * cudnn_batch_norm for GPU and batch_norm for CPU.
    */
   static Layer* create(const LayerConfig& config);
-
-  bool init(const LayerMap& layerMap,
-            const ParameterMap& parameterMap) override;
 
   /**
    * @brief Calculate feature map size. Some input uses frameHeight and
@@ -62,6 +57,8 @@ public:
   void calFeatureMapSize();
 
 protected:
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
   /// Batch normalization scale parameter, which is referred to as gamma in
   /// in original paper.
   std::unique_ptr<Weight> weight_;

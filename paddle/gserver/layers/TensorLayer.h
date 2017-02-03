@@ -41,11 +41,11 @@ protected:
   WeightList weights_;
   std::unique_ptr<Weight> biases_;
 
-public:
-  explicit TensorLayer(const LayerConfig& config) : Layer(config) {}
-
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
+
+public:
+  explicit TensorLayer(const LayerConfig& config) : Layer(config) {}
 
   Weight& getWeight(int idx) { return *weights_[idx]; }
 

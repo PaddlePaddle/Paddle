@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <paddle/utils/Version.h>
 #include <vector>
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/gserver/layers/Layer.h"
-
 #include "paddle/testing/TestUtil.h"
+#include "paddle/trainer/ReadFlags.h"
+#include "paddle/utils/Version.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
@@ -154,7 +154,7 @@ LayerPtr initRecurrentLayer(LayerConfig layerConfig,
   LayerPtr testLayer = Layer::create(layerConfig);
   layerMap[testLayer->getName()] = testLayer;
 
-  testLayer->init(layerMap, parameterMap);
+  testLayer->init(createGradientMachineAttrFromFlags(), layerMap, parameterMap);
   testLayer->setNeedGradient(true);
 
   return testLayer;
@@ -269,7 +269,8 @@ public:
     parameterMap_[bias_->getName()] = bias_;
 
     layerMap_[testLayer_->getName()] = testLayer_;
-    testLayer_->init(layerMap_, parameterMap_);
+    testLayer_->init(
+        createGradientMachineAttrFromFlags(), layerMap_, parameterMap_);
     testLayer_->setNeedGradient(true);
     (dynamic_cast<T*>(testLayer_.get()))->useBatch_ = useBatch_;
   }

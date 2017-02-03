@@ -20,8 +20,12 @@ class GetOutputLayer : public Layer {
 public:
   explicit GetOutputLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~GetOutputLayer() {}
+  void forward(PassType passType) override {
+    output_ = getPrev(0)->getOutput(inputArgument_[0]);
+  }
+  void backward(const UpdateCallback& callback = nullptr) override {}
 
+protected:
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override {
     if (!Layer::init(layerMap, parameterMap)) return false;
@@ -29,11 +33,6 @@ public:
     CHECK_NE(inputArgument_[0], "");
     return true;
   }
-
-  void forward(PassType passType) override {
-    output_ = getPrev(0)->getOutput(inputArgument_[0]);
-  }
-  void backward(const UpdateCallback& callback = nullptr) override {}
 };
 
 REGISTER_LAYER(get_output, GetOutputLayer);
