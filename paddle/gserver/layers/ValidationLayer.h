@@ -26,7 +26,8 @@ class ValidationLayer : public Layer {
 public:
   explicit ValidationLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   LayerPtr getOutputLayer() { return inputLayers_[0]; }
 
@@ -37,13 +38,13 @@ public:
     return inputLayers_[2];
   }
 
-  virtual void forward(PassType passType);
+  void forward(PassType passType) override;
 
-  virtual void backward(const UpdateCallback& callback = nullptr);
+  void backward(const UpdateCallback& callback = nullptr) override;
 
   virtual void validationImp(MatrixPtr outputValue, IVectorPtr label) = 0;
 
-  virtual void onPassEnd() = 0;
+  void onPassEnd() override = 0;
 };
 
 /*
@@ -57,11 +58,12 @@ public:
         cpuLabel_(nullptr),
         cpuWeight_(nullptr) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void validationImp(MatrixPtr outputValue, IVectorPtr label);
+  void validationImp(MatrixPtr outputValue, IVectorPtr label) override;
 
-  void onPassEnd();
+  void onPassEnd() override;
 
   struct PredictionResult {
     PredictionResult(real __out, int __label) : out(__out), label(__label) {}
@@ -86,11 +88,12 @@ public:
   explicit PnpairValidation(const LayerConfig& config)
       : ValidationLayer(config) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void validationImp(MatrixPtr outputValue, IVectorPtr label);
+  void validationImp(MatrixPtr outputValue, IVectorPtr label) override;
 
-  void onPassEnd();
+  void onPassEnd() override;
 
 private:
   bool passBegin_;
