@@ -17,6 +17,7 @@ limitations under the License. */
 #include <iostream>
 #include <vector>
 
+#include "GradientMachineAttributes.h"
 #include "ModelConfig.pb.h"
 #include "TrainerConfig.pb.h"
 #include "paddle/gserver/dataproviders/DataProvider.h"
@@ -68,14 +69,6 @@ typedef std::vector<LayerStatePtr> MachineState;
 class GradientMachine;
 
 typedef std::shared_ptr<GradientMachine> GradientMachinePtr;
-
-struct GradientMachineAttributes {
-  //! GradientMachine uses Model Parallel or not. It should be set by
-  //! FLAGS_parallel_nn.
-  bool parallelNeuralNetowrk;
-};
-
-typedef std::shared_ptr<GradientMachineAttributes> GradientMachineAttrPtr;
 
 class GradientMachine {
 public:
