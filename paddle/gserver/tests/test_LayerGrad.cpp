@@ -1316,6 +1316,25 @@ TEST(Layer, ResizeLayer) {
   }
 }
 
+TEST(Layer, RotateLayer) {
+  TestConfig config;
+  config.biasSize = 0;
+  config.layerConfig.set_type("rotate");
+  const int CHANNEL = 2;
+  const int HEIGHT = 8;
+  const int WIDTH = 4;
+  const int INPUT_SIZE = HEIGHT * WIDTH * CHANNEL;
+  config.layerConfig.set_size(INPUT_SIZE);
+  config.layerConfig.set_height(HEIGHT);
+  config.layerConfig.set_width(WIDTH);
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", INPUT_SIZE, 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "rotate", 100, false, useGpu);
+  }
+}
+
 TEST(Layer, NCELayer) {
   TestConfig config;
   size_t numClasses = 4;

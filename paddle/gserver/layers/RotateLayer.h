@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 Baidu, Inc. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,27 +14,38 @@ limitations under the License. */
 
 #pragma once
 
-#include <vector>
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
 
 namespace paddle {
 /**
- * A layer for transposing a minibatch matrix.
+ * A layer for rotating a multi-channel feature map (M x N x C) in the spatial
+ * domain
+ * The rotation is 90 degrees in clock-wise for each channel
  * \f[
-     y = x^\mathrm{T}
+ *   y(j,i,:) = x(M-i-1,j,:)
  * \f]
- * where \f$x\f$ is (M x N) input, and \f$y\f$ is (N x M) output.
+ * where \f$x\f$ is (M x N x C) input, and \f$y\f$ is (N x M x C) output.
  *
- * The config file api is trans_layer.
- */
-class TransLayer : public Layer {
+ * The config file api is rotate_layer
+ *
+*/
+
+class RotateLayer : public Layer {
 public:
-  explicit TransLayer(const LayerConfig& config) : Layer(config) {}
+  explicit RotateLayer(const LayerConfig& config) : Layer(config) {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
   void forward(PassType passType);
   void backward(const UpdateCallback& callback = nullptr);
+
+private:
+  int batchSize_;
+  int size_;
+  int height_;
+  int width_;
+  int channels_;
 };
+
 }  // namespace paddle

@@ -830,7 +830,6 @@ class Pool(Cfg):
             channels,
             size_x,
             size_y=None,
-            img_width=None,
             start=None,
             stride=None,  # 1 by defalut in protobuf
             stride_y=None,
@@ -1927,8 +1926,8 @@ class BatchNormLayer(LayerBase):
         image_conf = self.config.inputs[0].image_conf
         parse_image(self.inputs[0].image, input_layer.name, image_conf)
 
-        # Only pass the width and height of input to batch_norm layer 
-        # when either of it is non-zero. 
+        # Only pass the width and height of input to batch_norm layer
+        # when either of it is non-zero.
         if input_layer.width != 0 or input_layer.height != 0:
             self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
                                image_conf.channels, False)
@@ -1966,6 +1965,18 @@ class ResizeLayer(LayerBase):
         config_assert(
             len(self.inputs) == 1,
             'ResizeLayer must have one and only one input')
+
+
+@config_layer('rotate')
+class RotateLayer(LayerBase):
+    def __init__(self, name, inputs, height, width, device=None):
+        super(RotateLayer, self).__init__(
+            name, 'rotate', 0, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 1,
+            'RotateLayer must have one and only one input')
+        self.set_layer_height_width(height, width)
+        self.set_layer_size(self.get_input_layer(0).size)
 
 
 @config_layer('blockexpand')

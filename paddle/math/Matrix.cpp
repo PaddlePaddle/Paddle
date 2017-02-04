@@ -274,6 +274,18 @@ real GpuMatrix::getSum() {
   return sum;
 }
 
+real GpuMatrix::getMin() {
+  CHECK(isContiguous());
+  auto vec = GpuVector(height_ * width_, data_);
+  return vec.getMin();
+}
+
+real GpuMatrix::getMax() {
+  CHECK(isContiguous());
+  auto vec = GpuVector(height_ * width_, data_);
+  return vec.getMax();
+}
+
 void GpuMatrix::accumulateColSum(Matrix& src) {
   CHECK_EQ(getWidth(), src.getWidth());
   CHECK_EQ(getHeight(), (size_t)1);
@@ -371,11 +383,13 @@ MatrixPtr GpuMatrix::getTranspose() {
   }
 }
 
-void GpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
+void GpuMatrix::transpose(MatrixPtr& matTrans, bool memAlloc) {
   if (memAlloc) {
     matTrans = std::make_shared<GpuMatrix>(width_, height_);
   } else {
     CHECK(matTrans != NULL);
+    CHECK_EQ(matTrans->getHeight(), width_);
+    CHECK_EQ(matTrans->getWidth(), height_);
   }
   real* dataTrans = matTrans->getData();
   real* data = getData();
@@ -385,13 +399,27 @@ void GpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   hl_matrix_transpose(data, dataTrans, height_, width_, lda, ldc);
 }
 
+void GpuMatrix::rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise) {
+  if (memAlloc) {
+    matRot = std::make_shared<GpuMatrix>(width_, height_);
+  } else {
+    CHECK(matRot != NULL);
+    CHECK_EQ(matRot->getHeight(), width_);
+    CHECK_EQ(matRot->getWidth(), height_);
+  }
+
+  real* dataRot = matRot->getData();
+  real* data = getData();
+  hl_matrix_rotate(data, dataRot, height_, width_, clockWise);
+}
+
 MatrixPtr GpuMatrix::getInverse() {
   MatrixPtr matInv;
   inverse(matInv, true);
   return matInv;
 }
 
-void GpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+void GpuMatrix::inverse(MatrixPtr& matInv, bool memAlloc) {
   CHECK_EQ(height_, width_);
 
   if (memAlloc) {
@@ -1690,11 +1718,13 @@ MatrixPtr CpuMatrix::getTranspose() {
   }
 }
 
-void CpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
+void CpuMatrix::transpose(MatrixPtr& matTrans, bool memAlloc) {
   if (memAlloc) {
     matTrans = std::make_shared<CpuMatrix>(width_, height_);
   } else {
     CHECK(matTrans != NULL);
+    CHECK_EQ(matTrans->getHeight(), width_);
+    CHECK_EQ(matTrans->getWidth(), height_);
   }
   real* dataTrans = matTrans->getData();
   real* data = getData();
@@ -1708,13 +1738,35 @@ void CpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   }
 }
 
+void CpuMatrix::rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise) {
+  if (memAlloc) {
+    matRot = std::make_shared<CpuMatrix>(width_, height_);
+  } else {
+    CHECK(matRot != NULL);
+    CHECK_EQ(matRot->getHeight(), width_);
+    CHECK_EQ(matRot->getWidth(), height_);
+  }
+  real* dataRot = matRot->getData();
+  real* data = getData();
+
+  for (size_t i = 0; i < height_; i++) {
+    for (size_t j = 0; j < width_; j++) {
+      if (clockWise) {
+        dataRot[j * height_ + i] = data[(height_ - i - 1) * width_ + j];
+      } else {
+        dataRot[j * height_ + i] = data[i * width_ + (width_ - j - 1)];
+      }
+    }
+  }
+}
+
 MatrixPtr CpuMatrix::getInverse() {
   MatrixPtr matInv;
   inverse(matInv, true);
   return matInv;
 }
 
-void CpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+void CpuMatrix::inverse(MatrixPtr& matInv, bool memAlloc) {
   CHECK_EQ(height_, width_);
 
   if (memAlloc) {
