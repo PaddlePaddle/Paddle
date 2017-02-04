@@ -3677,26 +3677,27 @@ def pad_layer(input,
 
     For example,
 
-    .. code-block::
+    .. code-block:: python
 
-      input(2,2,2,3)  = [
-                          [ [[1,2,3], [3,4,5]],
-                            [[2,3,5], [1,6,7]] ],
-                          [ [[4,3,1], [1,8,7]],
-                            [[3,8,9], [2,3,5]] ]
-                        ]
+       input(2,2,2,3)  = [
+                           [ [[1,2,3], [3,4,5]],
+                             [[2,3,5], [1,6,7]] ],
+                           [ [[4,3,1], [1,8,7]],
+                             [[3,8,9], [2,3,5]] ]
+                         ]
 
-      pad_c=[1,1], pad_h=[0,0], pad_w=[0,0]
-      output(2,4,2,3) = [
-                          [ [[0,0,0], [0,0,0]],
-                            [[1,2,3], [3,4,5]],
-                            [[2,3,5], [1,6,7]],
-                            [[0,0,0], [0,0,0]] ],
-                          [ [[0,0,0], [0,0,0]],
-                            [[4,3,1], [1,8,7]],
-                            [[3,8,9], [2,3,5]],
-                            [[0,0,0], [0,0,0]] ]
-                        ]
+       pad_c=[1,1], pad_h=[0,0], pad_w=[0,0]
+
+       output(2,4,2,3) = [
+                           [ [[0,0,0], [0,0,0]],
+                             [[1,2,3], [3,4,5]],
+                             [[2,3,5], [1,6,7]],
+                             [[0,0,0], [0,0,0]] ],
+                           [ [[0,0,0], [0,0,0]],
+                             [[4,3,1], [1,8,7]],
+                             [[3,8,9], [2,3,5]],
+                             [[0,0,0], [0,0,0]] ]
+                         ]
 
     The simply usage is:
 
@@ -4191,13 +4192,7 @@ def block_expand_layer(input,
 
 @wrap_name_default()
 @layer_support()
-def maxout_layer(input,
-                 groups,
-                 num_channels=None,
-                 size_x=None,
-                 size_y=None,
-                 name=None,
-                 layer_attr=None):
+def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
     """
     A layer to do max out on conv layer output.
       - Input: output of a conv layer.
