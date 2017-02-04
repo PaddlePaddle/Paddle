@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/trainer/Trainer.h"
+
 #include <fenv.h>
-#include "ParamUtil.h"
-#include "ReadFlags.h"
-#include "Trainer.h"
 #include "paddle/pserver/ParameterServerController.h"
+#include "paddle/trainer/ParamUtil.h"
+#include "paddle/trainer/ReadFlags.h"
 #include "paddle/utils/PythonUtil.h"
 
 DEFINE_bool(start_pserver, false, "Whether to start pserver");
