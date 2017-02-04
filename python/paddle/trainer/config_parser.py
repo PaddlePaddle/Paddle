@@ -1048,7 +1048,7 @@ def Data(type,
 
 
 @config_func
-def TrainData(data_config, async_load_data=None):
+def set_global_training_data_config_proto(data_config, async_load_data=None):
     config_assert(not g_config.HasField('data_config'),
                   'Only one TrainData definition is allowed')
     g_config.data_config.CopyFrom(data_config)
@@ -1060,7 +1060,7 @@ def TrainData(data_config, async_load_data=None):
 
 
 @config_func
-def TestData(data_config, async_load_data=None):
+def set_global_testing_data_config_proto(data_config, async_load_data=None):
     config_assert(not g_config.HasField('test_data_config'),
                   'Only one TestData definition is allowed')
     g_config.test_data_config.CopyFrom(data_config)
