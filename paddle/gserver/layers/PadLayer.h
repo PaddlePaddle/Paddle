@@ -29,9 +29,10 @@ public:
 
   ~PadLayer() {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
   void setOutDims(const size_t batchSize);

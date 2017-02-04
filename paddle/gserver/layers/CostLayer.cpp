@@ -367,8 +367,6 @@ void LambdaCost::backward(const UpdateCallback& callback) {
   getInputGrad(0)->add(*marginGrad_);
 }
 
-void LambdaCost::onPassEnd() {}
-
 void LambdaCost::calcGrad(const real* outputScore,
                           const real* score,
                           real* gradData,
@@ -611,14 +609,15 @@ class SumCostLayer : public Layer {
 public:
   explicit SumCostLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     bool ret = Layer::init(layerMap, parameterMap);
     if (!ret) return ret;
     CHECK_EQ(inputLayers_.size(), 1UL);
     return true;
   }
 
-  virtual void forward(PassType passType) {
+  void forward(PassType passType) override {
     Layer::forward(passType);
     const MatrixPtr& input = getInputValue(0);
 
@@ -629,7 +628,7 @@ public:
     output_.value->sumRows(*input, /* scaleSum= */ 1, /* scaleDest= */ 0);
   }
 
-  virtual void backward(const UpdateCallback& callback = nullptr) {
+  void backward(const UpdateCallback& callback = nullptr) override {
     getInputGrad(0)->add((real)1);
   }
 };
