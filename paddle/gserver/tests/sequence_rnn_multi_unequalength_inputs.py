@@ -16,11 +16,8 @@
 from paddle.trainer_config_helpers import *
 
 ######################## data source ################################
-setup_data_provider(
-    'gserver/tests/Sequence/dummy.list',
-    None,
-    'rnn_data_provider',
-    'process_unequalength_seq')
+setup_data_provider('gserver/tests/Sequence/dummy.list', None,
+                    'rnn_data_provider', 'process_unequalength_seq')
 
 settings(batch_size=2, learning_rate=0.01)
 ######################## network configure ################################

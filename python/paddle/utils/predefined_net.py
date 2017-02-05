@@ -63,12 +63,8 @@ def image_data(data_dir,
         'color': color_string
     }
 
-    setup_data_provider(
-        train_list,
-        test_list,
-        'image_provider',
-        'processData',
-        args)
+    setup_data_provider(train_list, test_list, 'image_provider', 'processData',
+                        args)
     return {
         "image_size": image_size,
         "num_classes": num_classes,

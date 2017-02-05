@@ -30,7 +30,8 @@ if not is_predict:
         'color': "color"
     }
 
-    setup_data_provider("train.list", "train.list", 'image_provider', 'processData', args)
+    setup_data_provider("train.list", "train.list", 'image_provider',
+                        'processData', args)
 
 ######################Algorithm Configuration #############
 settings(

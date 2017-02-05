@@ -16,11 +16,7 @@ from paddle.trainer_config_helpers import *
 
 # 1. read data. Suppose you saved above python code as dataprovider.py
 setup_data_provider(
-    'training_data_files_list.txt',
-    None,
-    'dataprovider',
-    'process',
-    args={})
+    'training_data_files_list.txt', None, 'dataprovider', 'process', args={})
 
 # 2. learning algorithm
 settings(batch_size=12, learning_rate=1e-3, learning_method=MomentumOptimizer())

@@ -16,11 +16,8 @@ from paddle.trainer_config_helpers import *
 
 import math
 
-setup_data_provider(
-    "data/train.list",
-    "data/test.list",
-    "dataprovider",
-    "process")
+setup_data_provider("data/train.list", "data/test.list", "dataprovider",
+                    "process")
 
 batch_size = 16
 settings(

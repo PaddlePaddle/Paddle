@@ -61,7 +61,8 @@ def setup_data_provider(train_list, test_list, module, function, args=None):
     :rtype: None
     """
 
-    def create_py_data_config_proto(list_file, module, function, args, **kwargs):
+    def create_py_data_config_proto(list_file, module, function, args,
+                                    **kwargs):
         proto = create_data_config_proto()
         proto.type = 'py2'
         proto.files = list_file

@@ -20,11 +20,8 @@ is_predict = get_config_arg("is_predict", bool, False)
 
 if not is_predict:
     data_dir = './data/'
-    setup_data_provider(
-        data_dir + 'train.list',
-        data_dir + 'test.list',
-        'mnist_provider',
-        'process')
+    setup_data_provider(data_dir + 'train.list', data_dir + 'test.list',
+                        'mnist_provider', 'process')
 
 ######################Algorithm Configuration #############
 settings(

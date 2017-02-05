@@ -32,8 +32,8 @@ process = 'process' if not is_predict else 'process_predict'
 # We need to use different process for training and prediction.
 # For training, the input data includes both word IDs and labels.
 # For prediction, the input data only includs word Ids.
-setup_data_provider(trn, tst, "dataprovider_bow", process,
-                        args={"dictionary": word_dict})
+setup_data_provider(
+    trn, tst, "dataprovider_bow", process, args={"dictionary": word_dict})
 
 batch_size = 128 if not is_predict else 1
 settings(
