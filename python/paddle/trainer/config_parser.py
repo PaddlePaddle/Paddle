@@ -895,7 +895,7 @@ class MaxOut(Cfg):
 
 
 def create_data_config_proto(async_load_data=False,
-                             onstant_slots=None,
+                             constant_slots=None,
                              data_ratio=1,
                              is_main_data=True,
                              usage_ratio=None):
