@@ -30,12 +30,7 @@ if not is_predict:
         'color': "color"
     }
 
-    define_py_data_sources2(
-        train_list="train.list",
-        test_list="train.list",
-        module='image_provider',
-        obj='processData',
-        args=args)
+    setup_data_provider("train.list", "train.list", 'image_provider', 'processData', args)
 
 ######################Algorithm Configuration #############
 settings(

@@ -20,11 +20,11 @@ is_predict = get_config_arg("is_predict", bool, False)
 
 if not is_predict:
     data_dir = './data/'
-    define_py_data_sources2(
-        train_list=data_dir + 'train.list',
-        test_list=data_dir + 'test.list',
-        module='mnist_provider',
-        obj='process')
+    setup_data_provider(
+        data_dir + 'train.list',
+        data_dir + 'test.list',
+        'mnist_provider',
+        'process')
 
 ######################Algorithm Configuration #############
 settings(

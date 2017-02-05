@@ -165,7 +165,7 @@ We provide both C++ and Python interfaces to extract features. The following exa
 
 ### C++ Interface
 
-First, specify image data list in `define_py_data_sources2` in the config, see example `demo/model_zoo/resnet/resnet.py`.
+First, specify image data list in `setup_data_provider` in the config, see example `demo/model_zoo/resnet/resnet.py`.
 
 ```
     train_list = 'train.list' if not is_test else None
@@ -177,11 +177,11 @@ First, specify image data list in `define_py_data_sources2` in the config, see e
         'mean_meta': "model/mean_meta_224/mean.meta",
         'image_size': 224, 'crop_size': 224,
         'color': True,'swap_channel:': [2, 1, 0]}
-    define_py_data_sources2(train_list,
+    setup_data_provider(train_list,
                            'example/test.list',
-                           module="example.image_list_provider",
-                           obj="processData",
-                           args=args)
+                           "example.image_list_provider",
+                           "processData",
+                           args)
 ```
 
 Second, specify layers to extract features in `Outputs()` of `resnet.py`. For example,

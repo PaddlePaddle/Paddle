@@ -34,11 +34,11 @@ if not is_predict and data_provider:
         'color': True,
         'swap_channel:': [2, 1, 0]
     }
-    define_py_data_sources2(
+    setup_data_provider(
         train_list,
         'example/test.list',
-        module="example.image_list_provider",
-        obj="processData",
+        "example.image_list_provider",
+        "processData",
         args=args)
 
 batch_size = 1

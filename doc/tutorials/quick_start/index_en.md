@@ -107,7 +107,7 @@ def initializer(settings, dictionary, **kwargs):
 # during later pass, no on-the-fly data generation will be needed.
 # `setting` is the same object used by initializer()
 # `file_name` is the name of a file listed train_list or test_list file given
-# to define_py_data_sources2(). See trainer_config.lr.py.
+# to setup_data_provider(). See trainer_config.lr.py.
 @provider(init_hook=initializer, cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, file_name):
     # Open the input data file.
@@ -130,7 +130,7 @@ def process(settings, file_name):
 ```
 
 ### Define Python Data Provider in Configuration files.
-You need to add a data provider definition `define_py_data_sources2` in our network configuration. This definition specifies:
+You need to add a data provider definition `setup_data_provider` in our network configuration. This definition specifies:
 
 - The path of the training and testing data (`data/train.list`, `data/test.list`).
 - The location of the data provider file (`dataprovider_bow`).
@@ -150,10 +150,10 @@ with open(dict_file, 'r') as f:
 # We need to use different process for training and prediction.
 # For training, the input data includes both word IDs and labels.
 # For prediction, the input data only includs word Ids.
-define_py_data_sources2(train_list='data/train.list',
-                        test_list='data/test.list',
-                        module="dataprovider_bow",
-                        obj="process",
+setup_data_provider('data/train.list',
+                        'data/test.list',
+                        "dataprovider_bow",
+                        "process",
                         args={"dictionary": word_dict})
 ```
 You can refer to the following link for more detailed examples and data formats: <a href = "../../api/data_provider/pydataprovider2_en.html">PyDataProvider2</a>.

@@ -63,12 +63,12 @@ def image_data(data_dir,
         'color': color_string
     }
 
-    define_py_data_sources2(
+    setup_data_provider(
         train_list,
         test_list,
-        module='image_provider',
-        obj='processData',
-        args=args)
+        'image_provider',
+        'processData',
+        args)
     return {
         "image_size": image_size,
         "num_classes": num_classes,

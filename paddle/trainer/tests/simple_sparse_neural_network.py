@@ -4,11 +4,7 @@ settings(batch_size=128, learning_method=AdaGradOptimizer(), learning_rate=1e-4)
 
 file_list = 'trainer/tests/fake_file_list.list'
 
-define_py_data_sources2(
-    train_list=file_list,
-    test_list=file_list,
-    module="simple_sparse_neural_network_dp",
-    obj="process")
+setup_data_provider(file_list, file_list, "simple_sparse_neural_network_dp", "process")
 
 embedding = embedding_layer(
     input=data_layer(

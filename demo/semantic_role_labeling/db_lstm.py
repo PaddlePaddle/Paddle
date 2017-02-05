@@ -51,11 +51,11 @@ if not is_predict:
         train_list_file = None
 
     #define data provider
-    define_py_data_sources2(
-        train_list=train_list_file,
-        test_list=test_list_file,
-        module='dataprovider',
-        obj='process',
+    setup_data_provider(
+        train_list_file,
+        test_list_file,
+        'dataprovider',
+        'process',
         args={
             'word_dict': word_dict,
             'label_dict': label_dict,

@@ -47,11 +47,11 @@ def sentiment_data(data_dir=None,
         for i, line in enumerate(open(dict_file, 'r')):
             word_dict[line.split('\t')[0]] = i
 
-    define_py_data_sources2(
+    setup_data_provider(
         train_list,
         test_list,
-        module="dataprovider",
-        obj="process",
+        "dataprovider",
+        "process",
         args={'dictionary': word_dict})
 
     return dict_dim, class_dim

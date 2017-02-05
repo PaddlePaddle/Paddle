@@ -165,7 +165,7 @@ od -j 16 -f _res2_1_branch1_bn.w0
 
 ### C++接口
 
-首先，在配置文件中的`define_py_data_sources2`里指定图像数据列表，具体请参照示例`demo/model_zoo/resnet/resnet.py`。
+首先，在配置文件中的`setup_data_provider`里指定图像数据列表，具体请参照示例`demo/model_zoo/resnet/resnet.py`。
 
 ```
     train_list = 'train.list' if not is_test else None
@@ -177,11 +177,11 @@ od -j 16 -f _res2_1_branch1_bn.w0
         'mean_meta': "model/mean_meta_224/mean.meta",
         'image_size': 224, 'crop_size': 224,
         'color': True,'swap_channel:': [2, 1, 0]}
-    define_py_data_sources2(train_list,
+    setup_data_provider(train_list,
                            'example/test.list',
-                           module="example.image_list_provider",
-                           obj="processData",
-                           args=args)
+                           "example.image_list_provider",
+                           "processData",
+                           args)
 ```
 
 第二步，在`resnet.py`文件中指定要提取特征的网络层的名字。例如，

@@ -113,7 +113,7 @@ def main():
     test_evaluator = m.makeEvaluator()
 
     # Get Train Data.
-    # TrainData will stored in a data pool. Currently implementation is not care
+    # set_global_training_data_config_proto will stored in a data pool. Currently implementation is not care
     # about memory, speed. Just a very naive implementation.
     train_data_generator = input_order_converter(read_from_mnist(train_file))
     train_data = BatchPool(train_data_generator, 512)

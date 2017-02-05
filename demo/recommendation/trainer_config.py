@@ -91,11 +91,11 @@ if not is_predict:
             input=similarity, label=data_layer(
                 'rating', size=1)))
 
-    define_py_data_sources2(
+    setup_data_provider(
         'data/train.list',
         'data/test.list',
-        module='dataprovider',
-        obj='process',
+        'dataprovider',
+        'process',
         args={'meta': meta})
 else:
     outputs(similarity)

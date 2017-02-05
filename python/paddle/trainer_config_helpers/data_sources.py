@@ -22,10 +22,10 @@ try:
 except ImportError:
     import pickle
 
-__all__ = ['define_py_data_sources2']
+__all__ = ['setup_data_provider']
 
 
-def define_py_data_sources2(train_list, test_list, module, function, args=None):
+def setup_data_provider(train_list, test_list, module, function, args=None):
     """
     Define python Train/Test data sources in one method. If train/test use
     the same Data Provider configuration, module/obj/args contain one argument,
@@ -33,13 +33,11 @@ def define_py_data_sources2(train_list, test_list, module, function, args=None):
 
     ..  code-block:: python
 
-        define_py_data_sources2(train_list="train.list",
-                                test_list="test.list",
-                                module="data_provider"
-                                # if train/test use different configurations,
-                                # obj=["process_train", "process_test"]
-                                obj="process",
-                                args={"dictionary": dict_name})
+        setup_data_provider("train.list",
+                            "test.list",
+                            "data_provider"
+                            "process",
+                            args={"dictionary": dict_name})
 
     The related data provider can refer to :ref:`api_pydataprovider2_sequential_model` .
 

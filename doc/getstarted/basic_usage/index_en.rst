@@ -39,8 +39,7 @@ To recover this relationship between ``X`` and ``Y``, we use a neural network wi
         # 1. read data. Suppose you saved above python code as dataprovider.py
         data_file = 'empty.list'
         with open(data_file, 'w') as f: f.writelines(' ')
-        define_py_data_sources2(train_list=data_file, test_list=None, 
-                module='dataprovider', obj='process',args={})
+        setup_data_provider(data_file, None, 'dataprovider', 'process', args={})
 
         # 2. learning algorithm
         settings(batch_size=12, learning_rate=1e-3, learning_method=MomentumOptimizer())
@@ -66,9 +65,9 @@ Some of the most fundamental usages of PaddlePaddle are demonstrated:
 Now that everything is ready, you can train the network with a simple command line call:
 
     .. code-block:: bash
- 
+
         paddle train --config=trainer_config.py --save_dir=./output --num_passes=30
- 
+
 
 This means that PaddlePaddle will train this network on the synthectic dataset for 30 passes, and save all the models under path ``./output``. You will see from the messages printed out during training phase that the model cost is decreasing as time goes by, which indicates we are getting a closer guess.
 
@@ -89,7 +88,7 @@ In PaddlePaddle, training is just to get a collection of model parameters, which
             with open(file_name, 'rb') as f:
                 f.read(16) # skip header for float type.
                 return np.fromfile(f, dtype=np.float32)
-                
+
         print 'w=%.6f, b=%.6f' % (load('output/pass-00029/w'), load('output/pass-00029/b'))
         # w=1.999743, b=0.300137
 

@@ -1049,7 +1049,7 @@ def Data(type,
 @config_func
 def set_global_training_data_config_proto(data_config, async_load_data=None):
     config_assert(not g_config.HasField('data_config'),
-                  'Only one TrainData definition is allowed')
+                  'Only one set_global_training_data_config_proto definition is allowed')
     g_config.data_config.CopyFrom(data_config)
     g_config.data_config.for_test = False
     if async_load_data is not None:
@@ -1061,7 +1061,7 @@ def set_global_training_data_config_proto(data_config, async_load_data=None):
 @config_func
 def set_global_testing_data_config_proto(data_config, async_load_data=None):
     config_assert(not g_config.HasField('test_data_config'),
-                  'Only one TestData definition is allowed')
+                  'Only one set_global_testing_data_config_proto definition is allowed')
     g_config.test_data_config.CopyFrom(data_config)
     g_config.test_data_config.for_test = True
     if async_load_data is not None:

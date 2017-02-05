@@ -78,7 +78,7 @@ Python脚本读取数据
 配置中的数据加载定义
 --------------------
 
-在模型配置中通过 ``define_py_data_sources2`` 接口来加载数据：
+在模型配置中通过 ``setup_data_provider`` 接口来加载数据：
 
 ..  literalinclude:: ../../../demo/quick_start/trainer_config.emb.py
      :language: python

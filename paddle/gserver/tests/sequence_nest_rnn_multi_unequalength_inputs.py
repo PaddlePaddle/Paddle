@@ -16,11 +16,11 @@
 from paddle.trainer_config_helpers import *
 
 ######################## data source ################################
-define_py_data_sources2(
-    train_list='gserver/tests/Sequence/dummy.list',
-    test_list=None,
-    module='rnn_data_provider',
-    obj='process_unequalength_subseq')
+setup_data_provider(
+    'gserver/tests/Sequence/dummy.list',
+    None,
+    'rnn_data_provider',
+    'process_unequalength_subseq')
 
 settings(batch_size=2, learning_rate=0.01)
 ######################## network configure ################################
