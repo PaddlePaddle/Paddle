@@ -894,6 +894,30 @@ class MaxOut(Cfg):
         self.add_keys(locals())
 
 
+def create_data_config_proto(async_load_data=False,
+             constant_slots=None,
+             data_ratio=1,
+             is_main_data=True,
+             usage_ratio=None):
+    # default: all sub dataproviders are treat as "main data".
+    # see proto/DataConfig.proto for is_main_data
+    data_config = DataConfig()
+
+    data_config.async_load_data = async_load_data
+
+    if constant_slots:
+        data_config.constant_slots.extend(constant_slots)
+    data_config.data_ratio = data_ratio
+    data_config.is_main_data = is_main_data
+
+    usage_ratio = default(usage_ratio, settings_deprecated["usage_ratio"])
+    config_assert(usage_ratio >= 0 and usage_ratio <= 1,
+                  "The range of usage_ratio is [0, 1]")
+    data_config.usage_ratio = usage_ratio
+
+    return data_config
+
+
 @config_func
 def SimpleData(files=None,
                feat_dim=None,
