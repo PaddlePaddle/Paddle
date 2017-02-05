@@ -14,6 +14,7 @@
 """
 Data Sources are helpers to define paddle training data or testing data.
 """
+import paddle.proto.DataConfig_pb2
 from paddle.trainer.config_parser import *
 from .utils import deprecated
 
@@ -195,7 +196,7 @@ def define_py_data_sources2(train_list, test_list, module, obj, args=None):
 
     def py_data2(files, load_data_module, load_data_object, load_data_args,
                  **kwargs):
-        data = create_data_config_proto()
+        data = paddle.proto.DataConfig_pb2.DataConfig()
         data.type = 'py2'
         data.files = files
         data.load_data_module = load_data_module
