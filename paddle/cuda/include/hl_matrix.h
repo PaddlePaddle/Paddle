@@ -267,4 +267,16 @@ extern void hl_matrix_collect_shared_bias(real* B_d,
                                           const int dimN,
                                           real scale);
 
+/**
+ * @brief  Matrix rotation in 90 degrees
+ *
+ * @param[in]   mat       input matrix (M x N).
+ * @param[out]  matRot    output matrix (N x M).
+ * @param[in]   dimM      input matrix height.
+ * @param[in]   dimN      input matrix width.
+ * @param[in]   clockWise rotation direction
+ */
+extern void hl_matrix_rotate(
+    real* mat, real* matRot, int dimM, int dimN, bool clockWise);
+
 #endif /* HL_MATRIX_H_ */

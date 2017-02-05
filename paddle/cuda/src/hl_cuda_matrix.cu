@@ -840,3 +840,28 @@ void hl_matrix_collect_shared_bias(real* B_d,
       (B_d, A_d, channel, dimM, dimN, dim, limit, scale);
   CHECK_SYNC("hl_matrix_collect_shared_bias failed");
 }
+
+__global__ void keMatrixRotate(real* mat, real* matRot,
+                               int dimM, int dimN, bool clockWise) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < dimM * dimN) {
+        int i = idx / dimN;
+        int j = idx % dimN;
+        if (clockWise) {
+            matRot[j * dimM + i] = mat[(dimM - i - 1) * dimN + j];
+        } else {
+            matRot[j * dimM + i] = mat[i * dimN + (dimN - j - 1)];
+        }
+    }
+}
+
+void hl_matrix_rotate(real *mat, real* matRot,
+                      int dimM, int dimN, bool clockWise) {
+    CHECK_NOTNULL(mat);
+    CHECK_NOTNULL(matRot);
+    const int threads = 512;
+    const int blocks = DIVUP(dimM * dimN, threads);
+    keMatrixRotate<<< blocks, threads, 0, STREAM_DEFAULT >>>
+            (mat, matRot, dimM, dimN, clockWise);
+    CHECK_SYNC("hl_matrix_rotate failed");
+}

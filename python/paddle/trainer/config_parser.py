@@ -830,7 +830,6 @@ class Pool(Cfg):
             channels,
             size_x,
             size_y=None,
-            img_width=None,
             start=None,
             stride=None,  # 1 by defalut in protobuf
             stride_y=None,
@@ -895,10 +894,10 @@ class MaxOut(Cfg):
 
 
 def create_data_config_proto(async_load_data=False,
-             constant_slots=None,
-             data_ratio=1,
-             is_main_data=True,
-             usage_ratio=None):
+                             constant_slots=None,
+                             data_ratio=1,
+                             is_main_data=True,
+                             usage_ratio=None):
     # default: all sub dataproviders are treat as "main data".
     # see proto/DataConfig.proto for is_main_data
     data_config = DataConfig()
@@ -1966,6 +1965,18 @@ class ResizeLayer(LayerBase):
         config_assert(
             len(self.inputs) == 1,
             'ResizeLayer must have one and only one input')
+
+
+@config_layer('rotate')
+class RotateLayer(LayerBase):
+    def __init__(self, name, inputs, height, width, device=None):
+        super(RotateLayer, self).__init__(
+            name, 'rotate', 0, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 1,
+            'RotateLayer must have one and only one input')
+        self.set_layer_height_width(height, width)
+        self.set_layer_size(self.get_input_layer(0).size)
 
 
 @config_layer('blockexpand')

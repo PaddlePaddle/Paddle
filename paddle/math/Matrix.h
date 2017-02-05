@@ -372,7 +372,27 @@ public:
    * allocate matTrans' memory outside, then set memAlloc as false;
    * else set as true.
    */
-  virtual void transpose(MatrixPtr matTrans, bool memAlloc) {
+  virtual void transpose(MatrixPtr& matTrans, bool memAlloc) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  /**
+   * @brief  rotate 90 degrees in clock-wise if clockWise=true;
+   *         otherwise rotate in anti clock-wise
+   * clock-wise:
+   * \f[
+   *   y(j,i) = x(M-i-1,j)
+   * \f]
+   * anti clock-wise:
+   * \f[
+   *   y(j,i) = x(i, N-1-j)
+   * \f]
+   * where \f$x\f$ is (M x N) input, and \f$y\f$ is (N x M) output.
+   *
+   * allocate matRot' memory outside, then set memAlloc as false;
+   * else set as true.
+   */
+  virtual void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -387,7 +407,7 @@ public:
    * if allocate matInv's memory outside, then set memAlloc as false;
    * else set as true.
    */
-  virtual void inverse(MatrixPtr matInv, bool memAlloc) {
+  virtual void inverse(MatrixPtr& matInv, bool memAlloc) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -1169,11 +1189,15 @@ public:
   void accumulateColSum(Matrix& src);
   real getAbsSum();
 
+  real getMin();
+  real getMax();
+
   MatrixPtr getTranspose();
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
+  void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise);
 
   MatrixPtr getInverse();
-  void inverse(MatrixPtr matInv, bool memAlloc);
+  void inverse(MatrixPtr& matInv, bool memAlloc);
 
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
@@ -1485,10 +1509,11 @@ public:
   real getAbsSum();
 
   MatrixPtr getTranspose();
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
+  void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise);
 
   MatrixPtr getInverse();
-  void inverse(MatrixPtr matInv, bool memAlloc);
+  void inverse(MatrixPtr& matInv, bool memAlloc);
 
   void copyFrom(const Matrix& src);
 

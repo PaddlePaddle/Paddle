@@ -497,7 +497,7 @@ void GpuSparseMatrix::setRow(size_t row,
 
 SparseValueType GpuSparseMatrix::getValueType() const { return valueType_; }
 
-void GpuSparseMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
+void GpuSparseMatrix::transpose(MatrixPtr& matTrans, bool memAlloc) {
   CHECK_EQ(format_, SPARSE_CSC);
   int nnz = sMatrix_->nnz;
   if (memAlloc) {
