@@ -4222,12 +4222,6 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
     :type num_channels: int|None
     :param groups: The group number of input layer.
     :type groups: int
-    :param size_x: conv output width. If None will be set
-                   automatically from previous output.
-    :type size_x: int|None
-    :param size_y: conv output height. If None will be set
-                   automatically from previous output.
-    :type size_y: int|None
     :param name: The name of this layer, which can not specify.
     :type name: None|basestring.
     :param layer_attr: Extra Layer attribute.
