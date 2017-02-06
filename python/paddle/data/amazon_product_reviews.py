@@ -23,7 +23,6 @@ http://jmcauley.ucsd.edu/data/amazon/
 import os
 from http_download import download
 from logger import logger
-from base import BaseDataSet
 import gzip
 import json
 import hashlib
@@ -31,12 +30,18 @@ import nltk
 import collections
 import h5py
 import numpy
+import random
+
 
 BASE_URL = 'http://snap.stanford.edu/data/' \
            'amazon/productGraph/categoryFiles/reviews_%s_5.json.gz'
 
 DATASET_LABEL = 'label'
 DATASET_SENTENCE = 'sentence'
+
+positive_threshold = 5
+negative_threshold = 2
+
 
 
 class Categories(object):
@@ -93,7 +98,7 @@ class Categories(object):
     __md5__[VideoGames] = '730612da2d6a93ed19f39a808b63993e'
 
 
-__all__ = ['fetch', 'Categories', 'preprocess', 'dataset']
+__all__ = ['fetch', 'Categories', 'preprocess', 'dataset', 'load_data']
 
 
 def calculate_md5(fn):
@@ -109,11 +114,9 @@ def fetch(category=None, directory=None):
     According to the source name,set the download path for source,
     download the data from the source url,and return the download path to fetch
     for training api.
-
-    Args:
-
-    Returns:
-        path for the data untar.
+    :param category:
+    :param directory:
+    :return:
     """
     if category is None:
         category = Categories.Electronics
@@ -213,77 +216,122 @@ def preprocess(category=None, directory=None):
     return preprocess_fn
 
 
-class AmazonProductReviewsDataSet(BaseDataSet):
-    def __init__(self,
-                 category=None,
-                 directory=None,
-                 test_ratio=0.1,
-                 positive_threshold=5,
-                 negative_threshold=2,
-                 random_seed=0):
-        super(AmazonProductReviewsDataSet, self).__init__(
-            random_seed=random_seed)
+def data(batch_size, category=None, directory=None):
+    """
 
-        fn = preprocess(category=category, directory=directory)
+    :param batch_size:
+    :param category:
+    :param directory:
+    :return:
+    """
+    if category is None:
+        category = Categories.Electronics
 
-        self.__h5file__ = h5py.File(fn, 'r')
+    if directory is None:
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data', 'amazon'))
 
-        self.__label__ = self.__h5file__[DATASET_LABEL]
-        self.__sentence__ = self.__h5file__[DATASET_SENTENCE]
+    fn = preprocess(category=category, directory=directory)
+    datasets = h5py.File(fn, 'r')
 
-        positive_idx = []
-        negative_idx = []
-        for i, lbl in enumerate(self.__label__):
-            if lbl >= positive_threshold:
-                positive_idx.append(i)
-            elif lbl <= negative_threshold:
-                negative_idx.append(i)
+    label = datasets[DATASET_LABEL]
+    sentence = datasets[DATASET_SENTENCE]
 
-        positive_len = int(test_ratio * len(positive_idx))
-        negative_len = int(test_ratio * len(negative_idx))
+    if label.shape[0] <= batch_size:
+        lens = label.shape[0]
+    else:
+        lens = batch_size
 
-        self.__train_set__ = positive_idx[positive_len:] + negative_idx[
-            negative_len:]
-        self.__test_set__ = positive_idx[:
-                                         positive_len] + negative_idx[:
-                                                                      negative_len]
-        self.__test_set__.sort()
-        self.__positive_threshold__ = positive_threshold
-        self.__negative_threshold__ = negative_threshold
-        self.__is_reading_train_data__ = False
-
-    def __read_data__(self, idx):
-        return self.__sentence__[
-            idx], self.__label__ >= self.__positive_threshold__
-
-    def train_data(self):
-        if self.__is_reading_train_data__:
-            raise RuntimeError("Should not get multiple train_data generators")
-
-        self.__is_reading_train_data__ = True
-        try:
-            self.__random__.shuffle(self.__train_set__)
-            for each_id in self.__train_set__:
-                yield self.__read_data__(each_id)
-        finally:
-            self.__is_reading_train_data__ = False
-
-    def test_data(self):
-        for each_id in self.__test_set__:
-            yield self.__read_data__(each_id)
-
-    def __del__(self):
-        self.__h5file__.close()
+    for index in range(lens):
+        if label[index] >= positive_threshold:
+            print (numpy.array(sentence[index]), label[index] >= positive_threshold)
+        elif label[index] <= negative_threshold:
+            print (numpy.array(sentence[index]), label[index] <= negative_threshold)
 
 
-dataset = AmazonProductReviewsDataSet
+def test_data(batch_size, category=None, directory=None):
+    """
+
+    :param batch_size:
+    :param category:
+    :param directory:
+    :return:
+    """
+    if category is None:
+        category = Categories.Electronics
+
+    if directory is None:
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data', 'amazon'))
+
+    fn = preprocess(category=category, directory=directory)
+    datasets = h5py.File(fn, 'r')
+
+    label = datasets[DATASET_LABEL]
+    sentence = datasets[DATASET_SENTENCE]
+
+    if label.shape[0] <= batch_size:
+        lens = label.shape[0]
+    else:
+        lens = batch_size
+
+    positive_idx = []
+    negative_idx = []
+    for i, lbl in enumerate(label):
+        if label[i] >= positive_threshold:
+            positive_idx.append(i)
+        elif lbl <= negative_threshold:
+            negative_idx.append(i)
+
+    __test_set__ = positive_idx[:lens] + negative_idx[:lens]
+
+    random.shuffle(__test_set__)
+
+    for index in range(lens):
+        print (numpy.array(sentence[index]), label[index] >= positive_threshold)
+
+
+def train_data(batch_size, category=None, directory=None):
+    """
+
+    :param batch_size:
+    :param category:
+    :param directory:
+    :return:
+    """
+    if category is None:
+        category = Categories.Electronics
+
+    if directory is None:
+        directory = os.path.expanduser(
+            os.path.join('~', 'paddle_data', 'amazon'))
+
+    fn = preprocess(category=category, directory=directory)
+    datasets = h5py.File(fn, 'r')
+
+    label = datasets[DATASET_LABEL]
+    sentence = datasets[DATASET_SENTENCE]
+
+    if label.shape[0] <= batch_size:
+        lens = label.shape[0]
+    else:
+        lens = batch_size
+
+    positive_idx = []
+    negative_idx = []
+    for i, lbl in enumerate(label):
+        if label[i] >= positive_threshold:
+            positive_idx.append(i)
+        elif lbl <= negative_threshold:
+            negative_idx.append(i)
+    __train_set__ = positive_idx[lens:] + negative_idx[lens:]
+
+    random.shuffle(__train_set__)
+
+    for index in range(lens):
+        print (numpy.array(sentence[index]), label[index] >= positive_threshold)
+
 
 if __name__ == '__main__':
-    ds = dataset(category=Categories.AmazonInstantVideo)
+    data(10)
 
-    for each_train_data in ds.train_data():
-        # print each_train_data
-        pass
-
-    for each_test_data in ds.test_data():
-        pass
