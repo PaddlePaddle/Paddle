@@ -6,25 +6,16 @@ passed to C++ side of Paddle.
 
 The user api could be simpler and carefully designed.
 """
-import py_paddle.swig_paddle as api
-from py_paddle import DataProviderConverter
-import paddle.trainer.PyDataProvider2 as dp
-import numpy as np
 import random
-from mnist_util import read_from_mnist
-from paddle.trainer_config_helpers import *
+
+import numpy as np
+import paddle.trainer.PyDataProvider2 as dp
 import paddle.v2
+import py_paddle.swig_paddle as api
+from paddle.trainer_config_helpers import *
+from py_paddle import DataProviderConverter
 
-
-def network_config():
-    imgs = data_layer(name='pixel', size=784)
-    hidden1 = fc_layer(input=imgs, size=200)
-    hidden2 = fc_layer(input=hidden1, size=200)
-    inference = fc_layer(input=hidden2, size=10, act=SoftmaxActivation())
-    cost = classification_cost(
-        input=inference, label=data_layer(
-            name='label', size=10))
-    outputs(cost)
+from mnist_util import read_from_mnist
 
 
 def init_parameter(network):
@@ -79,8 +70,17 @@ def main():
     updater = optimizer.create_local_updater()
     assert isinstance(updater, api.ParameterUpdater)
 
+    # define network
+    images = paddle.v2.layers.data_layer(name='pixel', size=784)
+    label = paddle.v2.layers.data_layer(name='label', size=10)
+    hidden1 = paddle.v2.layers.fc_layer(input=images, size=200)
+    hidden2 = paddle.v2.layers.fc_layer(input=hidden1, size=200)
+    inference = paddle.v2.layers.fc_layer(
+        input=hidden2, size=10, act=SoftmaxActivation())
+    cost = paddle.v2.layers.classification_cost(input=inference, label=label)
+
     # Create Simple Gradient Machine.
-    model_config = parse_network_config(network_config)
+    model_config = paddle.v2.layers.parse_network(cost)
     m = api.GradientMachine.createFromConfigProto(model_config,
                                                   api.CREATE_MODE_NORMAL,
                                                   optimizer.enable_types())
