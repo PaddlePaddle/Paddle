@@ -134,7 +134,6 @@ public:
                                     output.valueType(),
                                     output.shape(),
                                     argType));
-<<<<<<< HEAD
   }
 
   /// add and init output sparse matrix
