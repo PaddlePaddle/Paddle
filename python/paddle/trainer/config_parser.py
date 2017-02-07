@@ -1632,6 +1632,48 @@ class MultiBoxLossLayer(LayerBase):
         self.config.size = 1
 
 
+@config_layer('detection_output')
+class DetectionOutputLayer(LayerBase):
+    def __init__(self, name, inputs, size, input_num, num_classes,
+                 nms_threshold, top_k, keep_top_k, confidence_threshold,
+                 background_id):
+        super(DetectionOutputLayer, self).__init__(name, 'detection_output', 0,
+                                                   inputs)
+        config_assert(
+            len(inputs) == (input_num * 2 + 1),
+            'DetectionOutputLayer does not have enough inputs')
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].detection_output_conf.num_classes = num_classes
+        self.config.inputs[
+            0].detection_output_conf.nms_threshold = nms_threshold
+        self.config.inputs[0].detection_output_conf.top_k = top_k
+        self.config.inputs[0].detection_output_conf.keep_top_k = keep_top_k
+        self.config.inputs[
+            0].detection_output_conf.confidence_threshold = confidence_threshold
+        self.config.inputs[
+            0].detection_output_conf.background_id = background_id
+        self.config.inputs[0].detection_output_conf.input_num = input_num
+        self.config.size = size
+
+
+@config_layer('detection_eval')
+class DetectionEvalLayer(LayerBase):
+    def __init__(self, name, inputs, size, num_classes, overlap_threshold,
+                 background_id, evaluate_difficult):
+        super(DetectionEvalLayer, self).__init__(name, 'detection_eval', 0,
+                                                 inputs)
+        config_assert(num_classes > background_id,
+                      'Classes number must greater than background ID')
+        self.config.inputs[0].detection_eval_conf.num_classes = num_classes
+        self.config.inputs[
+            0].detection_eval_conf.overlap_threshold = overlap_threshold
+        self.config.inputs[0].detection_eval_conf.background_id = background_id
+        self.config.inputs[
+            0].detection_eval_conf.evaluate_difficult = evaluate_difficult
+        self.config.size = size
+
+
 @config_layer('normalize')
 class NormalizeLayer(LayerBase):
     def __init__(self, name, inputs, size, num_filters, **xargs):

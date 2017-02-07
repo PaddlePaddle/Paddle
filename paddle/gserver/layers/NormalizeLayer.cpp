@@ -18,7 +18,9 @@ limitations under the License. */
 
 namespace paddle {
 /**
- * @brief A layer for normalize the conv layer's output.
+ * This layer applys normalize across the channels of each sample to a
+ * conv layer's output and scale the output by a group of trainable factors
+ * which dimensions equal to the channel's number.
  * - Input: One and only one input layer are accepted. The input layer must be
  *        be a data output layer.
  * - Output: The normalized data of the input data.
@@ -45,6 +47,8 @@ protected:
   MatrixPtr spatialBuffer_;
   MatrixPtr sampleBuffer_;
 };
+
+REGISTER_LAYER(normalize, NormalizeLayer);
 
 bool NormalizeLayer::init(const LayerMap& layerMap,
                           const ParameterMap& parameterMap) {
@@ -174,6 +178,5 @@ void NormalizeLayer::backward(const UpdateCallback& callback) {
   hl_set_sync_flag(syncFlag);
   scale_->getParameterPtr()->incUpdate(callback);
 }
-REGISTER_LAYER(normalize, NormalizeLayer);
 
 }  // namespace paddle

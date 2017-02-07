@@ -16,9 +16,12 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
+#include "CostLayer.h"
+#include "DataLayer.h"
 #include "Layer.h"
 
 using std::vector;
+using std::pair;
 
 namespace paddle {
 
@@ -27,14 +30,19 @@ namespace paddle {
  * The loss is composed by the location loss and the confidence loss.
  * The location loss is a smooth L1 loss and the confidence loss is
  * a softmax loss.
+ * - Input: This layer need four input layers: This first input layer
+ *          is the priorbox layer and the second layer is a label layer.
+ *          The rest two input layers are convolution layers for generating
+ *          bbox location offset and the classification confidence.
+ * - Output: The Single Shot Multibox Detection loss value.
  * Reference:
  *    Wei Liu, Dragomir Anguelov, Dumitru Erhan, Christian Szegedy, Scott Reed,
  *    Cheng-Yang Fu, Alexander C. Berg. SSD: Single Shot MultiBox Detector
  */
 
-class MultiBoxLossLayer : public Layer {
+class MultiBoxLossLayer : public CostLayer {
 public:
-  explicit MultiBoxLossLayer(const LayerConfig& config) : Layer(config) {}
+  explicit MultiBoxLossLayer(const LayerConfig& config) : CostLayer(config) {}
 
   bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
 
@@ -44,10 +52,29 @@ public:
   LayerPtr getConfInputLayer(size_t index) {
     return inputLayers_[2 + inputNum_ + index];
   }
+  static bool sortScorePairDescend(const pair<real, size_t>& pair1,
+                                   const pair<real, size_t>& pair2) {
+    return pair1.first > pair2.first;
+  }
 
   void forward(PassType passType);
 
   void backward(const UpdateCallback& callback = nullptr);
+
+  void forwardImp(Matrix& output, Argument& label, Matrix& cost) {}
+
+  void backwardImp(Matrix& outputValue, Argument& label, Matrix& outputGrad) {}
+
+  void forwardDataProcess(size_t batchSize);
+
+  void backwardDataProcess(size_t batchSize);
+
+  void generateMatchIndices(size_t batchSize,
+                            const int* labelIndex,
+                            int seqNum,
+                            MatrixPtr priorValue,
+                            MatrixPtr labelValue,
+                            vector<vector<real>> allMaxConfScore);
 
   real jaccardOverlap(const real* priorData, const real* labelData);
 
@@ -74,9 +101,7 @@ public:
                     const real locWeight,
                     real* locDiff);
 
-  void smoothL1LossBp(const real locLoss,
-                      const size_t numMatches,
-                      real* locDiff);
+  void smoothL1LossBp(const size_t numMatches, real* locDiff);
 
   real softmaxLoss(const vector<real> confPredData,
                    const vector<int> confGtData,
@@ -89,13 +114,13 @@ public:
                      real* confProb);
 
 protected:
-  size_t numClasses_ = 21;
-  real locWeight_ = 1.0;
-  real overlapThreshold_ = 0.5;
-  real negPosRatio_ = 3.0;
-  real negOverlap_ = 0.5;
-  size_t inputNum_ = 1;
-  size_t backgroundId_ = 0;
+  size_t numClasses_;
+  real locWeight_;
+  real overlapThreshold_;
+  real negPosRatio_;
+  real negOverlap_;
+  size_t inputNum_;
+  size_t backgroundId_;
 
   real locLoss_;
   real confLoss_;
@@ -117,12 +142,12 @@ protected:
   MatrixPtr locDiff_;
   MatrixPtr confProb_;
 
+  MatrixPtr labelCpuValue_;
+  MatrixPtr priorCpuValue_;
   MatrixPtr locCpuBuffer_;
   MatrixPtr confCpuBuffer_;
-  MatrixPtr locGpuBuffer_;
-  MatrixPtr confGpuBuffer_;
-  MatrixPtr priorCpuValue_;
-  MatrixPtr labelCpuValue_;
+  MatrixPtr locTmpBuffer_;
+  MatrixPtr confTmpBuffer_;
 };
 
 }  // namespace paddle

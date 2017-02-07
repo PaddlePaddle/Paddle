@@ -20,7 +20,7 @@ namespace paddle {
 /**
  * @brief A layer for generating priorbox locations and variances.
  * - Input: Two and only two input layer are accepted. The input layer must be
- *        be a data output layer and a convolution output layer.
+ *          be a data output layer and a convolution output layer.
  * - Output: The priorbox locations and variances of the input data.
  * Reference:
  *    Wei Liu, Dragomir Anguelov, Dumitru Erhan, Christian Szegedy, Scott Reed,
@@ -43,6 +43,8 @@ protected:
   std::vector<real> variance_;
   MatrixPtr buffer_;
 };
+
+REGISTER_LAYER(priorbox, PriorBoxLayer);
 
 bool PriorBoxLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
@@ -147,6 +149,5 @@ void PriorBoxLayer::forward(PassType passType) {
   MatrixPtr outV = getOutputValue();
   outV->copyFrom(buffer_->data_, dim * 2);
 }
-REGISTER_LAYER(priorbox, PriorBoxLayer);
 
 }  // namespace paddle
