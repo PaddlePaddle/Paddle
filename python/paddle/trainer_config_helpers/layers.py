@@ -70,6 +70,7 @@ __all__ = [
     'interpolation_layer',
     'bilinear_interp_layer',
     'trans_layer',
+    'rotate_layer',
     'sum_to_one_norm_layer',
     'get_output_layer',
     'LayerType',
@@ -112,6 +113,7 @@ __all__ = [
     'detection_output_layer',
     'detection_eval_layer',
     'spp_layer',
+    'pad_layer',
 ]
 
 
@@ -157,6 +159,7 @@ class LayerType(object):
     POWER_LAYER = 'power'
     SCALING_LAYER = 'scaling'
     TRANS_LAYER = 'trans'
+    ROTATE_LAYER = 'rotate'
     OUT_PROD_LAYER = 'out_prod'
     FEATURE_MAP_EXPAND_LAYER = 'featmap_expand'
 
@@ -174,6 +177,7 @@ class LayerType(object):
     BLOCK_EXPAND = "blockexpand"
     MAXOUT = "maxout"
     SPP_LAYER = "spp"
+    PAD_LAYER = "pad"
 
     PRINT_LAYER = "print"
     PRIORBOX_LAYER = "priorbox"
@@ -1875,7 +1879,7 @@ def scaling_layer(input, weight, name=None, layer_attr=None):
 @layer_support()
 def trans_layer(input, name=None, layer_attr=None):
     """
-    A layer for transposition.
+    A layer for transposing a minibatch matrix.
 
     .. math::
        y = x^\mathrm{T}
@@ -1908,7 +1912,53 @@ def trans_layer(input, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
-def cos_sim(a, b, scale=5, size=1, name=None, layer_attr=None):
+def rotate_layer(input, height, width, name=None, layer_attr=None):
+    """
+    A layer for rotating 90 degrees (clock-wise) for each feature channel,
+    usually used when the input sample is some image or feature map.
+
+    .. math::
+       y(j,i,:) = x(M-i-1,j,:)
+
+    where :math:`x` is (M x N x C) input, and :math:`y` is (N x M x C) output.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       rot = rotate_layer(input=layer,
+                          height=100,
+                          width=100)
+
+    :param input: Input layer.
+    :type input: LayerOutput
+    :param height: The height of the sample matrix
+    :type height: int
+    :param name: Layer name.
+    :type name: basestring
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    l = Layer(
+        name=name,
+        height=height,
+        width=width,
+        type=LayerType.ROTATE_LAYER,
+        inputs=[input.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.ROTATE_LAYER,
+        parents=[input],
+        size=l.config.size)
+
+
+@wrap_name_default()
+@layer_support()
+def cos_sim(a, b, scale=1, size=1, name=None, layer_attr=None):
     """
     Cosine Similarity Layer. The cosine similarity equation is here.
 
@@ -2059,14 +2109,14 @@ def img_conv_layer(input,
                    trans=False,
                    layer_type=None):
     """
-    Convolution layer for image. Paddle can support both square and non-square 
+    Convolution layer for image. Paddle can support both square and non-square
     input currently.
 
     The details of convolution layer, please refer UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/
     FeatureExtractionUsingConvolution/>`_ .
 
-    Convolution Transpose (deconv) layer for image. Paddle can support both square 
+    Convolution Transpose (deconv) layer for image. Paddle can support both square
     and non-square input currently.
 
     The details of convolution transpose layer,
@@ -2125,7 +2175,7 @@ def img_conv_layer(input,
     :param trans: true if it is a convTransLayer, false if it is a convLayer
     :type trans: bool
     :param layer_type: specify the layer_type, default is None. If trans=True,
-                       layer_type has to be "exconvt", otherwise layer_type 
+                       layer_type has to be "exconvt", otherwise layer_type
                        has to be either "exconv" or "cudnn_conv"
     :type layer_type: String
     :return: LayerOutput object.
@@ -2214,7 +2264,8 @@ def img_pool_layer(input,
                    layer_attr=None,
                    pool_size_y=None,
                    stride_y=None,
-                   padding_y=None):
+                   padding_y=None,
+                   ceil_mode=True):
     """
     Image pooling Layer.
 
@@ -2245,6 +2296,23 @@ def img_pool_layer(input,
     :type stride_y: int|None
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param ceil_mode: Wether to use ceil mode to calculate output height and with.
+                      Defalut is True. If set false, Otherwise use floor.
+
+                      - ceil_mode=True:
+
+                      ..  math::
+
+                          w = 1 + int(ceil(input_width + 2 * padding - pool_size) / float(stride))
+                          h = 1 + int(ceil(input_height + 2 * padding_y - pool_size_y) / float(stride_y))
+
+                      - ceil_mode=False:
+
+                      ..  math::
+
+                          w = 1 + int(floor(input_width + 2 * padding - pool_size) / float(stride))
+                          h = 1 + int(floor(input_height + 2 * padding_y - pool_size_y) / float(stride_y))
+    :type ceil_mode: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2282,6 +2350,7 @@ def img_pool_layer(input,
                     stride_y=stride_y,
                     padding_y=padding_y))
         ],
+        ceil_mode=ceil_mode,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -2896,6 +2965,7 @@ def lstm_step_layer(input,
 
 
 @wrap_bias_attr_default()
+@wrap_param_attr_default()
 @wrap_act_default(param_names=['gate_act'], act=SigmoidActivation())
 @wrap_act_default(act=TanhActivation())
 @wrap_name_default('gru_step')
@@ -2907,6 +2977,7 @@ def gru_step_layer(input,
                    name=None,
                    gate_act=None,
                    bias_attr=None,
+                   param_attr=None,
                    layer_attr=None):
     """
 
@@ -2918,6 +2989,8 @@ def gru_step_layer(input,
     :param name:
     :param gate_act:
     :param bias_attr:
+    :param param_attr: the parameter_attribute for transforming the output_mem 
+                       from previous step. 
     :param layer_attr:
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2928,7 +3001,12 @@ def gru_step_layer(input,
     Layer(
         name=name,
         type=LayerType.GRU_STEP_LAYER,
-        inputs=[input.name, output_mem.name],
+        # The parameter here is for transforming the output_mem. The input has 
+        # already been transformed outside this module so it does not need 
+        # parameter associated with it. 
+        # The parameter here is instead grouped with input is due to 
+        # backward model compatibility.
+        inputs=[Input(input.name, **param_attr.attr), output_mem.name],
         bias=ParamAttr.to_bias(bias_attr),
         size=size,
         active_type=act.name,
@@ -3723,9 +3801,6 @@ def conv_projection(input,
                     groups=1,
                     param_attr=None):
     """
-    ConvProjection with a layer as input.
-    It performs element-wise multiplication with weight.
-
     Different from img_conv_layer and conv_op, conv_projection is an Projection,
     which can be used in mixed_layer and conat_layer. It use cudnn to implement
     conv and only support GPU mode.
@@ -3734,7 +3809,7 @@ def conv_projection(input,
 
     .. code-block:: python
 
-       proj = conv_projection(img=input1,
+       proj = conv_projection(input=input1,
                               filter_size=3,
                               num_filters=64,
                               num_channels=64)
@@ -3815,6 +3890,110 @@ def conv_projection(input,
 
     proj.origin = input
     return proj
+
+
+@wrap_name_default("pad")
+@layer_support()
+def pad_layer(input,
+              pad_c=None,
+              pad_h=None,
+              pad_w=None,
+              name=None,
+              layer_attr=None):
+    """
+    This operation pads zeros to the input data according to pad_c,pad_h
+    and pad_w. pad_c, pad_h, pad_w specifies the which dimension and size
+    of padding. And the input data shape is NCHW.
+
+    For example, pad_c=[2,3] means padding 2 zeros before the
+    input data and 3 zeros after the input data in channel dimension.
+    pad_h means padding zeros in height dimension. pad_w means padding zeros
+    in width dimension.
+
+    For example,
+
+    .. code-block:: python
+
+       input(2,2,2,3)  = [
+                           [ [[1,2,3], [3,4,5]],
+                             [[2,3,5], [1,6,7]] ],
+                           [ [[4,3,1], [1,8,7]],
+                             [[3,8,9], [2,3,5]] ]
+                         ]
+
+       pad_c=[1,1], pad_h=[0,0], pad_w=[0,0]
+
+       output(2,4,2,3) = [
+                           [ [[0,0,0], [0,0,0]],
+                             [[1,2,3], [3,4,5]],
+                             [[2,3,5], [1,6,7]],
+                             [[0,0,0], [0,0,0]] ],
+                           [ [[0,0,0], [0,0,0]],
+                             [[4,3,1], [1,8,7]],
+                             [[3,8,9], [2,3,5]],
+                             [[0,0,0], [0,0,0]] ]
+                         ]
+
+    The simply usage is:
+
+    .. code-block:: python
+
+       pad = pad_layer(input=ipt,
+                       pad_c=[4,4],
+                       pad_h=[0,0],
+                       pad_w=[2,2])
+
+    :param input: layer's input.
+    :type input: LayerOutput
+    :param pad_c: padding size in channel dimension.
+    :type pad_c: list|None
+    :param pad_h: padding size in height dimension.
+    :type pad_h: list|None
+    :param pad_w: padding size in width dimension.
+    :type pad_w: list|None
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :param name: layer name.
+    :type name: basestring
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    if pad_c is not None:
+        assert isinstance(pad_c, collections.Sequence) and len(pad_c) == 2
+    else:
+        pad_c = [0, 0]
+
+    if pad_h is not None:
+        assert isinstance(pad_h, collections.Sequence) and len(pad_h) == 2
+    else:
+        pad_h = [0, 0]
+
+    if pad_w is not None:
+        assert isinstance(pad_w, collections.Sequence) and len(pad_w) == 2
+    else:
+        pad_w = [0, 0]
+
+    assert input.num_filters is not None
+    in_ch = input.num_filters
+    out_ch = in_ch + pad_c[0] + pad_c[1]
+
+    l = Layer(
+        name=name,
+        type=LayerType.PAD_LAYER,
+        inputs=Input(
+            input.name,
+            pad=Pad(
+                channels=in_ch,
+                pad_c=pad_c,
+                pad_h=pad_h,
+                pad_w=pad_w, )),
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name,
+        layer_type=LayerType.PAD_LAYER,
+        parents=[input],
+        num_filters=out_ch,
+        size=l.config.size)
 
 
 @wrap_name_default()
@@ -4248,13 +4427,7 @@ def block_expand_layer(input,
 
 @wrap_name_default()
 @layer_support()
-def maxout_layer(input,
-                 groups,
-                 num_channels=None,
-                 size_x=None,
-                 size_y=None,
-                 name=None,
-                 layer_attr=None):
+def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
     """
     A layer to do max out on conv layer output.
       - Input: output of a conv layer.
@@ -4284,12 +4457,6 @@ def maxout_layer(input,
     :type num_channels: int|None
     :param groups: The group number of input layer.
     :type groups: int
-    :param size_x: conv output width. If None will be set
-                   automatically from previous output.
-    :type size_x: int|None
-    :param size_y: conv output height. If None will be set
-                   automatically from previous output.
-    :type size_y: int|None
     :param name: The name of this layer, which can not specify.
     :type name: None|basestring.
     :param layer_attr: Extra Layer attribute.
@@ -4851,6 +5018,7 @@ def cross_entropy_with_selfnorm(input,
                                 layer_attr=None):
     """
     A loss layer for multi class entropy with selfnorm.
+    Input should be a vector of positive numbers, without normalization.
 
     .. code-block:: python
 

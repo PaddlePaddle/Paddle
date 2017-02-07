@@ -12,7 +12,7 @@ PaddlePaddle项目提供官方 `Docker <https://www.docker.com/>`_ 镜像。Dock
 PaddlePaddle提供的Docker镜像版本
 --------------------------------
 
-我们提供了12个 `Docker image <https://hub.docker.com/r/paddledev/paddle/tags/>`_ ，他们的image name都是 :code:`paddle-dev/paddle` ，tag分别为
+我们提供了12个 `Docker image <https://hub.docker.com/r/paddledev/paddle/tags/>`_ ，他们的image name都是 :code:`paddledev/paddle` ，tag分别为
 
 +-----------------+------------------+------------------------+-----------------------+
 |                 |   normal         |           devel        |          demo         |
@@ -45,7 +45,7 @@ PaddlePaddle提供的Docker镜像版本
 
     if cat /proc/cpuinfo | grep -q avx ; then echo "Support AVX"; else echo "Not support AVX"; fi
 
-如果输出 :code:`Support AVX`，则可以选择上表中的AVX版本PaddlePaddle。否则需要选择非AVX的PaddlePaddle。选择普通CPU版本的devel版本的image，则可以使用 :code:`paddle-dev/paddle:cpu-devel-latest` 来引用这个image。
+如果输出 :code:`Support AVX`，则可以选择上表中的AVX版本PaddlePaddle。否则需要选择非AVX的PaddlePaddle。选择普通CPU版本的devel版本的image，则可以使用 :code:`paddledev/paddle:cpu-devel-latest` 来引用这个image。
 
 PaddlePaddle提供的镜像并不包含任何命令运行，想要运行PaddlePaddle，您需要进入镜像运行PaddlePaddle
 程序或者自定义一个含有启动脚本的image。具体请参考注意事项中的 :code:`使用ssh访问PaddlePaddle镜像`

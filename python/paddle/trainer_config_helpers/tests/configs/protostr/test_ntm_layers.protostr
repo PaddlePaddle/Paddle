@@ -79,7 +79,7 @@ layers {
   inputs {
     input_layer_name: "b"
   }
-  cos_scale: 5
+  cos_scale: 1
 }
 layers {
   name: "__cos_sim_1__"
@@ -92,7 +92,7 @@ layers {
   inputs {
     input_layer_name: "c"
   }
-  cos_scale: 5
+  cos_scale: 1
 }
 layers {
   name: "__sum_to_one_norm_layer_0__"

@@ -30,7 +30,8 @@ class NormLayer : public Layer {
 public:
   explicit NormLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     Layer::init(layerMap, parameterMap);
     return true;
   }
@@ -56,9 +57,10 @@ protected:
 public:
   explicit ResponseNormLayer(const LayerConfig& config) : NormLayer(config) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-  void forward(PassType passType) { LOG(FATAL) << "Not implemented"; }
-  void backward(const UpdateCallback& callback = nullptr) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+  void forward(PassType passType) override { LOG(FATAL) << "Not implemented"; }
+  void backward(const UpdateCallback& callback = nullptr) override {
     LOG(FATAL) << "Not implemented";
   }
 };

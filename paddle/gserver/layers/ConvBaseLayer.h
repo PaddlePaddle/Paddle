@@ -80,7 +80,8 @@ protected:
 public:
   explicit ConvBaseLayer(const LayerConfig& config) : Layer(config) {}
 
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   /**
    * imgSizeH_ and imgSizeW_ will be set according to the previous input layers

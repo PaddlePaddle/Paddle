@@ -372,7 +372,7 @@ MatrixPtr CpuSparseMatrix::subMatrix(size_t startRow, size_t numRows) {
 }
 
 /* mem MUST be alloced outside (memAlloc=false) */
-void CpuSparseMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
+void CpuSparseMatrix::transpose(MatrixPtr& matTrans, bool memAlloc) {
   CHECK(!memAlloc);
   CpuSparseMatrix* mat = dynamic_cast<CpuSparseMatrix*>(matTrans.get());
   if (format_ == SPARSE_CSR) {

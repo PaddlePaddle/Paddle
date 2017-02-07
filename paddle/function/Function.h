@@ -50,19 +50,44 @@ protected:
  * Argument type for Function::calc().
  * A BufferArgs contains a set of BufferArg,
  * because Function can have multiple inputs and outputs.
+ *
+ * addArg() with Matix object used to adapt Layer Argument.
+ * Will create a BufferArg object in addArg(),
+ * and free in destructor of BufferArgs.
+ *
+ * addArg() with BufferArg object, just save BufferArg object address,
+ * and the caller needs to guarantee the validity of the BufferArg object
+ * in the BufferArgs life time.
  */
 class BufferArgs {
 public:
   BufferArgs() {}
+
+  ~BufferArgs() {
+    for (auto arg : _args_) {
+      delete arg;
+    }
+  }
+
   size_t size() const { return args_.size(); }
 
   // add argument into BufferArgs
   // Tensor can be Matrix, Vector, IVector.
   // For inputs, do not need argType.
   // For outputs, the argType needs to be specified as ASSIGN_TO or ADD_TO.
-  template <typename Tensor>
-  void addArg(const Tensor& arg, ArgType argType = UNSPECIFIED) {
-    args_.push_back(std::make_shared<BufferArg>(arg, argType));
+  void addArg(const Matrix& arg, ArgType argType = UNSPECIFIED) {
+    _args_.push_back(new BufferArg(arg, argType));
+    addArg(*_args_.back());
+  }
+
+  void addArg(const Vector& arg, ArgType argType = UNSPECIFIED) {
+    _args_.push_back(new BufferArg(arg, argType));
+    addArg(*_args_.back());
+  }
+
+  void addArg(const IVector& arg, ArgType argType = UNSPECIFIED) {
+    _args_.push_back(new BufferArg(arg, argType));
+    addArg(*_args_.back());
   }
 
   // Add arg into BufferArgs and reshape the arg.
@@ -77,19 +102,36 @@ public:
   void addArg(const CpuSparseMatrix& arg, ArgType argType = UNSPECIFIED);
   void addArg(const GpuSparseMatrix& arg, ArgType argType = UNSPECIFIED);
 
+  void addArg(const Matrix& matrix,
+              const IVector& vector,
+              ArgType argType = UNSPECIFIED);
+
   // get argument
   const BufferArg& operator[](size_t num) const {
     CHECK_LT(num, args_.size());
     return *args_[num];
   }
 
+  void addArg(BufferArg& arg) { args_.push_back(&arg); }
+
+  void addArg(SequenceIdArg& arg) { args_.push_back(&arg); }
+
+  void addArg(SequenceArg& arg) { args_.push_back(&arg); }
+
+  void addArg(SparseMatrixArg& arg) { args_.push_back(&arg); }
+
 private:
-  std::vector<BufferArgPtr> args_;
+  std::vector<BufferArg*> args_;
+  // The BufferArg object is constructed and freed by BufferArgs.
+  std::vector<BufferArg*> _args_;
 };
 
 /**
  * \brief Base class for Function.
  * The basic Function implementation requires override init and calc interfaces.
+ *
+ * The caller needs to ensure the validity of the arguments
+ * during Function execution.
  *
  * Function inputs are readonly, Function outputs have two modes: ASSIGN_TO
  * and ADD_TO.
@@ -111,7 +153,36 @@ public:
 
   virtual void calc(const BufferArgs& inputs, const BufferArgs& outputs) {}
 
+  // This member function is used to check whether the BufferType and shape of
+  // the inputs and outputs arguments of the Function are correct.
+  // General calc function which will call this check to do arguments check.
+  // And before the calc called, the caller can also check their own arguments.
+  virtual void check(const BufferArgs& inputs, const BufferArgs& outputs) {}
+
+  // Calculate the number of floating-point operations of this Function.
+  // The inputs and outputs arguments do not need to contain the actual data,
+  // only the shape.
+  // And some Functions have the same input and output shapes,
+  // so you may not need to enter the complete number of arguments.
+  // But entering the full arguments is always correct for this interface.
+  virtual size_t ops(const BufferArgs& inputs, const BufferArgs& outputs) {
+    return 0;
+  }
+
+  int getNumInputs() const { return numInputs_; }
+
+  int getNumOutputs() const { return numOutputs_; }
+
   static ClassRegistrar<FunctionBase> funcRegistrar_;
+
+protected:
+  // numInputs_ and numOutputs_ represents the maximum
+  // input and output supported by Function.
+  // Some functions are optimized for input and output,
+  // so when comparing the number of arguments, for these functions
+  // inputs.size() <= numInputs_ or outputs.size() <= numOutputs_
+  size_t numInputs_;
+  size_t numOutputs_;
 };
 
 #define FUNC_NAME(typeName, deviceName) #typeName "-" #deviceName

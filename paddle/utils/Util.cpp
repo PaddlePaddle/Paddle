@@ -144,20 +144,20 @@ void runInitFunctions() {
 }
 
 void initMain(int argc, char** argv) {
-  initializeLogging(argc, argv);
   installLayerStackTracer();
   std::string line;
   for (int i = 0; i < argc; ++i) {
     line += argv[i];
     line += ' ';
   }
-  LOG(INFO) << "commandline: " << line;
 
 #ifndef GFLAGS_GFLAGS_H_
   namespace gflags = google;
 #endif
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  initializeLogging(argc, argv);
+  LOG(INFO) << "commandline: " << line;
   CHECK_EQ(argc, 1) << "Unknown commandline argument: " << argv[1];
 
   installProfilerSwitch();

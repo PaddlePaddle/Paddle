@@ -382,6 +382,15 @@ sampling_id_layer
     :members: sampling_id_layer
     :noindex:
 
+Slicing and Joining Layers
+==========================
+
+pad_layer
+-----------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: pad_layer
+    :noindex:
+
 ..  _api_trainer_config_helpers_layers_cost_layers:
 
 Cost Layers

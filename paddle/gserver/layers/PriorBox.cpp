@@ -30,10 +30,11 @@ namespace paddle {
 class PriorBoxLayer : public Layer {
 public:
   explicit PriorBoxLayer(const LayerConfig& config) : Layer(config) {}
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback) {}
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback) override {}
 
 protected:
   int numPriors_;

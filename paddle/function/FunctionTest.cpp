@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "Function.h"
 #include <gtest/gtest.h>
+#include "paddle/math/SparseMatrix.h"
 
 namespace paddle {
 
@@ -54,6 +55,112 @@ TEST(Function, BufferArgs) {
   gpuArgments.addArg(gpuInput);
   gpuArgments.addArg(gpuOutput);
   Function<DEVICE_TYPE_GPU>(gpuArgments);
+}
+
+/**
+ * Some tests case are used to check the consistency between the BufferArg type
+ * argument received by Function and the original type argument.
+ *
+ * Use Case:
+ *  TEST() {
+ *    Matrix matrix(...);
+ *    CheckBufferArg lambda = [=](const BufferArg& arg) {
+ *      // check matrix and arg are equivalent
+ *      EXPECT_EQ(matrix, arg);
+ *    }
+ *
+ *   BufferArgs argments{matrix...};
+ *   std::vector<CheckBufferArg> checkFunc{lambda...};
+ *   testBufferArgs(argments, checkFunc);
+ *  }
+ */
+typedef std::function<void(const BufferArg&)> CheckBufferArg;
+
+void testBufferArgs(const BufferArgs& inputs,
+                    const std::vector<CheckBufferArg>& check) {
+  EXPECT_EQ(inputs.size(), check.size());
+  for (size_t i = 0; i < inputs.size(); i++) {
+    check[i](inputs[i]);
+  }
+}
+
+void testBufferArgs(const BufferArgs& inputs, const CheckBufferArg& check) {
+  EXPECT_EQ(inputs.size(), 1);
+  check(inputs[0]);
+}
+
+TEST(Arguments, Matrix) {
+  MatrixPtr matrix = Matrix::create(100, 200);
+  CheckBufferArg check = [=](const BufferArg& arg) {
+    EXPECT_EQ(arg.shape().ndims(), 2);
+    EXPECT_EQ(arg.shape()[0], 100);
+    EXPECT_EQ(arg.shape()[1], 200);
+    EXPECT_EQ(arg.data(), matrix->getData());
+
+    EXPECT_EQ(arg.matrix<DEVICE_TYPE_CPU>().getHeight(), matrix->getHeight());
+    EXPECT_EQ(arg.matrix<DEVICE_TYPE_CPU>().getWidth(), matrix->getWidth());
+    EXPECT_EQ(arg.matrix<DEVICE_TYPE_CPU>().getData(), matrix->getData());
+  };
+
+  BufferArgs argments;
+  argments.addArg(*matrix);
+  std::vector<CheckBufferArg> checkFunc;
+  checkFunc.push_back(check);
+  testBufferArgs(argments, checkFunc);
+}
+
+TEST(Arguments, Vector) {
+  VectorPtr vector = Vector::create(100, false);
+  CheckBufferArg check = [=](const BufferArg& arg) {
+    EXPECT_EQ(arg.shape().ndims(), 1);
+    EXPECT_EQ(arg.shape()[0], 100);
+    EXPECT_EQ(arg.data(), vector->getData());
+
+    CpuVector inVector = arg.vector<real, DEVICE_TYPE_CPU>();
+    EXPECT_EQ(inVector.getSize(), vector->getSize());
+    EXPECT_EQ(inVector.getData(), vector->getData());
+  };
+
+  BufferArgs argments;
+  argments.addArg(*vector);
+  std::vector<CheckBufferArg> checkFunc;
+  checkFunc.push_back(check);
+  testBufferArgs(argments, checkFunc);
+}
+
+TEST(Arguments, CpuSparseMatrix) {
+  CpuSparseMatrix sparse(200, 300, 50);
+  CheckBufferArg check = [=](const BufferArg& arg) {
+    EXPECT_EQ(arg.shape().ndims(), 2);
+    EXPECT_EQ(arg.shape()[0], 200);
+    EXPECT_EQ(arg.shape()[1], 300);
+    EXPECT_EQ(arg.data(), sparse.getData());
+    // CHECK_EQ(arg.sparse().nnz(), 50);
+    // CHECK_EQ(arg.sparse().dataFormat(), SPARSE_CSR_FORMAT);
+    // CHECK_EQ(arg.sparse().dataType(), SPARSE_FLOAT_VALUE);
+    EXPECT_EQ(arg.sparse().getRowBuf(), sparse.getRows());
+    EXPECT_EQ(arg.sparse().getColBuf(), sparse.getCols());
+  };
+
+  BufferArgs argments;
+  argments.addArg(sparse);
+  std::vector<CheckBufferArg> checkFunc;
+  checkFunc.push_back(check);
+  testBufferArgs(argments, checkFunc);
+}
+
+TEST(Arguments, BufferArg) {
+  BufferArg arg(nullptr, VALUE_TYPE_FLOAT, {1, 2, 3});
+  CheckBufferArg check = [=](const BufferArg& arg) {
+    EXPECT_EQ(arg.shape().ndims(), 3);
+    EXPECT_EQ(arg.shape()[0], 1);
+    EXPECT_EQ(arg.shape()[1], 2);
+    EXPECT_EQ(arg.shape()[2], 3);
+  };
+
+  BufferArgs argments;
+  argments.addArg(arg);
+  testBufferArgs(argments, check);
 }
 
 }  // namespace paddle

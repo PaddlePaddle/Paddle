@@ -255,6 +255,13 @@ message PriorBoxConfig {
   repeated float variance = 4;
 }
 
+message PadConfig {
+  required ImageConfig image_conf = 1;
+  repeated uint32 pad_c = 2;
+  repeated uint32 pad_h = 3;
+  repeated uint32 pad_w = 4;
+}
+
 message MultiBoxLossConfig {
   required uint32 num_classes = 1;
   required float loc_weight = 2;
@@ -302,9 +309,10 @@ message LayerInputConfig {
   optional MaxOutConfig maxout_conf = 11;
   optional SppConfig spp_conf = 12;
   optional PriorBoxConfig priorbox_conf = 13;
-  optional MultiBoxLossConfig multibox_loss_conf = 14;
-  optional DetectionOutputConfig detection_output_conf = 15;
-  optional DetectionEvalConfig detection_eval_conf = 16;
+  optional PadConfig pad_conf = 14;
+  optional MultiBoxLossConfig multibox_loss_conf = 15;
+  optional DetectionOutputConfig detection_output_conf = 16;
+  optional DetectionEvalConfig detection_eval_conf = 17;
 }
 
 message LayerConfig {
@@ -453,14 +461,14 @@ message LayerConfig {
   // bias size
   optional uint32 bias_size = 48 [default = 0];
 
-  // this parameter can be used as a user-defined parameter when necessary, 
+  // this parameter can be used as a user-defined parameter when necessary,
   // without changing the proto file.
-  // e.g., when a new layer with a user-defined parameter is implemented, 
+  // e.g., when a new layer with a user-defined parameter is implemented,
   // it can be used to pass that parameter, without modifying the proto file.
   // string type is used for flexibility: different types can be converted
-  // to string and reinterpreted in the user's own layer implementation.  
+  // to string and reinterpreted in the user's own layer implementation.
   optional string user_arg = 49;
-  
+
   // to indicate rectangle image data
   optional uint64 height = 50;
   optional uint64 width = 51;
