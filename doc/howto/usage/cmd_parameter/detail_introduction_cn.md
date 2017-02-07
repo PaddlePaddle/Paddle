@@ -306,10 +306,6 @@
   - 指示是否显示参数服务器上的稀疏参数分布的日志细节.
   - 类型: bool (默认: 0).
 
-* `--allow_inefficient_sparse_update`
-  - 指示是否允许低效率的稀疏更新.
-  - 类型: bool (默认: 0).
-
 * `--check_sparse_distribution_batches`
   - 每运行多少个批次执行一次稀疏参数分布的检查.
   - 类型: int32 (默认: 100).

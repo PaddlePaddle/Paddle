@@ -31,6 +31,7 @@ limitations under the License. */
 
 namespace paddle {
 
+/// TODO(tianbing), move to paddle/function/TensorType.h
 enum SparseValueType { NO_VALUE = 0, FLOAT_VALUE = 1 };
 
 /**
@@ -56,6 +57,7 @@ enum SparseValueType { NO_VALUE = 0, FLOAT_VALUE = 1 };
  *            value [1, 1, 2, 2, 5]
  * @endcode
  */
+/// TODO(tianbing), move to paddle/function/TensorType.h
 enum SparseFormat { SPARSE_CSR = 0, SPARSE_CSC = 1 };
 
 class Matrix;
@@ -370,7 +372,27 @@ public:
    * allocate matTrans' memory outside, then set memAlloc as false;
    * else set as true.
    */
-  virtual void transpose(MatrixPtr matTrans, bool memAlloc) {
+  virtual void transpose(MatrixPtr& matTrans, bool memAlloc) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  /**
+   * @brief  rotate 90 degrees in clock-wise if clockWise=true;
+   *         otherwise rotate in anti clock-wise
+   * clock-wise:
+   * \f[
+   *   y(j,i) = x(M-i-1,j)
+   * \f]
+   * anti clock-wise:
+   * \f[
+   *   y(j,i) = x(i, N-1-j)
+   * \f]
+   * where \f$x\f$ is (M x N) input, and \f$y\f$ is (N x M) output.
+   *
+   * allocate matRot' memory outside, then set memAlloc as false;
+   * else set as true.
+   */
+  virtual void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -385,7 +407,7 @@ public:
    * if allocate matInv's memory outside, then set memAlloc as false;
    * else set as true.
    */
-  virtual void inverse(MatrixPtr matInv, bool memAlloc) {
+  virtual void inverse(MatrixPtr& matInv, bool memAlloc) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -1167,11 +1189,15 @@ public:
   void accumulateColSum(Matrix& src);
   real getAbsSum();
 
+  real getMin();
+  real getMax();
+
   MatrixPtr getTranspose();
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
+  void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise);
 
   MatrixPtr getInverse();
-  void inverse(MatrixPtr matInv, bool memAlloc);
+  void inverse(MatrixPtr& matInv, bool memAlloc);
 
   /// add b to each sample of this.
   void addBias(Matrix& b, real scale);
@@ -1483,10 +1509,11 @@ public:
   real getAbsSum();
 
   MatrixPtr getTranspose();
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
+  void rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise);
 
   MatrixPtr getInverse();
-  void inverse(MatrixPtr matInv, bool memAlloc);
+  void inverse(MatrixPtr& matInv, bool memAlloc);
 
   void copyFrom(const Matrix& src);
 

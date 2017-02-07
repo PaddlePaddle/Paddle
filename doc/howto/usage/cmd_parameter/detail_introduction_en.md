@@ -310,10 +310,6 @@
   - show log details for sparse parameter distribution in pserver.
   - type: bool (default: 0).
 
-* `--allow_inefficient_sparse_update`
-  - Whether to allow inefficient sparse update.
-  - type: bool (default: 0).
-
 * `--check_sparse_distribution_batches`
   - Running sparse parameter distribution check every so many batches.
   - type: int32 (default: 100).

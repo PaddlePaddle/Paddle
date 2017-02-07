@@ -24,10 +24,6 @@ limitations under the License. */
 #include "paddle/utils/Thread.h"
 #include "paddle/utils/Util.h"
 
-DEFINE_bool(allow_inefficient_sparse_update,
-            false,
-            "Whether to allow inefficient sparse update");
-
 namespace paddle {
 
 const unsigned int SparseRowCpuMatrix::kUnusedId_ = -1U;

@@ -23,23 +23,16 @@ limitations under the License. */
 namespace paddle {
 
 enum BufferType {
-  TENSOR_NORMAL = 0,
-  TENSOR_SEQUENCE_ID = 1,
-  TENSOR_SEQUENCE_DATA = 2,
-  TENSOR_SPARSE = 3
+  TENSOR_UNKNOWN = 0,
+  TENSOR_NORMAL = 1,
+  TENSOR_SEQUENCE_ID = 2,
+  TENSOR_SEQUENCE_DATA = 3,
+  TENSOR_SPARSE = 4
 };
-
-enum SparseDataType {
-  SPARSE_NO_VALUE = 0,  // do not need value pointer, all values are 1
-  SPARSE_FLOAT_VALUE = 1
-};
-
-enum SparseDataFormat { SPARSE_CSR_FORMAT = 0, SPARSE_CSC_FORMAT = 1 };
 
 class BufferArg;
 class SequenceArg;
 class SparseMatrixArg;
-typedef std::shared_ptr<BufferArg> BufferArgPtr;
 
 /**
  * \brief BufferArg used as the argument type of Function.
@@ -50,6 +43,11 @@ typedef std::shared_ptr<BufferArg> BufferArgPtr;
  * 3. SequenceArg for a Buffer of sequence data.
  * 4. SparseMatrixArg for a Buffer of sparse matrix.
  *
+ * Buffer shape
+ * For most buffers, the first dimension `shape()[0]` represents
+ * the size of the mini-batch.
+ *
+ * Buffer argType
  * There is an ArgType property for the BufferArg used as Function Output.
  * Whether the result of the Function calculation is assigned to the
  * output Buffer or added to the output Buffer is determined by the
@@ -71,14 +69,24 @@ public:
   ArgType getArgType() const { return argType_; }
 
 public:
+  BufferArg(ValueType valueType,
+            const TensorShape& shape,
+            ArgType argType = UNSPECIFIED)
+      : buf_(nullptr), valueType_(valueType), shape_(shape), argType_(argType) {
+    bufferType_ = TENSOR_NORMAL;
+  }
+
   BufferArg(void* buf,
             ValueType valueType,
             const TensorShape& shape,
             ArgType argType = UNSPECIFIED)
-      : buf_(buf), valueType_(valueType), shape_(shape), argType_(argType) {}
+      : buf_(buf), valueType_(valueType), shape_(shape), argType_(argType) {
+    bufferType_ = TENSOR_NORMAL;
+  }
 
-  BufferArg(void* buf, ValueType valueType)
-      : buf_(buf), valueType_(valueType) {}
+  BufferArg(void* buf, ValueType valueType) : buf_(buf), valueType_(valueType) {
+    bufferType_ = TENSOR_NORMAL;
+  }
 
   BufferArg(const Matrix& matrix, ArgType argType = UNSPECIFIED)
       : buf_(
@@ -86,6 +94,7 @@ public:
         valueType_(DataType<real>::value),
         shape_(2),
         argType_(argType) {
+    bufferType_ = TENSOR_NORMAL;
     shape_.setDim(0, matrix.getHeight());
     shape_.setDim(1, matrix.getWidth());
   }
@@ -98,6 +107,7 @@ public:
         valueType_(DataType<real>::value),
         shape_(shape),
         argType_(argType) {
+    bufferType_ = TENSOR_NORMAL;
     CHECK_EQ(matrix.getElementCnt(), shape.getElements());
   }
 
@@ -107,6 +117,7 @@ public:
         valueType_(DataType<real>::value),
         shape_(1),
         argType_(argType) {
+    bufferType_ = TENSOR_NORMAL;
     shape_.setDim(0, vector.getSize());
   }
 
@@ -116,6 +127,7 @@ public:
         valueType_(VALUE_TYPE_INT32),
         shape_(1),
         argType_(argType) {
+    bufferType_ = TENSOR_NORMAL;
     shape_.setDim(0, vector.getSize());
   }
 
@@ -150,6 +162,9 @@ public:
   ValueType valueType() const { return valueType_; }
   BufferType bufferType() const { return bufferType_; }
   const TensorShape& shape() const { return shape_; }
+  bool isSparseArg() const { return TENSOR_SPARSE == bufferType_; }
+  bool isSequenceArg() const { return TENSOR_SEQUENCE_DATA == bufferType_; }
+  virtual size_t numElements() const { return shape_.getElements(); }
 
   const SequenceArg& sequence() const;
   const SparseMatrixArg& sparse() const;
@@ -158,8 +173,9 @@ protected:
   void* buf_;
   ValueType valueType_;
   TensorShape shape_;
-  BufferType bufferType_;
-  ArgType argType_ = UNSPECIFIED;
+  BufferType bufferType_{TENSOR_UNKNOWN};
+  ArgType argType_{UNSPECIFIED};
+  // TODO(tianbing), add deviceType_
   // leading dimensions. The size is dims_.size()
   // Dims lds_;
 };
@@ -170,15 +186,25 @@ protected:
 // if a < b then value_.buf_[a] < value_.buf_[b]
 class SequenceIdArg : public BufferArg {
 public:
+  SequenceIdArg(const TensorShape& shape, ArgType argType = UNSPECIFIED)
+      : BufferArg(VALUE_TYPE_INT32, shape, argType) {
+    bufferType_ = TENSOR_SEQUENCE_ID;
+    CHECK_EQ(shape_.ndims(), 1UL);
+    CHECK_GT(shape_[0], 1UL);
+    numSeqs_ = shape_[0] - 1;
+  }
+
   SequenceIdArg(void* buf,
                 const TensorShape& shape,
                 ArgType argType = UNSPECIFIED)
       : BufferArg(buf, VALUE_TYPE_INT32, shape, argType) {
-    CHECK_EQ(shape_.ndims(), (size_t)1);
+    bufferType_ = TENSOR_SEQUENCE_ID;
+    CHECK_EQ(shape_.ndims(), 1UL);
     numSeqs_ = shape_[0] - 1;
   }
 
   SequenceIdArg(const IVector& vector) : BufferArg(vector) {
+    bufferType_ = TENSOR_SEQUENCE_ID;
     numSeqs_ = shape_[0] - 1;
   }
 
@@ -190,26 +216,43 @@ private:
   size_t numSeqs_;
 };
 
-// sequence data
+// sequences data
+// For mini-batch calculate,
+// one batch can contain more than one sequence of data.
+// SequenceArg can be used to represent sequences that contain multiple
+// unequal lengths.
 class SequenceArg : public BufferArg {
 public:
+  SequenceArg(ValueType valueType,
+              const TensorShape& shape,
+              ArgType argType = UNSPECIFIED)
+      : BufferArg(valueType, shape, argType), startPositions_(TensorShape()) {
+    bufferType_ = TENSOR_SEQUENCE_DATA;
+  }
+
   SequenceArg(void* buf,
               ValueType valueType,
               const TensorShape& shape,
               const SequenceIdArg& startPositions,
               ArgType argType = UNSPECIFIED)
       : BufferArg(buf, valueType, shape, argType),
-        startPositions_(startPositions) {}
+        startPositions_(startPositions) {
+    bufferType_ = TENSOR_SEQUENCE_DATA;
+  }
 
   SequenceArg(const Matrix& matrix,
               const IVector& vector,
               ArgType argType = UNSPECIFIED)
-      : BufferArg(matrix, argType), startPositions_(vector) {}
+      : BufferArg(matrix, argType), startPositions_(vector) {
+    bufferType_ = TENSOR_SEQUENCE_DATA;
+  }
 
   ~SequenceArg() {}
 
   void* getIdBuf() const { return startPositions_.data(); }
   size_t numSeqs() const { return startPositions_.numSeqs(); }
+  SequenceIdArg& getSequenceId() { return startPositions_; }
+  const SequenceIdArg& getSequenceId() const { return startPositions_; }
 
 private:
   SequenceIdArg startPositions_;
@@ -226,29 +269,74 @@ public:
                   const BufferArg& row,
                   const BufferArg& col,
                   size_t nnz,
-                  SparseDataFormat format,
-                  SparseDataType type,
+                  SparseFormat format,
+                  SparseValueType type,
                   ArgType argType = UNSPECIFIED)
       : BufferArg(buf, valueType, shape, argType),
         row_(row),
         col_(col),
         nnz_(nnz),
-        format_(format),
-        type_(type) {
+        format_(static_cast<SparseDataFormat>(format)),
+        type_(static_cast<SparseDataType>(type)) {
+    bufferType_ = TENSOR_SPARSE;
     CHECK((valueType == VALUE_TYPE_FLOAT) || (valueType == VALUE_TYPE_DOUBLE));
-    CHECK_EQ(shape_.ndims(), (size_t)2);
-    CHECK_EQ(row_.shape().ndims(), (size_t)1);
-    CHECK_EQ(col_.shape().ndims(), (size_t)1);
-    if (format == SPARSE_CSR_FORMAT) {
+    CHECK_EQ(shape_.ndims(), 2UL);
+    CHECK_EQ(row_.shape().ndims(), 1UL);
+    CHECK_EQ(col_.shape().ndims(), 1UL);
+    if (format_ == T_SPARSE_CSR) {
       CHECK_EQ(nnz, col.shape()[0]);
-    } else if (format == SPARSE_CSC_FORMAT) {
+    } else if (format_ == T_SPARSE_CSC) {
       CHECK_EQ(nnz, row.shape()[0]);
     }
+  }
+
+  SparseMatrixArg(ValueType valueType,
+                  const TensorShape& shape,
+                  size_t nnz,
+                  SparseFormat format,
+                  SparseValueType type,
+                  ArgType argType = UNSPECIFIED)
+      : BufferArg(valueType, shape, argType),
+        row_(BufferArg(nullptr, VALUE_TYPE_INT32)),
+        col_(BufferArg(nullptr, VALUE_TYPE_INT32)),
+        nnz_(nnz),
+        format_(static_cast<SparseDataFormat>(format)),
+        type_(static_cast<SparseDataType>(type)) {
+    bufferType_ = TENSOR_SPARSE;
+    CHECK((valueType == VALUE_TYPE_FLOAT) || (valueType == VALUE_TYPE_DOUBLE));
+    CHECK_EQ(shape_.ndims(), 2UL);
+
+    /// len of row_ : height + 1 (CSR) or nnz (CSC), buf_ == nullptr
+    row_ = (format_ == T_SPARSE_CSR
+                ? BufferArg(VALUE_TYPE_INT32, TensorShape{shape_[0] + 1})
+                : BufferArg(VALUE_TYPE_INT32, TensorShape{nnz}));
+    /// len of col_ :  width + 1 (CSC) or nnz (CSR), buf_ == nullptr
+    col_ = (format_ == T_SPARSE_CSR
+                ? BufferArg(VALUE_TYPE_INT32, TensorShape{nnz})
+                : BufferArg(VALUE_TYPE_INT32, TensorShape{shape_[1] + 1}));
   }
 
   SparseMatrixArg(const CpuSparseMatrix& sparse, ArgType argType = UNSPECIFIED);
 
   SparseMatrixArg(const GpuSparseMatrix& sparse, ArgType argType = UNSPECIFIED);
+
+  template <DeviceType DType>
+  typename Tensor<real, DType>::SparseMatrix SparseMatrix() const {
+    CHECK(buf_);
+    CHECK(valueType_ == DataType<real>::value);
+    // CHECK(deviceType_ == DType);
+    CHECK_EQ(2UL, shape_.ndims());
+    return typename Tensor<real, DType>::SparseMatrix(
+        reinterpret_cast<real*>(buf_),
+        reinterpret_cast<int*>(row_.data()),
+        reinterpret_cast<int*>(col_.data()),
+        shape_[0],
+        shape_[1],
+        nnz_,
+        static_cast<SparseValueType>(type_),
+        static_cast<SparseFormat>(format_),
+        false);
+  }
 
   ~SparseMatrixArg() {}
 
@@ -257,6 +345,8 @@ public:
   void* getColBuf() const { return col_.data(); }
 
   size_t nnz() const { return nnz_; }
+
+  size_t numElements() const override { return nnz_; }
 
   SparseDataFormat dataFormat() const { return format_; }
 

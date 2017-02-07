@@ -39,6 +39,7 @@ z1 = mixed_layer(
 assert z1.size > 0
 
 y2 = fc_layer(input=y, size=15)
+z2 = rotate_layer(input=y2, height=5, width=3)
 
 cos1 = cos_sim(a=x1, b=y1)
 cos3 = cos_sim(a=x1, b=y2, size=3)
@@ -46,7 +47,7 @@ cos3 = cos_sim(a=x1, b=y2, size=3)
 linear_comb = linear_comb_layer(weights=x1, vectors=y2, size=3)
 
 out = fc_layer(
-    input=[cos1, cos3, linear_comb, z, z1],
+    input=[cos1, cos3, linear_comb, z, z1, z2],
     size=num_classes,
     act=SoftmaxActivation())
 

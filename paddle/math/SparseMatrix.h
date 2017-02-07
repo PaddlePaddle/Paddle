@@ -109,7 +109,7 @@ public:
   MatrixPtr getTranspose();
 
   /// B = A'
-  void transpose(MatrixPtr matTrans, bool memAlloc);
+  void transpose(MatrixPtr& matTrans, bool memAlloc);
 
   void copyFrom(const Matrix& src);
   void copyFrom(const Matrix& src, hl_stream_t stream);

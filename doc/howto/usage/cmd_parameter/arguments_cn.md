@@ -128,11 +128,6 @@
 </tr>
 
 <tr>
-<td class="left">allow_inefficient_sparse_update</td>
-<td class="left">√</td><td class="left">√</td><td class="left"></td><td class="left"></td>
-</tr>
-
-<tr>
 <td class="left">start_pass</td>
 <td class="left">√</td><td class="left">√</td><td class="left"></td><td class="left"></td>
 </tr>

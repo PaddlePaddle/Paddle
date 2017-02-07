@@ -493,6 +493,7 @@ class Input(Cfg):
             block_expand=None,
             maxout=None,
             spp=None,
+            pad=None,
             format=None,
             nnz=None,
             is_static=None,
@@ -829,7 +830,6 @@ class Pool(Cfg):
             channels,
             size_x,
             size_y=None,
-            img_width=None,
             start=None,
             stride=None,  # 1 by defalut in protobuf
             stride_y=None,
@@ -841,6 +841,12 @@ class Pool(Cfg):
 @config_class
 class SpatialPyramidPool(Cfg):
     def __init__(self, pool_type, pyramid_height, channels):
+        self.add_keys(locals())
+
+
+@config_class
+class Pad(Cfg):
+    def __init__(self, channels, pad_c, pad_h, pad_w):
         self.add_keys(locals())
 
 
@@ -887,11 +893,11 @@ class MaxOut(Cfg):
         self.add_keys(locals())
 
 
-def DataBase(async_load_data=False,
-             constant_slots=None,
-             data_ratio=1,
-             is_main_data=True,
-             usage_ratio=None):
+def create_data_config_proto(async_load_data=False,
+                             constant_slots=None,
+                             data_ratio=1,
+                             is_main_data=True,
+                             usage_ratio=None):
     # default: all sub dataproviders are treat as "main data".
     # see proto/DataConfig.proto for is_main_data
     data_config = DataConfig()
@@ -917,7 +923,7 @@ def SimpleData(files=None,
                context_len=None,
                buffer_capacity=None,
                **xargs):
-    data_config = DataBase(**xargs)
+    data_config = create_data_config_proto(**xargs)
     data_config.type = 'simple'
     data_config.files = files
     data_config.feat_dim = feat_dim
@@ -939,7 +945,7 @@ def PyData(files=None,
            constant_slots=None,
            load_thread_num=None,
            **xargs):
-    data_config = DataBase(**xargs)
+    data_config = create_data_config_proto(**xargs)
     data_config.type = 'py'
     if load_data_module in g_py_module_name_list:
 
@@ -990,7 +996,7 @@ def ProtoData(files=None,
               constant_slots=None,
               load_thread_num=None,
               **xargs):
-    data_config = DataBase(**xargs)
+    data_config = create_data_config_proto(**xargs)
     if type is None:
         data_config.type = 'proto'
     else:
@@ -1029,7 +1035,7 @@ def Data(type,
          buffer_capacity=None,
          **xargs):
 
-    data_config = DataBase(**xargs)
+    data_config = create_data_config_proto(**xargs)
     data_config.type = type
     data_config.files = files
     data_config.feat_dim = feat_dim
@@ -1102,7 +1108,7 @@ def parse_bilinear(bilinear, input_layer_name, bilinear_conf):
     bilinear_conf.out_size_y = bilinear.out_size_y
 
 
-def parse_pool(pool, input_layer_name, pool_conf):
+def parse_pool(pool, input_layer_name, pool_conf, ceil_mode):
     pool_conf.pool_type = pool.pool_type
     config_assert(pool.pool_type in [
         'max-projection', 'avg-projection', 'cudnn-max-pool', 'cudnn-avg-pool'
@@ -1127,10 +1133,10 @@ def parse_pool(pool, input_layer_name, pool_conf):
     pool_conf.padding_y = default(pool.padding_y, pool_conf.padding)
     pool_conf.output_x = cnn_output_size(pool_conf.img_size, pool_conf.size_x,
                                          pool_conf.padding, pool_conf.stride,
-                                         False)
+                                         not ceil_mode)
     pool_conf.output_y = cnn_output_size(pool_conf.img_size_y, pool_conf.size_y,
                                          pool_conf.padding_y,
-                                         pool_conf.stride_y, False)
+                                         pool_conf.stride_y, not ceil_mode)
 
 
 def parse_spp(spp, input_layer_name, spp_conf):
@@ -1877,9 +1883,8 @@ class ConvTransLayer(ConvTransLayerBase):
 
 @config_layer('norm')
 class NormLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
-        super(NormLayer, self).__init__(
-            name, 'norm', 0, inputs=inputs, device=device)
+    def __init__(self, name, inputs, **xargs):
+        super(NormLayer, self).__init__(name, 'norm', 0, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             norm_conf = self.config.inputs[input_index].norm_conf
@@ -1891,29 +1896,47 @@ class NormLayer(LayerBase):
 
 @config_layer('pool')
 class PoolLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
-        super(PoolLayer, self).__init__(
-            name, 'pool', 0, inputs=inputs, device=device)
+    def __init__(self, name, inputs, ceil_mode=True, **xargs):
+        super(PoolLayer, self).__init__(name, 'pool', 0, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             pool_conf = self.config.inputs[input_index].pool_conf
             parse_pool(self.inputs[input_index].pool, input_layer.name,
-                       pool_conf)
+                       pool_conf, ceil_mode)
             self.set_cnn_layer(name, pool_conf.output_y, pool_conf.output_x,
                                pool_conf.channels)
 
 
 @config_layer('spp')
 class SpatialPyramidPoolLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, **xargs):
         super(SpatialPyramidPoolLayer, self).__init__(
-            name, 'spp', 0, inputs=inputs, device=device)
+            name, 'spp', 0, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             spp_conf = self.config.inputs[input_index].spp_conf
             parse_spp(self.inputs[input_index].spp, input_layer.name, spp_conf)
             output_x = (pow(4, spp_conf.pyramid_height) - 1) / (4 - 1)
             self.set_cnn_layer(name, 1, output_x, spp_conf.image_conf.channels)
+
+
+@config_layer('pad')
+class PadLayer(LayerBase):
+    def __init__(self, name, inputs, **xargs):
+        super(PadLayer, self).__init__(name, 'pad', 0, inputs=inputs, **xargs)
+        pad = self.inputs[0].pad
+        self.config.inputs[0].pad_conf.pad_c.extend(pad.pad_c)
+        self.config.inputs[0].pad_conf.pad_h.extend(pad.pad_h)
+        self.config.inputs[0].pad_conf.pad_w.extend(pad.pad_w)
+
+        input_layer = self.get_input_layer(0)
+        image_conf = self.config.inputs[0].pad_conf.image_conf
+        parse_image(pad, input_layer.name, image_conf)
+        out_ch = pad.channels + pad.pad_c[0] + pad.pad_c[1]
+        out_h = image_conf.img_size_y + pad.pad_h[0] + pad.pad_h[1]
+        out_w = image_conf.img_size + pad.pad_w[0] + pad.pad_w[1]
+        self.set_cnn_layer(name, out_h, out_w, out_ch)
+        self.config.size = out_ch * out_h * out_w
 
 
 @config_layer('batch_norm')
@@ -1925,7 +1948,6 @@ class BatchNormLayer(LayerBase):
                  inputs,
                  active_type="linear",
                  bias=True,
-                 device=None,
                  use_global_stats=True,
                  moving_average_fraction=0.9,
                  batch_norm_type=None,
@@ -1967,7 +1989,6 @@ class BatchNormLayer(LayerBase):
             0,
             active_type=active_type,
             inputs=inputs,
-            device=device,
             **xargs)
 
         if use_global_stats is not None:
@@ -1979,8 +2000,8 @@ class BatchNormLayer(LayerBase):
         image_conf = self.config.inputs[0].image_conf
         parse_image(self.inputs[0].image, input_layer.name, image_conf)
 
-        # Only pass the width and height of input to batch_norm layer 
-        # when either of it is non-zero. 
+        # Only pass the width and height of input to batch_norm layer
+        # when either of it is non-zero.
         if input_layer.width != 0 or input_layer.height != 0:
             self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
                                image_conf.channels, False)
@@ -2001,9 +2022,9 @@ class BatchNormLayer(LayerBase):
 
 @config_layer('trans')
 class TransLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, **xargs):
         super(TransLayer, self).__init__(
-            name, 'trans', 0, inputs=inputs, device=device)
+            name, 'trans', 0, inputs=inputs, **xargs)
         config_assert(
             len(self.inputs) == 1,
             'TransLayer must have one and only one input')
@@ -2012,19 +2033,31 @@ class TransLayer(LayerBase):
 
 @config_layer('resize')
 class ResizeLayer(LayerBase):
-    def __init__(self, name, size, inputs, device=None):
+    def __init__(self, name, size, inputs, **xargs):
         super(ResizeLayer, self).__init__(
-            name, 'resize', size=size, inputs=inputs, device=device)
+            name, 'resize', size=size, inputs=inputs, **xargs)
         config_assert(
             len(self.inputs) == 1,
             'ResizeLayer must have one and only one input')
 
 
+@config_layer('rotate')
+class RotateLayer(LayerBase):
+    def __init__(self, name, inputs, height, width, device=None):
+        super(RotateLayer, self).__init__(
+            name, 'rotate', 0, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 1,
+            'RotateLayer must have one and only one input')
+        self.set_layer_height_width(height, width)
+        self.set_layer_size(self.get_input_layer(0).size)
+
+
 @config_layer('blockexpand')
 class BlockExpandLayer(LayerBase):
-    def __init__(self, name, inputs, device=None):
+    def __init__(self, name, inputs, **xargs):
         super(BlockExpandLayer, self).__init__(
-            name, 'blockexpand', 0, inputs=inputs, device=device)
+            name, 'blockexpand', 0, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             parse_block_expand(
@@ -2702,7 +2735,7 @@ class AverageLayer(LayerBase):
 
 @config_layer('cos')
 class CosSimLayer(LayerBase):
-    def __init__(self, name, inputs, cos_scale=5, device=None):
+    def __init__(self, name, inputs, cos_scale=1, device=None):
         super(CosSimLayer, self).__init__(
             name, 'cos', 1, inputs=inputs, device=device)
         config_assert(len(self.inputs) == 2, 'CosSimLayer must have 2 inputs')
