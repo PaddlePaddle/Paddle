@@ -32,39 +32,6 @@ namespace paddle {
  */
 
 class CosSimVecMatLayer : public Layer {
-public:
-  explicit CosSimVecMatLayer(const LayerConfig& config) : Layer(config) {}
-
-  ~CosSimVecMatLayer() {}
-
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
-
-protected:
-  MatrixPtr tmpMtx0;
-  MatrixPtr tmpMtx1;
-  MatrixPtr tmpRow0;
-  MatrixPtr tmpRow1;
-  MatrixPtr tmpRow2;
-  MatrixPtr tmpRow3;
-};
-
-/**
- * @brief A layer for computing cosine similarity between a vector
- * and each row of a matrix
- * out[i] = cos_scale * cos(in1, in2(i,:));
- * @note used in NEURAL TURING MACHINE
- *
- * Input1: a vector (batchSize * dataDim)
- *
- * Input2: a matrix in vector form (batchSize * (weightDim*dataDim))
- *
- * Output: a vector (batchSize * weightDim)
- */
-
-class CosSimVecMatLayer : public Layer {
 protected:
   MatrixPtr tmpMtx0;
   MatrixPtr tmpMtx1;
