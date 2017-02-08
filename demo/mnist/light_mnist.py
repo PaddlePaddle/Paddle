@@ -53,12 +53,7 @@ def light_cnn(input_image, num_channels, num_classes):
     tmp = __light__(tmp, num_filter=128)
     tmp = __light__(tmp, num_filter=128, conv_filter_size=1)
 
-    #tmp = img_pool_layer(input=tmp, stride=2, pool_size=2, pool_type=MaxPooling())
-    #tmp = dropout_layer(input=tmp, dropout_rate=0.5)
     tmp = fc_layer(input=tmp, size = num_classes, act=SoftmaxActivation())
-    # tmp = fc_layer(input=tmp, size=512, layer_attr=ExtraAttr(drop_rate=0.5), act=LinearActivation())
-    # tmp = batch_norm_layer(input=tmp, act=ReluActivation())
-    # return fc_layer(input=tmp, size=num_classes, act=SoftmaxActivation())
     return tmp
 
 predict = light_cnn(input_image=img, num_channels=1, num_classes=label_size)
