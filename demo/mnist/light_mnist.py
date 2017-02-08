@@ -18,10 +18,7 @@ if not is_predict:
 #    learning_rate=0.1 / 128.0,
 #    learning_method=MomentumOptimizer(0.9),
 #    regularization=L2Regularization(0.0005 * 128))
-settings(
-    batch_size=50,
-    learning_rate=0.001,
-    learning_method=AdamOptimizer())
+settings(batch_size=50, learning_rate=0.001, learning_method=AdamOptimizer())
 
 #######################Network Configuration #############
 
@@ -32,9 +29,15 @@ img = data_layer(name='pixel', size=data_size)
 # small_vgg is predined in trainer_config_helpers.network
 # predict = small_vgg(input_image=img, num_channels=1, num_classes=label_size)
 
+
 # light cnn
 def light_cnn(input_image, num_channels, num_classes):
-    def __light__(ipt, num_filter=128, times=1, conv_filter_size=3, dropouts=0, num_channels_=None):
+    def __light__(ipt,
+                  num_filter=128,
+                  times=1,
+                  conv_filter_size=3,
+                  dropouts=0,
+                  num_channels_=None):
         return img_conv_group(
             input=ipt,
             num_channels=num_channels_,
@@ -53,8 +56,9 @@ def light_cnn(input_image, num_channels, num_classes):
     tmp = __light__(tmp, num_filter=128)
     tmp = __light__(tmp, num_filter=128, conv_filter_size=1)
 
-    tmp = fc_layer(input=tmp, size = num_classes, act=SoftmaxActivation())
+    tmp = fc_layer(input=tmp, size=num_classes, act=SoftmaxActivation())
     return tmp
+
 
 predict = light_cnn(input_image=img, num_channels=1, num_classes=label_size)
 
