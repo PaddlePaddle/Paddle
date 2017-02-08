@@ -35,6 +35,7 @@ data_size = 1 * 28 * 28
 label_size = 10
 img = data_layer(name='pixel', size=data_size)
 
+
 # light cnn
 # A shallower cnn model: [CNN, BN, ReLU, Max-Pooling] x4 + FC x1
 # Easier to train for mnist dataset and quite efficient
