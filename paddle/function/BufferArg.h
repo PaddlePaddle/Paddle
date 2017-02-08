@@ -190,7 +190,7 @@ public:
       : BufferArg(VALUE_TYPE_INT32, shape, argType) {
     bufferType_ = TENSOR_SEQUENCE_ID;
     CHECK_EQ(shape_.ndims(), 1UL);
-    CHECK_GT(shape_[0], 1UL);
+    CHECK_GE(shape_[0], 1UL);
     numSeqs_ = shape_[0] - 1;
   }
 
@@ -226,7 +226,8 @@ public:
   SequenceArg(ValueType valueType,
               const TensorShape& shape,
               ArgType argType = UNSPECIFIED)
-      : BufferArg(valueType, shape, argType), startPositions_(TensorShape()) {
+      : BufferArg(valueType, shape, argType),
+        startPositions_(TensorShape({shape[0]})) {
     bufferType_ = TENSOR_SEQUENCE_DATA;
   }
 
