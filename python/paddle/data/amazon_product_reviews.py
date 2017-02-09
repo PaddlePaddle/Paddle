@@ -98,7 +98,7 @@ class Categories(object):
     __md5__[VideoGames] = '730612da2d6a93ed19f39a808b63993e'
 
 
-__all__ = ['fetch', 'Categories', 'preprocess', 'dataset', 'load_data']
+__all__ = ['fetch', 'data', 'train_data', 'test_data']
 
 
 def calculate_md5(fn):
@@ -112,7 +112,7 @@ def calculate_md5(fn):
 def fetch(category=None, directory=None):
     """
     According to the source name,set the download path for source,
-    download the data from the source url,and return the download path to fetch
+    download the data from the source url, and return the download path to fetch
     for training api.
     :param category:
     :param directory:
