@@ -50,7 +50,8 @@ before_install:
     fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo paddle/scripts/travis/before_install.linux.sh; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
-  - pip install wheel 'protobuf==2.5' 'sphinx==1.4.9' breathe recommonmark virtualenv numpy
+  - pip install wheel  'sphinx==1.4.9' breathe recommonmark virtualenv numpy
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then pip install 'protobuf==2.5'; fi
 script:
   - paddle/scripts/travis/main.sh
 notifications:
