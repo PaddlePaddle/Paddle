@@ -10,13 +10,13 @@ Model = {topology, parameters}
 
 Evaluator = {Model*, activations}
 - forward
-- test
+- test(cost, ...)
 
 GradientMachine = {Evaluator*, gradients}
 - backward
 
 Optimizer = {Model*, GradientMachine*}
-- train
+- train(cost, ...)
 - update
 - checkpoint
 ```
