@@ -15,7 +15,7 @@ Evaluator = {Model*, activations}
 GradientMachine = {Evaluator*, gradients}
 - backward
 
-Optimizer = {Model*, Evaluator*, GradientMachine*}
+Optimizer = {Model*, GradientMachine*}
 - train
 - update
 - checkpoint
