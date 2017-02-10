@@ -1,4 +1,4 @@
-# PaddlePaddle API
+# PaddlePaddle Design Doc
 
 ## Ingredients
 
@@ -15,7 +15,7 @@ Evaluator = {Model*, activations}
 GradientMachine = {Evaluator*, gradients}
 - backward
 
-Optimizer = {Model*, GradientMachine*}
+Optimizer = {GradientMachine*}
 - train(cost, ...)
 - update
 - checkpoint
@@ -96,7 +96,7 @@ e.g., momentum and the Adam SGD algorithm.  We make `train` calls
 from `paddle.optimizer.SGD` by overrides only the `update` method.
 
 
-## Programming
+## Programming Interface
 
 A fictive example of PaddlePaddle program looks like the following:
 
