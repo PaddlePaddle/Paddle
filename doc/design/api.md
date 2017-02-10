@@ -12,7 +12,7 @@ Evaluator = {Model*, activations}
 - forward
 - test
 
-GradientMachine = {Model*, gradients}
+GradientMachine = {Evaluator*, gradients}
 - backward
 
 Optimizer = {Model*, Evaluator*, GradientMachine*}
