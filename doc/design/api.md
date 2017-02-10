@@ -1,38 +1,90 @@
-import yi_json
+# Design Doc: PaddlePaddle API
 
-g = 100
-def read():
-    queue q;
-    # warmup q
-    for i = 0 : 1000
-        q.push(read())
-    yield q.shuffle_get()
+## Ingredients
 
-input = paddle.layer.data(...)
-intermediate = paddle.layers.fc(input)
-output = paddle.layer.softmax(intermediate)
+As the first step of our design, we list important concepts in deep
+learning and try to figure their relationship, as shown below:
 
-model = paddle.model.create(output)
+```
+Model = {topology, parameters}
 
-train(model, data_provider=read, cluster="clusterId")
+Evaluator = {Model*, activations}
+- forward
+- test
 
-#--------------------------------------------------------------------------------
+GradientMachine = {Model*, gradients}
+- backward
 
-# 1. package, docker build, docker push
-# 2. kubectl, clusterId Kuberentes job, 10 trainer containers, 5 parameter server containers
+Optimizer = {Model*, Evaluator*, GradientMachine*}
+- train
+- update
+- checkpoint
+```
 
-#--------------------------------------------------------------------------------
+where the pair of curly braces `{` and `}` indicate *composition*, `*`
+indicates a *reference*, and `-` marks a "class method".
 
-def train():
-    if os.environ["kube_api_server"] == nil:
-        docker_build()
-        docker_push()
-        kube_ctrl_start_job()
-    else:
-        rank = kube_mpi_rank()
-        if rank == 0:
-            master()
-        elif rank >= 15:
-            parameter_server()
-        else:
-            _train()
+
+### Model
+
+We used to think that parameters are part of the toplogy (or layers).
+But that is not true, because multiple layers could share the same
+parameter matrix.  An example is a network that compares two text
+segments in a semantic space:
+
+```
+          semantic
+text A -> projection ---\
+          layer A        \
+                          cosine
+                          similarity -> output
+                          layer
+          semantic       /
+text B -> projection ---/
+          layer B
+```
+
+In this network, the two semantic projection layers (A and B) share
+the same parameter matrix.
+
+For more information about our API that specifies topology and
+parameter sharing, please refer to [TODO: API].
+
+
+### Evaluator
+
+Supposed that we have a trained ranking model, we should be able to
+use it in our search engine.  The search engine's Web server is a
+concurrent program so to serve many HTTP requests simultaneously.  It
+doens't make sense for each of these threads to have its own copy of
+model, because that would duplicate topologies and parameters.
+However, each thread should be able to record layer outputs, i.e.,
+activations, computed from an input, derived from the request.  With
+*Evaluator* that saves activations, we can write the over-simplified
+server program as:
+
+```python
+m = paddle.model.load("trained.model")
+
+http.handle("/",
+            lambda req:
+                e = paddle.evaluator.create(m)
+                e.forward(req)
+				e.activation(layer="output")) # returns activations of layer "output"
+```
+
+### GradientMachine
+
+Similar to the evaluation, the training needs to compute gradients so
+to update model parameters.  Because an [optimizer](#optimizer) might
+run multiple simultaneous threads to update the same model, gradients
+should be separated from the model.  Because gradients are only used
+in training, but not serving, they should be separate from Evaluator.
+Hence the `GradientMachine`.
+
+### Optimizer
+
+None of Model, Evaluator, nor GradientMachine implements the training
+loop, hence Optimizer.  We can define a concurrent optimizer that runs
+multiple simultaneious threads to train a model -- just let each
+thread has its own GradientMachine object.
