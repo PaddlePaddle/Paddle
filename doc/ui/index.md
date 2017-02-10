@@ -7,7 +7,7 @@
 
 ## API Reference
 
-* [Model Config Interface](api/trainer_config_helpers/index.md)
+* [Model Config Interface](api/trainer_config_helpers/index.rst)
 
 ## Command Line Argument
 
