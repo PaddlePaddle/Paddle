@@ -2219,7 +2219,10 @@ def Link(
 
 # memory for recurrent layer group.
 # *name* and *size* are actual layer's name and size.
-# will return name of the memory,
+# If *name* is None, need to provide *memory_name* and need to use
+# SetMemoryInput() later to specify the layer which this memory remembers.
+#
+# return the name of the memory,
 # use this name if you assign the memory as other layer's input
 #
 # boot frame of memory is zeroed by default,
@@ -2231,15 +2234,18 @@ def Link(
 # can only be initailized by a *boot_layer* which is a sequence.
 #
 @config_func
-def Memory(
-        name,
-        size,
-        is_sequence=False,
-        boot_layer=None,
-        boot_bias=False,
-        boot_bias_active_type="",
-        boot_with_const_id=None, ):
-    agent_name = name + "+delay1"
+def Memory(name,
+           size,
+           is_sequence=False,
+           boot_layer=None,
+           boot_bias=False,
+           boot_bias_active_type="",
+           boot_with_const_id=None,
+           memory_name=None):
+    if not memory_name:
+        config_assert(name is not None, "name needs cannot be None")
+        memory_name = name + "+delay1"
+    agent_name = memory_name
     if is_sequence:
         agent_layer = SequenceAgentLayer(agent_name, size)
     else:
@@ -2247,7 +2253,8 @@ def Memory(
     config_assert(g_current_submodel.is_recurrent_layer_group,
                   'Memory should be used in recurrent layer group only')
     memory = g_current_submodel.memories.add()
-    memory.layer_name = MakeLayerNameInSubmodel(name)
+    if name is not None:
+        memory.layer_name = MakeLayerNameInSubmodel(name)
     memory.link_name = MakeLayerNameInSubmodel(agent_name)
     memory.is_sequence = is_sequence
     options = sum((boot_layer is not None, bool(boot_bias),
@@ -2269,6 +2276,17 @@ def Memory(
     elif boot_with_const_id is not None:
         memory.boot_with_const_id = boot_with_const_id
     return agent_name
+
+
+@config_func
+def SetMemoryInput(memory_name, layer_name):
+    memory_name = MakeLayerNameInSubmodel(memory_name)
+    layer_name = MakeLayerNameInSubmodel(layer_name)
+    for mem in g_current_submodel.memories:
+        if mem.link_name == memory_name:
+            mem.layer_name = layer_name
+            return
+    logger.fatal("Nonexistent memory name: " + memory_name)
 
 
 # Generator for recurrent layer group, to use it:
