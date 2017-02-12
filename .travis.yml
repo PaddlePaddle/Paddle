@@ -51,6 +51,10 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo paddle/scripts/travis/before_install.linux.sh; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
   - pip install wheel  'sphinx==1.4.9' breathe recommonmark virtualenv numpy
+  # In master branch, protobuf 2.5 is used when compiling Paddle. And google change the
+  # float number serialization logic between protobuf 2.5 and the newest protobuf (which is 3.2).
+  # To install the newest protobuf in python will let Paddle unittest failed, because we
+  # compare protobuf serialization result by linux `diff` command.
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then pip install 'protobuf==2.5'; fi
 script:
   - paddle/scripts/travis/main.sh

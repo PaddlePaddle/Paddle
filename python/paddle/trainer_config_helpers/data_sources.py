@@ -88,6 +88,10 @@ def define_py_data_source(file_list,
             data.load_data_module = load_data_module
             data.load_data_object = load_data_object
             data.load_data_args = load_data_args
+
+            # Currently, there is a bug found when Paddle uses single GPU and async = True
+            # The async logic in Paddle should be refactored.
+            # Disable async temporarily and this flag will be removed later.
             data.async_load_data = False
             return data
 
