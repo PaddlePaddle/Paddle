@@ -201,7 +201,7 @@ def define_py_data_sources2(train_list, test_list, module, obj, args=None):
         data.load_data_module = load_data_module
         data.load_data_object = load_data_object
         data.load_data_args = load_data_args
-        data.async_load_data = True
+        data.async_load_data = False
         return data
 
     define_py_data_sources(
