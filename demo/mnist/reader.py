@@ -13,27 +13,26 @@ class DataReader(object):
         self.batch_size = batch_size
         self.is_shuffle = is_shuffle
         self.index_in_epoch = 0
-        if self.is_shuffle:
-            self.shuffle()
 
     def __iter__(self):
+        def shuffle(self):
+            perm = np.arange(self.num_examples)
+            np.random.shuffle(perm)
+            self.data = self.data[perm]
+            self.labels = self.labels[perm]
+
+        if self.is_shuffle:
+            self.shuffle()
         return self
 
-    def shuffle(self):
-        perm = np.arange(self.num_examples)
-        np.random.shuffle(perm)
-        self.data = self.data[perm]
-        self.labels = self.labels[perm]
-
     def next(self):
+        if self.index_in_epoch >= self.num_examples:
+            self.index_in_epoch = 0
+            raise StopIteration
+
         start = self.index_in_epoch
         self.index_in_epoch += self.batch_size
         end = min(self.index_in_epoch, self.num_examples)
-        if self.index_in_epoch >= self.num_examples:
-            self.index_in_epoch = 0
-            if self.is_shuffle:
-                self.shuffle()
-            raise StopIteration
         return {'pixel': self.data[start:end], 'label': self.labels[start:end]}
 
 
