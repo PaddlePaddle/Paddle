@@ -57,7 +57,7 @@ DataProvider是PaddlePaddle系统的数据提供器，将用户的原始数据�
 数据源配置
 ----------
 
-使用 ``PyDataProvider2`` 的函数 ``define_py_data_sources2`` 配置数据源。``define_py_data_sources2`` 里通过train_list和test_list指定是训练文件列表和测试文件列表。 如果传入字符串的话，是指一个数据列表文件。这个数据列表文件中包含的是每一个训练或者测试文件的路径。如果传入一个list的话，则会默认生成一个list文件，再传入给train.list或者test.list。
+使用 ``PyDataProvider2`` 的函数 ``setup_data_provider`` 配置数据源。``setup_data_provider`` 里通过train_list和test_list指定是训练文件列表和测试文件列表。 如果传入字符串的话，是指一个数据列表文件。这个数据列表文件中包含的是每一个训练或者测试文件的路径。如果传入一个list的话，则会默认生成一个list文件，再传入给train.list或者test.list。
 
 ``module`` 和 ``obj`` 指定了DataProvider的文件名和返回数据的函数名。更详细的使用，请参考 :ref:`api_pydataprovider2` 。
 

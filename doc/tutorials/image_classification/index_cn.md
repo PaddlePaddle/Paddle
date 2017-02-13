@@ -91,11 +91,11 @@ meta_path=data_dir+'batches.meta'
 args = {'meta':meta_path, 'mean_img_size': 32,
         'img_size': 32, 'num_classes': 10,
         'use_jpeg': 1, 'color': "color"}
-define_py_data_sources2(train_list=data_dir+"train.list",
-                        test_list=data_dir+'test.list',
-                        module='image_provider',
-                        obj='processData',
-                        args=args)
+setup_data_provider(data_dir+"train.list",
+                        data_dir+'test.list',
+                        'image_provider',
+                        'processData',
+                        args)
 settings(
     batch_size = 128,
     learning_rate = 0.1 / 128.0,
@@ -114,16 +114,16 @@ outputs(classification_cost(input=predict, label=lbl))
 from paddle.trainer_config_helpers import *
 ```
 
-之后定义的`define_py_data_sources2`使用Python数据提供器，其中 `args`将在`image_provider.py`进行使用，该文件负责产生图片数据并传递给Paddle系统
+之后定义的`setup_data_provider`使用Python数据提供器，其中 `args`将在`image_provider.py`进行使用，该文件负责产生图片数据并传递给Paddle系统
  - `meta`: 训练集平均值。
  - `mean_img_size`: 平均特征图的高度及宽度。
  - `img_size`：输入图片的高度及宽度。
  - `num_classes`：类别个数。
  - `use_jpeg`：处理过程中数据存储格式。
  - `color`：标示是否为彩色图片。
- 
+
  `settings`用于设置训练算法。在下面的例子中，learning rate被设置为0.1除以batch size，而weight decay则为0.0005乘以batch size。
- 
+
  ```python
 settings(
     batch_size = 128,

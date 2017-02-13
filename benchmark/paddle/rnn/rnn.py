@@ -14,8 +14,7 @@ pad_seq = get_config_arg('pad_seq', bool, True)
 imdb.create_data('imdb.pkl')
 
 args = {'vocab_size': vocab_size, 'pad_seq': pad_seq, 'maxlen': fixedlen}
-define_py_data_sources2(
-    "train.list", None, module="provider", obj="process", args=args)
+setup_data_provider("train.list", None, "provider", "process", args)
 
 settings(
     batch_size=batch_size,

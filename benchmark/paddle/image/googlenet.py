@@ -7,8 +7,7 @@ num_class = 1000
 batch_size = get_config_arg('batch_size', int, 128)
 
 args = {'height': height, 'width': width, 'color': True, 'num_class': num_class}
-define_py_data_sources2(
-    "train.list", None, module="provider", obj="process", args=args)
+setup_data_provider("train.list", None, "provider", "process", args)
 
 settings(
     batch_size=batch_size,
@@ -208,14 +207,14 @@ pool5 = img_pool_layer(
 # conv_o1 = img_conv_layer(name="conv_o1", input=pool_o1, filter_size=1, num_filters=128, stride=1, padding=0)
 # fc_o1 = fc_layer(name="fc_o1", input=conv_o1, size=1024, layer_attr=ExtraAttr(drop_rate=0.7), act=ReluActivation())
 # out1 = fc_layer(name="output1", input=fc_o1,  size=1000, act=SoftmaxActivation())
-# loss1 = cross_entropy(name='loss1', input=out1, label=lab, coeff=0.3) 
+# loss1 = cross_entropy(name='loss1', input=out1, label=lab, coeff=0.3)
 
 # output 2
 #pool_o2 = img_pool_layer(name="pool_o2", input=ince4d, num_channels=528, pool_size=5, stride=3, pool_type=AvgPooling())
 #conv_o2 = img_conv_layer(name="conv_o2", input=pool_o2, filter_size=1, num_filters=128, stride=1, padding=0)
 #fc_o2 = fc_layer(name="fc_o2", input=conv_o2, size=1024, layer_attr=ExtraAttr(drop_rate=0.7), act=ReluActivation())
 #out2 = fc_layer(name="output2", input=fc_o2, size=1000, act=SoftmaxActivation())
-#loss2 = cross_entropy(name='loss2', input=out2, label=lab, coeff=0.3) 
+#loss2 = cross_entropy(name='loss2', input=out2, label=lab, coeff=0.3)
 
 # output 3
 dropout = dropout_layer(name="dropout", input=pool5, dropout_rate=0.4)

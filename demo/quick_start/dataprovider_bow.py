@@ -48,7 +48,7 @@ def initializer(settings, dictionary, **kwargs):
 # during later pass, no on-the-fly data generation will be needed.
 # `setting` is the same object used by initializer()
 # `file_name` is the name of a file listed train_list or test_list file given
-# to define_py_data_sources2(). See trainer_config.lr.py.
+# to setup_data_provider(). See trainer_config.lr.py.
 @provider(init_hook=initializer, cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, file_name):
     # Open the input data file.

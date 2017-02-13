@@ -242,7 +242,7 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
     [libprotobuf ERROR google/protobuf/io/coded_stream.cc:171] A protocol message was rejected because it was too big (more than 67108864 bytes).  To increase the limit (or to disable these warnings), see CodedInputStream::SetTotalBytesLimit() in google/protobuf/io/coded_stream.h.
     F1205 14:59:50.295174 14703 TrainerConfigHelper.cpp:59] Check failed: m->conf.ParseFromString(configProtoStr)
 
-可能的原因是：传给dataprovider的某一个args过大，一般是由于直接传递大字典导致的。错误的define_py_data_sources2类似：
+可能的原因是：传给dataprovider的某一个args过大，一般是由于直接传递大字典导致的。错误的setup_data_provider类似：
 
 ..  code-block:: python
 
@@ -250,22 +250,22 @@ PaddlePaddle的参数使用名字 :code:`name` 作为参数的ID，相同名字�
      for line_count, line in enumerate(open(src_dict_path, "r")):
         src_dict[line.strip()] = line_count
 
-     define_py_data_sources2(
+     setup_data_provider(
         train_list,
         test_list,
-        module="dataprovider",
-        obj="process",
+        "dataprovider",
+        "process",
         args={"src_dict": src_dict})
 
-解决方案是：将字典的地址作为args传给dataprovider，然后在dataprovider里面根据该地址加载字典。即define_py_data_sources2应改为：
+解决方案是：将字典的地址作为args传给dataprovider，然后在dataprovider里面根据该地址加载字典。即setup_data_provider应改为：
 
 ..  code-block:: python
 
-     define_py_data_sources2(
+     setup_data_provider(
         train_list,
         test_list,
-        module="dataprovider",
-        obj="process",
+        "dataprovider",
+        "process",
         args={"src_dict_path": src_dict_path})
 
 完整源码可参考 `seqToseq <https://github.com/PaddlePaddle/Paddle/tree/develop/demo/seqToseq>`_ 示例。

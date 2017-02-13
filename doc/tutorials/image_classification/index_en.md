@@ -96,11 +96,11 @@ meta_path=data_dir+'batches.meta'
 args = {'meta':meta_path, 'mean_img_size': 32,
         'img_size': 32, 'num_classes': 10,
         'use_jpeg': 1, 'color': "color"}
-define_py_data_sources2(train_list=data_dir+"train.list",
-                        test_list=data_dir+'test.list',
-                        module='image_provider',
-                        obj='processData',
-                        args=args)
+setup_data_provider(data_dir+"train.list",
+                        data_dir+'test.list',
+                        'image_provider',
+                        'processData',
+                        args)
 settings(
     batch_size = 128,
     learning_rate = 0.1 / 128.0,
@@ -119,7 +119,7 @@ The first line imports python functions for defining networks.
 from paddle.trainer_config_helpers import *
 ```
 
-Then define an `define_py_data_sources2` which use python data provider
+Then define an `setup_data_provider` which use python data provider
 interface. The arguments in `args` are used in `image_provider.py` which
 yeilds image data and transform them to Paddle.
  - `meta`: the mean value of training set.

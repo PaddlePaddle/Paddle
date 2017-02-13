@@ -45,11 +45,11 @@ def seq_to_seq_data(data_dir,
         train_list = os.path.join(data_dir, train_list)
         test_list = os.path.join(data_dir, test_list)
 
-    define_py_data_sources2(
+    setup_data_provider(
         train_list,
         test_list,
-        module="dataprovider",
-        obj="process",
+        "dataprovider",
+        "process",
         args={
             "src_dict_path": src_lang_dict,
             "trg_dict_path": trg_lang_dict,

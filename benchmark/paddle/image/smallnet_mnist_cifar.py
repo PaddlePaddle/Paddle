@@ -9,8 +9,7 @@ num_class = 10
 batch_size = get_config_arg('batch_size', int, 128)
 
 args = {'height': height, 'width': width, 'color': True, 'num_class': num_class}
-define_py_data_sources2(
-    "train.list", None, module="provider", obj="process", args=args)
+setup_data_provider("train.list", None, "provider", "process", args)
 
 settings(
     batch_size=batch_size,
