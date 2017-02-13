@@ -39,11 +39,24 @@ def main():
         array = pool.get_parameter(param_name)
         array[:] = numpy.random.uniform(low=-1.0, high=1.0, size=array.shape)
 
-    trainer = paddle_v2.trainer.SGDTrainer(
-        update_equation=paddle_v2.optimizer.Adam(
-            learning_rate=1e-4,
-            model_average=ModelAverage(average_window=0.5),
-            regularization=L2Regularization(rate=0.5)))
+    def nag(v, g, vel_t_1):
+        """
+        NAG Optimizer. A optimizer which Paddle CPP is not implemented.
+        https://arxiv.org/pdf/1212.0901v2.pdf eq.6 eq.7
+        :param v: parameter value
+        :param g: parameter gradient
+        :param vel_t_1: t-1 velocity
+        :return:
+        """
+        mu = 0.09
+        e = 0.0001
+
+        vel_t = mu * vel_t_1 - e * g
+
+        v[:] = v + (mu**2) * vel_t - (1 + mu) * e * g
+        vel_t_1[:] = vel_t
+
+    trainer = paddle_v2.trainer.SGDTrainer(update_equation=nag)
 
     trainer.train(train_data_reader=train_reader,
                   topology=model_config,
