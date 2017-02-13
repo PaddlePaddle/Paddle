@@ -16,11 +16,11 @@ Some essential concepts that our API have to provide include:
 1. In some topologies, layers share parameters.  For
    example,
    [the network for training a ranking model](https://github.com/PaddlePaddle/Paddle/issues/1311#issuecomment-279121850).
-   
+
 1. At programming time, users specify topologies and possible sharing
    of parameters.  PaddlePaddle can figure out and create parameters
    required (and possibly shared) by one or more topologies.
-   
+
 
 ## Starting from Examples
 
@@ -59,9 +59,9 @@ fA = f(paddle.layer.data(input_name="A"))
 fB = f(paddle.layer.data(input_name="B"))
 fQ = f(paddle.layer.data(input_name="Q"))
 
-topology = paddle.cost.less_than(
-               paddle.cost.cross_entropy(fA, fQ),
-               paddle.cost.corss_entropy(fB, fQ))
+topology = paddle.layer.less_than(
+               paddle.layer.cross_entropy(fA, fQ),
+               paddle.layer.corss_entropy(fB, fQ))
 
 # Derive parameters required in topology and create them in model.
 parameters = paddle.parameters.create(topology)
@@ -86,7 +86,7 @@ correspond to the two networks in the following figure:
 ```python
 def G(in):
     # over-simplified example as G has only one layers:
-    return paddle.layer.fc(in, parameter_name="G") 
+    return paddle.layer.fc(in, parameter_name="G")
 
 def D(in);
     # again, over-simplified:
@@ -94,12 +94,12 @@ def D(in);
 
 # Construct the first topology, which contains both D and G.
 # By learning this topology, we update parameters of G.
-d0 = paddle.cost.should_be_false(D(G(paddle.layer.data())))
+d0 = paddle.layer.should_be_false(D(G(paddle.layer.data())))
 
 # Construct a second topology d1, which contains only D. By
-# training this topology, we update parameters of D.  Note 
+# training this topology, we update parameters of D.  Note
 # that d1 share parameters with d0.
-d1 = paddle.cost.should_be_true(D(paddle.layer.data()))
+d1 = paddle.layer.should_be_true(D(paddle.layer.data()))
 
 # Create parameters from a list of multiple topologies (models) for
 # the chance to share parameters between these topologies.
@@ -132,16 +132,16 @@ Above two programs reveal some important design concerns:
 
 1. At training and inference time, `paddle.train` and `paddle.infer`
    requires both a topology and the parameter set that holds the parameters of that topology.  There are some reasons:
-   
+
    1. This prevents users from forgetting to call
       `paddle.parameters.create`.
    1. `paddle.train` needs to know which parameter set to update.
    1. Users could load another (pre-trained) parameter set and use it
       with a topology in `train.infer`.
-   
+
 1. By specifying the `immutable_parameters` parameter of
    `paddle.train`, we can forbid the update of these parameters.
-   
+
 
 ## Reader
 
@@ -190,7 +190,7 @@ access a Kubernetes cluster, s/he should be able to call
 
 ```python
 paddle.dist_train(model,
-                  trainer=paddle.trainer.SGD(..., 
+                  trainer=paddle.trainer.SGD(...,
                                              paddle.updater.Adam(...)),
                   reader=read,
                   k8s_user="yi",
