@@ -49,7 +49,7 @@ def main():
         :return:
         """
         mu = 0.09
-        e = 0.0001
+        e = 0.00001
 
         vel_t = mu * vel_t_1 - e * g
 
