@@ -12,6 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import optimizer
-
-__all__ = ['optimizer']
+__all__ = ['optimizer', 'model', 'gradient_machine']
