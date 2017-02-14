@@ -35,8 +35,8 @@ public:
   explicit SamplingIdLayer(const LayerConfig& config)
       : Layer(config), rand1_(0, 1) {}
 
-  virtual bool init(const LayerMap& layerMap,
-                    const ParameterMap& parameterMap) {
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override {
     bool ret = Layer::init(layerMap, parameterMap);
     CHECK_EQ(1UL, inputLayers_.size());
     if (useGpu_) {
@@ -48,7 +48,7 @@ public:
     return ret;
   }
 
-  void forward(PassType passType) {
+  void forward(PassType passType) override {
     Layer::forward(passType);
     if (useGpu_) {
       for (size_t i = 0; i < inputLayers_.size(); i++) {
@@ -83,7 +83,7 @@ public:
     output_.ids->copyFrom(ids.data(), batchSize);
   }
 
-  virtual void backward(const UpdateCallback& callback) {}
+  void backward(const UpdateCallback& callback) override {}
 };
 
 REGISTER_LAYER(sampling_id, SamplingIdLayer);
