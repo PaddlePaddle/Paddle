@@ -176,9 +176,11 @@ opt.train(topology, parameters, reader=read, ...)
 
 ### Updater
 
-Please be aware that a trainer requires an updater as its data
-member.  This is to make it easier to customize trainers, as
-discussed [here](https://github.com/PaddlePaddle/Paddle/issues/1319).
+Please be aware that a trainer can accept an updater as its data
+member, where an updater is a class derived from
+`paddle.trainer.Updater`.  This is to make it easier to customize
+trainers, as discussed
+[here](https://github.com/PaddlePaddle/Paddle/issues/1319).
 
 ### Event Handler
 
@@ -188,8 +190,8 @@ that handle some events:
 
 1. BeginTraining
 1. EndTraining
-1. BeginMinibatch
-1. EndMinibatch
+1. BeginIteration
+1. EndIteration
 1. BeginPass
 1. EndPass
 
@@ -200,11 +202,16 @@ An example as follows:
 
 ```python
 def event_handler(event):
-    if ininstance(event, paddle.event.EndMinibatch):
+    if ininstance(event, paddle.event.EndIteration):
         print paddle.test(...)
 
 paddle.train(topology, parameters, reader, event_handler)
 ```
+
+If we are writing a PaddlePaddle program in and for iPython/Jypyter,
+we can use metaplotlib in the event handler to plot a curve of
+cost/error versus iterations, as shown
+[here](https://blog.dominodatalab.com/interactive-dashboards-in-jupyter/).
 
 ### Distributed Training
 
