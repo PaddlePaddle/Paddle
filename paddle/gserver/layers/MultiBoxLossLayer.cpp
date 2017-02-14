@@ -34,7 +34,6 @@ bool MultiBoxLossLayer::init(const LayerMap& layerMap,
   overlapThreshold_ = mblConf.overlap_threshold();
   negPosRatio_ = mblConf.neg_pos_ratio();
   negOverlap_ = mblConf.neg_overlap();
-  locWeight_ = mblConf.loc_weight();
   backgroundId_ = mblConf.background_id();
   return true;
 }
@@ -123,19 +122,23 @@ void MultiBoxLossLayer::forward(PassType passType) {
   // BBox loc l1 smooth loss
   locLoss_ = 0;
   if (numMatches_ >= 1) {
-    Matrix::resizeOrCreate(locDiff_, 1, numMatches_ * 4, false, false);
+    size_t count = 0;
+    MatrixPtr locLossOutput;
+    Matrix::resizeOrCreate(locLossOutput, numMatches_ * 4, 1, false, false);
+    Matrix::resizeOrCreate(locGtData_, numMatches_ * 4, 1, false, false);
+    Matrix::resizeOrCreate(locDiff_, numMatches_ * 4, 1, false, false);
     locDiff_->zeroMem();
-    vector<real> locPredData;
     vector<real> locGtData;
-    for (size_t n = 0; n < batchSize; n++)
+
+    for (size_t n = 0; n < batchSize; n++) {
       for (size_t i = 0; i < numPriors_; i++) {
         if (allMatchIndices_[n][i] == -1) continue;
         size_t locOffset =
             n * (locBuffer_->getElementCnt() / batchSize) + i * 4;
-        locPredData.push_back((locBuffer_->getData() + locOffset)[0]);
-        locPredData.push_back((locBuffer_->getData() + locOffset)[1]);
-        locPredData.push_back((locBuffer_->getData() + locOffset)[2]);
-        locPredData.push_back((locBuffer_->getData() + locOffset)[3]);
+        locDiff_->getData()[count++] = (locBuffer_->getData() + locOffset)[0];
+        locDiff_->getData()[count++] = (locBuffer_->getData() + locOffset)[1];
+        locDiff_->getData()[count++] = (locBuffer_->getData() + locOffset)[2];
+        locDiff_->getData()[count++] = (locBuffer_->getData() + locOffset)[3];
 
         const int gtIdx = allMatchIndices_[n][i];
         vector<real> gtEncode;
@@ -146,42 +149,54 @@ void MultiBoxLossLayer::forward(PassType passType) {
                    &gtEncode);
         locGtData.insert(locGtData.end(), gtEncode.begin(), gtEncode.end());
       }
-    locLoss_ =
-        smoothL1Loss(locPredData, locGtData, locWeight_, locDiff_->getData());
+    }
+    locGtData_->copyFrom(&locGtData[0], numMatches_ * 4);
+    locLossOutput->smoothL1(*locDiff_, *locGtData_);
+    locLoss_ = locLossOutput->getSum() / numMatches_;
   }
 
   // BBox conf softmax loss
   confLoss_ = 0;
   numConf_ = numMatches_ + numNegs_;
   if (numConf_ >= 1) {
-    Matrix::resizeOrCreate(confProb_, 1, numConf_ * numClasses_, false, false);
+    Matrix::resizeOrCreate(confProb_, numConf_, numClasses_, false, false);
+    IVector::resizeOrCreate(confGtData_, numConf_, false);
     confProb_->zeroMem();
+    size_t count = 0;
+
     vector<real> confPredData;
-    confGtData_.clear();
     for (size_t n = 0; n < batchSize; n++) {
       for (size_t i = 0; i < numPriors_; i++) {
         if (allMatchIndices_[n][i] == -1) continue;
         size_t labelOffset = (labelIndex[n] + allMatchIndices_[n][i]) * 6;
         const int gtLabel = (labelValue->getData() + labelOffset)[0];
-        confGtData_.push_back(gtLabel);
+        confGtData_->getData()[count] = gtLabel;
         size_t confOffset = n * numPriors_ * numClasses_ + i * numClasses_;
-        for (size_t j = 0; j < numClasses_; j++)
+        for (size_t j = 0; j < numClasses_; j++) {
+          confProb_->getData()[count * numClasses_ + j] =
+              (confBuffer_->getData() + confOffset)[j];
           confPredData.push_back((confBuffer_->getData() + confOffset)[j]);
+        }
+        count++;
       }
       // Negative mining samples
       for (size_t i = 0; i < allNegIndices_[n].size(); i++) {
-        confGtData_.push_back(backgroundId_);
+        confGtData_->getData()[count] = backgroundId_;
         size_t confOffset =
             n * numPriors_ * numClasses_ + allNegIndices_[n][i] * numClasses_;
-        for (size_t j = 0; j < numClasses_; j++)
+        for (size_t j = 0; j < numClasses_; j++) {
+          confProb_->getData()[count * numClasses_ + j] =
+              (confBuffer_->getData() + confOffset)[j];
           confPredData.push_back((confBuffer_->getData() + confOffset)[j]);
+        }
+        count++;
       }
     }
-    confLoss_ = softmaxLoss(confPredData,
-                            confGtData_,
-                            numClasses_,
-                            numMatches_,
-                            confProb_->getData());
+    confProb_->softmax(*confProb_);
+    MatrixPtr confLossOutput;
+    Matrix::resizeOrCreate(confLossOutput, numConf_, 1, false, false);
+    confLossOutput->oneHotCrossEntropy(*confProb_, *confGtData_);
+    confLoss_ = confLossOutput->getSum() / numMatches_;
   }
   real loss = locLoss_ + confLoss_;
   MatrixPtr outV = getOutputValue();
@@ -196,7 +211,7 @@ void MultiBoxLossLayer::backward(const UpdateCallback& callback) {
 
   // Back propagate on location prediction
   if (numMatches_ >= 1) {
-    smoothL1LossBp(numMatches_, locDiff_->getData());
+    locDiff_->smoothL1Bp(*locDiff_, *locGtData_);
     // Scale gradient
     for (size_t i = 0; i < numMatches_ * 4; i++)
       locDiff_->getData()[i] *= (1. / numMatches_);
@@ -217,7 +232,9 @@ void MultiBoxLossLayer::backward(const UpdateCallback& callback) {
 
   // Back propagate on confidence prediction
   if (numConf_ >= 1) {
-    softmaxLossBp(confGtData_, numClasses_, confProb_->getData());
+    // Caffe version softmax backpropagation
+    for (size_t i = 0; i < numConf_; i++)
+      confProb_->getData()[i * numClasses_ + confGtData_->getData()[i]] -= 1;
     // Scale gradient
     for (size_t i = 0; i < numConf_ * numClasses_; i++)
       confProb_->getData()[i] *= (1. / numMatches_);
@@ -417,64 +434,6 @@ void MultiBoxLossLayer::backwardDataProcess(size_t batchSize) {
   }
   CHECK_EQ(locOffset, locSizeSum_ / batchSize);
   CHECK_EQ(confOffset, confSizeSum_ / batchSize);
-}
-
-void MultiBoxLossLayer::softmaxLossBp(const vector<int> confGtData,
-                                      const size_t numClasses,
-                                      real* confProb) {
-  for (size_t i = 0; i < confGtData.size(); i++)
-    confProb[i * numClasses + confGtData[i]] -= 1;
-}
-
-real MultiBoxLossLayer::softmaxLoss(const vector<real> confPredData,
-                                    const vector<int> confGtData,
-                                    const size_t numClasses,
-                                    const size_t numMatches,
-                                    real* confProb) {
-  CHECK_EQ(confGtData.size(), confPredData.size() / numClasses);
-  real error = 0;
-  size_t offset = 0;
-  for (size_t i = 0; i < confGtData.size(); i++) {
-    real sum = 0;
-    real scale = 0;
-    offset = numClasses * i;
-    for (size_t j = 0; j < numClasses; j++)
-      scale = std::max(scale, confPredData[i * numClasses + j]);
-    for (size_t j = 0; j < numClasses; j++)
-      confProb[offset + j] = std::exp(confPredData[i * numClasses + j] - scale);
-    for (size_t j = 0; j < numClasses; j++) sum += confProb[offset + j];
-    for (size_t j = 0; j < numClasses; j++)
-      confProb[offset + j] = confProb[offset + j] / sum;
-    error -= std::log(std::max(confProb[offset + confGtData[i]], FLT_MIN));
-  }
-  // keep same as caffe version
-  return error / numMatches;
-}
-
-real MultiBoxLossLayer::smoothL1Loss(const vector<real> locPredData,
-                                     const vector<real> locGtData,
-                                     const real locWeight,
-                                     real* locDiff) {
-  CHECK_EQ(locPredData.size(), locGtData.size());
-  real error = 0.;
-  for (size_t i = 0; i < locPredData.size(); i++) {
-    locDiff[i] = locPredData[i] - locGtData[i];
-    real diff = std::fabs(locDiff[i] * locWeight_);
-    if (diff < 1.)
-      error += 0.5 * diff * diff;
-    else
-      error += diff - 0.5;
-  }
-  return error / (locPredData.size() / 4);
-}
-
-void MultiBoxLossLayer::smoothL1LossBp(const size_t numMatches, real* locDiff) {
-  // f'(x) = x         if |x| < 1
-  //       = sign(x)   otherwise
-  for (size_t i = 0; i < numMatches * 4; i++) {
-    if (std::fabs(locDiff[i]) >= 1)
-      locDiff[i] = (0 < locDiff[i]) - (locDiff[i] < 0);
-  }
 }
 
 void MultiBoxLossLayer::getMaxConfScore(const real* confData,

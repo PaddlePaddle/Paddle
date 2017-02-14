@@ -783,6 +783,14 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void smoothL1(Matrix& output, Matrix& label) {
+    LOG(FATAL) << "Not implemented";
+  }
+
+  virtual void smoothL1Bp(Matrix& outputV, Matrix& label) {
+    LOG(FATAL) << "Not implemented";
+  }
+
   virtual void tanh(Matrix& output) { LOG(FATAL) << "Not implemented"; }
 
   virtual void tanhDerivative(Matrix& output) {
@@ -1744,6 +1752,9 @@ public:
 
   /// gradient of sumOfSquares.
   void sumOfSquaresBp(Matrix& outputV, Matrix& label);
+
+  void smoothL1(Matrix& output, Matrix& label);
+  void smoothL1Bp(Matrix& output, Matrix& label);
 
   void tanh(Matrix& output);
   void tanhDerivative(Matrix& output);

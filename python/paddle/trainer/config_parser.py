@@ -1618,8 +1618,8 @@ class PriorBoxLayer(LayerBase):
 
 @config_layer('multibox_loss')
 class MultiBoxLossLayer(LayerBase):
-    def __init__(self, name, inputs, input_num, num_classes, loc_weight,
-                 overlap_threshold, neg_pos_ratio, neg_overlap, background_id):
+    def __init__(self, name, inputs, input_num, num_classes, overlap_threshold,
+                 neg_pos_ratio, neg_overlap, background_id):
         super(MultiBoxLossLayer, self).__init__(name, 'multibox_loss', 0,
                                                 inputs)
         config_assert(
@@ -1628,7 +1628,6 @@ class MultiBoxLossLayer(LayerBase):
         config_assert(num_classes > background_id,
                       'Classes number must greater than background ID')
         self.config.inputs[0].multibox_loss_conf.num_classes = num_classes
-        self.config.inputs[0].multibox_loss_conf.loc_weight = loc_weight
         self.config.inputs[
             0].multibox_loss_conf.overlap_threshold = overlap_threshold
         self.config.inputs[0].multibox_loss_conf.neg_pos_ratio = neg_pos_ratio
@@ -2104,6 +2103,7 @@ define_cost('RankingCost', 'rank-cost')
 define_cost('AucValidation', 'auc-validation')
 define_cost('PnpairValidation', 'pnpair-validation')
 define_cost('SumOfSquaresCostLayer', 'square_error')
+define_cost('SmoothL1CostLayer', 'smooth_l1')
 define_cost('MultiBinaryLabelCrossEntropy', 'multi_binary_label_cross_entropy')
 define_cost('SoftBinaryClassCrossEntropy', 'soft_binary_class_cross_entropy')
 define_cost('HuberTwoClass', 'huber')

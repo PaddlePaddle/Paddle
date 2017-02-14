@@ -96,26 +96,8 @@ public:
                   const real* labelData,
                   vector<real>* gtEncode);
 
-  real smoothL1Loss(const vector<real> locPredData,
-                    const vector<real> locGtData,
-                    const real locWeight,
-                    real* locDiff);
-
-  void smoothL1LossBp(const size_t numMatches, real* locDiff);
-
-  real softmaxLoss(const vector<real> confPredData,
-                   const vector<int> confGtData,
-                   const size_t numClasses,
-                   const size_t numMatches,
-                   real* confProb);
-
-  void softmaxLossBp(const vector<int> confGtData,
-                     const size_t numClasses,
-                     real* confProb);
-
 protected:
   size_t numClasses_;
-  real locWeight_;
   real overlapThreshold_;
   real negPosRatio_;
   real negOverlap_;
@@ -134,7 +116,8 @@ protected:
 
   vector<vector<int>> allMatchIndices_;
   vector<vector<int>> allNegIndices_;
-  vector<int> confGtData_;
+  MatrixPtr locGtData_;
+  IVectorPtr confGtData_;
 
   // Temporary buffers for permute and flat mbox loc and conf input
   MatrixPtr locBuffer_;

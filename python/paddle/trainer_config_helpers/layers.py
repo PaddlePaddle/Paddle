@@ -111,7 +111,6 @@ __all__ = [
     'multibox_loss_layer',
     'normalize_layer',
     'detection_output_layer',
-    'detection_eval_layer',
     'spp_layer',
     'pad_layer',
 ]
@@ -1000,7 +999,6 @@ def multibox_loss_layer(input_loc,
                         priorbox,
                         label,
                         num_classes=21,
-                        loc_weight=1.0,
                         overlap_threshold=0.5,
                         neg_pos_ratio=3.0,
                         neg_overlap=0.5,
@@ -1021,8 +1019,6 @@ def multibox_loss_layer(input_loc,
     :type label: LayerOutput 
     :param num_classes: The number of the classification.
     :type num_classes: int
-    :param loc_weight: The weight of the location loss.
-    :type loc_weight: float
     :param overlap_threshold: The threshold of the overlap.
     :type overlap_threshold: float
     :param neg_pos_ratio: The ratio of the negative bbox to the positive bbox.
@@ -1065,7 +1061,6 @@ def multibox_loss_layer(input_loc,
         inputs=inputs,
         input_num=input_loc_num,
         num_classes=num_classes,
-        loc_weight=loc_weight,
         overlap_threshold=overlap_threshold,
         neg_pos_ratio=neg_pos_ratio,
         neg_overlap=neg_overlap,
@@ -1153,43 +1148,6 @@ def detection_output_layer(input_loc,
         background_id=background_id)
     return LayerOutput(
         name, LayerType.DETECTION_OUTPUT_LAYER, parents=parents, size=size)
-
-
-@wrap_name_default("detection_eval")
-def detection_eval_layer(input,
-                         label,
-                         num_classes=21,
-                         overlap_threshold=0.5,
-                         background_id=0,
-                         evaluate_difficult=False,
-                         name=None):
-    """
-    Prepare the data for the detection evaluator and the input must be a detection_output layer
-    :param name: The Layer Name.
-    :type name: basestring
-    :param num_classes: The number of the classification.
-    :type num_classes: int
-    :param overlap_threshold: The bbox overlap threshold of a true positive.
-    :type overlap_threshold: float
-    :param background_id: The background class index.
-    :type background_id: int
-    :param evaluate_difficult: Wether evaluate a difficult ground truth.
-    :type evaluate_difficult: bool
-    :return: LayerOutput
-    """
-    size = (input.size / 7 + num_classes - 1) * 5
-    parents = [input, label]
-    Layer(
-        name=name,
-        type=LayerType.DETECTION_EVAL_LAYER,
-        inputs=[input.name, label.name],
-        size=size,
-        num_classes=num_classes,
-        overlap_threshold=overlap_threshold,
-        background_id=background_id,
-        evaluate_difficult=evaluate_difficult)
-    return LayerOutput(
-        name, LayerType.DETECTION_EVAL_LAYER, parents=parents, size=size)
 
 
 @wrap_name_default("normalize")
