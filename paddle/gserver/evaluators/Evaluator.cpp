@@ -83,7 +83,7 @@ public:
     errorMat->zeroMem();
 
     if (label != nullptr) {
-      errorMat->classificationError(output, label);  // top-1 error
+      errorMat->classificationError(*output, *label);  // top-1 error
       size_t height = output->getHeight();
       size_t width = 5;  // config_.num_results();
 
