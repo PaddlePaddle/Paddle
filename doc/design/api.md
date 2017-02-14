@@ -163,7 +163,7 @@ There are some open questions here:
    feed a topology with more data layers?**
 
 
-### Training
+## Training
 
 The recommended way to training a model is to call `paddle.train`,
 which simply calls `paddle.trainer.Default`, a global variable of
@@ -171,15 +171,42 @@ type `paddle.trainer.SGD`.  Equivalently, we can do
 
 ```python
 opt = paddle.trainer.SGD(..., paddle.updater.Adam(...))
-opt.train(model, reader=read, ...)
+opt.train(topology, parameters, reader=read, ...)
 ```
+
+### Updater
 
 Please be aware that a trainer requires an updater as its data
 member.  This is to make it easier to customize trainers, as
 discussed [here](https://github.com/PaddlePaddle/Paddle/issues/1319).
 
+### Event Handler
 
-#### Distributed Training
+`paddle.train` and `paddle.trainer.XXX.train` take an optional
+parameter `event_handler`, which should be either `None` or a function
+that handle some events:
+
+1. BeginTraining
+1. EndTraining
+1. BeginMinibatch
+1. EndMinibatch
+1. BeginPass
+1. EndPass
+
+where EndPass is sent if and only if the reader yields
+`end_pass=True`.
+
+An example as follows:
+
+```python
+def event_handler(event):
+    if ininstance(event, paddle.event.EndMinibatch):
+        print paddle.test(...)
+
+paddle.train(topology, parameters, reader, event_handler)
+```
+
+### Distributed Training
 
 If users want to do distributed training on a cluster, s/he should
 call `paddle.dist_train` and provides access tokens to the cluster as
