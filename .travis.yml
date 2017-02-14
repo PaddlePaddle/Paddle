@@ -54,7 +54,9 @@ before_install:
     fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then paddle/scripts/travis/before_install.osx.sh; fi
   - if [[ "$JOB" == "PRE_COMMIT" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
-  - pip install numpy wheel protobuf sphinx recommonmark sphinx_rtd_theme virtualenv pre-commit requests==2.9.2 LinkChecker
+  # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python 
+  # protobuf version.
+  - pip install numpy wheel 'protobuf==3.1' sphinx recommonmark sphinx_rtd_theme virtualenv pre-commit requests==2.9.2 LinkChecker
 script:
   - paddle/scripts/travis/main.sh
 notifications:
