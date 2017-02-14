@@ -495,6 +495,7 @@ def gradient_printer_evaluator(
     """
     evaluator_base(name=name, type="gradient_printer", input=input)
 
+
 @evaluator(EvaluatorAttribute.FOR_PRINT)
 @wrap_name_default()
 def maxid_printer_evaluator(
