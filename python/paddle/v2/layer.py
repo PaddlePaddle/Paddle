@@ -19,6 +19,21 @@ from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 import collections
 
 
+def parse_network(*outputs):
+    """
+    parse all output layers and then generate a model config proto.
+    :param outputs:
+    :return:
+    """
+
+    def __real_func__():
+        context = dict()
+        real_output = [each.to_proto(context=context) for each in outputs]
+        conf_helps.outputs(real_output)
+
+    return __parse__(__real_func__)
+
+
 class Layer(object):
     def __init__(self, name, parent_layer):
         assert isinstance(parent_layer, dict)
@@ -49,22 +64,13 @@ class Layer(object):
         raise NotImplementedError()
 
 
-def parse_network(*outputs):
-    def __real_func__():
-        context = dict()
-        real_output = [each.to_proto(context=context) for each in outputs]
-        conf_helps.outputs(real_output)
-
-    return __parse__(__real_func__)
-
-
-def __convert__(method_name, name_prefix, parent_names):
+def __convert_to_v2__(method_name, name_prefix, parent_names):
     if name_prefix is not None:
         wrapper = wrap_name_default(name_prefix=name_prefix)
     else:
         wrapper = None
 
-    class __Impl__(Layer):
+    class V2LayerImpl(Layer):
         def __init__(self, name=None, **kwargs):
             parent_layers = dict()
             other_kwargs = dict()
@@ -75,7 +81,7 @@ def __convert__(method_name, name_prefix, parent_names):
                 if key not in parent_names:
                     other_kwargs[key] = kwargs[key]
 
-            super(__Impl__, self).__init__(name, parent_layers)
+            super(V2LayerImpl, self).__init__(name, parent_layers)
             self.__other_kwargs__ = other_kwargs
 
         if wrapper is not None:
@@ -89,24 +95,38 @@ def __convert__(method_name, name_prefix, parent_names):
                 args[each] = self.__other_kwargs__[each]
             return getattr(conf_helps, method_name)(name=self.name, **args)
 
-    return __Impl__
+    return V2LayerImpl
 
 
-data_layer = __convert__('data_layer', None, [])
-fc_layer = __convert__('fc_layer', name_prefix='fc', parent_names=['input'])
-classification_cost = __convert__(
+data = __convert_to_v2__('data_layer', None, [])
+fc = __convert_to_v2__('fc_layer', name_prefix='fc', parent_names=['input'])
+max_id = __convert_to_v2__(
+    'maxid_layer', name_prefix='maxid_layer', parent_names=['input'])
+classification_cost = __convert_to_v2__(
     'classification_cost',
     name_prefix='classification_cost',
     parent_names=['input', 'label'])
+cross_entropy_cost = __convert_to_v2__(
+    'cross_entropy',
+    name_prefix='cross_entropy',
+    parent_names=['input', 'label'])
 
-__all__ = ['data_layer', 'fc_layer', 'classification_cost', 'parse_network']
+__all__ = [
+    'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
+    'cross_entropy_cost'
+]
 
 if __name__ == '__main__':
-    data = data_layer(name='pixel', size=784)
-    hidden = fc_layer(input=data, size=100, act=conf_helps.SigmoidActivation())
-    predict = fc_layer(
-        input=[hidden, data], size=10, act=conf_helps.SoftmaxActivation())
-    cost = classification_cost(
-        input=predict, label=data_layer(
-            name='label', size=10))
-    print parse_network(cost)
+    pixel = data(name='pixel', size=784)
+    label = data(name='label', size=10)
+    hidden = fc(input=pixel, size=100, act=conf_helps.SigmoidActivation())
+    inference = fc(input=hidden, size=10, act=conf_helps.SoftmaxActivation())
+    maxid = max_id(input=inference)
+    cost1 = classification_cost(input=inference, label=label)
+    cost2 = cross_entropy_cost(input=inference, label=label)
+
+    print parse_network(cost1)
+    print parse_network(cost2)
+    print parse_network(cost1, cost2)
+    print parse_network(cost2)
+    print parse_network(inference, maxid)

@@ -10,7 +10,7 @@ import random
 
 import numpy as np
 import paddle.trainer.PyDataProvider2 as dp
-import paddle.v2
+import paddle.v2 as paddle_v2
 import py_paddle.swig_paddle as api
 from paddle.trainer_config_helpers import *
 from py_paddle import DataProviderConverter
@@ -58,7 +58,7 @@ def input_order_converter(generator):
 def main():
     api.initPaddle("-use_gpu=false", "-trainer_count=4")  # use 4 cpu cores
 
-    optimizer = paddle.v2.optimizer.Adam(
+    optimizer = paddle_v2.optimizer.Adam(
         learning_rate=1e-4,
         batch_size=1000,
         model_average=ModelAverage(average_window=0.5),
@@ -71,16 +71,17 @@ def main():
     assert isinstance(updater, api.ParameterUpdater)
 
     # define network
-    images = paddle.v2.layers.data_layer(name='pixel', size=784)
-    label = paddle.v2.layers.data_layer(name='label', size=10)
-    hidden1 = paddle.v2.layers.fc_layer(input=images, size=200)
-    hidden2 = paddle.v2.layers.fc_layer(input=hidden1, size=200)
-    inference = paddle.v2.layers.fc_layer(
-        input=hidden2, size=10, act=SoftmaxActivation())
-    cost = paddle.v2.layers.classification_cost(input=inference, label=label)
+    images = paddle_v2.layer.data(name='pixel', size=784)
+    label = paddle_v2.layer.data(name='label', size=10)
+    hidden1 = paddle_v2.layer.fc(input=images, size=200)
+    hidden2 = paddle_v2.layer.fc(input=hidden1, size=200)
+    inference = paddle_v2.layer.fc(input=hidden2,
+                                   size=10,
+                                   act=SoftmaxActivation())
+    cost = paddle_v2.layer.classification_cost(input=inference, label=label)
 
     # Create Simple Gradient Machine.
-    model_config = paddle.v2.layers.parse_network(cost)
+    model_config = paddle_v2.layer.parse_network(cost)
     m = api.GradientMachine.createFromConfigProto(model_config,
                                                   api.CREATE_MODE_NORMAL,
                                                   optimizer.enable_types())

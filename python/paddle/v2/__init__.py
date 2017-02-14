@@ -13,6 +13,6 @@
 # limitations under the License.
 
 import optimizer
-import layers
+import layer
 
-__all__ = ['optimizer', 'layers']
+__all__ = ['optimizer', 'layer']
