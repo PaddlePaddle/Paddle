@@ -35,26 +35,26 @@ def parse_network(*outputs):
 
 
 class Layer(object):
-    def __init__(self, name, parent_layer):
-        assert isinstance(parent_layer, dict)
+    def __init__(self, name, parent_layers):
+        assert isinstance(parent_layers, dict)
         assert isinstance(name, basestring)
         self.name = name
-        self.__parent_layer__ = parent_layer
+        self.__parent_layers__ = parent_layers
 
     def to_proto(self, context):
         """
         function to set proto attribute
         """
         kwargs = dict()
-        for param_name in self.__parent_layer__:
-            if not isinstance(self.__parent_layer__[param_name],
+        for layer_name in self.__parent_layers__:
+            if not isinstance(self.__parent_layers__[layer_name],
                               collections.Sequence):
-                param_value = self.__parent_layer__[param_name].to_proto(
+                v1_layer = self.__parent_layers__[layer_name].to_proto(
                     context=context)
             else:
-                param_value = map(lambda x: x.to_proto(context=context),
-                                  self.__parent_layer__[param_name])
-            kwargs[param_name] = param_value
+                v1_layer = map(lambda x: x.to_proto(context=context),
+                               self.__parent_layers__[layer_name])
+            kwargs[layer_name] = v1_layer
 
         if self.name not in context:
             context[self.name] = self.to_proto_impl(**kwargs)
