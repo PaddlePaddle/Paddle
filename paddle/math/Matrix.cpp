@@ -732,6 +732,7 @@ void GpuMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
   size_t beam = maxVal.getWidth();
   CHECK_EQ(maxIds.getSize(), numSamples * beam);
   CHECK_EQ(maxVal.getHeight(), numSamples);
+  CHECK_EQ(maxVal.getWidth(), beam);
 
   hl_matrix_top_k(maxVal.getData(),
                   maxVal.getStride(),
@@ -3039,7 +3040,7 @@ void CpuMatrix::rowMax(Matrix& max) {
   max.maxRows(*this);
 }
 
-/* get beam size of max ids and values */
+/* Get the top k elements of each row of this matrix */
 void CpuMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
   CHECK(isContiguous());
   CHECK(!maxIds.useGpu() && !maxVal.useGpu()) << "Matrix type are not equal";
@@ -3047,6 +3048,7 @@ void CpuMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
   size_t beam = maxVal.getWidth();
   CHECK_EQ(maxIds.getSize(), numSamples * beam);
   CHECK_EQ(maxVal.getHeight(), numSamples);
+  CHECK_EQ(maxVal.getWidth(), beam);
 
   real* a = getData();
   int* s = maxIds.getData();
