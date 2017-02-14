@@ -269,7 +269,14 @@ struct Argument {
     // Equal to number of subsequences for subsequence data
     int topLevelLength;
 
+    /**
+     * seqStart is the start position of this sequence info.
+     */
     int seqStart;
+
+    /**
+     * seqId the index of this sequence in origin arguments.
+     */
     int seqId;
 
     // Equal to topLevelLength for sequence data
@@ -281,10 +288,14 @@ struct Argument {
     // subSequenceStartPositions[subSeqStart] == seqStart
     int subSeqStart;
   };
-  /*
-    Get SeqInfo for each sequence of this argument
-    Elements in *seqInfo are sorted by topLevelLength in descending order
-  */
+
+  /**
+   * Calculate SeqInfo for each sequence of this argument
+   * Elements in seqInfo are sorted by topLevelLength in descending order
+   *
+   * @param [out] seqInfo: The result sequence info vector. This vector will be
+   *                       reset, and fill with calculated sequence info.
+   */
   void getSeqInfo(std::vector<SeqInfo>* segInfo) const;
 
   /*

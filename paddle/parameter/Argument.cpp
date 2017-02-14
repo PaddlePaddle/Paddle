@@ -534,10 +534,10 @@ void Argument::getSeqInfo(std::vector<SeqInfo>* seqInfo) const {
   const int* subStarts =
       hasSubseq() ? subSequenceStartPositions->getData(false) : nullptr;
   size_t numSequences = getNumSequences();
-  seqInfo->reserve(numSequences);
+  seqInfo->resize(numSequences);
   int subSeqEnd = 0;
   for (size_t i = 0; i < numSequences; ++i) {
-    SeqInfo info;
+    SeqInfo& info = (*seqInfo)[i];
     info.seqStart = starts[i];
     info.subLevelLength = starts[i + 1] - starts[i];
     info.seqId = i;
@@ -551,7 +551,6 @@ void Argument::getSeqInfo(std::vector<SeqInfo>* seqInfo) const {
       info.topLevelLength = info.subLevelLength;
       info.subSeqStart = 0;  // not used
     }
-    seqInfo->push_back(info);
   }
   std::sort(
       seqInfo->begin(), seqInfo->end(), [](const SeqInfo& a, const SeqInfo& b) {

@@ -330,6 +330,30 @@ protected:
   // and all outFrameLines(outlinks) share the info with one inFrameLine,
   // which is assigned by targetInfoInlinkId_.
   struct Info {
+    /**
+     * allIds & idIndex is a two dimensional array, which stores all offsets for
+     * each timestep.
+     *
+     * for example, the input layer is a sequence of dense vector. The input
+     * matrix's shape is (10, 200). Which means the total number of timesteps is
+     * 10, feature dimension is 200.
+     *
+     * For the sequence like
+     *
+     *   [0,  1,  2]
+     *   [3,  4]
+     *   [5]
+     *   [6,  7]
+     *   [8,  9]
+     *
+     * The idIndex is [0, 5, 9, 10], which means the largest sequences
+     * contain 3 timestep. The first timestep contains 5 data, which
+     * is calculated by idIndex[1] - idIndex[0]. The second timestep contains 4
+     * data, which is calculated by idIndex[2] - idIndex[1].
+     *
+     * The allIds is [0, 3, 5, 6, 8, 1, 4, 7, 9, 2]. It is organized by each
+     * timestep's data offset.
+     */
     IVectorPtr allIds;         // scattered id of realLayer
     std::vector<int> idIndex;  // index of allIds
     ICpuGpuVectorPtr
@@ -384,6 +408,10 @@ protected:
   std::vector<std::unique_ptr<NeuralNetwork>> frames_;
 
   NeuralNetwork* rootNetwork_;
+
+  /**
+   * reversed_ shows the recurrent gradient machine is reversed or not.
+   */
   bool reversed_;
 
   // if hasSubseq: max number of sentences(subseq)in batchsize samples

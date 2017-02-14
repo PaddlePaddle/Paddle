@@ -453,17 +453,12 @@ void RecurrentGradientMachine::forward(const std::vector<Argument>& inArgs,
     AsyncGpuBlock asyncGpuBlock;
     // if shareInlinkInfo, only calculate info of the first inlink
     // else, calculate info for each inlink
-    if (shareInlinkInfo) {
-      input.getSeqInfo(&seqInfos_[0]);
-      maxSequenceLength_ = seqInfos_[0][0].topLevelLength;
-      createInFrameInfo(0, input, passType);
-    } else {
-      for (size_t i = 0; i < inFrameLines_.size(); i++) {
-        const Argument& input1 = inFrameLines_[i].inLayer->getOutput();
-        input1.getSeqInfo(&seqInfos_[i]);
-        maxSequenceLength_ = seqInfos_[i][0].topLevelLength;
-        createInFrameInfo(i, input1, passType);
-      }
+    for (size_t i = 0; i < inFrameLines_.size(); i++) {
+      const Argument& input1 = inFrameLines_[i].inLayer->getOutput();
+      input1.getSeqInfo(&seqInfos_[i]);
+      maxSequenceLength_ = seqInfos_[i][0].topLevelLength;
+      createInFrameInfo(i, input1, passType);
+      if (shareInlinkInfo) break;
     }
 
     // inFrameLine select rows in real layer one time
@@ -634,11 +629,12 @@ void RecurrentGradientMachine::removeBeamSearchStatisticsCallbacks() {
     this->beamSearchStatistics_ = nullptr;
   }
 }
-/* create scattered id infomation for all realLayer of inFrameLines one time.
+
+/**
+ * create scattered id infomation for all realLayer of inFrameLines one time.
  * If hasSubseq, will also create scattered sequenceStartPositions infomation
  * for all realLayer of inFrameLines one time.
 */
-
 void RecurrentGradientMachine::createInFrameInfo(int inlinkId,
                                                  const Argument& input,
                                                  PassType passType) {
