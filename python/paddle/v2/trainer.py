@@ -2,7 +2,7 @@ import collections
 from paddle.proto.ModelConfig_pb2 import ModelConfig
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
 from . import parameters as v2_parameters
-import numpy
+from . import optimizer as v2_optimizer
 import py_paddle.swig_paddle as api
 from py_paddle import DataProviderConverter
 
@@ -93,72 +93,6 @@ class LazyParameterPool(v2_parameters.IParameterPool):
         self.arrays = dict()
 
 
-class CustomizeUpdateEquation(object):
-    def __init__(self, callback):
-        self.__callback__ = callback
-        if self.__callback__.func_code.co_argcount < 2:
-            raise ValueError(
-                "The update equation at least should contain 2 arguments, "
-                "first is value, second is gradient")
-
-        self.local_params_count = self.__callback__.func_code.co_argcount - 2
-        self.local_params = dict()
-
-    def enable_types(self):
-        return [api.PARAMETER_VALUE, api.PARAMETER_GRADIENT]
-
-    def init(self, gradient_machine):
-        assert isinstance(gradient_machine, api.GradientMachine)
-        for param in gradient_machine.getParameters():
-            conf = param.getConfig().toProto()
-            shape = map(int, conf.dims)
-            self.local_params[conf.name] = []
-            for _ in xrange(self.local_params_count):
-                self.local_params[conf.name].append(
-                    numpy.zeros(
-                        shape=shape, dtype='float32'))
-
-    def create_local_updater(self):
-        return self
-
-    def startPass(self):
-        pass
-
-    def finishPass(self):
-        pass
-
-    def startBatch(self, batch_size):
-        return api.PASS_TRAIN
-
-    def finishBatch(self, cost):
-        pass
-
-    def update(self, param):
-        conf = param.getConfig().toProto()
-        shape = map(int, conf.dims)
-        if not api.isUsingGpu():
-            v = param.getBuf(api.PARAMETER_VALUE).toNumpyArrayInplace().reshape(
-                shape)
-            g = param.getBuf(api.PARAMETER_GRADIENT).toNumpyArrayInplace(
-            ).reshape(shape)
-
-        else:
-            v = param.getBuf(api.PARAMETER_VALUE).copyToNumpyArray().reshape(
-                shape)
-            g = param.getBuf(api.PARAMETER_GRADIENT).copyToNumpyArray().reshape(
-                shape)
-
-        args = [v, g]
-        for arg in self.local_params[conf.name]:
-            args.append(arg)
-        self.__callback__(*args)
-
-        if api.isUsingGpu():
-            param.getBuf(api.PARAMETER_VALUE).copyFromNumpyArray(v.flatten(
-            ).astype('float32'))
-            # discard gradient changed.
-
-
 class SGDTrainer(ITrainer):
     def __init__(self, update_equation):
         """
@@ -166,9 +100,9 @@ class SGDTrainer(ITrainer):
 
         :param update_equation: Maybe we should give a DSL for update equation?
         """
-        if callable(update_equation):
-            update_equation = CustomizeUpdateEquation(update_equation)
-
+        if not isinstance(update_equation, v2_optimizer.Optimizer):
+            raise ValueError("update equation parameter must be "
+                             "paddle.v2.optimizer.Optimizer")
         self.__optimizer__ = update_equation
 
     def train(self,

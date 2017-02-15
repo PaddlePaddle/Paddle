@@ -1,6 +1,6 @@
 from paddle.trainer_config_helpers import *
 from paddle.trainer.PyDataProvider2 import dense_vector, integer_value
-import paddle.v2 as paddle_v2
+import paddle.v2 as paddle
 import numpy
 import mnist_util
 
@@ -24,7 +24,7 @@ def network_config():
 
 
 def event_handler(event):
-    if isinstance(event, paddle_v2.trainer.CompleteTrainOneBatch):
+    if isinstance(event, paddle.trainer.CompleteTrainOneBatch):
         print "Pass %d, Batch %d, Cost %f" % (event.pass_id, event.batch_id,
                                               event.cost)
     else:
@@ -32,31 +32,16 @@ def event_handler(event):
 
 
 def main():
-    paddle_v2.init(use_gpu=False, trainer_count=1)
+    paddle.init(use_gpu=False, trainer_count=1)
     model_config = parse_network_config(network_config)
-    pool = paddle_v2.parameters.create(model_config)
+    pool = paddle.parameters.create(model_config)
     for param_name in pool.get_names():
         array = pool.get_parameter(param_name)
         array[:] = numpy.random.uniform(low=-1.0, high=1.0, size=array.shape)
 
-    def nag(v, g, vel_t_1):
-        """
-        NAG Optimizer. A optimizer which Paddle CPP is not implemented.
-        https://arxiv.org/pdf/1212.0901v2.pdf eq.6 eq.7
-        :param v: parameter value
-        :param g: parameter gradient
-        :param vel_t_1: t-1 velocity
-        :return:
-        """
-        mu = 0.09
-        e = 0.00001
+    adam_optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
 
-        vel_t = mu * vel_t_1 - e * g
-
-        v[:] = v + (mu**2) * vel_t - (1 + mu) * e * g
-        vel_t_1[:] = vel_t
-
-    trainer = paddle_v2.trainer.SGDTrainer(update_equation=nag)
+    trainer = paddle.trainer.SGDTrainer(update_equation=adam_optimizer)
 
     trainer.train(train_data_reader=train_reader,
                   topology=model_config,
