@@ -2870,8 +2870,8 @@ def gru_step_layer(input,
     :param name:
     :param gate_act:
     :param bias_attr:
-    :param param_attr: the parameter_attribute for transforming the output_mem 
-                       from previous step. 
+    :param param_attr: the parameter_attribute for transforming the output_mem
+                       from previous step.
     :param layer_attr:
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2882,10 +2882,10 @@ def gru_step_layer(input,
     Layer(
         name=name,
         type=LayerType.GRU_STEP_LAYER,
-        # The parameter here is for transforming the output_mem. The input has 
-        # already been transformed outside this module so it does not need 
-        # parameter associated with it. 
-        # The parameter here is instead grouped with input is due to 
+        # The parameter here is for transforming the output_mem. The input has
+        # already been transformed outside this module so it does not need
+        # parameter associated with it.
+        # The parameter here is instead grouped with input is due to
         # backward model compatibility.
         inputs=[Input(input.name, **param_attr.attr), output_mem.name],
         bias=ParamAttr.to_bias(bias_attr),
@@ -3536,6 +3536,7 @@ def classification_cost(input,
                         label,
                         weight=None,
                         name=None,
+                        top_k=None,
                         evaluator=classification_error_evaluator,
                         layer_attr=None):
     """
@@ -3550,6 +3551,8 @@ def classification_cost(input,
     :param weight: The weight affects the cost, namely the scale of cost.
                    It is an optional argument.
     :type weight: LayerOutput
+    :param top_k: number k in top-k error rate
+    :type top_k: int
     :param evaluator: Evaluator method.
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -3577,7 +3580,7 @@ def classification_cost(input,
         assert isinstance(e.for_classification, bool)
         assert e.for_classification
 
-        e(name=e.__name__, input=input, label=label, weight=weight)
+        e(name=e.__name__, input=input, label=label, weight=weight, top_k=top_k)
 
     if not isinstance(evaluator, collections.Sequence):
         evaluator = [evaluator]

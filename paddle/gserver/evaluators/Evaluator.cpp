@@ -39,6 +39,13 @@ void Evaluator::eval(const NeuralNetwork& nn) {
  */
 class ClassificationErrorEvaluator : public Evaluator {
 public:
+  ClassificationErrorEvaluator() : totalScore2_(0) {}
+
+  virtual void start() {
+    Evaluator::start();
+    totalScore2_ = 0;
+  }
+
   virtual void updateSamplesNum(const std::vector<Argument>& arguments) {
     if (3 == arguments.size()) {
       numSamples_ += arguments[2].value->getSum();
@@ -85,45 +92,47 @@ public:
 
     if (label != nullptr) {
       errorMat->classificationError(*output, *label);  // top-1 error
-      size_t height = output->getHeight();
-      size_t width = 5;
+      if (config_.top_k() > 1) {
+        size_t height = output->getHeight();
+        size_t width = config_.top_k();
 
-      IVector::resizeOrCreate(
-          maxIds_, height * width, useGpu(arguments[0].deviceId));
-      Matrix::resizeOrCreate(
-          maxValues_, height, width, false, useGpu(arguments[0].deviceId));
-      output->rowMax(*maxIds_, *maxValues_);  // top-5 values
+        IVector::resizeOrCreate(
+            maxIds_, height * width, useGpu(arguments[0].deviceId));
+        Matrix::resizeOrCreate(
+            maxValues_, height, width, false, useGpu(arguments[0].deviceId));
+        output->rowMax(*maxIds_, *maxValues_);  // top-k values
 
-      int* ids = nullptr;
-      int* lbl = nullptr;
-      IVectorPtr dest = IVector::create(maxIds_->getSize(), false);
-      IVectorPtr dest2 = IVector::create(label->getSize(), false);
-      if (useGpu(arguments[0].deviceId)) {
-        hl_memcpy_device2host((void*)dest->getData(),
-                              (void*)maxIds_->getData(),
-                              sizeof(int) * maxIds_->getSize());
-        ids = dest->getData();
+        int* ids = nullptr;
+        int* lbl = nullptr;
+        IVectorPtr dest = IVector::create(maxIds_->getSize(), false);
+        IVectorPtr dest2 = IVector::create(label->getSize(), false);
+        if (useGpu(arguments[0].deviceId)) {
+          hl_memcpy_device2host((void*)dest->getData(),
+                                (void*)maxIds_->getData(),
+                                sizeof(int) * maxIds_->getSize());
+          ids = dest->getData();
 
-        hl_memcpy_device2host((void*)dest2->getData(),
-                              (void*)label->getData(),
-                              sizeof(int) * label->getSize());
-        lbl = dest2->getData();
-      } else {
-        ids = maxIds_->getData();
-        lbl = label->getData();
-      }
-
-      real* result2 = errorMat2->getData();
-      for (size_t i = 0; i < height; ++i) {
-        result2[i] = (ids[i * width] != lbl[i]);  // initialize top-5 error
-        for (size_t j = 1; j < width; ++j) {
-          if (result2[i] == 0.0) {
-            break;
-          }
-          result2[i] = (ids[i * width + j] != lbl[i]);  // top-5 error
+          hl_memcpy_device2host((void*)dest2->getData(),
+                                (void*)label->getData(),
+                                sizeof(int) * label->getSize());
+          lbl = dest2->getData();
+        } else {
+          ids = maxIds_->getData();
+          lbl = label->getData();
         }
+
+        real* result2 = errorMat2->getData();
+        for (size_t i = 0; i < height; ++i) {
+          result2[i] = (ids[i * width] != lbl[i]);  // initialize top-k error
+          for (size_t j = 1; j < width; ++j) {
+            if (result2[i] == 0.0) {
+              break;
+            }
+            result2[i] = (ids[i * width + j] != lbl[i]);  // top-k error
+          }
+        }
+        totalScore2_ += errorMat2->getSum();
       }
-      totalScore2_ = errorMat2->getSum();
     } else if (dynamic_cast<CpuSparseMatrix*>(multiBinaryLabel.get()) ||
                dynamic_cast<GpuSparseMatrix*>(multiBinaryLabel.get())) {
       errorMat->classificationErrorMulti(
@@ -140,8 +149,14 @@ public:
   }
 
   void printStats(std::ostream& os) const {
-    os << "top_1_error=" << (numSamples_ ? totalScore_ / numSamples_ : 0)
-       << " top_5_error=" << (numSamples_ ? totalScore2_ / numSamples_ : 0);
+    if (config_.top_k() == 1) {
+      os << config_.name() << "="
+         << (numSamples_ ? totalScore_ / numSamples_ : 0);
+    } else {
+      os << "top_1_error=" << (numSamples_ ? totalScore_ / numSamples_ : 0)
+         << " top_" << config_.top_k()
+         << "_error=" << (numSamples_ ? totalScore2_ / numSamples_ : 0);
+    }
   }
 
   virtual real evalImp(std::vector<Argument>& arguments) {
@@ -150,7 +165,11 @@ public:
   }
 
   virtual void distributeEval(ParameterClient2* client) {
-    mergeResultsOfAllClients(client);
+    double data[3] = {totalScore_, totalScore2_, numSamples_};
+    client->reduce(data, data, 3, FLAGS_trainer_id, 0);
+    totalScore_ = data[0];
+    totalScore2_ = data[1];
+    numSamples_ = data[2];
   }
 
 private:
