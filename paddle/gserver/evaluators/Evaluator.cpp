@@ -96,14 +96,14 @@ public:
 
       int* ids = nullptr;
       int* lbl = nullptr;
+      IVectorPtr dest = IVector::create(maxIds_->getSize(), false);
+      IVectorPtr dest2 = IVector::create(label->getSize(), false);
       if (useGpu(arguments[0].deviceId)) {
-        IVectorPtr dest = IVector::create(maxIds_->getSize(), false);
         hl_memcpy_device2host((void*)dest->getData(),
                               (void*)maxIds_->getData(),
                               sizeof(int) * maxIds_->getSize());
         ids = dest->getData();
 
-        IVectorPtr dest2 = IVector::create(label->getSize(), false);
         hl_memcpy_device2host((void*)dest2->getData(),
                               (void*)label->getData(),
                               sizeof(int) * label->getSize());
