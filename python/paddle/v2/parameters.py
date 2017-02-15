@@ -2,95 +2,9 @@ import numpy as np
 
 from paddle.proto.ModelConfig_pb2 import ModelConfig
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
+import py_paddle.swig_paddle as api
 
-__all__ = ['IParameterPool', 'create', 'ParameterFlag']
-
-
-class ParameterFlag(object):
-    """
-    The flag for IParameterPool.get_parameter. If writeable, operation on return
-    numpy array will also apply to Paddle parameter. But it will be slower in
-    GPU mode.
-    """
-    READ_ONLY = 0x01
-    WRITE_ONLY = 0x02
-    READ_WRITE = READ_ONLY | WRITE_ONLY
-
-
-class IParameterPool(object):
-    """
-    Interface of Parameter Pool. The parameter pool is a dictionary of
-    parameters. User can modify parameter or customize parameter value
-    by `get_parameter`.
-
-    ..  code-block:: python
-
-        pool = paddle.parameters.create(topo1, topo2)
-
-        embedding = pool.get_parameter("embedding")
-        assert isinstance(embedding, numpy.ndarray)
-        print embedding[1:]
-    """
-
-    def get_parameter(self, name, flag=ParameterFlag.READ_WRITE):
-        """
-        Get a parameter by name.
-
-        :param name: parameter name.
-        :type name: basestring
-        :param flag: the flag for return value. readable or writable.
-        :type flag: int
-        :return: The parameter value
-        :rtype: np.ndarray
-        """
-        raise NotImplementedError()
-
-    def get_names(self):
-        """
-        Get all parameter names
-        :return: all parameter names
-        :rtype: list
-        """
-        raise NotImplementedError()
-
-
-class NumpyParameterPool(IParameterPool):
-    def __init__(self):
-        self.__param_configs__ = dict()
-        self.__params__ = dict()
-
-    def append(self, conf):
-        if not isinstance(conf, ParameterConfig):
-            raise ValueError("conf must be ParameterConfig")
-
-        if not conf.IsInitialized():
-            raise ValueError("conf is not initialized")
-
-        self.__param_configs__[conf.name] = conf
-        self.__params__[conf.name] = None
-
-    def get_config(self, name):
-        if name not in self.__param_configs__:
-            raise ValueError("parameter %s is not appended" % name)
-
-        return self.__param_configs__[name]
-
-    def get_parameter(self, name, *args, **kwargs):
-        if name not in self.__params__:
-            raise ValueError("parameter %s is not appended" % name)
-
-        param = self.__params__[name]
-        if param is None:
-            shape = self.__param_configs__[name].dims
-            if len(shape) == 0:
-                raise ValueError("parameter %s is no shape" % name)
-            param = np.ndarray(
-                shape=[int(item) for item in shape], dtype='float32')
-            self.__params__[name] = param
-        return param
-
-    def get_names(self):
-        return self.__param_configs__.keys()
+__all__ = ['Parameters', 'create']
 
 
 def create(*topologies):
@@ -100,12 +14,132 @@ def create(*topologies):
     :param topologies:
     :return:
     """
-    pool = NumpyParameterPool()
+    pool = Parameters()
     for topo in topologies:
         if not isinstance(topo, ModelConfig):
             raise ValueError(
                 'create must pass a topologies which type is ModelConfig')
 
         for param in topo.parameters:
-            pool.append(param)
+            pool.append_config(param)
     return pool
+
+
+class Parameters(object):
+    def __init__(self):
+        self.__param_conf__ = dict()
+        self.__gradient_machines__ = []
+        self.__tmp_params__ = []
+
+    def append_config(self, param_conf):
+        if not isinstance(param_conf, ParameterConfig):
+            raise ValueError("param_conf must be paddle.proto.ParameterConfig")
+
+        if param_conf.name in self.__param_conf__:
+            raise ValueError("duplicated parameter %s" % param_conf.name)
+
+        self.__param_conf__[param_conf.name] = param_conf
+
+    def keys(self):
+        return self.__param_conf__.keys()
+
+    def names(self):
+        return self.keys()
+
+    def has_key(self, key):
+        return key in self.__param_conf__.keys()
+
+    def __getitem__(self, key):
+        shape = self.get_shape(key)
+
+        if len(self.__gradient_machines__) == 0:
+            # create new parameter in python numpy.
+            return np.ndarray(shape=shape, dtype=np.float32)
+        else:
+            for each_gradient_machine in self.__gradient_machines__:
+                param = __get_parameter_in_gradient_machine__(
+                    each_gradient_machine, key)
+                # for simplify implementation now, we always copy from C++
+                assert isinstance(param, api.Parameter)
+                val = param.getBuf(api.PARAMETER_VALUE)
+                assert isinstance(val, api.Vector)
+                return val.copyToNumpyArray().reshape(shape=shape)
+                # else continue
+
+            raise RuntimeError("Unexpected branch")
+
+    def get_shape(self, key):
+        if not isinstance(key, basestring):
+            raise ValueError("parameter name should be string")
+        if not self.has_key(key):
+            raise ValueError("No such parameter %s" % key)
+        conf = self.__param_conf__[key]
+        return map(int, conf.dims)
+
+    def __setitem__(self, key, value):
+        if not isinstance(value, np.ndarray):
+            raise ValueError("Must return ndarray")
+        value = value.astype(dtype=np.float32)
+        shape = self.get_shape(key)
+        if not reduce(lambda a, b: a and b,
+                      map(lambda x: x[0] == x[1], zip(value.shape, shape))):
+            raise ValueError("Value shape mismatch, expect %s, should %s" %
+                             (shape, value.shape))
+
+        if len(self.__gradient_machines__) == 0:
+            self.__tmp_params__.append((key, value))
+        else:
+            for each_gradient_machine in self.__gradient_machines__:
+                __copy_parameter_to_gradient_machine__(each_gradient_machine,
+                                                       key, value)
+
+    def append_gradient_machine(self, gradient_machine):
+        if not isinstance(gradient_machine, api.GradientMachine):
+            raise ValueError("gradient_machine should be api.GradientMachine")
+
+        if len(self.__tmp_params__) != 0:
+            for name, val in self.__tmp_params__:
+                try:
+                    __copy_parameter_to_gradient_machine__(gradient_machine,
+                                                           name, val)
+                except ValueError:
+                    # If no such parameter in gradient machine, then don't copy
+                    pass
+
+
+def __get_parameter_in_gradient_machine__(gradient_machine, name):
+    """
+
+    :param gradient_machine:
+    :type gradient_machine: api.GradientMachine
+    :param name:
+    :return:
+    :rtype: api.Parameter
+    """
+    params = filter(lambda p: p.getName() == name,
+                    gradient_machine.getParameters())
+
+    if len(params) == 0:
+        raise ValueError("No such parameter")
+    elif len(params) > 1:
+        raise ValueError("Unexpected branch")
+    else:
+        return params[0]
+
+
+def __copy_parameter_to_gradient_machine__(gradient_machine, name, arr):
+    """
+    Copy a python ndarray into the gradient machine.
+
+    :param gradient_machine:
+    :type gradient_machine: api.GradientMachine
+    :param name:
+    :param arr:
+    :type arr: np.ndarray
+    :return:
+    :rtype: api.Parameter
+    """
+    param = __get_parameter_in_gradient_machine__(gradient_machine, name)
+    vec = param.getBuf(api.PARAMETER_VALUE)
+    assert isinstance(vec, api.Vector)
+    vec.copyFromNumpyArray(arr.flatten())

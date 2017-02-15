@@ -23,29 +23,32 @@ def network_config():
     outputs(cost)
 
 
-def event_handler(event):
-    if isinstance(event, paddle.trainer.CompleteTrainOneBatch):
-        print "Pass %d, Batch %d, Cost %f" % (event.pass_id, event.batch_id,
-                                              event.cost)
-    else:
-        pass
-
-
 def main():
     paddle.init(use_gpu=False, trainer_count=1)
     model_config = parse_network_config(network_config)
-    pool = paddle.parameters.create(model_config)
-    for param_name in pool.get_names():
-        array = pool.get_parameter(param_name)
+    parameters = paddle.parameters.create(model_config)
+    for param_name in parameters.keys():
+        array = parameters[param_name]
         array[:] = numpy.random.uniform(low=-1.0, high=1.0, size=array.shape)
+        parameters[param_name] = array
 
-    adam_optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
+    adam_optimizer = paddle.optimizer.Optimizer(
+        learning_rate=0.01, learning_method=AdamOptimizer())
+
+    def event_handler(event):
+        if isinstance(event, paddle.trainer.CompleteTrainOneBatch):
+            para = parameters['___fc_layer_2__.w0']
+            print "Pass %d, Batch %d, Cost %f, Weight Mean Of Fc 2 is %f" % (
+                event.pass_id, event.batch_id, event.cost, para.mean())
+
+        else:
+            pass
 
     trainer = paddle.trainer.SGDTrainer(update_equation=adam_optimizer)
 
     trainer.train(train_data_reader=train_reader,
                   topology=model_config,
-                  parameters=pool,
+                  parameters=parameters,
                   event_handler=event_handler,
                   batch_size=32,  # batch size should be refactor in Data reader
                   data_types={  # data_types will be removed, It should be in

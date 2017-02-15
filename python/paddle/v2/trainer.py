@@ -1,10 +1,11 @@
 import collections
-from paddle.proto.ModelConfig_pb2 import ModelConfig
-from paddle.proto.ParameterConfig_pb2 import ParameterConfig
-from . import parameters as v2_parameters
-from . import optimizer as v2_optimizer
+
 import py_paddle.swig_paddle as api
 from py_paddle import DataProviderConverter
+
+from paddle.proto.ModelConfig_pb2 import ModelConfig
+from . import optimizer as v2_optimizer
+from . import parameters as v2_parameters
 
 __all__ = ['ITrainer', 'SGDTrainer', 'CompleteTrainOneBatch', 'BaseEvent']
 
@@ -21,11 +22,10 @@ class CompleteTrainOneBatch(BaseEvent):
     Event On One Batch Training Complete.
     """
 
-    def __init__(self, pass_id, batch_id, cost, parameters):
+    def __init__(self, pass_id, batch_id, cost):
         self.pass_id = pass_id
         self.batch_id = batch_id
         self.cost = cost
-        self.parameters = parameters
 
 
 def default_event_handler(event):
@@ -40,57 +40,6 @@ class ITrainer(object):
               test_data_reader=None,
               event_handler=None):
         raise NotImplementedError()
-
-
-class LazyParameterPool(v2_parameters.IParameterPool):
-    """
-    Lazy Parameter Pool stores a reference to GradientMachine. User could invoke
-    `get_parameter` if needed, but the operation is lazy. It means the parameter
-    will only fetched from GPU or Parameter Server if `get_parameter` is
-    invoked. Also, set flag = writable will make a extra host2device copy after
-    reading/modifying parameter.
-
-    This class is not exposed to User. User should treat this class as a normal
-    IParameterPool.
-
-    See IParameterPool for usage documentation.
-
-    :type __gradient_machine__: api.GradientMachine
-    """
-
-    def get_parameter(self, name, flag=v2_parameters.ParameterFlag.READ_WRITE):
-        param = filter(lambda x: x.getName() == name,
-                       self.__gradient_machine__.getParameters())
-        if len(param) == 0:
-            raise ValueError("Cannot found parameter with name %s" % name)
-        elif len(param) > 1:
-            raise RuntimeError("Unexpected branch")
-        else:
-            conf = param[0].getConfig().toProto()
-            param = param[0].getBuf(api.PARAMETER_VALUE)
-            assert isinstance(param, api.Vector)
-            assert isinstance(conf, ParameterConfig)
-
-        shape = map(int, conf.dims)
-        if api.isUsingGpu():
-            arr = param.copyToNumpyArray().reshape(shape)
-            if flag & v2_parameters.ParameterFlag.WRITE_ONLY:
-                self.need_copy = True
-                self.arrays[name] = arr
-        else:
-            arr = param.toNumpyArrayInplace().reshape(shape)
-        return arr
-
-    def get_names(self):
-        return [
-            param.getName()
-            for param in self.__gradient_machine__.getParameters()
-        ]
-
-    def __init__(self, gradient_machine):
-        self.__gradient_machine__ = gradient_machine
-        self.need_copy = False
-        self.arrays = dict()
 
 
 class SGDTrainer(ITrainer):
@@ -137,7 +86,7 @@ class SGDTrainer(ITrainer):
         gm = api.GradientMachine.createFromConfigProto(
             topology, api.CREATE_MODE_NORMAL, self.__optimizer__.enable_types())
         assert isinstance(gm, api.GradientMachine)
-        __copy_parameter_from_pool__(gm, parameters)
+        parameters.append_gradient_machine(gm)
 
         updater = self.__optimizer__.create_local_updater()
         updater.init(gm)
@@ -167,16 +116,9 @@ class SGDTrainer(ITrainer):
                 cost_vec = cost_vec.copyToNumpyMat()
                 cost = cost_vec.sum() / len(data_batch)
                 updater.finishBatch(cost)
-                pool = LazyParameterPool(gradient_machine=gm)
                 event_handler(
                     CompleteTrainOneBatch(
-                        pass_id=pass_id,
-                        batch_id=batch_id,
-                        cost=cost,
-                        parameters=pool))
-
-                if pool.need_copy:
-                    __copy_parameter_from_lazy_pool__(gm, pool)
+                        pass_id=pass_id, batch_id=batch_id, cost=cost))
 
             updater.finishPass()
         gm.finish()
@@ -211,34 +153,6 @@ def __generator_to_batch__(generator, batch_size):
         yield ret_val
 
 
-def __copy_parameter_from_lazy_pool__(gm, pool):
-    assert isinstance(pool, LazyParameterPool)
-    for each_param_name in pool.arrays.keys():
-        param = filter(lambda x: x.getName() == each_param_name,
-                       gm.getParameters())
-        assert len(param) == 1
-        param = param[0]
-        param.getBuf(api.PARAMETER_VALUE).copyFromNumpyArray(pool.arrays[
-            each_param_name].flatten().astype('float32'))
-
-
-def __copy_parameter_from_pool__(gm, pool):
-    """
-
-    :param gm:
-    :type gm: api.GradientMachine
-    :param pool:
-    :type pool: v2_parameters.IParameterPool
-    :return:
-    """
-    assert isinstance(pool, v2_parameters.IParameterPool)
-    for each_param in gm.getParameters():
-        name = each_param.getName()
-        param = pool.get_parameter(name, v2_parameters.ParameterFlag.READ_ONLY)
-        each_param.getBuf(api.PARAMETER_VALUE).copyFromNumpyArray(param.flatten(
-        ).astype('float32'))
-
-
 def __check_train_args__(train_data_reader, topology, parameters,
                          test_data_reader, event_handler, **kwargs):
     """
@@ -258,7 +172,7 @@ def __check_train_args__(train_data_reader, topology, parameters,
     if not isinstance(topology, ModelConfig):
         raise ValueError('topology should be a model config')
 
-    if not isinstance(parameters, v2_parameters.IParameterPool):
+    if not isinstance(parameters, v2_parameters.Parameters):
         raise ValueError('parameters should be a parameter pool')
 
     if not callable(event_handler):
