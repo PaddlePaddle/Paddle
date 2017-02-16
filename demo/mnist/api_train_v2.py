@@ -25,8 +25,8 @@ def network_config():
 
 def main():
     paddle.init(use_gpu=False, trainer_count=1)
-    model_config = parse_network_config(network_config)
-    parameters = paddle.parameters.create(model_config)
+    topology = parse_network_config(network_config)
+    parameters = paddle.parameters.create(topology)
     for param_name in parameters.keys():
         array = parameters[param_name]
         array[:] = numpy.random.uniform(low=-1.0, high=1.0, size=array.shape)
@@ -47,7 +47,7 @@ def main():
     trainer = paddle.trainer.SGD(update_equation=adam_optimizer)
 
     trainer.train(train_data_reader=train_reader,
-                  topology=model_config,
+                  topology=topology,
                   parameters=parameters,
                   event_handler=event_handler,
                   batch_size=32,  # batch size should be refactor in Data reader
