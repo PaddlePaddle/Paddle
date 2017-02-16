@@ -36,7 +36,7 @@ def main():
         learning_rate=0.01, learning_method=AdamOptimizer())
 
     def event_handler(event):
-        if isinstance(event, paddle.trainer.CompleteTrainOneBatch):
+        if isinstance(event, paddle.trainer.EndIteration):
             para = parameters['___fc_layer_2__.w0']
             print "Pass %d, Batch %d, Cost %f, Weight Mean Of Fc 2 is %f" % (
                 event.pass_id, event.batch_id, event.cost, para.mean())

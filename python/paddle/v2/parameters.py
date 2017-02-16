@@ -49,6 +49,9 @@ class Parameters(object):
     def has_key(self, key):
         return key in self.__param_conf__.keys()
 
+    def __iter__(self):
+        return iter(self.__param_conf__)
+
     def __getitem__(self, key):
         shape = self.get_shape(key)
 
