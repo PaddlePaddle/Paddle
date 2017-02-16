@@ -298,6 +298,7 @@ MatrixPtr NeuralNetwork::getLayerOutput(const std::string& layerName) {
   CHECK(it != layerMap_.end()) << "Cannot find layer: " << layerName;
   return it->second->getOutputValue();
 }
+
 void NeuralNetwork::onPassEnd() {
   for (auto& layer : layers_) {
     layer->onPassEnd();

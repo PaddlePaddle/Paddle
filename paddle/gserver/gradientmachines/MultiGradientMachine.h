@@ -189,6 +189,8 @@ public:
                        PassType passType,
                        const UpdateCallback& callback);
 
+  virtual MatrixPtr getLayerOutput(const std::string& layerName);
+
   virtual void onPassEnd();
 
   virtual void finish();
