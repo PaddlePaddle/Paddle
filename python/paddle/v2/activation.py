@@ -12,8 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import optimizer
-import layer
-import activation
+from paddle.trainer_config_helpers.activations import *
 
-__all__ = ['optimizer', 'layer', 'activation']
+__all__ = [
+    "Base", "Tanh", "Sigmoid", "Softmax", "Identity", "Linear",
+    'SequenceSoftmax', "Exp", "Relu", "BRelu", "SoftRelu", "STanh", "Abs",
+    "Square", "Log"
+]
+
+Base = BaseActivation
+Tanh = TanhActivation
+Sigmoid = SigmoidActivation
+Softmax = SoftmaxActivation
+SequenceSoftmax = SequenceSoftmaxActivation
+Identity = IdentityActivation
+Linear = Identity
+Relu = ReluActivation
+BRelu = BReluActivation
+SoftRelu = SoftReluActivation
+STanh = STanhActivation
+Abs = AbsActivation
+Square = SquareActivation
+Exp = ExpActivation
+Log = LogActivation

@@ -77,7 +77,7 @@ def main():
     hidden2 = paddle_v2.layer.fc(input=hidden1, size=200)
     inference = paddle_v2.layer.fc(input=hidden2,
                                    size=10,
-                                   act=SoftmaxActivation())
+                                   act=paddle_v2.activation.Softmax())
     cost = paddle_v2.layer.classification_cost(input=inference, label=label)
 
     # Create Simple Gradient Machine.
