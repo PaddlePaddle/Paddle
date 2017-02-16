@@ -1,3 +1,6 @@
+"""
+All training events.
+"""
 __all__ = ['EndIteration']
 
 

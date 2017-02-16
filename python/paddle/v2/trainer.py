@@ -12,16 +12,38 @@ __all__ = ['ITrainer', 'SGD']
 
 
 def default_event_handler(event):
+    """
+    Default event handler. It will print some log and save mode.
+
+    TODO(yuyang18): Complete it!
+    :param event:
+    :return:
+    """
     pass
 
 
 class ITrainer(object):
+    """
+    The interface of Trainer. The only exposed method is `train`.
+    """
+
     def train(self,
               train_data_reader,
               topology,
               parameters,
               test_data_reader=None,
               event_handler=None):
+        """
+        train method.
+
+        :param train_data_reader:
+        :param topology:
+        :param parameters:
+        :param test_data_reader:
+        :param event_handler:
+        :return:
+        """
+
         raise NotImplementedError()
 
 
@@ -30,7 +52,8 @@ class SGD(ITrainer):
         """
         Simple SGD Trainer.
 
-        :param update_equation: Maybe we should give a DSL for update equation?
+        :param update_equation: The optimizer object.
+        :type update_equation: v2_optimizer.Optimizer
         """
         if not isinstance(update_equation, v2_optimizer.Optimizer):
             raise ValueError("update equation parameter must be "
