@@ -28,16 +28,16 @@ def main():
     topology = parse_network_config(network_config)
     parameters = paddle.parameters.create(topology)
     for param_name in parameters.keys():
-        array = parameters[param_name]
+        array = parameters.get(param_name)
         array[:] = numpy.random.uniform(low=-1.0, high=1.0, size=array.shape)
-        parameters[param_name] = array
+        parameters.set(parameter_name=param_name, value=array)
 
     adam_optimizer = paddle.optimizer.Optimizer(
         learning_rate=0.01, learning_method=AdamOptimizer())
 
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
-            para = parameters['___fc_layer_2__.w0']
+            para = parameters.get('___fc_layer_2__.w0')
             print "Pass %d, Batch %d, Cost %f, Weight Mean Of Fc 2 is %f" % (
                 event.pass_id, event.batch_id, event.cost, para.mean())
 
