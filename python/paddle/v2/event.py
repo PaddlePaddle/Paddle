@@ -1,5 +1,16 @@
 """
 All training events.
+
+There are:
+
+* BeginTraining
+* EndTraining
+* BeginIteration
+* EndIteration
+* BeginPass
+* EndPass
+
+TODO(yuyang18): Complete it!
 """
 __all__ = ['EndIteration']
 
