@@ -36,7 +36,7 @@ def main():
         learning_rate=0.01, learning_method=AdamOptimizer())
 
     def event_handler(event):
-        if isinstance(event, paddle.trainer.EndIteration):
+        if isinstance(event, paddle.event.EndIteration):
             para = parameters['___fc_layer_2__.w0']
             print "Pass %d, Batch %d, Cost %f, Weight Mean Of Fc 2 is %f" % (
                 event.pass_id, event.batch_id, event.cost, para.mean())
@@ -44,7 +44,7 @@ def main():
         else:
             pass
 
-    trainer = paddle.trainer.SGDTrainer(update_equation=adam_optimizer)
+    trainer = paddle.trainer.SGD(update_equation=adam_optimizer)
 
     trainer.train(train_data_reader=train_reader,
                   topology=model_config,

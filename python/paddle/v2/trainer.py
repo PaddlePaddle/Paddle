@@ -6,19 +6,9 @@ from py_paddle import DataProviderConverter
 from paddle.proto.ModelConfig_pb2 import ModelConfig
 from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
+from . import event as v2_event
 
-__all__ = ['ITrainer', 'SGDTrainer', 'EndIteration']
-
-
-class EndIteration(object):
-    """
-    Event On One Batch Training Complete.
-    """
-
-    def __init__(self, pass_id, batch_id, cost):
-        self.pass_id = pass_id
-        self.batch_id = batch_id
-        self.cost = cost
+__all__ = ['ITrainer', 'SGD']
 
 
 def default_event_handler(event):
@@ -35,7 +25,7 @@ class ITrainer(object):
         raise NotImplementedError()
 
 
-class SGDTrainer(ITrainer):
+class SGD(ITrainer):
     def __init__(self, update_equation):
         """
         Simple SGD Trainer.
@@ -110,7 +100,7 @@ class SGDTrainer(ITrainer):
                 cost = cost_vec.sum() / len(data_batch)
                 updater.finishBatch(cost)
                 event_handler(
-                    EndIteration(
+                    v2_event.EndIteration(
                         pass_id=pass_id, batch_id=batch_id, cost=cost))
 
             updater.finishPass()

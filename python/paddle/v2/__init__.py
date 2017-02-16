@@ -15,8 +15,9 @@ import optimizer
 import parameters
 import py_paddle.swig_paddle as api
 import trainer
+import event
 
-__all__ = ['optimizer', 'parameters', 'init', 'trainer']
+__all__ = ['optimizer', 'parameters', 'init', 'trainer', 'event']
 
 
 def init(**kwargs):
