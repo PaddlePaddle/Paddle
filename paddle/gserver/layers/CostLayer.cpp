@@ -217,7 +217,10 @@ void SmoothL1CostLayer::forwardImp(Matrix& output,
                            label.value->getWidth(),
                            false,
                            false);
-    targetCpu->smoothL1(*outputCpu, *labelCpu);
+    targetCpu->copyFrom(target);
+    outputCpu->copyFrom(output);
+    labelCpu->copyFrom(*label.value);
+    targetCpu->smoothL1(*outputCpu, *(labelCpu));
     target.copyFrom(*targetCpu);
   } else {
     target.smoothL1(output, *label.value);
@@ -238,6 +241,9 @@ void SmoothL1CostLayer::backwardImp(Matrix& output,
                            label.value->getWidth(),
                            false,
                            false);
+    outputGCpu->copyFrom(outputG);
+    outputCpu->copyFrom(output);
+    labelCpu->copyFrom(*label.value);
     outputGCpu->smoothL1Bp(*outputCpu, *labelCpu);
     outputG.copyFrom(*outputGCpu);
   } else {

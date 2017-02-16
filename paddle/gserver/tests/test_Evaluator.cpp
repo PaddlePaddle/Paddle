@@ -126,6 +126,20 @@ void testEvaluatorAll(TestConfig testConf,
   testEvaluator(testConf, testEvaluatorName, batchSize, false);
 }
 
+TEST(Evaluator, detection_map) {
+  TestConfig config;
+  config.evaluatorConfig.set_type("detection_map");
+  config.evaluatorConfig.set_classification_threshold(0.5);
+  config.evaluatorConfig.set_positive_label(0);
+  config.inputDefs.push_back({INPUT_DATA, "output", 7});
+  config.inputDefs.push_back({INPUT_SEQUENCE_DATA, "label", 6});
+  config.evaluatorConfig.set_delimited(false);
+  testEvaluatorAll(config, "detection_map", 100);
+
+  config.evaluatorConfig.set_delimited(true);
+  testEvaluatorAll(config, "detection_map", 100);
+}
+
 TEST(Evaluator, classification_error) {
   TestConfig config;
   config.evaluatorConfig.set_type("classification_error");

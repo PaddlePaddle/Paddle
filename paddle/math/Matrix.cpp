@@ -3762,7 +3762,7 @@ void CpuMatrix::smoothL1Bp(Matrix& output, Matrix& label) {
   // f'(x) = x         if |x| < 1
   //       = sign(x)   otherwise
   for (size_t i = 0; i < numSamples; ++i, out += dim, cost += dim, lbl += dim) {
-    for (size_t j = 0; j < dim; j++) {
+    for (size_t j = 0; j < dim; ++j) {
       cost[j] = out[j] - lbl[j];
       if (std::fabs(cost[j]) >= 1) cost[j] = (0 < cost[j]) - (cost[j] < 0);
     }

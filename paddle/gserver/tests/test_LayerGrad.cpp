@@ -723,6 +723,48 @@ TEST(Layer, sparse_square_error) {
                 /* useGpu */ false);
 }
 
+TEST(Layer, smooth_l1) {
+  TestConfig config;
+  config.layerConfig.set_type("smooth_l1");
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 1, 0});
+  config.inputDefs.push_back({INPUT_DATA_TARGET, "layer_1", 1, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "smooth_l1", 100, false, useGpu, false, 2.0);
+  }
+}
+
+TEST(Layer, multibox_loss) {
+  TestConfig config;
+  config.layerConfig.set_type("multibox_loss");
+  config.biasSize = 0;
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  MultiBoxLossConfig* multiboxLoss = input->mutable_multibox_loss_conf();
+  multiboxLoss->set_num_classes(21);
+  multiboxLoss->set_input_num(1);
+  multiboxLoss->set_overlap_threshold(0.5);
+  multiboxLoss->set_neg_pos_ratio(3);
+  multiboxLoss->set_neg_overlap(0.5);
+  multiboxLoss->set_background_id(0);
+  multiboxLoss->set_height(3);
+  multiboxLoss->set_width(3);
+
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+  config.inputDefs.push_back({INPUT_DATA_TARGET, "priorbox", 8, 0});
+  config.inputDefs.push_back({INPUT_SEQUENCE_BATCH_DATA, "label", 6, 0});
+  config.inputDefs.push_back({INPUT_DATA, "locPred", 36, 0});
+  config.inputDefs.push_back({INPUT_DATA, "confPred", 189, 0});
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "multibox_loss", 9, false, useGpu, false, 20);
+  }
+}
+
 TEST(Layer, sparse_float_square_error) {
   TestConfig config;
   config.layerConfig.set_type("square_error");

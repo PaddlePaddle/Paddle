@@ -581,7 +581,8 @@ void MultiBoxLossLayer::encodeBBox(const real* priorData,
 
   gtEncode->push_back((gtCenterX - priorCenterX) / priorWidth / priorData[4]);
   gtEncode->push_back((gtCenterY - priorCenterY) / priorHeight / priorData[5]);
-  gtEncode->push_back(std::log(gtWidth / priorWidth) / priorData[6]);
-  gtEncode->push_back(std::log(gtHeight / priorHeight) / priorData[7]);
+  gtEncode->push_back(std::log(std::fabs(gtWidth / priorWidth)) / priorData[6]);
+  gtEncode->push_back(std::log(std::fabs(gtHeight / priorHeight)) /
+                      priorData[7]);
 }
 }  // namespace paddle

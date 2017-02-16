@@ -130,6 +130,7 @@ public:
         n++;
       }
       imageId++;
+      if (imageId > batchSize) break;
       allDetBBox->push_back(bboxes);
     }
     for (size_t n = 0; n < batchSize; n++) {
@@ -144,7 +145,7 @@ public:
           for (size_t i = 0; i < it->second.size(); i++)
             if (!(it->second[i][4])) count++;
         }
-        if (numPos->find(it->first) == numPos->end()) {
+        if (numPos->find(it->first) == numPos->end() && count != 0) {
           (*numPos)[it->first] = count;
         } else {
           (*numPos)[it->first] += count;
@@ -154,12 +155,11 @@ public:
   }
 
   void calcTFPos(const size_t batchSize,
-                 map<size_t, size_t> numPos,
                  vector<map<size_t, vector<vector<real>>>> allGtBBox,
                  vector<map<size_t, vector<vector<real>>>> allDetBBox,
                  map<size_t, vector<pair<real, size_t>>>* allTruePos,
                  map<size_t, vector<pair<real, size_t>>>* allFalsePos) {
-    for (size_t n = 0; n < batchSize; n++) {
+    for (size_t n = 0; n < allDetBBox.size(); n++) {
       if (allGtBBox[n].size() == 0) {
         // No ground truth for current image. All detections become false pos.
         for (map<size_t, vector<vector<real>>>::iterator it =
@@ -276,8 +276,7 @@ public:
                  &allGtBBox,
                  &allDetBBox);
 
-    calcTFPos(
-        batchSize, numPos_, allGtBBox, allDetBBox, &allTruePos_, &allFalsePos_);
+    calcTFPos(batchSize, allGtBBox, allDetBBox, &allTruePos_, &allFalsePos_);
     return 0;
   }
 
