@@ -69,6 +69,54 @@ public:
         gpuMemory_.back()->getBuf(), input.valueType(), input.shape()));
   }
 
+  // assume one copy of sequence is shared by different SequenceArgs
+  void addSequence(const SequenceIdArg& input) {
+    CHECK_EQ(input.shape().ndims(), 1UL);
+    size_t batchSize = input.shape()[0];
+    size_t numSeqs = batchSize / 10 + 1;
+    size_t sizeId = (numSeqs + 1) * sizeOfValuType(VALUE_TYPE_INT32);
+    cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(sizeId));
+    gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(sizeId));
+    cpuSeq_ = std::make_shared<SequenceIdArg>(cpuMemory_.back()->getBuf(),
+                                              TensorShape{numSeqs + 1});
+    gpuSeq_ = std::make_shared<SequenceIdArg>(gpuMemory_.back()->getBuf(),
+                                              TensorShape{numSeqs + 1});
+    /// init sequence Id
+    initArg(*cpuSeq_, batchSize);
+
+    // todo(tianbing), delete it
+    CHECK_EQ(cpuSeq_->shape().getElements(), cpuSeq_->numSeqs() + 1);
+
+    CpuIVector cpuSeq(cpuSeq_->shape().getElements(), (int*)cpuSeq_->data());
+    GpuIVector gpuSeq(gpuSeq_->shape().getElements(), (int*)gpuSeq_->data());
+    gpuSeq.copyFrom(cpuSeq);
+  }
+
+  void addInputs(const SequenceArg& input) {
+    CHECK_EQ(input.shape().ndims(), 2UL);
+    size_t batchSize = input.shape()[0];
+    if (!cpuSeq_ || !gpuSeq_) {  // sequence not exist
+      addSequence(SequenceIdArg(TensorShape{batchSize}));
+    }
+
+    size_t size =
+        input.shape().getElements() * sizeOfValuType(input.valueType());
+    cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
+    gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
+
+    /// SequenceArg
+    cpuInputs_.emplace_back(
+        std::make_shared<SequenceArg>(cpuMemory_.back()->getBuf(),
+                                      input.valueType(),
+                                      input.shape(),
+                                      *cpuSeq_));
+    gpuInputs_.emplace_back(
+        std::make_shared<SequenceArg>(gpuMemory_.back()->getBuf(),
+                                      input.valueType(),
+                                      input.shape(),
+                                      *gpuSeq_));
+  }
+
   // output need only contains shape, do not contains data.
   void addOutputs(const BufferArg& output, ArgType argType = ASSIGN_TO) {
     size_t size =
@@ -116,24 +164,31 @@ public:
         std::make_shared<SparseMatrixArg>(*gpuSparse_, argType));
   }
 
-  void addInputs(const SequenceArg& input) {
-    size_t batchSize = input.shape()[0];
-    size_t numSeqs = batchSize / 10 + 1;
+  void addOutputs(const SequenceArg& output, ArgType argType = ASSIGN_TO) {
+    CHECK_EQ(output.shape().ndims(), 2UL);
+    size_t batchSize = output.shape()[0];
 
-    size_t sizeId = (numSeqs + 1) * sizeOfValuType(VALUE_TYPE_INT32);
-    cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(sizeId));
-    gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(sizeId));
-
-    TensorShape seqsId({numSeqs + 1});
-    // void* cpuBuffer = cpuMemory_.back()->getBuf();
-    // void* gpuBuffer = gpuMemory_.back()->getBuf();
-
+    if (!cpuSeq_ || !gpuSeq_) {  // sequence not exist
+      addSequence(SequenceIdArg(TensorShape{batchSize}));
+    }
     size_t size =
-        input.shape().getElements() * sizeOfValuType(input.valueType());
+        output.shape().getElements() * sizeOfValuType(output.valueType());
     cpuMemory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
     gpuMemory_.emplace_back(std::make_shared<GpuMemoryHandle>(size));
 
-    // TODO: need be implemented.
+    /// SequenceArg
+    cpuOutputs_.emplace_back(
+        std::make_shared<SequenceArg>(cpuMemory_.back()->getBuf(),
+                                      output.valueType(),
+                                      output.shape(),
+                                      *cpuSeq_,
+                                      argType));
+    gpuOutputs_.emplace_back(
+        std::make_shared<SequenceArg>(gpuMemory_.back()->getBuf(),
+                                      output.valueType(),
+                                      output.shape(),
+                                      *gpuSeq_,
+                                      argType));
   }
 
   void addInputs(const SparseMatrixArg& input) {
@@ -193,14 +248,44 @@ public:
   std::shared_ptr<FunctionBase> getGpuFunction() const { return gpuFunc_; }
 
 protected:
+  // only init cpu argument, gpu argument copy from cpu argument.
+  void initArg(BufferArg& arg) {
+    CpuVector vector(arg.shape().getElements(), (real*)arg.data());
+    vector.uniform(0.001, 1);
+  }
+
+  void initArg(SequenceArg& arg) {
+    /// init only matrix
+    CpuVector vector(arg.shape().getElements(), (real*)arg.data());
+    vector.uniform(0.001, 1);
+  }
+
+  void initArg(SequenceIdArg& arg, size_t batchSize) {
+    size_t numSeqs = arg.numSeqs();
+    int* buf = reinterpret_cast<int*>(arg.data());
+    int pos = 0;
+    size_t maxLen = 2 * batchSize / numSeqs;
+    for (int i = 0; i < (int)numSeqs; ++i) {
+      int len = 1 + uniformRandom(std::min<int64_t>(
+                        maxLen, batchSize - pos - numSeqs + i));
+      buf[i] = pos;
+      pos += len;
+      VLOG(1) << " len=" << len;
+    }
+    buf[numSeqs] = batchSize;
+  }
+
   void initInputs() {
     for (size_t i = 0; i < cpuInputs_.size(); i++) {
       if (cpuInputs_[i]->isSparseArg()) {
         continue;  /// sparse matrix already init
       }
 
-      initArg(*cpuInputs_[i]);
-
+      if (cpuInputs_[i]->isSequenceArg()) {
+        initArg(dynamic_cast<SequenceArg&>(*cpuInputs_[i]));
+      } else {
+        initArg(*cpuInputs_[i]);
+      }
       // TODO: Need a BufferCopy used to copy from one BufferArg to another.
       CpuVector cpuVector(cpuInputs_[i]->shape().getElements(),
                           (real*)cpuInputs_[i]->data());
@@ -217,7 +302,11 @@ protected:
         continue;  /// sparse matrix already init
       }
 
-      initArg(*cpuOutputs_[i]);
+      if (cpuOutputs_[i]->isSequenceArg()) {
+        initArg(dynamic_cast<SequenceArg&>(*cpuOutputs_[i]));
+      } else {
+        initArg(*cpuOutputs_[i]);
+      }
 
       // TODO: Need a BufferCopy used to copy from one BufferArg to another.
       CpuVector cpuVector(cpuOutputs_[i]->shape().getElements(),
@@ -241,28 +330,6 @@ protected:
     }
   }
 
-  // only init cpu argument, gpu argument copy from cpu argument.
-  void initArg(BufferArg& arg) {
-    CpuVector vector(arg.shape().getElements(), (real*)arg.data());
-    vector.uniform(0.001, 1);
-  }
-
-  void initArg(SequenceIdArg& arg, size_t batchSize) {
-    size_t numSeqs = arg.numSeqs();
-    int* buf = reinterpret_cast<int*>(arg.data());
-    int pos = 0;
-    size_t maxLen = 2 * batchSize / numSeqs;
-    for (int i = 0; i < (int)numSeqs; ++i) {
-      int len = uniformRandom(
-                    std::min<int64_t>(maxLen, batchSize - pos - numSeqs + i)) +
-                1;
-      buf[i] = pos;
-      pos += len;
-      VLOG(1) << " len=" << len;
-    }
-    buf[numSeqs] = batchSize;
-  }
-
 protected:
   std::shared_ptr<FunctionBase> cpuFunc_;
   std::shared_ptr<FunctionBase> gpuFunc_;
@@ -274,6 +341,8 @@ protected:
   std::vector<BufferArgPtr> gpuOutputs_;
   std::shared_ptr<CpuSparseMatrix> cpuSparse_;
   std::shared_ptr<GpuSparseMatrix> gpuSparse_;
+  std::shared_ptr<SequenceIdArg> cpuSeq_;
+  std::shared_ptr<SequenceIdArg> gpuSeq_;
 };
 
 }  // namespace paddle

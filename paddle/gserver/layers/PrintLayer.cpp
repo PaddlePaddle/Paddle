@@ -19,8 +19,8 @@ namespace paddle {
 class PrintLayer : public Layer {
 public:
   explicit PrintLayer(const LayerConfig& config) : Layer(config) {}
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback) {}
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback) override {}
 };
 
 void PrintLayer::forward(PassType passType) {
