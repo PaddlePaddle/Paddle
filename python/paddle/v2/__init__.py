@@ -11,7 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import optimizer
+import parameters
+import py_paddle.swig_paddle as api
+import trainer
+import event
 
-__all__ = ['optimizer']
+__all__ = ['optimizer', 'parameters', 'init', 'trainer', 'event']
+
+
+def init(**kwargs):
+    args = []
+    for key in kwargs.keys():
+        args.append('--%s=%s' % (key, str(kwargs[key])))
+
+    api.initPaddle(*args)
