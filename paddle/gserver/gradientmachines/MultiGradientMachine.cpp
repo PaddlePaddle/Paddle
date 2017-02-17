@@ -283,41 +283,34 @@ void MultiGradientMachine::forwardBackward(const std::vector<Argument>& inArgs,
 }
 
 MatrixPtr MultiGradientMachine::getLayerOutput(const std::string& layerName) {
-  // neural networks are same in each trainer thread
-  // layer output height = height of layer output * thread nums
-  auto nn = dynamic_cast<NeuralNetwork*>(threads_[0]->getGradientMachine());
-  auto height = nn->getLayerOutput(layerName)->getHeight() * threads_.size();
-  auto stream = HPPL_STREAM_DEFAULT;
+  // each thread has the same neuro network
+  auto nn = threads_[0]->getGradientMachine();
 
-  auto copyLayerOutput = [height, stream](
-      MatrixPtr& dst, MatrixPtr src, int startRow, bool useGpu) {
-    size_t width = src->getWidth();
-    if (!dst) {
-      dst = src->clone(height, width, useGpu);
-    } else {
-      dst->resize(height, width);
-    }
+  size_t height = 0;
+  size_t width = nn->getLayerOutput(layerName)->getWidth();
+  for (auto& thread : threads_) {
+    auto out = thread->getGradientMachine()->getLayerOutput(layerName);
+    height += out->getHeight();
+    CHECK_EQ(width, out->getWidth());
+  }
 
-    MatrixPtr tmpMatrix = dst->subMatrix(startRow, src->getHeight());
-    tmpMatrix->copyFrom(*src, stream);
-  };
-
-  MatrixPtr mats;
-  size_t startRow = 0;
+  MatrixPtr dst;
+  Matrix::resizeOrCreate(dst, height, width, false, useGpu_);
 
   // copy one layer output from one trainer thread at each time
+  size_t startRow = 0;
   for (auto& thread : threads_) {
-    auto nn = dynamic_cast<NeuralNetwork*>(thread->getGradientMachine());
-    auto mat = nn->getLayerOutput(layerName);
-    copyLayerOutput(mats, mat, startRow, useGpu_);
-    startRow += mat->getHeight();
+    auto src = thread->getGradientMachine()->getLayerOutput(layerName);
+    auto tmpMatrix = dst->subMatrix(startRow, src->getHeight());
+    tmpMatrix->copyFrom(*src, HPPL_STREAM_DEFAULT);
+    startRow += src->getHeight();
   }
 
   if (useGpu_) {
     hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   }
 
-  return mats;
+  return dst;
 }
 
 void MultiGradientMachine::backwardImp(const UpdateCallback& callback) {
