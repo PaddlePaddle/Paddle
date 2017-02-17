@@ -26,7 +26,6 @@ def main():
     cost = paddle.layer.classification_cost(input=inference, label=label)
 
     topology = paddle.layer.parse_network(cost)
-    print topology
     parameters = paddle.parameters.create(topology)
     for param_name in parameters.keys():
         array = parameters.get(param_name)
