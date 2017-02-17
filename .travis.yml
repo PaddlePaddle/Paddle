@@ -4,6 +4,7 @@ cache:
     - $HOME/third_party
     - $HOME/.ccache
     - $HOME/.cache/pip
+    - $HOME/Library/Caches/Homebrew
 sudo: required
 dist: trusty
 os:
