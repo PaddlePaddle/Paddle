@@ -43,7 +43,7 @@ paddle.train(paddle.dataset.mnist, {"image":0, "label":1}, 128, 10, ...)
 
 ## Data Reader Decorators
 
-Data Reader Decorators takes a single or multiple data reader, returns a new data reader. It is similar to a [python decorator](https://wiki.python.org/moin/PythonDecorators), but it does not use `@` syntax.
+Data reader decorators takes a single or multiple data reader, returns a new data reader. It is similar to a [python decorator](https://wiki.python.org/moin/PythonDecorators), but it does not use `@` syntax.
 
 Since we have a strict interface for data readers (no parameter, return a single data item). Data reader can be used flexiable via data reader decorators. Following are a few examples:
 
