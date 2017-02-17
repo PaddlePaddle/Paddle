@@ -283,7 +283,7 @@ void MultiGradientMachine::forwardBackward(const std::vector<Argument>& inArgs,
 }
 
 MatrixPtr MultiGradientMachine::getLayerOutput(const std::string& layerName) {
-  // each thread has the same neuro network
+  // each thread has the same neural network
   auto nn = threads_[0]->getGradientMachine();
   size_t height = 0;
   size_t width = nn->getLayerOutput(layerName)->getWidth();
@@ -297,19 +297,15 @@ MatrixPtr MultiGradientMachine::getLayerOutput(const std::string& layerName) {
   }
 
   MatrixPtr layerOutput;
-  Matrix::resizeOrCreate(layerOutput, height, width, false, useGpu_);
+  Matrix::resizeOrCreate(layerOutput, height, width, false, false);
 
   // copy one layer output from one trainer thread at each time
   size_t startRow = 0;
 
   for (size_t i = 0; i < threads_.size(); i++) {
     auto tmpMatrix = layerOutput->subMatrix(startRow, mats[i]->getHeight());
-    tmpMatrix->copyFrom(*mats[i], HPPL_STREAM_DEFAULT);
+    tmpMatrix->copyFrom(*mats[i]);
     startRow += mats[i]->getHeight();
-  }
-
-  if (useGpu_) {
-    hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   }
 
   return layerOutput;
