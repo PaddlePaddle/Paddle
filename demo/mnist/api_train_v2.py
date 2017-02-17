@@ -1,7 +1,7 @@
-from paddle.trainer_config_helpers import *
-from paddle.trainer.PyDataProvider2 import dense_vector, integer_value
-import paddle.v2 as paddle
 import numpy
+import paddle.v2 as paddle
+from paddle.trainer.PyDataProvider2 import dense_vector, integer_value
+
 import mnist_util
 
 
@@ -12,32 +12,32 @@ def train_reader():
         yield item
 
 
-def network_config():
-    imgs = data_layer(name='pixel', size=784)
-    hidden1 = fc_layer(input=imgs, size=200)
-    hidden2 = fc_layer(input=hidden1, size=200)
-    inference = fc_layer(input=hidden2, size=10, act=SoftmaxActivation())
-    cost = classification_cost(
-        input=inference, label=data_layer(
-            name='label', size=10))
-    outputs(cost)
-
-
 def main():
     paddle.init(use_gpu=False, trainer_count=1)
-    topology = parse_network_config(network_config)
+
+    # define network topology
+    images = paddle.layer.data(name='pixel', size=784)
+    label = paddle.layer.data(name='label', size=10)
+    hidden1 = paddle.layer.fc(input=images, size=200)
+    hidden2 = paddle.layer.fc(input=hidden1, size=200)
+    inference = paddle.layer.fc(input=hidden2,
+                                size=10,
+                                act=paddle.activation.Softmax())
+    cost = paddle.layer.classification_cost(input=inference, label=label)
+
+    topology = paddle.layer.parse_network(cost)
+    print topology
     parameters = paddle.parameters.create(topology)
     for param_name in parameters.keys():
         array = parameters.get(param_name)
         array[:] = numpy.random.uniform(low=-1.0, high=1.0, size=array.shape)
         parameters.set(parameter_name=param_name, value=array)
 
-    adam_optimizer = paddle.optimizer.Optimizer(
-        learning_rate=0.01, learning_method=AdamOptimizer())
+    adam_optimizer = paddle.optimizer.Adam(learning_rate=0.01)
 
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
-            para = parameters.get('___fc_layer_2__.w0')
+            para = parameters.get('___fc_2__.w0')
             print "Pass %d, Batch %d, Cost %f, Weight Mean Of Fc 2 is %f" % (
                 event.pass_id, event.batch_id, event.cost, para.mean())
 

@@ -72,6 +72,11 @@ from paddle.trainer_config_helpers.config_parser_utils import \
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 import collections
 
+__all__ = [
+    'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
+    'cross_entropy_cost'
+]
+
 
 def parse_network(*outputs):
     """
@@ -164,11 +169,6 @@ cross_entropy_cost = __convert_to_v2__(
     'cross_entropy',
     name_prefix='cross_entropy',
     parent_names=['input', 'label'])
-
-__all__ = [
-    'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
-    'cross_entropy_cost'
-]
 
 if __name__ == '__main__':
     pixel = data(name='pixel', size=784)
