@@ -15,6 +15,7 @@
 import collections
 import py_paddle.swig_paddle
 import numpy
+import paddle.trainer.PyDataProvider2 as dp2
 
 __all__ = ['DataConverter']
 
