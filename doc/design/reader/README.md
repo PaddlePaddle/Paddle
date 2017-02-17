@@ -27,11 +27,25 @@ def data_reader_fake_image_and_label():
 		yield numpy.random.uniform(-1, 1, size=20*20), False
 ```
 
+## Usage
+
+data reader, mapping from item(s) read to data layer, batch size and number of total pass will be passed into `paddle.train`:
+
+```python
+# two data layer is created:
+image_layer = paddle.layer.data("image", ...)
+label_layer = paddle.layer.data("label", ...)
+
+# ...
+
+paddle.train(paddle.dataset.mnist, {"image":0, "label":1}, 128, 10, ...)
+```
+
 ## Data Reader Decorators
 
 Data Reader Decorators takes a single or multiple data reader, returns a new data reader. It is similar to a [python decorator](https://wiki.python.org/moin/PythonDecorators), but it does not use `@` syntax.
 
-Since we have a strict interface for data readers (no parameter, return a single data item). Data reader can be used flexiable via data reader decorators. Following a few examples:
+Since we have a strict interface for data readers (no parameter, return a single data item). Data reader can be used flexiable via data reader decorators. Following are a few examples:
 
 ### Prefetch Data
 
@@ -64,39 +78,25 @@ true_reader = lambda : data_reader_bool(True)
 false_reader = lambda : data_reader_bool(False)
 
 reader = paddle.reader.combine(paddle.dataset.mnist, data_reader_fake_image, true_reader, false_reader)
-# skipped 1 because paddle.dataset.mnist produces two items per data entry.
-# We don't care second item at this time.
+# Skipped 1 because paddle.dataset.mnist produces two items per data entry.
+# And we don't care second item at this time.
 paddle.train(reader, {"true_image":0, "fake_image": 2, "true_label": 3, "false_label": 4}, ...)
 ```
 
 ### Shuffle
 
-Given shuffle buffer size `n`, `paddle.reader.shuffle` will return a data reader decorater that buffers `n` data entries and shuffle them before a data entry is read.
+Given shuffle buffer size `n`, `paddle.reader.shuffle` will return a data reader that buffers `n` data entries and shuffle them before a data entry is read.
 
 Example:
 ```python
 reader = paddle.reader.shuffle(paddle.dataset.mnist, 512)
 ```
 
-## Usage
-
-data reader, mapping from item(s) read to data layer, batch size and number of total pass will be passed into `paddle.train`:
-
-```python
-# two data layer is created:
-image_layer = paddle.layer.data("image", ...)
-label_layer = paddle.layer.data("label", ...)
-
-# ...
-
-paddle.train(paddle.dataset.mnist, {"image":0, "label":1}, 128, 10, ...)
-```
-
 ## Q & A
 
 ### Why return only a single entry, but not a mini batch?
 
-If return a mini batch, data reader need to take care of batch size. But batch size is a concept for training, it makes more sense for user to specify batch size as a parameter for `train`.
+If a mini batch is returned, data reader need to take care of batch size. But batch size is a concept for training, it makes more sense for user to specify batch size as a parameter for `train`.
 
 Practically, always return a single entry make reusing existing data reader much easier (e.g., if existing data reader return not a single entry but 3 entries, training code will be more complex because it need to handle cases like batch size 2).
 
@@ -129,13 +129,16 @@ An example implementation of paddle.train could be:
 
 ```python
 def minibatch_decorater(reader, minibatch_size):
-    buf = [reader.next() for x in xrange(minibatch_size)]
-    while len(buf) > 0:
-        yield buf
-        buf = [reader.next() for x in xrange(minibatch_size)]
+	def ret():
+		r = reader()
+		buf = [r.next() for x in xrange(minibatch_size)]
+		while len(buf) > 0:
+			yield buf
+			buf = [r.next() for x in xrange(minibatch_size)]
+	return ret
 
 def train(reader, mapping, batch_size, total_pass):
 	for pass_idx in range(total_pass):
-		for mini_batch in minibatch_decorater(reader()): # this loop will never end in online learning.
+		for mini_batch in minibatch_decorater(reader): # this loop will never end in online learning.
 			do_forward_backward(mini_batch, mapping)
 ```
