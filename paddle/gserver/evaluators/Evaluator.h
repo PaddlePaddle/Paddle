@@ -119,7 +119,6 @@ public:
   static ClassRegistrar<Evaluator> registrar_;
 
   virtual void getNames(std::vector<std::string>* names) {
-    names->clear();
     names->push_back(config_.name());
   }
 
@@ -166,6 +165,25 @@ protected:
   EvaluatorConfig config_;
   double numSamples_;
   double totalScore_;
+};
+
+class NotGetableEvaluator : public Evaluator {
+  // Evaluator interface
+public:
+  void getNames(std::vector<std::string>* names) {}
+
+  real getValue(const std::string& name, Error* err) const {
+    if (err != nullptr) {
+      *err = Error("Not implemented");
+    }
+    return .0f;
+  }
+  std::string getType(const std::string& name, Error* err) const {
+    if (err != nullptr) {
+      *err = Error("Not implemented");
+    }
+    return "";
+  }
 };
 
 class DummyEvaluator : public Evaluator {
