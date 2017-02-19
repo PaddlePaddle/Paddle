@@ -823,8 +823,10 @@ real PrecisionRecallEvaluator::getValue(const std::string& name,
   std::vector<std::string> buffers;
   paddle::str::split(name, '.', &buffers);
   auto it = this->values_.find(buffers[buffers.size() - 1]);
-  if (it != this->values_.end() && err != nullptr) {
-    *err = Error("No such key %s", name.c_str());
+  if (it == this->values_.end()) {  // not found
+    if (err != nullptr) {
+      *err = Error("No such key %s", name.c_str());
+    }
     return .0f;
   }
 
