@@ -1087,8 +1087,6 @@ REGISTER_EVALUATOR(value_printer, ValuePrinter);
  */
 class GradientPrinter : public Evaluator {
 public:
-  GradientPrinter() {}
-
   virtual void eval(const NeuralNetwork& nn) {
     for (const std::string& name : config_.input_layers()) {
       const Argument& argu = nn.getLayer(name)->getOutput();
@@ -1096,11 +1094,6 @@ public:
         std::ostringstream os;
         argu.grad->print(os);
         LOG(INFO) << "layer=" << name << " grad matrix:\n" << os.str();
-      }
-      if (auto startPos = argu.sequenceStartPositions) {
-        std::ostringstream os;
-        startPos->getVector(false)->print(os, startPos->getSize());
-        LOG(INFO) << "layer=" << name << " sequence pos vector:\n" << os.str();
       }
     }
   }
