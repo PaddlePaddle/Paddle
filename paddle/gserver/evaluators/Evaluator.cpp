@@ -459,11 +459,6 @@ std::string AucEvaluator::getTypeImpl() const {
   }
 }
 
-static InitFunction __reg_type_auc__([]() {
-  Evaluator::registrar_.registerClass("last-column-auc",
-                                      [] { return new AucEvaluator(-1); });
-});
-
 // class RankAucEvaluator
 REGISTER_EVALUATOR(rankauc, RankAucEvaluator);
 
@@ -881,19 +876,20 @@ void PnpairEvaluator::calc(std::vector<PredictionResult>& predictArray) {
 
 ClassRegistrar<Evaluator> Evaluator::registrar_;
 Evaluator* Evaluator::create(const EvaluatorConfig& config) {
-  Evaluator* evaluator = nullptr;
-  if (config.type() == "classification_error") {
-    evaluator = new ClassificationErrorEvaluator();
-  } else if (config.type() == "sum") {
-    evaluator = new SumEvaluator();
-  } else if (config.type() == "last-column-sum") {
-    evaluator = new ColumnSumEvaluator(-1);
-  } else {
-    evaluator = registrar_.createByType(config.type());
-  }
+  Evaluator* evaluator = registrar_.createByType(config.type());
   evaluator->init(config);
   return evaluator;
 }
+
+REGISTER_EVALUATOR(classification_error, ClassificationErrorEvaluator);
+REGISTER_EVALUATOR(sum, SumEvaluator);
+static InitFunction __reg_type_auc_sum__([]() {
+  Evaluator::registrar_.registerClass(
+      "last-column-sum", [] { return new ColumnSumEvaluator(-1); });
+  Evaluator::registrar_.registerClass("last-column-auc",
+                                      [] { return new AucEvaluator(-1); });
+});
+
 /**
  * @brief print value of each layer.
  *
