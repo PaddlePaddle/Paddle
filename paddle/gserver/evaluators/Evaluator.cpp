@@ -538,12 +538,15 @@ double RankAucEvaluator::calcRankAuc(real* outputData,
                                         : aucTmp / (clickSum * noClickSum);
 }
 
+std::string RankAucEvaluator::getTypeImpl() const { return "rankauc"; }
+
 // class PrecisionRecallEvaluator
 REGISTER_EVALUATOR(precision_recall, PrecisionRecallEvaluator);
 
 void PrecisionRecallEvaluator::start() {
   Evaluator::start();
   statsInfo_.clear();
+  values_.clear();
 }
 
 real PrecisionRecallEvaluator::evalImp(std::vector<Argument>& arguments) {
@@ -603,7 +606,9 @@ real PrecisionRecallEvaluator::evalImp(std::vector<Argument>& arguments) {
   return 0;
 }
 
-void PrecisionRecallEvaluator::printStats(std::ostream& os) const {
+template <typename T1, typename T2>
+void PrecisionRecallEvaluator::printStatsHelper(T1 labelCallback,
+                                                T2 microAvgCallback) const {
   int label = config_.positive_label();
   if (label != -1) {
     CHECK(label >= 0 && label < (int)statsInfo_.size())
@@ -612,9 +617,7 @@ void PrecisionRecallEvaluator::printStats(std::ostream& os) const {
     double precision =
         calcPrecision(statsInfo_[label].TP, statsInfo_[label].FP);
     double recall = calcRecall(statsInfo_[label].TP, statsInfo_[label].FN);
-    os << "positive_label=" << label << " precision=" << precision
-       << " recall=" << recall
-       << " F1-score=" << calcF1Score(precision, recall);
+    labelCallback(label, precision, recall, calcF1Score(precision, recall));
     return;
   }
 
@@ -636,21 +639,45 @@ void PrecisionRecallEvaluator::printStats(std::ostream& os) const {
   macroAvgPrecision /= numLabels;
   macroAvgRecall /= numLabels;
   double macroAvgF1Score = calcF1Score(macroAvgPrecision, macroAvgRecall);
-  os << "macro-average-precision=" << macroAvgPrecision
-     << " macro-average-recall=" << macroAvgRecall
-     << " macro-average-F1-score=" << macroAvgF1Score;
 
   double microAvgPrecision = calcPrecision(microTotalTP, microTotalFP);
   double microAvgRecall = calcPrecision(microTotalTP, microTotalFN);
   double microAvgF1Score = calcF1Score(microAvgPrecision, microAvgRecall);
-  if (!isMultiBinaryLabel_) {
-    // precision and recall are equal in this case
-    os << " micro-average-precision=" << microAvgPrecision;
-  } else {
-    os << " micro-average-precision=" << microAvgPrecision
-       << " micro-average-recall=" << microAvgRecall
-       << " micro-average-F1-score=" << microAvgF1Score;
-  }
+
+  microAvgCallback(macroAvgPrecision,
+                   macroAvgRecall,
+                   macroAvgF1Score,
+                   isMultiBinaryLabel_,
+                   microAvgPrecision,
+                   microAvgRecall,
+                   microAvgF1Score);
+}
+
+void PrecisionRecallEvaluator::printStats(std::ostream& os) const {
+  this->printStatsHelper(
+      [&os](int label, double precision, double recall, double f1) {
+        os << "positive_label=" << label << " precision=" << precision
+           << " recall=" << recall << " F1-score=" << f1;
+      },
+      [&os](double macroAvgPrecision,
+            double macroAvgRecall,
+            double macroAvgF1Score,
+            bool isMultiBinaryLabel,
+            double microAvgPrecision,
+            double microAvgRecall,
+            double microAvgF1Score) {
+        os << "macro-average-precision=" << macroAvgPrecision
+           << " macro-average-recall=" << macroAvgRecall
+           << " macro-average-F1-score=" << macroAvgF1Score;
+        if (!isMultiBinaryLabel) {
+          // precision and recall are equal in this case
+          os << " micro-average-precision=" << microAvgPrecision;
+        } else {
+          os << " micro-average-precision=" << microAvgPrecision
+             << " micro-average-recall=" << microAvgRecall
+             << " micro-average-F1-score=" << microAvgF1Score;
+        }
+      });
 }
 
 void PrecisionRecallEvaluator::calcStatsInfo(const MatrixPtr& output,
@@ -729,6 +756,69 @@ void PrecisionRecallEvaluator::calcStatsInfoMulti(const MatrixPtr& output,
       }
     }
   }
+}
+
+void PrecisionRecallEvaluator::storeLocalValues() const {
+  if (this->values_.size() == 0) {
+    this->printStatsHelper(
+        [this](int label, double precision, double recall, double f1) {
+          values_["positive_label"] = (double)label;
+          values_["precision"] = precision;
+          values_["recal"] = recall;
+          values_["F1-score"] = f1;
+        },
+        [this](double macroAvgPrecision,
+               double macroAvgRecall,
+               double macroAvgF1Score,
+               bool isMultiBinaryLabel,
+               double microAvgPrecision,
+               double microAvgRecall,
+               double microAvgF1Score) {
+          values_["macro-average-precision"] = macroAvgPrecision;
+          values_["macro-average-recall"] = macroAvgRecall;
+          values_["macro-average-F1-score"] = macroAvgF1Score;
+          if (!isMultiBinaryLabel) {
+            // precision and recall are equal in this case
+            values_["micro-average-precision"] = microAvgPrecision;
+          } else {
+            values_["micro-average-precision"] = microAvgPrecision;
+            values_["micro-average-recall"] = microAvgRecall;
+            values_["micro-average-F1-score"] = microAvgF1Score;
+          }
+        });
+  }
+}
+
+void PrecisionRecallEvaluator::getNames(std::vector<std::string>* names) {
+  this->storeLocalValues();
+  names->clear();
+  names->reserve(this->values_.size());
+  for (auto it = this->values_.begin(); it != this->values_.end(); ++it) {
+    names->push_back(this->config_.name() + "." + it->first);
+  }
+}
+
+real PrecisionRecallEvaluator::getValue(const std::string& name,
+                                        Error* err) const {
+  this->storeLocalValues();
+  auto it = this->values_.find(name);
+  if (it != this->values_.end() && err != nullptr) {
+    *err = Error("No such key %s", name.c_str());
+    return .0f;
+  }
+
+  return it->second;
+}
+
+std::string PrecisionRecallEvaluator::getType(const std::string& name,
+                                              Error* err) const {
+  this->storeLocalValues();
+  auto it = this->values_.find(name);
+  if (it != this->values_.end() && err != nullptr) {
+    *err = Error("No such key %s", name.c_str());
+    return "";
+  }
+  return "precision_recall";
 }
 
 void PrecisionRecallEvaluator::distributeEval(ParameterClient2* client) {
@@ -874,6 +964,8 @@ void PnpairEvaluator::calc(std::vector<PredictionResult>& predictArray) {
             << " calc total special pair: " << special;
 }
 
+std::string PnpairEvaluator::getTypeImpl() const { return "pnpair"; }
+
 ClassRegistrar<Evaluator> Evaluator::registrar_;
 Evaluator* Evaluator::create(const EvaluatorConfig& config) {
   Evaluator* evaluator = registrar_.createByType(config.type());
@@ -901,27 +993,12 @@ public:
 
   virtual void eval(const NeuralNetwork& nn) {
     for (const std::string& name : config_.input_layers()) {
-      const Argument& argu = nn.getLayer(name)->getOutput();
-      if (argu.value) {
-        std::ostringstream os;
-        argu.value->print(os);
-        LOG(INFO) << "layer=" << name << " value matrix:\n" << os.str();
-      }
-      if (argu.ids) {
-        std::ostringstream os;
-        argu.ids->print(os, argu.ids->getSize());
-        LOG(INFO) << "layer=" << name << " ids vector:\n" << os.str();
-      }
-      if (auto startPos = argu.sequenceStartPositions) {
-        std::ostringstream os;
-        startPos->getVector(false)->print(os, startPos->getSize());
-        LOG(INFO) << "layer=" << name << " sequence pos vector:\n" << os.str();
-      }
-      if (auto subStartPos = argu.subSequenceStartPositions) {
-        std::ostringstream os;
-        subStartPos->getVector(false)->print(os, subStartPos->getSize());
-        LOG(INFO) << "layer=" << name << " sub-sequence pos vector:\n"
-                  << os.str();
+      std::vector<std::tuple<std::string, std::string>> out;
+      auto err = nn.getLayerOutputValue(name, &out);
+      err.check();
+      for (auto& each : out) {
+        LOG(INFO) << "layer=" << name << std::get<0>(each) << ":\n"
+                  << std::get<1>(each);
       }
     }
   }

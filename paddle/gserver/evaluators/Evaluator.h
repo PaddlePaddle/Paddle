@@ -132,6 +132,20 @@ public:
     return this->getValueImpl();
   }
 
+  virtual std::string getValueStr(const std::string& name,
+                                  paddle::Error* err = nullptr) const {
+    paddle::Error localErr;
+    if (err == nullptr) {
+      err = &localErr;
+    }
+    real result = this->getValue(name, err);
+    if (!err->isOK()) {
+      return "";
+    } else {
+      return std::to_string(result);
+    }
+  }
+
   virtual std::string getType(const std::string& name,
                               paddle::Error* err = nullptr) const {
     if (name != config_.name() && err != nullptr) {
@@ -142,7 +156,9 @@ public:
   }
 
 protected:
-  virtual real getValueImpl() const { return .0f; }
+  virtual real getValueImpl() const {
+    return numSamples_ != .0 ? totalScore_ / numSamples_ : .0;
+  }
 
   virtual std::string getTypeImpl() const { return "base"; }
 
@@ -261,6 +277,10 @@ private:
                      real* clickData,
                      real* pvData,
                      size_t size);
+
+  // Evaluator interface
+protected:
+  std::string getTypeImpl() const;
 };
 /**
  * @brief precision, recall and f1 score Evaluator
@@ -310,6 +330,9 @@ private:
   IVectorPtr cpuLabel_;
   MatrixPtr cpuWeight_;
 
+  template <typename T1, typename T2>
+  void printStatsHelper(T1 labelCallback, T2 microAvgCallback) const;
+
   void calcStatsInfo(const MatrixPtr& output,
                      const IVectorPtr& label,
                      const MatrixPtr& weight);
@@ -341,6 +364,15 @@ private:
       return 0;
     }
   }
+
+  mutable std::unordered_map<std::string, real> values_;
+
+  void storeLocalValues() const;
+  // Evaluator interface
+public:
+  void getNames(std::vector<std::string>* names);
+  real getValue(const std::string& name, Error* err) const;
+  std::string getType(const std::string& name, Error* err) const;
 };
 
 /*
@@ -387,8 +419,7 @@ public:
   virtual void finish() { calc(predictArray_); }
 
   virtual void printStats(std::ostream& os) const {
-    os << " pos/neg"
-       << "=" << pairArray_[0] / ((pairArray_[1] <= 0) ? 1.0 : pairArray_[1]);
+    os << " pos/neg=" << this->getValueImpl();
   }
 
   virtual void distributeEval(ParameterClient2* client) {
@@ -404,6 +435,13 @@ private:
   IVectorPtr cpuLabel_;
   IVectorPtr cpuInfo_;
   MatrixPtr cpuWeight_;
+
+  // Evaluator interface
+protected:
+  real getValueImpl() const {
+    return pairArray_[0] / ((pairArray_[1] <= 0) ? 1.0 : pairArray_[1]);
+  }
+  std::string getTypeImpl() const;
 };
 
 }  // namespace paddle

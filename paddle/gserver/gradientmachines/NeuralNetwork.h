@@ -128,6 +128,10 @@ public:
   static NeuralNetwork* newNeuralNetwork(const std::string& name = "",
                                          NeuralNetwork* rootNetwork = nullptr);
 
+  inline Error __must_check getLayerOutputValue(
+      const std::string& layerName,
+      std::vector<std::tuple<std::string, std::string>>* out) const;
+
 protected:
   /**
    * The constructor of NeuralNetwork.

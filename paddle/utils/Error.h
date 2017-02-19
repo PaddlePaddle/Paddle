@@ -116,6 +116,8 @@ public:
    */
   operator bool() const { return msg_ == nullptr; }
 
+  bool isOK() const { return *this; }
+
   /**
    * @brief check this status by glog.
    * @note It is a temp method used during cleaning Paddle code. It will be

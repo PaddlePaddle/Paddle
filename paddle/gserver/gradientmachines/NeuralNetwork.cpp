@@ -405,4 +405,42 @@ NeuralNetwork* NeuralNetwork::newNeuralNetwork(const std::string& name,
   }
 }
 
+Error NeuralNetwork::getLayerOutputValue(
+    const std::string& layerName,
+    std::vector<std::tuple<std::string, std::string>>* out) const {
+  auto& layers = this->config_.layers();
+  auto it = std::find_if(
+      layers.begin(), layers.end(), [&layerName](const LayerConfig& conf) {
+        return conf.name() == layerName;
+      });
+  if (it == layers.end()) {
+    return Error("Cannot find layer %s", layerName.c_str());
+  }
+  auto& layer = this->getLayer(layerName);
+  out->reserve(4);
+  auto& argu = layer->getOutput();
+
+  if (argu.value) {
+    std::ostringstream os;
+    argu.value->print(os);
+    out->push_back({"value", os.str()});
+  }
+  if (argu.ids) {
+    std::ostringstream os;
+    argu.ids->print(os, argu.ids->getSize());
+    out->push_back({"ids", os.str()});
+  }
+  if (auto startPos = argu.sequenceStartPositions) {
+    std::ostringstream os;
+    startPos->getVector(false)->print(os, startPos->getSize());
+    out->push_back({"sequence pos", os.str()});
+  }
+  if (auto subStartPos = argu.subSequenceStartPositions) {
+    std::ostringstream os;
+    subStartPos->getVector(false)->print(os, subStartPos->getSize());
+    out->push_back({"sub-sequence pos", os.str()});
+  }
+  return Error();
+}
+
 }  // namespace paddle
