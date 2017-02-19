@@ -449,6 +449,21 @@ double AucEvaluator::calcAuc() const {
   }
 }
 
+real AucEvaluator::getValueImpl() const { return calcAuc(); }
+
+std::string AucEvaluator::getTypeImpl() const {
+  if (colIdx_ == -1) {
+    return "last-column-auc";
+  } else {
+    return "auc";
+  }
+}
+
+static InitFunction __reg_type_auc__([]() {
+  Evaluator::registrar_.registerClass("last-column-auc",
+                                      [] { return new AucEvaluator(-1); });
+});
+
 // class RankAucEvaluator
 REGISTER_EVALUATOR(rankauc, RankAucEvaluator);
 
@@ -873,8 +888,6 @@ Evaluator* Evaluator::create(const EvaluatorConfig& config) {
     evaluator = new SumEvaluator();
   } else if (config.type() == "last-column-sum") {
     evaluator = new ColumnSumEvaluator(-1);
-  } else if (config.type() == "last-column-auc") {
-    evaluator = new AucEvaluator(-1);
   } else {
     evaluator = registrar_.createByType(config.type());
   }
@@ -1252,5 +1265,7 @@ public:
   }
 };
 REGISTER_EVALUATOR(classification_error_printer, ClassificationErrorPrinter);
+
+std::string DummyEvaluator::getTypeImpl() const { return "dummy"; }
 
 }  // namespace paddle

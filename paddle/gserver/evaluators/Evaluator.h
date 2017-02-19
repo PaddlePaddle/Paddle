@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/parameter/Argument.h"
 #include "paddle/pserver/ParameterClient2.h"
 #include "paddle/utils/ClassRegistrar.h"
+#include "paddle/utils/Error.h"
 
 namespace paddle {
 
@@ -117,6 +118,34 @@ public:
 
   static ClassRegistrar<Evaluator> registrar_;
 
+  virtual void getNames(std::vector<std::string>* names) {
+    names->clear();
+    names->push_back(config_.name());
+  }
+
+  virtual real getValue(const std::string& name,
+                        paddle::Error* err = nullptr) const {
+    if (name != config_.name() && err != nullptr) {
+      *err = paddle::Error("no such name of evaluator %s", name.c_str());
+      return .0f;
+    }
+    return this->getValueImpl();
+  }
+
+  virtual std::string getType(const std::string& name,
+                              paddle::Error* err = nullptr) const {
+    if (name != config_.name() && err != nullptr) {
+      *err = paddle::Error("no such name of evaluator %s", name.c_str());
+      return std::string();
+    }
+    return this->getTypeImpl();
+  }
+
+protected:
+  virtual real getValueImpl() const { return .0f; }
+
+  virtual std::string getTypeImpl() const { return "base"; }
+
 protected:
   EvaluatorConfig config_;
   double numSamples_;
@@ -135,6 +164,10 @@ public:
   }
   virtual void finish() {}
   virtual void printStats(std::ostream&) const {}
+
+  // Evaluator interface
+protected:
+  std::string getTypeImpl() const;
 };
 /**
  * @brief evaluate AUC using colIdx-th column as prediction.
@@ -191,6 +224,11 @@ private:
   }
 
   double calcAuc() const;
+
+  // Evaluator interface
+protected:
+  real getValueImpl() const;
+  std::string getTypeImpl() const;
 };
 
 /**
