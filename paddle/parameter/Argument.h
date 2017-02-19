@@ -297,6 +297,14 @@ struct Argument {
    sequence has sub-sequence degrades to a sequence.
    */
   void degradeSequence(const Argument& input, bool useGpu);
+
+  /**
+   * @brief getValueString will return the argument's output in string. There
+   * are several kinds of output. The keys of output dictionary are 'value',
+   * 'id', 'sequence pos', 'sub-sequence pos'.
+   * @param out [out]: the return values.
+   */
+  void getValueString(std::unordered_map<std::string, std::string>* out) const;
 };
 
 }  // namespace paddle

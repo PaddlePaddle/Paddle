@@ -602,6 +602,32 @@ void Argument::degradeSequence(const Argument& input, bool useGpu) {
   tgtBuf[numSequences] = numSubSequences;
 }
 
+void Argument::getValueString(
+    std::unordered_map<std::string, std::string>* out) const {
+  if (value) {
+    std::ostringstream os;
+    value->print(os);
+    out->insert({"value", os.str()});
+  }
+  if (ids) {
+    std::ostringstream os;
+    ids->print(os, ids->getSize());
+    out->insert({"ids", os.str()});
+  }
+  if (sequenceStartPositions) {
+    std::ostringstream os;
+    sequenceStartPositions->getVector(false)->print(
+        os, sequenceStartPositions->getSize());
+    out->insert({"sequence pos", os.str()});
+  }
+  if (subSequenceStartPositions) {
+    std::ostringstream os;
+    subSequenceStartPositions->getVector(false)->print(
+        os, subSequenceStartPositions->getSize());
+    out->insert({"sub-sequence pos", os.str()});
+  }
+}
+
 void Argument::subArgFrom(const Argument& input,
                           size_t offset,
                           size_t height,

@@ -892,27 +892,14 @@ public:
 
   virtual void eval(const NeuralNetwork& nn) {
     for (const std::string& name : config_.input_layers()) {
-      const Argument& argu = nn.getLayer(name)->getOutput();
-      if (argu.value) {
-        std::ostringstream os;
-        argu.value->print(os);
-        LOG(INFO) << "layer=" << name << " value matrix:\n" << os.str();
-      }
-      if (argu.ids) {
-        std::ostringstream os;
-        argu.ids->print(os, argu.ids->getSize());
-        LOG(INFO) << "layer=" << name << " ids vector:\n" << os.str();
-      }
-      if (auto startPos = argu.sequenceStartPositions) {
-        std::ostringstream os;
-        startPos->getVector(false)->print(os, startPos->getSize());
-        LOG(INFO) << "layer=" << name << " sequence pos vector:\n" << os.str();
-      }
-      if (auto subStartPos = argu.subSequenceStartPositions) {
-        std::ostringstream os;
-        subStartPos->getVector(false)->print(os, subStartPos->getSize());
-        LOG(INFO) << "layer=" << name << " sub-sequence pos vector:\n"
-                  << os.str();
+      auto& argu = nn.getLayer(name)->getOutput();
+      std::unordered_map<std::string, std::string> out;
+      argu.getValueString(&out);
+      for (auto field : {"value", "id", "sequence pos", "sub-sequence pos"}) {
+        auto it = out.find(field);
+        if (it != out.end()) {
+          LOG(INFO) << "layer=" << name << " " << field << ":\n" << it->second;
+        }
       }
     }
   }
