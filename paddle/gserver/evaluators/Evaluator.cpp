@@ -993,12 +993,14 @@ public:
 
   virtual void eval(const NeuralNetwork& nn) {
     for (const std::string& name : config_.input_layers()) {
-      std::vector<std::tuple<std::string, std::string>> out;
-      auto err = nn.getLayerOutputValue(name, &out);
-      err.check();
-      for (auto& each : out) {
-        LOG(INFO) << "layer=" << name << std::get<0>(each) << ":\n"
-                  << std::get<1>(each);
+      auto& argu = nn.getLayer(name)->getOutput();
+      std::unordered_map<std::string, std::string> out;
+      argu.getValueString(&out);
+      for (auto field : {"value", "id", "sequence pos", "sub-sequence pos"}) {
+        auto it = out.find(field);
+        if (it != out.end()) {
+          LOG(INFO) << "layer=" << name << " " << field << ":\n" << it->second;
+        }
       }
     }
   }
