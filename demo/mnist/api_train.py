@@ -71,8 +71,8 @@ def main():
     assert isinstance(updater, api.ParameterUpdater)
 
     # define network
-    images = paddle_v2.layer.data(name='pixel', size=784)
-    label = paddle_v2.layer.data(name='label', size=10)
+    images = paddle_v2.layer.data(name='pixel', type=dp.dense_vector(784))
+    label = paddle_v2.layer.data(name='label', type=dp.integer_value(10))
     hidden1 = paddle_v2.layer.fc(input=images, size=200)
     hidden2 = paddle_v2.layer.fc(input=hidden1, size=200)
     inference = paddle_v2.layer.fc(input=hidden2,
