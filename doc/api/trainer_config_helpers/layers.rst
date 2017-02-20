@@ -279,6 +279,12 @@ concat_layer
     :members: concat_layer
     :noindex:
 
+seq_concat_layer
+----------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: seq_concat_layer
+    :noindex:
+
 Reshaping Layers
 ================
 

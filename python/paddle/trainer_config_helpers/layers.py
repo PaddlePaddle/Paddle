@@ -2574,14 +2574,18 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
 
 @wrap_name_default("seqconcat")
 @wrap_act_default(act=IdentityActivation())
+@wrap_bias_attr_default(has_bias=False)
 @layer_support()
 def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
                      bias_attr=None):
     """
     Concat sequence a with sequence b.
-    Inputs: a = [a1, a2, ..., an]
-            b = [b1, b2, ..., bn]
-            Note that the length of a and b should be the same.
+
+    Inputs: 
+      - a = [a1, a2, ..., an]
+      - b = [b1, b2, ..., bn]
+      - Note that the length of a and b should be the same.
+        
     Output: [a1, b1, a2, b2, ..., an, bn]
 
     The example usage is:
