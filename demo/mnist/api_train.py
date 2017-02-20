@@ -99,7 +99,7 @@ def main():
     # DataProvider Converter is a utility convert Python Object to Paddle C++
     # Input. The input format is as same as Paddle's DataProvider.
     converter = DataProviderConverter(
-        input_types=[dp.dense_vector(784), dp.integer_value(10)])
+        input_types=[images.data_type, label.data_type])
 
     train_file = './data/raw_data/train'
     test_file = './data/raw_data/t10k'

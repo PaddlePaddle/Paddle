@@ -51,8 +51,8 @@ def main():
                   batch_size=32,  # batch size should be refactor in Data reader
                   data_types={  # data_types will be removed, It should be in
                       # network topology
-                      'pixel': dense_vector(784),
-                      'label': integer_value(10)
+                      'pixel': images.data_type,
+                      'label': label.data_type
                   })
 
 

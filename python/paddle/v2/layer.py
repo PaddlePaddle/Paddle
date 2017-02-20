@@ -168,15 +168,15 @@ class DataLayerV2(Layer):
     def __init__(self, name, data_type, **kwargs):
         assert isinstance(data_type, dp.InputType)
 
+        self.data_type = data_type
         self.__method_name__ = 'data_layer'
         self.__kwargs__ = kwargs
-        self.__data_size__ = data_type.dim
 
         super(DataLayerV2, self).__init__(name=name, parent_layers=dict())
 
     def to_proto_impl(self, **kwargs):
         args = dict()
-        args['size'] = self.__data_size__
+        args['size'] = self.data_type.dim
         for each in kwargs:
             args[each] = kwargs[each]
         for each in self.__kwargs__:
