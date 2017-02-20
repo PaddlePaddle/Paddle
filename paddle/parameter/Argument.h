@@ -305,6 +305,9 @@ struct Argument {
    * @param out [out]: the return values.
    */
   void getValueString(std::unordered_map<std::string, std::string>* out) const;
+
+  void printValueString(std::ostream& stream,
+                        const std::string& prefix = "") const;
 };
 
 }  // namespace paddle

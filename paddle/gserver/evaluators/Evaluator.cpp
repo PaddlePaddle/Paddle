@@ -888,19 +888,10 @@ Evaluator* Evaluator::create(const EvaluatorConfig& config) {
  */
 class ValuePrinter : public Evaluator {
 public:
-  ValuePrinter() {}
-
   virtual void eval(const NeuralNetwork& nn) {
     for (const std::string& name : config_.input_layers()) {
-      auto& argu = nn.getLayer(name)->getOutput();
-      std::unordered_map<std::string, std::string> out;
-      argu.getValueString(&out);
-      for (auto field : {"value", "id", "sequence pos", "sub-sequence pos"}) {
-        auto it = out.find(field);
-        if (it != out.end()) {
-          LOG(INFO) << "layer=" << name << " " << field << ":\n" << it->second;
-        }
-      }
+      nn.getLayer(name)->getOutput().printValueString(LOG(INFO),
+                                                      "layer=" + name + " ");
     }
   }
 
