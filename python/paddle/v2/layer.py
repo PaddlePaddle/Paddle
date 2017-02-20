@@ -165,26 +165,22 @@ So we also need to implement some special LayerV2.
 
 
 class DataLayerV2(Layer):
-    def __init__(self, name, type, **kwargs):
+    def __init__(self, name, data_type, **kwargs):
+        assert isinstance(data_type, dp.InputType)
+
         self.__method_name__ = 'data_layer'
-
-        assert isinstance(type, dp.InputType)
-
-        # get data_size from type.dim
-        args = dict()
-        for key in kwargs:
-            args[key] = kwargs[key]
-        args['size'] = type.dim
-        self.__args__ = args
+        self.__kwargs__ = kwargs
+        self.__data_size__ = data_type.dim
 
         super(DataLayerV2, self).__init__(name=name, parent_layers=dict())
 
     def to_proto_impl(self, **kwargs):
         args = dict()
+        args['size'] = self.__data_size__
         for each in kwargs:
             args[each] = kwargs[each]
-        for each in self.__args__:
-            args[each] = self.__args__[each]
+        for each in self.__kwargs__:
+            args[each] = self.__kwargs__[each]
         return getattr(conf_helps, self.__method_name__)(name=self.name, **args)
 
 
@@ -202,8 +198,8 @@ cross_entropy_cost = __convert_to_v2__(
     parent_names=['input', 'label'])
 
 if __name__ == '__main__':
-    pixel = data(name='pixel', type=dp.dense_vector(784))
-    label = data(name='label', type=dp.integer_value(10))
+    pixel = data(name='pixel', data_type=dp.dense_vector(784))
+    label = data(name='label', data_type=dp.integer_value(10))
     hidden = fc(input=pixel, size=100, act=conf_helps.SigmoidActivation())
     inference = fc(input=hidden, size=10, act=conf_helps.SoftmaxActivation())
     maxid = max_id(input=inference)
