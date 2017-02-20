@@ -118,33 +118,55 @@ public:
 
   static ClassRegistrar<Evaluator> registrar_;
 
+  /**
+   * @brief getNames will return all field names of current evaluator.
+   *
+   * The format of name is `evaluator_name.evaluator_fields`. If the evaluator
+   * has multiple field, the name could be `evaluator_name.field1`. For example
+   * the PrecisionRecallEvaluator contains `precision`, `recall` fields. The get
+   * names will return `precision_recall_evaluator.precision`,
+   * `precision_recall.recal`, etc.
+   *
+   * Also, if current Evaluator is a combined evaluator. getNames will return
+   * all names of all evaluators inside the combined evaluator.
+   *
+   * @param names [out]: the field names of current evaluator.
+   * @note Never clear the names parameter inside getNames.
+   */
   virtual void getNames(std::vector<std::string>* names) {
     names->push_back(config_.name());
   }
 
+  /**
+   * @brief getValue will return the current evaluate value of one field.
+   *
+   * @param name: The field name of current evaluator.
+   * @param err [out]: The error state. nullptr means don't care.
+   *
+   * @return The evaluate value(metric).
+   */
   virtual real getValue(const std::string& name,
                         paddle::Error* err = nullptr) const {
-    if (name != config_.name() && err != nullptr) {
-      *err = paddle::Error("no such name of evaluator %s", name.c_str());
+    if (name != config_.name()) {
+      if (err != nullptr) {
+        *err = paddle::Error("no such name of evaluator %s", name.c_str());
+      }
       return .0f;
     }
     return this->getValueImpl();
   }
 
-  virtual std::string getValueStr(const std::string& name,
-                                  paddle::Error* err = nullptr) const {
-    paddle::Error localErr;
-    if (err == nullptr) {
-      err = &localErr;
-    }
-    real result = this->getValue(name, err);
-    if (!err->isOK()) {
-      return "";
-    } else {
-      return std::to_string(result);
-    }
-  }
-
+  /**
+   * @brief getType will return the evaluator type by field name.
+   *
+   * Evaluate Type is the current type of evaluator in string. Such as 'auc',
+   * 'precision_recall'. In combined evaluator, different name may get different
+   * evaluate type because it could be evaluated by different evaluator inside.
+   *
+   * @param name: The field name of current Evaluator.
+   * @param err: The error state. nullptr means don't care.
+   * @return the evaluator type string.
+   */
   virtual std::string getType(const std::string& name,
                               paddle::Error* err = nullptr) const {
     if (name != config_.name() && err != nullptr) {
@@ -155,10 +177,22 @@ public:
   }
 
 protected:
+  /**
+   * @brief getValueImpl The simplest way to define getValue result. If this
+   * evaluator doesn't contain multiple fields, and do not throw any error, just
+   * implemented this method to get the evaluate result(metric).
+   * @return Evaluate result(metric).
+   */
   virtual real getValueImpl() const {
     return numSamples_ != .0 ? totalScore_ / numSamples_ : .0;
   }
 
+  /**
+   * @brief getTypeImpl The simplest way to define getType result. If this
+   * evaluator doesn't combine many evaluators, the get type should only return
+   * itself type.
+   * @return Evaluator type.
+   */
   virtual std::string getTypeImpl() const { return "base"; }
 
 protected:
@@ -167,6 +201,11 @@ protected:
   double totalScore_;
 };
 
+/**
+ * @brief The NotGetableEvaluator class is the base class of evaluator that
+ * cannot get value in runtime. The most NotGetableEvaluator is Printer
+ * Evaluator, which is only used to debug network configuration.
+ */
 class NotGetableEvaluator : public Evaluator {
   // Evaluator interface
 public:

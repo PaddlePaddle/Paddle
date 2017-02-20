@@ -348,24 +348,29 @@ protected:
 
   // Evaluator interface
 public:
+  /**
+   * @brief getNames will return all inside evaluators' names.
+   * @param names [out]: return names.
+   */
   void getNames(std::vector<std::string>* names) {
     for (auto& eval : evaluators_) {
       eval->getNames(names);
     }
   }
 
+  /**
+   * @brief getValue could get all inside evaluators' value.
+   */
   real getValue(const std::string& name, Error* err) const {
     return this->getMethodHelper<real>(
         name, err, [&name, err](const std::unique_ptr<Evaluator>& eval) {
           return eval->getValue(name, err);
         });
   }
-  std::string getValueStr(const std::string& name, Error* err) const {
-    return this->getMethodHelper<std::string>(
-        name, err, [&name, err](const std::unique_ptr<Evaluator>& eval) {
-          return eval->getValueStr(name, err);
-        });
-  }
+
+  /**
+   * @brief getType could get all inside evaluators' type.
+   */
   std::string getType(const std::string& name, Error* err) const {
     return this->getMethodHelper<std::string>(
         name, err, [&name, err](const std::unique_ptr<Evaluator>& eval) {

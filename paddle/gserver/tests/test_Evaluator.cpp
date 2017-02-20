@@ -114,7 +114,7 @@ void testEvaluator(TestConfig testConf,
   testEvaluator->getNames(&names);
   paddle::Error err;
   for (auto& name : names) {
-    auto value = testEvaluator->getValueStr(name, &err);
+    auto value = testEvaluator->getValue(name, &err);
     ASSERT_TRUE(err.isOK());
     LOG(INFO) << name << " " << value;
     auto tp = testEvaluator->getType(name, &err);
