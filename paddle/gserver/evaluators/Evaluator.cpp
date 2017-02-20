@@ -1012,93 +1012,18 @@ static InitFunction __reg_type_auc_sum__([]() {
  *
  * The config file api is value_printer_evaluator.
  */
-class ValuePrinter : public Evaluator {
+class ValuePrinter : public NotGetableEvaluator {
 public:
   virtual void eval(const NeuralNetwork& nn) {
-    layerOutputs_.clear();
     for (const std::string& name : config_.input_layers()) {
-      auto& argu = nn.getLayer(name)->getOutput();
-      layerOutputs_[name] = std::unordered_map<std::string, std::string>();
-      auto& out = layerOutputs_[name];
-      argu.getValueString(&out);
-      for (auto field : {"value", "id", "sequence pos", "sub-sequence pos"}) {
-        auto it = out.find(field);
-        if (it != out.end()) {
-          LOG(INFO) << "layer=" << name << " " << field << ":\n" << it->second;
-        }
-      }
+      nn.getLayer(name)->getOutput().printValueString(LOG(INFO),
+                                                      "layer=" + name + " ");
     }
   }
 
   virtual void updateSamplesNum(const std::vector<Argument>& arguments) {}
 
   virtual real evalImp(std::vector<Argument>& arguments) { return 0; }
-
-private:
-  std::unordered_map<std::string, std::unordered_map<std::string, std::string>>
-      layerOutputs_;
-
-  // Evaluator interface
-public:
-  void getNames(std::vector<std::string>* names) {
-    for (auto layerIt = layerOutputs_.begin(); layerIt != layerOutputs_.end();
-         ++layerIt) {
-      for (auto it = layerIt->second.begin(); it != layerIt->second.end();
-           ++it) {
-        names->push_back(config_.name() + "." + layerIt->first + "." +
-                         it->second);
-      }
-    }
-  }
-
-  real getValue(const std::string& name, Error* err) const {
-    (void)(name);
-    if (err != nullptr) {
-      *err = Error(
-          "ValuePrinter do not support getValue, use getValueString instead.");
-    }
-    return .0f;
-  }
-  std::string getValueStr(const std::string& name, Error* err) const {
-    std::vector<std::string> buffer;
-    str::split(name, '.', &buffer);
-    if (buffer.size() < 2) {
-      if (err != nullptr) {
-        *err = Error("No such key %s", name.c_str());
-      }
-      return "";
-    }
-    auto fieldName = buffer[buffer.size() - 1];
-    auto layerName = buffer[buffer.size() - 2];
-    auto layerIt = layerOutputs_.find(layerName);
-    if (layerIt == layerOutputs_.end()) {
-      if (err != nullptr) {
-        *err = Error("No such layer %s", layerName.c_str());
-      }
-      return "";
-    }
-
-    auto fieldIt = layerIt->second.find(fieldName);
-    if (fieldIt == layerIt->second.end()) {
-      if (err != nullptr) {
-        *err = Error("No such value field %s", fieldName.c_str());
-      }
-      return "";
-    }
-
-    return fieldIt->second;
-  }
-  std::string getType(const std::string& name, Error* err) const {
-    Error localErr;
-    if (err == nullptr) {
-      err = &localErr;
-    }
-    this->getValueStr(name, err);
-    if (!err->isOK()) {
-      return "";
-    }
-    return "value_printer";
-  }
 };
 REGISTER_EVALUATOR(value_printer, ValuePrinter);
 

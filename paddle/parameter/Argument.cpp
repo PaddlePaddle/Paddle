@@ -628,6 +628,18 @@ void Argument::getValueString(
   }
 }
 
+void Argument::printValueString(std::ostream& stream,
+                                const std::string& prefix) const {
+  std::unordered_map<std::string, std::string> out;
+  getValueString(&out);
+  for (auto field : {"value", "id", "sequence pos", "sub-sequence pos"}) {
+    auto it = out.find(field);
+    if (it != out.end()) {
+      stream << prefix << field << ":\n" << it->second;
+    }
+  }
+}
+
 void Argument::subArgFrom(const Argument& input,
                           size_t offset,
                           size_t height,

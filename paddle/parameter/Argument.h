@@ -305,6 +305,15 @@ struct Argument {
    * @param out [out]: the return values.
    */
   void getValueString(std::unordered_map<std::string, std::string>* out) const;
+
+  /**
+   * @brief printValueString will print the argument's output in order of
+   * 'value', 'id', 'sequence pos', 'sub-sequence pos'.
+   * @param stream: Output stream
+   * @param prefix: line prefix for printing.
+   */
+  void printValueString(std::ostream& stream,
+                        const std::string& prefix = "") const;
 };
 
 }  // namespace paddle

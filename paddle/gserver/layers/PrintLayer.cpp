@@ -19,25 +19,17 @@ namespace paddle {
 class PrintLayer : public Layer {
 public:
   explicit PrintLayer(const LayerConfig& config) : Layer(config) {}
-  void forward(PassType passType) override;
-  void backward(const UpdateCallback& callback) override {}
-};
 
-void PrintLayer::forward(PassType passType) {
-  Layer::forward(passType);
-  for (size_t i = 0; i != inputLayers_.size(); ++i) {
-    auto& argu = getInput(i);
-    const std::string& name = inputLayers_[i]->getName();
-    std::unordered_map<std::string, std::string> out;
-    argu.getValueString(&out);
-    for (auto field : {"value", "id", "sequence pos", "sub-sequence pos"}) {
-      auto it = out.find(field);
-      if (it != out.end()) {
-        LOG(INFO) << "layer=" << name << " " << field << ":\n" << it->second;
-      }
+  void forward(PassType passType) override {
+    Layer::forward(passType);
+    for (size_t i = 0; i != inputLayers_.size(); ++i) {
+      getInput(i).printValueString(LOG(INFO),
+                                   "layer=" + inputLayers_[i]->getName() + " ");
     }
   }
-}
+
+  void backward(const UpdateCallback& callback) override {}
+};
 
 REGISTER_LAYER(print, PrintLayer);
 
