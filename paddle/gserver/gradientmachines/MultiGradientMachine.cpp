@@ -282,7 +282,8 @@ void MultiGradientMachine::forwardBackward(const std::vector<Argument>& inArgs,
   backwardImp(callback);
 }
 
-MatrixPtr MultiGradientMachine::getLayerOutput(const std::string& layerName) {
+MatrixPtr MultiGradientMachine::getLayerOutput(
+    const std::string& layerName) const {
   // each thread has the same neural network
   auto nn = threads_[0]->getGradientMachine();
   size_t height = 0;
@@ -301,11 +302,10 @@ MatrixPtr MultiGradientMachine::getLayerOutput(const std::string& layerName) {
 
   // copy one layer output from one trainer thread at each time
   size_t startRow = 0;
-
-  for (size_t i = 0; i < threads_.size(); i++) {
-    auto tmpMatrix = layerOutput->subMatrix(startRow, mats[i]->getHeight());
-    tmpMatrix->copyFrom(*mats[i]);
-    startRow += mats[i]->getHeight();
+  for (auto& mat : mats) {
+    auto tmpMatrix = layerOutput->subMatrix(startRow, mat->getHeight());
+    tmpMatrix->copyFrom(*mat);
+    startRow += mat->getHeight();
   }
 
   return layerOutput;
