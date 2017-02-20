@@ -59,6 +59,7 @@ __all__ = [
     'img_cmrnorm_layer',
     'addto_layer',
     'concat_layer',
+    'seq_concat_layer',
     'lstm_step_layer',
     'recurrent_group',
     'memory',
@@ -144,6 +145,7 @@ class LayerType(object):
 
     CONCAT_LAYER = 'concat'
     CONCAT_PROJ_LAYER = 'concat2'
+    SEQUENCE_CONCAT_LAYER = 'seqconcat'
 
     LSTM_STEP_LAYER = 'lstm_step'
     GRU_STEP_LAYER = 'gru_step'
@@ -2568,6 +2570,55 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
         parents=input if is_concat_layer else [x.origin for x in input],
         activation=act,
         size=sz)
+
+
+@wrap_name_default("seqconcat")
+@wrap_act_default(act=IdentityActivation())
+@layer_support()
+def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
+                     bias_attr=None):
+    """
+    Concat sequence a with sequence b.
+    Inputs: a = [a1, a2, ..., an]
+            b = [b1, b2, ..., bn]
+            Note that the length of a and b should be the same.
+    Output: [a1, b1, a2, b2, ..., an, bn]
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        concat = seq_concat_layer(a=layer1, b=layer2)
+
+    :param name: Layer name.
+    :type name: basestring
+    :param a: input sequence layer
+    :type a: LayerOutput
+    :param b: input sequence layer
+    :type b: LayerOutput
+    :param act: Activation type.
+    :type act: BaseActivation
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(a, LayerOutput) and isinstance(b, LayerOutput)
+    assert a.size == b.size
+    Layer(
+        name=name,
+        type=LayerType.SEQUENCE_CONCAT_LAYER,
+        inputs=[a.name, b.name],
+        active_type=act.name,
+        bias=ParamAttr.to_bias(bias_attr),
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+
+    return LayerOutput(
+        name,
+        layer_type=LayerType.SEQUENCE_CONCAT_LAYER,
+        parents=[a, b],
+        activation=act,
+        size=a.size)
 
 
 def memory(name,
