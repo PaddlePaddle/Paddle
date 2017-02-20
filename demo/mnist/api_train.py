@@ -9,7 +9,6 @@ The user api could be simpler and carefully designed.
 import random
 
 import numpy as np
-import paddle.trainer.PyDataProvider2 as dp
 import paddle.v2 as paddle_v2
 import py_paddle.swig_paddle as api
 from paddle.trainer_config_helpers import *
@@ -71,8 +70,10 @@ def main():
     assert isinstance(updater, api.ParameterUpdater)
 
     # define network
-    images = paddle_v2.layer.data(name='pixel', data_type=dp.dense_vector(784))
-    label = paddle_v2.layer.data(name='label', data_type=dp.integer_value(10))
+    images = paddle_v2.layer.data(
+        name='pixel', type=paddle_v2.data.dense_vector(784))
+    label = paddle_v2.layer.data(
+        name='label', type=paddle_v2.data.integer_value(10))
     hidden1 = paddle_v2.layer.fc(input=images, size=200)
     hidden2 = paddle_v2.layer.fc(input=hidden1, size=200)
     inference = paddle_v2.layer.fc(input=hidden2,
@@ -98,8 +99,7 @@ def main():
 
     # DataProvider Converter is a utility convert Python Object to Paddle C++
     # Input. The input format is as same as Paddle's DataProvider.
-    converter = DataProviderConverter(
-        input_types=[images.data_type, label.data_type])
+    converter = DataProviderConverter(input_types=[images.type, label.type])
 
     train_file = './data/raw_data/train'
     test_file = './data/raw_data/t10k'

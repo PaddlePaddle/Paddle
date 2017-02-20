@@ -67,7 +67,7 @@ paddle.v2.parameters.create, no longer exposed to users.
 """
 
 import paddle.trainer_config_helpers as conf_helps
-import paddle.trainer.PyDataProvider2 as dp
+from . import data as v2_data
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
@@ -165,10 +165,10 @@ So we also need to implement some special LayerV2.
 
 
 class DataLayerV2(Layer):
-    def __init__(self, name, data_type, **kwargs):
-        assert isinstance(data_type, dp.InputType)
+    def __init__(self, name, type, **kwargs):
+        assert isinstance(type, v2_data.InputType)
 
-        self.data_type = data_type
+        self.type = type
         self.__method_name__ = 'data_layer'
         self.__kwargs__ = kwargs
 
@@ -176,7 +176,7 @@ class DataLayerV2(Layer):
 
     def to_proto_impl(self, **kwargs):
         args = dict()
-        args['size'] = self.data_type.dim
+        args['size'] = self.type.dim
         for each in kwargs:
             args[each] = kwargs[each]
         for each in self.__kwargs__:
@@ -198,8 +198,8 @@ cross_entropy_cost = __convert_to_v2__(
     parent_names=['input', 'label'])
 
 if __name__ == '__main__':
-    pixel = data(name='pixel', data_type=dp.dense_vector(784))
-    label = data(name='label', data_type=dp.integer_value(10))
+    pixel = data(name='pixel', type=v2_data.dense_vector(784))
+    label = data(name='label', type=v2_data.integer_value(10))
     hidden = fc(input=pixel, size=100, act=conf_helps.SigmoidActivation())
     inference = fc(input=hidden, size=10, act=conf_helps.SoftmaxActivation())
     maxid = max_id(input=inference)
