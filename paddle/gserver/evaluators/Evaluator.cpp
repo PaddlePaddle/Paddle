@@ -102,36 +102,22 @@ public:
             maxValues_, height, width, false, useGpu(arguments[0].deviceId));
         output->rowMax(*maxIds_, *maxValues_);  // top-k values
 
-        int* ids = nullptr;
-        int* lbl = nullptr;
         IVectorPtr dest = IVector::create(maxIds_->getSize(), false);
         IVectorPtr dest2 = IVector::create(label->getSize(), false);
-        if (useGpu(arguments[0].deviceId)) {
-          hl_memcpy_device2host((void*)dest->getData(),
-                                (void*)maxIds_->getData(),
-                                sizeof(int) * maxIds_->getSize());
-          ids = dest->getData();
+        dest->copyFrom(*maxIds_);
+        dest2->copyFrom(*label);
+        int* ids = dest->getData();
+        int* lbl = dest2->getData();
 
-          hl_memcpy_device2host((void*)dest2->getData(),
-                                (void*)label->getData(),
-                                sizeof(int) * label->getSize());
-          lbl = dest2->getData();
-        } else {
-          ids = maxIds_->getData();
-          lbl = label->getData();
-        }
-
-        real* result2 = errorMat2->getData();
         for (size_t i = 0; i < height; ++i) {
-          result2[i] = (ids[i * width] != lbl[i]);  // initialize top-k error
-          for (size_t j = 1; j < width; ++j) {
-            if (result2[i] == 0.0) {
-              break;
-            }
-            result2[i] = (ids[i * width + j] != lbl[i]);  // top-k error
+          bool contain = false;
+          for (size_t j = 0; j < width && !contain; ++j) {
+            contain = (ids[i * width + j] == lbl[i]);
+          }
+          if (!contain) {
+            totalScore2_ += 1.0;  // update top-k error
           }
         }
-        totalScore2_ += errorMat2->getSum();
       }
     } else if (dynamic_cast<CpuSparseMatrix*>(multiBinaryLabel.get()) ||
                dynamic_cast<GpuSparseMatrix*>(multiBinaryLabel.get())) {
