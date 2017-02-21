@@ -2,7 +2,7 @@ import collections
 
 import py_paddle.swig_paddle as api
 from paddle.proto.ModelConfig_pb2 import ModelConfig
-from py_paddle import DataProviderConverter
+from data_feeder import DataFeeder
 
 from . import event as v2_event
 from . import layer as v2_layer
@@ -89,6 +89,7 @@ class SGD(ITrainer):
             event_handler = default_event_handler
 
         topology = v2_layer.parse_network(topology)
+        print topology
 
         __check_train_args__(**locals())
 
@@ -109,7 +110,7 @@ class SGD(ITrainer):
                 raise ValueError()
             data_types_lists.append(data_types[each])
 
-        converter = DataProviderConverter(input_types=data_types_lists)
+        feeder = DataFeeder(input_types=data_types_lists)
 
         for pass_id in xrange(num_passes):
             updater.startPass()
@@ -117,7 +118,7 @@ class SGD(ITrainer):
                     __data_reader_to_batch__(train_data_reader, batch_size,
                                              topology)):
                 pass_type = updater.startBatch(len(data_batch))
-                gm.forwardBackward(converter(data_batch), out_args, pass_type)
+                gm.forwardBackward(feeder(data_batch), out_args, pass_type)
                 for each_param in gm.getParameters():
                     updater.update(each_param)
                 # Get cost. We use numpy to calculate total cost for this batch.

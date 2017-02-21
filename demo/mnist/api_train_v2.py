@@ -1,6 +1,5 @@
 import numpy
 import paddle.v2 as paddle
-from paddle.trainer.PyDataProvider2 import dense_vector, integer_value
 
 import mnist_util
 
@@ -16,8 +15,10 @@ def main():
     paddle.init(use_gpu=False, trainer_count=1)
 
     # define network topology
-    images = paddle.layer.data(name='pixel', size=784)
-    label = paddle.layer.data(name='label', size=10)
+    images = paddle.layer.data(
+        name='pixel', type=paddle.data_type.dense_vector(784))
+    label = paddle.layer.data(
+        name='label', type=paddle.data_type.integer_value(10))
     hidden1 = paddle.layer.fc(input=images, size=200)
     hidden2 = paddle.layer.fc(input=hidden1, size=200)
     inference = paddle.layer.fc(input=hidden2,
@@ -51,8 +52,8 @@ def main():
                   batch_size=32,  # batch size should be refactor in Data reader
                   data_types={  # data_types will be removed, It should be in
                       # network topology
-                      'pixel': dense_vector(784),
-                      'label': integer_value(10)
+                      'pixel': images.type,
+                      'label': label.type
                   })
 
 

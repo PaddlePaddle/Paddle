@@ -11,31 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import optimizer
-import layer
-import activation
-import parameters
-import trainer
-import event
-import data_type
-import py_paddle.swig_paddle as api
+
+from paddle.trainer.PyDataProvider2 import \
+    InputType, dense_vector, sparse_binary_vector,\
+    sparse_vector, integer_value
 
 __all__ = [
-    'optimizer',
-    'layer',
-    'activation',
-    'parameters',
-    'init',
-    'trainer',
-    'event',
-    'data_type',
-    'data_feeder',
+    'InputType', 'dense_vector', 'sparse_binary_vector', 'sparse_vector',
+    'integer_value'
 ]
-
-
-def init(**kwargs):
-    args = []
-    for key in kwargs.keys():
-        args.append('--%s=%s' % (key, str(kwargs[key])))
-
-    api.initPaddle(*args)
