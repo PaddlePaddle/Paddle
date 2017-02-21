@@ -66,12 +66,14 @@ Also, the creation of a protobuf message is hidden in the invocation of
 paddle.v2.parameters.create, no longer exposed to users.
 """
 
+import collections
+
 import paddle.trainer_config_helpers as conf_helps
-import data_type as data_type
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
-import collections
+
+import data_type
 
 __all__ = [
     'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
