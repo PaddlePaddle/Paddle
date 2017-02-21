@@ -21,9 +21,11 @@ namespace paddle {
 
 /**
  * A layer for concatenating the first sequence with the second sequence
- * following the first
- * Input: two sequences each containing some instances
+ * Input: two sequences each containing the same number of instances
+ *        seq1 = [a1, a2, ..., an]
+ *        seq2 = [b1, b2, ..., bn]
  * Output: a concatenated sequence of the two input sequences
+ *        out = [a1, b1, a2, b2, ..., an, bn]
  */
 
 class SequenceConcatLayer : public Layer {
