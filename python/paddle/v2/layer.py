@@ -67,7 +67,7 @@ paddle.v2.parameters.create, no longer exposed to users.
 """
 
 import paddle.trainer_config_helpers as conf_helps
-from . import data as v2_data
+from . import data_type as v2_data
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default

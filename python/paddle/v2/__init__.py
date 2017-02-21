@@ -17,12 +17,12 @@ import activation
 import parameters
 import trainer
 import event
-import data
+import data_type
 import py_paddle.swig_paddle as api
 
 __all__ = [
     'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
-    'event', 'data'
+    'event', 'data_type.py'
 ]
 
 

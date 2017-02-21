@@ -15,8 +15,10 @@ def main():
     paddle.init(use_gpu=False, trainer_count=1)
 
     # define network topology
-    images = paddle.layer.data(name='pixel', type=paddle.data.dense_vector(784))
-    label = paddle.layer.data(name='label', type=paddle.data.integer_value(10))
+    images = paddle.layer.data(
+        name='pixel', type=paddle.data_type.dense_vector(784))
+    label = paddle.layer.data(
+        name='label', type=paddle.data_type.integer_value(10))
     hidden1 = paddle.layer.fc(input=images, size=200)
     hidden2 = paddle.layer.fc(input=hidden1, size=200)
     inference = paddle.layer.fc(input=hidden2,

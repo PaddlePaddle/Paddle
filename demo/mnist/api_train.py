@@ -71,9 +71,9 @@ def main():
 
     # define network
     images = paddle_v2.layer.data(
-        name='pixel', type=paddle_v2.data.dense_vector(784))
+        name='pixel', type=paddle_v2.data_type.dense_vector(784))
     label = paddle_v2.layer.data(
-        name='label', type=paddle_v2.data.integer_value(10))
+        name='label', type=paddle_v2.data_type.integer_value(10))
     hidden1 = paddle_v2.layer.fc(input=images, size=200)
     hidden2 = paddle_v2.layer.fc(input=hidden1, size=200)
     inference = paddle_v2.layer.fc(input=hidden2,
