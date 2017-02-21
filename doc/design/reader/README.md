@@ -107,7 +107,7 @@ We decided to use dictionary (`{"image":0, "label":1}`) instead of list (`["imag
 ### How to create custom data reader
 
 ```python
-def image_reader(image_path, label_path):
+def image_reader(image_path, label_path, n):
 	f = open(image_path)
 	l = open(label_path)
 	images = numpy.fromfile(
@@ -117,9 +117,10 @@ def image_reader(image_path, label_path):
 	for i in xrange(n):
 		yield images[i, :], labels[i] # a single entry of data is created each time
 	f.close()
+	l.close()
 
 # use python lambda to change image_reader into a function with no parameters.
-reader = lambda : image_reader("/path/to/image_file", "/path/to/label_file")
+reader = lambda : image_reader("/path/to/image_file", "/path/to/label_file", 1024)
 paddle.train(reader, {"image":0, "label":1}, ...)
 ```
 
