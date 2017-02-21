@@ -66,12 +66,14 @@ Also, the creation of a protobuf message is hidden in the invocation of
 paddle.v2.parameters.create, no longer exposed to users.
 """
 
+import collections
+
 import paddle.trainer_config_helpers as conf_helps
-from . import data_type as v2_data
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
-import collections
+
+import data_type
 
 __all__ = [
     'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
@@ -166,7 +168,7 @@ So we also need to implement some special LayerV2.
 
 class DataLayerV2(Layer):
     def __init__(self, name, type, **kwargs):
-        assert isinstance(type, v2_data.InputType)
+        assert isinstance(type, data_type.InputType)
 
         self.type = type
         self.__method_name__ = 'data_layer'
@@ -198,8 +200,8 @@ cross_entropy_cost = __convert_to_v2__(
     parent_names=['input', 'label'])
 
 if __name__ == '__main__':
-    pixel = data(name='pixel', type=v2_data.dense_vector(784))
-    label = data(name='label', type=v2_data.integer_value(10))
+    pixel = data(name='pixel', type=data_type.dense_vector(784))
+    label = data(name='label', type=data_type.integer_value(10))
     hidden = fc(input=pixel, size=100, act=conf_helps.SigmoidActivation())
     inference = fc(input=hidden, size=10, act=conf_helps.SoftmaxActivation())
     maxid = max_id(input=inference)
