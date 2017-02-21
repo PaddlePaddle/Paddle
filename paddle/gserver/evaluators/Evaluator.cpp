@@ -39,12 +39,13 @@ void Evaluator::eval(const NeuralNetwork& nn) {
  */
 class ClassificationErrorEvaluator : public Evaluator {
 public:
+  /*
   ClassificationErrorEvaluator() : totalScore2_(0) {}
 
   virtual void start() {
     Evaluator::start();
     totalScore2_ = 0;
-  }
+    } */
 
   virtual void updateSamplesNum(const std::vector<Argument>& arguments) {
     if (3 == arguments.size()) {
@@ -83,42 +84,11 @@ public:
                                               1,
                                               /* trans= */ false,
                                               useGpu(arguments[0].deviceId));
-    const MatrixPtr errorMat2 = Matrix::create(output->getHeight(),
-                                               1,
-                                               /* trans= */ false,
-                                               false);
 
     errorMat->zeroMem();
 
     if (label != nullptr) {
-      errorMat->classificationError(*output, *label);  // top-1 error
-      if (config_.top_k() > 1) {
-        size_t height = output->getHeight();
-        size_t width = config_.top_k();
-
-        IVector::resizeOrCreate(
-            maxIds_, height * width, useGpu(arguments[0].deviceId));
-        Matrix::resizeOrCreate(
-            maxValues_, height, width, false, useGpu(arguments[0].deviceId));
-        output->rowMax(*maxIds_, *maxValues_);  // top-k values
-
-        IVectorPtr dest = IVector::create(maxIds_->getSize(), false);
-        IVectorPtr dest2 = IVector::create(label->getSize(), false);
-        dest->copyFrom(*maxIds_);
-        dest2->copyFrom(*label);
-        int* ids = dest->getData();
-        int* lbl = dest2->getData();
-
-        for (size_t i = 0; i < height; ++i) {
-          bool contain = false;
-          for (size_t j = 0; j < width && !contain; ++j) {
-            contain = (ids[i * width + j] == lbl[i]);
-          }
-          if (!contain) {
-            totalScore2_ += 1.0;  // update top-k error
-          }
-        }
-      }
+      errorMat->classificationError(*output, *label, config_.top_k());
     } else if (dynamic_cast<CpuSparseMatrix*>(multiBinaryLabel.get()) ||
                dynamic_cast<GpuSparseMatrix*>(multiBinaryLabel.get())) {
       errorMat->classificationErrorMulti(
@@ -139,9 +109,8 @@ public:
       os << config_.name() << "="
          << (numSamples_ ? totalScore_ / numSamples_ : 0);
     } else {
-      os << "top_1_error=" << (numSamples_ ? totalScore_ / numSamples_ : 0)
-         << " top_" << config_.top_k()
-         << "_error=" << (numSamples_ ? totalScore2_ / numSamples_ : 0);
+      os << " top_" << config_.top_k()
+         << "_error=" << (numSamples_ ? totalScore_ / numSamples_ : 0);
     }
   }
 
@@ -151,17 +120,8 @@ public:
   }
 
   virtual void distributeEval(ParameterClient2* client) {
-    double data[3] = {totalScore_, totalScore2_, numSamples_};
-    client->reduce(data, data, 3, FLAGS_trainer_id, 0);
-    totalScore_ = data[0];
-    totalScore2_ = data[1];
-    numSamples_ = data[2];
+    mergeResultsOfAllClients(client);
   }
-
-private:
-  IVectorPtr maxIds_;
-  MatrixPtr maxValues_;
-  double totalScore2_;
 };
 
 /**
