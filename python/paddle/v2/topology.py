@@ -11,25 +11,34 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import optimizer
-import layer
-import activation
-import parameters
-import trainer
-import event
-import data_type
-import topology
-import py_paddle.swig_paddle as api
 
-__all__ = [
-    'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
-    'event', 'data_type', 'topology'
-]
+from . import layer
+
+__all__ = ['Topology']
 
 
-def init(**kwargs):
-    args = []
-    for key in kwargs.keys():
-        args.append('--%s=%s' % (key, str(kwargs[key])))
+class Topology(object):
+    """
+    Topology is used to store the information about all layers
+    and network configs.
+    """
 
-    api.initPaddle(*args)
+    def __init__(self, cost):
+        self.cost = cost
+        self.__model_config__ = layer.parse_network(cost)
+
+    def __call__(self):
+        return self.__model_config__
+
+    def get_layer(self, name):
+        """
+        get layer by layer name
+        :param name:
+        :return:
+        """
+        pass
+
+    def data_type(self):
+        """
+        """
+        pass
