@@ -1,13 +1,12 @@
 import collections
 
 import py_paddle.swig_paddle as api
-from paddle.proto.ModelConfig_pb2 import ModelConfig
 from py_paddle import DataProviderConverter
 
 from . import event as v2_event
-from . import layer as v2_layer
 from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
+from . import topology as v2_topology
 
 __all__ = ['ITrainer', 'SGD']
 
@@ -88,12 +87,11 @@ class SGD(ITrainer):
         if event_handler is None:
             event_handler = default_event_handler
 
-        topology = v2_layer.parse_network(topology)
-
         __check_train_args__(**locals())
 
         gm = api.GradientMachine.createFromConfigProto(
-            topology, api.CREATE_MODE_NORMAL, self.__optimizer__.enable_types())
+            topology.proto(), api.CREATE_MODE_NORMAL,
+            self.__optimizer__.enable_types())
         assert isinstance(gm, api.GradientMachine)
         parameters.append_gradient_machine(gm)
 
@@ -102,13 +100,7 @@ class SGD(ITrainer):
 
         gm.start()
         out_args = api.Arguments.createArguments(0)
-
-        data_types_lists = []
-        for each in topology.input_layer_names:
-            if each not in data_types:
-                raise ValueError()
-            data_types_lists.append(data_types[each])
-
+        data_types_lists = [data_type[1] for data_type in topology.data_type()]
         converter = DataProviderConverter(input_types=data_types_lists)
 
         for pass_id in xrange(num_passes):
@@ -141,7 +133,7 @@ def __data_reader_to_batch__(reader, batch_size, topology):
     def input_reorder(func):
         for item in func():
             retv = []
-            for __layer_name__ in topology.input_layer_names:
+            for __layer_name__ in topology.proto().input_layer_names:
                 retv.append(item[__layer_name__])
             yield retv
 
@@ -178,7 +170,7 @@ def __check_train_args__(train_data_reader, topology, parameters,
             raise ValueError('test_data_reader should be a function, which can '
                              'return a iterator')
 
-    if not isinstance(topology, ModelConfig):
+    if not isinstance(topology, v2_topology.Topology):
         raise ValueError('topology should be a model config')
 
     if not isinstance(parameters, v2_parameters.Parameters):

@@ -66,12 +66,14 @@ Also, the creation of a protobuf message is hidden in the invocation of
 paddle.v2.parameters.create, no longer exposed to users.
 """
 
+import collections
+
 import paddle.trainer_config_helpers as conf_helps
-from . import data_type as v2_data
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
-import collections
+
+import data_type as v2_data
 
 __all__ = [
     'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
@@ -183,6 +185,8 @@ class DataLayerV2(Layer):
             args[each] = self.__kwargs__[each]
         return getattr(conf_helps, self.__method_name__)(name=self.name, **args)
 
+
+LayerV2 = Layer
 
 data = DataLayerV2
 fc = __convert_to_v2__('fc_layer', name_prefix='fc', parent_names=['input'])

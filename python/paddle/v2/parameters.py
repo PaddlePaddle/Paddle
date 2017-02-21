@@ -1,26 +1,23 @@
 import numpy as np
-from . import layer as v2_layer
 import py_paddle.swig_paddle as api
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
+
+import topology as v2_topology
 
 __all__ = ['Parameters', 'create']
 
 
-def create(*layers):
+def create(topology):
     """
-    Create parameter pool by layers. In paddle, layer can be represent a
-    model config.
-
-    :param layers:
+    Create parameter pool by topology.
+    :param topology:
     :return:
     """
-    for layer in layers:
-        if not isinstance(layer, v2_layer.Layer):
-            raise ValueError(
-                'create must pass a topologies which type is paddle.layer.Layer')
-    model_config = v2_layer.parse_network(*layers)
+    if not isinstance(topology, v2_topology.Topology):
+        raise ValueError(
+            'create must pass a topology which type is topology.Topology')
     pool = Parameters()
-    for param in model_config.parameters:
+    for param in topology.proto().parameters:
         pool.__append_config__(param)
     return pool
 

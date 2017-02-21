@@ -26,7 +26,9 @@ def main():
                                 act=paddle.activation.Softmax())
     cost = paddle.layer.classification_cost(input=inference, label=label)
 
-    parameters = paddle.parameters.create(cost)
+    topology = paddle.topology.Topology(cost)
+
+    parameters = paddle.parameters.create(topology)
     for param_name in parameters.keys():
         array = parameters.get(param_name)
         array[:] = numpy.random.uniform(low=-1.0, high=1.0, size=array.shape)
@@ -45,16 +47,12 @@ def main():
 
     trainer = paddle.trainer.SGD(update_equation=adam_optimizer)
 
-    trainer.train(train_data_reader=train_reader,
-                  topology=cost,
-                  parameters=parameters,
-                  event_handler=event_handler,
-                  batch_size=32,  # batch size should be refactor in Data reader
-                  data_types={  # data_types will be removed, It should be in
-                      # network topology
-                      'pixel': images.type,
-                      'label': label.type
-                  })
+    trainer.train(
+        train_data_reader=train_reader,
+        topology=topology,
+        parameters=parameters,
+        event_handler=event_handler,
+        batch_size=32)  # batch size should be refactor in Data reader
 
 
 if __name__ == '__main__':
