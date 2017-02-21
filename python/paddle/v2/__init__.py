@@ -22,7 +22,7 @@ import py_paddle.swig_paddle as api
 
 __all__ = [
     'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
-    'event', 'data_type.py'
+    'event', 'data_type'
 ]
 
 
