@@ -53,9 +53,9 @@ class DenseConvert(IDataConverter):
         :type argument: Paddle's Arguments
         """
         assert isinstance(argument, api.Arguments)
-        if data.dtype != np.float32:
-            data = data.astype(np.float32)
-        m = api.Matrix.createDenseFromNumpy(data, True, False)
+        # TODO: handle data type (float, double, ...)
+        data = np.array(data, np.float32)
+        m = api.Matrix.createDenseFromNumpy(data)
         argument.setSlotValue(self.pos, m)
 
 
@@ -72,12 +72,12 @@ class SparseBinaryConvert(IDataConverter):
         self.__height__ = len(data)
         for x in data:
             self.__rows__.append(self.__rows__[-1] + len(x))
-        self.__cols__ = data.flatten()
+            self.__cols__.extend(x)
 
     def convert(self, data, argument):
         assert isinstance(argument, api.Arguments)
 
-        fill_csr(data)
+        self.fill_csr(data)
         m = api.Matrix.createSparse(self.__height__, self.input_type.dim,
                                     len(self.__cols__),
                                     len(self.__value__) == 0)
@@ -94,8 +94,8 @@ class SparseFloatConvert(SparseBinaryConvert):
         self.__height__ = len(data)
         for x in data:
             self.__rows__.append(self.__rows__[-1] + len(x))
-        self.__cols__.extend((x[0] for x in data))
-        self.__value__.extend((x[1] for x in data))
+            self.__cols__.extend(x[0])
+            self.__value__.extend(x[1])
 
 
 class IndexConvert(IDataConverter):
@@ -105,7 +105,10 @@ class IndexConvert(IDataConverter):
 
     def convert(self, data, argument):
         assert isinstance(argument, api.Arguments)
-        self.__ids__ = data.flatten()
+        #for x in data:
+        #    self.__ids__.append(x)
+        self.__ids__.extend(x)
+
         ids = api.IVector.create(self.__ids__)
         argument.setSlotIds(self.pos, ids)
 
