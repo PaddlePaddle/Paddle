@@ -1,10 +1,16 @@
 # Python Data Reader Design Doc
 
-Paddle reads data from *data reader* during training. *data reader* will be passed into `paddle.train` as a parameter.
+At training and testing time, PaddlePaddle programs need to read data. To ease the users' work to write data reading code, we define that
+
+- A *reader* is a function that reads data (from file, network, random number generator, etc) and yields data items.
+- A *reader creator* is a function that returns a reader function.
+- A *reader* decorator is a function, which accepts one or more readers, and returns a reader.
+
+and provide frequently used reader creators and reader decorators.
 
 ## Data Reader Interface
 
-Data reader is a function with no parameter that creates a iterable (anything can be used in `for x in iterable`):
+Indeed, *data reader* doesn't have to be a function that reads and yields data items. It can be any function with no parameter that creates a iterable (anything can be used in `for x in iterable`):
 
 ```
 iterable = data_reader()
@@ -15,16 +21,20 @@ Element produced for the iterable should be a **single** entry of data, **not** 
 An example implementation for single item data reader:
 
 ```python
-def data_reader_fake_image():
-	while True:
-		yield numpy.random.uniform(-1, 1, size=20*20)
+def reader_creator_random_image(width, height):
+	def reader():
+		while True:
+			yield numpy.random.uniform(-1, 1, size=width*height)
+	return reader
 ```
 
 An example implementation for multiple item data reader:
 ```python
-def data_reader_fake_image_and_label():
-	while True:
-		yield numpy.random.uniform(-1, 1, size=20*20), False
+def reader_creator_random_imageand_label(widht, height, label):
+	def reader():
+		while True:
+			yield numpy.random.uniform(-1, 1, size=width*height), label
+	return reader
 ```
 
 ## Usage
@@ -61,25 +71,27 @@ buffered_reader = paddle.reader.buffered(paddle.dataset.mnist, 100)
 
 ### Compose Multiple Data Readers
 
-For example, we want to use a source of real images (reusing mnist dataset), and a source of fake images as input for [Generative Adversarial Networks](https://arxiv.org/abs/1406.2661).
+For example, we want to use a source of real images (reusing mnist dataset), and a source of random images as input for [Generative Adversarial Networks](https://arxiv.org/abs/1406.2661).
 
 We can do:
 
 ```python
-def data_reader_fake_image():
-	while True:
-		yield numpy.random.uniform(-1, 1, size=20*20)
+def reader_creator_random_image(width, height):
+	def reader():
+		while True:
+			yield numpy.random.uniform(-1, 1, size=width*height)
+	return reader
 
-def data_reader_creator_bool(t):
+def reader_creator_bool(t):
 	def reader:
 		while True:
 			yield t
 	return reader
 
-true_reader = data_reader_creator_bool(True)
-false_reader = data_reader_creator_bool(False)
+true_reader = reader_creator_bool(True)
+false_reader = reader_creator_bool(False)
 
-reader = paddle.reader.compose(paddle.dataset.mnist, data_reader_fake_image, true_reader, false_reader)
+reader = paddle.reader.compose(paddle.dataset.mnist, data_reader_random_image(20, 20), true_reader, false_reader)
 # Skipped 1 because paddle.dataset.mnist produces two items per data entry.
 # And we don't care second item at this time.
 paddle.train(reader, {"true_image":0, "fake_image": 2, "true_label": 3, "false_label": 4}, ...)
