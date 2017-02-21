@@ -16,9 +16,9 @@ Indeed, *data reader* doesn't have to be a function that reads and yields data i
 iterable = data_reader()
 ```
 
-Element produced for the iterable should be a **single** entry of data, **not** a mini batch. That entry of data could be a single item, or a tuple of items. Item should be of [supported type](http://www.paddlepaddle.org/doc/ui/data_provider/pydataprovider2.html?highlight=dense_vector#input-types) (e.g., numpy 1d array of float32, int, list of int)
+Element produced from the iterable should be a **single** entry of data, **not** a mini batch. That entry of data could be a single item, or a tuple of items. Item should be of [supported type](http://www.paddlepaddle.org/doc/ui/data_provider/pydataprovider2.html?highlight=dense_vector#input-types) (e.g., numpy 1d array of float32, int, list of int)
 
-An example implementation for single item data reader:
+An example implementation for single item data reader creator:
 
 ```python
 def reader_creator_random_image(width, height):
@@ -28,7 +28,7 @@ def reader_creator_random_image(width, height):
 	return reader
 ```
 
-An example implementation for multiple item data reader:
+An example implementation for multiple item data reader creator:
 ```python
 def reader_creator_random_imageand_label(widht, height, label):
 	def reader():
@@ -91,7 +91,7 @@ def reader_creator_bool(t):
 true_reader = reader_creator_bool(True)
 false_reader = reader_creator_bool(False)
 
-reader = paddle.reader.compose(paddle.dataset.mnist, data_reader_random_image(20, 20), true_reader, false_reader)
+reader = paddle.reader.compose(paddle.dataset.mnist, data_reader_creator_random_image(20, 20), true_reader, false_reader)
 # Skipped 1 because paddle.dataset.mnist produces two items per data entry.
 # And we don't care second item at this time.
 paddle.train(reader, {"true_image":0, "fake_image": 2, "true_label": 3, "false_label": 4}, ...)
@@ -118,7 +118,7 @@ Practically, always return a single entry make reusing existing data readers muc
 
 We decided to use dictionary (`{"image":0, "label":1}`) instead of list (`["image", "label"]`) is because that user can easily resue item (e.g., using `{"image_a":0, "image_b":0, "label":1}`) or skip item (e.g., using `{"image_a":0, "label":2}`).
 
-### How to create custom data reader
+### How to create custom data reader creator
 
 ```python
 def image_reader_creator(image_path, label_path, n):
@@ -145,7 +145,7 @@ paddle.train(reader, {"image":0, "label":1}, ...)
 An example implementation of paddle.train could be:
 
 ```python
-def minibatch_decorater(reader, minibatch_size):
+def make_minibatch(reader, minibatch_size):
 	def ret():
 		r = reader()
 		buf = [r.next() for x in xrange(minibatch_size)]
@@ -156,6 +156,6 @@ def minibatch_decorater(reader, minibatch_size):
 
 def train(reader, mapping, batch_size, total_pass):
 	for pass_idx in range(total_pass):
-		for mini_batch in minibatch_decorater(reader): # this loop will never end in online learning.
+		for mini_batch in make_minibatch(reader): # this loop will never end in online learning.
 			do_forward_backward(mini_batch, mapping)
 ```
