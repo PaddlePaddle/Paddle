@@ -214,7 +214,11 @@ def unittest():
          'aclImdb_v1.tar.gz', (
              ('./aclImdb/imdb.vocab', '23c86a0533c0151b6f12fa52b106dcc2'),
              ('./aclImdb/train/neg/10000_4.txt',
-              'd122bc3b46ac372847d610f6382318c7'))))
+              'd122bc3b46ac372847d610f6382318c7'))),
+        ('http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz',
+         'conll05st-tests.tar.gz', (
+             ('./conll05st-release/test.wsj/words/test.wsj.words.gz',
+              'd923123c71b0b19026ecaf8c2e9e4e8a'), )), )
 
     for url, filename, files in test_set:
         fetcher = Fetcher(url=url, filename=filename)
