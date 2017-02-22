@@ -21,15 +21,8 @@ import data_type
 import py_paddle.swig_paddle as api
 
 __all__ = [
-    'optimizer',
-    'layer',
-    'activation',
-    'parameters',
-    'init',
-    'trainer',
-    'event',
-    'data_type',
-    'data_feeder',
+    'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
+    'event', 'data_type', 'data_feeder'
 ]
 
 
