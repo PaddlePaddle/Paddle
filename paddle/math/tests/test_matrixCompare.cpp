@@ -764,7 +764,7 @@ TEST(Matrix, paramReluBackwardDiff) {
   }
 }
 
-void testClassificationError(int numSamples, int dim) {
+void testClassificationError(int numSamples, int dim, int topkSize) {
   MatrixPtr cpuError = std::make_shared<CpuMatrix>(numSamples, 1);
   MatrixPtr gpuError = std::make_shared<GpuMatrix>(numSamples, 1);
   MatrixPtr cpuOutput = std::make_shared<CpuMatrix>(numSamples, dim);
@@ -777,17 +777,22 @@ void testClassificationError(int numSamples, int dim) {
   gpuOutput->copyFrom(*cpuOutput);
   gpuLabel->copyFrom(*cpuLabel);
 
-  cpuError->classificationError(*cpuOutput, *cpuLabel);
-  gpuError->classificationError(*gpuOutput, *gpuLabel);
+  cpuError->classificationError(*cpuOutput, *cpuLabel, topkSize);
+  gpuError->classificationError(*gpuOutput, *gpuLabel, topkSize);
 
   TensorCheckEqual(*cpuError, *gpuError);
 }
 
 TEST(Matrix, classificationError) {
-  for (auto numSamples : {1, 10, 100, 1000, 70000}) {
-    for (auto dim : {1, 10, 100, 1000}) {
-      VLOG(3) << " numSamples=" << numSamples << " dim=" << dim;
-      testClassificationError(numSamples, dim);
+  for (auto numSamples : {1, 5, 31, 90, 150, 300}) {
+    for (auto dim :
+         {1, 5, 8, 10, 15, 64, 80, 120, 256, 300, 1280, 5120, 50000}) {
+      for (auto topkSize : {1, 5, 10, 20, 40, (int)rand() % dim + 1}) {
+        if (topkSize > dim) continue;
+        VLOG(3) << " sample= " << numSamples << " topkSize= " << topkSize
+                << " dim= " << dim;
+        testClassificationError(numSamples, dim, topkSize);
+      }
     }
   }
 }
