@@ -14,28 +14,28 @@ limitations under the License. */
 
 #pragma once
 
-#include <vector>
-#include "CudnnConvBaseLayer.h"
-#include "Projection.h"
-#include "paddle/math/Matrix.h"
+#include "ConvBaseProjection.h"
+#include "paddle/math/MathUtils.h"
 
 namespace paddle {
 
 /**
- * @brief A 2-dimension conv layer implemented by cuDNN. It only
- *        supports GPU mode. We automatic select CudnnConvLayer for GPU
- *        mode and ExpandConvLayer for CPU mode if you set type of "conv".
- *        User also can specfiy type of "exconv" or "cudnn_conv" for
- *        particular type.
- *
- * The config file api is img_conv_layer.
+ * @brief Convolution projection do the same calculation with CudnnConvLayer.
  */
-class CudnnConvLayer : public CudnnConvBaseLayer {
+class ConvTransProjection : public ConvBaseProjection {
 public:
-  explicit CudnnConvLayer(const LayerConfig& config)
-      : CudnnConvBaseLayer(config) {}
+  /**
+   * Constructor.
+   */
+  ConvTransProjection(const ProjectionConfig& config,
+                      ParameterPtr parameter,
+                      bool useGpu)
+      : ConvBaseProjection(config, parameter, useGpu) {}
 
-  ~CudnnConvLayer() {}
+  ~ConvTransProjection() {}
+
+  virtual void forward();
+  virtual void backward(const UpdateCallback& callback);
 };
 
 }  // namespace paddle

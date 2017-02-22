@@ -12,30 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include "ConvBaseProjection.h"
-#include "paddle/math/MathUtils.h"
+#include "CudnnConvTransLayer.h"
+#include "paddle/utils/Logging.h"
+#include "paddle/utils/Stat.h"
 
 namespace paddle {
 
-/**
- * @brief Convolution projection do the same calculation with CudnnConvLayer.
- */
-class ConvProjection : public ConvBaseProjection {
-public:
-  /**
-   * Constructor.
-   */
-  ConvProjection(const ProjectionConfig& config,
-                 ParameterPtr parameter,
-                 bool useGpu)
-      : ConvBaseProjection(config, parameter, useGpu) {}
-
-  ~ConvProjection() {}
-
-  virtual void forward();
-  virtual void backward(const UpdateCallback& callback);
-};
+REGISTER_LAYER(cudnn_convt, CudnnConvTransLayer);
 
 }  // namespace paddle

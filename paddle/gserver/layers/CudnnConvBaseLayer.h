@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include "CudnnConvBaseLayer.h"
+#include "ConvBaseLayer.h"
 #include "Projection.h"
 #include "paddle/math/Matrix.h"
 
@@ -30,12 +30,24 @@ namespace paddle {
  *
  * The config file api is img_conv_layer.
  */
-class CudnnConvLayer : public CudnnConvBaseLayer {
-public:
-  explicit CudnnConvLayer(const LayerConfig& config)
-      : CudnnConvBaseLayer(config) {}
+class CudnnConvBaseLayer : public ConvBaseLayer {
+protected:
+  std::vector<std::unique_ptr<ProjectionConfig>> projConf_;
+  std::vector<std::unique_ptr<Projection>> projections_;
 
-  ~CudnnConvLayer() {}
+  hl_tensor_descriptor biasDesc_;
+  hl_tensor_descriptor outputDesc_;
+
+public:
+  explicit CudnnConvBaseLayer(const LayerConfig& config)
+      : ConvBaseLayer(config) {}
+
+  ~CudnnConvBaseLayer();
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback) override;
+
+  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap)
+      override;
 };
 
 }  // namespace paddle

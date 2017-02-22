@@ -30,12 +30,12 @@ namespace paddle {
  *
  * The config file api is img_conv_layer.
  */
-class CudnnConvLayer : public CudnnConvBaseLayer {
+class CudnnConvTransLayer : public CudnnConvBaseLayer {
 public:
-  explicit CudnnConvLayer(const LayerConfig& config)
+  explicit CudnnConvTransLayer(const LayerConfig& config)
       : CudnnConvBaseLayer(config) {}
 
-  ~CudnnConvLayer() {}
+  ~CudnnConvTransLayer() {}
 };
 
 }  // namespace paddle

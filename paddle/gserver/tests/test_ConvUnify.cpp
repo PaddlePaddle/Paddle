@@ -34,8 +34,7 @@ DECLARE_double(checkgrad_eps);
 DECLARE_bool(thread_local_rand_use_global_seed);
 DECLARE_bool(prev_batch_state);
 
-// Do one forward pass of convTrans layer and check to see if its output
-// matches the given result
+// Do one forward pass of ConvLayer using either exconv or cudnn_conv
 MatrixPtr doOneConvTest(size_t imgSize,
                         size_t output_x,
                         size_t stride,
