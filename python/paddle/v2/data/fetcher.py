@@ -53,6 +53,9 @@ class IFileOpener(object):
         """
         raise NotImplementedError()
 
+    def walk(self, *args, **kwargs):
+        raise ValueError("Not support")
+
 
 class GZipFileOpener(IFileOpener):
     """
@@ -60,6 +63,7 @@ class GZipFileOpener(IFileOpener):
 
     Like XXX.json.gz XXX.txt.gz
     """
+
     extension = ".gz"
 
     def open(self, path=None):
@@ -91,6 +95,10 @@ class TarGzFileOpener(IFileOpener):
         except IOError as e:
             e.filename = path
             raise
+
+    def walk(self, top='.', *args, **kwargs):
+        top = os.path.join(self.__working_dir__, top)
+        return os.walk(top, *args, **kwargs)
 
 
 class TGZFileOpener(TarGzFileOpener):
@@ -199,6 +207,9 @@ class Fetcher(object):
         :rtype: file
         """
         return self.__reader__.open(path=path)
+
+    def walk(self, *args, **kwargs):
+        return self.__reader__.walk(*args, **kwargs)
 
 
 def unittest():
