@@ -89,7 +89,6 @@ class SGD(ITrainer):
             event_handler = default_event_handler
 
         topology = v2_layer.parse_network(topology)
-        print topology
 
         __check_train_args__(**locals())
 
