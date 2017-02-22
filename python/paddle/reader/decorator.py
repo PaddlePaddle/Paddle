@@ -66,7 +66,7 @@ def chain(*readers):
     [0, 0, 0, 1, 1, 1, 2, 2, 2]
 
     Args:
-        readerss: input readers.
+        readers: input readers.
 
     Returns:
         the new data reader.
@@ -83,7 +83,7 @@ def chain(*readers):
     return reader
 
 
-class ComposeNotAligned:
+class ComposeNotAligned(ValueError):
     pass
 
 
@@ -128,7 +128,8 @@ def compose(*readers, **kwargs):
                 for o in outputs:
                     if o is None:
                         # None will be not be present if compose is aligned
-                        raise ComposeNotAligned
+                        raise ComposeNotAligned(
+                            "outputs of readers are not aligned.")
                 yield sum(map(make_tuple, outputs), ())
 
     return reader
