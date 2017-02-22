@@ -12,12 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['buffered', 'compose', 'chain', 'shuffle', 'ComposeNotAligned']
+__all__ = [
+    'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
+    'ComposeNotAligned'
+]
 
 from Queue import Queue
 from threading import Thread
 import itertools
 import random
+
+
+def map_readers(func, *readers):
+    """
+    Creates a data reader that outputs return value of function using
+    output of each data readers as arguments.
+
+    :param func: function to use.
+    :param *readers: readers whose outputs will be used as arguments of func.
+    :returns: the created data reader.
+    """
+
+    def reader():
+        rs = []
+        for r in readers:
+            rs.append(r())
+        for e in itertools.imap(func, *rs):
+            yield e
+
+    return reader
 
 
 def shuffle(reader, buf_size):
