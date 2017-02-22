@@ -131,7 +131,7 @@ void Trainer::testOneDataBatch(size_t batchSize, const Arguments& args) {
 void TrainerPrivate::finishTestPeriod() { tester_->finishTestPeriod(); }
 void Trainer::finishTestPeriod() { m->finishTestPeriod(); }
 
-Arguments* Trainer::getLayerOutput(const std::string& layerName) {
+Arguments* Trainer::getLayerOutput(const std::string& layerName) const {
   auto nn = this->m->getGradientMachine();
   CHECK(nn) << "trainerInternal_.getGradientMachine() is not NeuralNetwork";
   return Arguments::createByPaddleArgument(&nn->getLayerOutput(layerName));

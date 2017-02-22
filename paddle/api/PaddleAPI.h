@@ -953,7 +953,7 @@ public:
 
   Arguments* getForwardOutput();
 
-  Arguments* getLayerOutput(const std::string& layerName);
+  Arguments* getLayerOutput(const std::string& layerName) const;
 };
 
 /// the N-Best results generated from one input sequence.
