@@ -134,8 +134,8 @@ public:
     backward(callback);
   }
 
-  virtual MatrixPtr getLayerOutput(const std::string& layerName) const {
-    return nullptr;
+  virtual const Argument& getLayerOutput(const std::string& layerName) {
+    return *((Argument*)nullptr);
   }
 
   // see comment in Layer.h for the function with the same name

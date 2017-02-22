@@ -282,33 +282,17 @@ void MultiGradientMachine::forwardBackward(const std::vector<Argument>& inArgs,
   backwardImp(callback);
 }
 
-MatrixPtr MultiGradientMachine::getLayerOutput(
-    const std::string& layerName) const {
-  // each thread has the same neural network
-  auto nn = threads_[0]->getGradientMachine();
-  size_t height = 0;
-  size_t width = nn->getLayerOutput(layerName)->getWidth();
-  std::vector<MatrixPtr> mats;
-  mats.reserve(threads_.size());
+const Argument& MultiGradientMachine::getLayerOutput(
+    const std::string& layerName) {
+  std::vector<Argument> args;
+  args.reserve(threads_.size());
+
   for (auto& thread : threads_) {
-    MatrixPtr out = thread->getGradientMachine()->getLayerOutput(layerName);
-    mats.push_back(out);
-    height += out->getHeight();
-    CHECK_EQ(width, out->getWidth());
+    args.push_back(thread->getGradientMachine()->getLayerOutput(layerName));
   }
+  outLayerArgs_.concat(args, false /* use_gpu */, outArgStream_, passType_);
 
-  MatrixPtr layerOutput;
-  Matrix::resizeOrCreate(layerOutput, height, width, false, false);
-
-  // copy one layer output from one trainer thread at each time
-  size_t startRow = 0;
-  for (auto& mat : mats) {
-    auto tmpMatrix = layerOutput->subMatrix(startRow, mat->getHeight());
-    tmpMatrix->copyFrom(*mat);
-    startRow += mat->getHeight();
-  }
-
-  return layerOutput;
+  return outLayerArgs_;
 }
 
 void MultiGradientMachine::backwardImp(const UpdateCallback& callback) {

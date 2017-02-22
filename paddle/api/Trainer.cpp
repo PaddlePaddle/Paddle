@@ -131,12 +131,10 @@ void Trainer::testOneDataBatch(size_t batchSize, const Arguments& args) {
 void TrainerPrivate::finishTestPeriod() { tester_->finishTestPeriod(); }
 void Trainer::finishTestPeriod() { m->finishTestPeriod(); }
 
-Matrix* Trainer::getLayerOutput(const std::string& layerName) {
-  auto nn = std::dynamic_pointer_cast<paddle::NeuralNetwork>(
-      this->m->getGradientMachine());
+Arguments* Trainer::getLayerOutput(const std::string& layerName) {
+  auto nn = this->m->getGradientMachine();
   CHECK(nn) << "trainerInternal_.getGradientMachine() is not NeuralNetwork";
-  auto m = nn->getLayerOutput(layerName);
-  return Matrix::createByPaddleMatrixPtr(&m);
+  return Arguments::createByPaddleArgument(&nn->getLayerOutput(layerName));
 }
 
 void Trainer::forwardOneBatch(size_t batchSize) {

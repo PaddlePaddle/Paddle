@@ -144,12 +144,11 @@ Parameter* GradientMachine::getParameter(size_t i) throw(RangeError) {
 
 void GradientMachine::randParameters() { m->machine->randParameters(); }
 
-Matrix* GradientMachine::getLayerOutput(const std::string& layerName) const
+Arguments* GradientMachine::getLayerOutput(const std::string& layerName) const
     throw(UnsupportError) {
   auto nn = m->machine;
   if (nn) {
-    auto mat = nn->getLayerOutput(layerName);
-    return Matrix::createByPaddleMatrixPtr(&mat);
+    return Arguments::createByPaddleArgument(&nn->getLayerOutput(layerName));
   } else {
     throw UnsupportError();
   }
