@@ -208,7 +208,7 @@ void NeuralNetwork::prefetch(const std::vector<Argument>& inArgs) {
   }
 
   for (size_t i = 0; i != dataLayers_.size(); ++i) {
-    if (FLAGS_parallel_nn) {
+    if (this->config_.cmd_args().parallel_nn()) {
       const_cast<Argument&>(inArgs[i]).deviceId = -1;
     }
     dataLayers_[i]->setData(inArgs[i]);

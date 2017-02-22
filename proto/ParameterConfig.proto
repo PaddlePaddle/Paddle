@@ -15,6 +15,9 @@ syntax = "proto2";
 
 package paddle;
 
+
+import "CMDArguments.proto";
+
 /**
  * Configuration structure for parameter
  */
@@ -77,4 +80,7 @@ message ParameterConfig {
   optional bool is_shared = 23 [default = false];
   // parameter block size
   optional uint64 parameter_block_size = 24 [default = 0];
+
+  // To pass command line through Paddle codes.
+  optional CMDArguments cmd_args = 25;
 }

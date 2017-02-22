@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
+#include "CMDArguments.pb.h"
 #include "paddle/utils/Error.h"
 
 namespace paddle {
@@ -32,10 +33,12 @@ struct Argument;
  */
 class ActivationFunction {
 public:
-  static ActivationFunction* create(const std::string& type);
+  static ActivationFunction* create(const std::string& type,
+                                    const CMDArguments& args);
   static std::vector<std::string> getAllRegisteredTypes();
 
-  ActivationFunction() {}
+  explicit ActivationFunction(const CMDArguments& cmdArgs)
+      : cmdArgs_(cmdArgs) {}
 
   virtual ~ActivationFunction() {}
 
@@ -61,6 +64,9 @@ public:
   virtual Error __must_check backward(Argument& act) = 0;
 
   virtual const std::string& getName() const = 0;
+
+protected:
+  const CMDArguments& cmdArgs_;
 };
 
 }  // namespace paddle

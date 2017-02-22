@@ -399,7 +399,7 @@ TrainerThread::TrainerThread(const ModelConfig& config,
   SetDevice gpuDevice(deviceId_);
 
   NeuralNetwork* nn = nullptr;
-  if (!multiMachine->useGpu() || !FLAGS_parallel_nn) {
+  if (!multiMachine->useGpu() || !config.cmd_args().parallel_nn()) {
     nn = NeuralNetwork::create(config);
   } else {
     nn = new ParallelNeuralNetwork();
@@ -422,7 +422,7 @@ TrainerThread::TrainerThread(const ModelConfig& config,
   nn->init(config_, slaveParamInitCb);
   gradientMachine_.reset(nn);
   parameters_ = gradientMachine_->getParameters();
-  if (!FLAGS_parallel_nn) {
+  if (!config.cmd_args().parallel_nn()) {
     for (auto& para : parameters_) {
       para->setDevice(deviceId_);
     }
@@ -744,7 +744,7 @@ void TrainerThread::copyInArgs() {
         fullInArgs[i],
         startSeq,
         copySize,
-        FLAGS_parallel_nn ? false : multiMachine_->useGpu());
+        config_.cmd_args().parallel_nn() ? false : multiMachine_->useGpu());
   }
 }
 

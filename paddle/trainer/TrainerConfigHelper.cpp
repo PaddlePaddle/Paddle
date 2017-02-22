@@ -101,6 +101,15 @@ bool TrainerConfigHelper::hasTestDataConfig() const {
   return m->conf.has_test_data_config();
 }
 
+template <typename T>
+static void updateCMDArgs(T *mutableConf) {
+  if (mutableConf->has_cmd_args()) {
+    mutableConf->set_allocated_cmd_args(new paddle::CMDArguments());
+  }
+  paddle::CMDArguments &args = *mutableConf->mutable_cmd_args();
+  args.set_parallel_nn(FLAGS_parallel_nn);
+}
+
 void TrainerConfigHelper::updateConfigFromFlags() {
   if (!FLAGS_save_dir.empty()) {
     m->conf.set_save_dir(FLAGS_save_dir);
@@ -110,6 +119,14 @@ void TrainerConfigHelper::updateConfigFromFlags() {
   }
   if (FLAGS_start_pass != 0) {
     m->conf.set_start_pass(FLAGS_start_pass);
+  }
+  updateCMDArgs(m->conf.mutable_model_config());
+  for (auto paramConf : *m->conf.mutable_model_config()->mutable_parameters()) {
+    updateCMDArgs(&paramConf);
+  }
+  for (auto evaluatorConf :
+       *m->conf.mutable_model_config()->mutable_evaluators()) {
+    updateCMDArgs(&evaluatorConf);
   }
 }
 

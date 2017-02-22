@@ -14,6 +14,7 @@ limitations under the License. */
 syntax = "proto2";
 
 import "ParameterConfig.proto";
+import "CMDArguments.proto";
 
 package paddle;
 
@@ -441,6 +442,9 @@ message LayerConfig {
 
   // blank label used in ctc loss
   optional uint32 blank = 52 [default = 0];
+
+  // To pass command line through Paddle codes.
+  optional CMDArguments cmd_args = 53;
 }
 
 message EvaluatorConfig {
@@ -475,6 +479,9 @@ message EvaluatorConfig {
   // Used by ChunkEvaluator
   // chunk of these types are not counted
   repeated int32 excluded_chunk_types = 12;
+
+  // To pass command line through Paddle codes.
+  optional CMDArguments cmd_args = 13;
 }
 
 message LinkConfig {
@@ -562,4 +569,7 @@ message ModelConfig {
   // For External Machine, defining how to split a neural network
   // into multiple parts.
   optional ExternalConfig external_config = 9;
+
+  // To pass command line through Paddle codes.
+  optional CMDArguments cmd_args = 10;
 };

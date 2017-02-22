@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "MaxLayer.h"
 #include "paddle/utils/Logging.h"
+#include "paddle/utils/ProtoCMDArgs.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
@@ -24,7 +25,7 @@ void MaxLayer::forward(PassType passType) {
   SequencePoolLayer::forward(passType);
 
   IVector::resizeOrCreate(
-      maxIndex_, newBatchSize_ * getSize(), useGpu(deviceId_));
+      maxIndex_, newBatchSize_ * getSize(), useGPU(config_, deviceId_));
   maxIndex_->zeroMem();
 
   MatrixPtr inputValue = getInputValue(0);

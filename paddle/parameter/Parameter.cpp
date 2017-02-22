@@ -49,7 +49,7 @@ Parameter::Parameter(const ParameterConfig& config, bool useGpu, bool doInit)
       updateCounter_(0),
       updated_(false) {
   setID(-1); /* capture uninitialized id */
-  if (useGpu_ && FLAGS_parallel_nn) {
+  if (useGpu_ && config_.cmd_args().parallel_nn()) {
     /* gpu environment is specified by device property */
     deviceId_ = config_.device();
     if (deviceId_ < 0) {

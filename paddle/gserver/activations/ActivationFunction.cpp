@@ -22,12 +22,13 @@ limitations under the License. */
 #include <type_traits>
 #include "paddle/parameter/Argument.h"
 #include "paddle/utils/ClassRegistrar.h"
-
 #include "paddle/utils/Logging.h"
+#include "paddle/utils/ProtoCMDArgs.h"
 
 namespace paddle {
 
-static ClassRegistrar<ActivationFunction> gActivationRegistrar;
+static ClassRegistrar<ActivationFunction, const CMDArguments&>
+    gActivationRegistrar;
 /**
  * @def ACTIVATION_CLASS_NAME
  * @brief Macro for getting derived activation class name
@@ -39,13 +40,19 @@ static ClassRegistrar<ActivationFunction> gActivationRegistrar;
  * @def BEGIN_DEFINE_ACTIVATION
  * @brief Macro for defining a devried activation class
  */
-#define BEGIN_DEFINE_ACTIVATION(ACTIVATION_NAME)                             \
+#define BEGIN_DEFINE_ACTIVATION_WITHOUT_CTOR(ACTIVATION_NAME)                \
   class ACTIVATION_CLASS_NAME(ACTIVATION_NAME) : public ActivationFunction { \
   private:                                                                   \
     static const std::string name;                                           \
                                                                              \
   public:                                                                    \
     const std::string& getName() const { return name; }
+
+#define BEGIN_DEFINE_ACTIVATION(ACTIVATION_NAME)                            \
+  BEGIN_DEFINE_ACTIVATION_WITHOUT_CTOR(ACTIVATION_NAME)                     \
+  explicit ACTIVATION_CLASS_NAME(ACTIVATION_NAME)(const CMDArguments& args) \
+      : ActivationFunction(args) {}
+
 /**
  * @def END_DEFINE_ACTIVATION
  * @brief Macro for registering a derived activation class
@@ -68,7 +75,10 @@ static ClassRegistrar<ActivationFunction> gActivationRegistrar;
  */
 class IdentityActivation : public ActivationFunction {
 public:
+  explicit IdentityActivation(const CMDArguments& args)
+      : ActivationFunction(args) {}
   static const std::string name;
+
   Error __must_check forward(Argument& act) {
     (void)act;
     return Error();
@@ -79,6 +89,7 @@ public:
   }
   const std::string& getName() const { return name; }
 };
+
 const std::string IdentityActivation::name = "";
 static InitFunction __reg_activation__identity([] {
   gActivationRegistrar.registerClass<IdentityActivation>("");
@@ -132,18 +143,18 @@ Error __must_check backward(Argument& act) {
                            outputG->getHeight(),
                            outputG->getWidth(),
                            /* trans */ false,
-                           useGpu(act.deviceId));
+                           useGPU(this->cmdArgs_, act.deviceId));
     Matrix::resizeOrCreate(sftMaxSum_,
                            outputG->getHeight(),
                            1,
                            /* trans */ false,
-                           useGpu(act.deviceId));
+                           useGPU(this->cmdArgs_, act.deviceId));
     if (!one_ || one_->getWidth() != outputG->getWidth()) {
       Matrix::resizeOrCreate(one_,
                              1,
                              outputG->getWidth(),
                              /* trans */ false,
-                             useGpu(act.deviceId));
+                             useGPU(this->cmdArgs_, act.deviceId));
       one_->one();
     }
 
@@ -161,12 +172,16 @@ END_DEFINE_ACTIVATION(softmax)
  * @note Softmax on all frames of one sequence.
  * Width of frame must be one.
  */
-BEGIN_DEFINE_ACTIVATION(sequence_softmax)
+BEGIN_DEFINE_ACTIVATION_WITHOUT_CTOR(sequence_softmax)
 private:
 ACTIVATION_CLASS_NAME(softmax) softmax_;
 Argument argument_;
 
 public:
+explicit ACTIVATION_CLASS_NAME(sequence_softmax)(const CMDArguments& args)
+    : ActivationFunction(args),
+      softmax_(ACTIVATION_CLASS_NAME(softmax)(args)) {}
+
 Error __must_check forward(Argument& act) {
   if (act.value->getWidth() != 1UL) {
     return Error(
@@ -178,15 +193,16 @@ Error __must_check forward(Argument& act) {
                                      /* height= */ 1,
                                      1,
                                      /* trans= */ false,
-                                     useGpu(act.deviceId));
+                                     useGPU(this->cmdArgs_, act.deviceId));
     argument_.grad = Matrix::create(nullptr,
                                     /* height= */ 1,
                                     1,
                                     /* trans= */ false,
-                                    useGpu(act.deviceId));
+                                    useGPU(this->cmdArgs_, act.deviceId));
   }
 
-  auto starts = act.sequenceStartPositions->getVector(useGpu(act.deviceId));
+  auto starts = act.sequenceStartPositions->getVector(
+      useGPU(this->cmdArgs_, act.deviceId));
   act.value->sequenceSoftmax(*act.value, *starts);
   return Error();
 }
@@ -285,12 +301,13 @@ END_DEFINE_ACTIVATION(tanh)
  * f(z) = 1.7159 * tanh(2/3*z)
  * \f]
  */
-BEGIN_DEFINE_ACTIVATION(stanh)
+BEGIN_DEFINE_ACTIVATION_WITHOUT_CTOR(stanh)
 private:
 real a, b;
 
 public:
-ACTIVATION_CLASS_NAME(stanh)() : a(1.7159), b(2. / 3.) {}
+ACTIVATION_CLASS_NAME(stanh)
+(const CMDArguments& args) : ActivationFunction(args), a(1.7159), b(2. / 3.) {}
 Error __must_check forward(Argument& act) {
   act.value->scaledTanh(*act.value, a, b);
   return Error();
@@ -339,7 +356,7 @@ Error __must_check forward(Argument& act) {
                          act.value->getHeight(),
                          act.value->getWidth(),
                          /* trans */ false,
-                         useGpu(act.deviceId));
+                         useGPU(this->cmdArgs_, act.deviceId));
 
   act.in->copyFrom(*act.value);
   act.value->abs2(*act.value);
@@ -365,7 +382,7 @@ Error __must_check forward(Argument& act) {
                          act.value->getHeight(),
                          act.value->getWidth(),
                          /* trans */ false,
-                         useGpu(act.deviceId));
+                         useGPU(this->cmdArgs_, act.deviceId));
 
   act.in->copyFrom(*act.value);
   act.value->square2(*act.value);
@@ -409,7 +426,7 @@ Error __must_check forward(Argument& act) {
                          act.value->getHeight(),
                          act.value->getWidth(),
                          /* trans */ false,
-                         useGpu(act.deviceId));
+                         useGPU(this->cmdArgs_, act.deviceId));
 
   act.in->copyFrom(*act.value);
   act.value->log2(*act.value);
@@ -422,8 +439,9 @@ Error __must_check backward(Argument& act) {
 }
 END_DEFINE_ACTIVATION(log)
 
-ActivationFunction* ActivationFunction::create(const std::string& type) {
-  return gActivationRegistrar.createByType(type);
+ActivationFunction* ActivationFunction::create(const std::string& type,
+                                               const CMDArguments& args) {
+  return gActivationRegistrar.createByType(type, args);
 }
 
 std::vector<std::string> ActivationFunction::getAllRegisteredTypes() {

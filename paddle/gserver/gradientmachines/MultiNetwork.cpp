@@ -38,7 +38,7 @@ void MultiNetwork::init(const ModelConfig& config,
   // sub networks
   for (int i = 1; i < config.sub_models_size(); ++i) {
     std::string subModelName = config.sub_models(i).name();
-    if (FLAGS_parallel_nn) {
+    if (config.cmd_args().parallel_nn()) {
       subNetworks_[i - 1] = std::unique_ptr<ParallelNeuralNetwork>(
           new ParallelNeuralNetwork(subModelName, this));
     } else {
