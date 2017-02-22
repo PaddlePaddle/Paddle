@@ -16,9 +16,10 @@ import paddle.reader
 import time
 
 
-def reader_10(dur):
+def reader_creator_10(dur):
     def reader():
         for i in range(10):
+            # this invocation helps testing paddle.reader.buffer
             time.sleep(dur)
             yield i
 
@@ -28,7 +29,7 @@ def reader_10(dur):
 class TestBuffered(unittest.TestCase):
     def test_read(self):
         for size in range(20):
-            b = paddle.reader.buffered(reader_10(0), size)
+            b = paddle.reader.buffered(reader_creator_10(0), size)
             c = 0
             for i in b():
                 self.assertEqual(i, c)
@@ -37,7 +38,7 @@ class TestBuffered(unittest.TestCase):
 
     def test_buffering(self):
         # read have 30ms delay.
-        b = paddle.reader.buffered(reader_10(0.03), 10)
+        b = paddle.reader.buffered(reader_creator_10(0.03), 10)
         last_time = time.time()
         for idx, i in enumerate(b()):
             elapsed_time = time.time() - last_time
@@ -51,29 +52,29 @@ class TestBuffered(unittest.TestCase):
 
 class TestCompose(unittest.TestCase):
     def test_compse(self):
-        a = reader_10(0)
-        b = reader_10(0)
-        c = paddle.reader.compose(a, b)
-        for idx, e in enumerate(c()):
+        reader = paddle.reader.compose(
+            reader_creator_10(0), reader_creator_10(0))
+        for idx, e in enumerate(reader()):
             self.assertEqual(e, (idx, idx))
 
     def test_compose_not_aligned(self):
-        a = reader_10(0)
-        b = paddle.reader.chain(a, a)
-        c = paddle.reader.compose(a, b)
         total = 0
+        reader = paddle.reader.compose(
+            paddle.reader.chain(reader_creator_10(0), reader_creator_10(0)),
+            reader_creator_10(0))
         with self.assertRaises(paddle.reader.ComposeNotAligned):
-            for e in c():
+            for e in reader():
                 total += 1
         # expecting 10, not 20
         self.assertEqual(total, 10)
 
     def test_compose_not_aligned_no_check(self):
-        a = reader_10(0)
-        b = paddle.reader.chain(a, a)
-        c = paddle.reader.compose(a, b, check_alignment=False)
         total = 0
-        for e in c():
+        reader = paddle.reader.compose(
+            paddle.reader.chain(reader_creator_10(0), reader_creator_10(0)),
+            reader_creator_10(0),
+            check_alignment=False)
+        for e in reader():
             total += 1
         # expecting 10, not 20
         self.assertEqual(total, 10)
@@ -81,9 +82,7 @@ class TestCompose(unittest.TestCase):
 
 class TestChain(unittest.TestCase):
     def test_chain(self):
-        a = reader_10(0)
-        b = reader_10(0)
-        c = paddle.reader.chain(a, b)
+        c = paddle.reader.chain(reader_creator_10(0), reader_creator_10(0))
         idx = 0
         for e in c():
             self.assertEqual(e, idx % 10)
@@ -94,7 +93,7 @@ class TestChain(unittest.TestCase):
 class TestShuffle(unittest.TestCase):
     def test_shuffle(self):
         case = [(0, True), (1, True), (10, False), (100, False)]
-        a = reader_10(0)
+        a = reader_creator_10(0)
         for size, checkEq in case:
             s = paddle.reader.shuffle(a, size)
             total = 0
