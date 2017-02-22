@@ -45,9 +45,10 @@ public:
 
   ~CudnnConvLayer();
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback) override;
   void addBiases();
   void bpropBiases();
 };

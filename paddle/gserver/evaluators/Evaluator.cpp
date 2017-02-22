@@ -866,21 +866,20 @@ void PnpairEvaluator::calc(std::vector<PredictionResult>& predictArray) {
 
 ClassRegistrar<Evaluator> Evaluator::registrar_;
 Evaluator* Evaluator::create(const EvaluatorConfig& config) {
-  Evaluator* evaluator = nullptr;
-  if (config.type() == "classification_error") {
-    evaluator = new ClassificationErrorEvaluator();
-  } else if (config.type() == "sum") {
-    evaluator = new SumEvaluator();
-  } else if (config.type() == "last-column-sum") {
-    evaluator = new ColumnSumEvaluator(-1);
-  } else if (config.type() == "last-column-auc") {
-    evaluator = new AucEvaluator(-1);
-  } else {
-    evaluator = registrar_.createByType(config.type());
-  }
+  Evaluator* evaluator = registrar_.createByType(config.type());
   evaluator->init(config);
   return evaluator;
 }
+
+REGISTER_EVALUATOR(classification_error, ClassificationErrorEvaluator);
+REGISTER_EVALUATOR(sum, SumEvaluator);
+static InitFunction __reg_type_auc_sum__([]() {
+  Evaluator::registrar_.registerClass(
+      "last-column-sum", [] { return new ColumnSumEvaluator(-1); });
+  Evaluator::registrar_.registerClass("last-column-auc",
+                                      [] { return new AucEvaluator(-1); });
+});
+
 /**
  * @brief print value of each layer.
  *
@@ -888,32 +887,10 @@ Evaluator* Evaluator::create(const EvaluatorConfig& config) {
  */
 class ValuePrinter : public Evaluator {
 public:
-  ValuePrinter() {}
-
   virtual void eval(const NeuralNetwork& nn) {
     for (const std::string& name : config_.input_layers()) {
-      const Argument& argu = nn.getLayer(name)->getOutput();
-      if (argu.value) {
-        std::ostringstream os;
-        argu.value->print(os);
-        LOG(INFO) << "layer=" << name << " value matrix:\n" << os.str();
-      }
-      if (argu.ids) {
-        std::ostringstream os;
-        argu.ids->print(os, argu.ids->getSize());
-        LOG(INFO) << "layer=" << name << " ids vector:\n" << os.str();
-      }
-      if (auto startPos = argu.sequenceStartPositions) {
-        std::ostringstream os;
-        startPos->getVector(false)->print(os, startPos->getSize());
-        LOG(INFO) << "layer=" << name << " sequence pos vector:\n" << os.str();
-      }
-      if (auto subStartPos = argu.subSequenceStartPositions) {
-        std::ostringstream os;
-        subStartPos->getVector(false)->print(os, subStartPos->getSize());
-        LOG(INFO) << "layer=" << name << " sub-sequence pos vector:\n"
-                  << os.str();
-      }
+      nn.getLayer(name)->getOutput().printValueString(LOG(INFO),
+                                                      "layer=" + name + " ");
     }
   }
 
@@ -929,8 +906,6 @@ REGISTER_EVALUATOR(value_printer, ValuePrinter);
  */
 class GradientPrinter : public Evaluator {
 public:
-  GradientPrinter() {}
-
   virtual void eval(const NeuralNetwork& nn) {
     for (const std::string& name : config_.input_layers()) {
       const Argument& argu = nn.getLayer(name)->getOutput();
@@ -938,11 +913,6 @@ public:
         std::ostringstream os;
         argu.grad->print(os);
         LOG(INFO) << "layer=" << name << " grad matrix:\n" << os.str();
-      }
-      if (auto startPos = argu.sequenceStartPositions) {
-        std::ostringstream os;
-        startPos->getVector(false)->print(os, startPos->getSize());
-        LOG(INFO) << "layer=" << name << " sequence pos vector:\n" << os.str();
       }
     }
   }
