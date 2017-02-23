@@ -59,7 +59,7 @@ static int g_warpctcVersion = -1;
 #define WARPCTC_COMPUTE_LOSS dynload::compute_ctc_loss
 #define WARPCTC_GET_WORKSPACE_SIZE dynload::get_workspace_size
 #else
-ctcStatus_t fatal(...) {
+hl_warpctc_status_t fatal(...) {
   LOG(FATAL) << "warp-ctc [version " << g_warpctcVersion
              << "] Error: not support double precision.";
   // both of get_warpctc_version() and get_workspace_size() return an ctcStatus
