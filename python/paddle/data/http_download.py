@@ -34,8 +34,6 @@ from six.moves import urllib
 
 
 def download_with_urlretrieve(url, filename=None, with_progress=True):
-    print "ssss"
-    sys.exit()
     """
     Download each file with urlretrieve,and the download process can be seen.
 
