@@ -17,8 +17,9 @@ __all__ = ['np_array', 'text_file']
 
 def np_array(x):
     """
-    Creates a data reader from numpy array.
-    The highest dimension will be treated as batch dimension to iterate on.
+    Creates a reader that yields elements of x, if it is a
+    numpy vector. Or rows of x, if it is a numpy matrix.
+    Or any sub-hyperplane indexed by the highest dimension.
 
     :param x: the numpy array to create reader from.
     :returns: data reader created from x.
