@@ -11,25 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import optimizer
-import layer
-import activation
-import parameters
-import trainer
-import event
-import data_type
-import attr
-import py_paddle.swig_paddle as api
+
+from paddle.trainer_config_helpers.attrs import *
 
 __all__ = [
-    'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
-    'event', 'data_type', 'attr'
+    "Param",
+    "Extra",
 ]
 
-
-def init(**kwargs):
-    args = []
-    for key in kwargs.keys():
-        args.append('--%s=%s' % (key, str(kwargs[key])))
-
-    api.initPaddle(*args)
+Param = ParameterAttribute
+Extra = ExtraLayerAttribute
