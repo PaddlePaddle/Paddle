@@ -73,6 +73,7 @@ from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 
+import activation
 import data_type
 
 __all__ = [
@@ -97,10 +98,11 @@ def parse_network(*outputs):
 
 
 class Layer(object):
-    def __init__(self, name, parent_layers):
+    def __init__(self, name, parent_layers, step_input=None):
         assert isinstance(parent_layers, dict)
         assert isinstance(name, basestring)
         self.name = name
+        self.step_input = step_input
         self.__parent_layers__ = parent_layers
 
     def to_proto(self, context):
@@ -116,7 +118,13 @@ class Layer(object):
             else:
                 v1_layer = map(lambda x: x.to_proto(context=context),
                                self.__parent_layers__[layer_name])
+                if layer_name == "input" and self.step_input is not None:
+                    v1_layer.insert(0, self.step_input)
             kwargs[layer_name] = v1_layer
+
+        # memory may have the same name with some layer
+        if isinstance(self, MemoryV2):
+            return self.to_proto_impl(**kwargs)
 
         if self.name not in context:
             context[self.name] = self.to_proto_impl(**kwargs)
@@ -133,7 +141,7 @@ def __convert_to_v2__(method_name, name_prefix, parent_names):
         wrapper = None
 
     class V2LayerImpl(Layer):
-        def __init__(self, name=None, **kwargs):
+        def __init__(self, name=None, step_input=None, **kwargs):
             parent_layers = dict()
             other_kwargs = dict()
             for pname in parent_names:
@@ -143,7 +151,7 @@ def __convert_to_v2__(method_name, name_prefix, parent_names):
                 if key not in parent_names:
                     other_kwargs[key] = kwargs[key]
 
-            super(V2LayerImpl, self).__init__(name, parent_layers)
+            super(V2LayerImpl, self).__init__(name, parent_layers, step_input)
             self.__other_kwargs__ = other_kwargs
 
         if wrapper is not None:
@@ -186,6 +194,22 @@ class DataLayerV2(Layer):
         return getattr(conf_helps, self.__method_name__)(name=self.name, **args)
 
 
+class MemoryV2(Layer):
+    def __init__(self, name, size, **kwargs):
+        self.name = name
+        self.size = size
+        self.__kwargs__ = kwargs
+        super(MemoryV2, self).__init__(name=name, parent_layers=dict())
+
+    def to_proto_impl(self, **kwargs):
+        args = dict()
+        for each in kwargs:
+            args[each] = kwargs[each]
+        for each in self.__kwargs__:
+            args[each] = self.__kwargs__[each]
+        return conf_helps.memory(name=self.name, size=self.size, **args)
+
+
 data = DataLayerV2
 fc = __convert_to_v2__('fc_layer', name_prefix='fc', parent_names=['input'])
 max_id = __convert_to_v2__(
@@ -198,6 +222,13 @@ cross_entropy_cost = __convert_to_v2__(
     'cross_entropy',
     name_prefix='cross_entropy',
     parent_names=['input', 'label'])
+embedding = __convert_to_v2__(
+    'embedding_layer', name_prefix='embedding', parent_names=['input'])
+last_seq = __convert_to_v2__(
+    'last_seq', name_prefix='last_seq', parent_names=['input'])
+recurrent_group = __convert_to_v2__(
+    'recurrent_group', name_prefix='recurrent_layer', parent_names=['input'])
+memory = MemoryV2
 
 if __name__ == '__main__':
     pixel = data(name='pixel', type=data_type.dense_vector(784))
@@ -208,8 +239,48 @@ if __name__ == '__main__':
     cost1 = classification_cost(input=inference, label=label)
     cost2 = cross_entropy_cost(input=inference, label=label)
 
-    print parse_network(cost1)
-    print parse_network(cost2)
-    print parse_network(cost1, cost2)
-    print parse_network(cost2)
-    print parse_network(inference, maxid)
+    mem = memory(name="rnn_state", size=10)
+
+    # print parse_network(cost1)
+    # print parse_network(cost2)
+    # print parse_network(cost1, cost2)
+    # print parse_network(cost2)
+    # print parse_network(inference, maxid)
+
+    dict_dim = 10
+    word_dim = 8
+    hidden_dim = 8
+    label_dim = 3
+
+    def step(y):
+        mem = conf_helps.memory(name="rnn_state", size=hidden_dim)
+        out = conf_helps.fc_layer(
+            input=[y, mem],
+            size=hidden_dim,
+            act=activation.Tanh(),
+            bias_attr=True,
+            name="rnn_state")
+        return out
+
+    def test():
+        data1 = conf_helps.data_layer(name="word", size=dict_dim)
+        embd = conf_helps.embedding_layer(input=data1, size=word_dim)
+        conf_helps.recurrent_group(name="rnn", step=step, input=embd)
+
+    # print __parse__(test)
+
+    # yyyyyyyy
+    def new_step(y):
+        mem = memory(name="rnn_state", size=hidden_dim)
+        out = fc(input=[mem],
+                 step_input=y,
+                 size=hidden_dim,
+                 act=activation.Tanh(),
+                 bias_attr=True,
+                 name="rnn_state")
+        return out.to_proto(dict())
+
+    data1 = data(name="word", type=data_type.integer_value(dict_dim))
+    embd = embedding(input=data1, size=word_dim)
+    aaa = recurrent_group(name="rnn", step=new_step, input=embd)
+    print parse_network(aaa)
