@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.proto.ModelConfig_pb2 import ModelConfig
+import collections
+
 import paddle.trainer_config_helpers as conf_helps
-import layer as v2_layer
+from paddle.proto.ModelConfig_pb2 import ModelConfig
+
 import data_type
+import layer as v2_layer
 
 __all__ = ['Topology']
 
@@ -26,11 +29,12 @@ class Topology(object):
     and network configs.
     """
 
-    def __init__(self, *layers):
+    def __init__(self, layers):
+        if not isinstance(layers, collections.Sequence):
+            raise ValueError("input of Topology should be a list of Layer")
         for layer in layers:
             if not isinstance(layer, v2_layer.LayerV2):
-                raise ValueError('create must pass a topologies '
-                                 'which type is paddle.layer.Layer')
+                raise ValueError('layer should have type paddle.layer.Layer')
         self.layers = layers
         self.__model_config__ = v2_layer.parse_network(*layers)
         assert isinstance(self.__model_config__, ModelConfig)

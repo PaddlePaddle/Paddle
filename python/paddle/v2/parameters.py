@@ -7,15 +7,13 @@ import topology as v2_topology
 __all__ = ['Parameters', 'create']
 
 
-def create(topology):
+def create(layers):
     """
     Create parameter pool by topology.
-    :param topology:
+    :param layers:
     :return:
     """
-    if not isinstance(topology, v2_topology.Topology):
-        raise ValueError(
-            'create must pass a topology which type is topology.Topology')
+    topology = v2_topology.Topology(layers)
     pool = Parameters()
     for param in topology.proto().parameters:
         pool.__append_config__(param)

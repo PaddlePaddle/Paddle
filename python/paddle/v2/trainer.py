@@ -73,7 +73,7 @@ class SGD(ITrainer):
         Training method. Will train num_passes of input data.
 
         :param train_data_reader:
-        :param topology: Network Topology, use one or more Layers to represent it.
+        :param topology: cost layers, use one or more Layers to represent it.
         :param parameters: The parameter pools.
         :param num_passes: The total train passes.
         :param test_data_reader:
@@ -86,6 +86,8 @@ class SGD(ITrainer):
         """
         if event_handler is None:
             event_handler = default_event_handler
+
+        topology = v2_topology.Topology(topology)
 
         __check_train_args__(**locals())
 
