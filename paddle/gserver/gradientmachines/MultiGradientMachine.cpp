@@ -282,8 +282,7 @@ void MultiGradientMachine::forwardBackward(const std::vector<Argument>& inArgs,
   backwardImp(callback);
 }
 
-const Argument& MultiGradientMachine::getLayerOutput(
-    const std::string& layerName) {
+Argument MultiGradientMachine::getLayerOutput(const std::string& layerName) {
   std::vector<Argument> args;
   args.reserve(threads_.size());
 

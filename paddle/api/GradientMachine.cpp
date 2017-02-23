@@ -148,7 +148,8 @@ Arguments* GradientMachine::getLayerOutput(const std::string& layerName) const
     throw(UnsupportError) {
   auto nn = m->machine;
   if (nn) {
-    return Arguments::createByPaddleArgument(&nn->getLayerOutput(layerName));
+    auto arg = nn->getLayerOutput(layerName);
+    return Arguments::createByPaddleArgument(&arg);
   } else {
     throw UnsupportError();
   }

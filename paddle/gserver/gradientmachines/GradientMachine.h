@@ -134,7 +134,7 @@ public:
     backward(callback);
   }
 
-  virtual const Argument& getLayerOutput(const std::string& layerName) {
+  virtual Argument getLayerOutput(const std::string& layerName) {
     return *((Argument*)nullptr);
   }
 

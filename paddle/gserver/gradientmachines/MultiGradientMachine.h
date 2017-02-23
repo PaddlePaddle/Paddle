@@ -189,7 +189,7 @@ public:
                        PassType passType,
                        const UpdateCallback& callback);
 
-  virtual const Argument& getLayerOutput(const std::string& layerName);
+  virtual Argument getLayerOutput(const std::string& layerName);
 
   virtual void onPassEnd();
 

@@ -87,7 +87,7 @@ public:
 
   virtual void backward(const UpdateCallback& callback = nullptr);
 
-  virtual const Argument& getLayerOutput(const std::string& layerName);
+  virtual Argument getLayerOutput(const std::string& layerName);
 
   const LayerPtr& getLayer(const std::string& layerName) const {
     auto it = layerMap_.find(layerName);

@@ -134,7 +134,8 @@ void Trainer::finishTestPeriod() { m->finishTestPeriod(); }
 Arguments* Trainer::getLayerOutput(const std::string& layerName) const {
   auto nn = this->m->getGradientMachine();
   CHECK(nn) << "trainerInternal_.getGradientMachine() is not NeuralNetwork";
-  return Arguments::createByPaddleArgument(&nn->getLayerOutput(layerName));
+  auto arg = nn->getLayerOutput(layerName);
+  return Arguments::createByPaddleArgument(&arg);
 }
 
 void Trainer::forwardOneBatch(size_t batchSize) {

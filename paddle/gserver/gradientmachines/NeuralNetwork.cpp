@@ -293,7 +293,7 @@ void NeuralNetwork::backward(const UpdateCallback& callback) {
   }
 }
 
-const Argument& NeuralNetwork::getLayerOutput(const std::string& layerName) {
+Argument NeuralNetwork::getLayerOutput(const std::string& layerName) {
   return getLayer(layerName)->getOutput();
 }
 
