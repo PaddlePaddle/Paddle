@@ -18,6 +18,7 @@ import parameters
 import trainer
 import event
 import data_type
+import data_feeder
 import py_paddle.swig_paddle as api
 
 __all__ = [

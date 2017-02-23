@@ -69,7 +69,8 @@ class SGD(ITrainer):
               test_data_reader=None,
               event_handler=None,
               batch_size=32,
-              data_types=None):
+              data_types=None,
+              reader_dict=None):
         """
         Training method. Will train num_passes of input data.
 
@@ -103,13 +104,7 @@ class SGD(ITrainer):
         gm.start()
         out_args = api.Arguments.createArguments(0)
 
-        data_types_lists = []
-        for each in topology.input_layer_names:
-            if each not in data_types:
-                raise ValueError()
-            data_types_lists.append(data_types[each])
-
-        feeder = DataFeeder(input_types=data_types_lists)
+        feeder = DataFeeder(data_types, reader_dict)
 
         for pass_id in xrange(num_passes):
             updater.startPass()

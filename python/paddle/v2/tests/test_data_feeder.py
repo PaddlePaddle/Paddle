@@ -36,7 +36,7 @@ class DataFeederTest(unittest.TestCase):
         def compare(input):
             feeder = DataFeeder([('image', data_type.dense_vector(784))],
                                 {'image': 0})
-            arg = feeder([input])
+            arg = feeder(input)
             output = arg.getSlotValue(0).copyToNumpyMat()
             input = np.array(input, dtype='float32')
             self.assertAlmostEqual(input.all(), output.all())
@@ -46,13 +46,17 @@ class DataFeederTest(unittest.TestCase):
         dim = 784
         data = []
         for i in xrange(batch_size):
-            data.append(self.dense_reader(784))
+            each_sample = []
+            each_sample.append(self.dense_reader(dim))
+            data.append(each_sample)
         compare(data)
 
         # test list
         data = []
         for i in xrange(batch_size):
-            data.append(self.dense_reader(784).tolist())
+            each_sample = []
+            each_sample.append(self.dense_reader(dim).tolist())
+            data.append(each_sample)
         compare(data)
 
     def test_sparse_binary(self):
@@ -60,7 +64,9 @@ class DataFeederTest(unittest.TestCase):
         batch_size = 32
         data = []
         for i in xrange(batch_size):
-            data.append([self.sparse_binary_reader(dim, 50)])
+            each_sample = []
+            each_sample.append(self.sparse_binary_reader(dim, 50))
+            data.append(each_sample)
         feeder = DataFeeder([('input', data_type.sparse_binary_vector(dim))],
                             {'input': 0})
         arg = feeder(data)
@@ -76,11 +82,13 @@ class DataFeederTest(unittest.TestCase):
         w = []
         data = []
         for dat in xrange(batch_size):
+            each_sample = []
             a = self.sparse_binary_reader(dim, 40, non_empty=True)
             b = self.dense_reader(len(a)).tolist()
             v.append(a)
             w.append(b[0])
-            data.append([zip(a, b)])
+            each_sample.append(zip(a, b))
+            data.append(each_sample)
 
         feeder = DataFeeder([('input', data_type.sparse_vector(dim))],
                             {'input': 0})
@@ -95,7 +103,9 @@ class DataFeederTest(unittest.TestCase):
         batch_size = 32
         index = []
         for i in xrange(batch_size):
-            index.append([np.random.randint(dim)])
+            each_sample = []
+            each_sample.append(np.random.randint(dim))
+            index.append(each_sample)
         feeder = DataFeeder([('input', data_type.integer_value(dim))],
                             {'input': 0})
         arg = feeder(index)
