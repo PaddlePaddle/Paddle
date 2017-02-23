@@ -125,7 +125,7 @@ public:
    * has multiple field, the name could be `evaluator_name.field1`. For example
    * the PrecisionRecallEvaluator contains `precision`, `recall` fields. The get
    * names will return `precision_recall_evaluator.precision`,
-   * `precision_recall.recal`, etc.
+   * `precision_recall_evaluator.recal`, etc.
    *
    * Also, if current Evaluator is a combined evaluator. getNames will return
    * all names of all evaluators inside the combined evaluator.
@@ -387,8 +387,15 @@ private:
   IVectorPtr cpuLabel_;
   MatrixPtr cpuWeight_;
 
-  template <typename T1, typename T2>
-  void printStatsHelper(T1 labelCallback, T2 microAvgCallback) const;
+  bool getStatsInfo(double* precision,
+                    double* recall,
+                    double* f1,
+                    double* macroAvgPrecision,
+                    double* macroAvgRecall,
+                    double* macroAvgF1Score,
+                    double* microAvgPrecision,
+                    double* microAvgRecall,
+                    double* microAvgF1Score) const;
 
   void calcStatsInfo(const MatrixPtr& output,
                      const IVectorPtr& label,
