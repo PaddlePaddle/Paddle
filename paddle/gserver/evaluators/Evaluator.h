@@ -141,16 +141,13 @@ public:
    * @brief getValue will return the current evaluate value of one field.
    *
    * @param name: The field name of current evaluator.
-   * @param err [out]: The error state. nullptr means don't care.
+   * @param err [out]: The error state.
    *
    * @return The evaluate value(metric).
    */
-  virtual real getValue(const std::string& name,
-                        paddle::Error* err = nullptr) const {
+  virtual real getValue(const std::string& name, paddle::Error* err) const {
     if (name != config_.name()) {
-      if (err != nullptr) {
-        *err = paddle::Error("no such name of evaluator %s", name.c_str());
-      }
+      *err = paddle::Error("no such name of evaluator %s", name.c_str());
       return .0f;
     }
     return this->getValueImpl();
@@ -168,8 +165,8 @@ public:
    * @return the evaluator type string.
    */
   virtual std::string getType(const std::string& name,
-                              paddle::Error* err = nullptr) const {
-    if (name != config_.name() && err != nullptr) {
+                              paddle::Error* err) const {
+    if (name != config_.name()) {
       *err = paddle::Error("no such name of evaluator %s", name.c_str());
       return std::string();
     }
@@ -212,15 +209,11 @@ public:
   void getNames(std::vector<std::string>* names) {}
 
   real getValue(const std::string& name, Error* err) const {
-    if (err != nullptr) {
-      *err = Error("Not implemented");
-    }
+    *err = Error("Not implemented");
     return .0f;
   }
   std::string getType(const std::string& name, Error* err) const {
-    if (err != nullptr) {
-      *err = Error("Not implemented");
-    }
+    *err = Error("Not implemented");
     return "";
   }
 };

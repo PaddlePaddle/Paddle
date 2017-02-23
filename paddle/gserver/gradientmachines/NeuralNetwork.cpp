@@ -391,7 +391,7 @@ private:
         return callback(eval);
       }
     }
-    if (err != nullptr) *err = Error("No such key %s", name.c_str());
+    *err = Error("No such key %s", name.c_str());
     return T();
   }
 };
