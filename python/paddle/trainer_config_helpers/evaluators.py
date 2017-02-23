@@ -142,6 +142,7 @@ def detection_map_evaluator(input,
                             overlap_threshold=0.5,
                             background_id=0,
                             evaluate_difficult=False,
+                            ap_version="11point",
                             name=None):
     """
     Detection mAP Evaluator. It will print mean Average Precision for detection.
@@ -178,6 +179,8 @@ def detection_map_evaluator(input,
         label=label,
         classification_threshold=overlap_threshold,
         positive_label=background_id,
+        chunk_scheme=ap_version,
+        num_chunk_types=0,
         delimited=evaluate_difficult)
 
 

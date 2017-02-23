@@ -237,6 +237,7 @@ public:
     overlapThreshold_ = config_.classification_threshold();
     backgroundId_ = config_.positive_label();
     evaluateDifficult_ = config_.delimited();
+    apVersion_ = config_.chunk_scheme();
 
     // cpuOutput layout:
     // | imageId1 | labelId1 | confScore1 | xmin1 | ymin1 | xmax1 | ymax1 | ...
@@ -286,7 +287,6 @@ public:
     for (map<size_t, size_t>::const_iterator it = numPos_.begin();
          it != numPos_.end();
          it++) {
-      real averagePrecs = 0.;
       size_t label = it->first;
       size_t labelNumPos = it->second;
       if (labelNumPos == 0 || allTruePos_.find(label) == allTruePos_.end())
@@ -308,16 +308,36 @@ public:
                        static_cast<real>(tpCumSum[i] + fpCumSum[i]));
         rec.push_back(static_cast<real>(tpCumSum[i]) / labelNumPos);
       }
-      // Nature integral
-      real prevRec = 0.;
-      for (size_t i = 0; i < num; i++) {
-        if (fabs(rec[i] - prevRec) > 1e-6) {
-          averagePrecs += prec[i] * fabs(rec[i] - prevRec);
+      // VOC2007 style
+      if (apVersion_ == "11point") {
+        vector<real> maxPrecs(11, 0.0);
+        int startIdx = num - 1;
+        for (int j = 10; j >= 0; --j)
+          for (int i = startIdx; i >= 0; --i) {
+            if (rec[i] < j / 10.) {
+              startIdx = i;
+              if (j > 0) maxPrecs[j - 1] = maxPrecs[j];
+              break;
+            } else {
+              if (maxPrecs[j] < prec[i]) maxPrecs[j] = prec[i];
+            }
+          }
+        for (int j = 10; j >= 0; --j) mAP += maxPrecs[j] / 11;
+        count++;
+      } else if (apVersion_ == "Integral") {
+        // Nature integral
+        real averagePrecs = 0.;
+        real prevRec = 0.;
+        for (size_t i = 0; i < num; i++) {
+          if (fabs(rec[i] - prevRec) > 1e-6)
+            averagePrecs += prec[i] * fabs(rec[i] - prevRec);
+          prevRec = rec[i];
         }
-        prevRec = rec[i];
+        mAP += averagePrecs;
+        count++;
+      } else {
+        LOG(FATAL) << "Unkown ap version: " << apVersion_;
       }
-      count++;
-      mAP += averagePrecs;
     }
     if (count != 0) mAP /= count;
     os << "Detection mAP=" << mAP * 100;
@@ -332,6 +352,7 @@ private:
   real overlapThreshold_;
   bool evaluateDifficult_;
   size_t backgroundId_;
+  std::string apVersion_;
 
   MatrixPtr cpuOutput_;
   MatrixPtr cpuLabel_;
