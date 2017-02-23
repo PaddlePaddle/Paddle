@@ -37,6 +37,7 @@ __all__ = [
     "dotmul_projection",
     "dotmul_operator",
     "repeat_layer",
+    "seq_reshape_layer",
     "table_projection",
     "mixed_layer",
     "data_layer",
@@ -125,6 +126,7 @@ class LayerType(object):
     GRUMEMORY = "gated_recurrent"
     SEQUENCE_LAST_INSTANCE = "seqlastins"
     SEQUENCE_FIRST_INSTANCE = "seqfirstins"
+    SEQUENCE_RESHAPE = "seqreshape"
     POOLING_MAX = "max"
     POOLING_AVG = 'average'
     FC_LAYER = "fc"
@@ -1450,6 +1452,61 @@ def repeat_layer(input, num_repeats, name=None, layer_attr=None):
         parents=[input])
 
 
+@wrap_name_default("seqreshape")
+@wrap_act_default(act=IdentityActivation())
+@wrap_bias_attr_default(has_bias=False)
+@layer_support()
+def seq_reshape_layer(input,
+                      reshape_size,
+                      act=None,
+                      name=None,
+                      layer_attr=None,
+                      bias_attr=None):
+    """
+    A layer for reshaping the sequence. Assume the input sequence has T instances,
+    the dimension of each instance is M, and the input reshape_size is N, then the 
+    output sequence has T*M/N instances, the dimension of each instance is N.
+
+    Note that T*M/N must be an integer.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       reshape = seq_reshape_layer(input=layer, reshape_size=4)
+
+    :param input: Input layer.
+    :type input: LayerOutput
+    :param reshape_size: the size of reshaped sequence.
+    :type reshape_size: int
+    :param name: Layer name.
+    :type name: basestring
+    :param act: Activation type.
+    :type act: BaseActivation
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :param bias_attr: The Bias Attribute. If no bias, then pass False or
+                      something not type of ParameterAttribute. None will get a
+                      default Bias.
+    :type bias_attr: ParameterAttribute or None or bool
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    Layer(
+        inputs=[input.name],
+        name=name,
+        size=reshape_size,
+        type=LayerType.SEQUENCE_RESHAPE,
+        bias=ParamAttr.to_bias(bias_attr),
+        **ExtraAttr.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        size=reshape_size,
+        layer_type=LayerType.SEQUENCE_RESHAPE,
+        parents=[input])
+
+
 @wrap_name_default()
 @layer_support()
 def interpolation_layer(input, weight, name=None, layer_attr=None):
@@ -2604,6 +2661,10 @@ def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
     :type act: BaseActivation
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
+    :param bias_attr: The Bias Attribute. If no bias, then pass False or
+                      something not type of ParameterAttribute. None will get a
+                      default Bias.
+    :type bias_attr: ParameterAttribute or None or bool
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2809,8 +2870,8 @@ def gru_step_layer(input,
     :param name:
     :param gate_act:
     :param bias_attr:
-    :param param_attr: the parameter_attribute for transforming the output_mem 
-                       from previous step. 
+    :param param_attr: the parameter_attribute for transforming the output_mem
+                       from previous step.
     :param layer_attr:
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2821,10 +2882,10 @@ def gru_step_layer(input,
     Layer(
         name=name,
         type=LayerType.GRU_STEP_LAYER,
-        # The parameter here is for transforming the output_mem. The input has 
-        # already been transformed outside this module so it does not need 
-        # parameter associated with it. 
-        # The parameter here is instead grouped with input is due to 
+        # The parameter here is for transforming the output_mem. The input has
+        # already been transformed outside this module so it does not need
+        # parameter associated with it.
+        # The parameter here is instead grouped with input is due to
         # backward model compatibility.
         inputs=[Input(input.name, **param_attr.attr), output_mem.name],
         bias=ParamAttr.to_bias(bias_attr),
@@ -3475,6 +3536,7 @@ def classification_cost(input,
                         label,
                         weight=None,
                         name=None,
+                        top_k=None,
                         evaluator=classification_error_evaluator,
                         layer_attr=None):
     """
@@ -3489,6 +3551,8 @@ def classification_cost(input,
     :param weight: The weight affects the cost, namely the scale of cost.
                    It is an optional argument.
     :type weight: LayerOutput
+    :param top_k: number k in top-k error rate
+    :type top_k: int
     :param evaluator: Evaluator method.
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -3516,7 +3580,7 @@ def classification_cost(input,
         assert isinstance(e.for_classification, bool)
         assert e.for_classification
 
-        e(name=e.__name__, input=input, label=label, weight=weight)
+        e(name=e.__name__, input=input, label=label, weight=weight, top_k=top_k)
 
     if not isinstance(evaluator, collections.Sequence):
         evaluator = [evaluator]

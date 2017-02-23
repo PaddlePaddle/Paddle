@@ -129,6 +129,7 @@ void testEvaluatorAll(TestConfig testConf,
 TEST(Evaluator, classification_error) {
   TestConfig config;
   config.evaluatorConfig.set_type("classification_error");
+  config.evaluatorConfig.set_top_k(5);
 
   config.inputDefs.push_back({INPUT_DATA, "output", 50});
   config.inputDefs.push_back({INPUT_LABEL, "label", 50});

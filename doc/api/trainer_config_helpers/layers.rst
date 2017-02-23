@@ -308,6 +308,12 @@ repeat_layer
     :members: repeat_layer
     :noindex:
 
+seq_reshape_layer
+-----------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: seq_reshape_layer
+    :noindex:
+
 Math Layers
 ===========
 

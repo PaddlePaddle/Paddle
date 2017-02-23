@@ -1253,6 +1253,7 @@ def Evaluator(
         dict_file=None,
         result_file=None,
         num_results=None,
+        top_k=None,
         delimited=None,
         excluded_chunk_types=None, ):
     evaluator = g_config.model_config.evaluators.add()
@@ -1280,6 +1281,8 @@ def Evaluator(
         evaluator.result_file = result_file
     if num_results is not None:
         evaluator.num_results = num_results
+    if top_k is not None:
+        evaluator.top_k = top_k
     if delimited is not None:
         evaluator.delimited = delimited
 
