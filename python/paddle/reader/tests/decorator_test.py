@@ -26,6 +26,22 @@ def reader_creator_10(dur):
     return reader
 
 
+class TestMap(unittest.TestCase):
+    def test_map(self):
+        d = {"h": 0, "i": 1}
+
+        def tokenize(x):
+            return d[x]
+
+        def read():
+            yield "h"
+            yield "i"
+
+        r = paddle.reader.map_readers(tokenize, read)
+        for i, e in enumerate(r()):
+            self.assertEqual(e, i)
+
+
 class TestBuffered(unittest.TestCase):
     def test_read(self):
         for size in range(20):
