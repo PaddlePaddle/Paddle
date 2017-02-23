@@ -145,9 +145,9 @@ public:
    *
    * @return The evaluate value(metric).
    */
-  virtual real getValue(const std::string& name, paddle::Error* err) const {
+  virtual real getValue(const std::string& name, Error* err) const {
     if (name != config_.name()) {
-      *err = paddle::Error("no such name of evaluator %s", name.c_str());
+      *err = Error("no such name of evaluator %s", name.c_str());
       return .0f;
     }
     return this->getValueImpl();
@@ -164,10 +164,9 @@ public:
    * @param err: The error state. nullptr means don't care.
    * @return the evaluator type string.
    */
-  virtual std::string getType(const std::string& name,
-                              paddle::Error* err) const {
+  virtual std::string getType(const std::string& name, Error* err) const {
     if (name != config_.name()) {
-      *err = paddle::Error("no such name of evaluator %s", name.c_str());
+      *err = Error("no such name of evaluator %s", name.c_str());
       return std::string();
     }
     return this->getTypeImpl();
