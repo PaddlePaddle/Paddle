@@ -375,10 +375,6 @@ bool Parameter::load(const std::string& filename) {
   std::ifstream fs(filename, std::ios_base::binary);
   if (!fs) {
     LOG(INFO) << "missing parameters [" << filename << "] while loading model.";
-    if (isStatic()) {
-      LOG(FATAL) << getName() << " is static but missing, not allowed.";
-      return false;
-    }
     if (kMissParameterFail == FLAGS_load_missing_parameter_strategy) {
       LOG(FATAL) << getName() << " missing, not allowed.";
       return false;
