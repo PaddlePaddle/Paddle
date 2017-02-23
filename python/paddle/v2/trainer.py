@@ -8,6 +8,7 @@ from . import event as v2_event
 from . import layer as v2_layer
 from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
+from . import tester as v2_tester
 
 __all__ = ['ITrainer', 'SGD']
 
@@ -96,7 +97,7 @@ class SGD(ITrainer):
             topology, api.CREATE_MODE_NORMAL, self.__optimizer__.enable_types())
         assert isinstance(gm, api.GradientMachine)
         parameters.append_gradient_machine(gm)
-
+        gm.randParameters()
         updater = self.__optimizer__.create_local_updater()
         updater.init(gm)
 
@@ -111,11 +112,20 @@ class SGD(ITrainer):
 
         converter = DataProviderConverter(input_types=data_types_lists)
 
+        tester = None
+        if test_data_reader is not None:
+            tester = v2_tester.PlainLocalTrainingTester(
+                gm, topology, parameters, test_data_reader)
+
         for pass_id in xrange(num_passes):
+            event_handler(v2_event.BeginPass(pass_id, tester=tester))
             updater.startPass()
             for batch_id, data_batch in enumerate(
                     __data_reader_to_batch__(train_data_reader, batch_size,
                                              topology)):
+                event_handler(
+                    v2_event.BeginIteration(
+                        pass_id=pass_id, batch_id=batch_id, tester=tester))
                 pass_type = updater.startBatch(len(data_batch))
                 gm.forwardBackward(converter(data_batch), out_args, pass_type)
                 for each_param in gm.getParameters():
@@ -127,9 +137,13 @@ class SGD(ITrainer):
                 updater.finishBatch(cost)
                 event_handler(
                     v2_event.EndIteration(
-                        pass_id=pass_id, batch_id=batch_id, cost=cost))
+                        pass_id=pass_id,
+                        batch_id=batch_id,
+                        cost=cost,
+                        tester=tester))
 
             updater.finishPass()
+            event_handler(v2_event.EndPass(pass_id, tester=tester))
         gm.finish()
 
 
