@@ -93,15 +93,41 @@ void ConvBaseProjection::initCudnn() {
 }
 
 void ConvBaseProjection::reshapeTensorDesc(int batchSize) {
+  // The stride between two consecutive samples in the output of ConvProjection
+  // may not be numFilters_ * outputH_ * outputW_ (conv) or
+  // channels_ * imageH_ * imageW_ (deconv)
+  // for example, in the case of layer ConcatenateLayer2 with two
+  // ConvProjection, the stride is the output_size of layer ConcatenateLayer2.
+  // So the calculation of nStride is different from CudnnConvLayer.
+  size_t nStrideImage, nStrideOutput;
+  if (isDeconv_) {
+    nStrideImage = out_->value->getStride();
+    nStrideOutput = numFilters_ * outputH_ * outputW_;
+  } else {
+    nStrideImage = channels_ * imageH_ * imageW_;
+    nStrideOutput = out_->value->getStride();
+  }
+
   hl_tensor_reshape(imageDesc_,
                     batchSize,
                     channels_ / groups_,
                     imageH_,
                     imageW_,
-                    channels_ * imageH_ * imageW_,
+                    nStrideImage,
                     imageH_ * imageW_,
                     imageW_,
                     1);
+
+  hl_tensor_reshape(outputDesc_,
+                    batchSize,
+                    numFilters_ / groups_,
+                    outputH_,
+                    outputW_,
+                    nStrideOutput,
+                    outputH_ * outputW_,
+                    outputW_,
+                    1);
+
   hl_reset_convolution_descriptor(convDesc_,
                                   imageDesc_,
                                   filterDesc_,
@@ -109,29 +135,6 @@ void ConvBaseProjection::reshapeTensorDesc(int batchSize) {
                                   paddingW_,
                                   strideH_,
                                   strideW_);
-
-  // The stride between two consecutive images in ConvProjection may not be 1,
-  // for example, in the case of layer ConcatenateLayer2 with two
-  // ConvProjection, the stride is the output_size of layer ConcatenateLayer2.
-  // So the calculation of nStride is different from CudnnConvLayer.
-  // In fact, only "nStride = out_->value->getStride()" is ok.
-  //  size_t nStride = numFilters_ * outputH_ * outputW_;
-  //  if (out_->value->isContiguous()) {
-  //    CHECK_EQ(nStride, out_->value->getWidth());
-  //  } else {
-  //    nStride = out_->value->getStride();
-  //  }
-  size_t nStride = out_->value->getStride();
-
-  hl_tensor_reshape(outputDesc_,
-                    batchSize,
-                    numFilters_ / groups_,
-                    outputH_,
-                    outputW_,
-                    nStride,
-                    outputH_ * outputW_,
-                    outputW_,
-                    1);
 }
 
 void ConvBaseProjection::reshape(int batchSize) {
