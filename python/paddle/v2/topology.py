@@ -83,19 +83,6 @@ class Topology(object):
 
         return data_layers
 
-    def get_layer_proto(self, name):
-        """
-        get layer by layer name
-        :param name:
-        :return:
-        """
-        layers = filter(lambda layer: layer.name == name,
-                        self.__model_config__.layers)
-        if len(layers) is 1:
-            return layers[0]
-        else:
-            return None
-
     def data_type(self):
         """
         get data_type from proto, such as:
