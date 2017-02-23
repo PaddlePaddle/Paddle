@@ -475,6 +475,10 @@ message EvaluatorConfig {
   // Used by ChunkEvaluator
   // chunk of these types are not counted
   repeated int32 excluded_chunk_types = 12;
+
+  // Used by ClassificationErrorEvaluator
+  // top # classification error
+  optional int32 top_k = 13 [default = 1];
 }
 
 message LinkConfig {

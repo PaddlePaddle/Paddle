@@ -39,6 +39,14 @@ void Evaluator::eval(const NeuralNetwork& nn) {
  */
 class ClassificationErrorEvaluator : public Evaluator {
 public:
+  /*
+  ClassificationErrorEvaluator() : totalScore2_(0) {}
+
+  virtual void start() {
+    Evaluator::start();
+    totalScore2_ = 0;
+    } */
+
   virtual void updateSamplesNum(const std::vector<Argument>& arguments) {
     if (3 == arguments.size()) {
       numSamples_ += arguments[2].value->getSum();
@@ -76,9 +84,11 @@ public:
                                               1,
                                               /* trans= */ false,
                                               useGpu(arguments[0].deviceId));
+
     errorMat->zeroMem();
+
     if (label != nullptr) {
-      errorMat->classificationError(*output, *label);
+      errorMat->classificationError(*output, *label, config_.top_k());
     } else if (dynamic_cast<CpuSparseMatrix*>(multiBinaryLabel.get()) ||
                dynamic_cast<GpuSparseMatrix*>(multiBinaryLabel.get())) {
       errorMat->classificationErrorMulti(
@@ -92,6 +102,16 @@ public:
       errorMat->dotMul(*errorMat, *weight);
     }
     return errorMat;
+  }
+
+  void printStats(std::ostream& os) const {
+    if (config_.top_k() == 1) {
+      os << config_.name() << "="
+         << (numSamples_ ? totalScore_ / numSamples_ : 0);
+    } else {
+      os << " top_" << config_.top_k()
+         << "_error=" << (numSamples_ ? totalScore_ / numSamples_ : 0);
+    }
   }
 
   virtual real evalImp(std::vector<Argument>& arguments) {

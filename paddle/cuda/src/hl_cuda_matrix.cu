@@ -265,59 +265,6 @@ void hl_matrix_softmax_derivative(real *grad_d,
   CHECK_SYNC("hl_matrix_softmax_derivative failed");
 }
 
-template<int blockSize>
-__global__ void KeMatrixClassificationError(real* in_A,
-                                            int* in_B,
-                                            real* out_C,
-                                            int dimN) {
-  __shared__ real max_s[blockSize];
-  __shared__ int max_l[blockSize];
-  const int tid = threadIdx.x;
-  const int rowId = blockIdx.x;
-
-  max_s[tid] = -1e30f;
-  in_A += rowId * dimN;
-  real tmp;
-  for (int colId = tid; colId < dimN; colId += blockSize) {
-    tmp = in_A[colId];
-    if (max_s[tid] < tmp) {
-      max_s[tid] = tmp;
-      max_l[tid] = colId;
-    }
-  }
-  __syncthreads();
-
-  for (int stride = blockSize/2; stride > 0; stride = stride/2) {
-    if (tid < stride) {
-      if (max_s[tid] < max_s[tid + stride]) {
-        max_s[tid] = max_s[tid + stride];
-        max_l[tid] = max_l[tid + stride];
-      }
-    }
-    __syncthreads();
-  }
-  __syncthreads();
-
-  if (tid == 0) {
-    out_C[rowId] = (max_l[0] == in_B[rowId] ? 0 : 1.0f);
-  }
-}
-
-void hl_matrix_classification_error(real* A_d,
-                                    int* B_d,
-                                    real* C_d,
-                                    int dimM,
-                                    int dimN) {
-  CHECK_NOTNULL(A_d);
-  CHECK_NOTNULL(B_d);
-  CHECK_NOTNULL(C_d);
-
-  // each sample is calculated by one block
-  KeMatrixClassificationError<1024><<< dimM, 1024, 0, STREAM_DEFAULT >>>
-    (A_d, B_d, C_d, dimN);
-  CHECK_SYNC("hl_matrix_classification_error");
-}
-
 __global__ void KeMatrixMultiBinaryCrossEntropy(real* output,
                                                 real* entropy,
                                                 int* row,

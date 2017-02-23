@@ -70,19 +70,6 @@ extern void hl_sequence_softmax_forward(real* A_d,
                                         int numSequence);
 
 /**
- * @brief   Matrix classification error.
- *
- * @param[in]   A_d     input matrix (M x N).
- * @param[in]   B_d     input vector (M x 1).
- * @param[out]  C_d     output vector (M x 1).
- * @param[in]   dimM    matrix height.
- * @param[in]   dimN    matrix width.
- *
- */
-extern void hl_matrix_classification_error(
-    real* A_d, int* B_d, real* C_d, int dimM, int dimN);
-
-/**
  * @brief   Matrix cross entropy.
  *
  * @param[in]   A_d     input matrix (M x N).
