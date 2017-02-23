@@ -379,15 +379,19 @@ private:
   IVectorPtr cpuLabel_;
   MatrixPtr cpuWeight_;
 
-  bool getStatsInfo(double* precision,
-                    double* recall,
-                    double* f1,
-                    double* macroAvgPrecision,
-                    double* macroAvgRecall,
-                    double* macroAvgF1Score,
-                    double* microAvgPrecision,
-                    double* microAvgRecall,
-                    double* microAvgF1Score) const;
+  struct PrintStatsInfo {
+    double precision;
+    double recall;
+    double f1;
+    double macroAvgPrecision;
+    double macroAvgRecall;
+    double macroAvgF1Score;
+    double microAvgPrecision;
+    double microAvgRecall;
+    double microAvgF1Score;
+  };
+
+  bool getStatsInfo(PrintStatsInfo* info) const;
 
   void calcStatsInfo(const MatrixPtr& output,
                      const IVectorPtr& label,
