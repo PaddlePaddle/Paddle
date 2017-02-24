@@ -74,15 +74,14 @@ from paddle.trainer_config_helpers.config_parser_utils import \
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 
 import activation
-import data_type
-import activation
 import attr
+import data_type
 
 __all__ = [
     'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
     'cross_entropy_cost', 'cross_entropy_with_selfnorm_cost', 'regression_cost',
     'multi_binary_label_cross_entropy_cost', 'rank_cost', 'lambda_cost',
-    'sum_cost', 'huber_cost'
+    'sum_cost', 'huber_cost', 'memory', 'embedding', 'recurrent_group'
 ]
 
 
@@ -294,41 +293,3 @@ if __name__ == '__main__':
     print parse_network(cost5, cost6)
     print parse_network(cost7, cost8, cost9, cost10, cost11)
     print parse_network(inference, maxid)
-
-    dict_dim = 10
-    word_dim = 8
-    hidden_dim = 8
-    label_dim = 3
-
-    def step(y):
-        mem = conf_helps.memory(name="rnn_state", size=hidden_dim)
-        out = conf_helps.fc_layer(
-            input=[y, mem],
-            size=hidden_dim,
-            act=activation.Tanh(),
-            bias_attr=True,
-            name="rnn_state")
-        return out
-
-    def test():
-        data1 = conf_helps.data_layer(name="word", size=dict_dim)
-        embd = conf_helps.embedding_layer(input=data1, size=word_dim)
-        conf_helps.recurrent_group(name="rnn", step=step, input=embd)
-
-    # print __parse__(test)
-
-    # yyyyyyyy
-    def new_step(y):
-        mem = memory(name="rnn_state", size=hidden_dim)
-        out = fc(input=[mem],
-                 step_input=y,
-                 size=hidden_dim,
-                 act=activation.Tanh(),
-                 bias_attr=True,
-                 name="rnn_state")
-        return out.to_proto(dict())
-
-    data1 = data(name="word", type=data_type.integer_value(dict_dim))
-    embd = embedding(input=data1, size=word_dim)
-    aaa = recurrent_group(name="rnn", step=new_step, input=embd)
-    print parse_network(aaa)
