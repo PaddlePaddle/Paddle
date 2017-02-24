@@ -27,3 +27,18 @@ std::string Evaluator::toString() {
   m->rawPtr->printStats(sout);
   return sout.str();
 }
+
+std::vector<std::string> Evaluator::getNames() const {
+  std::vector<std::string> retv;
+  m->rawPtr->getNames(&retv);
+  return retv;
+}
+
+double Evaluator::getValue(const std::string name) const {
+  paddle::Error err;
+  double v = m->rawPtr->getValue(name, &err);
+  if (err) {
+    throw std::runtime_error(err.msg());
+  }
+  return v;
+}
