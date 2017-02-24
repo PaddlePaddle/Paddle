@@ -1503,16 +1503,20 @@ TEST(Layer, BatchNormalizationLayer) {
 #endif
 }
 
-TEST(Operator, conv) {
+void testConvOperator(bool isDeconv) {
   TestConfig config;
   const int NUM_FILTERS = 16;
   const int FILTER_SIZE = 2;
   const int FILTER_SIZE_Y = 3;
   const int CHANNELS = 3;
   const int IMAGE_SIZE = 16;
-  const int IMAGE_SIZE_Y = 8;
+  const int IMAGE_SIZE_Y = 9;
   OperatorConfig& operatorConf = *config.layerConfig.add_operator_confs();
-  operatorConf.set_type("conv");
+  if (isDeconv) {
+    operatorConf.set_type("convt");
+  } else {
+    operatorConf.set_type("conv");
+  }
   ConvConfig* conv = operatorConf.mutable_conv_conf();
   operatorConf.set_num_filters(NUM_FILTERS);
   conv->set_filter_size(FILTER_SIZE);
@@ -1523,7 +1527,6 @@ TEST(Operator, conv) {
   conv->set_stride(2);
   conv->set_stride_y(2);
   conv->set_groups(1);
-  conv->set_filter_channels(conv->channels() / conv->groups());
   conv->set_img_size(IMAGE_SIZE);
   conv->set_img_size_y(IMAGE_SIZE_Y);
   conv->set_output_x(outputSize(conv->img_size(),
@@ -1536,11 +1539,22 @@ TEST(Operator, conv) {
                                 conv->padding_y(),
                                 conv->stride_y(),
                                 /*  caffeMode */ true));
-  config.layerConfig.set_size(conv->output_x() * conv->output_y() *
-                              NUM_FILTERS);
 
-  config.inputDefs.push_back(
-      {INPUT_DATA, "layer_0", IMAGE_SIZE * IMAGE_SIZE_Y * CHANNELS, 0});
+  if (isDeconv) {
+    conv->set_filter_channels(NUM_FILTERS / conv->groups());
+    config.inputDefs.push_back({INPUT_DATA,
+                                "layer_0",
+                                conv->output_x() * conv->output_y() * CHANNELS,
+                                0});
+    config.layerConfig.set_size(IMAGE_SIZE * IMAGE_SIZE_Y * NUM_FILTERS);
+  } else {
+    conv->set_filter_channels(conv->channels() / conv->groups());
+    config.inputDefs.push_back(
+        {INPUT_DATA, "layer_0", IMAGE_SIZE * IMAGE_SIZE_Y * CHANNELS, 0});
+    config.layerConfig.set_size(conv->output_x() * conv->output_y() *
+                                NUM_FILTERS);
+  }
+
   config.inputDefs.push_back(
       {INPUT_DATA,
        "layer_1",
@@ -1550,6 +1564,11 @@ TEST(Operator, conv) {
   config.layerConfig.add_inputs();
 
   testOperatorGrad(config, operatorConf, 100, /*useGpu*/ true, false);
+}
+
+TEST(Operator, conv) {
+  testConvOperator(/*isDeconv*/ true);
+  testConvOperator(/*isDeconv*/ false);
 }
 
 TEST(Layer, FeatureMapExpandLayer) {

@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#pragma once
 
 #include "Operator.h"
 #include "paddle/math/MathUtils.h"
@@ -44,10 +45,8 @@ public:
     hl_destroy_filter_descriptor(filterDesc_);
     hl_destroy_convolution_descriptor(convDesc_);
   }
-  virtual void forward();
-  virtual void backward();
 
-private:
+protected:
   /**
    * Get convolution parameters from layer config and
    * initialize member variables.

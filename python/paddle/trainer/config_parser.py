@@ -686,24 +686,16 @@ class ContextProjection(Projection):
 
 
 @config_class
-class ConvProjection(Projection):
-    type = 'conv'
-
+class ConvBaseProjection(Projection):
     def __init__(self,
                  input_layer_name,
                  num_filters=None,
                  conv_conf=None,
                  **xargs):
-        super(ConvProjection, self).__init__(input_layer_name, **xargs)
+        super(ConvBaseProjection, self).__init__(input_layer_name, **xargs)
 
         if num_filters is not None:
             self.proj_conf.num_filters = num_filters
-
-        parse_conv(conv_conf, input_layer_name, self.proj_conf.conv_conf,
-                   num_filters)
-        self.proj_conf.output_size = self.proj_conf.conv_conf.output_x * \
-                                     self.proj_conf.conv_conf.output_y * \
-                                     num_filters
 
     def calc_output_size(self, input_layer_config):
         return self.proj_conf.output_size
@@ -721,6 +713,46 @@ class ConvProjection(Projection):
 
     def calc_parameter_dims(self, input_size, output_size):
         return None
+
+
+@config_class
+class ConvProjection(ConvBaseProjection):
+    type = 'conv'
+
+    def __init__(self,
+                 input_layer_name,
+                 num_filters=None,
+                 conv_conf=None,
+                 **xargs):
+        super(ConvProjection, self).__init__(input_layer_name, **xargs)
+
+        parse_conv(conv_conf, input_layer_name, self.proj_conf.conv_conf,
+                   num_filters)
+        self.proj_conf.output_size = self.proj_conf.conv_conf.output_x * \
+                                     self.proj_conf.conv_conf.output_y * \
+                                     num_filters
+
+
+@config_class
+class ConvTransProjection(ConvBaseProjection):
+    type = 'convt'
+
+    def __init__(self,
+                 input_layer_name,
+                 num_filters=None,
+                 conv_conf=None,
+                 **xargs):
+        super(ConvTransProjection, self).__init__(input_layer_name, **xargs)
+
+        parse_conv(
+            conv_conf,
+            input_layer_name,
+            self.proj_conf.conv_conf,
+            num_filters,
+            trans=True)
+        self.proj_conf.output_size = self.proj_conf.conv_conf.img_size_y * \
+                                     self.proj_conf.conv_conf.img_size * \
+                                     num_filters
 
 
 # Define a operator for mixed layer
@@ -782,6 +814,36 @@ class ConvOperator(Operator):
         self.operator_conf.output_size = self.operator_conf.conv_conf.output_x * \
                                          self.operator_conf.conv_conf.output_y * \
                                          num_filters
+
+        config_assert(len(input_layer_names) == 2, "Conv is binary operator")
+
+    def calc_output_size(self, input_sizes):
+        return self.operator_conf.output_size
+
+
+@config_class
+class ConvTransOperator(Operator):
+    type = 'convt'
+
+    def __init__(self,
+                 input_layer_names,
+                 num_filters=None,
+                 conv_conf=None,
+                 **xargs):
+        super(ConvTransOperator, self).__init__(input_layer_names, **xargs)
+        if num_filters is not None:
+            self.operator_conf.num_filters = num_filters
+
+        parse_conv(
+            conv_conf,
+            MakeLayerNameInSubmodel(input_layer_names[0]),
+            self.operator_conf.conv_conf,
+            num_filters,
+            trans=True)
+        self.operator_conf.output_size = \
+            self.operator_conf.conv_conf.img_size * \
+            self.operator_conf.conv_conf.img_size_y * \
+            num_filters
 
         config_assert(len(input_layer_names) == 2, "Conv is binary operator")
 
