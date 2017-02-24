@@ -76,12 +76,20 @@ from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 import data_type
 import activation
 import attr
+import pooling
 
 __all__ = [
-    'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
-    'cross_entropy_cost', 'cross_entropy_with_selfnorm_cost', 'regression_cost',
+    'parse_network', 'data', 'fc', 'conv_shift', 'img_conv', 'img_pool', 'spp',
+    'maxout', 'img_cmrnorm', 'batch_norm', 'sum_to_one_norm', 'recurrent',
+    'lstmemory', 'grumemory', 'pool', 'last_seq', 'first_seq', 'concat',
+    'seq_concat', 'block_expand', 'expand', 'repeat', 'seq_reshape', 'addto',
+    'linear_comb', 'interpolation', 'bilinear_interp', 'power', 'scaling',
+    'slope_intercept', 'tensor', 'cos_sim', 'trans', 'max_id', 'sampling_id',
+    'pad', 'classification_cost', 'cross_entropy_cost',
+    'cross_entropy_with_selfnorm_cost', 'regression_cost',
     'multi_binary_label_cross_entropy_cost', 'rank_cost', 'lambda_cost',
-    'sum_cost', 'huber_cost'
+    'sum_cost', 'huber_cost', 'crf', 'crf_decoding', 'ctc', 'warp_ctc', 'nce',
+    'hsigmoid', 'eos'
 ]
 
 
@@ -130,11 +138,8 @@ class Layer(object):
         raise NotImplementedError()
 
 
-def __convert_to_v2__(method_name, name_prefix, parent_names):
-    if name_prefix is not None:
-        wrapper = wrap_name_default(name_prefix=name_prefix)
-    else:
-        wrapper = None
+def __convert_to_v2__(method_name, parent_names):
+    wrapper = wrap_name_default(name_prefix=method_name)
 
     class V2LayerImpl(Layer):
         def __init__(self, name=None, **kwargs):
@@ -192,44 +197,92 @@ class DataLayerV2(Layer):
 
 
 data = DataLayerV2
-fc = __convert_to_v2__('fc_layer', name_prefix='fc', parent_names=['input'])
-max_id = __convert_to_v2__(
-    'maxid_layer', name_prefix='maxid', parent_names=['input'])
-classification_cost = __convert_to_v2__(
-    'classification_cost',
-    name_prefix='classification_cost',
-    parent_names=['input', 'label', 'weight'])
-regression_cost = __convert_to_v2__(
-    'regression_cost',
-    name_prefix='regression_cost',
-    parent_names=['input', 'label', 'weight'])
-cross_entropy_cost = __convert_to_v2__(
-    'cross_entropy',
-    name_prefix='cross_entropy',
-    parent_names=['input', 'label'])
-cross_entropy_with_selfnorm_cost = __convert_to_v2__(
-    'cross_entropy_with_selfnorm',
-    name_prefix='cross_entropy_with_selfnorm',
-    parent_names=['input', 'label'])
-multi_binary_label_cross_entropy_cost = __convert_to_v2__(
-    'multi_binary_label_cross_entropy',
-    name_prefix='multi_binary_label_cross_entropy',
-    parent_names=['input', 'label'])
-rank_cost = __convert_to_v2__(
-    'rank_cost',
-    name_prefix='rank_cost',
-    parent_names=['left', 'right', 'label', 'weight'])
-lambda_cost = __convert_to_v2__(
-    'lambda_cost', name_prefix='lambda_cost', parent_names=['input', 'score'])
-sum_cost = __convert_to_v2__(
-    'sum_cost', name_prefix='sum_cost', parent_names=['input'])
-huber_cost = __convert_to_v2__(
-    'huber_cost', name_prefix='huber_cost', parent_names=['input', 'label'])
+AggregateLevel = conf_helps.layers.AggregateLevel
+ExpandLevel = conf_helps.layers.ExpandLevel
+
+layer_list = [
+    # [V2LayerImpl, V1_method_name, parent_names]
+    # fully connected layers
+    ['fc', 'fc_layer', ['input']],
+    # conv layers
+    ['conv_shift', 'conv_shift_layer', ['a', 'b']],
+    ['img_conv', 'img_conv_layer', ['input']],
+    # image pooling layers
+    ['img_pool', 'img_pool_layer', ['input']],
+    ['spp', 'spp_layer', ['input']],
+    ['maxout', 'maxout_layer', ['input']],
+    # norm layers
+    ['img_cmrnorm', 'img_cmrnorm_layer', ['input']],
+    ['batch_norm', 'batch_norm_layer', ['input']],
+    ['sum_to_one_norm', 'sum_to_one_norm_layer', ['input']],
+    # recurrent layers
+    ['recurrent', 'recurrent_layer', ['input']],
+    ['lstmemory', 'lstmemory', ['input']],
+    ['grumemory', 'grumemory', ['input']],
+    # aggregate layers
+    ['pool', 'pooling_layer', ['input']],
+    ['last_seq', 'last_seq', ['input']],
+    ['first_seq', 'first_seq', ['input']],
+    ['concat', 'concat_layer', ['input']],
+    ['seq_concat', 'seq_concat_layer', ['a', 'b']],
+    # reshaping layers
+    ['block_expand', 'block_expand_layer', ['input']],
+    ['expand', 'expand_layer', ['input', 'expand_as']],
+    ['repeat', 'repeat_layer', ['input']],
+    ['rotate', 'rotate_layer', ['input']],
+    ['seq_reshape', 'seq_reshape_layer', ['input']],
+    # math layers
+    ['addto', 'addto_layer', ['input']],
+    ['linear_comb', 'linear_comb_layer', ['weights', 'vectors']],
+    ['interpolation', 'interpolation_layer', ['input', 'weight']],
+    ['bilinear_interp', 'bilinear_interp_layer', ['input']],
+    ['power', 'power_layer', ['input', 'weight']],
+    ['scaling', 'scaling_layer', ['input', 'weight']],
+    ['slope_intercept', 'slope_intercept_layer', ['input']],
+    ['tensor', 'tensor_layer', ['a', 'b']],
+    ['cos_sim', 'cos_sim', ['a', 'b']],
+    ['trans', 'trans_layer', ['input']],
+    # sampling layers
+    ['max_id', 'maxid_layer', ['input']],
+    ['sampling_id', 'sampling_id_layer', ['input']],
+    # slicing and joining layers
+    ['pad', 'pad_layer', ['input']],
+    # cost layers
+    [
+        'classification_cost', 'classification_cost',
+        ['input', 'label', 'weight']
+    ],
+    ['regression_cost', 'regression_cost', ['input', 'label', 'weight']],
+    ['cross_entropy_cost', 'cross_entropy', ['input', 'label']],
+    [
+        'cross_entropy_with_selfnorm_cost', 'cross_entropy_with_selfnorm',
+        ['input', 'label']
+    ],
+    [
+        'multi_binary_label_cross_entropy_cost',
+        'multi_binary_label_cross_entropy', ['input', 'label']
+    ],
+    ['rank_cost', 'rank_cost', ['left', 'right', 'label', 'weight']],
+    ['lambda_cost', 'lambda_cost', ['input', 'score']],
+    ['sum_cost', 'sum_cost', ['input']],
+    ['huber_cost', 'huber_cost', ['input', 'label']],
+    ['crf', 'crf_layer', ['input', 'label']],
+    ['crf_decoding', 'crf_decoding_layer', ['input']],
+    ['ctc', 'ctc_layer', ['input', 'label']],
+    ['warp_ctc', 'warp_ctc_layer', ['input', 'label']],
+    ['nce', 'nce_layer', ['input', 'label']],
+    ['hsigmoid', 'hsigmoid', ['input', 'label']],
+    # check layers
+    ['eos', 'eos_layer', ['input']]
+]
+for l in layer_list:
+    globals()[l[0]] = __convert_to_v2__(l[1], l[2])
 
 if __name__ == '__main__':
-    pixel = data(name='pixel', type=data_type.dense_vector(784))
+    pixel = data(name='pixel', type=data_type.dense_vector(128))
     label = data(name='label', type=data_type.integer_value(10))
     weight = data(name='weight', type=data_type.dense_vector(10))
+    word = data(name='word', type=data_type.integer_value(12))
     score = data(name='score', type=data_type.dense_vector(1))
 
     hidden = fc(input=pixel,
@@ -237,7 +290,90 @@ if __name__ == '__main__':
                 act=activation.Sigmoid(),
                 param_attr=attr.Param(name='hidden'))
     inference = fc(input=hidden, size=10, act=activation.Softmax())
+    print parse_network(inference)
+
+    # test conv layers
+    conv1 = conv_shift(a=pixel, b=score)
+    conv2 = img_conv(
+        input=pixel,
+        filter_size=1,
+        filter_size_y=1,
+        num_channels=8,
+        num_filters=16,
+        act=activation.Linear())
+    print parse_network(conv1, conv2)
+
+    # test image pooling layers
+    maxpool = img_pool(
+        input=conv2,
+        pool_size=2,
+        num_channels=16,
+        padding=1,
+        pool_type=pooling.Max())
+    spp = spp(input=conv2,
+              pyramid_height=2,
+              num_channels=16,
+              pool_type=pooling.Max())
+    maxout = maxout(input=conv2, num_channels=16, groups=4)
+    print parse_network(maxpool, spp, maxout)
+
+    # test norm layers
+    norm1 = img_cmrnorm(input=maxpool, size=5)
+    norm2 = batch_norm(input=maxpool)
+    norm3 = sum_to_one_norm(input=maxpool)
+    print parse_network(norm1, norm2, norm3)
+
+    # test recurrent layers
+    recurrent = recurrent(input=word)
+    lstm = lstmemory(input=word)
+    gru = grumemory(input=word)
+    print parse_network(recurrent, lstm, gru)
+
+    # test aggregate layers
+    pool = pool(
+        input=pixel,
+        pooling_type=pooling.Avg(),
+        agg_level=AggregateLevel.EACH_SEQUENCE)
+    last_seq = last_seq(input=pixel)
+    first_seq = first_seq(input=pixel)
+    concat = concat(input=[last_seq, first_seq])
+    seq_concat = seq_concat(a=last_seq, b=first_seq)
+    print parse_network(pool, last_seq, first_seq, concat, seq_concat)
+
+    # test reshaping layers
+    block_expand = block_expand(
+        input=maxout, num_channels=4, stride_x=1, block_x=1)
+    expand = expand(
+        input=last_seq, expand_as=pixel, expand_level=ExpandLevel.FROM_TIMESTEP)
+    repeat = repeat(input=last_seq, num_repeats=4)
+    reshape = seq_reshape(input=last_seq, reshape_size=4)
+    rotate = rotate(input=pixel, height=16, width=49)
+    print parse_network(block_expand, expand, repeat, reshape, rotate)
+
+    # test math layers
+    addto = addto(input=[last_seq, first_seq])
+    linear_comb = linear_comb(weights=weight, vectors=hidden, size=10)
+    interpolation = interpolation(input=[hidden, hidden], weight=score)
+    bilinear = bilinear_interp(input=conv2, out_size_x=4, out_size_y=4)
+    power = power(input=conv1, weight=score)
+    scaling = scaling(input=conv1, weight=score)
+    slope = slope_intercept(input=conv1)
+    tensor = tensor(a=last_seq, b=first_seq, size=1000)
+    cos_sim = cos_sim(a=last_seq, b=first_seq)
+    trans = trans(input=tensor)
+    print parse_network(addto, linear_comb, interpolation, bilinear, power,
+                        scaling, slope, tensor, cos_sim, trans)
+
+    # test sampling layers
     maxid = max_id(input=inference)
+    sampling_id = sampling_id(input=inference)
+    print parse_network(maxid, sampling_id)
+
+    # test slicing and joining layers
+    pad = pad(input=maxpool, pad_c=[2, 3], pad_h=[1, 2], pad_w=[3, 1])
+    print parse_network(pad)
+
+    # test cost layers
     cost1 = classification_cost(input=inference, label=label)
     cost2 = classification_cost(input=inference, label=label, weight=weight)
     cost3 = cross_entropy_cost(input=inference, label=label)
@@ -249,9 +385,18 @@ if __name__ == '__main__':
     cost9 = lambda_cost(input=inference, score=score)
     cost10 = sum_cost(input=inference)
     cost11 = huber_cost(input=score, label=label)
-
-    print parse_network(cost1, cost2)
     print parse_network(cost3, cost4)
     print parse_network(cost5, cost6)
     print parse_network(cost7, cost8, cost9, cost10, cost11)
-    print parse_network(inference, maxid)
+
+    crf = crf(input=inference, label=label)
+    crf_decoding = crf_decoding(input=inference, size=3)
+    ctc = ctc(input=inference, label=label)
+    warp_ctc = warp_ctc(input=pixel, label=label)
+    nce = nce(input=inference, label=label, num_classes=3)
+    hsigmoid = hsigmoid(input=inference, label=label, num_classes=3)
+    print parse_network(crf, crf_decoding, ctc, warp_ctc, nce, hsigmoid)
+
+    # test check layers
+    eos = eos(input=maxid, eos_id=5)
+    print parse_network(eos)
