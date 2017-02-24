@@ -2283,8 +2283,7 @@ def img_pool_layer(input,
     elif isinstance(pool_type, AvgPooling):
         pool_type.name = 'avg'
 
-    #type_name = pool_type.name + '-projection' \
-    type_name = 'cudnn-' + pool_type.name + '-pool' \
+    type_name = pool_type.name + '-projection' \
       if (isinstance(pool_type, AvgPooling) or isinstance(pool_type, MaxPooling)) \
       else pool_type.name
 
