@@ -51,10 +51,12 @@ class CostLayerTest(unittest.TestCase):
         cost10 = layer.sum_cost(input=inference)
         cost11 = layer.huber_cost(input=score, label=label)
 
-        print layer.parse_network(cost1, cost2)
-        print layer.parse_network(cost3, cost4)
-        print layer.parse_network(cost5, cost6)
-        print layer.parse_network(cost7, cost8, cost9, cost10, cost11)
+        print dir(layer)
+        layer.parse_network(cost1, cost2)
+        print dir(layer)
+        #print layer.parse_network(cost3, cost4)
+        #print layer.parse_network(cost5, cost6)
+        #print layer.parse_network(cost7, cost8, cost9, cost10, cost11)
 
 
 if __name__ == '__main__':
