@@ -58,4 +58,30 @@ extern void hl_sparse_matrix_top_k(real* topVal,
                                    int beamSize,
                                    int numSamples);
 
-#endif /* HL_TOP_K_H_ */
+/**
+ * @brief   Matrix classification error.
+ *
+ * @param[out]  topVal         top k element.
+ * @param[in]   ldv            leading dimension of topVal.
+ * @param[out]  topIds         top k index.
+ * @param[in]   src            input value.
+ * @param[in]   lds            leading dimension of src.
+ * @param[in]   dim            width of input value.
+ * @param[in]   topkSize       size of top k element.
+ * @param[in]   numSamples     height of input value.
+ * @param[in]   label          ground truth label.
+ * @param[out]  recResult      top-k classification error.
+ *
+ */
+extern void hl_matrix_classification_error(real* topVal,
+                                           int ldv,
+                                           int* topIds,
+                                           real* src,
+                                           int lds,
+                                           int dim,
+                                           int topkSize,
+                                           int numSamples,
+                                           int* label,
+                                           real* recResult);
+
+#endif  // HL_TOP_K_H_

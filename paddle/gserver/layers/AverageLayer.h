@@ -38,12 +38,11 @@ public:
   explicit AverageLayer(const LayerConfig& config)
       : SequencePoolLayer(config) {}
 
-  ~AverageLayer() {}
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
   MatrixPtr outMtx_;

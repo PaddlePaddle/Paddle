@@ -799,26 +799,6 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
-  /**
-   * cosine similarity, for each row i,
-   *   this[i] = cos(output1[i], output2[i])
-   *
-   * output2 can only have one row, then for each row i,
-   *   this[i] = cos(output1[i], output2[0])
-   */
-  virtual void cosSim(Matrix& output1, Matrix& output2, real scale = 1.0f) {
-    LOG(FATAL) << "Not implemented";
-  }
-
-  virtual void cosSimDerivative(Matrix& output,
-                                Matrix& prevOut1,
-                                Matrix& prevOut2,
-                                Matrix& prevGrad1,
-                                Matrix& prevGrad2,
-                                real scale = 1.0f) {
-    LOG(FATAL) << "Not implemented";
-  }
-
   /// print out the values of elements to os
   virtual void print(std::ostream& os) const {
     LOG(FATAL) << "Not implemented";
@@ -856,8 +836,11 @@ public:
    * output[i] = 1 if row i is an error.
    *
    * output[i] = 0 if row i is correct.
+   *
    */
-  virtual void classificationError(Matrix& output, IVector& label) {
+  virtual void classificationError(Matrix& output,
+                                   IVector& label,
+                                   size_t topkSize = 1) {
     LOG(FATAL) << "Not implemented";
   }
 
@@ -1324,14 +1307,6 @@ public:
   void softreluDerivative(Matrix& output);
   void scaledTanh(Matrix& output, real p1, real p2);
 
-  void cosSim(Matrix& output1, Matrix& output2, real scale);
-  void cosSimDerivative(Matrix& output,
-                        Matrix& prevOut1,
-                        Matrix& prevOut2,
-                        Matrix& prevGrad1,
-                        Matrix& prevGrad2,
-                        real scale);
-
   virtual void print(std::ostream& os) const;
   virtual void print(std::ostream& os, size_t height, size_t width) const;
 
@@ -1342,7 +1317,7 @@ public:
   void check(std::ostream& os, Matrix& refMat, bool printDiff = true);
   void randomizeUniform();
 
-  void classificationError(Matrix& output, IVector& label);
+  void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
   void convExpand(Matrix& feature,
                   int feaImgHeight,
@@ -1752,14 +1727,6 @@ public:
   void softreluDerivative(Matrix& output);
   void scaledTanh(Matrix& output, real p1, real p2);
 
-  void cosSim(Matrix& output1, Matrix& output2, real scale);
-  void cosSimDerivative(Matrix& output,
-                        Matrix& prevOut1,
-                        Matrix& prevOut2,
-                        Matrix& prevGrad1,
-                        Matrix& prevGrad2,
-                        real scale);
-
   void print(std::ostream& os) const;
   void print(std::ostream& os, size_t height, size_t width) const;
   void printOneRow(std::ostream& os, size_t idx) const;
@@ -1775,7 +1742,7 @@ public:
 
   void randomizeUniform();
 
-  void classificationError(Matrix& output, IVector& label);
+  void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
   void addByBitCode(size_t numClasses, const IVector& codes, const Matrix& vec);
 
