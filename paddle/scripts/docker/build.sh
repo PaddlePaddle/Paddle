@@ -11,7 +11,7 @@ set -e
 # If Dockerfile.* sets BUILD_AND_INSTALL to 'ON', it would have copied
 # source tree to /paddle, and this scripts should build it into
 # /paddle/build.
-if [[ ${BUILD_AND_INSTALL:-ON} == 'ON' ]]; then
+if [[ ${BUILD_AND_INSTALL:-OFF} == 'ON' ]]; then
     if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
 	ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so /usr/lib/libcudnn.so
     fi
