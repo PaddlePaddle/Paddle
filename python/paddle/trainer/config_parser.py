@@ -1908,8 +1908,14 @@ class BatchNormLayer(LayerBase):
         cudnn_version = int(g_command_config_args.get("cudnn_version", 0))
         # Automatically select cudnn_batch_norm for GPU and batch_norm for CPU.
         # Also based on cudnn version.
+        device_id = -1
+        if 'device' in xargs.keys():
+            device_id = xargs['device']
+        elif g_default_device is not None:
+            device_id = g_default_device
+
         use_cudnn = use_gpu and batch_norm_type != "batch_norm" and \
-            ((not parallel_nn) or self.config.device > -1) and \
+            ((not parallel_nn) or device_id > -1) and \
             cudnn_version >= 4007
         self.layer_type = "cudnn_batch_norm" if use_cudnn else "batch_norm"
         super(BatchNormLayer, self).__init__(

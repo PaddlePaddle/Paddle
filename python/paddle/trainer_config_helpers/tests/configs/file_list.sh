@@ -8,3 +8,5 @@ test_spp_layer test_bilinear_interp test_maxout test_bi_grumemory math_ops
 test_seq_concat_reshape)
 
 export whole_configs=(test_split_datasource)
+
+export configs_with_args=(test_batch_norm_parallel_nn_gpu test_batch_norm_parallel_nn_cpu)
