@@ -75,10 +75,14 @@ from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 
 import activation
 import data_type
+import activation
+import attr
 
 __all__ = [
     'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
-    'cross_entropy_cost'
+    'cross_entropy_cost', 'cross_entropy_with_selfnorm_cost', 'regression_cost',
+    'multi_binary_label_cross_entropy_cost', 'rank_cost', 'lambda_cost',
+    'sum_cost', 'huber_cost'
 ]
 
 
@@ -145,7 +149,8 @@ def __convert_to_v2__(method_name, name_prefix, parent_names):
             parent_layers = dict()
             other_kwargs = dict()
             for pname in parent_names:
-                parent_layers[pname] = kwargs[pname]
+                if kwargs.has_key(pname):
+                    parent_layers[pname] = kwargs[pname]
 
             for key in kwargs.keys():
                 if key not in parent_names:
@@ -213,11 +218,15 @@ class MemoryV2(Layer):
 data = DataLayerV2
 fc = __convert_to_v2__('fc_layer', name_prefix='fc', parent_names=['input'])
 max_id = __convert_to_v2__(
-    'maxid_layer', name_prefix='maxid_layer', parent_names=['input'])
+    'maxid_layer', name_prefix='maxid', parent_names=['input'])
 classification_cost = __convert_to_v2__(
     'classification_cost',
     name_prefix='classification_cost',
-    parent_names=['input', 'label'])
+    parent_names=['input', 'label', 'weight'])
+regression_cost = __convert_to_v2__(
+    'regression_cost',
+    name_prefix='regression_cost',
+    parent_names=['input', 'label', 'weight'])
 cross_entropy_cost = __convert_to_v2__(
     'cross_entropy',
     name_prefix='cross_entropy',
@@ -230,14 +239,48 @@ recurrent_group = __convert_to_v2__(
     'recurrent_group', name_prefix='recurrent_layer', parent_names=['input'])
 memory = MemoryV2
 
+cross_entropy_with_selfnorm_cost = __convert_to_v2__(
+    'cross_entropy_with_selfnorm',
+    name_prefix='cross_entropy_with_selfnorm',
+    parent_names=['input', 'label'])
+multi_binary_label_cross_entropy_cost = __convert_to_v2__(
+    'multi_binary_label_cross_entropy',
+    name_prefix='multi_binary_label_cross_entropy',
+    parent_names=['input', 'label'])
+rank_cost = __convert_to_v2__(
+    'rank_cost',
+    name_prefix='rank_cost',
+    parent_names=['left', 'right', 'label', 'weight'])
+lambda_cost = __convert_to_v2__(
+    'lambda_cost', name_prefix='lambda_cost', parent_names=['input', 'score'])
+sum_cost = __convert_to_v2__(
+    'sum_cost', name_prefix='sum_cost', parent_names=['input'])
+huber_cost = __convert_to_v2__(
+    'huber_cost', name_prefix='huber_cost', parent_names=['input', 'label'])
+
 if __name__ == '__main__':
     pixel = data(name='pixel', type=data_type.dense_vector(784))
     label = data(name='label', type=data_type.integer_value(10))
-    hidden = fc(input=pixel, size=100, act=conf_helps.SigmoidActivation())
-    inference = fc(input=hidden, size=10, act=conf_helps.SoftmaxActivation())
+    weight = data(name='weight', type=data_type.dense_vector(10))
+    score = data(name='score', type=data_type.dense_vector(1))
+
+    hidden = fc(input=pixel,
+                size=100,
+                act=activation.Sigmoid(),
+                param_attr=attr.Param(name='hidden'))
+    inference = fc(input=hidden, size=10, act=activation.Softmax())
     maxid = max_id(input=inference)
     cost1 = classification_cost(input=inference, label=label)
-    cost2 = cross_entropy_cost(input=inference, label=label)
+    cost2 = classification_cost(input=inference, label=label, weight=weight)
+    cost3 = cross_entropy_cost(input=inference, label=label)
+    cost4 = cross_entropy_with_selfnorm_cost(input=inference, label=label)
+    cost5 = regression_cost(input=inference, label=label)
+    cost6 = regression_cost(input=inference, label=label, weight=weight)
+    cost7 = multi_binary_label_cross_entropy_cost(input=inference, label=label)
+    cost8 = rank_cost(left=score, right=score, label=score)
+    cost9 = lambda_cost(input=inference, score=score)
+    cost10 = sum_cost(input=inference)
+    cost11 = huber_cost(input=score, label=label)
 
     mem = memory(name="rnn_state", size=10)
 
@@ -246,6 +289,11 @@ if __name__ == '__main__':
     # print parse_network(cost1, cost2)
     # print parse_network(cost2)
     # print parse_network(inference, maxid)
+    print parse_network(cost1, cost2)
+    print parse_network(cost3, cost4)
+    print parse_network(cost5, cost6)
+    print parse_network(cost7, cost8, cost9, cost10, cost11)
+    print parse_network(inference, maxid)
 
     dict_dim = 10
     word_dim = 8

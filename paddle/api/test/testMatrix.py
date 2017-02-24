@@ -68,7 +68,7 @@ class TestMatrix(unittest.TestCase):
 
     def test_numpyCpu(self):
         numpy_mat = np.matrix([[1, 2], [3, 4], [5, 6]], dtype="float32")
-        m = swig_paddle.Matrix.createCpuDenseFromNumpy(numpy_mat, copy=False)
+        m = swig_paddle.Matrix.createCpuDenseFromNumpy(numpy_mat, False)
         self.assertEqual((int(m.getHeight()), int(m.getWidth())),
                          numpy_mat.shape)
 
