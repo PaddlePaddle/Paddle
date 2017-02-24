@@ -29,7 +29,9 @@ ELSE(WIN32)
         SET(MACOS_VERSION ${VERSION})
         SET(HOST_SYSTEM "macosx")
         IF(NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET})
-            SET(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION})
+            # Set cache variable - end user may change this during ccmake or cmake-gui configure.
+            SET(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION} CACHE STRING
+                "Minimum OS X version to target for deployment (at runtime); newer APIs weak linked. Set to empty string for default value.")
         ENDIF()
     ELSE(APPLE)
 

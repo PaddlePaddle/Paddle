@@ -14,17 +14,18 @@
 
 cmake_minimum_required(VERSION 3.0)
 
-project(paddle CXX C)
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 set(PROJ_ROOT ${CMAKE_SOURCE_DIR})
+
+include(system)
+
+project(paddle CXX C)
 
 find_package(Sphinx)
 find_package(CUDA QUIET)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
 
-include(system)
 include(simd)
 
 ################################ Configurations #######################################
