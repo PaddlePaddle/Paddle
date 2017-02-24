@@ -19,7 +19,7 @@ if [[ ${BUILD_AND_INSTALL:-ON} == 'ON' ]]; then
     mkdir -p /paddle/build # -p means no error if exists
     cd /paddle/build
     cmake .. \
-	  -DWITH_DOC=${WITH_GPU:-OFF} \
+	  -DWITH_DOC=${WITH_DOC:-OFF} \
 	  -DWITH_GPU=${WITH_GPU:-OFF} \
 	  -DWITH_AVX=${WITH_AVX:-OFF} \
 	  -DWITH_SWIG_PY=ON \
