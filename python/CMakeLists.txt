@@ -25,6 +25,7 @@ add_custom_target(paddle_python ALL DEPENDS
 
 add_subdirectory(paddle/trainer_config_helpers/tests)
 add_subdirectory(paddle/reader/tests)
+add_subdirectory(paddle/v2/tests)
 
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/dist/
     DESTINATION opt/paddle/share/wheels
