@@ -23,7 +23,7 @@ from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as parse_network
 
 
-class CostLyaerTest(unittest.TestCase):
+class CostLayerTest(unittest.TestCase):
     def test_cost_layer(self):
         pixel = layer.data(name='pixel', type=data_type.dense_vector(784))
         label = layer.data(name='label', type=data_type.integer_value(10))
