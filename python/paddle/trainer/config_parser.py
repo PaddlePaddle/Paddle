@@ -726,7 +726,7 @@ class ConvProjection(ConvBaseProjection):
                  **xargs):
         super(ConvProjection, self).__init__(input_layer_name, **xargs)
 
-        parse_conv(conv_conf, input_layer_name, self.proj_conf.conv_conf,
+        parse_conv(conv_conf, self.input_layer_name, self.proj_conf.conv_conf,
                    num_filters)
         self.proj_conf.output_size = self.proj_conf.conv_conf.output_x * \
                                      self.proj_conf.conv_conf.output_y * \
@@ -746,7 +746,7 @@ class ConvTransProjection(ConvBaseProjection):
 
         parse_conv(
             conv_conf,
-            input_layer_name,
+            self.input_layer_name,
             self.proj_conf.conv_conf,
             num_filters,
             trans=True)
@@ -1834,8 +1834,17 @@ class ConvTransLayerBase(LayerBase):
         use_gpu = int(g_command_config_args.get("use_gpu", 0))
         parallel_nn = int(g_command_config_args.get("parallel_nn", 0))
 
-        # cudnn_convt has not been implemented so use exconvt only
-        self.layer_type = "exconvt"
+        # Automatically select cudnn_type for GPU and exconvt for CPU
+        # if set type=exconvt, but still reserve the way user specify
+        # exconvt or cudnn_convt manually.
+        if self.layer_type == "cudnn_convt":
+            config_assert(use_gpu, "cudnn_convt only support GPU")
+
+        if (use_gpu == 1 and self.layer_type != "exconvt" and
+            (parallel_nn == 0 or self.config.device > -1)):
+            self.layer_type = "cudnn_convt"
+        else:
+            self.layer_type = "exconvt"
         # need to specify layer in config
         self.config.type = self.layer_type
 
@@ -1852,10 +1861,9 @@ class ConvTransLayerBase(LayerBase):
                 trans=True)
             conv_conf = self.config.inputs[input_index].conv_conf
             psize = self.calc_parameter_size(conv_conf)
-            print("output size for %s is %d " % (name, conv_conf.output_x))
             self.create_input_parameter(input_index, psize)
-            self.set_layer_size(
-                (conv_conf.img_size**2) * self.config.num_filters)
+            self.set_cnn_layer(name, conv_conf.img_size_y, conv_conf.img_size,
+                               self.config.num_filters)
 
         psize = self.config.size
         if shared_biases:
@@ -1870,6 +1878,11 @@ class ConvTransLayerBase(LayerBase):
 @config_layer('exconvt')
 class ConvTransLayer(ConvTransLayerBase):
     layer_type = 'exconvt'
+
+
+@config_layer('cudnn_convt')
+class ConvTransLayer(ConvTransLayerBase):
+    layer_type = 'cudnn_convt'
 
 
 @config_layer('norm')

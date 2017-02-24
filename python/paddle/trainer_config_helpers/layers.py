@@ -2046,8 +2046,9 @@ def img_conv_layer(input,
     :param trans: true if it is a convTransLayer, false if it is a convLayer
     :type trans: bool
     :param layer_type: specify the layer_type, default is None. If trans=True,
-                       layer_type has to be "exconvt", otherwise layer_type
-                       has to be either "exconv" or "cudnn_conv"
+                       layer_type has to be "exconvt" or "cudnn_convt", 
+                       otherwise layer_type has to be either "exconv" or 
+                       "cudnn_conv"
     :type layer_type: String
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2087,7 +2088,7 @@ def img_conv_layer(input,
 
     if layer_type:
         if trans:
-            assert layer_type in ["exconvt"]
+            assert layer_type in ["exconvt", "cudnn_convt"]
         else:
             assert layer_type in ["exconv", "cudnn_conv"]
         lt = layer_type
