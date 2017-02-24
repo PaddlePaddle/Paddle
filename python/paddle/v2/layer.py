@@ -256,38 +256,3 @@ sum_cost = __convert_to_v2__(
     'sum_cost', name_prefix='sum_cost', parent_names=['input'])
 huber_cost = __convert_to_v2__(
     'huber_cost', name_prefix='huber_cost', parent_names=['input', 'label'])
-
-if __name__ == '__main__':
-    pixel = data(name='pixel', type=data_type.dense_vector(784))
-    label = data(name='label', type=data_type.integer_value(10))
-    weight = data(name='weight', type=data_type.dense_vector(10))
-    score = data(name='score', type=data_type.dense_vector(1))
-
-    hidden = fc(input=pixel,
-                size=100,
-                act=activation.Sigmoid(),
-                param_attr=attr.Param(name='hidden'))
-    inference = fc(input=hidden, size=10, act=activation.Softmax())
-    maxid = max_id(input=inference)
-    cost1 = classification_cost(input=inference, label=label)
-    cost2 = classification_cost(input=inference, label=label, weight=weight)
-    cost3 = cross_entropy_cost(input=inference, label=label)
-    cost4 = cross_entropy_with_selfnorm_cost(input=inference, label=label)
-    cost5 = regression_cost(input=inference, label=label)
-    cost6 = regression_cost(input=inference, label=label, weight=weight)
-    cost7 = multi_binary_label_cross_entropy_cost(input=inference, label=label)
-    cost8 = rank_cost(left=score, right=score, label=score)
-    cost9 = lambda_cost(input=inference, score=score)
-    cost10 = sum_cost(input=inference)
-    cost11 = huber_cost(input=score, label=label)
-
-    # print parse_network(cost1)
-    # print parse_network(cost2)
-    # print parse_network(cost1, cost2)
-    # print parse_network(cost2)
-    # print parse_network(inference, maxid)
-    print parse_network(cost1, cost2)
-    print parse_network(cost3, cost4)
-    print parse_network(cost5, cost6)
-    print parse_network(cost7, cost8, cost9, cost10, cost11)
-    print parse_network(inference, maxid)

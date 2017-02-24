@@ -16,9 +16,9 @@ import unittest
 
 import paddle.trainer_config_helpers as conf_helps
 import paddle.v2.activation as activation
+import paddle.v2.attr as attr
 import paddle.v2.data_type as data_type
 import paddle.v2.layer as layer
-import paddle.v2.attr as attr
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as parse_network
 
@@ -95,8 +95,9 @@ class RNNTest(unittest.TestCase):
             data1 = layer.data(
                 name="word", type=data_type.integer_value(dict_dim))
             embd = layer.embedding(input=data1, size=word_dim)
-            aaa = layer.recurrent_group(name="rnn", step=new_step, input=embd)
-            return str(layer.parse_network(aaa))
+            rnn_layer = layer.recurrent_group(
+                name="rnn", step=new_step, input=embd)
+            return str(layer.parse_network(rnn_layer))
 
         diff = difflib.unified_diff(test_old_rnn().splitlines(1),
                                     test_new_rnn().splitlines(1))
