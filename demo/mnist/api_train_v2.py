@@ -26,7 +26,7 @@ def main():
                                 act=paddle.activation.Softmax())
     cost = paddle.layer.classification_cost(input=inference, label=label)
 
-    parameters = paddle.parameters.create([cost])
+    parameters = paddle.parameters.create(cost)
     for param_name in parameters.keys():
         array = parameters.get(param_name)
         array[:] = numpy.random.uniform(low=-1.0, high=1.0, size=array.shape)

@@ -31,7 +31,8 @@ class Topology(object):
 
     def __init__(self, layers):
         if not isinstance(layers, collections.Sequence):
-            raise ValueError("input of Topology should be a list of Layer")
+            __check_layer_type__(layers)
+            layers = [layers]
         for layer in layers:
             if not isinstance(layer, v2_layer.LayerV2):
                 raise ValueError('layer should have type paddle.layer.Layer')
@@ -97,6 +98,11 @@ class Topology(object):
         return data_types_lists
 
 
+def __check_layer_type__(layer):
+    if not isinstance(layer, v2_layer.LayerV2):
+        raise ValueError('layer should have type paddle.layer.Layer')
+
+
 if __name__ == '__main__':
     pixel = v2_layer.data(name='pixel', type=data_type.dense_vector(784))
     label = v2_layer.data(name='label', type=data_type.integer_value(10))
@@ -110,8 +116,8 @@ if __name__ == '__main__':
     cost1 = v2_layer.classification_cost(input=inference, label=label)
     cost2 = v2_layer.cross_entropy_cost(input=inference, label=label)
 
-    print Topology(cost1).proto()
     print Topology(cost2).proto()
-    print Topology(cost1, cost2).proto()
+    print Topology([cost1]).proto()
+    print Topology([cost1, cost2]).proto()
     print Topology(cost2).proto()
-    print Topology(inference, maxid).proto()
+    print Topology([inference, maxid]).proto()

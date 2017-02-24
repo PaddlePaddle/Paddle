@@ -14,9 +14,9 @@
 
 from paddle.trainer.PyDataProvider2 import \
     InputType, dense_vector, sparse_binary_vector,\
-    sparse_vector, integer_value
+    sparse_vector, integer_value, DataType
 
 __all__ = [
     'InputType', 'dense_vector', 'sparse_binary_vector', 'sparse_vector',
-    'integer_value'
+    'integer_value', 'DataType'
 ]
