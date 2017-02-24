@@ -23,9 +23,10 @@ class DataFeeder(DataProviderConverter):
     """
     DataFeeder converts the data returned by paddle.reader into a data structure
     of Arguments which is defined in the API. The paddle.reader usually returns
-    a list of mini-batch data. Each item in the list is a list or a tuple,
-    which is one sample with one or multiple features. DataFeeder converts this
-    mini-batch data into Arguments in order to feed it to C++ interface.
+    a list of mini-batch data entries. Each data entry in the list is one sampe.
+    Each sample is a list or a tuple with one feature or multiple features.
+    DataFeeder converts this mini-batch data entries into Arguments in order
+    to feed it to C++ interface.
     
     The example usage:
     
@@ -37,6 +38,10 @@ class DataFeeder(DataProviderConverter):
                            ( [1.0,2.0,3.0,4.0], 5, [6,7,8] ),  # first sample
                            ( [1.0,2.0,3.0,4.0], 5, [6,7,8] )   # second sample
                          ]
+        # or minibatch_data = [
+        #                       [ [1.0,2.0,3.0,4.0], 5, [6,7,8] ],  # first sample
+        #                       [ [1.0,2.0,3.0,4.0], 5, [6,7,8] ]   # second sample
+        #                     ]
         arg = feeder(minibatch_data)
     """
 
@@ -63,13 +68,19 @@ class DataFeeder(DataProviderConverter):
 
     def convert(self, dat, argument=None):
         """
-        :param dat: A list of mini-batch data. Each item is a list or tuple,
+        :param dat: A list of mini-batch data. Each sample is a list or tuple
+                    one feature or multiple features.
                     for example:
                     [ 
-                      (feature_0, feature_1, feature_2, ...), # first sample
-                      (feature_0, feature_1, feature_2, ...), # second sample
-                      ...
+                      ([0.2, 0.2], ), # first sample
+                      ([0.8, 0.3], ), # second sample
                     ]
+                    or,
+                    [ 
+                      [[0.2, 0.2], ], # first sample
+                      [[0.8, 0.3], ], # second sample
+                    ]
+
         :type dat: List
         :param argument: An Arguments object contains this mini-batch data with
                          one or multiple features. The Arguments definition is

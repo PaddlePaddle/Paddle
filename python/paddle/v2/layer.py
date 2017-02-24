@@ -74,6 +74,8 @@ from paddle.trainer_config_helpers.config_parser_utils import \
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 
 import data_type
+import activation
+import attr
 
 __all__ = [
     'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
@@ -230,8 +232,11 @@ if __name__ == '__main__':
     weight = data(name='weight', type=data_type.dense_vector(10))
     score = data(name='score', type=data_type.dense_vector(1))
 
-    hidden = fc(input=pixel, size=100, act=conf_helps.SigmoidActivation())
-    inference = fc(input=hidden, size=10, act=conf_helps.SoftmaxActivation())
+    hidden = fc(input=pixel,
+                size=100,
+                act=activation.Sigmoid(),
+                param_attr=attr.Param(name='hidden'))
+    inference = fc(input=hidden, size=10, act=activation.Softmax())
     maxid = max_id(input=inference)
     cost1 = classification_cost(input=inference, label=label)
     cost2 = classification_cost(input=inference, label=label, weight=weight)

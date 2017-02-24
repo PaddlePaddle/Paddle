@@ -32,7 +32,7 @@ class DataFeederTest(unittest.TestCase):
             num = np.random.randint(size_limit)
         return np.random.randint(high, size=num).tolist()
 
-    def test_dense_vector(self):
+    def test_dense(self):
         def compare(input):
             feeder = DataFeeder([('image', data_type.dense_vector(784))],
                                 {'image': 0})
@@ -51,11 +51,18 @@ class DataFeederTest(unittest.TestCase):
             data.append(each_sample)
         compare(data)
 
-        # test list
+        # each feature is a list
         data = []
         for i in xrange(batch_size):
             each_sample = []
             each_sample.append(self.dense_reader(dim).tolist())
+            data.append(each_sample)
+        compare(data)
+
+        # test tuple
+        data = []
+        for i in xrange(batch_size):
+            each_sample = (self.dense_reader(dim).tolist(), )
             data.append(each_sample)
         compare(data)
 
@@ -86,7 +93,7 @@ class DataFeederTest(unittest.TestCase):
             a = self.sparse_binary_reader(dim, 40, non_empty=True)
             b = self.dense_reader(len(a)).tolist()
             v.append(a)
-            w.append(b[0])
+            w.append(np.array(b, dtype="float32"))
             each_sample.append(zip(a, b))
             data.append(each_sample)
 
@@ -97,6 +104,10 @@ class DataFeederTest(unittest.TestCase):
         assert isinstance(output, api.Matrix)
         for i in xrange(batch_size):
             self.assertEqual(output.getSparseRowCols(i), v[i])
+            cols_value = output.getSparseRowColsVal(i)
+            value = [val[1] for val in cols_value]
+            value = np.array(value, dtype="float32")
+            self.assertAlmostEqual(value.all(), w[i].all())
 
     def test_integer(self):
         dim = 100
@@ -113,16 +124,42 @@ class DataFeederTest(unittest.TestCase):
         index = np.array(index, dtype='int')
         self.assertEqual(output.all(), index.flatten().all())
 
-    def test_multiple_slots(self):
+    def test_integer_sequence(self):
+        dim = 10000
+        batch_size = 32
+        start = [0]
+        data = []
+        for i in xrange(batch_size):
+            each_sample = []
+            each_sample.append(
+                self.sparse_binary_reader(
+                    dim, 30, non_empty=True))
+            data.append(each_sample)
+            start.append(len(each_sample[0]) + start[-1])
+        feeder = DataFeeder([('input', data_type.integer_value_sequence(dim))],
+                            {'input': 0})
+        arg = feeder(data)
+        output_data = arg.getSlotIds(0).copyToNumpyArray()
+        output_start = arg.getSlotSequenceStartPositions(0).copyToNumpyArray()
+
+        index = []
+        for dat in data:
+            index.extend(x for x in dat[0])  # only one feature, so dat[0]
+        index = np.array(index, dtype='int')
+        start = np.array(start, dtype='int')
+        self.assertEqual(output_data.all(), index.all())
+        self.assertEqual(output_start.all(), start.all())
+
+    def test_multiple_features(self):
         batch_size = 2
         data = []
         for i in xrange(batch_size):
             each_sample = []
-            each_sample.append(np.random.randint(10))  # size of feature 2: 10
+            each_sample.append(np.random.randint(10))
             each_sample.append(
                 self.sparse_binary_reader(
-                    20000, 40, non_empty=True))  # size of feature 1: 20000
-            each_sample.append(self.dense_reader(100))  # size of feature 0: 100
+                    20000, 40, non_empty=True))
+            each_sample.append(self.dense_reader(100))
             data.append(each_sample)
 
         # test multiple features
@@ -150,10 +187,30 @@ class DataFeederTest(unittest.TestCase):
             self.assertEqual(output_dense[i].all(), data[i][2].all())
             self.assertEqual(output_index[i], data[i][0])
 
+    def test_multiple_features_tuple(self):
+        batch_size = 2
+        data = []
+        for i in xrange(batch_size):
+            a = np.random.randint(10)
+            b = self.sparse_binary_reader(20000, 40, non_empty=True)
+            c = self.dense_reader(100)
+            each_sample = (a, b, c)
+            data.append(each_sample)
 
-if __name__ == '__main__':
-    api.initPaddle("--use_gpu=0")
-    unittest.main()
+        # test multiple features
+        data_types = [('fea0', data_type.dense_vector(100)),
+                      ('fea1', data_type.sparse_binary_vector(20000)),
+                      ('fea2', data_type.integer_value(10))]
+        feeder = DataFeeder(data_types, {'fea0': 2, 'fea1': 1, 'fea2': 0})
+        arg = feeder(data)
+        out_dense = arg.getSlotValue(0).copyToNumpyMat()
+        out_sparse = arg.getSlotValue(1)
+        out_index = arg.getSlotIds(2).copyToNumpyArray()
+        for i in xrange(batch_size):
+            self.assertEqual(out_dense[i].all(), data[i][2].all())
+            self.assertEqual(out_sparse.getSparseRowCols(i), data[i][1])
+            self.assertEqual(out_index[i], data[i][0])
+
 
 if __name__ == '__main__':
     api.initPaddle("--use_gpu=0")
