@@ -72,16 +72,38 @@ import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
+from paddle.trainer_config_helpers.default_decorators import wrap_act_default
+from paddle.trainer_config_helpers.default_decorators import wrap_bias_attr_default
+from paddle.trainer_config_helpers.layers import layer_support
 
 import data_type
 import activation
 import attr
 
+#import pudb;pudb.set_trace()
+
 __all__ = [
-    'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
-    'cross_entropy_cost', 'cross_entropy_with_selfnorm_cost', 'regression_cost',
-    'multi_binary_label_cross_entropy_cost', 'rank_cost', 'lambda_cost',
-    'sum_cost', 'huber_cost'
+    'parse_network',
+    'data',
+    'fc',
+    'max_id',
+    'classification_cost',
+    'cross_entropy_cost',
+    'cross_entropy_with_selfnorm_cost',
+    'regression_cost',
+    'multi_binary_label_cross_entropy_cost',
+    'rank_cost',
+    'lambda_cost',
+    'sum_cost',
+    'huber_cost'
+    'full_matrix_projection',
+    'trans_full_matrix_projection',
+    'table_projection',
+    'identity_projection',
+    'scaling_projection',
+    'dotmul_projection',
+    'context_projection',
+    'conv_projection',
 ]
 
 
@@ -101,9 +123,8 @@ def parse_network(*outputs):
 
 
 class Layer(object):
-    def __init__(self, name, parent_layers):
+    def __init__(self, name=None, parent_layers=None):
         assert isinstance(parent_layers, dict)
-        assert isinstance(name, basestring)
         self.name = name
         self.__parent_layers__ = parent_layers
 
@@ -122,6 +143,9 @@ class Layer(object):
                                self.__parent_layers__[layer_name])
             kwargs[layer_name] = v1_layer
 
+        if self.name is None:
+            return self.to_proto_impl(**kwargs)
+
         if self.name not in context:
             context[self.name] = self.to_proto_impl(**kwargs)
         return context[self.name]
@@ -130,7 +154,7 @@ class Layer(object):
         raise NotImplementedError()
 
 
-def __convert_to_v2__(method_name, name_prefix, parent_names):
+def __convert_to_v2__(method_name, name_prefix=None, parent_names=None):
     if name_prefix is not None:
         wrapper = wrap_name_default(name_prefix=name_prefix)
     else:
@@ -160,7 +184,7 @@ def __convert_to_v2__(method_name, name_prefix, parent_names):
                 args[each] = kwargs[each]
             for each in self.__other_kwargs__:
                 args[each] = self.__other_kwargs__[each]
-            return getattr(conf_helps, method_name)(name=self.name, **args)
+            return getattr(conf_helps, method_name)(**args)
 
     return V2LayerImpl
 
@@ -189,6 +213,81 @@ class DataLayerV2(Layer):
         for each in self.__kwargs__:
             args[each] = self.__kwargs__[each]
         return getattr(conf_helps, self.__method_name__)(name=self.name, **args)
+
+
+class MixedLayerV2(Layer):
+    """
+    This class is use to support `with` grammar. If not, the following code
+    could convert mixed_layer simply.
+
+        mixed = __convert_to_v2__(
+            'mixed_layer', name_prefix='mixed', parent_names=['input'])
+    """
+
+    class AddToSealedMixedLayerExceptionV2(Exception):
+        def __init__(self):
+            Exception.__init__(self)
+
+    def __init__(self,
+                 size=0,
+                 input=None,
+                 name=None,
+                 act=None,
+                 bias_attr=None,
+                 layer_attr=None):
+        self.__method_name__ = 'mixed_layer'
+        self.finalized = False
+
+        self.__parent_layers__ = dict()
+        other_kwargs = dict()
+        self.input_name = 'input'
+        self.__parent_layers__[self.input_name] = []
+        if input is not None:
+            self.__parent_layers__[self.input_name] = input
+
+        self.name = name
+        other_kwargs['size'] = size
+        other_kwargs['act'] = act
+        other_kwargs['bias_attr'] = bias_attr
+        other_kwargs['layer_attr'] = layer_attr
+
+        Layer.__init__(self, name, self.__parent_layers__)
+        self.__other_kwargs__ = other_kwargs
+
+    def __iadd__(self, other):
+        if not self.finalized:
+            self.__parent_layers__[self.input_name].append(other)
+            return self
+        else:
+            raise MixedLayerTypeV2.AddToSealedMixedLayerExceptionV2()
+
+    def __enter__(self):
+        assert len(self.__parent_layers__[self.input_name]) == 0
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.finalized = True
+
+    def to_proto_impl(self, **kwargs):
+        args = dict()
+        for each in kwargs:
+            args[each] = kwargs[each]
+        for each in self.__other_kwargs__:
+            args[each] = self.__other_kwargs__[each]
+        return getattr(conf_helps, self.__method_name__)(name=self.name, **args)
+
+
+@wrap_name_default("mixed")
+@wrap_act_default(act=conf_helps.LinearActivation())
+@wrap_bias_attr_default(has_bias=False)
+@layer_support(conf_helps.layers.ERROR_CLIPPING, conf_helps.layers.DROPOUT)
+def mixed(size=0,
+          name=None,
+          input=None,
+          act=None,
+          bias_attr=False,
+          layer_attr=None):
+    return MixedLayerV2(size, input, name, act, bias_attr, layer_attr)
 
 
 data = DataLayerV2
@@ -226,12 +325,124 @@ sum_cost = __convert_to_v2__(
 huber_cost = __convert_to_v2__(
     'huber_cost', name_prefix='huber_cost', parent_names=['input', 'label'])
 
-if __name__ == '__main__':
-    pixel = data(name='pixel', type=data_type.dense_vector(784))
-    label = data(name='label', type=data_type.integer_value(10))
-    weight = data(name='weight', type=data_type.dense_vector(10))
-    score = data(name='score', type=data_type.dense_vector(1))
+# convert projection
+projection_list = [
+    # [V1_method_name], all the parent_names is `input`
+    'full_matrix_projection',
+    'trans_full_matrix_projection',
+    'table_projection',
+    'scaling_projection',
+    'dotmul_projection',
+    'context_projection',
+    'conv_projection',
+    'identity_projection',
+]
+for prj in projection_list:
+    globals()[prj] = __convert_to_v2__(prj, parent_names=['input'])
 
+# convert operator
+operator_list = [
+    # [V1_method_name, parent_names],
+    ['dotmul_operator', ['a', 'b']],
+    ['conv_operator', ['img', 'filter']]
+]
+for op in operator_list:
+    globals()[op[0]] = __convert_to_v2__(op[0], parent_names=op[1])
+
+
+def test_projection():
+    """
+    TODO: move to tests file
+    """
+    input = data(name='data', type=data_type.dense_vector(784))
+    word = data(name='word', type=data_type.integer_value_sequence(10000))
+    fc0 = fc(input=input, size=100, act=conf_helps.SigmoidActivation())
+    fc1 = fc(input=input, size=200, act=conf_helps.SigmoidActivation())
+    mixed0 = mixed(
+        size=256,
+        input=[
+            full_matrix_projection(input=fc0), full_matrix_projection(input=fc1)
+        ])
+    with mixed(size=200) as mixed1:
+        mixed1 += full_matrix_projection(input=fc0)
+        mixed1 += identity_projection(input=fc1)
+
+    table = table_projection(input=word)
+    emb0 = mixed(size=512, input=table)
+    with mixed(size=512) as emb1:
+        emb1 += table
+
+    scale = scaling_projection(input=fc0)
+    scale0 = mixed(size=100, input=scale)
+    with mixed(size=100) as scale1:
+        scale1 += scale
+
+    dotmul = dotmul_projection(input=fc0)
+    dotmul0 = mixed(size=100, input=dotmul)
+    with mixed(size=100) as dotmul1:
+        dotmul1 += dotmul
+
+    context = context_projection(input=fc0, context_len=5)
+    context0 = mixed(size=100, input=context)
+    with mixed(size=100) as context1:
+        context1 += context
+
+    conv = conv_projection(
+        input=input,
+        filter_size=1,
+        num_channels=1,
+        num_filters=128,
+        stride=1,
+        padding=0)
+    conv0 = mixed(input=conv, bias_attr=True)
+    with mixed(bias_attr=True) as conv1:
+        conv1 += conv
+
+    print parse_network(mixed0)
+    print parse_network(mixed1)
+    print parse_network(emb0)
+    print parse_network(emb1)
+    print parse_network(scale0)
+    print parse_network(scale1)
+    print parse_network(dotmul0)
+    print parse_network(dotmul1)
+    print parse_network(conv0)
+    print parse_network(conv1)
+
+
+def test_operator():
+    """
+    TODO: move to tests file
+    """
+    ipt0 = data(name='data', type=data_type.dense_vector(784))
+    ipt1 = data(name='word', type=data_type.dense_vector(128))
+    fc0 = fc(input=ipt0, size=100, act=conf_helps.SigmoidActivation())
+    fc1 = fc(input=ipt0, size=100, act=conf_helps.SigmoidActivation())
+
+    dotmul_op = dotmul_operator(a=fc0, b=fc1)
+    dotmul0 = mixed(input=dotmul_op)
+    with mixed() as dotmul1:
+        dotmul1 += dotmul_op
+
+    conv = conv_operator(
+        img=ipt0,
+        filter=ipt1,
+        filter_size=1,
+        num_channels=1,
+        num_filters=128,
+        stride=1,
+        padding=0)
+    conv0 = mixed(input=conv)
+    with mixed() as conv1:
+        conv1 += conv
+
+    print parse_network(dotmul0)
+    print parse_network(dotmul1)
+    print parse_network(conv0)
+    print parse_network(conv1)
+
+
+def test_cost(pixel, label, weight, score):
     hidden = fc(input=pixel,
                 size=100,
                 act=activation.Sigmoid(),
@@ -255,3 +466,14 @@ if __name__ == '__main__':
     print parse_network(cost5, cost6)
     print parse_network(cost7, cost8, cost9, cost10, cost11)
     print parse_network(inference, maxid)
+
+
+if __name__ == '__main__':
+    pixel = data(name='pixel', type=data_type.dense_vector(784))
+    label = data(name='label', type=data_type.integer_value(10))
+    weight = data(name='weight', type=data_type.dense_vector(10))
+    score = data(name='score', type=data_type.dense_vector(1))
+
+    test_cost(pixel, label, weight, score)
+    test_projection()
+    test_operator()
