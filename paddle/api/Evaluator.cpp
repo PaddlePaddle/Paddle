@@ -27,3 +27,9 @@ std::string Evaluator::toString() {
   m->rawPtr->printStats(sout);
   return sout.str();
 }
+
+std::vector<std::string> Evaluator::getNames() const {
+  std::vector<std::string> retv;
+  m->rawPtr->getNames(&retv);
+  return retv;
+}
