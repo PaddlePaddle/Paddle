@@ -33,15 +33,15 @@ public:
   void initSubNetwork(NeuralNetwork* rootNetwork,
                       const ModelConfig& config,
                       const std::vector<ParameterType>& parameterTypes,
-                      bool useGpu);
+                      bool useGpu) override;
 
-  void forward(PassType passType) {
+  void forward(PassType passType) override {
     REGISTER_TIMER_INFO("RecurrentGroupFwTime", getName().c_str());
     const std::vector<Argument> inArgs;
     std::vector<Argument> outArgs;
     network_->forward(inArgs, &outArgs, passType);
   }
-  void backward(const UpdateCallback& callback) {
+  void backward(const UpdateCallback& callback) override {
     REGISTER_TIMER_INFO("RecurrentGroupBwTime", getName().c_str());
     network_->backward(nullptr);
 
@@ -53,7 +53,8 @@ public:
   /**
    * @see Layer.accessSubNetwork
    */
-  void accessSubNetwork(const std::function<void(NeuralNetwork&)>& callback) {
+  void accessSubNetwork(
+      const std::function<void(NeuralNetwork&)>& callback) override {
     callback(*network_);
   }
 

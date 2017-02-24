@@ -18,17 +18,17 @@ limitations under the License. */
 
 TEST(Error, testAll) {
   paddle::Error error;
-  ASSERT_TRUE(error);
-  error = paddle::Error("I'm the error");
   ASSERT_FALSE(error);
+  error = paddle::Error("I'm the error");
+  ASSERT_TRUE(error);
   ASSERT_STREQ("I'm the error", error.msg());
 
   error = paddle::Error("error2");
-  ASSERT_FALSE(error);
+  ASSERT_TRUE(error);
   ASSERT_STREQ("error2", error.msg());
 
   int i = 3;
   auto error3 = paddle::Error("error%d", i);
-  ASSERT_FALSE(error3);
+  ASSERT_TRUE(error3);
   ASSERT_STREQ("error3", error3.msg());
 }

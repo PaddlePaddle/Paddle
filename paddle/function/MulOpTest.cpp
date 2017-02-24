@@ -60,7 +60,7 @@ TEST(MulOp, DDDMatrixMul) {
             if (transa && transb) {
               continue;
             }
-            VLOG(3) << setiosflags(std::ios::left) << std::setfill(' ')
+            VLOG(3) << std::setiosflags(std::ios::left) << std::setfill(' ')
                     << " transa=" << transa << " transb=" << transb
                     << " dimM=" << std::setw(5) << dimM
                     << " dimN=" << std::setw(5) << dimN
@@ -104,7 +104,7 @@ TEST(MuLOp, DSparseDMul) {
       for (const auto dimK : {3, 10}) {
         for (const auto nnz : {3, 10}) {
           for (const auto FORMAT : {SPARSE_CSR}) {
-            VLOG(3) << setiosflags(std::ios::left) << std::setfill(' ')
+            VLOG(3) << std::setiosflags(std::ios::left) << std::setfill(' ')
                     << " dimM=" << std::setw(5) << dimM
                     << " dimN=" << std::setw(5) << dimN
                     << " dimK=" << std::setw(5) << dimK
@@ -150,7 +150,7 @@ TEST(MulOp, DDSparseMul) {
       for (const auto dimK : {3, 10}) {
         for (const auto nnz : {3, 10}) {
           for (const auto FORMAT : {SPARSE_CSR, SPARSE_CSC}) {
-            VLOG(3) << setiosflags(std::ios::left) << std::setfill(' ')
+            VLOG(3) << std::setiosflags(std::ios::left) << std::setfill(' ')
                     << " dimM=" << std::setw(5) << dimM
                     << " dimN=" << std::setw(5) << dimN
                     << " dimK=" << std::setw(5) << dimK
@@ -197,7 +197,7 @@ TEST(MulOp, SparseDDMul) {
       for (const auto dimK : {3, 10}) {
         for (const auto nnz : {3, 10}) {
           for (const auto FORMAT : {SPARSE_CSC, SPARSE_CSR}) {
-            VLOG(3) << setiosflags(std::ios::left) << std::setfill(' ')
+            VLOG(3) << std::setiosflags(std::ios::left) << std::setfill(' ')
                     << " dimM=" << std::setw(5) << dimM
                     << " dimN=" << std::setw(5) << dimN
                     << " dimK=" << std::setw(5) << dimK

@@ -37,6 +37,7 @@ __all__ = [
     "dotmul_projection",
     "dotmul_operator",
     "repeat_layer",
+    "seq_reshape_layer",
     "table_projection",
     "mixed_layer",
     "data_layer",
@@ -59,6 +60,7 @@ __all__ = [
     'img_cmrnorm_layer',
     'addto_layer',
     'concat_layer',
+    'seq_concat_layer',
     'lstm_step_layer',
     'recurrent_group',
     'memory',
@@ -124,6 +126,7 @@ class LayerType(object):
     GRUMEMORY = "gated_recurrent"
     SEQUENCE_LAST_INSTANCE = "seqlastins"
     SEQUENCE_FIRST_INSTANCE = "seqfirstins"
+    SEQUENCE_RESHAPE = "seqreshape"
     POOLING_MAX = "max"
     POOLING_AVG = 'average'
     FC_LAYER = "fc"
@@ -144,6 +147,7 @@ class LayerType(object):
 
     CONCAT_LAYER = 'concat'
     CONCAT_PROJ_LAYER = 'concat2'
+    SEQUENCE_CONCAT_LAYER = 'seqconcat'
 
     LSTM_STEP_LAYER = 'lstm_step'
     GRU_STEP_LAYER = 'gru_step'
@@ -1448,6 +1452,61 @@ def repeat_layer(input, num_repeats, name=None, layer_attr=None):
         parents=[input])
 
 
+@wrap_name_default("seqreshape")
+@wrap_act_default(act=IdentityActivation())
+@wrap_bias_attr_default(has_bias=False)
+@layer_support()
+def seq_reshape_layer(input,
+                      reshape_size,
+                      act=None,
+                      name=None,
+                      layer_attr=None,
+                      bias_attr=None):
+    """
+    A layer for reshaping the sequence. Assume the input sequence has T instances,
+    the dimension of each instance is M, and the input reshape_size is N, then the 
+    output sequence has T*M/N instances, the dimension of each instance is N.
+
+    Note that T*M/N must be an integer.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       reshape = seq_reshape_layer(input=layer, reshape_size=4)
+
+    :param input: Input layer.
+    :type input: LayerOutput
+    :param reshape_size: the size of reshaped sequence.
+    :type reshape_size: int
+    :param name: Layer name.
+    :type name: basestring
+    :param act: Activation type.
+    :type act: BaseActivation
+    :param layer_attr: extra layer attributes.
+    :type layer_attr: ExtraLayerAttribute.
+    :param bias_attr: The Bias Attribute. If no bias, then pass False or
+                      something not type of ParameterAttribute. None will get a
+                      default Bias.
+    :type bias_attr: ParameterAttribute or None or bool
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    Layer(
+        inputs=[input.name],
+        name=name,
+        size=reshape_size,
+        type=LayerType.SEQUENCE_RESHAPE,
+        bias=ParamAttr.to_bias(bias_attr),
+        **ExtraAttr.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        size=reshape_size,
+        layer_type=LayerType.SEQUENCE_RESHAPE,
+        parents=[input])
+
+
 @wrap_name_default()
 @layer_support()
 def interpolation_layer(input, weight, name=None, layer_attr=None):
@@ -2570,6 +2629,63 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
         size=sz)
 
 
+@wrap_name_default("seqconcat")
+@wrap_act_default(act=IdentityActivation())
+@wrap_bias_attr_default(has_bias=False)
+@layer_support()
+def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
+                     bias_attr=None):
+    """
+    Concat sequence a with sequence b.
+
+    Inputs: 
+      - a = [a1, a2, ..., an]
+      - b = [b1, b2, ..., bn]
+      - Note that the length of a and b should be the same.
+        
+    Output: [a1, b1, a2, b2, ..., an, bn]
+
+    The example usage is:
+
+    ..  code-block:: python
+
+        concat = seq_concat_layer(a=layer1, b=layer2)
+
+    :param name: Layer name.
+    :type name: basestring
+    :param a: input sequence layer
+    :type a: LayerOutput
+    :param b: input sequence layer
+    :type b: LayerOutput
+    :param act: Activation type.
+    :type act: BaseActivation
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :param bias_attr: The Bias Attribute. If no bias, then pass False or
+                      something not type of ParameterAttribute. None will get a
+                      default Bias.
+    :type bias_attr: ParameterAttribute or None or bool
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(a, LayerOutput) and isinstance(b, LayerOutput)
+    assert a.size == b.size
+    Layer(
+        name=name,
+        type=LayerType.SEQUENCE_CONCAT_LAYER,
+        inputs=[a.name, b.name],
+        active_type=act.name,
+        bias=ParamAttr.to_bias(bias_attr),
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+
+    return LayerOutput(
+        name,
+        layer_type=LayerType.SEQUENCE_CONCAT_LAYER,
+        parents=[a, b],
+        activation=act,
+        size=a.size)
+
+
 def memory(name,
            size,
            is_seq=False,
@@ -2754,8 +2870,8 @@ def gru_step_layer(input,
     :param name:
     :param gate_act:
     :param bias_attr:
-    :param param_attr: the parameter_attribute for transforming the output_mem 
-                       from previous step. 
+    :param param_attr: the parameter_attribute for transforming the output_mem
+                       from previous step.
     :param layer_attr:
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2766,10 +2882,10 @@ def gru_step_layer(input,
     Layer(
         name=name,
         type=LayerType.GRU_STEP_LAYER,
-        # The parameter here is for transforming the output_mem. The input has 
-        # already been transformed outside this module so it does not need 
-        # parameter associated with it. 
-        # The parameter here is instead grouped with input is due to 
+        # The parameter here is for transforming the output_mem. The input has
+        # already been transformed outside this module so it does not need
+        # parameter associated with it.
+        # The parameter here is instead grouped with input is due to
         # backward model compatibility.
         inputs=[Input(input.name, **param_attr.attr), output_mem.name],
         bias=ParamAttr.to_bias(bias_attr),
@@ -3420,6 +3536,7 @@ def classification_cost(input,
                         label,
                         weight=None,
                         name=None,
+                        top_k=None,
                         evaluator=classification_error_evaluator,
                         layer_attr=None):
     """
@@ -3434,6 +3551,8 @@ def classification_cost(input,
     :param weight: The weight affects the cost, namely the scale of cost.
                    It is an optional argument.
     :type weight: LayerOutput
+    :param top_k: number k in top-k error rate
+    :type top_k: int
     :param evaluator: Evaluator method.
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -3461,7 +3580,7 @@ def classification_cost(input,
         assert isinstance(e.for_classification, bool)
         assert e.for_classification
 
-        e(name=e.__name__, input=input, label=label, weight=weight)
+        e(name=e.__name__, input=input, label=label, weight=weight, top_k=top_k)
 
     if not isinstance(evaluator, collections.Sequence):
         evaluator = [evaluator]
@@ -3677,26 +3796,27 @@ def pad_layer(input,
 
     For example,
 
-    .. code-block::
+    .. code-block:: python
 
-      input(2,2,2,3)  = [
-                          [ [[1,2,3], [3,4,5]],
-                            [[2,3,5], [1,6,7]] ],
-                          [ [[4,3,1], [1,8,7]],
-                            [[3,8,9], [2,3,5]] ]
-                        ]
+       input(2,2,2,3)  = [
+                           [ [[1,2,3], [3,4,5]],
+                             [[2,3,5], [1,6,7]] ],
+                           [ [[4,3,1], [1,8,7]],
+                             [[3,8,9], [2,3,5]] ]
+                         ]
 
-      pad_c=[1,1], pad_h=[0,0], pad_w=[0,0]
-      output(2,4,2,3) = [
-                          [ [[0,0,0], [0,0,0]],
-                            [[1,2,3], [3,4,5]],
-                            [[2,3,5], [1,6,7]],
-                            [[0,0,0], [0,0,0]] ],
-                          [ [[0,0,0], [0,0,0]],
-                            [[4,3,1], [1,8,7]],
-                            [[3,8,9], [2,3,5]],
-                            [[0,0,0], [0,0,0]] ]
-                        ]
+       pad_c=[1,1], pad_h=[0,0], pad_w=[0,0]
+
+       output(2,4,2,3) = [
+                           [ [[0,0,0], [0,0,0]],
+                             [[1,2,3], [3,4,5]],
+                             [[2,3,5], [1,6,7]],
+                             [[0,0,0], [0,0,0]] ],
+                           [ [[0,0,0], [0,0,0]],
+                             [[4,3,1], [1,8,7]],
+                             [[3,8,9], [2,3,5]],
+                             [[0,0,0], [0,0,0]] ]
+                         ]
 
     The simply usage is:
 
@@ -4191,13 +4311,7 @@ def block_expand_layer(input,
 
 @wrap_name_default()
 @layer_support()
-def maxout_layer(input,
-                 groups,
-                 num_channels=None,
-                 size_x=None,
-                 size_y=None,
-                 name=None,
-                 layer_attr=None):
+def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
     """
     A layer to do max out on conv layer output.
       - Input: output of a conv layer.
@@ -4227,12 +4341,6 @@ def maxout_layer(input,
     :type num_channels: int|None
     :param groups: The group number of input layer.
     :type groups: int
-    :param size_x: conv output width. If None will be set
-                   automatically from previous output.
-    :type size_x: int|None
-    :param size_y: conv output height. If None will be set
-                   automatically from previous output.
-    :type size_y: int|None
     :param name: The name of this layer, which can not specify.
     :type name: None|basestring.
     :param layer_attr: Extra Layer attribute.
