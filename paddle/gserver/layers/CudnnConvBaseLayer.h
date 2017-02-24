@@ -46,8 +46,8 @@ public:
   void forward(PassType passType) override;
   void backward(const UpdateCallback& callback) override;
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap)
-      override;
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 };
 
 }  // namespace paddle
