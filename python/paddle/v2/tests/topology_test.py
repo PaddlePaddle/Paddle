@@ -19,25 +19,6 @@ import paddle.trainer_config_helpers as conf_helps
 
 
 class TestTopology(unittest.TestCase):
-    def test_parse(self):
-        pixel = layer.data(name='pixel', type=data_type.dense_vector(784))
-        label = layer.data(name='label', type=data_type.integer_value(10))
-        hidden = layer.fc(input=pixel,
-                          size=100,
-                          act=conf_helps.SigmoidActivation())
-        inference = layer.fc(input=hidden,
-                             size=10,
-                             act=conf_helps.SoftmaxActivation())
-        maxid = layer.max_id(input=inference)
-        cost1 = layer.classification_cost(input=inference, label=label)
-        cost2 = layer.cross_entropy_cost(input=inference, label=label)
-
-        print topology.Topology(cost2).proto()
-        print topology.Topology([cost1]).proto()
-        print topology.Topology([cost1, cost2]).proto()
-        print topology.Topology(cost2).proto()
-        print topology.Topology([inference, maxid]).proto()
-
     def test_data_type(self):
         pixel = layer.data(name='pixel', type=data_type.dense_vector(784))
         label = layer.data(name='label', type=data_type.integer_value(10))
@@ -73,6 +54,24 @@ class TestTopology(unittest.TestCase):
         label_layer = topo.get_layer("label")
         self.assertEqual(pixel_layer, pixel)
         self.assertEqual(label_layer, label)
+
+    def test_parse(self):
+        pixel = layer.data(name='pixel', type=data_type.dense_vector(784))
+        label = layer.data(name='label', type=data_type.integer_value(10))
+        hidden = layer.fc(input=pixel,
+                          size=100,
+                          act=conf_helps.SigmoidActivation())
+        inference = layer.fc(input=hidden,
+                             size=10,
+                             act=conf_helps.SoftmaxActivation())
+        maxid = layer.max_id(input=inference)
+        cost1 = layer.classification_cost(input=inference, label=label)
+        cost2 = layer.cross_entropy_cost(input=inference, label=label)
+
+        topology.Topology(cost2).proto()
+        topology.Topology([cost1]).proto()
+        topology.Topology([cost1, cost2]).proto()
+        topology.Topology([inference, maxid]).proto()
 
 
 if __name__ == '__main__':
