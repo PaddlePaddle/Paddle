@@ -32,8 +32,7 @@ class Topology(object):
             __check_layer_type__(layers)
             layers = [layers]
         for layer in layers:
-            if not isinstance(layer, v2_layer.LayerV2):
-                raise ValueError('layer should have type paddle.layer.Layer')
+            __check_layer_type__(layer)
         self.layers = layers
         self.__model_config__ = v2_layer.parse_network(*layers)
         assert isinstance(self.__model_config__, ModelConfig)
