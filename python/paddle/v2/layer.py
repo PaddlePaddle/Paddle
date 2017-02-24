@@ -71,6 +71,7 @@ import collections
 import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
+
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 from paddle.trainer_config_helpers.default_decorators import wrap_act_default
 from paddle.trainer_config_helpers.default_decorators import wrap_bias_attr_default
@@ -79,8 +80,6 @@ from paddle.trainer_config_helpers.layers import layer_support
 import data_type
 import activation
 import attr
-
-#import pudb;pudb.set_trace()
 
 __all__ = [
     'parse_network',
