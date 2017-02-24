@@ -281,8 +281,6 @@ if __name__ == '__main__':
     cost10 = sum_cost(input=inference)
     cost11 = huber_cost(input=score, label=label)
 
-    mem = memory(name="rnn_state", size=10)
-
     # print parse_network(cost1)
     # print parse_network(cost2)
     # print parse_network(cost1, cost2)
