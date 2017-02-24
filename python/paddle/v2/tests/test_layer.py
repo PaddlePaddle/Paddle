@@ -19,8 +19,6 @@ import paddle.v2.activation as activation
 import paddle.v2.attr as attr
 import paddle.v2.data_type as data_type
 import paddle.v2.layer as layer
-from paddle.trainer_config_helpers.config_parser_utils import \
-    parse_network_config as parse_network
 
 pixel = layer.data(name='pixel', type=data_type.dense_vector(784))
 label = layer.data(name='label', type=data_type.integer_value(10))
@@ -57,6 +55,96 @@ class CostLayerTest(unittest.TestCase):
         #print layer.parse_network(cost3, cost4)
         #print layer.parse_network(cost5, cost6)
         #print layer.parse_network(cost7, cost8, cost9, cost10, cost11)
+
+    def test_projection(self):
+        input = layer.data(name='data', type=data_type.dense_vector(784))
+        word = layer.data(
+            name='word', type=data_type.integer_value_sequence(10000))
+        fc0 = layer.fc(input=input,
+                       size=100,
+                       act=conf_helps.SigmoidActivation())
+        fc1 = layer.fc(input=input,
+                       size=200,
+                       act=conf_helps.SigmoidActivation())
+        mixed0 = layer.mixed(
+            size=256,
+            input=[
+                layer.full_matrix_projection(input=fc0),
+                layer.full_matrix_projection(input=fc1)
+            ])
+        with layer.mixed(size=200) as mixed1:
+            mixed1 += layer.full_matrix_projection(input=fc0)
+            mixed1 += layer.identity_projection(input=fc1)
+
+        table = layer.table_projection(input=word)
+        emb0 = layer.mixed(size=512, input=table)
+        with layer.mixed(size=512) as emb1:
+            emb1 += table
+
+        scale = layer.scaling_projection(input=fc0)
+        scale0 = layer.mixed(size=100, input=scale)
+        with layer.mixed(size=100) as scale1:
+            scale1 += scale
+
+        dotmul = layer.dotmul_projection(input=fc0)
+        dotmul0 = layer.mixed(size=100, input=dotmul)
+        with layer.mixed(size=100) as dotmul1:
+            dotmul1 += dotmul
+
+        context = layer.context_projection(input=fc0, context_len=5)
+        context0 = layer.mixed(size=100, input=context)
+        with layer.mixed(size=100) as context1:
+            context1 += context
+
+        conv = layer.conv_projection(
+            input=input,
+            filter_size=1,
+            num_channels=1,
+            num_filters=128,
+            stride=1,
+            padding=0)
+        conv0 = layer.mixed(input=conv, bias_attr=True)
+        with layer.mixed(bias_attr=True) as conv1:
+            conv1 += conv
+
+        print layer.parse_network(mixed0)
+        print layer.parse_network(mixed1)
+        print layer.parse_network(emb0)
+        print layer.parse_network(emb1)
+        print layer.parse_network(scale0)
+        print layer.parse_network(scale1)
+        print layer.parse_network(dotmul0)
+        print layer.parse_network(dotmul1)
+        print layer.parse_network(conv0)
+        print layer.parse_network(conv1)
+
+    def test_operator(self):
+        ipt0 = layer.data(name='data', type=data_type.dense_vector(784))
+        ipt1 = layer.data(name='word', type=data_type.dense_vector(128))
+        fc0 = layer.fc(input=ipt0, size=100, act=conf_helps.SigmoidActivation())
+        fc1 = layer.fc(input=ipt0, size=100, act=conf_helps.SigmoidActivation())
+
+        dotmul_op = layer.dotmul_operator(a=fc0, b=fc1)
+        dotmul0 = layer.mixed(input=dotmul_op)
+        with layer.mixed() as dotmul1:
+            dotmul1 += dotmul_op
+
+        conv = layer.conv_operator(
+            img=ipt0,
+            filter=ipt1,
+            filter_size=1,
+            num_channels=1,
+            num_filters=128,
+            stride=1,
+            padding=0)
+        conv0 = layer.mixed(input=conv)
+        with layer.mixed() as conv1:
+            conv1 += conv
+
+        print layer.parse_network(dotmul0)
+        print layer.parse_network(dotmul1)
+        print layer.parse_network(conv0)
+        print layer.parse_network(conv1)
 
 
 if __name__ == '__main__':
