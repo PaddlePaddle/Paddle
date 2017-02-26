@@ -63,7 +63,7 @@ class RNNTest(unittest.TestCase):
         word_dim = 8
         hidden_dim = 8
 
-        def test_old_rnn():
+        def parse_old_rnn():
             def step(y):
                 mem = conf_helps.memory(name="rnn_state", size=hidden_dim)
                 out = conf_helps.fc_layer(
@@ -81,16 +81,15 @@ class RNNTest(unittest.TestCase):
 
             return str(parse_network(test))
 
-        def test_new_rnn():
+        def parse_new_rnn():
             def new_step(y):
                 mem = layer.memory(name="rnn_state", size=hidden_dim)
-                out = layer.fc(input=[mem],
-                               step_input=y,
+                out = layer.fc(input=[y, mem],
                                size=hidden_dim,
                                act=activation.Tanh(),
                                bias_attr=True,
                                name="rnn_state")
-                return out.to_proto(dict())
+                return out
 
             data1 = layer.data(
                 name="word", type=data_type.integer_value(dict_dim))
@@ -99,8 +98,8 @@ class RNNTest(unittest.TestCase):
                 name="rnn", step=new_step, input=embd)
             return str(layer.parse_network(rnn_layer))
 
-        diff = difflib.unified_diff(test_old_rnn().splitlines(1),
-                                    test_new_rnn().splitlines(1))
+        diff = difflib.unified_diff(parse_old_rnn().splitlines(1),
+                                    parse_new_rnn().splitlines(1))
         print ''.join(diff)
 
 

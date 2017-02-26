@@ -3042,7 +3042,8 @@ def recurrent_group(step,
                     reverse=False,
                     name=None,
                     targetInlink=None,
-                    is_generating=False):
+                    is_generating=False,
+                    in_args_converter=None):
     """
     Recurrent layer group is an extremely flexible recurrent unit in
     PaddlePaddle. As long as the user defines the calculation done within a
@@ -3185,7 +3186,10 @@ def recurrent_group(step,
 
     assert (is_generating != has_LayerOutput)
 
-    layer_outs = step(*in_args)
+    if in_args_converter is None:
+        layer_outs = step(*in_args)
+    else:
+        layer_outs = step(*in_args_converter(*in_args)).to_proto(dict())
 
     if isinstance(layer_outs, LayerOutput):
         layer_outs = [layer_outs]
