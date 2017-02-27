@@ -11,16 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import difflib
 import unittest
 
-import paddle.trainer_config_helpers as conf_helps
 import paddle.v2.activation as activation
 import paddle.v2.attr as attr
 import paddle.v2.data_type as data_type
 import paddle.v2.layer as layer
-from paddle.trainer_config_helpers.config_parser_utils import \
-    parse_network_config as parse_network
 
 pixel = layer.data(name='pixel', type=data_type.dense_vector(784))
 label = layer.data(name='label', type=data_type.integer_value(10))
@@ -55,52 +51,6 @@ class CostLayerTest(unittest.TestCase):
         print layer.parse_network(cost3, cost4)
         print layer.parse_network(cost5, cost6)
         print layer.parse_network(cost7, cost8, cost9, cost10, cost11)
-
-
-class RNNTest(unittest.TestCase):
-    def test_simple_rnn(self):
-        dict_dim = 10
-        word_dim = 8
-        hidden_dim = 8
-
-        def parse_old_rnn():
-            def step(y):
-                mem = conf_helps.memory(name="rnn_state", size=hidden_dim)
-                out = conf_helps.fc_layer(
-                    input=[y, mem],
-                    size=hidden_dim,
-                    act=activation.Tanh(),
-                    bias_attr=True,
-                    name="rnn_state")
-                return out
-
-            def test():
-                data1 = conf_helps.data_layer(name="word", size=dict_dim)
-                embd = conf_helps.embedding_layer(input=data1, size=word_dim)
-                conf_helps.recurrent_group(name="rnn", step=step, input=embd)
-
-            return str(parse_network(test))
-
-        def parse_new_rnn():
-            def new_step(y):
-                mem = layer.memory(name="rnn_state", size=hidden_dim)
-                out = layer.fc(input=[y, mem],
-                               size=hidden_dim,
-                               act=activation.Tanh(),
-                               bias_attr=True,
-                               name="rnn_state")
-                return out
-
-            data1 = layer.data(
-                name="word", type=data_type.integer_value(dict_dim))
-            embd = layer.embedding(input=data1, size=word_dim)
-            rnn_layer = layer.recurrent_group(
-                name="rnn", step=new_step, input=embd)
-            return str(layer.parse_network(rnn_layer))
-
-        diff = difflib.unified_diff(parse_old_rnn().splitlines(1),
-                                    parse_new_rnn().splitlines(1))
-        print ''.join(diff)
 
 
 if __name__ == '__main__':

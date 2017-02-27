@@ -3,9 +3,6 @@ import paddle.v2 as paddle
 
 import mnist_util
 
-import pudb
-pudb.set_trace()
-
 
 def train_reader():
     train_file = './data/raw_data/train'

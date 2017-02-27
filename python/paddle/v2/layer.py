@@ -124,11 +124,13 @@ class Layer(object):
             return self.to_proto_impl(**kwargs)
 
         # memory may have the same name with some layer
-        if isinstance(self, MemoryV2) or isinstance(self, LayerOutputV2):
+        if isinstance(self, MemoryV2):
             return self.to_proto_impl(**kwargs)
 
+        # store v1 API's layer_output in context with the key of it's name.
         if self.name not in context:
             context[self.name] = self.to_proto_impl(**kwargs)
+
         return context[self.name]
 
     def to_proto_impl(self, **kwargs):
@@ -200,8 +202,19 @@ class MemoryV2(Layer):
     def __init__(self, name, size, **kwargs):
         self.name = name
         self.size = size
-        self.__kwargs__ = kwargs
-        super(MemoryV2, self).__init__(name=name, parent_layers=dict())
+
+        parent_names = ['boot_layer']
+        parent_layers = dict()
+        other_kwargs = dict()
+        for pname in parent_names:
+            if kwargs.has_key(pname):
+                parent_layers[pname] = kwargs[pname]
+
+        for key in kwargs.keys():
+            if key not in parent_names:
+                other_kwargs[key] = kwargs[key]
+        super(MemoryV2, self).__init__(name=name, parent_layers=parent_layers)
+        self.__kwargs__ = other_kwargs
 
     def to_proto_impl(self, **kwargs):
         args = dict()
@@ -209,10 +222,16 @@ class MemoryV2(Layer):
             args[each] = kwargs[each]
         for each in self.__kwargs__:
             args[each] = self.__kwargs__[each]
+
         return conf_helps.memory(name=self.name, size=self.size, **args)
 
 
 class LayerOutputV2(Layer):
+    """
+    LayerOutputV2 is used to store the result of LayerOutput in v1 api.
+    It will not store it's parents because layer_output has been parsed already.
+    """
+
     def __init__(self, layer_output):
         assert isinstance(layer_output, conf_helps.LayerOutput)
         self.layer_output = layer_output
@@ -239,8 +258,11 @@ class RecurrentGroupV2(Layer):
         super(RecurrentGroupV2, self).__init__(
             name=name, parent_layers=parent_layers)
 
+    wrapper = wrap_name_default(name_prefix='recurrent_group')
+    __init__ = wrapper(__init__)
+
     def to_proto_impl(self, **kwargs):
-        def in_args_converter(in_args):
+        def in_args_converter(*in_args):
             if not isinstance(in_args, collections.Sequence):
                 in_args = [in_args]
             return [LayerOutputV2(input) for input in in_args]
