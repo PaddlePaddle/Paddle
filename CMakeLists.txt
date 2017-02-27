@@ -43,6 +43,7 @@ option(WITH_DOC         "Compile PaddlePaddle with documentation"       OFF)
 option(ON_COVERALLS     "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
+option(USE_CAFFE        "Integrating caffe layers in Paddle."           OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -96,4 +97,8 @@ add_subdirectory(python)
 
 if(WITH_DOC)
     add_subdirectory(doc)
+endif()
+
+if(USE_CAFFE)
+    add_subdirectory(plugin/caffe)
 endif()

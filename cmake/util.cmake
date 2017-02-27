@@ -81,6 +81,17 @@ function(link_paddle_exe TARGET_NAME)
         set(METRIC_LIBS "")
     endif()
 
+    if(USE_CAFFE)
+        set(CAFFE_LIBS paddle_plugin_caffe)
+        target_circle_link_libraries(${TARGET_NAME}
+            ARCHIVE_START
+            paddle_plugin_caffe
+            ARCHIVE_END)
+    else()
+        set(CAFFE_LIBS "")
+    endif()
+
+
     target_circle_link_libraries(${TARGET_NAME}
         ARCHIVE_START
         paddle_gserver

@@ -112,6 +112,7 @@ __all__ = [
     'priorbox_layer',
     'spp_layer',
     'pad_layer',
+    'caffe_layer',
 ]
 
 
@@ -178,6 +179,7 @@ class LayerType(object):
     MAXOUT = "maxout"
     SPP_LAYER = "spp"
     PAD_LAYER = "pad"
+    CAFFE_LAYER = "caffe"
 
     PRINT_LAYER = "print"
     PRIORBOX_LAYER = "priorbox"
@@ -4364,6 +4366,55 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name, LayerType.MAXOUT, parents=[input], size=l.config.size)
+
+
+@wrap_name_default()
+@wrap_param_attr_default()
+@layer_support()
+def caffe_layer(input,
+                prototxt=None,
+                num_weights=0,
+                name=None,
+                param_attr=None,
+                act=None,
+                layer_attr=None):
+    '''
+    An interface to wrapper CaffeLayer.
+
+    :param input: one or more input layers.
+    :type input: LayerOutput|list
+
+    
+    '''
+
+    if isinstance(input, LayerOutput):
+        input = [input]
+
+    if num_weights > 0:
+        if not isinstance(param_attr, collections.Sequence):
+            param_attr = [param_attr] * num_weights
+        else:
+            assert len(param_attr) == num_weights
+
+    assert len(input) <= num_weights
+    ipts = [ipt.name for ipt in input]
+    for i in xrange(num_weights - len(input)):
+        ipts.append(ipts[0])
+
+    logger.info(ipts)
+
+    Layer(
+        name=name,
+        inputs=[
+            Input(name, **attr.attr) for name, attr in zip(ipts, param_attr)
+        ],
+        type=LayerType.CAFFE_LAYER,
+        prototxt=prototxt,
+        num_input=len(input),
+        num_weights=num_weights,
+        active_type=act.name,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(name, LayerType.CAFFE_LAYER, parents=input, size=1)
 
 
 @wrap_name_default()

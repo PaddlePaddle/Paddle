@@ -22,6 +22,7 @@ package paddle;
 enum ParameterInitStrategy {
   PARAMETER_INIT_NORMAL = 0;
   PARAMETER_INIT_UNIFORM = 1;
+  PARAMETER_INIT_SKIP = 2;
 }
 
 message ParameterUpdaterHookConfig {

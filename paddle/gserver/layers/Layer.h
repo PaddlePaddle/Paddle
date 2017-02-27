@@ -279,6 +279,18 @@ public:
   const LayerPtr& getPrev(size_t i) { return inputLayers_[i]; }
 
   /**
+   * Get the size of inputLayer[i].
+   */
+  const LayerConfig& getConfig(size_t i) { return config_; }
+
+  /**
+   * Get the config of inputLayer[i].
+   */
+  const LayerConfig& getPrevConfig(size_t i) {
+    return inputLayers_[i]->getConfig(i);
+  }
+
+  /**
    * Get the forward-output value.
    */
   const MatrixPtr& getOutputValue() { return output_.value; }

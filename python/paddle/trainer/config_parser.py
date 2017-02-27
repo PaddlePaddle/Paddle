@@ -138,14 +138,14 @@ def init_config_environment(
         g_root_submodel=None,
         g_submodel_map={},
         g_submodel_stack=[],
-        g_add_submodel_suffix=False,
+        g_add_submodel_suffix=False, ):
 
-        # Whether current layer needs to pass the image height and width.
-        # Default value is true, but if it encounters recurrent_layer_group,
-        # it will be false. The reason is that image is converted to be sequence,
-        # image height will be sequence length, and image width will be feature
-        # length of each timestep.
-        g_pass_height_width=True, ):
+    # Whether current layer needs to pass the image height and width.
+    # Default value is true, but if it encounters recurrent_layer_group,
+    # it will be false. The reason is that image is converted to be sequence,
+    # image height will be sequence length, and image width will be feature
+    # length of each timestep.
+    #g_pass_height_width=True, ):
 
     for k, v in locals().iteritems():
         globals()[k] = copy.deepcopy(v)
@@ -704,6 +704,9 @@ class ConvProjection(Projection):
         self.proj_conf.output_size = self.proj_conf.conv_conf.output_x * \
                                      self.proj_conf.conv_conf.output_y * \
                                      num_filters
+
+    def get_height_width():
+        return self.proj_conf.conv_conf.output_x, self.proj_conf.conv_conf.output_y
 
     def calc_output_size(self, input_layer_config):
         return self.proj_conf.output_size
@@ -1371,11 +1374,13 @@ class LayerBase(object):
 
         g_current_submodel.layer_names.append(self.config.name)
 
-        if self.config.type != 'data' and g_pass_height_width:
-            height = self.get_input_layer(0).height
-            width = self.get_input_layer(0).width
-            if height and width:
-                self.set_layer_height_width(height, width)
+        #if self.config.type != 'data':
+        #height = self.get_input_layer(0).height
+        #width = self.get_input_layer(0).width
+        #if height and width:
+        # set height and width to zero by default. The layer which needs
+        # this two argumetns should set them correctly.
+        self.set_layer_height_width(0, 0)
 
     def get_input_layer(self, input_index):
         return g_layer_map[self.config.inputs[input_index].input_layer_name]
@@ -2773,9 +2778,18 @@ class MixedLayer(LayerBase):
         psize = self.config.size
         if isinstance(self.inputs[0], ConvProjection):
             self.config.shared_biases = True
-            psize = 0
-            for input in self.inputs:
-                psize += input.calc_bias_size()
+            psize = self.inputs[0].calc_bias_size()
+            h0, w0 = self.inputs[0].get_height_width()
+            for i in xrange(1, len(self.inputs)):
+                bs = self.inputs[i].calc_bias_size()
+                h, w = self.inputs[i].get_height_width()
+                config_assert(
+                    bs == psize,
+                    "channel number in each ConvProjection should be equal.")
+                config_assert(
+                    h == h0 and w == w0,
+                    "height and width in each ConvProjection should be equal.")
+            self.set_cnn_layer(name, h0, w0, psize)
 
         if bias:
             self.config.bias_size = psize
@@ -2852,9 +2866,15 @@ class ConcatenateLayer2(LayerBase):
         psize = self.config.size
         if isinstance(self.inputs[0], ConvProjection):
             self.config.shared_biases = True
+            h0, w0 = self.inputs[0].get_height_width()
             psize = 0
             for input in self.inputs:
                 psize += input.calc_bias_size()
+                h, w = input.get_height_width()
+                config_assert(
+                    h == h0 and w == w0,
+                    "height and width in each ConvProjection should be equal.")
+            self.set_cnn_layer(name, h0, w0, psize)
 
         if bias:
             self.config.bias_size = psize
@@ -3086,10 +3106,34 @@ class WarpCTCLayer(LayerBase):
 @config_layer('recurrent_layer_group')
 class RecurrentLayerGroup(LayerBase):
     def __init__(self, name, device=None):
-        global g_pass_height_width
-        g_pass_height_width = False
         super(RecurrentLayerGroup, self).__init__(
             name, 'recurrent_layer_group', 0, inputs=[], device=device)
+
+
+@config_layer('caffe')
+class CaffeLayer(LayerBase):
+    def __init__(self,
+                 name,
+                 inputs,
+                 prototxt,
+                 num_input,
+                 num_weights=0,
+                 **xargs):
+        super(CaffeLayer, self).__init__(
+            name, 'caffe', 0, inputs=inputs, **xargs)
+
+        caffe_conf = self.config.caffe_conf
+        caffe_conf.prototxt = prototxt
+        caffe_conf.num_weights = num_weights
+        caffe_conf.num_input = num_input
+
+        if num_weights > 0:
+            assert num_weights == len(inputs)
+            for i in xrange(num_weights):
+                input_layer = self.get_input_layer(i)
+                dims = [1, 1]
+                # fake weight, it will be resized in Layer.
+                self.create_input_parameter(i, 1, dims)
 
 
 # Deprecated, use a new layer specific class instead
