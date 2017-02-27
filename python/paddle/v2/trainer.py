@@ -2,7 +2,7 @@ import collections
 
 import py_paddle.swig_paddle as api
 from paddle.proto.ModelConfig_pb2 import ModelConfig
-from py_paddle import DataProviderConverter
+from data_feeder import DataFeeder
 
 from . import event as v2_event
 from . import layer as v2_layer
@@ -69,7 +69,8 @@ class SGD(ITrainer):
               test_data_reader=None,
               event_handler=None,
               batch_size=32,
-              data_types=None):
+              data_types=None,
+              reader_dict=None):
         """
         Training method. Will train num_passes of input data.
 
@@ -107,13 +108,7 @@ class SGD(ITrainer):
         assert isinstance(pass_evaluator, api.Evaluator)
         out_args = api.Arguments.createArguments(0)
 
-        data_types_lists = []
-        for each in topology.input_layer_names:
-            if each not in data_types:
-                raise ValueError()
-            data_types_lists.append(data_types[each])
-
-        converter = DataProviderConverter(input_types=data_types_lists)
+        feeder = DataFeeder(data_types, reader_dict)
 
         for pass_id in xrange(num_passes):
             event_handler(v2_event.BeginPass(pass_id))
@@ -127,7 +122,7 @@ class SGD(ITrainer):
                     v2_event.BeginIteration(
                         pass_id=pass_id, batch_id=batch_id))
                 pass_type = updater.startBatch(len(data_batch))
-                gm.forwardBackward(converter(data_batch), out_args, pass_type)
+                gm.forwardBackward(feeder(data_batch), out_args, pass_type)
                 gm.eval(pass_evaluator)
                 gm.eval(batch_evaluator)
                 for each_param in gm.getParameters():

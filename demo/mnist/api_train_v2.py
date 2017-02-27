@@ -44,13 +44,13 @@ def main():
                   topology=cost,
                   parameters=parameters,
                   event_handler=event_handler,
-                  num_passes=100,
-                  batch_size=200, # batch size should be refactor in Data reader
-                  data_types={  # data_types will be removed, It should be in
+                  batch_size=32,  # batch size should be refactor in Data reader
+                  data_types=[  # data_types will be removed, It should be in
                       # network topology
-                      'pixel': images.type,
-                      'label': label.type
-                  })
+                      ('pixel', images.type),
+                      ('label', label.type)],
+                  reader_dict={'pixel':0, 'label':1}
+                  )
 
 
 if __name__ == '__main__':
