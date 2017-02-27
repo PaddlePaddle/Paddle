@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# It would be too lengthy to require our users to prefix decorators with `decorator`.
-# For example, we want the following line
-#
-#     r = paddle.reader.decorator.bufferd(paddle.reader.creator.text("hello.txt"))
-#
-# to be a shorter version:
-#
-#     r = paddle.reader.buffered(paddle.reader.creator.text("hello.txt"))
-from decorator import *
 
-import creator
+pushd `dirname $0` > /dev/null
+SCRIPTPATH=$PWD
+popd > /dev/null
+
+cd $SCRIPTPATH
+
+$1 -m pip install ../../../../paddle/dist/*.whl
+
+test_list="test_data_feeder.py"
+
+export PYTHONPATH=$PWD/../../../../python/
+
+for fn in $test_list
+do
+  echo "test $fn"
+  $1 $fn
+  if [ $? -ne 0 ]; then
+    exit 1
+  fi
+done

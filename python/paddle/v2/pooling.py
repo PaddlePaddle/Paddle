@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# It would be too lengthy to require our users to prefix decorators with `decorator`.
-# For example, we want the following line
-#
-#     r = paddle.reader.decorator.bufferd(paddle.reader.creator.text("hello.txt"))
-#
-# to be a shorter version:
-#
-#     r = paddle.reader.buffered(paddle.reader.creator.text("hello.txt"))
-from decorator import *
+from paddle.trainer_config_helpers.poolings import *
 
-import creator
+__all__ = ["Max", "CudnnMax", "Avg", "CudnnAvg", "Sum", "SquareRootN"]
+
+Max = MaxPooling
+CudnnMax = CudnnMaxPooling
+Avg = AvgPooling
+CudnnAvg = CudnnAvgPooling
+Sum = SumPooling
+SquareRootN = SquareRootNPooling

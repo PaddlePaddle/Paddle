@@ -71,18 +71,36 @@ import collections
 import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
+
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
+from paddle.trainer_config_helpers.default_decorators import wrap_act_default
+from paddle.trainer_config_helpers.default_decorators import wrap_bias_attr_default
+from paddle.trainer_config_helpers.layers import layer_support
 
 import data_type
 import activation
 import attr
 
 __all__ = [
-    'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
-    'cross_entropy_cost', 'cross_entropy_with_selfnorm_cost', 'regression_cost',
+    'parse_network', 'data', 'fc', 'conv_shift', 'img_conv', 'img_pool', 'spp',
+    'maxout', 'img_cmrnorm', 'batch_norm', 'sum_to_one_norm', 'recurrent',
+    'lstmemory', 'grumemory', 'pool', 'last_seq', 'first_seq', 'concat',
+    'seq_concat', 'block_expand', 'expand', 'repeat', 'seq_reshape', 'addto',
+    'linear_comb', 'interpolation', 'bilinear_interp', 'power', 'scaling',
+    'slope_intercept', 'tensor', 'cos_sim', 'trans', 'max_id', 'sampling_id',
+    'pad', 'classification_cost', 'cross_entropy_cost',
+    'cross_entropy_with_selfnorm_cost', 'regression_cost',
     'multi_binary_label_cross_entropy_cost', 'rank_cost', 'lambda_cost',
-    'sum_cost', 'huber_cost'
+    'sum_cost', 'huber_cost', 'crf', 'crf_decoding', 'ctc', 'warp_ctc', 'nce',
+    'hsigmoid', 'eos'
 ]
+
+__projection_names__ = filter(lambda x: x.endswith('_projection'),
+                              dir(conf_helps))
+__all__ += __projection_names__
+
+__operator_names__ = filter(lambda x: x.endswith('_operator'), dir(conf_helps))
+__all__ += __operator_names__
 
 
 def parse_network(*outputs):
@@ -101,9 +119,8 @@ def parse_network(*outputs):
 
 
 class Layer(object):
-    def __init__(self, name, parent_layers):
+    def __init__(self, name=None, parent_layers=None):
         assert isinstance(parent_layers, dict)
-        assert isinstance(name, basestring)
         self.name = name
         self.__parent_layers__ = parent_layers
 
@@ -122,22 +139,25 @@ class Layer(object):
                                self.__parent_layers__[layer_name])
             kwargs[layer_name] = v1_layer
 
-        if self.name not in context:
+        if self.name is None:
+            return self.to_proto_impl(**kwargs)
+        elif self.name not in context:
             context[self.name] = self.to_proto_impl(**kwargs)
+
         return context[self.name]
 
     def to_proto_impl(self, **kwargs):
         raise NotImplementedError()
 
 
-def __convert_to_v2__(method_name, name_prefix, parent_names):
-    if name_prefix is not None:
-        wrapper = wrap_name_default(name_prefix=name_prefix)
+def __convert_to_v2__(method_name, parent_names, is_default_name=True):
+    if is_default_name:
+        wrapper = wrap_name_default(name_prefix=method_name)
     else:
         wrapper = None
 
     class V2LayerImpl(Layer):
-        def __init__(self, name=None, **kwargs):
+        def __init__(self, **kwargs):
             parent_layers = dict()
             other_kwargs = dict()
             for pname in parent_names:
@@ -148,6 +168,7 @@ def __convert_to_v2__(method_name, name_prefix, parent_names):
                 if key not in parent_names:
                     other_kwargs[key] = kwargs[key]
 
+            name = kwargs.get('name', None)
             super(V2LayerImpl, self).__init__(name, parent_layers)
             self.__other_kwargs__ = other_kwargs
 
@@ -160,7 +181,7 @@ def __convert_to_v2__(method_name, name_prefix, parent_names):
                 args[each] = kwargs[each]
             for each in self.__other_kwargs__:
                 args[each] = self.__other_kwargs__[each]
-            return getattr(conf_helps, method_name)(name=self.name, **args)
+            return getattr(conf_helps, method_name)(**args)
 
     return V2LayerImpl
 
@@ -191,69 +212,171 @@ class DataLayerV2(Layer):
         return getattr(conf_helps, self.__method_name__)(name=self.name, **args)
 
 
-LayerV2 = Layer
+class MixedLayerV2(Layer):
+    """
+    This class is use to support `with` grammar. If not, the following code
+    could convert mixed_layer simply.
+
+        mixed = __convert_to_v2__(
+            'mixed_layer', name_prefix='mixed', parent_names=['input'])
+    """
+
+    class AddToSealedMixedLayerExceptionV2(Exception):
+        pass
+
+    def __init__(self,
+                 size=0,
+                 input=None,
+                 name=None,
+                 act=None,
+                 bias_attr=None,
+                 layer_attr=None):
+        self.__method_name__ = 'mixed_layer'
+        self.finalized = False
+        self.__inputs__ = []
+        if input is not None:
+            self.__inputs__ = input
+
+        other_kwargs = dict()
+        other_kwargs['name'] = name
+        other_kwargs['size'] = size
+        other_kwargs['act'] = act
+        other_kwargs['bias_attr'] = bias_attr
+        other_kwargs['layer_attr'] = layer_attr
+
+        parent_layers = {"input": self.__inputs__}
+        super(MixedLayerV2, self).__init__(name, parent_layers)
+        self.__other_kwargs__ = other_kwargs
+
+    def __iadd__(self, other):
+        if not self.finalized:
+            self.__inputs__.append(other)
+            return self
+        else:
+            raise MixedLayerTypeV2.AddToSealedMixedLayerExceptionV2()
+
+    def __enter__(self):
+        assert len(self.__inputs__) == 0
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.finalized = True
+
+    def to_proto_impl(self, **kwargs):
+        args = dict()
+        for each in kwargs:
+            args[each] = kwargs[each]
+        for each in self.__other_kwargs__:
+            args[each] = self.__other_kwargs__[each]
+        return getattr(conf_helps, self.__method_name__)(**args)
+
+
+@wrap_name_default("mixed")
+@wrap_act_default(act=activation.Linear())
+@wrap_bias_attr_default(has_bias=False)
+@layer_support(conf_helps.layers.ERROR_CLIPPING, conf_helps.layers.DROPOUT)
+def mixed(size=0,
+          name=None,
+          input=None,
+          act=None,
+          bias_attr=False,
+          layer_attr=None):
+    return MixedLayerV2(size, input, name, act, bias_attr, layer_attr)
+
 
 data = DataLayerV2
-fc = __convert_to_v2__('fc_layer', name_prefix='fc', parent_names=['input'])
-max_id = __convert_to_v2__(
-    'maxid_layer', name_prefix='maxid', parent_names=['input'])
-classification_cost = __convert_to_v2__(
-    'classification_cost',
-    name_prefix='classification_cost',
-    parent_names=['input', 'label', 'weight'])
-regression_cost = __convert_to_v2__(
-    'regression_cost',
-    name_prefix='regression_cost',
-    parent_names=['input', 'label', 'weight'])
-cross_entropy_cost = __convert_to_v2__(
-    'cross_entropy',
-    name_prefix='cross_entropy',
-    parent_names=['input', 'label'])
-cross_entropy_with_selfnorm_cost = __convert_to_v2__(
-    'cross_entropy_with_selfnorm',
-    name_prefix='cross_entropy_with_selfnorm',
-    parent_names=['input', 'label'])
-multi_binary_label_cross_entropy_cost = __convert_to_v2__(
-    'multi_binary_label_cross_entropy',
-    name_prefix='multi_binary_label_cross_entropy',
-    parent_names=['input', 'label'])
-rank_cost = __convert_to_v2__(
-    'rank_cost',
-    name_prefix='rank_cost',
-    parent_names=['left', 'right', 'label', 'weight'])
-lambda_cost = __convert_to_v2__(
-    'lambda_cost', name_prefix='lambda_cost', parent_names=['input', 'score'])
-sum_cost = __convert_to_v2__(
-    'sum_cost', name_prefix='sum_cost', parent_names=['input'])
-huber_cost = __convert_to_v2__(
-    'huber_cost', name_prefix='huber_cost', parent_names=['input', 'label'])
+AggregateLevel = conf_helps.layers.AggregateLevel
+ExpandLevel = conf_helps.layers.ExpandLevel
 
-if __name__ == '__main__':
-    pixel = data(name='pixel', type=data_type.dense_vector(784))
-    label = data(name='label', type=data_type.integer_value(10))
-    weight = data(name='weight', type=data_type.dense_vector(10))
-    score = data(name='score', type=data_type.dense_vector(1))
+layer_list = [
+    # [V2LayerImpl, V1_method_name, parent_names]
+    # fully connected layers
+    ['fc', 'fc_layer', ['input']],
+    # conv layers
+    ['conv_shift', 'conv_shift_layer', ['a', 'b']],
+    ['img_conv', 'img_conv_layer', ['input']],
+    # image pooling layers
+    ['img_pool', 'img_pool_layer', ['input']],
+    ['spp', 'spp_layer', ['input']],
+    ['maxout', 'maxout_layer', ['input']],
+    # norm layers
+    ['img_cmrnorm', 'img_cmrnorm_layer', ['input']],
+    ['batch_norm', 'batch_norm_layer', ['input']],
+    ['sum_to_one_norm', 'sum_to_one_norm_layer', ['input']],
+    # recurrent layers
+    ['recurrent', 'recurrent_layer', ['input']],
+    ['lstmemory', 'lstmemory', ['input']],
+    ['grumemory', 'grumemory', ['input']],
+    # aggregate layers
+    ['pool', 'pooling_layer', ['input']],
+    ['last_seq', 'last_seq', ['input']],
+    ['first_seq', 'first_seq', ['input']],
+    ['concat', 'concat_layer', ['input']],
+    ['seq_concat', 'seq_concat_layer', ['a', 'b']],
+    # reshaping layers
+    ['block_expand', 'block_expand_layer', ['input']],
+    ['expand', 'expand_layer', ['input', 'expand_as']],
+    ['repeat', 'repeat_layer', ['input']],
+    ['rotate', 'rotate_layer', ['input']],
+    ['seq_reshape', 'seq_reshape_layer', ['input']],
+    # math layers
+    ['addto', 'addto_layer', ['input']],
+    ['linear_comb', 'linear_comb_layer', ['weights', 'vectors']],
+    ['interpolation', 'interpolation_layer', ['input', 'weight']],
+    ['bilinear_interp', 'bilinear_interp_layer', ['input']],
+    ['power', 'power_layer', ['input', 'weight']],
+    ['scaling', 'scaling_layer', ['input', 'weight']],
+    ['slope_intercept', 'slope_intercept_layer', ['input']],
+    ['tensor', 'tensor_layer', ['a', 'b']],
+    ['cos_sim', 'cos_sim', ['a', 'b']],
+    ['trans', 'trans_layer', ['input']],
+    # sampling layers
+    ['max_id', 'maxid_layer', ['input']],
+    ['sampling_id', 'sampling_id_layer', ['input']],
+    # slicing and joining layers
+    ['pad', 'pad_layer', ['input']],
+    # cost layers
+    [
+        'classification_cost', 'classification_cost',
+        ['input', 'label', 'weight']
+    ],
+    ['regression_cost', 'regression_cost', ['input', 'label', 'weight']],
+    ['cross_entropy_cost', 'cross_entropy', ['input', 'label']],
+    [
+        'cross_entropy_with_selfnorm_cost', 'cross_entropy_with_selfnorm',
+        ['input', 'label']
+    ],
+    [
+        'multi_binary_label_cross_entropy_cost',
+        'multi_binary_label_cross_entropy', ['input', 'label']
+    ],
+    ['rank_cost', 'rank_cost', ['left', 'right', 'label', 'weight']],
+    ['lambda_cost', 'lambda_cost', ['input', 'score']],
+    ['sum_cost', 'sum_cost', ['input']],
+    ['huber_cost', 'huber_cost', ['input', 'label']],
+    ['crf', 'crf_layer', ['input', 'label']],
+    ['crf_decoding', 'crf_decoding_layer', ['input']],
+    ['ctc', 'ctc_layer', ['input', 'label']],
+    ['warp_ctc', 'warp_ctc_layer', ['input', 'label']],
+    ['nce', 'nce_layer', ['input', 'label']],
+    ['hsigmoid', 'hsigmoid', ['input', 'label']],
+    # check layers
+    ['eos', 'eos_layer', ['input']]
+]
+for l in layer_list:
+    globals()[l[0]] = __convert_to_v2__(l[1], l[2])
 
-    hidden = fc(input=pixel,
-                size=100,
-                act=activation.Sigmoid(),
-                param_attr=attr.Param(name='hidden'))
-    inference = fc(input=hidden, size=10, act=activation.Softmax())
-    maxid = max_id(input=inference)
-    cost1 = classification_cost(input=inference, label=label)
-    cost2 = classification_cost(input=inference, label=label, weight=weight)
-    cost3 = cross_entropy_cost(input=inference, label=label)
-    cost4 = cross_entropy_with_selfnorm_cost(input=inference, label=label)
-    cost5 = regression_cost(input=inference, label=label)
-    cost6 = regression_cost(input=inference, label=label, weight=weight)
-    cost7 = multi_binary_label_cross_entropy_cost(input=inference, label=label)
-    cost8 = rank_cost(left=score, right=score, label=score)
-    cost9 = lambda_cost(input=inference, score=score)
-    cost10 = sum_cost(input=inference)
-    cost11 = huber_cost(input=score, label=label)
+# convert projection
+for prj in __projection_names__:
+    globals()[prj] = __convert_to_v2__(
+        prj, parent_names=['input'], is_default_name=False)
 
-    print parse_network(cost1, cost2)
-    print parse_network(cost3, cost4)
-    print parse_network(cost5, cost6)
-    print parse_network(cost7, cost8, cost9, cost10, cost11)
-    print parse_network(inference, maxid)
+# convert operator
+operator_list = [
+    # [V1_method_name, parent_names],
+    ['dotmul_operator', ['a', 'b']],
+    ['conv_operator', ['img', 'filter']]
+]
+for op in operator_list:
+    globals()[op[0]] = __convert_to_v2__(
+        op[0], parent_names=op[1], is_default_name=False)

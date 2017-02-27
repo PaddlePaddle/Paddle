@@ -23,7 +23,8 @@ __all__ = ['DataProviderConverter']
 class IScanner(object):
     def __init__(self, input_type, pos):
         self.input_type = input_type
-        assert isinstance(self.input_type, dp2.InputType)
+        if not isinstance(self.input_type, dp2.InputType):
+            raise ValueError("input type should be dataprovider2.InputType")
         self.pos = pos
 
     def scan(self, dat):
@@ -50,7 +51,6 @@ class DenseScanner(IScanner):
 
     def finish_scan(self, argument):
         assert isinstance(argument, swig_paddle.Arguments)
-        assert isinstance(self.input_type, dp2.InputType)
         if self.__mat__.dtype != numpy.float32:
             self.__mat__ = self.__mat__.astype(numpy.float32)
         m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True, False)
@@ -63,7 +63,6 @@ class SparseBinaryScanner(IScanner):
         self.__rows__ = [0]
         self.__cols__ = []
         self.__height__ = 0
-        self.__nnz__ = 0
         self.__value__ = []
 
     def scan(self, dat):
@@ -76,7 +75,6 @@ class SparseBinaryScanner(IScanner):
 
     def finish_scan(self, argument):
         assert isinstance(argument, swig_paddle.Arguments)
-        assert isinstance(self.input_type, dp2.InputType)
         m = swig_paddle.Matrix.createSparse(self.__height__,
                                             self.input_type.dim,
                                             len(self.__cols__),

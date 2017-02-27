@@ -3,6 +3,7 @@ import collections
 import py_paddle.swig_paddle as api
 from py_paddle import DataProviderConverter
 
+from data_feeder import DataFeeder
 from . import event as v2_event
 from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
@@ -68,7 +69,8 @@ class SGD(ITrainer):
               test_data_reader=None,
               event_handler=None,
               batch_size=32,
-              data_types=None):
+              data_types=None,
+              reader_dict=None):
         """
         Training method. Will train num_passes of input data.
 
@@ -96,22 +98,37 @@ class SGD(ITrainer):
             self.__optimizer__.enable_types())
         assert isinstance(gm, api.GradientMachine)
         parameters.append_gradient_machine(gm)
-
+        gm.randParameters()
         updater = self.__optimizer__.create_local_updater()
         updater.init(gm)
 
         gm.start()
+        batch_evaluator = gm.makeEvaluator()
+        assert isinstance(batch_evaluator, api.Evaluator)
+        pass_evaluator = gm.makeEvaluator()
+        assert isinstance(pass_evaluator, api.Evaluator)
         out_args = api.Arguments.createArguments(0)
+
         data_types_lists = [data_type[1] for data_type in topology.data_type()]
         converter = DataProviderConverter(input_types=data_types_lists)
 
+        feeder = DataFeeder(data_types, reader_dict)
+
         for pass_id in xrange(num_passes):
+            event_handler(v2_event.BeginPass(pass_id))
+            pass_evaluator.start()
             updater.startPass()
             for batch_id, data_batch in enumerate(
                     __data_reader_to_batch__(train_data_reader, batch_size,
                                              topology)):
+                batch_evaluator.start()
+                event_handler(
+                    v2_event.BeginIteration(
+                        pass_id=pass_id, batch_id=batch_id))
                 pass_type = updater.startBatch(len(data_batch))
-                gm.forwardBackward(converter(data_batch), out_args, pass_type)
+                gm.forwardBackward(feeder(data_batch), out_args, pass_type)
+                gm.eval(pass_evaluator)
+                gm.eval(batch_evaluator)
                 for each_param in gm.getParameters():
                     updater.update(each_param)
                 # Get cost. We use numpy to calculate total cost for this batch.
@@ -119,11 +136,17 @@ class SGD(ITrainer):
                 cost_vec = cost_vec.copyToNumpyMat()
                 cost = cost_vec.sum() / len(data_batch)
                 updater.finishBatch(cost)
+                batch_evaluator.finish()
                 event_handler(
                     v2_event.EndIteration(
-                        pass_id=pass_id, batch_id=batch_id, cost=cost))
+                        pass_id=pass_id,
+                        batch_id=batch_id,
+                        cost=cost,
+                        evaluator=batch_evaluator))
 
             updater.finishPass()
+            pass_evaluator.finish()
+            event_handler(v2_event.EndPass(pass_id, evaluator=pass_evaluator))
         gm.finish()
 
 

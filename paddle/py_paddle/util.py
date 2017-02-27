@@ -208,7 +208,7 @@ def __monkeypatch_gradient_machine__():
 
         output = dict()
         for name in layerNames:
-            output[name] = __matrix_to_numpy__(self.getLayerOutput(name))
+            output[name] = __arguments_to_numpy__(0, self.getLayerOutput(name))
         return output
 
     swig_paddle.GradientMachine.getLayerOutputs = getLayerOutputs
