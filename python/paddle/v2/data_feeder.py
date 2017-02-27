@@ -58,13 +58,13 @@ class DataFeeder(DataProviderConverter):
         :type reader_dict: dict()
         """
         self.input_names = []
-        self.input_types = []
+        input_types = []
         self.reader_dict = reader_dict
         for each in data_types:
             self.input_names.append(each[0])
             assert isinstance(each[1], data_type.InputType)
-            self.input_types.append(each[1])
-        DataProviderConverter.__init__(self, self.input_types)
+            input_types.append(each[1])
+        DataProviderConverter.__init__(self, input_types)
 
     def convert(self, dat, argument=None):
         """
@@ -98,6 +98,3 @@ class DataFeeder(DataProviderConverter):
             return retv
 
         return DataProviderConverter.convert(self, reorder_data(dat), argument)
-
-    def __call__(self, dat, argument=None):
-        return self.convert(dat, argument)
