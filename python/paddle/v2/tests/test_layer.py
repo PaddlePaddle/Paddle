@@ -32,7 +32,7 @@ inference = layer.fc(input=hidden, size=10, act=activation.Softmax())
 
 
 class CostLayerTest(unittest.TestCase):
-    def not_test_cost_layer(self):
+    def test_cost_layer(self):
         cost1 = layer.classification_cost(input=inference, label=label)
         cost2 = layer.classification_cost(
             input=inference, label=label, weight=weight)

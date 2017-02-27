@@ -134,9 +134,9 @@ class Layer(object):
 
         if self.name is None:
             return self.to_proto_impl(**kwargs)
-
-        if self.name not in context:
+        elif self.name not in context:
             context[self.name] = self.to_proto_impl(**kwargs)
+
         return context[self.name]
 
     def to_proto_impl(self, **kwargs):
@@ -161,7 +161,7 @@ def __convert_to_v2__(method_name, name_prefix=None, parent_names=None):
                 if key not in parent_names:
                     other_kwargs[key] = kwargs[key]
 
-            name = kwargs['name'] if kwargs.has_key('name') else None
+            name = kwargs.get('name', None)
             super(V2LayerImpl, self).__init__(name, parent_layers)
             self.__other_kwargs__ = other_kwargs
 
