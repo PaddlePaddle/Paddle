@@ -38,6 +38,13 @@ Arguments* Arguments::createByPaddleArgumentVector(void* ptr) {
   return args;
 }
 
+Arguments* Arguments::createByPaddleArgument(const void* ptr) {
+  auto p = (paddle::Argument*)(ptr);
+  auto args = new Arguments();
+  args->m->outputs.push_back(*p);
+  return args;
+}
+
 Matrix* Arguments::getSlotValue(size_t idx) const throw(RangeError) {
   auto& a = m->getArg(idx);
   return Matrix::createByPaddleMatrixPtr(&a.value);

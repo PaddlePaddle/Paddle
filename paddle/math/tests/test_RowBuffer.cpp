@@ -17,10 +17,10 @@ limitations under the License. */
 
 TEST(RowBuffer, testAutoGrow) {
   paddle::RowBuffer buf(128);
-  ASSERT_EQ(128, buf.getWidth());
+  ASSERT_EQ(128UL, buf.getWidth());
   ASSERT_TRUE(buf.isAutoGrowth());
   buf.resize(2);
-  ASSERT_EQ(2, buf.getRowCount());
+  ASSERT_EQ(2UL, buf.getRowCount());
   for (size_t i = 0; i < buf.getWidth() * 2; ++i) {
     buf.data()[i] = i;
   }
@@ -35,7 +35,7 @@ TEST(RowBuffer, testAutoGrow) {
     data[i] = i;
   }
 
-  ASSERT_EQ(3, buf.getRowCount());
+  ASSERT_EQ(3UL, buf.getRowCount());
   for (size_t i = 0; i < buf.getRowCount() - 1; ++i) {
     for (size_t j = 0; j < buf.getWidth(); ++j) {
       ASSERT_NEAR(i * buf.getWidth() + j, buf.get(i)[j], 1e-5);
@@ -51,7 +51,7 @@ TEST(RowBuffer, testWithMemBuf) {
       std::make_shared<paddle::CpuMemoryHandle>(128 * 2 * sizeof(real));
   paddle::RowBuffer buf(mem, 128);
   ASSERT_TRUE(!buf.isAutoGrowth());
-  ASSERT_EQ(2, buf.getRowCount());
+  ASSERT_EQ(2UL, buf.getRowCount());
   for (size_t i = 0; i < buf.getWidth() * 2; ++i) {
     buf.data()[i] = i;
   }
