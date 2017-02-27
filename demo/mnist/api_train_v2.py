@@ -36,11 +36,6 @@ def main():
 
     trainer = paddle.trainer.SGD(update_equation=adam_optimizer)
 
-    reader = paddle.reader.batched(
-        paddle.reader.shuffle(
-            paddle.dataset.mnist.train_creator(), buf_size=8192),
-        batch_size=32)
-
     trainer.train(
         train_reader=paddle.reader.batched(
             paddle.reader.shuffle(paddle.dataset.mnist.train_creator(),
