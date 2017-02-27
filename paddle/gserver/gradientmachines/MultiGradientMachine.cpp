@@ -282,6 +282,18 @@ void MultiGradientMachine::forwardBackward(const std::vector<Argument>& inArgs,
   backwardImp(callback);
 }
 
+Argument MultiGradientMachine::getLayerOutput(const std::string& layerName) {
+  std::vector<Argument> args;
+  args.reserve(threads_.size());
+
+  for (auto& thread : threads_) {
+    args.push_back(thread->getGradientMachine()->getLayerOutput(layerName));
+  }
+  outLayerArgs_.concat(args, false /* use_gpu */, outArgStream_, passType_);
+
+  return outLayerArgs_;
+}
+
 void MultiGradientMachine::backwardImp(const UpdateCallback& callback) {
   for (size_t i = 0; i < parameters_.size(); i++) {
     if (!parameters_[i]->useGpu() || parameters_[i]->isStatic()) continue;

@@ -293,11 +293,10 @@ void NeuralNetwork::backward(const UpdateCallback& callback) {
   }
 }
 
-MatrixPtr NeuralNetwork::getLayerOutput(const std::string& layerName) {
-  auto it = layerMap_.find(layerName);
-  CHECK(it != layerMap_.end()) << "Cannot find layer: " << layerName;
-  return it->second->getOutputValue();
+Argument NeuralNetwork::getLayerOutput(const std::string& layerName) {
+  return getLayer(layerName)->getOutput();
 }
+
 void NeuralNetwork::onPassEnd() {
   for (auto& layer : layers_) {
     layer->onPassEnd();
