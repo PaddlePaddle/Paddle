@@ -900,6 +900,10 @@ public:
    */
   std::string toString();
 
+  std::vector<std::string> getNames() const;
+
+  double getValue(const std::string name) const;
+
 private:
   EvaluatorPrivate* m;
 
