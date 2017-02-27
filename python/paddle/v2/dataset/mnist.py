@@ -3,7 +3,7 @@ import sklearn.model_selection
 import numpy
 from config import DATA_HOME
 
-__all__ = ['MNIST', 'train_creator', 'test_creator']
+__all__ = ['train_creator', 'test_creator']
 
 
 def __mnist_reader_creator__(data, target):
