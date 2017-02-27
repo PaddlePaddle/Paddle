@@ -105,6 +105,13 @@ __all__ = [
     'conv_projection',
 ]
 
+__projection_names__ = filter(lambda x: x.endswith('_projection'),
+                              dir(conf_helps))
+__all__ += __projection_names__
+
+__operator_names__ = filter(lambda x: x.endswith('_operator'), dir(conf_helps))
+__all__ += __operator_names__
+
 
 def parse_network(*outputs):
     """
@@ -224,8 +231,7 @@ class MixedLayerV2(Layer):
     """
 
     class AddToSealedMixedLayerExceptionV2(Exception):
-        def __init__(self):
-            Exception.__init__(self)
+        pass
 
     def __init__(self,
                  size=0,
@@ -277,7 +283,7 @@ class MixedLayerV2(Layer):
 
 
 @wrap_name_default("mixed")
-@wrap_act_default(act=conf_helps.LinearActivation())
+@wrap_act_default(act=activation.Linear())
 @wrap_bias_attr_default(has_bias=False)
 @layer_support(conf_helps.layers.ERROR_CLIPPING, conf_helps.layers.DROPOUT)
 def mixed(size=0,
