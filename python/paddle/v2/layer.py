@@ -82,27 +82,10 @@ import activation
 import attr
 
 __all__ = [
-    'parse_network',
-    'data',
-    'fc',
-    'max_id',
-    'classification_cost',
-    'cross_entropy_cost',
-    'cross_entropy_with_selfnorm_cost',
-    'regression_cost',
-    'multi_binary_label_cross_entropy_cost',
-    'rank_cost',
-    'lambda_cost',
-    'sum_cost',
-    'huber_cost'
-    'full_matrix_projection',
-    'trans_full_matrix_projection',
-    'table_projection',
-    'identity_projection',
-    'scaling_projection',
-    'dotmul_projection',
-    'context_projection',
-    'conv_projection',
+    'parse_network', 'data', 'fc', 'max_id', 'classification_cost',
+    'cross_entropy_cost', 'cross_entropy_with_selfnorm_cost', 'regression_cost',
+    'multi_binary_label_cross_entropy_cost', 'rank_cost', 'lambda_cost',
+    'sum_cost', 'huber_cost'
 ]
 
 __projection_names__ = filter(lambda x: x.endswith('_projection'),
@@ -167,7 +150,7 @@ def __convert_to_v2__(method_name, name_prefix=None, parent_names=None):
         wrapper = None
 
     class V2LayerImpl(Layer):
-        def __init__(self, name=None, **kwargs):
+        def __init__(self, **kwargs):
             parent_layers = dict()
             other_kwargs = dict()
             for pname in parent_names:
@@ -178,6 +161,7 @@ def __convert_to_v2__(method_name, name_prefix=None, parent_names=None):
                 if key not in parent_names:
                     other_kwargs[key] = kwargs[key]
 
+            name = kwargs['name'] if kwargs.has_key('name') else None
             super(V2LayerImpl, self).__init__(name, parent_layers)
             self.__other_kwargs__ = other_kwargs
 
@@ -242,32 +226,30 @@ class MixedLayerV2(Layer):
                  layer_attr=None):
         self.__method_name__ = 'mixed_layer'
         self.finalized = False
-
-        self.__parent_layers__ = dict()
-        other_kwargs = dict()
-        self.input_name = 'input'
-        self.__parent_layers__[self.input_name] = []
+        self.__inputs__ = []
         if input is not None:
-            self.__parent_layers__[self.input_name] = input
+            self.__inputs__ = input
 
-        self.name = name
+        other_kwargs = dict()
+        other_kwargs['name'] = name
         other_kwargs['size'] = size
         other_kwargs['act'] = act
         other_kwargs['bias_attr'] = bias_attr
         other_kwargs['layer_attr'] = layer_attr
 
-        Layer.__init__(self, name, self.__parent_layers__)
+        parent_layers = {"input": self.__inputs__}
+        super(MixedLayerV2, self).__init__(name, parent_layers)
         self.__other_kwargs__ = other_kwargs
 
     def __iadd__(self, other):
         if not self.finalized:
-            self.__parent_layers__[self.input_name].append(other)
+            self.__inputs__.append(other)
             return self
         else:
             raise MixedLayerTypeV2.AddToSealedMixedLayerExceptionV2()
 
     def __enter__(self):
-        assert len(self.__parent_layers__[self.input_name]) == 0
+        assert len(self.__inputs__) == 0
         return self
 
     def __exit__(self, *args, **kwargs):
@@ -279,7 +261,7 @@ class MixedLayerV2(Layer):
             args[each] = kwargs[each]
         for each in self.__other_kwargs__:
             args[each] = self.__other_kwargs__[each]
-        return getattr(conf_helps, self.__method_name__)(name=self.name, **args)
+        return getattr(conf_helps, self.__method_name__)(**args)
 
 
 @wrap_name_default("mixed")
@@ -331,18 +313,7 @@ huber_cost = __convert_to_v2__(
     'huber_cost', name_prefix='huber_cost', parent_names=['input', 'label'])
 
 # convert projection
-projection_list = [
-    # [V1_method_name], all the parent_names is `input`
-    'full_matrix_projection',
-    'trans_full_matrix_projection',
-    'table_projection',
-    'scaling_projection',
-    'dotmul_projection',
-    'context_projection',
-    'conv_projection',
-    'identity_projection',
-]
-for prj in projection_list:
+for prj in __projection_names__:
     globals()[prj] = __convert_to_v2__(prj, parent_names=['input'])
 
 # convert operator
