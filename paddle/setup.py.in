@@ -72,7 +72,7 @@ setup(name="py_paddle",
   packages=['py_paddle'],
   include_dirs = include_dirs,
   install_requires = [
-    'nltk',
+    'nltk>=3.2.2',
     'numpy>=1.8.0',      # The numpy is required.
     'protobuf>=3.0.0'    # The paddle protobuf version
   ],
