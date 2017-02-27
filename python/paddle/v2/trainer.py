@@ -62,7 +62,7 @@ class SGD(ITrainer):
         self.__optimizer__ = update_equation
 
     def train(self,
-              train_data_reader,
+              train_reader_creator,
               topology,
               parameters,
               num_passes=1,
@@ -74,7 +74,7 @@ class SGD(ITrainer):
         """
         Training method. Will train num_passes of input data.
 
-        :param train_data_reader:
+        :param train_reader_creator:
         :param topology: Network Topology, use one or more Layers to represent it.
         :param parameters: The parameter pools.
         :param num_passes: The total train passes.
@@ -109,7 +109,7 @@ class SGD(ITrainer):
         for pass_id in xrange(num_passes):
             updater.startPass()
             for batch_id, data_batch in enumerate(
-                    __data_reader_to_batch__(train_data_reader, batch_size,
+                    __data_reader_to_batch__(train_reader_creator, batch_size,
                                              topology)):
                 pass_type = updater.startBatch(len(data_batch))
                 gm.forwardBackward(feeder(data_batch), out_args, pass_type)
