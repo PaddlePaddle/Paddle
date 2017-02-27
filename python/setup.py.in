@@ -5,7 +5,9 @@ packages=['paddle',
           'paddle.trainer',
           'paddle.trainer_config_helpers',
           'paddle.utils',
-          'paddle.v2']
+          'paddle.v2',
+          'paddle.v2.dataset',
+          'paddle.v2.reader']
 
 setup(name='paddle',
       version='${PADDLE_VERSION}',

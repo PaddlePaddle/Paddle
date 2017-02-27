@@ -62,7 +62,7 @@ class SGD(ITrainer):
         self.__optimizer__ = update_equation
 
     def train(self,
-              train_data_reader,
+              train_reader_creator,
               topology,
               parameters,
               num_passes=1,
@@ -74,7 +74,7 @@ class SGD(ITrainer):
         """
         Training method. Will train num_passes of input data.
 
-        :param train_data_reader:
+        :param train_reader_creator:
         :param topology: Network Topology, use one or more Layers to represent it.
         :param parameters: The parameter pools.
         :param num_passes: The total train passes.
@@ -115,7 +115,7 @@ class SGD(ITrainer):
             pass_evaluator.start()
             updater.startPass()
             for batch_id, data_batch in enumerate(
-                    __data_reader_to_batch__(train_data_reader, batch_size,
+                    __data_reader_to_batch__(train_reader_creator, batch_size,
                                              topology)):
                 batch_evaluator.start()
                 event_handler(
@@ -182,20 +182,20 @@ def __check_train_args__(train_data_reader, topology, parameters,
     """
     if not callable(train_data_reader) or not isinstance(train_data_reader(),
                                                          collections.Iterator):
-        raise ValueError('train_data_reader should be a function, '
-                         'which can return a iterator')
+        raise TypeError('train_data_reader should be a function, '
+                        'which can return a iterator')
 
     if test_data_reader is not None:
         if not callable(test_data_reader) or not isinstance(
                 test_data_reader(), collections.Iterator):
-            raise ValueError('test_data_reader should be a function, which can '
-                             'return a iterator')
+            raise TypeError('test_data_reader should be a function, which can '
+                            'return a iterator')
 
     if not isinstance(topology, ModelConfig):
-        raise ValueError('topology should be a model config')
+        raise TypeError('topology should be a model config')
 
     if not isinstance(parameters, v2_parameters.Parameters):
-        raise ValueError('parameters should be a parameter pool')
+        raise TypeError('parameters should be a parameter pool')
 
     if not callable(event_handler):
-        raise ValueError('event handler should be a function')
+        raise TypeError('event handler should be a function')
