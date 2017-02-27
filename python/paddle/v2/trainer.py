@@ -164,20 +164,20 @@ def __check_train_args__(train_data_reader, topology, parameters,
     """
     if not callable(train_data_reader) or not isinstance(train_data_reader(),
                                                          collections.Iterator):
-        raise ValueError('train_data_reader should be a function, '
-                         'which can return a iterator')
+        raise TypeError('train_data_reader should be a function, '
+                        'which can return a iterator')
 
     if test_data_reader is not None:
         if not callable(test_data_reader) or not isinstance(
                 test_data_reader(), collections.Iterator):
-            raise ValueError('test_data_reader should be a function, which can '
-                             'return a iterator')
+            raise TypeError('test_data_reader should be a function, which can '
+                            'return a iterator')
 
     if not isinstance(topology, ModelConfig):
-        raise ValueError('topology should be a model config')
+        raise TypeError('topology should be a model config')
 
     if not isinstance(parameters, v2_parameters.Parameters):
-        raise ValueError('parameters should be a parameter pool')
+        raise TypeError('parameters should be a parameter pool')
 
     if not callable(event_handler):
-        raise ValueError('event handler should be a function')
+        raise TypeError('event handler should be a function')
