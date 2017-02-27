@@ -17,6 +17,7 @@ setup(name='paddle',
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
       },
       install_requires = [
-          'scikit-learn>=0.18.0'
+          'scikit-learn>=0.18.0',
+          'scipy>=0.18.0',
       ]
 )
