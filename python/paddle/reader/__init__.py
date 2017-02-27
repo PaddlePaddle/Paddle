@@ -21,3 +21,5 @@
 #
 #     r = paddle.reader.buffered(paddle.reader.creator.text("hello.txt"))
 from decorator import *
+
+import creator

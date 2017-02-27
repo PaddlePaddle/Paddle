@@ -42,7 +42,7 @@ void CosSimLayer::forward(PassType passType) {
   /* malloc memory for the output_ if necessary */
   int batchSize = getInputValue(0)->getHeight();
   int size = getSize();
-  CHECK_EQ(forward_.size(), 1) << "Only one forward function needed";
+  CHECK_EQ(forward_.size(), 1UL) << "Only one forward function needed";
 
   {
     REGISTER_TIMER_INFO("CosFwResetTimer", getName().c_str());
@@ -68,7 +68,7 @@ void CosSimLayer::forward(PassType passType) {
 void CosSimLayer::backward(const UpdateCallback& callback) {
   /* activation */ {
     REGISTER_TIMER_INFO("CosBpAtvTimer", getName().c_str());
-    CHECK_EQ(backward_.size(), 1) << "Only one backward function needed";
+    CHECK_EQ(backward_.size(), 1UL) << "Only one backward function needed";
 
     const auto outG = this->getOutputGrad();
     const auto outV = this->getOutputValue();

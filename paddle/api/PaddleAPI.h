@@ -454,6 +454,7 @@ public:
 
 private:
   static Arguments* createByPaddleArgumentVector(void* ptr);
+  static Arguments* createByPaddleArgument(const void* ptr);
   void* getInternalArgumentsPtr() const;
 
 private:
@@ -769,7 +770,7 @@ public:
 
   void randParameters();
 
-  Matrix* getLayerOutput(const std::string& layerName) const
+  Arguments* getLayerOutput(const std::string& layerName) const
       throw(UnsupportError);
 
   /**
@@ -956,7 +957,7 @@ public:
 
   Arguments* getForwardOutput();
 
-  Matrix* getLayerOutput(const std::string& layerName);
+  Arguments* getLayerOutput(const std::string& layerName) const;
 };
 
 /// the N-Best results generated from one input sequence.

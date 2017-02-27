@@ -112,7 +112,7 @@ bool CosSimVecMatLayer::init(const LayerMap& layerMap,
 
 void CosSimVecMatLayer::forward(PassType passType) {
   Layer::forward(passType);
-  CHECK_EQ(forward_.size(), 1) << "Only one forward function needed";
+  CHECK_EQ(forward_.size(), 1UL) << "Only one forward function needed";
 
   MatrixPtr inV0 = getInputValue(0);
   MatrixPtr inV1 = getInputValue(1);
@@ -145,7 +145,7 @@ void CosSimVecMatLayer::forward(PassType passType) {
 }
 
 void CosSimVecMatLayer::backward(const UpdateCallback& callback) {
-  CHECK_EQ(backward_.size(), 1) << "Only one forward function needed";
+  CHECK_EQ(backward_.size(), 1UL) << "Only one forward function needed";
 
   MatrixPtr inV0 = getInputValue(0);
   MatrixPtr inV1 = getInputValue(1);
