@@ -112,6 +112,7 @@ __all__ = [
     'priorbox_layer',
     'spp_layer',
     'pad_layer',
+    'layer_support',
 ]
 
 
@@ -708,6 +709,7 @@ class MixedLayerType(LayerOutput):
         # update the size which might be computed inside MixedLayer
         # according to the operator's output size
         self.size = ml.config.size
+        self.finalized = True
 
 
 @wrap_name_default("mixed")
