@@ -189,6 +189,8 @@ public:
                        PassType passType,
                        const UpdateCallback& callback);
 
+  virtual Argument getLayerOutput(const std::string& layerName);
+
   virtual void onPassEnd();
 
   virtual void finish();
@@ -313,6 +315,8 @@ protected:
   std::vector<Argument> inArgs_;
   std::vector<Argument> outArgs_;
   hl_stream_t outArgStream_;
+
+  Argument outLayerArgs_;
 
   /// ParameterType which needs to be merged from each GPU
   std::vector<ParameterType> mergeTypes_;
