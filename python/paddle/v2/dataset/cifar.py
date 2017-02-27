@@ -11,7 +11,7 @@ import tarfile
 
 import numpy
 
-from config import download
+from common import download
 
 __all__ = [
     'cifar_100_train_creator', 'cifar_100_test_creator', 'train_creator',

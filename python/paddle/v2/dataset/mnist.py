@@ -1,7 +1,7 @@
 import sklearn.datasets.mldata
 import sklearn.model_selection
 import numpy
-from config import DATA_HOME
+from common import DATA_HOME
 
 __all__ = ['train_creator', 'test_creator']
 
