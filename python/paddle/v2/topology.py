@@ -49,30 +49,30 @@ class Topology(object):
         result_layer = []
 
         def find_layer_by_name(layer, layer_name):
-            if layer.name == layer_name and len(result_layer) == 0:
+            if len(result_layer) == 1:
+                return
+            elif layer.name == layer_name:
                 result_layer.append(layer)
-            for parent_layer in layer.__parent_layers__.values():
-                find_layer_by_name(parent_layer, layer_name)
+            else:
+                for parent_layer in layer.__parent_layers__.values():
+                    find_layer_by_name(parent_layer, layer_name)
 
         for layer in self.layers:
             find_layer_by_name(layer, name)
 
+        assert len(result_layer) == 1
         return result_layer[0]
 
-    def data_layer(self):
+    def data_layers(self):
         """
         get all data layer
         :return:
         """
-        data_layers = []
+        data_layers = set()
 
         def find_data_layer(layer):
-            assert isinstance(layer, layer.LayerV2)
             if isinstance(layer, v2_layer.DataLayerV2):
-                if len(
-                        filter(lambda data_layer: data_layer.name == layer.name,
-                               data_layers)) == 0:
-                    data_layers.append(layer)
+                data_layers.add(layer)
             for parent_layer in layer.__parent_layers__.values():
                 find_data_layer(parent_layer)
 
@@ -85,14 +85,9 @@ class Topology(object):
         """
         get data_type from proto, such as:
         [('image', dense_vector(768)), ('label', integer_value(10))]
-        the order is the same with __model_config__.input_layer_names
         """
-        data_types_lists = []
-        for layer_name in self.__model_config__.input_layer_names:
-            data_types_lists.append(
-                (layer_name, self.get_layer(layer_name).type))
-
-        return data_types_lists
+        return [(data_layer.name, data_layer.type)
+                for data_layer in self.data_layers()]
 
 
 def __check_layer_type__(layer):

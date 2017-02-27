@@ -30,14 +30,19 @@ class TestTopology(unittest.TestCase):
                              act=conf_helps.SoftmaxActivation())
         cost = layer.classification_cost(input=inference, label=label)
         topo = topology.Topology(cost)
-        type = topo.data_type()
-        self.assertEqual(len(type), 2)
-        self.assertEqual(type[0][0], "pixel")
-        self.assertEqual(type[0][1].type, data_type.DataType.Dense)
-        self.assertEqual(type[0][1].dim, 784)
-        self.assertEqual(type[1][0], "label")
-        self.assertEqual(type[1][1].type, data_type.DataType.Index)
-        self.assertEqual(type[1][1].dim, 10)
+        data_types = topo.data_type()
+        self.assertEqual(len(data_types), 2)
+        pixel_data_type = filter(lambda type: type[0] == "pixel", data_types)
+        self.assertEqual(len(pixel_data_type), 1)
+        pixel_data_type = pixel_data_type[0]
+        self.assertEqual(pixel_data_type[1].type, data_type.DataType.Dense)
+        self.assertEqual(pixel_data_type[1].dim, 784)
+
+        label_data_type = filter(lambda type: type[0] == "label", data_types)
+        self.assertEqual(len(label_data_type), 1)
+        label_data_type = label_data_type[0]
+        self.assertEqual(label_data_type[1].type, data_type.DataType.Index)
+        self.assertEqual(label_data_type[1].dim, 10)
 
     def test_get_layer(self):
         pixel = layer.data(name='pixel', type=data_type.dense_vector(784))

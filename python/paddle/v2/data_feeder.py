@@ -23,7 +23,7 @@ class DataFeeder(DataProviderConverter):
     """
     DataFeeder converts the data returned by paddle.reader into a data structure
     of Arguments which is defined in the API. The paddle.reader usually returns
-    a list of mini-batch data entries. Each data entry in the list is one sampe.
+    a list of mini-batch data entries. Each data entry in the list is one sample.
     Each sample is a list or a tuple with one feature or multiple features.
     DataFeeder converts this mini-batch data entries into Arguments in order
     to feed it to C++ interface.

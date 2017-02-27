@@ -284,6 +284,7 @@ def mixed(size=0,
     return MixedLayerV2(size, input, name, act, bias_attr, layer_attr)
 
 
+LayerV2 = Layer
 data = DataLayerV2
 AggregateLevel = conf_helps.layers.AggregateLevel
 ExpandLevel = conf_helps.layers.ExpandLevel

@@ -2,7 +2,7 @@ import numpy as np
 import py_paddle.swig_paddle as api
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
 
-import topology as v2_topology
+from topology import Topology
 
 __all__ = ['Parameters', 'create']
 
@@ -13,7 +13,7 @@ def create(layers):
     :param layers:
     :return:
     """
-    topology = v2_topology.Topology(layers)
+    topology = Topology(layers)
     pool = Parameters()
     for param in topology.proto().parameters:
         pool.__append_config__(param)
