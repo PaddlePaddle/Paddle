@@ -53,7 +53,7 @@ class DenseScanner(IScanner):
         assert isinstance(argument, swig_paddle.Arguments)
         if self.__mat__.dtype != numpy.float32:
             self.__mat__ = self.__mat__.astype(numpy.float32)
-        m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True, False)
+        m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__)
         argument.setSlotValue(self.pos, m)
 
 
