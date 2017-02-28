@@ -22,23 +22,21 @@ def reader_creator(image_filename, label_filename, buffer_size):
         # According to http://stackoverflow.com/a/38061619/724872, we
         # cannot use standard package gzip here.
         m = subprocess.Popen(["zcat", image_filename], stdout=subprocess.PIPE)
-        m.stdout.read(16) # skip some magic bytes
+        m.stdout.read(16)  # skip some magic bytes
 
         l = subprocess.Popen(["zcat", label_filename], stdout=subprocess.PIPE)
-        l.stdout.read(8) # skip some magic bytes
+        l.stdout.read(8)  # skip some magic bytes
 
         while True:
             labels = numpy.fromfile(
-                l.stdout, 'ubyte', count=buffer_size
-            ).astype("int")
+                l.stdout, 'ubyte', count=buffer_size).astype("int")
 
             if labels.size != buffer_size:
-                break # numpy.fromfile returns empty slice after EOF.
+                break  # numpy.fromfile returns empty slice after EOF.
 
             images = numpy.fromfile(
-                m.stdout, 'ubyte', count=buffer_size * 28 * 28
-            ).reshape((buffer_size, 28 * 28)
-            ).astype('float32')
+                m.stdout, 'ubyte', count=buffer_size * 28 * 28).reshape(
+                    (buffer_size, 28 * 28)).astype('float32')
 
             images = images / 255.0 * 2.0 - 1.0
 
@@ -50,18 +48,18 @@ def reader_creator(image_filename, label_filename, buffer_size):
 
     return reader()
 
+
 def train():
     return reader_creator(
-        paddle.v2.dataset.common.download(
-            TRAIN_IMAGE_URL, 'mnist', TRAIN_IMAGE_MD5),
-        paddle.v2.dataset.common.download(
-            TRAIN_LABEL_URL, 'mnist', TRAIN_LABEL_MD5),
-        100)
+        paddle.v2.dataset.common.download(TRAIN_IMAGE_URL, 'mnist',
+                                          TRAIN_IMAGE_MD5),
+        paddle.v2.dataset.common.download(TRAIN_LABEL_URL, 'mnist',
+                                          TRAIN_LABEL_MD5), 100)
+
 
 def test():
     return reader_creator(
-        paddle.v2.dataset.common.download(
-            TEST_IMAGE_URL, 'mnist', TEST_IMAGE_MD5),
-        paddle.v2.dataset.common.download(
-            TEST_LABEL_URL, 'mnist', TEST_LABEL_MD5),
-        100)
+        paddle.v2.dataset.common.download(TEST_IMAGE_URL, 'mnist',
+                                          TEST_IMAGE_MD5),
+        paddle.v2.dataset.common.download(TEST_LABEL_URL, 'mnist',
+                                          TEST_LABEL_MD5), 100)
