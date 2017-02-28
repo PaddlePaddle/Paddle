@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import optimizer
-import layer
 import configs
 import parameters
 import trainer
@@ -24,8 +23,8 @@ from . import reader
 import py_paddle.swig_paddle as api
 
 __all__ = [
-    'optimizer', 'layer', 'parameters', 'init', 'trainer', 'event',
-    'data_feeder', 'dataset', 'reader', 'topology'
+    'optimizer', 'parameters', 'init', 'trainer', 'event', 'data_feeder',
+    'dataset', 'reader', 'topology'
 ]
 
 
