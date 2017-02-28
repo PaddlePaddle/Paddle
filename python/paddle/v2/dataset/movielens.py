@@ -4,7 +4,7 @@ import re
 import random
 import functools
 
-__all__ = ['train_creator', 'test_creator']
+__all__ = ['train_creator', 'test_creator', 'get_movie_title_dict']
 
 
 class MovieInfo(object):
@@ -40,7 +40,8 @@ USER_INFO = None
 def __initialize_meta_info__():
     fn = download(
         url='http://files.grouplens.org/datasets/movielens/ml-1m.zip',
-        md5='c4d9eecfca2ab87c1945afe126590906')
+        module_name='movielens',
+        md5sum='c4d9eecfca2ab87c1945afe126590906')
     global MOVIE_INFO
     if MOVIE_INFO is None:
         pattern = re.compile(r'^(.*)\((\d+)\)$')
@@ -105,6 +106,11 @@ def __reader_creator__(**kwargs):
 
 train_creator = functools.partial(__reader_creator__, is_test=False)
 test_creator = functools.partial(__reader_creator__, is_test=True)
+
+
+def get_movie_title_dict():
+    __initialize_meta_info__()
+    return MOVIE_TITLE_DICT
 
 
 def unittest():
