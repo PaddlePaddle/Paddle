@@ -11,17 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import difflib
 import unittest
 
-import paddle.trainer_config_helpers as conf_helps
 import paddle.v2.activation as activation
 import paddle.v2.attr as attr
 import paddle.v2.data_type as data_type
 import paddle.v2.layer as layer
 import paddle.v2.pooling as pooling
-from paddle.trainer_config_helpers.config_parser_utils import \
-    parse_network_config as parse_network
 
 pixel = layer.data(name='pixel', type=data_type.dense_vector(128))
 label = layer.data(name='label', type=data_type.integer_value(10))
@@ -70,7 +66,7 @@ class ImageLayerTest(unittest.TestCase):
 
 class AggregateLayerTest(unittest.TestCase):
     def test_aggregate_layer(self):
-        pool = layer.pool(
+        pool = layer.pooling(
             input=pixel,
             pooling_type=pooling.Avg(),
             agg_level=layer.AggregateLevel.EACH_SEQUENCE)
