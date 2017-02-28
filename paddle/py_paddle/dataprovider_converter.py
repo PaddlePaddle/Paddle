@@ -33,6 +33,11 @@ class IScanner(object):
     def finish_scan(self, argument):
         pass
 
+    def use_gpu(self):
+        gpu = True if swig_paddle.isUsingGpu() and (
+            swig_paddle.getTrainerCount() == 1) else False
+        return gpu
+
 
 class DenseScanner(IScanner):
     """
@@ -53,7 +58,8 @@ class DenseScanner(IScanner):
         assert isinstance(argument, swig_paddle.Arguments)
         if self.__mat__.dtype != numpy.float32:
             self.__mat__ = self.__mat__.astype(numpy.float32)
-        m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True, False)
+        m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True,
+                                                    self.use_gpu())
         argument.setSlotValue(self.pos, m)
 
 
@@ -75,10 +81,13 @@ class SparseBinaryScanner(IScanner):
 
     def finish_scan(self, argument):
         assert isinstance(argument, swig_paddle.Arguments)
-        m = swig_paddle.Matrix.createSparse(self.__height__,
-                                            self.input_type.dim,
-                                            len(self.__cols__),
-                                            len(self.__value__) == 0)
+        m = swig_paddle.Matrix.createSparse(
+            self.__height__,
+            self.input_type.dim,
+            len(self.__cols__),
+            len(self.__value__) == 0,
+            False,  # trans
+            False)  # TODO supoort GPU
         assert isinstance(m, swig_paddle.Matrix)
         m.sparseCopyFrom(self.__rows__, self.__cols__, self.__value__)
         argument.setSlotValue(self.pos, m)
@@ -102,7 +111,7 @@ class IndexScanner(IScanner):
         self.__ids__.append(dat)
 
     def finish_scan(self, argument):
-        ids = swig_paddle.IVector.create(self.__ids__)
+        ids = swig_paddle.IVector.create(self.__ids__, self.use_gpu())
         assert isinstance(argument, swig_paddle.Arguments)
         argument.setSlotIds(self.pos, ids)
 

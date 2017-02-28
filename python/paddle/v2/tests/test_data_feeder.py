@@ -235,4 +235,9 @@ class DataFeederTest(unittest.TestCase):
 
 if __name__ == '__main__':
     api.initPaddle("--use_gpu=0")
+    suite = unittest.TestLoader().loadTestsFromTestCase(DataFeederTest)
+    unittest.TextTestRunner().run(suite)
+    if api.isGpuVersion():
+        api.setUseGpu(True)
+        unittest.main()
     unittest.main()
