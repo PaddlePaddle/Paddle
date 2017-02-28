@@ -27,7 +27,6 @@ def download(url, module_name, md5sum):
 
     filename = os.path.join(dirname, url.split('/')[-1])
     if not (os.path.exists(filename) and md5file(filename) == md5sum):
-        # If file doesn't exist or MD5 doesn't match, then download.
         r = requests.get(url, stream=True)
         with open(filename, 'w') as f:
             shutil.copyfileobj(r.raw, f)
