@@ -14,6 +14,7 @@
 
 import functools
 import collections
+import inspect
 
 from paddle.trainer.config_parser import *
 from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
@@ -315,6 +316,11 @@ def layer_support(*attrs):
                 if isinstance(val, ExtraLayerAttribute):
                     val.check(method.__name__)
             return method(*args, **kwargs)
+
+        if hasattr(method, 'argspec'):
+            wrapper.argspec = method.argspec
+        else:
+            wrapper.argspec = inspect.getargspec(method)
 
         return wrapper
 

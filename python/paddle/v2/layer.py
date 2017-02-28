@@ -67,6 +67,7 @@ paddle.v2.parameters.create, no longer exposed to users.
 """
 
 import collections
+import inspect
 
 import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.config_parser_utils import \
@@ -74,26 +75,14 @@ from paddle.trainer_config_helpers.config_parser_utils import \
 
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 from paddle.trainer_config_helpers.default_decorators import wrap_act_default
-from paddle.trainer_config_helpers.default_decorators import wrap_bias_attr_default
+from paddle.trainer_config_helpers.default_decorators import \
+    wrap_bias_attr_default
 from paddle.trainer_config_helpers.layers import layer_support
 
 import data_type
 import activation
-import attr
 
-__all__ = [
-    'parse_network', 'data', 'fc', 'conv_shift', 'img_conv', 'img_pool', 'spp',
-    'maxout', 'img_cmrnorm', 'batch_norm', 'sum_to_one_norm', 'recurrent',
-    'lstmemory', 'grumemory', 'pool', 'last_seq', 'first_seq', 'concat',
-    'seq_concat', 'block_expand', 'expand', 'repeat', 'seq_reshape', 'addto',
-    'linear_comb', 'interpolation', 'bilinear_interp', 'power', 'scaling',
-    'slope_intercept', 'tensor', 'cos_sim', 'trans', 'max_id', 'sampling_id',
-    'pad', 'classification_cost', 'cross_entropy_cost',
-    'cross_entropy_with_selfnorm_cost', 'regression_cost',
-    'multi_binary_label_cross_entropy_cost', 'rank_cost', 'lambda_cost',
-    'sum_cost', 'huber_cost', 'crf', 'crf_decoding', 'ctc', 'warp_ctc', 'nce',
-    'hsigmoid', 'eos'
-]
+__all__ = ['parse_network', 'data']
 
 __projection_names__ = filter(lambda x: x.endswith('_projection'),
                               dir(conf_helps))
@@ -288,83 +277,51 @@ data = DataLayerV2
 AggregateLevel = conf_helps.layers.AggregateLevel
 ExpandLevel = conf_helps.layers.ExpandLevel
 
-layer_list = [
-    # [V2LayerImpl, V1_method_name, parent_names]
-    # fully connected layers
-    ['fc', 'fc_layer', ['input']],
-    # conv layers
-    ['conv_shift', 'conv_shift_layer', ['a', 'b']],
-    ['img_conv', 'img_conv_layer', ['input']],
-    # image pooling layers
-    ['img_pool', 'img_pool_layer', ['input']],
-    ['spp', 'spp_layer', ['input']],
-    ['maxout', 'maxout_layer', ['input']],
-    # norm layers
-    ['img_cmrnorm', 'img_cmrnorm_layer', ['input']],
-    ['batch_norm', 'batch_norm_layer', ['input']],
-    ['sum_to_one_norm', 'sum_to_one_norm_layer', ['input']],
-    # recurrent layers
-    ['recurrent', 'recurrent_layer', ['input']],
-    ['lstmemory', 'lstmemory', ['input']],
-    ['grumemory', 'grumemory', ['input']],
-    # aggregate layers
-    ['pool', 'pooling_layer', ['input']],
-    ['last_seq', 'last_seq', ['input']],
-    ['first_seq', 'first_seq', ['input']],
-    ['concat', 'concat_layer', ['input']],
-    ['seq_concat', 'seq_concat_layer', ['a', 'b']],
-    # reshaping layers
-    ['block_expand', 'block_expand_layer', ['input']],
-    ['expand', 'expand_layer', ['input', 'expand_as']],
-    ['repeat', 'repeat_layer', ['input']],
-    ['rotate', 'rotate_layer', ['input']],
-    ['seq_reshape', 'seq_reshape_layer', ['input']],
-    # math layers
-    ['addto', 'addto_layer', ['input']],
-    ['linear_comb', 'linear_comb_layer', ['weights', 'vectors']],
-    ['interpolation', 'interpolation_layer', ['input', 'weight']],
-    ['bilinear_interp', 'bilinear_interp_layer', ['input']],
-    ['power', 'power_layer', ['input', 'weight']],
-    ['scaling', 'scaling_layer', ['input', 'weight']],
-    ['slope_intercept', 'slope_intercept_layer', ['input']],
-    ['tensor', 'tensor_layer', ['a', 'b']],
-    ['cos_sim', 'cos_sim', ['a', 'b']],
-    ['trans', 'trans_layer', ['input']],
-    # sampling layers
-    ['max_id', 'maxid_layer', ['input']],
-    ['sampling_id', 'sampling_id_layer', ['input']],
-    # slicing and joining layers
-    ['pad', 'pad_layer', ['input']],
-    # cost layers
-    [
-        'classification_cost', 'classification_cost',
-        ['input', 'label', 'weight']
-    ],
-    ['regression_cost', 'regression_cost', ['input', 'label', 'weight']],
-    ['cross_entropy_cost', 'cross_entropy', ['input', 'label']],
-    [
-        'cross_entropy_with_selfnorm_cost', 'cross_entropy_with_selfnorm',
-        ['input', 'label']
-    ],
-    [
-        'multi_binary_label_cross_entropy_cost',
-        'multi_binary_label_cross_entropy', ['input', 'label']
-    ],
-    ['rank_cost', 'rank_cost', ['left', 'right', 'label', 'weight']],
-    ['lambda_cost', 'lambda_cost', ['input', 'score']],
-    ['sum_cost', 'sum_cost', ['input']],
-    ['huber_cost', 'huber_cost', ['input', 'label']],
-    ['crf', 'crf_layer', ['input', 'label']],
-    ['crf_decoding', 'crf_decoding_layer', ['input']],
-    ['ctc', 'ctc_layer', ['input', 'label']],
-    ['warp_ctc', 'warp_ctc_layer', ['input', 'label']],
-    ['nce', 'nce_layer', ['input', 'label']],
-    ['hsigmoid', 'hsigmoid', ['input', 'label']],
-    # check layers
-    ['eos', 'eos_layer', ['input']]
-]
-for l in layer_list:
-    globals()[l[0]] = __convert_to_v2__(l[1], l[2])
+
+def __layer_name_mapping__(inname):
+    if inname in ['data_layer', 'memory', 'mixed_layer']:
+        # Do Not handle these layers
+        return
+    elif inname == 'maxid_layer':
+        return 'max_id'
+    elif inname.endswith('memory') or inname.endswith(
+            '_seq') or inname.endswith('_sim') or inname == 'hsigmoid':
+        return inname
+    elif inname in [
+            'cross_entropy', 'multi_binary_label_cross_entropy',
+            'cross_entropy_with_selfnorm'
+    ]:
+        return inname + "_cost"
+    elif inname.endswith('_cost'):
+        return inname
+    elif inname.endswith("_layer"):
+        return inname[:-len("_layer")]
+
+
+def __layer_name_mapping_parent_names__(inname):
+    all_args = getattr(conf_helps, inname).argspec.args
+    return filter(
+        lambda x: x in ['input1', 'input2','label', 'input', 'a', 'b', 'expand_as',
+                        'weights', 'vectors', 'weight', 'score', 'left', 'right'],
+        all_args)
+
+
+def __convert_layer__(_new_name_, _old_name_, _parent_names_):
+    global __all__
+    __all__.append(_new_name_)
+    globals()[new_name] = __convert_to_v2__(_old_name_, _parent_names_)
+
+
+for each_layer_name in dir(conf_helps):
+    new_name = __layer_name_mapping__(each_layer_name)
+    if new_name is not None:
+        parent_names = __layer_name_mapping_parent_names__(each_layer_name)
+        assert len(parent_names) != 0, each_layer_name
+        __convert_layer__(new_name, each_layer_name, parent_names)
+
+del parent_names
+del new_name
+del each_layer_name
 
 # convert projection
 for prj in __projection_names__:
