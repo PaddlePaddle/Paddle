@@ -273,5 +273,16 @@ class ProjOpTest(unittest.TestCase):
         print configs.layer.parse_network(conv1)
 
 
+class NetworkTest(unittest.TestCase):
+    def test_vgg(self):
+        img = configs.layer.data(
+            name='pixel', type=configs.data_type.dense_vector(784))
+        vgg_out = configs.network.small_vgg(
+            input_image=img, num_channels=1, num_classes=2)
+        print configs.layer.parse_network(vgg_out)
+
+    # TODO Complete unittest.
+
+
 if __name__ == '__main__':
     unittest.main()
