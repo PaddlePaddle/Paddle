@@ -61,7 +61,7 @@ class SGD(ITrainer):
         self.__topology__ = topology
         self.__parameters__ = parameters
         self.__topology_in_proto__ = topology.proto()
-        self.__data_types__ = topology.data_layers()
+        self.__data_types__ = topology.data_type()
         gm = api.GradientMachine.createFromConfigProto(
             self.__topology_in_proto__, api.CREATE_MODE_NORMAL,
             self.__optimizer__.enable_types())
