@@ -12,9 +12,7 @@
 
 - [*Namespaces*](https://kubernetes.io/docs/user-guide/namespaces/) 命名空间，在kubernetes中创建的所有资源对象(例如上文的pod，job)等都属于一个命名空间，在同一个命名空间中，资源对象的名字是唯一的，不同空间的资源名可以重复，命名空间主要为了对象进行逻辑上的分组便于管理。本文只使用了默认命名空间。
 
-- [*PersistentVolume*]()
-
-- [*PersistentVolumeClaim*]()
+- [*PersistentVolume*](https://kubernetes.io/docs/user-guide/persistent-volumes/): 和[*PersistentVolumeClaim*](https://kubernetes.io/docs/user-guide/persistent-volumes/#persistentvolumeclaims)结合，将外部的存储服务在Kubernetes中描述成为统一的资源形式，便于存储资源管理和Pod引用。
 
 # 部署Kubernetes集群
 
