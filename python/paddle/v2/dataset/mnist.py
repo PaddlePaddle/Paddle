@@ -1,6 +1,7 @@
 import paddle.v2.dataset.common
 import subprocess
 import numpy
+import platform
 
 __all__ = ['train', 'test']
 
@@ -18,12 +19,19 @@ TRAIN_LABEL_MD5 = 'd53e105ee54ea40749a09fcbcd1e9432'
 
 def reader_creator(image_filename, label_filename, buffer_size):
     def reader():
+        if platform.system() == 'Darwin':
+            zcat_cmd = 'gzcat'
+        elif platform.system() == 'Linux':
+            zcat_cmd = 'zcat'
+        else:
+            raise NotImplementedError()
+
         # According to http://stackoverflow.com/a/38061619/724872, we
         # cannot use standard package gzip here.
-        m = subprocess.Popen(["zcat", image_filename], stdout=subprocess.PIPE)
+        m = subprocess.Popen([zcat_cmd, image_filename], stdout=subprocess.PIPE)
         m.stdout.read(16)  # skip some magic bytes
 
-        l = subprocess.Popen(["zcat", label_filename], stdout=subprocess.PIPE)
+        l = subprocess.Popen([zcat_cmd, label_filename], stdout=subprocess.PIPE)
         l.stdout.read(8)  # skip some magic bytes
 
         while True:

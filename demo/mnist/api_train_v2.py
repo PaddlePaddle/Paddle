@@ -38,7 +38,6 @@ def main():
         cost=cost,
         parameters=parameters,
         event_handler=event_handler,
-        batch_size=32,  # batch size should be refactor in Data reader
         reader_dict={images.name: 0,
                      label.name: 1})
 
