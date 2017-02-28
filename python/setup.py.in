@@ -5,7 +5,9 @@ packages=['paddle',
           'paddle.trainer',
           'paddle.trainer_config_helpers',
           'paddle.utils',
-          'paddle.v2']
+          'paddle.v2',
+          'paddle.v2.dataset',
+          'paddle.v2.reader']
 
 setup(name='paddle',
       version='${PADDLE_VERSION}',
@@ -13,5 +15,9 @@ setup(name='paddle',
       packages=packages,
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}'
-      }
+      },
+      install_requires = [
+          'scikit-learn>=0.18.0',
+          'scipy>=0.18.0',
+      ]
 )

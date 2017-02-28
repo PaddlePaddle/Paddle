@@ -1,15 +1,6 @@
 import numpy
 import paddle.v2 as paddle
 
-import mnist_util
-
-
-def train_reader():
-    train_file = './data/raw_data/train'
-    generator = mnist_util.read_from_mnist(train_file)
-    for item in generator:
-        yield item
-
 
 def main():
     paddle.init(use_gpu=False, trainer_count=1)
@@ -30,27 +21,29 @@ def main():
 
     adam_optimizer = paddle.optimizer.Adam(learning_rate=0.01)
 
+    trainer = paddle.trainer.SGD(topology=cost,
+                                 parameters=parameters,
+                                 update_equation=adam_optimizer)
+
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
-            if event.batch_id % 100 == 0:
-                print "Pass %d, Batch %d, Cost %f, %s" % (
-                    event.pass_id, event.batch_id, event.cost, event.metrics)
+            if event.batch_id % 1000 == 0:
+                result = trainer.test(reader=paddle.reader.batched(
+                    paddle.dataset.mnist.test_creator(), batch_size=256))
+
+                print "Pass %d, Batch %d, Cost %f, %s, Testing metrics %s" % (
+                    event.pass_id, event.batch_id, event.cost, event.metrics,
+                    result.metrics)
+
         else:
             pass
 
-    trainer = paddle.trainer.SGD(update_equation=adam_optimizer)
-
-    trainer.train(train_data_reader=train_reader,
-                  topology=cost,
-                  parameters=parameters,
-                  event_handler=event_handler,
-                  batch_size=32,  # batch size should be refactor in Data reader
-                  data_types=[  # data_types will be removed, It should be in
-                      # network topology
-                      ('pixel', images.type),
-                      ('label', label.type)],
-                  reader_dict={'pixel':0, 'label':1}
-                  )
+    trainer.train(
+        reader=paddle.reader.batched(
+            paddle.reader.shuffle(
+                paddle.dataset.mnist.train_creator(), buf_size=8192),
+            batch_size=32),
+        event_handler=event_handler)
 
 
 if __name__ == '__main__':
