@@ -1,6 +1,8 @@
 import paddle.trainer_config_helpers as conf_helps
+import paddle.trainer_config_helpers.networks as conf_nw
 import paddle.trainer.PyDataProvider2 as pydp2
 import collections
+import inspect
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
 from paddle.trainer_config_helpers.default_decorators import wrap_act_default
@@ -9,7 +11,7 @@ from paddle.trainer_config_helpers.default_decorators import \
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 from paddle.trainer_config_helpers.layers import layer_support
 
-__all__ = ['activation', 'attr', 'data_type', 'pooling']
+__all__ = ['activation', 'attr', 'data_type', 'pooling', 'network']
 
 
 class Namespace(object):
@@ -22,6 +24,7 @@ attr = Namespace()
 data_type = Namespace()
 pooling = Namespace()
 layer = Namespace()
+network = Namespace()
 
 
 def __copy__(obj, origin_name, dest_name=None, origin_module=conf_helps):
@@ -307,6 +310,25 @@ def __initialize__():
             op[0],
             __convert_to_v2__(
                 op[0], parent_names=op[1], is_default_name=False))
+
+    for each_subnetwork in conf_nw.__all__:
+        if each_subnetwork in ['inputs', 'outputs']:
+            continue
+        func = getattr(conf_nw, each_subnetwork)
+        if hasattr(func, 'argspec'):
+            argspec = func.argspec
+        else:
+            argspec = inspect.getargspec(func)
+        if each_subnetwork == 'simple_attention':
+            parents = ['encoded_sequence', 'encoded_proj', 'decoder_state']
+        else:
+            parents = filter(lambda x: x.startswith('input'), argspec.args)
+
+        v2_subnet = __convert_to_v2__(
+            each_subnetwork,
+            parent_names=parents,
+            is_default_name='name' in argspec.args)
+        setattr(network, each_subnetwork, v2_subnet)
 
 
 __initialize__()
