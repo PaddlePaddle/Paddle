@@ -1,5 +1,5 @@
 import zipfile
-from config import download
+from common import download
 import re
 import random
 import functools

@@ -66,7 +66,7 @@ class ImageLayerTest(unittest.TestCase):
 
 class AggregateLayerTest(unittest.TestCase):
     def test_aggregate_layer(self):
-        pool = layer.pool(
+        pool = layer.pooling(
             input=pixel,
             pooling_type=pooling.Avg(),
             agg_level=layer.AggregateLevel.EACH_SEQUENCE)

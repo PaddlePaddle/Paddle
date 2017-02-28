@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,31 +12,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import optimizer
-import layer
-import activation
-import parameters
-import trainer
-import event
-import data_type
-import topology
-import data_feeder
-from . import dataset
-from . import reader
-import attr
-import pooling
-import py_paddle.swig_paddle as api
-
-__all__ = [
-    'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
-    'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'dataset', 'reader',
-    'topology'
-]
 
 
-def init(**kwargs):
-    args = []
-    for key in kwargs.keys():
-        args.append('--%s=%s' % (key, str(kwargs[key])))
+pushd `dirname $0` > /dev/null
+SCRIPTPATH=$PWD
+popd > /dev/null
 
-    api.initPaddle(*args)
+cd $SCRIPTPATH
+$1 -m pip install ../../../../../paddle/dist/*.whl
+
+test_list="creator_test.py decorator_test.py"
+
+export PYTHONPATH=$PWD/../../../../../python/
+
+for fn in $test_list
+do
+  echo "test $fn"
+  $1 $fn
+  if [ $? -ne 0 ]; then
+    exit 1
+  fi
+done
