@@ -18,13 +18,15 @@ import parameters
 import trainer
 import event
 import data_type
+import topology
 import data_feeder
 import attr
+import pooling
 import py_paddle.swig_paddle as api
 
 __all__ = [
     'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
-    'event', 'data_type', 'attr', 'data_feeder'
+    'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'topology'
 ]
 
 

@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.trainer.PyDataProvider2 import \
-    InputType, DataType, dense_vector, sparse_binary_vector,\
-    sparse_vector, integer_value, integer_value_sequence
+from paddle.trainer_config_helpers.poolings import *
 
-__all__ = [
-    'InputType', 'DataType', 'dense_vector', 'sparse_binary_vector',
-    'sparse_vector', 'integer_value', 'integer_value_sequence'
-]
+__all__ = ["Max", "CudnnMax", "Avg", "CudnnAvg", "Sum", "SquareRootN"]
+
+Max = MaxPooling
+CudnnMax = CudnnMaxPooling
+Avg = AvgPooling
+CudnnAvg = CudnnAvgPooling
+Sum = SumPooling
+SquareRootN = SquareRootNPooling

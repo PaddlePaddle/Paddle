@@ -1,11 +1,10 @@
 import collections
 
 import py_paddle.swig_paddle as api
-from paddle.proto.ModelConfig_pb2 import ModelConfig
-from data_feeder import DataFeeder
 
+from data_feeder import DataFeeder
+from topology import Topology
 from . import event as v2_event
-from . import layer as v2_layer
 from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
 
@@ -30,7 +29,7 @@ class ITrainer(object):
 
     def train(self,
               train_data_reader,
-              topology,
+              cost,
               parameters,
               test_data_reader=None,
               event_handler=None):
@@ -38,7 +37,7 @@ class ITrainer(object):
         train method.
 
         :param train_data_reader:
-        :param topology:
+        :param cost:
         :param parameters:
         :param test_data_reader:
         :param event_handler:
@@ -63,19 +62,18 @@ class SGD(ITrainer):
 
     def train(self,
               train_data_reader,
-              topology,
+              cost,
               parameters,
               num_passes=1,
               test_data_reader=None,
               event_handler=None,
               batch_size=32,
-              data_types=None,
               reader_dict=None):
         """
         Training method. Will train num_passes of input data.
 
         :param train_data_reader:
-        :param topology: Network Topology, use one or more Layers to represent it.
+        :param cost: cost layers, to be optimized.
         :param parameters: The parameter pools.
         :param num_passes: The total train passes.
         :param test_data_reader:
@@ -83,18 +81,18 @@ class SGD(ITrainer):
                               occurred.
         :type event_handler: (BaseEvent) => None
         :param batch_size: Not important, will be removed after data refactor.
-        :param data_types: Not important, will be removed after data refactor.
         :return:
         """
         if event_handler is None:
             event_handler = default_event_handler
 
-        topology = v2_layer.parse_network(topology)
+        topology = Topology(cost)
 
         __check_train_args__(**locals())
 
         gm = api.GradientMachine.createFromConfigProto(
-            topology, api.CREATE_MODE_NORMAL, self.__optimizer__.enable_types())
+            topology.proto(), api.CREATE_MODE_NORMAL,
+            self.__optimizer__.enable_types())
         assert isinstance(gm, api.GradientMachine)
         parameters.append_gradient_machine(gm)
         gm.randParameters()
@@ -108,7 +106,7 @@ class SGD(ITrainer):
         assert isinstance(pass_evaluator, api.Evaluator)
         out_args = api.Arguments.createArguments(0)
 
-        feeder = DataFeeder(data_types, reader_dict)
+        feeder = DataFeeder(topology.data_type(), reader_dict)
 
         for pass_id in xrange(num_passes):
             event_handler(v2_event.BeginPass(pass_id))
@@ -154,7 +152,7 @@ def __data_reader_to_batch__(reader, batch_size, topology):
     def input_reorder(func):
         for item in func():
             retv = []
-            for __layer_name__ in topology.input_layer_names:
+            for __layer_name__ in topology.proto().input_layer_names:
                 retv.append(item[__layer_name__])
             yield retv
 
@@ -191,7 +189,7 @@ def __check_train_args__(train_data_reader, topology, parameters,
             raise ValueError('test_data_reader should be a function, which can '
                              'return a iterator')
 
-    if not isinstance(topology, ModelConfig):
+    if not isinstance(topology, Topology):
         raise ValueError('topology should be a model config')
 
     if not isinstance(parameters, v2_parameters.Parameters):
