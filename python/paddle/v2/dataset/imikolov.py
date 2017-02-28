@@ -3,7 +3,6 @@ imikolov's simple dataset: http://www.fit.vutbr.cz/~imikolov/rnnlm/
 """
 import paddle.v2.dataset.common
 import tarfile
-import collections
 
 __all__ = ['train', 'test']
 
@@ -40,10 +39,8 @@ def build_dict(train_filename, test_filename):
         testf = tf.extractfile(test_filename)
         word_freq = word_count(testf, word_count(trainf))
 
-        STOPWORD_FREQ = 3000
         TYPO_FREQ = 50
-        word_freq = filter(lambda x: x[1] > TYPO_FREQ and x[1] < STOPWORD_FREQ,
-                           word_freq.items())
+        word_freq = filter(lambda x: x[1] > TYPO_FREQ, word_freq.items())
 
         dictionary = sorted(word_freq, key=lambda x: (-x[1], x[0]))
         words, _ = list(zip(*dictionary))
