@@ -1,11 +1,10 @@
 import collections
 
 import py_paddle.swig_paddle as api
-from paddle.proto.ModelConfig_pb2 import ModelConfig
-from data_feeder import DataFeeder
 
+from data_feeder import DataFeeder
+from topology import Topology
 from . import event as v2_event
-from . import layer as v2_layer
 from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
 
@@ -57,11 +56,10 @@ class SGD(ITrainer):
 
     def train(self,
               reader,
-              topology,
+              cost,
               parameters,
               num_passes=1,
               event_handler=None,
-              data_types=None,
               reader_dict=None):
         """
         Training method. Will train num_passes of input data.
@@ -73,18 +71,18 @@ class SGD(ITrainer):
         :param event_handler: Event handler. A method will be invoked when event
                               occurred.
         :type event_handler: (BaseEvent) => None
-        :param data_types: Not important, will be removed after data refactor.
         :return:
         """
         if event_handler is None:
             event_handler = default_event_handler
 
-        topology = v2_layer.parse_network(topology)
+        topology = Topology(cost)
 
         __check_train_args__(**locals())
 
         gm = api.GradientMachine.createFromConfigProto(
-            topology, api.CREATE_MODE_NORMAL, self.__optimizer__.enable_types())
+            topology.proto(), api.CREATE_MODE_NORMAL,
+            self.__optimizer__.enable_types())
         assert isinstance(gm, api.GradientMachine)
         parameters.append_gradient_machine(gm)
         gm.randParameters()
@@ -98,7 +96,7 @@ class SGD(ITrainer):
         assert isinstance(pass_evaluator, api.Evaluator)
         out_args = api.Arguments.createArguments(0)
 
-        feeder = DataFeeder(data_types, reader_dict)
+        feeder = DataFeeder(topology.data_type(), reader_dict)
 
         for pass_id in xrange(num_passes):
             event_handler(v2_event.BeginPass(pass_id))
@@ -144,7 +142,7 @@ def __check_train_args__(reader, topology, parameters, event_handler, **kwargs):
         raise TypeError('train_data_reader should be a function, '
                         'which can return a iterator')
 
-    if not isinstance(topology, ModelConfig):
+    if not isinstance(topology, Topology):
         raise TypeError('topology should be a model config')
 
     if not isinstance(parameters, v2_parameters.Parameters):

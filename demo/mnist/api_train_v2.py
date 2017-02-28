@@ -1,4 +1,3 @@
-import numpy
 import paddle.v2 as paddle
 
 
@@ -30,19 +29,18 @@ def main():
             pass
 
     trainer = paddle.trainer.SGD(update_equation=adam_optimizer)
+
     trainer.train(
         reader=paddle.reader.batched(
-            paddle.reader.shuffle(paddle.dataset.mnist.train_creator(),
-                                  buf_size=8192), batch_size=32),
-        topology=cost,
+            paddle.reader.shuffle(
+                paddle.dataset.mnist.train_creator(), buf_size=8192),
+            batch_size=32),
+        cost=cost,
         parameters=parameters,
         event_handler=event_handler,
-        data_types=[  # data_types will be removed, It should be in
-            # network topology
-            ('pixel', images.type),
-            ('label', label.type)],
-        reader_dict={'pixel': 0, 'label': 1}
-    )
+        batch_size=32,  # batch size should be refactor in Data reader
+        reader_dict={images.name: 0,
+                     label.name: 1})
 
 
 if __name__ == '__main__':
