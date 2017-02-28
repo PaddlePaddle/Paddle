@@ -201,7 +201,7 @@ def batched(reader, batch_size):
     :return: the batched reader.
     """
 
-    def __impl__():
+    def batched_reader():
         r = reader()
         batch = []
         for instance in r:
@@ -212,4 +212,4 @@ def batched(reader, batch_size):
         if batch:
             yield batch
 
-    return __impl__
+    return batched_reader
