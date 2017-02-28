@@ -23,23 +23,25 @@ def db_lstm(word_dict_len, label_dict_len, pred_len):
     ctx_p2 = paddle.layer.data(name='ctx_p2_data', type=d_type(word_dict_len))
     mark = paddle.layer.data(name='mark_data', type=d_type(mark_dict_len))
 
+    target = paddle.layer.data(name='target', type=d_type(label_dict_len))
+
     default_std = 1 / math.sqrt(hidden_dim) / 3.0
 
     emb_para = paddle.attr.Param(name='emb', initial_std=0., learning_rate=0.)
     std_0 = paddle.attr.Param(initial_std=0.)
     std_default = paddle.attr.Param(initial_std=default_std)
 
-    predicate_embedding = paddle.layer.embeding(
+    predicate_embedding = paddle.layer.embedding(
         size=word_dim,
         input=predicate,
         param_attr=paddle.attr.Param(
             name='vemb', initial_std=default_std))
-    mark_embedding = paddle.layer.embeding(
+    mark_embedding = paddle.layer.embedding(
         size=mark_dim, input=mark, param_attr=std_0)
 
     word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
     emb_layers = [
-        paddle.layer.embeding(
+        paddle.layer.embedding(
             size=word_dim, input=x, param_attr=emb_para) for x in word_input
     ]
     emb_layers.append(predicate_embedding)
@@ -101,4 +103,19 @@ def db_lstm(word_dict_len, label_dict_len, pred_len):
                 input=input_tmp[1], param_attr=lstm_para_attr)
         ], )
 
-    return feature_out
+    crf_cost = paddle.layer.crf(size=label_dict_len,
+                                input=feature_out,
+                                label=target,
+                                param_attr=paddle.attr.Param(
+                                    name='crfw',
+                                    initial_std=default_std,
+                                    learning_rate=mix_hidden_lr))
+
+    crf_dec = paddle.layer.crf_decoding(
+        name='crf_dec_l',
+        size=label_dict_len,
+        input=feature_out,
+        label=target,
+        param_attr=paddle.attr.Param(name='crfw'))
+
+    return crf_cost, crf_dec
