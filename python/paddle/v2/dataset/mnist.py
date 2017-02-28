@@ -45,7 +45,7 @@ def reader_creator(image_filename, label_filename, buffer_size):
         m.terminate()
         l.terminate()
 
-    return reader()
+    return reader
 
 
 def train():

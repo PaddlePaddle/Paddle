@@ -33,7 +33,7 @@ def main():
     trainer.train(
         reader=paddle.reader.batched(
             paddle.reader.shuffle(
-                paddle.dataset.mnist.train_creator(), buf_size=8192),
+                paddle.dataset.mnist.train(), buf_size=8192),
             batch_size=32),
         cost=cost,
         parameters=parameters,
