@@ -1,12 +1,13 @@
+"""
+MNIST dataset.
+"""
 import paddle.v2.dataset.common
 import subprocess
 import numpy
 import platform
-
 __all__ = ['train', 'test']
 
 URL_PREFIX = 'http://yann.lecun.com/exdb/mnist/'
-
 TEST_IMAGE_URL = URL_PREFIX + 't10k-images-idx3-ubyte.gz'
 TEST_IMAGE_MD5 = '25e3cc63507ef6e98d5dc541e8672bb6'
 TEST_LABEL_URL = URL_PREFIX + 't10k-labels-idx1-ubyte.gz'
@@ -48,7 +49,7 @@ def reader_creator(image_filename, label_filename, buffer_size):
             images = images / 255.0 * 2.0 - 1.0
 
             for i in xrange(buffer_size):
-                yield images[i, :], labels[i]
+                yield images[i, :], int(labels[i])
 
         m.terminate()
         l.terminate()
