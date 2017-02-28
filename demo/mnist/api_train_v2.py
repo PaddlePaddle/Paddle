@@ -41,7 +41,7 @@ def main():
 
     trainer.train(
         train_data_reader=train_reader,
-        topology=cost,
+        cost=cost,
         parameters=parameters,
         event_handler=event_handler,
         batch_size=32,  # batch size should be refactor in Data reader
