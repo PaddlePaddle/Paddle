@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import unittest
-import paddle.reader
 import time
+import unittest
+
+import paddle.v2.reader
 
 
 def reader_creator_10(dur):
@@ -37,7 +38,7 @@ class TestMap(unittest.TestCase):
             yield "h"
             yield "i"
 
-        r = paddle.reader.map_readers(tokenize, read)
+        r = paddle.v2.reader.map_readers(tokenize, read)
         for i, e in enumerate(r()):
             self.assertEqual(e, i)
 
@@ -45,7 +46,7 @@ class TestMap(unittest.TestCase):
 class TestBuffered(unittest.TestCase):
     def test_read(self):
         for size in range(20):
-            b = paddle.reader.buffered(reader_creator_10(0), size)
+            b = paddle.v2.reader.buffered(reader_creator_10(0), size)
             c = 0
             for i in b():
                 self.assertEqual(i, c)
@@ -54,7 +55,7 @@ class TestBuffered(unittest.TestCase):
 
     def test_buffering(self):
         # read have 30ms delay.
-        b = paddle.reader.buffered(reader_creator_10(0.03), 10)
+        b = paddle.v2.reader.buffered(reader_creator_10(0.03), 10)
         last_time = time.time()
         for idx, i in enumerate(b()):
             elapsed_time = time.time() - last_time
@@ -68,17 +69,17 @@ class TestBuffered(unittest.TestCase):
 
 class TestCompose(unittest.TestCase):
     def test_compse(self):
-        reader = paddle.reader.compose(
+        reader = paddle.v2.reader.compose(
             reader_creator_10(0), reader_creator_10(0))
         for idx, e in enumerate(reader()):
             self.assertEqual(e, (idx, idx))
 
     def test_compose_not_aligned(self):
         total = 0
-        reader = paddle.reader.compose(
-            paddle.reader.chain(reader_creator_10(0), reader_creator_10(0)),
+        reader = paddle.v2.reader.compose(
+            paddle.v2.reader.chain(reader_creator_10(0), reader_creator_10(0)),
             reader_creator_10(0))
-        with self.assertRaises(paddle.reader.ComposeNotAligned):
+        with self.assertRaises(paddle.v2.reader.ComposeNotAligned):
             for e in reader():
                 total += 1
         # expecting 10, not 20
@@ -86,8 +87,8 @@ class TestCompose(unittest.TestCase):
 
     def test_compose_not_aligned_no_check(self):
         total = 0
-        reader = paddle.reader.compose(
-            paddle.reader.chain(reader_creator_10(0), reader_creator_10(0)),
+        reader = paddle.v2.reader.compose(
+            paddle.v2.reader.chain(reader_creator_10(0), reader_creator_10(0)),
             reader_creator_10(0),
             check_alignment=False)
         for e in reader():
@@ -98,7 +99,7 @@ class TestCompose(unittest.TestCase):
 
 class TestChain(unittest.TestCase):
     def test_chain(self):
-        c = paddle.reader.chain(reader_creator_10(0), reader_creator_10(0))
+        c = paddle.v2.reader.chain(reader_creator_10(0), reader_creator_10(0))
         idx = 0
         for e in c():
             self.assertEqual(e, idx % 10)
@@ -111,7 +112,7 @@ class TestShuffle(unittest.TestCase):
         case = [(0, True), (1, True), (10, False), (100, False)]
         a = reader_creator_10(0)
         for size, checkEq in case:
-            s = paddle.reader.shuffle(a, size)
+            s = paddle.v2.reader.shuffle(a, size)
             total = 0
             for idx, e in enumerate(s()):
                 if checkEq:

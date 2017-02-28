@@ -14,7 +14,7 @@
 
 __all__ = [
     'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned'
+    'ComposeNotAligned', 'batched'
 ]
 
 from Queue import Queue
@@ -191,3 +191,25 @@ def buffered(reader, size):
             e = q.get()
 
     return data_reader
+
+
+def batched(reader, batch_size):
+    """
+    Create a batched reader.
+    :param reader: the data reader to read from.
+    :param batch_size: batch_size
+    :return: the batched reader.
+    """
+
+    def batched_reader():
+        r = reader()
+        batch = []
+        for instance in r:
+            batch.append(instance)
+            if len(batch) == batch_size:
+                yield batch
+                batch = []
+        if batch:
+            yield batch
+
+    return batched_reader
