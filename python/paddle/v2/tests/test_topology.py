@@ -12,16 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
+
+import paddle.trainer_config_helpers as conf_helps
+import paddle.v2.configs as configs
 import paddle.v2.layer as layer
 import paddle.v2.topology as topology
-import paddle.v2.data_type as data_type
-import paddle.trainer_config_helpers as conf_helps
+import paddle.trainer.PyDataProvider2 as pydp2
 
 
 class TestTopology(unittest.TestCase):
     def test_data_type(self):
-        pixel = layer.data(name='pixel', type=data_type.dense_vector(784))
-        label = layer.data(name='label', type=data_type.integer_value(10))
+        pixel = layer.data(
+            name='pixel', type=configs.data_type.dense_vector(784))
+        label = layer.data(
+            name='label', type=configs.data_type.integer_value(10))
         hidden = layer.fc(input=pixel,
                           size=100,
                           act=conf_helps.SigmoidActivation())
@@ -35,18 +39,20 @@ class TestTopology(unittest.TestCase):
         pixel_data_type = filter(lambda type: type[0] == "pixel", data_types)
         self.assertEqual(len(pixel_data_type), 1)
         pixel_data_type = pixel_data_type[0]
-        self.assertEqual(pixel_data_type[1].type, data_type.DataType.Dense)
+        self.assertEqual(pixel_data_type[1].type, pydp2.DataType.Dense)
         self.assertEqual(pixel_data_type[1].dim, 784)
 
         label_data_type = filter(lambda type: type[0] == "label", data_types)
         self.assertEqual(len(label_data_type), 1)
         label_data_type = label_data_type[0]
-        self.assertEqual(label_data_type[1].type, data_type.DataType.Index)
+        self.assertEqual(label_data_type[1].type, pydp2.DataType.Index)
         self.assertEqual(label_data_type[1].dim, 10)
 
     def test_get_layer(self):
-        pixel = layer.data(name='pixel', type=data_type.dense_vector(784))
-        label = layer.data(name='label', type=data_type.integer_value(10))
+        pixel = layer.data(
+            name='pixel', type=configs.data_type.dense_vector(784))
+        label = layer.data(
+            name='label', type=configs.data_type.integer_value(10))
         hidden = layer.fc(input=pixel,
                           size=100,
                           act=conf_helps.SigmoidActivation())
@@ -61,8 +67,10 @@ class TestTopology(unittest.TestCase):
         self.assertEqual(label_layer, label)
 
     def test_parse(self):
-        pixel = layer.data(name='pixel', type=data_type.dense_vector(784))
-        label = layer.data(name='label', type=data_type.integer_value(10))
+        pixel = layer.data(
+            name='pixel', type=configs.data_type.dense_vector(784))
+        label = layer.data(
+            name='label', type=configs.data_type.integer_value(10))
         hidden = layer.fc(input=pixel,
                           size=100,
                           act=conf_helps.SigmoidActivation())

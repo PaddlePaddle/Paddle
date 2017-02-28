@@ -13,23 +13,19 @@
 # limitations under the License.
 import optimizer
 import layer
-import activation
+import configs
 import parameters
 import trainer
 import event
-import data_type
 import topology
 import data_feeder
 from . import dataset
 from . import reader
-import attr
-import pooling
 import py_paddle.swig_paddle as api
 
 __all__ = [
-    'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
-    'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'dataset', 'reader',
-    'topology'
+    'optimizer', 'layer', 'parameters', 'init', 'trainer', 'event',
+    'data_feeder', 'dataset', 'reader', 'topology'
 ]
 
 

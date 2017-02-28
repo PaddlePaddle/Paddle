@@ -14,10 +14,10 @@
 
 import unittest
 
-import py_paddle.swig_paddle as api
 import numpy as np
+import py_paddle.swig_paddle as api
 
-from paddle.v2 import data_type
+from paddle.v2 import configs
 from paddle.v2.data_feeder import DataFeeder
 
 
@@ -34,8 +34,8 @@ class DataFeederTest(unittest.TestCase):
 
     def test_dense(self):
         def compare(input):
-            feeder = DataFeeder([('image', data_type.dense_vector(784))],
-                                {'image': 0})
+            feeder = DataFeeder(
+                [('image', configs.data_type.dense_vector(784))], {'image': 0})
             arg = feeder(input)
             output = arg.getSlotValue(0).copyToNumpyMat()
             input = np.array(input, dtype='float32')
@@ -74,8 +74,9 @@ class DataFeederTest(unittest.TestCase):
             each_sample = []
             each_sample.append(self.sparse_binary_reader(dim, 50))
             data.append(each_sample)
-        feeder = DataFeeder([('input', data_type.sparse_binary_vector(dim))],
-                            {'input': 0})
+        feeder = DataFeeder(
+            [('input', configs.data_type.sparse_binary_vector(dim))],
+            {'input': 0})
         arg = feeder(data)
         output = arg.getSlotValue(0)
         assert isinstance(output, api.Matrix)
@@ -97,7 +98,7 @@ class DataFeederTest(unittest.TestCase):
             each_sample.append(zip(a, b))
             data.append(each_sample)
 
-        feeder = DataFeeder([('input', data_type.sparse_vector(dim))],
+        feeder = DataFeeder([('input', configs.data_type.sparse_vector(dim))],
                             {'input': 0})
         arg = feeder(data)
         output = arg.getSlotValue(0)
@@ -117,7 +118,7 @@ class DataFeederTest(unittest.TestCase):
             each_sample = []
             each_sample.append(np.random.randint(dim))
             index.append(each_sample)
-        feeder = DataFeeder([('input', data_type.integer_value(dim))],
+        feeder = DataFeeder([('input', configs.data_type.integer_value(dim))],
                             {'input': 0})
         arg = feeder(index)
         output = arg.getSlotIds(0).copyToNumpyArray()
@@ -136,8 +137,9 @@ class DataFeederTest(unittest.TestCase):
                     dim, 30, non_empty=True))
             data.append(each_sample)
             start.append(len(each_sample[0]) + start[-1])
-        feeder = DataFeeder([('input', data_type.integer_value_sequence(dim))],
-                            {'input': 0})
+        feeder = DataFeeder(
+            [('input', configs.data_type.integer_value_sequence(dim))],
+            {'input': 0})
         arg = feeder(data)
         output_data = arg.getSlotIds(0).copyToNumpyArray()
         output_start = arg.getSlotSequenceStartPositions(0).copyToNumpyArray()
@@ -163,9 +165,9 @@ class DataFeederTest(unittest.TestCase):
             data.append(each_sample)
 
         # test multiple features
-        data_types = [('fea0', data_type.dense_vector(100)),
-                      ('fea1', data_type.sparse_binary_vector(20000)),
-                      ('fea2', data_type.integer_value(10))]
+        data_types = [('fea0', configs.data_type.dense_vector(100)),
+                      ('fea1', configs.data_type.sparse_binary_vector(20000)),
+                      ('fea2', configs.data_type.integer_value(10))]
         feeder = DataFeeder(data_types, {'fea0': 2, 'fea1': 1, 'fea2': 0})
         arg = feeder(data)
         output_dense = arg.getSlotValue(0).copyToNumpyMat()
@@ -177,8 +179,8 @@ class DataFeederTest(unittest.TestCase):
             self.assertEqual(output_index[i], data[i][0])
 
         # reader returns 3 features, but only use 2 features
-        data_types = [('fea0', data_type.dense_vector(100)),
-                      ('fea2', data_type.integer_value(10))]
+        data_types = [('fea0', configs.data_type.dense_vector(100)),
+                      ('fea2', configs.data_type.integer_value(10))]
         feeder = DataFeeder(data_types, {'fea0': 2, 'fea2': 0})
         arg = feeder(data)
         output_dense = arg.getSlotValue(0).copyToNumpyMat()
@@ -188,10 +190,10 @@ class DataFeederTest(unittest.TestCase):
             self.assertEqual(output_index[i], data[i][0])
 
         # reader returns 3 featreus, one is duplicate data
-        data_types = [('fea0', data_type.dense_vector(100)),
-                      ('fea1', data_type.sparse_binary_vector(20000)),
-                      ('fea2', data_type.integer_value(10)),
-                      ('fea3', data_type.dense_vector(100))]
+        data_types = [('fea0', configs.data_type.dense_vector(100)),
+                      ('fea1', configs.data_type.sparse_binary_vector(20000)),
+                      ('fea2', configs.data_type.integer_value(10)),
+                      ('fea3', configs.data_type.dense_vector(100))]
         feeder = DataFeeder(data_types,
                             {'fea0': 2,
                              'fea1': 1,
@@ -219,9 +221,9 @@ class DataFeederTest(unittest.TestCase):
             data.append(each_sample)
 
         # test multiple features
-        data_types = [('fea0', data_type.dense_vector(100)),
-                      ('fea1', data_type.sparse_binary_vector(20000)),
-                      ('fea2', data_type.integer_value(10))]
+        data_types = [('fea0', configs.data_type.dense_vector(100)),
+                      ('fea1', configs.data_type.sparse_binary_vector(20000)),
+                      ('fea2', configs.data_type.integer_value(10))]
         feeder = DataFeeder(data_types, {'fea0': 2, 'fea1': 1, 'fea2': 0})
         arg = feeder(data)
         out_dense = arg.getSlotValue(0).copyToNumpyMat()

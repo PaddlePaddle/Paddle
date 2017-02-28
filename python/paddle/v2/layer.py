@@ -67,20 +67,17 @@ paddle.v2.parameters.create, no longer exposed to users.
 """
 
 import collections
-import inspect
 
+import configs
+import paddle.trainer.PyDataProvider2 as pydp2
 import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
-
-from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 from paddle.trainer_config_helpers.default_decorators import wrap_act_default
 from paddle.trainer_config_helpers.default_decorators import \
     wrap_bias_attr_default
+from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 from paddle.trainer_config_helpers.layers import layer_support
-
-import data_type
-import activation
 
 __all__ = ['parse_network', 'data']
 
@@ -183,7 +180,7 @@ So we also need to implement some special LayerV2.
 
 class DataLayerV2(Layer):
     def __init__(self, name, type, **kwargs):
-        assert isinstance(type, data_type.InputType)
+        assert isinstance(type, pydp2.InputType)
 
         self.type = type
         self.__method_name__ = 'data_layer'
@@ -242,7 +239,7 @@ class MixedLayerV2(Layer):
             self.__inputs__.append(other)
             return self
         else:
-            raise MixedLayerTypeV2.AddToSealedMixedLayerExceptionV2()
+            raise MixedLayerV2.AddToSealedMixedLayerExceptionV2()
 
     def __enter__(self):
         assert len(self.__inputs__) == 0
@@ -261,7 +258,7 @@ class MixedLayerV2(Layer):
 
 
 @wrap_name_default("mixed")
-@wrap_act_default(act=activation.Linear())
+@wrap_act_default(act=configs.activation.Linear())
 @wrap_bias_attr_default(has_bias=False)
 @layer_support(conf_helps.layers.ERROR_CLIPPING, conf_helps.layers.DROPOUT)
 def mixed(size=0,

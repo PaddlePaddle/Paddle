@@ -13,29 +13,26 @@
 # limitations under the License.
 import unittest
 
-import paddle.v2.activation as activation
-import paddle.v2.attr as attr
-import paddle.v2.data_type as data_type
+import paddle.v2.configs as configs
 import paddle.v2.layer as layer
-import paddle.v2.pooling as pooling
 
-pixel = layer.data(name='pixel', type=data_type.dense_vector(128))
-label = layer.data(name='label', type=data_type.integer_value(10))
-weight = layer.data(name='weight', type=data_type.dense_vector(10))
-score = layer.data(name='score', type=data_type.dense_vector(1))
+pixel = layer.data(name='pixel', type=configs.data_type.dense_vector(128))
+label = layer.data(name='label', type=configs.data_type.integer_value(10))
+weight = layer.data(name='weight', type=configs.data_type.dense_vector(10))
+score = layer.data(name='score', type=configs.data_type.dense_vector(1))
 
 hidden = layer.fc(input=pixel,
                   size=100,
-                  act=activation.Sigmoid(),
-                  param_attr=attr.Param(name='hidden'))
-inference = layer.fc(input=hidden, size=10, act=activation.Softmax())
+                  act=configs.activation.Sigmoid(),
+                  param_attr=configs.attr.ParamAttr(name='hidden'))
+inference = layer.fc(input=hidden, size=10, act=configs.activation.Softmax())
 conv = layer.img_conv(
     input=pixel,
     filter_size=1,
     filter_size_y=1,
     num_channels=8,
     num_filters=16,
-    act=activation.Linear())
+    act=configs.activation.Linear())
 
 
 class ImageLayerTest(unittest.TestCase):
@@ -49,11 +46,11 @@ class ImageLayerTest(unittest.TestCase):
             pool_size=2,
             num_channels=16,
             padding=1,
-            pool_type=pooling.Max())
+            pool_type=configs.pooling.Max())
         spp = layer.spp(input=conv,
                         pyramid_height=2,
                         num_channels=16,
-                        pool_type=pooling.Max())
+                        pool_type=configs.pooling.Max())
         maxout = layer.maxout(input=conv, num_channels=16, groups=4)
         print layer.parse_network(maxpool, spp, maxout)
 
@@ -68,7 +65,7 @@ class AggregateLayerTest(unittest.TestCase):
     def test_aggregate_layer(self):
         pool = layer.pooling(
             input=pixel,
-            pooling_type=pooling.Avg(),
+            pooling_type=configs.pooling.Avg(),
             agg_level=layer.AggregateLevel.EACH_SEQUENCE)
         last_seq = layer.last_seq(input=pixel)
         first_seq = layer.first_seq(input=pixel)
@@ -110,7 +107,7 @@ class ReshapeLayerTest(unittest.TestCase):
 
 class RecurrentLayerTest(unittest.TestCase):
     def test_recurrent_layer(self):
-        word = layer.data(name='word', type=data_type.integer_value(12))
+        word = layer.data(name='word', type=configs.data_type.integer_value(12))
         recurrent = layer.recurrent(input=word)
         lstm = layer.lstmemory(input=word)
         gru = layer.grumemory(input=word)
@@ -165,11 +162,12 @@ class OtherLayerTest(unittest.TestCase):
 
 class ProjOpTest(unittest.TestCase):
     def test_projection(self):
-        input = layer.data(name='data', type=data_type.dense_vector(784))
+        input = layer.data(
+            name='data', type=configs.data_type.dense_vector(784))
         word = layer.data(
-            name='word', type=data_type.integer_value_sequence(10000))
-        fc0 = layer.fc(input=input, size=100, act=activation.Sigmoid())
-        fc1 = layer.fc(input=input, size=200, act=activation.Sigmoid())
+            name='word', type=configs.data_type.integer_value_sequence(10000))
+        fc0 = layer.fc(input=input, size=100, act=configs.activation.Sigmoid())
+        fc1 = layer.fc(input=input, size=200, act=configs.activation.Sigmoid())
         mixed0 = layer.mixed(
             size=256,
             input=[
@@ -223,10 +221,10 @@ class ProjOpTest(unittest.TestCase):
         print layer.parse_network(conv1)
 
     def test_operator(self):
-        ipt0 = layer.data(name='data', type=data_type.dense_vector(784))
-        ipt1 = layer.data(name='word', type=data_type.dense_vector(128))
-        fc0 = layer.fc(input=ipt0, size=100, act=activation.Sigmoid())
-        fc1 = layer.fc(input=ipt0, size=100, act=activation.Sigmoid())
+        ipt0 = layer.data(name='data', type=configs.data_type.dense_vector(784))
+        ipt1 = layer.data(name='word', type=configs.data_type.dense_vector(128))
+        fc0 = layer.fc(input=ipt0, size=100, act=configs.activation.Sigmoid())
+        fc1 = layer.fc(input=ipt0, size=100, act=configs.activation.Sigmoid())
 
         dotmul_op = layer.dotmul_operator(a=fc0, b=fc1)
         dotmul0 = layer.mixed(input=dotmul_op)

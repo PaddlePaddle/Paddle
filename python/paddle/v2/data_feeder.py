@@ -14,7 +14,7 @@
 
 from py_paddle import swig_paddle
 from py_paddle import DataProviderConverter
-import data_type
+import paddle.trainer.PyDataProvider2 as pydp2
 
 __all__ = ['DataFeeder']
 
@@ -62,7 +62,7 @@ class DataFeeder(DataProviderConverter):
         self.reader_dict = reader_dict
         for each in data_types:
             self.input_names.append(each[0])
-            assert isinstance(each[1], data_type.InputType)
+            assert isinstance(each[1], pydp2.InputType)
             input_types.append(each[1])
         DataProviderConverter.__init__(self, input_types)
 
