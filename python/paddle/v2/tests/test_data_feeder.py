@@ -240,4 +240,3 @@ if __name__ == '__main__':
     if api.isGpuVersion():
         api.setUseGpu(True)
         unittest.main()
-    unittest.main()

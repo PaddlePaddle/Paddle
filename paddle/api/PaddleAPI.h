@@ -47,7 +47,7 @@ void setUseGpu(bool useGpu);
 /// Return true if this py_paddle is compiled in GPU Version
 bool isGpuVersion();
 
-/// Return FLAGS_use_gpu
+/// Return FLAGS_trainer_count
 int getTrainerCount();
 
 /// The Error of IO Operation. Such as file not found, etc.

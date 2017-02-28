@@ -26,17 +26,14 @@ class IScanner(object):
         if not isinstance(self.input_type, dp2.InputType):
             raise ValueError("input type should be dataprovider2.InputType")
         self.pos = pos
+        self.use_gpu = True if swig_paddle.isUsingGpu() and (
+            swig_paddle.getTrainerCount() == 1) else False
 
     def scan(self, dat):
         pass
 
     def finish_scan(self, argument):
         pass
-
-    def use_gpu(self):
-        gpu = True if swig_paddle.isUsingGpu() and (
-            swig_paddle.getTrainerCount() == 1) else False
-        return gpu
 
 
 class DenseScanner(IScanner):
@@ -59,7 +56,7 @@ class DenseScanner(IScanner):
         if self.__mat__.dtype != numpy.float32:
             self.__mat__ = self.__mat__.astype(numpy.float32)
         m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True,
-                                                    self.use_gpu())
+                                                    self.use_gpu)
         argument.setSlotValue(self.pos, m)
 
 
@@ -111,7 +108,7 @@ class IndexScanner(IScanner):
         self.__ids__.append(dat)
 
     def finish_scan(self, argument):
-        ids = swig_paddle.IVector.create(self.__ids__, self.use_gpu())
+        ids = swig_paddle.IVector.create(self.__ids__, self.use_gpu)
         assert isinstance(argument, swig_paddle.Arguments)
         argument.setSlotIds(self.pos, ids)
 
