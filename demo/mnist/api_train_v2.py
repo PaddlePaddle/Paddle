@@ -1,4 +1,3 @@
-import numpy
 import paddle.v2 as paddle
 
 
@@ -41,7 +40,7 @@ def main():
     trainer.train(
         reader=paddle.reader.batched(
             paddle.reader.shuffle(
-                paddle.dataset.mnist.train_creator(), buf_size=8192),
+                paddle.dataset.mnist.train(), buf_size=8192),
             batch_size=32),
         event_handler=event_handler)
 
