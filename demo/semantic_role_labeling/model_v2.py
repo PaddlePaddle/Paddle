@@ -1,3 +1,4 @@
+import math
 import paddle.v2 as paddle
 
 
@@ -9,15 +10,18 @@ def db_lstm(word_dict_len, label_dict_len, pred_len):
     depth = 8
 
     #8 features
-    word = paddle.layer.data(name='word_data', size=word_dict_len)
-    predicate = paddle.layer.data(name='verb_data', size=pred_len)
+    def d_type(size):
+        return paddle.data_type.integer_value_sequence(size)
 
-    ctx_n2 = paddle.layer.data(name='ctx_n2_data', size=word_dict_len)
-    ctx_n1 = paddle.layer.data(name='ctx_n1_data', size=word_dict_len)
-    ctx_0 = paddle.layer.data(name='ctx_0_data', size=word_dict_len)
-    ctx_p1 = paddle.layer.data(name='ctx_p1_data', size=word_dict_len)
-    ctx_p2 = paddle.layer.data(name='ctx_p2_data', size=word_dict_len)
-    mark = paddle.layer.data(name='mark_data', size=mark_dict_len)
+    word = paddle.layer.data(name='word_data', type=d_type(word_dict_len))
+    predicate = paddle.layer.data(name='verb_data', type=d_type(pred_len))
+
+    ctx_n2 = paddle.layer.data(name='ctx_n2_data', type=d_type(word_dict_len))
+    ctx_n1 = paddle.layer.data(name='ctx_n1_data', type=d_type(word_dict_len))
+    ctx_0 = paddle.layer.data(name='ctx_0_data', type=d_type(word_dict_len))
+    ctx_p1 = paddle.layer.data(name='ctx_p1_data', type=d_type(word_dict_len))
+    ctx_p2 = paddle.layer.data(name='ctx_p2_data', type=d_type(word_dict_len))
+    mark = paddle.layer.data(name='mark_data', type=d_type(mark_dict_len))
 
     default_std = 1 / math.sqrt(hidden_dim) / 3.0
 
@@ -31,10 +35,7 @@ def db_lstm(word_dict_len, label_dict_len, pred_len):
         param_attr=paddle.attr.Param(
             name='vemb', initial_std=default_std))
     mark_embedding = paddle.layer.embeding(
-        name='word_ctx-in_embedding',
-        size=mark_dim,
-        input=mark,
-        param_attr=std_0)
+        size=mark_dim, input=mark, param_attr=std_0)
 
     word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
     emb_layers = [

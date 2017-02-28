@@ -1,8 +1,6 @@
 import numpy
 import paddle.v2 as paddle
-from paddle.trainer_config_helpers.atts import ParamAttr
-
-from mode_v2 import db_lstm
+from model_v2 import db_lstm
 
 word_dict_file = './data/wordDict.txt'
 label_dict_file = './data/targetDict.txt'
@@ -64,9 +62,8 @@ def train_reader(file_name="data/feature"):
 def main():
     paddle.init(use_gpu=False, trainer_count=1)
 
-    label_dict_len = 500
     # define network topology
-    output = db_lstm()
+    output = db_lstm(word_dict_len, label_dict_len, pred_len)
     target = paddle.layer.data(name='target', size=label_dict_len)
     crf_cost = paddle.layer.crf_layer(
         size=500,
@@ -97,6 +94,17 @@ def main():
 
     trainer = paddle.trainer.SGD(update_equation=optimizer)
 
+    reader_dict = {
+        'word_data': 0,
+        'verb_data': 1,
+        'ctx_n2_data': 2,
+        'ctx_n1_data': 3,
+        'ctx_0_data': 4,
+        'ctx_p1_data': 5,
+        'ctx_p2_data': 6,
+        'mark_data': 7,
+        'target': 8
+    }
     trainer.train(
         train_data_reader=train_reader,
         batch_size=32,
@@ -104,8 +112,7 @@ def main():
         parameters=parameters,
         event_handler=event_handler,
         num_passes=10000,
-        data_types=[],
-        reader_dict={})
+        reader_dict=reader_dict)
 
 
 if __name__ == '__main__':
