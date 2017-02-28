@@ -1,11 +1,10 @@
 import collections
 
 import py_paddle.swig_paddle as api
-from paddle.proto.ModelConfig_pb2 import ModelConfig
-from data_feeder import DataFeeder
 
+from data_feeder import DataFeeder
+from topology import Topology
 from . import event as v2_event
-from . import layer as v2_layer
 from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
 
@@ -21,13 +20,6 @@ def default_event_handler(event):
     :return:
     """
     pass
-
-
-def __bfs_travel_topology__(callback, *topologies):
-    for each_layer in topologies:
-        callback(each_layer)
-        __bfs_travel_topology__(callback,
-                                *each_layer.__parent_layers__.values())
 
 
 class ITrainer(object):
@@ -50,40 +42,26 @@ class ITrainer(object):
 
 
 class SGD(ITrainer):
-    def __init__(self, topology, parameters, update_equation):
+    def __init__(self, cost, parameters, update_equation):
         """
         Simple SGD Trainer.
 
         :param update_equation: The optimizer object.
         :type update_equation: v2_optimizer.Optimizer
         """
+
         if not isinstance(parameters, v2_parameters.Parameters):
             raise TypeError('parameters should be parameters')
 
         if not isinstance(update_equation, v2_optimizer.Optimizer):
             raise TypeError("update equation parameter must be "
                             "paddle.v2.optimizer.Optimizer")
+        topology = Topology(cost)
         self.__optimizer__ = update_equation
         self.__topology__ = topology
         self.__parameters__ = parameters
-        self.__topology_in_proto__ = v2_layer.parse_network(topology)
-        data_types = dict()
-
-        def __travel__(l):
-            if hasattr(l, 'type'):
-                data_types[l.name] = l.type
-
-        if not isinstance(topology, collections.Sequence):
-            topology = [topology]
-        __bfs_travel_topology__(__travel__, *topology)
-        self.__data_types__ = [
-            (iname, data_types[iname])
-            for iname in self.__topology_in_proto__.input_layer_names
-        ]
-
-        if not isinstance(self.__topology_in_proto__, ModelConfig):
-            raise TypeError('topology should be a model config')
-
+        self.__topology_in_proto__ = topology.proto()
+        self.__data_types__ = topology.data_type()
         gm = api.GradientMachine.createFromConfigProto(
             self.__topology_in_proto__, api.CREATE_MODE_NORMAL,
             self.__optimizer__.enable_types())
@@ -103,7 +81,6 @@ class SGD(ITrainer):
         :param event_handler: Event handler. A method will be invoked when event
                               occurred.
         :type event_handler: (BaseEvent) => None
-        :param data_types: Not important, will be removed after data refactor.
         :return:
         """
         if event_handler is None:
@@ -113,6 +90,7 @@ class SGD(ITrainer):
             reader_dict = self.default_reader_dict()
 
         __check_train_args__(**locals())
+
         updater = self.__optimizer__.create_local_updater()
         updater.init(self.__gradient_machine__)
 
@@ -192,6 +170,5 @@ def __check_train_args__(reader, event_handler, **kwargs):
     if not callable(reader) or not isinstance(reader(), collections.Iterator):
         raise TypeError('train_data_reader should be a function, '
                         'which can return a iterator')
-
     if not callable(event_handler):
         raise TypeError('event handler should be a function')

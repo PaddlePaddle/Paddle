@@ -5,21 +5,25 @@ import unittest
 class TestMNIST(unittest.TestCase):
     def check_reader(self, reader):
         sum = 0
-        for l in reader:
+        label = 0
+        for l in reader():
             self.assertEqual(l[0].size, 784)
-            self.assertEqual(l[1].size, 1)
-            self.assertLess(l[1], 10)
-            self.assertGreaterEqual(l[1], 0)
+            if l[1] > label:
+                label = l[1]
             sum += 1
-        return sum
+        return sum, label
 
     def test_train(self):
-        self.assertEqual(
-            self.check_reader(paddle.v2.dataset.mnist.train()), 60000)
+        instances, max_label_value = self.check_reader(
+            paddle.v2.dataset.mnist.train())
+        self.assertEqual(instances, 60000)
+        self.assertEqual(max_label_value, 9)
 
     def test_test(self):
-        self.assertEqual(
-            self.check_reader(paddle.v2.dataset.mnist.test()), 10000)
+        instances, max_label_value = self.check_reader(
+            paddle.v2.dataset.mnist.test())
+        self.assertEqual(instances, 10000)
+        self.assertEqual(max_label_value, 9)
 
 
 if __name__ == '__main__':

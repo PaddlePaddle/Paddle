@@ -1,4 +1,3 @@
-import numpy
 import paddle.v2 as paddle
 
 
@@ -21,7 +20,7 @@ def main():
 
     adam_optimizer = paddle.optimizer.Adam(learning_rate=0.01)
 
-    trainer = paddle.trainer.SGD(topology=cost,
+    trainer = paddle.trainer.SGD(cost=cost,
                                  parameters=parameters,
                                  update_equation=adam_optimizer)
 
@@ -29,7 +28,7 @@ def main():
         if isinstance(event, paddle.event.EndIteration):
             if event.batch_id % 1000 == 0:
                 result = trainer.test(reader=paddle.reader.batched(
-                    paddle.dataset.mnist.test_creator(), batch_size=256))
+                    paddle.dataset.mnist.test(), batch_size=256))
 
                 print "Pass %d, Batch %d, Cost %f, %s, Testing metrics %s" % (
                     event.pass_id, event.batch_id, event.cost, event.metrics,
@@ -41,7 +40,7 @@ def main():
     trainer.train(
         reader=paddle.reader.batched(
             paddle.reader.shuffle(
-                paddle.dataset.mnist.train_creator(), buf_size=8192),
+                paddle.dataset.mnist.train(), buf_size=8192),
             batch_size=32),
         event_handler=event_handler)
 
