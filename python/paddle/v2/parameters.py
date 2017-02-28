@@ -224,7 +224,8 @@ class Parameters(object):
                 except ValueError:
                     # If no such parameter in gradient machine, then don't copy
                     pass
-            self.__gradient_machines__.append(gradient_machine)
+
+        self.__gradient_machines__.append(gradient_machine)
 
 
 def __get_parameter_in_gradient_machine__(gradient_machine, name):
