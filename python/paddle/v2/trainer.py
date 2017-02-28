@@ -29,7 +29,7 @@ class ITrainer(object):
 
     def train(self,
               train_data_reader,
-              topology,
+              cost,
               parameters,
               test_data_reader=None,
               event_handler=None):
@@ -37,7 +37,7 @@ class ITrainer(object):
         train method.
 
         :param train_data_reader:
-        :param topology:
+        :param cost:
         :param parameters:
         :param test_data_reader:
         :param event_handler:
