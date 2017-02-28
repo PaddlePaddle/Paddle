@@ -1,26 +1,21 @@
 import numpy as np
-from . import layer as v2_layer
 import py_paddle.swig_paddle as api
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
+
+from topology import Topology
 
 __all__ = ['Parameters', 'create']
 
 
-def create(*layers):
+def create(layers):
     """
-    Create parameter pool by layers. In paddle, layer can be represent a
-    model config.
-
+    Create parameter pool by topology.
     :param layers:
     :return:
     """
-    for layer in layers:
-        if not isinstance(layer, v2_layer.Layer):
-            raise ValueError(
-                'create must pass a topologies which type is paddle.layer.Layer')
-    model_config = v2_layer.parse_network(*layers)
+    topology = Topology(layers)
     pool = Parameters()
-    for param in model_config.parameters:
+    for param in topology.proto().parameters:
         pool.__append_config__(param)
     return pool
 
@@ -224,7 +219,8 @@ class Parameters(object):
                 except ValueError:
                     # If no such parameter in gradient machine, then don't copy
                     pass
-            self.__gradient_machines__.append(gradient_machine)
+
+        self.__gradient_machines__.append(gradient_machine)
 
 
 def __get_parameter_in_gradient_machine__(gradient_machine, name):

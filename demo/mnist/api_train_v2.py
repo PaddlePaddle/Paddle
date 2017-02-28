@@ -39,17 +39,14 @@ def main():
 
     trainer = paddle.trainer.SGD(update_equation=adam_optimizer)
 
-    trainer.train(train_data_reader=train_reader,
-                  topology=cost,
-                  parameters=parameters,
-                  event_handler=event_handler,
-                  batch_size=32,  # batch size should be refactor in Data reader
-                  data_types=[  # data_types will be removed, It should be in
-                      # network topology
-                      ('pixel', images.type),
-                      ('label', label.type)],
-                  reader_dict={'pixel':0, 'label':1}
-                  )
+    trainer.train(
+        train_data_reader=train_reader,
+        cost=cost,
+        parameters=parameters,
+        event_handler=event_handler,
+        batch_size=32,  # batch size should be refactor in Data reader
+        reader_dict={images.name: 0,
+                     label.name: 1})
 
 
 if __name__ == '__main__':
