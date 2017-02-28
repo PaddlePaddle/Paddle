@@ -4,7 +4,12 @@ import re
 import random
 import functools
 
-__all__ = ['train_creator', 'test_creator', 'get_movie_title_dict']
+__all__ = [
+    'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',
+    'age_table'
+]
+
+age_table = [1, 18, 25, 35, 45, 50, 56]
 
 
 class MovieInfo(object):
@@ -24,7 +29,7 @@ class UserInfo(object):
     def __init__(self, index, gender, age, job_id):
         self.index = int(index)
         self.is_male = gender == 'M'
-        self.age = [1, 18, 25, 35, 45, 50, 56].index(int(age))
+        self.age = age_table.index(int(age))
         self.job_id = int(job_id)
 
     def value(self):
@@ -104,8 +109,8 @@ def __reader_creator__(**kwargs):
     return lambda: __reader__(**kwargs)
 
 
-train_creator = functools.partial(__reader_creator__, is_test=False)
-test_creator = functools.partial(__reader_creator__, is_test=True)
+train = functools.partial(__reader_creator__, is_test=False)
+test = functools.partial(__reader_creator__, is_test=True)
 
 
 def get_movie_title_dict():
@@ -113,10 +118,27 @@ def get_movie_title_dict():
     return MOVIE_TITLE_DICT
 
 
+def __max_index_info__(a, b):
+    if a.index > b.index:
+        return a
+    else:
+        return b
+
+
+def max_movie_id():
+    __initialize_meta_info__()
+    return reduce(__max_index_info__, MOVIE_INFO.viewvalues()).index
+
+
+def max_user_id():
+    __initialize_meta_info__()
+    return reduce(__max_index_info__, USER_INFO.viewvalues()).index
+
+
 def unittest():
-    for train_count, _ in enumerate(train_creator()()):
+    for train_count, _ in enumerate(train()()):
         pass
-    for test_count, _ in enumerate(test_creator()()):
+    for test_count, _ in enumerate(test()()):
         pass
 
     print train_count, test_count
