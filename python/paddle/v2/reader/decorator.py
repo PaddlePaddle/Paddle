@@ -14,13 +14,13 @@
 
 __all__ = [
     'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'batched'
+    'ComposeNotAligned', 'batched', 'limited'
 ]
 
-from Queue import Queue
-from threading import Thread
 import itertools
 import random
+from Queue import Queue
+from threading import Thread
 
 
 def map_readers(func, *readers):
@@ -213,3 +213,17 @@ def batched(reader, batch_size):
             yield batch
 
     return batched_reader
+
+
+def limited(reader, limit):
+    """
+    Limit the max number of samples that reader could return.
+    """
+
+    def limited_reader():
+        for i, item in enumerate(reader()):
+            if i == limit:
+                break
+            yield item
+
+    return limited_reader
