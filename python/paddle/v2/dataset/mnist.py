@@ -35,24 +35,25 @@ def reader_creator(image_filename, label_filename, buffer_size):
         l = subprocess.Popen([zcat_cmd, label_filename], stdout=subprocess.PIPE)
         l.stdout.read(8)  # skip some magic bytes
 
-        while True:
-            labels = numpy.fromfile(
-                l.stdout, 'ubyte', count=buffer_size).astype("int")
+        try:  # reader could be break.
+            while True:
+                labels = numpy.fromfile(
+                    l.stdout, 'ubyte', count=buffer_size).astype("int")
 
-            if labels.size != buffer_size:
-                break  # numpy.fromfile returns empty slice after EOF.
+                if labels.size != buffer_size:
+                    break  # numpy.fromfile returns empty slice after EOF.
 
-            images = numpy.fromfile(
-                m.stdout, 'ubyte', count=buffer_size * 28 * 28).reshape(
-                    (buffer_size, 28 * 28)).astype('float32')
+                images = numpy.fromfile(
+                    m.stdout, 'ubyte', count=buffer_size * 28 * 28).reshape(
+                        (buffer_size, 28 * 28)).astype('float32')
 
-            images = images / 255.0 * 2.0 - 1.0
+                images = images / 255.0 * 2.0 - 1.0
 
-            for i in xrange(buffer_size):
-                yield images[i, :], int(labels[i])
-
-        m.terminate()
-        l.terminate()
+                for i in xrange(buffer_size):
+                    yield images[i, :], int(labels[i])
+        finally:
+            m.terminate()
+            l.terminate()
 
     return reader
 
