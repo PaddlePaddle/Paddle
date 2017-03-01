@@ -131,11 +131,6 @@ class Layer(object):
 
         if self.context_name() is None:
             return self.to_proto_impl(**kwargs)
-        elif isinstance(self, MemoryV2):
-            name = self.name + "#__memory__"
-            if name not in context:
-                context[name] = self.to_proto_impl(**kwargs)
-            return context[name]
         elif self.context_name() not in context:
             context[self.context_name()] = self.to_proto_impl(**kwargs)
         return context[self.name]
