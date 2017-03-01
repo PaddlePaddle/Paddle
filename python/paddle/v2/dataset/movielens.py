@@ -6,7 +6,7 @@ import functools
 
 __all__ = [
     'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',
-    'age_table'
+    'age_table', 'movie_categories', 'max_job_id'
 ]
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
@@ -133,6 +133,23 @@ def max_movie_id():
 def max_user_id():
     __initialize_meta_info__()
     return reduce(__max_index_info__, USER_INFO.viewvalues()).index
+
+
+def __max_job_id_impl__(a, b):
+    if a.job_id > b.job_id:
+        return a
+    else:
+        return b
+
+
+def max_job_id():
+    __initialize_meta_info__()
+    return reduce(__max_job_id_impl__, USER_INFO.viewvalues()).job_id
+
+
+def movie_categories():
+    __initialize_meta_info__()
+    return CATEGORIES_DICT
 
 
 def unittest():
