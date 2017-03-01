@@ -32,7 +32,7 @@ RUN apt-get update && \
     apt-get install -y automake locales clang-format-3.8 && \
     apt-get clean -y
 
-RUN git config --global credential.helper "cache --timeout=604800"
+RUN git config --global credential.helper store
 
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
