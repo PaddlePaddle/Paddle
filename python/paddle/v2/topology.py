@@ -74,12 +74,10 @@ class Topology(object):
             if isinstance(layer, v2_layer.DataLayerV2):
                 data_layers[layer.name] = layer
             if not isinstance(layer, collections.Sequence):
-                for parent_layer in layer.__parent_layers__.values():
+                layer = [layer]
+            for each_l in layer:
+                for parent_layer in each_l.__parent_layers__.values():
                     find_data_layer(parent_layer)
-            else:
-                for each_l in layer:
-                    for parent_layer in each_l.__parent_layers__.values():
-                        find_data_layer(parent_layer)
 
         for layer in self.layers:
             find_data_layer(layer)
@@ -93,8 +91,8 @@ class Topology(object):
         """
 
         data_types_lists = []
+        data_layers = self.data_layers()
         for each in self.__model_config__.input_layer_names:
-            data_layers = self.data_layers()
             data_types_lists.append((each, data_layers[each].type))
         return data_types_lists
 
