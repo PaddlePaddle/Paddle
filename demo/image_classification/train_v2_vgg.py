@@ -6,8 +6,6 @@ def event_handler(event):
         if event.batch_id % 100 == 0:
             print "Pass %d, Batch %d, Cost %f" % (event.pass_id, event.batch_id,
                                                   event.cost)
-    else:
-        pass
 
 
 def vgg_bn_drop(input):
