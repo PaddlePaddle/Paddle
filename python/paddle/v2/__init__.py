@@ -25,12 +25,13 @@ from . import reader
 import attr
 import pooling
 import inferencer
+import networks
 import py_paddle.swig_paddle as api
 
 __all__ = [
     'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
     'event', 'data_type', 'attr', 'pooling', 'data_feeder', 'dataset', 'reader',
-    'topology', 'inferencer', 'infer'
+    'topology', 'networks', 'inferencer', 'infer'
 ]
 
 
