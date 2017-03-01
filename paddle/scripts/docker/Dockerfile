@@ -22,9 +22,7 @@ ENV WITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
 ENV HOME /root
 
 # Add bash enhancements
-ADD root/.bashrc /root/.bashrc
-ADD root/.gitconfig /root/.gitconfig
-ADD root/.scripts /root/.scripts
+COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
     apt-get install -y git python-pip python-dev openssh-server bison && \
