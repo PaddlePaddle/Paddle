@@ -33,8 +33,8 @@ class IScanner(object):
         # Otherwise, trainer uses MultiGradientMachine which will transfer
         # data from CPU to GPU in the forward function, set data_in_gpu to
         # False in this case.
-        self.data_in_gpu = True if swig_paddle.isUsingGpu() and (
-            swig_paddle.getTrainerCount() == 1) else False
+        self.data_in_gpu = swig_paddle.isUsingGpu(
+        ) and swig_paddle.getTrainerCount() == 1
 
     def scan(self, dat):
         pass
@@ -63,7 +63,7 @@ class DenseScanner(IScanner):
         if self.__mat__.dtype != numpy.float32:
             self.__mat__ = self.__mat__.astype(numpy.float32)
         m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True,
-                                                    self.use_gpu)
+                                                    self.data_in_gpu)
         argument.setSlotValue(self.pos, m)
 
 
@@ -115,7 +115,7 @@ class IndexScanner(IScanner):
         self.__ids__.append(dat)
 
     def finish_scan(self, argument):
-        ids = swig_paddle.IVector.create(self.__ids__, self.use_gpu)
+        ids = swig_paddle.IVector.create(self.__ids__, self.data_in_gpu)
         assert isinstance(argument, swig_paddle.Arguments)
         argument.setSlotIds(self.pos, ids)
 
