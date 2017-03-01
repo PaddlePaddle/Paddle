@@ -2,7 +2,7 @@
 
 前一篇文章介绍了如何在Kubernetes集群上启动一个单机PaddlePaddle训练作业 (Job)。在这篇文章里，我们介绍如何在Kubernetes集群上进行分布式PaddlePaddle训练作业。关于PaddlePaddle的分布式训练，文章 [Cluster Training](https://github.com/baidu/Paddle/blob/develop/doc/cluster/opensource/cluster_train.md)介绍了一种通过SSH远程分发任务，进行分布式训练的方法，与此不同的是，本文将介绍在Kubernetes容器管理平台上快速构建PaddlePaddle容器集群，进行分布式训练的方案。
 
-有关Kubernetes相关概念以及如何搭建和配置Kubernetes集群，可以参考[k8s_basis](./k8s_basis.md)。
+有关Kubernetes相关概念以及如何搭建和配置Kubernetes集群，可以参考[k8s_basis](./k8s_basis_cn.md)。
 
 ## 整体方案
 
