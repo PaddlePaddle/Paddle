@@ -9,9 +9,9 @@ __all__ = ['train', 'test']
 
 URL_PREFIX = 'http://yann.lecun.com/exdb/mnist/'
 TEST_IMAGE_URL = URL_PREFIX + 't10k-images-idx3-ubyte.gz'
-TEST_IMAGE_MD5 = '25e3cc63507ef6e98d5dc541e8672bb6'
+TEST_IMAGE_MD5 = '9fb629c4189551a2d022fa330f9573f3'
 TEST_LABEL_URL = URL_PREFIX + 't10k-labels-idx1-ubyte.gz'
-TEST_LABEL_MD5 = '4e9511fe019b2189026bd0421ba7b688'
+TEST_LABEL_MD5 = 'ec29112dd5afa0611ce80d1b7f02629c'
 TRAIN_IMAGE_URL = URL_PREFIX + 'train-images-idx3-ubyte.gz'
 TRAIN_IMAGE_MD5 = 'f68b3c2dcbeaaa9fbdd348bbdeb94873'
 TRAIN_LABEL_URL = URL_PREFIX + 'train-labels-idx1-ubyte.gz'

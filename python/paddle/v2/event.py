@@ -11,7 +11,10 @@ There are:
 TODO(yuyang18): Complete it!
 """
 import py_paddle.swig_paddle as api
-__all__ = ['EndIteration', 'BeginIteration', 'BeginPass', 'EndPass']
+
+__all__ = [
+    'EndIteration', 'BeginIteration', 'BeginPass', 'EndPass', 'TestResult'
+]
 
 
 class WithMetric(object):
@@ -28,6 +31,11 @@ class WithMetric(object):
             val = self.__evaluator__.getValue(each_name)
             retv[each_name] = val
         return retv
+
+
+class TestResult(WithMetric):
+    def __init__(self, evaluator):
+        super(TestResult, self).__init__(evaluator)
 
 
 class BeginPass(object):
