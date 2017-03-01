@@ -50,10 +50,10 @@ def main():
         output=inference,
         parameters=parameters,
         reader=paddle.reader.batched(
-            paddle.reader.limited(
+            paddle.reader.firstn(
                 paddle.reader.map_readers(lambda item: (item[0], ),
                                           paddle.dataset.mnist.test()),
-                limit=100),
+                n=100),
             batch_size=32))
     print probs.shape
 
