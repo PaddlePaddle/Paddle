@@ -284,5 +284,20 @@ class NetworkTest(unittest.TestCase):
     # TODO Complete unittest.
 
 
+class RecurrentTest(unittest.TestCase):
+    def test_recurrent(self):
+        seq = configs.layer.data(
+            name='test_seq', type=configs.data_type.dense_vector_sequence(784))
+
+        def test_step(a):
+            b = configs.layer.fc(input=a, size=100)
+            c = configs.layer.fc(input=a, size=200)
+            return b, c
+
+        seq_b, seq_c = configs.layer.recurrent_group(input=seq, step=test_step)
+
+        print configs.layer.parse_network(seq_b, seq_c)
+
+
 if __name__ == '__main__':
     unittest.main()
