@@ -32,3 +32,10 @@ def download(url, module_name, md5sum):
             shutil.copyfileobj(r.raw, f)
 
     return filename
+
+
+def dict_add(a_dict, ele):
+    if ele in a_dict:
+        a_dict[ele] += 1
+    else:
+        a_dict[ele] = 1

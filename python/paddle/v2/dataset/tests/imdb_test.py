@@ -1,12 +1,43 @@
-import paddle.v2.dataset.common
-import tarfile
+import paddle.v2.dataset.imdb
+import unittest
+import re
 
-URL = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
-MD5 = '7c2ac02c03563afcf9b574c7e56c153a'
+TRAIN_POS_PATTERN = re.compile("aclImdb/train/pos/.*\.txt$")
+TRAIN_NEG_PATTERN = re.compile("aclImdb/train/neg/.*\.txt$")
+TRAIN_PATTERN = re.compile("aclImdb/train/.*\.txt$")
 
-tarf = tarfile.open(paddle.v2.dataset.common.download(URL, 'imdb', MD5))
+TEST_POS_PATTERN = re.compile("aclImdb/test/pos/.*\.txt$")
+TEST_NEG_PATTERN = re.compile("aclImdb/test/neg/.*\.txt$")
+TEST_PATTERN = re.compile("aclImdb/test/.*\.txt$")
 
-tf = tarf.next()
-while tf != None:
-    print tf.name
-    tf = tarf.next()
+
+class TestIMDB(unittest.TestCase):
+    word_idx = None
+
+    def test_build_dict(self):
+        if self.word_idx == None:
+            self.word_idx = paddle.v2.dataset.imdb.build_dict(TRAIN_PATTERN,
+                                                              150)
+
+        self.assertEqual(len(self.word_idx), 7036)
+
+    def check_dataset(self, dataset, expected_size):
+        if self.word_idx == None:
+            self.word_idx = paddle.v2.dataset.imdb.build_dict(TRAIN_PATTERN,
+                                                              150)
+
+        sum = 0
+        for l in dataset(self.word_idx):
+            self.assertEqual(l[1], sum % 2)
+            sum += 1
+        self.assertEqual(sum, expected_size)
+
+    def test_train(self):
+        self.check_dataset(paddle.v2.dataset.imdb.train, 25000)
+
+    def test_test(self):
+        self.check_dataset(paddle.v2.dataset.imdb.test, 25000)
+
+
+if __name__ == '__main__':
+    unittest.main()
