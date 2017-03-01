@@ -21,7 +21,21 @@ import layer as v2_layer
 __all__ = ['Topology']
 
 
+def __flatten__(lis):
+    """
+    Given a list, possibly nested to any level, return it flattened.
+    """
+    new_lis = []
+    for item in lis:
+        if isinstance(item, collections.Sequence):
+            new_lis.extend(__flatten__(item))
+        else:
+            new_lis.append(item)
+    return new_lis
+
+
 def __bfs_travel__(callback, *layers):
+    layers = __flatten__(layers)
     for each_layer in layers:
         __break__ = callback(each_layer)
         if __break__:
