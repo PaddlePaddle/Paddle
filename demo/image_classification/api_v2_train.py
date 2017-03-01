@@ -14,6 +14,7 @@
 
 from api_v2_vgg import resnet_cifar10
 from api_v2_resnet import vgg_bn_drop
+import paddle.v2 as paddle
 
 
 def event_handler(event):
