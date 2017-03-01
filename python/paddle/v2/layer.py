@@ -133,7 +133,11 @@ class Layer(object):
             return self.to_proto_impl(**kwargs)
         elif self.context_name() not in context:
             context[self.context_name()] = self.to_proto_impl(**kwargs)
-        return context[self.name]
+
+        if self.use_context_name():
+            return context[self.context_name()]
+        else:
+            return context[self.name]
 
     def to_proto_impl(self, **kwargs):
         raise NotImplementedError()
@@ -145,6 +149,9 @@ class Layer(object):
         will be invoked only once.
         """
         return self.name
+
+    def use_context_name(self):
+        return False
 
 
 def __convert_to_v2__(method_name, parent_names, is_default_name=True):
@@ -238,6 +245,13 @@ class MemoryV2(Layer):
 
     def context_name(self):
         return self.name + "#memory"
+
+    def use_context_name(self):
+        """
+        memory layer will have the same name with some layer
+        :return:
+        """
+        return True
 
 
 class LayerOutputV2(Layer):
