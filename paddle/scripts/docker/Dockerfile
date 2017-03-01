@@ -29,8 +29,10 @@ RUN apt-get update && \
     apt-get install -y wget unzip tar xz-utils bzip2 gzip coreutils && \
     apt-get install -y curl sed grep graphviz libjpeg-dev zlib1g-dev && \
     apt-get install -y python-numpy python-matplotlib gcc g++ gfortran && \
-    apt-get install -y automake locales && \
+    apt-get install -y automake locales clang-format-3.8 && \
     apt-get clean -y
+
+RUN git config --global credential.helper "cache --timeout=604800"
 
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
