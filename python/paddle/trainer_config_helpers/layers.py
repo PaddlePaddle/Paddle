@@ -822,7 +822,7 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
     return LayerOutput(name, LayerType.DATA, size=size)
 
 
-@wrap_name_default("embedding")
+@wrap_name_default("embedding_layer")
 @wrap_param_attr_default()
 @layer_support(ERROR_CLIPPING)
 def embedding_layer(input, size, name=None, param_attr=None, layer_attr=None):
