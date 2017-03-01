@@ -67,7 +67,7 @@ paddle.v2.parameters.create, no longer exposed to users.
 """
 
 import collections
-
+import inspect
 import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
@@ -216,31 +216,83 @@ class DataLayerV2(Layer):
         return getattr(conf_helps, self.__method_name__)(name=self.name, **args)
 
 
-class MemoryV2(Layer):
+class WithExtraParent(Layer):
+    def extra_parent(self):
+        return self.__extra_parent__
+
+    def __init__(self, name=None, parent_layers=None):
+        self.__extra_parent__ = []
+        super(WithExtraParent, self).__init__(name, parent_layers)
+
+    def append_extra_parent(self, parent):
+        self.__extra_parent__.append(parent)
+
+    def to_proto(self, context):
+        """
+        function to set proto attribute
+        """
+        kwargs = dict()
+        for p in self.__extra_parent__:
+            p.to_proto(context=context)
+
+        for layer_name in self.__parent_layers__:
+            if not isinstance(self.__parent_layers__[layer_name],
+                              collections.Sequence):
+                v1_layer = self.__parent_layers__[layer_name].to_proto(
+                    context=context)
+            else:
+                v1_layer = map(lambda x: x.to_proto(context=context),
+                               self.__parent_layers__[layer_name])
+            kwargs[layer_name] = v1_layer
+
+        if self.context_name() is None:
+            return self.to_proto_impl(context=context, **kwargs)
+        elif self.context_name() not in context:
+            context[self.context_name()] = self.to_proto_impl(
+                context=context, **kwargs)
+
+        if self.use_context_name():
+            return context[self.context_name()]
+        else:
+            return context[self.name]
+
+
+class MemoryV2(WithExtraParent):
     def __init__(self, name, size, **kwargs):
         self.name = name
         self.size = size
+        super(MemoryV2, self).__init__(name=name, parent_layers=dict())
+        self.__kwargs__ = kwargs
+        self.__boot_layer_name__ = None
+        if 'boot_layer' in kwargs:
+            begin_of_current_rnn = []
+            # TODO(yuyang18): Fix inspect, it could be wrong when user invoke a
+            # function inside step.
+            st = inspect.stack()
+            for i in xrange(len(st)):
+                locs = inspect.stack()[i][0].f_locals
+                for val in locs.viewvalues():
+                    if isinstance(val, RecurrentLayerInput):
+                        begin_of_current_rnn.append(val)
 
-        parent_names = ['boot_layer']
-        parent_layers = dict()
-        other_kwargs = dict()
-        for pname in parent_names:
-            if kwargs.has_key(pname):
-                parent_layers[pname] = kwargs[pname]
+                if begin_of_current_rnn:
+                    break
+            assert begin_of_current_rnn is not None
+            for extra in begin_of_current_rnn:
+                self.append_extra_parent(extra)
+                assert isinstance(extra, WithExtraParent)
+                extra.append_extra_parent(kwargs['boot_layer'])
+                self.__boot_layer_name__ = kwargs['boot_layer'].name
 
-        for key in kwargs.keys():
-            if key not in parent_names:
-                other_kwargs[key] = kwargs[key]
-        super(MemoryV2, self).__init__(name=name, parent_layers=parent_layers)
-        self.__kwargs__ = other_kwargs
-
-    def to_proto_impl(self, **kwargs):
+    def to_proto_impl(self, context, **kwargs):
         args = dict()
         for each in kwargs:
             args[each] = kwargs[each]
         for each in self.__kwargs__:
             args[each] = self.__kwargs__[each]
 
+        if self.__boot_layer_name__ is not None:
+            args['boot_layer'] = context[self.__boot_layer_name__]
         return conf_helps.memory(name=self.name, size=self.size, **args)
 
     def context_name(self):
@@ -328,7 +380,7 @@ class MixedLayerV2(Layer):
             self.__inputs__.append(other)
             return self
         else:
-            raise MixedLayerTypeV2.AddToSealedMixedLayerExceptionV2()
+            raise MixedLayerV2.AddToSealedMixedLayerExceptionV2()
 
     def __enter__(self):
         assert len(self.__inputs__) == 0
@@ -359,11 +411,10 @@ def mixed(size=0,
     return MixedLayerV2(size, input, name, act, bias_attr, layer_attr)
 
 
-class RecurrentLayerInput(Layer):
+class RecurrentLayerInput(WithExtraParent):
     def __init__(self, recurrent_name, index, parent_layers):
         assert len(parent_layers) == 1
         self.__parents__ = parent_layers.values()[0]
-        print self.__parents__, parent_layers
         super(RecurrentLayerInput, self).__init__(
             name=self.__parents__[index].name, parent_layers=parent_layers)
         self.__recurrent_name__ = recurrent_name
@@ -371,7 +422,7 @@ class RecurrentLayerInput(Layer):
     def context_name(self):
         return self.__recurrent_name__ + ".begin"
 
-    def to_proto_impl(self, **kwargs):
+    def to_proto_impl(self, context, **kwargs):
         model_type('recurrent_nn')
         RecurrentLayerGroupWithoutOutLinksBegin(
             name=self.__recurrent_name__,
@@ -458,8 +509,10 @@ def __layer_name_mapping__(inname):
 def __layer_name_mapping_parent_names__(inname):
     all_args = getattr(conf_helps, inname).argspec.args
     return filter(
-        lambda x: x in ['input1', 'input2','label', 'input', 'a', 'b', 'expand_as',
-                        'weights', 'vectors', 'weight', 'score', 'left', 'right'],
+        lambda x: x in ['input1', 'input2', 'label', 'input', 'a', 'b',
+                        'expand_as',
+                        'weights', 'vectors', 'weight', 'score', 'left',
+                        'right'],
         all_args)
 
 

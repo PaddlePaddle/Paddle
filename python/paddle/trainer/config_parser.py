@@ -3474,8 +3474,6 @@ def update_g_config():
     for name in g_config.model_config.output_layer_names:
         assert name in g_layer_map, \
             'input name "%s" does not correspond to a layer name' % name
-    for hook in _parse_config_hooks:
-        hook()
     return g_config
 
 
@@ -3487,8 +3485,8 @@ def parse_config(trainer_config, config_arg_str):
     passed to config script as a dictionary CONFIG_ARGS
     '''
     init_config_environment()
-    # for hook in _parse_config_hooks:
-    #     hook()
+    for hook in _parse_config_hooks:
+        hook()
 
     config_args = {}
 

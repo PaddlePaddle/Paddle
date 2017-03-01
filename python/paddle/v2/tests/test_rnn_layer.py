@@ -106,9 +106,21 @@ class RNNTest(unittest.TestCase):
             return str(parse_network(test))
 
         def parse_new_rnn():
+            data = layer.data(
+                name="word", type=data_type.dense_vector(dict_dim))
+            label = layer.data(
+                name="label", type=data_type.dense_vector(label_dim))
+            emb = layer.embedding(input=data, size=word_dim)
+
+            boot_layer = layer.data(
+                name="boot", type=data_type.dense_vector(10))
+
+            boot_layer = layer.fc(name='wtf', input=boot_layer, size=10)
+
             def step(y, wid):
                 z = layer.embedding(input=wid, size=word_dim)
-                mem = layer.memory(name="rnn_state", size=hidden_dim)
+                mem = layer.memory(
+                    name="rnn_state", size=hidden_dim, boot_layer=boot_layer)
                 out = layer.fc(input=[y, z, mem],
                                size=hidden_dim,
                                act=activation.Tanh(),
@@ -116,11 +128,6 @@ class RNNTest(unittest.TestCase):
                                name="rnn_state")
                 return out
 
-            data = layer.data(
-                name="word", type=data_type.dense_vector(dict_dim))
-            label = layer.data(
-                name="label", type=data_type.dense_vector(label_dim))
-            emb = layer.embedding(input=data, size=word_dim)
             out = layer.recurrent_group(
                 name="rnn", step=step, input=[emb, data])
 
@@ -134,9 +141,11 @@ class RNNTest(unittest.TestCase):
 
             return str(layer.parse_network(cost))
 
-        diff = difflib.unified_diff(parse_old_rnn().splitlines(1),
-                                    parse_new_rnn().splitlines(1))
-        print ''.join(diff)
+        with open("/Users/baidu/old.out", 'w') as f:
+            print >> f, parse_old_rnn()
+        with open("/Users/baidu/new.out", "w") as f:
+            print >> f, parse_new_rnn()
+        # print ''.join(diff)
 
 
 if __name__ == '__main__':
