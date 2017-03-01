@@ -5,6 +5,8 @@ from data_feeder import DataFeeder
 import itertools
 import numpy
 
+from . import common
+
 __all__ = ['Inference', 'infer']
 
 
@@ -54,6 +56,12 @@ class Inference(object):
         return reader_dict
 
 
-def infer(output, parameters, reader, reader_dict=None, field='value'):
+def infer(output,
+          parameters,
+          reader,
+          batch_size,
+          reader_dict=None,
+          field='value'):
+    reader = common.make_batch(reader, batch_size)
     inferer = Inference(output=output, parameters=parameters)
     return inferer.infer(field=field, reader=reader, reader_dict=reader_dict)

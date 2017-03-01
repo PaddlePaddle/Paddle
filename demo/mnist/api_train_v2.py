@@ -27,8 +27,7 @@ def main():
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
             if event.batch_id % 1000 == 0:
-                result = trainer.test(reader=paddle.reader.batched(
-                    paddle.dataset.mnist.test(), batch_size=256))
+                result = trainer.test(paddle.dataset.mnist.test(), 256)
 
                 print "Pass %d, Batch %d, Cost %f, %s, Testing metrics %s" % (
                     event.pass_id, event.batch_id, event.cost, event.metrics,
@@ -38,10 +37,9 @@ def main():
             pass
 
     trainer.train(
-        reader=paddle.reader.batched(
-            paddle.reader.shuffle(
-                paddle.dataset.mnist.train(), buf_size=8192),
-            batch_size=32),
+        reader=paddle.reader.shuffle(
+            paddle.dataset.mnist.train(), buf_size=8192),
+        batch_size=32,
         event_handler=event_handler)
 
     # output is a softmax layer. It returns probabilities.
@@ -49,12 +47,10 @@ def main():
     probs = paddle.infer(
         output=inference,
         parameters=parameters,
-        reader=paddle.reader.batched(
-            paddle.reader.firstn(
-                paddle.reader.map_readers(lambda item: (item[0], ),
-                                          paddle.dataset.mnist.test()),
-                n=100),
-            batch_size=32))
+        reader=paddle.reader.firstn(
+            paddle.dataset.mnist.test(), n=100),
+        reader_dict={'pixel': 0},
+        batch_size=32)
     print probs.shape
 
 
