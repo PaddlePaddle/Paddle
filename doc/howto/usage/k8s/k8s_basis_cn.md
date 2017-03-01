@@ -1,6 +1,6 @@
 # Kubernetes 简介
 
-[*Kubernetes*](http://kubernetes.io/)是Google开源的容器集群管理系统，其提供应用部署、维护、 扩展机制等功能，利用Kubernetes能方便地管理跨机器运行容器化的应用。Kubernetes可以在物理机或虚拟机上运行，且支持部署到[AWS](http://kubernetes.io/docs/getting-started-guides/aws)，[Azure](http://kubernetes.io/docs/getting-started-guides/azure/)，[GCE](http://kubernetes.io/docs/getting-started-guides/gce)等多种公有云环境。介绍分布式训练之前，需要对[Kubernetes](http://kubernetes.io/)有一个基本的认识，下面先简要介绍一下本文用到的几个Kubernetes概念。
+[*Kubernetes*](http://kubernetes.io/)是Google开源的容器集群管理系统，其提供应用部署、维护、扩展机制等功能，利用Kubernetes能方便地管理跨机器运行容器化的应用。Kubernetes可以在物理机或虚拟机上运行，且支持部署到[AWS](http://kubernetes.io/docs/getting-started-guides/aws)，[Azure](http://kubernetes.io/docs/getting-started-guides/azure/)，[GCE](http://kubernetes.io/docs/getting-started-guides/gce)等多种公有云环境。介绍分布式训练之前，需要对[Kubernetes](http://kubernetes.io/)有一个基本的认识，下面先简要介绍一下本文用到的几个Kubernetes概念。
 
 - [*Node*](http://kubernetes.io/docs/admin/node/) 表示一个Kubernetes集群中的一个工作节点，这个节点可以是物理机或者虚拟机，Kubernetes集群就是由node节点与master节点组成的。
 
@@ -51,7 +51,7 @@ curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s htt
 
 ## 配置kubectl访问你的kubernetes集群
 
-编辑`~/.kube/config`这个配置文件，修改`Master-IP`的地址。如果使用SSL认证，则需要配置`certificate-authority`和`users`中的用户证书。如果是使用非SSL方式访问（比如通过8080都安口），也可以去掉这些证书的配置。
+编辑`~/.kube/config`这个配置文件，修改`Master-IP`的地址。如果使用SSL认证，则需要配置`certificate-authority`和`users`中的用户证书。如果是使用非SSL方式访问（比如通过8080端口），也可以去掉这些证书的配置。
 ```
 apiVersion: v1
 clusters:
