@@ -15,8 +15,8 @@
 import collections
 
 from paddle.proto.ModelConfig_pb2 import ModelConfig
-
-import layer as v2_layer
+import configs
+v2_layer = configs.layer
 
 __all__ = ['Topology']
 
