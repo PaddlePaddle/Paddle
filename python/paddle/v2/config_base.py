@@ -23,12 +23,19 @@ class Layer(object):
         assert isinstance(parent_layers, dict)
         self.name = name
         self.__parent_layers__ = parent_layers
+        self.__extra_parent__ = []
+
+    def append_extra_parent(self, p):
+        self.__extra_parent__.append(p)
 
     def to_proto(self, context):
         """
         function to set proto attribute
         """
         kwargs = dict()
+        for each in self.__extra_parent__:
+            each.to_proto(context=context)
+
         for layer_name in self.__parent_layers__:
             if not isinstance(self.__parent_layers__[layer_name],
                               collections.Sequence):
@@ -40,11 +47,15 @@ class Layer(object):
             kwargs[layer_name] = v1_layer
 
         if self.name is None:
-            return self.to_proto_impl(**kwargs)
+            return self.to_proto_impl_with_context(context=context, **kwargs)
         elif self.name not in context:
-            context[self.name] = self.to_proto_impl(**kwargs)
+            context[self.name] = self.to_proto_impl_with_context(
+                context=context, **kwargs)
 
         return context[self.name]
+
+    def to_proto_impl_with_context(self, context, **kwargs):
+        return self.to_proto_impl(**kwargs)
 
     def to_proto_impl(self, **kwargs):
         raise NotImplementedError()
