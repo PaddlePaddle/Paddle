@@ -160,7 +160,10 @@ if __name__ == '__main__':
     # create parameters
     parameters = paddle.parameters.create(cost)
 
-    adam_optimizer = paddle.optimizer.Adam(learning_rate=0.01)
+    adam_optimizer = paddle.optimizer.Adam(
+        learning_rate=2e-3,
+        regularization=paddle.optimizer.L2Regularization(rate=8e-4),
+        model_average=paddle.optimizer.ModelAverage(average_window=0.5))
 
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
