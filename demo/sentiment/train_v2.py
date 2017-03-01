@@ -1,4 +1,6 @@
 from os.path import join as join_path
+import paddle.trainer_config_helpers.attrs as attrs
+from paddle.trainer_config_helpers.poolings import MaxPooling
 import paddle.v2 as paddle
 import paddle.v2.layer as layer
 import paddle.v2.activation as activation
@@ -115,7 +117,73 @@ def convolution_net(input_dim,
     output = layer.fc(input=[conv_3, conv_4],
                       size=class_dim,
                       act=activation.Softmax())
-    lbl = layer.data("label", data_type.integer_value(1))
+    lbl = layer.data("label", data_type.integer_value(2))
+    cost = layer.classification_cost(input=output, label=lbl)
+    return cost
+
+
+def stacked_lstm_net(input_dim,
+                     class_dim=2,
+                     emb_dim=128,
+                     hid_dim=512,
+                     stacked_num=3,
+                     is_predict=False):
+    """
+    A Wrapper for sentiment classification task.
+    This network uses bi-directional recurrent network,
+    consisting three LSTM layers. This configure is referred to
+    the paper as following url, but use fewer layrs.
+        http://www.aclweb.org/anthology/P15-1109
+
+    input_dim: here is word dictionary dimension.
+    class_dim: number of categories.
+    emb_dim: dimension of word embedding.
+    hid_dim: dimension of hidden layer.
+    stacked_num: number of stacked lstm-hidden layer.
+    is_predict: is predicting or not.
+                Some layers is not needed in network when predicting.
+    """
+    assert stacked_num % 2 == 1
+
+    layer_attr = attrs.ExtraLayerAttribute(drop_rate=0.5)
+    fc_para_attr = attrs.ParameterAttribute(learning_rate=1e-3)
+    lstm_para_attr = attrs.ParameterAttribute(initial_std=0., learning_rate=1.)
+    para_attr = [fc_para_attr, lstm_para_attr]
+    bias_attr = attrs.ParameterAttribute(initial_std=0., l2_rate=0.)
+    relu = activation.Relu()
+    linear = activation.Linear()
+
+    data = layer.data("word", data_type.integer_value_sequence(input_dim))
+    emb = layer.embedding(input=data, size=emb_dim)
+
+    fc1 = layer.fc(input=emb, size=hid_dim, act=linear, bias_attr=bias_attr)
+    lstm1 = layer.lstmemory(
+        input=fc1, act=relu, bias_attr=bias_attr, layer_attr=layer_attr)
+
+    inputs = [fc1, lstm1]
+    for i in range(2, stacked_num + 1):
+        fc = layer.fc(input=inputs,
+                      size=hid_dim,
+                      act=linear,
+                      param_attr=para_attr,
+                      bias_attr=bias_attr)
+        lstm = layer.lstmemory(
+            input=fc,
+            reverse=(i % 2) == 0,
+            act=relu,
+            bias_attr=bias_attr,
+            layer_attr=layer_attr)
+        inputs = [fc, lstm]
+
+    fc_last = layer.pooling(input=inputs[0], pooling_type=MaxPooling())
+    lstm_last = layer.pooling(input=inputs[1], pooling_type=MaxPooling())
+    output = layer.fc(input=[fc_last, lstm_last],
+                      size=class_dim,
+                      act=activation.Softmax(),
+                      bias_attr=bias_attr,
+                      param_attr=para_attr)
+
+    lbl = layer.data("label", data_type.integer_value(2))
     cost = layer.classification_cost(input=output, label=lbl)
     return cost
 
@@ -177,7 +245,9 @@ if __name__ == '__main__':
     paddle.init(use_gpu=True, trainer_count=4)
 
     # network config
-    cost = convolution_net(dict_dim, class_dim=class_dim, is_predict=is_predict)
+    # cost = convolution_net(dict_dim, class_dim=class_dim, is_predict=is_predict)
+    cost = stacked_lstm_net(
+        dict_dim, class_dim=class_dim, stacked_num=3, is_predict=is_predict)
 
     # create parameters
     parameters = paddle.parameters.create(cost)
