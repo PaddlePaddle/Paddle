@@ -68,13 +68,16 @@ class Topology(object):
         get all data layer
         :return:
         """
-        data_layers = set()
+        data_layers = dict()
 
         def find_data_layer(layer):
             if isinstance(layer, v2_layer.DataLayerV2):
-                data_layers.add(layer)
-            for parent_layer in layer.__parent_layers__.values():
-                find_data_layer(parent_layer)
+                data_layers[layer.name] = layer
+            if not isinstance(layer, collections.Sequence):
+                layer = [layer]
+            for each_l in layer:
+                for parent_layer in each_l.__parent_layers__.values():
+                    find_data_layer(parent_layer)
 
         for layer in self.layers:
             find_data_layer(layer)
@@ -86,8 +89,12 @@ class Topology(object):
         get data_type from proto, such as:
         [('image', dense_vector(768)), ('label', integer_value(10))]
         """
-        return [(data_layer.name, data_layer.type)
-                for data_layer in self.data_layers()]
+
+        data_types_lists = []
+        data_layers = self.data_layers()
+        for each in self.__model_config__.input_layer_names:
+            data_types_lists.append((each, data_layers[each].type))
+        return data_types_lists
 
 
 def __check_layer_type__(layer):
