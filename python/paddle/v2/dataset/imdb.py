@@ -1,6 +1,3 @@
-# /usr/bin/env python
-# -*- coding:utf-8 -*-
-
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +14,7 @@
 """
 IMDB dataset: http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz
 """
+
 import paddle.v2.dataset.common
 import tarfile
 import Queue
