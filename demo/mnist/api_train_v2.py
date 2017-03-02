@@ -1,4 +1,5 @@
 import paddle.v2 as paddle
+import cPickle
 
 
 def main():
@@ -16,7 +17,11 @@ def main():
                                 act=paddle.activation.Softmax())
     cost = paddle.layer.classification_cost(input=inference, label=label)
 
-    parameters = paddle.parameters.create(cost)
+    try:
+        with open('params.pkl', 'r') as f:
+            parameters = cPickle.load(f)
+    except IOError:
+        parameters = paddle.parameters.create(cost)
 
     adam_optimizer = paddle.optimizer.Adam(learning_rate=0.01)
 
@@ -33,6 +38,10 @@ def main():
                 print "Pass %d, Batch %d, Cost %f, %s, Testing metrics %s" % (
                     event.pass_id, event.batch_id, event.cost, event.metrics,
                     result.metrics)
+
+                with open('params.pkl', 'w') as f:
+                    cPickle.dump(
+                        parameters, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
         else:
             pass
