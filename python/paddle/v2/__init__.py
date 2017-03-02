@@ -20,6 +20,7 @@ import event
 import data_type
 import topology
 import data_feeder
+import networks
 from . import dataset
 from . import reader
 import attr

@@ -165,7 +165,7 @@ def main():
 
     trn_reader = paddle.reader.batched(
         paddle.reader.shuffle(
-            conll05.test, buf_size=8192), batch_size=10)
+            conll05.test(), buf_size=8192), batch_size=10)
 
     trainer.train(
         reader=trn_reader, event_handler=event_handler, num_passes=10000)

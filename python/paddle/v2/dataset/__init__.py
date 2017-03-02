@@ -13,5 +13,10 @@
 # limitations under the License.
 
 import mnist
+import imikolov
+import imdb
+import cifar
+import movielens
+import conll05
 
-__all__ = ['mnist', 'cifar', 'imdb', 'conll05', 'imikolov', 'movielens']
+__all__ = ['mnist', 'imikolov', 'imdb', 'cifar', 'movielens', 'conll05']
