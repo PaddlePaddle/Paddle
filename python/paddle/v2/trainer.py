@@ -113,7 +113,7 @@ class SGD(ITrainer):
                 gm.forwardBackward(feeder(data_batch), out_args, pass_type)
                 gm.eval(pass_evaluator)
                 gm.eval(batch_evaluator)
-                for each_param in gm.getParameters():
+                for each_param in gm.getNonStaticParameters():
                     updater.update(each_param)
                 # Get cost. We use numpy to calculate total cost for this batch.
                 cost_vec = out_args.getSlotValue(0)
