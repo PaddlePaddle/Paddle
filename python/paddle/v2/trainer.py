@@ -108,9 +108,6 @@ class SGD(ITrainer):
             pass_evaluator.start()
             updater.startPass()
             for batch_id, data_batch in enumerate(reader()):
-                pass_type = updater.startBatch(len(data_batch))
-                self.__gradient_machine__.forwardBackward(
-                    feeder(data_batch), out_args, pass_type)
                 batch_evaluator.start()
                 event_handler(
                     v2_event.BeginIteration(
