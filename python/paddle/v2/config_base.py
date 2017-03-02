@@ -22,6 +22,7 @@ class Layer(object):
     def __init__(self, name=None, parent_layers=None):
         assert isinstance(parent_layers, dict)
         self.name = name
+        self.__contex__ = {}
         self.__parent_layers__ = parent_layers
 
     def to_proto(self, context):
@@ -39,15 +40,37 @@ class Layer(object):
                                self.__parent_layers__[layer_name])
             kwargs[layer_name] = v1_layer
 
-        if self.name is None:
+        if self.context_name() is None:
             return self.to_proto_impl(**kwargs)
-        elif self.name not in context:
-            context[self.name] = self.to_proto_impl(**kwargs)
-
-        return context[self.name]
+        elif self.context_name() not in context:
+            context[self.context_name()] = self.to_proto_impl(**kwargs)
+        self.__contex__ = context
+        if self.use_context_name():
+            return context[self.context_name()]
+        else:
+            return context[self.name]
 
     def to_proto_impl(self, **kwargs):
         raise NotImplementedError()
+
+    def context_name(self):
+        """
+        Context name means the context which stores `to_proto_impl` result.
+        If multiple layer share same context_name, the `to_proto_impl` of them
+        will be invoked only once.
+        """
+        return self.name
+
+    def use_context_name(self):
+        return False
+
+    def calculate_size(self):
+        """
+        lazy calculate size of the layer, should be called when to_proto_impl of
+        this layer is called.
+        :return:
+        """
+        return self.__contex__[self.context_name()].size
 
 
 def __convert_to_v2__(method_name, parent_names, is_default_name=True):
