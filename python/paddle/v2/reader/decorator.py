@@ -14,13 +14,13 @@
 
 __all__ = [
     'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'batched'
+    'ComposeNotAligned', 'batched', 'firstn'
 ]
 
-from Queue import Queue
-from threading import Thread
 import itertools
 import random
+from Queue import Queue
+from threading import Thread
 
 
 def map_readers(func, *readers):
@@ -213,3 +213,20 @@ def batched(reader, batch_size):
             yield batch
 
     return batched_reader
+
+
+def firstn(reader, n):
+    """
+    Limit the max number of samples that reader could return.
+    """
+
+    # TODO(yuyang18): Check if just drop the reader, could clean the opened
+    # resource or not?
+
+    def firstn_reader():
+        for i, item in enumerate(reader()):
+            if i == n:
+                break
+            yield item
+
+    return firstn_reader
