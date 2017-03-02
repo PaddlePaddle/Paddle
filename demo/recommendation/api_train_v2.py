@@ -70,27 +70,35 @@ def main():
                                  parameters=parameters,
                                  update_equation=paddle.optimizer.Adam(
                                      learning_rate=1e-4))
+    reader_dict = {
+        'user_id': 0,
+        'gender_id': 1,
+        'age_id': 2,
+        'job_id': 3,
+        'movie_id': 4,
+        'category_id': 5,
+        'movie_title': 6,
+        'score': 7
+    }
 
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
             if event.batch_id % 100 == 0:
                 print "Pass %d Batch %d Cost %.2f" % (
                     event.pass_id, event.batch_id, event.cost)
+        elif isinstance(event, paddle.event.EndPass):
+            result = trainer.test(reader=paddle.reader.batched(
+                paddle.dataset.movielens.test(), batch_size=256))
+            print result.cost
 
     trainer.train(
         reader=paddle.reader.batched(
-            paddle.dataset.movielens.train(), batch_size=256),
+            paddle.reader.shuffle(
+                paddle.dataset.movielens.train(), buf_size=8192),
+            batch_size=256),
         event_handler=event_handler,
-        reader_dict={
-            'user_id': 0,
-            'gender_id': 1,
-            'age_id': 2,
-            'job_id': 3,
-            'movie_id': 4,
-            'category_id': 5,
-            'movie_title': 6,
-            'score': 7
-        })
+        reader_dict=reader_dict,
+        num_passes=10)
 
 
 if __name__ == '__main__':

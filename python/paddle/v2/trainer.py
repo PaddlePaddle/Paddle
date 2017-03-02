@@ -123,9 +123,8 @@ class SGD(ITrainer):
                 for each_param in self.__gradient_machine__.getParameters():
                     updater.update(each_param)
                 # Get cost. We use numpy to calculate total cost for this batch.
-                cost_vec = out_args.getSlotValue(0)
-                cost_vec = cost_vec.copyToNumpyMat()
-                cost = cost_vec.sum() / len(data_batch)
+                cost_sum = out_args.sumCosts()
+                cost = cost_sum / len(data_batch)
                 updater.finishBatch(cost)
                 batch_evaluator.finish()
                 event_handler(
