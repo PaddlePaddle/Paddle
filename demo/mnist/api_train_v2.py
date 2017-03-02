@@ -53,6 +53,19 @@ def main():
             batch_size=32),
         event_handler=event_handler)
 
+    # output is a softmax layer. It returns probabilities.
+    # Shape should be (100, 10)
+    probs = paddle.infer(
+        output=inference,
+        parameters=parameters,
+        reader=paddle.reader.batched(
+            paddle.reader.firstn(
+                paddle.reader.map_readers(lambda item: (item[0], ),
+                                          paddle.dataset.mnist.test()),
+                n=100),
+            batch_size=32))
+    print probs.shape
+
 
 if __name__ == '__main__':
     main()
