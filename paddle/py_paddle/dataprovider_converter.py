@@ -23,8 +23,18 @@ __all__ = ['DataProviderConverter']
 class IScanner(object):
     def __init__(self, input_type, pos):
         self.input_type = input_type
-        assert isinstance(self.input_type, dp2.InputType)
+        if not isinstance(self.input_type, dp2.InputType):
+            raise ValueError("input type should be dataprovider2.InputType")
         self.pos = pos
+        # data_in_gpu is used to indicate whether to create argument on GPU
+        # or not in GPU mode. Now if using one thread (trainer_count=1),
+        # trainer uses NeuralNetwork which needs to create argument on GPU
+        # before calling forward function. So, set data_in_gpu to True.
+        # Otherwise, trainer uses MultiGradientMachine which will transfer
+        # data from CPU to GPU in the forward function, set data_in_gpu to
+        # False in this case.
+        self.data_in_gpu = swig_paddle.isUsingGpu(
+        ) and swig_paddle.getTrainerCount() == 1
 
     def scan(self, dat):
         pass
@@ -34,6 +44,10 @@ class IScanner(object):
 
 
 class DenseScanner(IScanner):
+    """
+    :type __mat__: numpy.ndarray
+    """
+
     def __init__(self, input_type, pos):
         IScanner.__init__(self, input_type, pos)
         self.__mat__ = None
@@ -46,8 +60,10 @@ class DenseScanner(IScanner):
 
     def finish_scan(self, argument):
         assert isinstance(argument, swig_paddle.Arguments)
-        assert isinstance(self.input_type, dp2.InputType)
-        m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True, False)
+        if self.__mat__.dtype != numpy.float32:
+            self.__mat__ = self.__mat__.astype(numpy.float32)
+        m = swig_paddle.Matrix.createDenseFromNumpy(self.__mat__, True,
+                                                    self.data_in_gpu)
         argument.setSlotValue(self.pos, m)
 
 
@@ -57,7 +73,6 @@ class SparseBinaryScanner(IScanner):
         self.__rows__ = [0]
         self.__cols__ = []
         self.__height__ = 0
-        self.__nnz__ = 0
         self.__value__ = []
 
     def scan(self, dat):
@@ -70,11 +85,13 @@ class SparseBinaryScanner(IScanner):
 
     def finish_scan(self, argument):
         assert isinstance(argument, swig_paddle.Arguments)
-        assert isinstance(self.input_type, dp2.InputType)
-        m = swig_paddle.Matrix.createSparse(self.__height__,
-                                            self.input_type.dim,
-                                            len(self.__cols__),
-                                            len(self.__value__) == 0)
+        m = swig_paddle.Matrix.createSparse(
+            self.__height__,
+            self.input_type.dim,
+            len(self.__cols__),
+            len(self.__value__) == 0,
+            False,  # trans
+            False)  # TODO supoort GPU
         assert isinstance(m, swig_paddle.Matrix)
         m.sparseCopyFrom(self.__rows__, self.__cols__, self.__value__)
         argument.setSlotValue(self.pos, m)
@@ -98,7 +115,7 @@ class IndexScanner(IScanner):
         self.__ids__.append(dat)
 
     def finish_scan(self, argument):
-        ids = swig_paddle.IVector.create(self.__ids__)
+        ids = swig_paddle.IVector.create(self.__ids__, self.data_in_gpu)
         assert isinstance(argument, swig_paddle.Arguments)
         argument.setSlotIds(self.pos, ids)
 

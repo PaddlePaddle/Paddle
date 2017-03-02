@@ -20,9 +20,12 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * A layer for reshaping the sequence
- * Input: a sequence
- * Output: a sequence
+ *  A layer for reshaping the sequence. Assume the input sequence has
+ *  T instances, the dimension of each instance is M, and the input
+ *  reshape_dim is N, then the output sequence has T*M/N instances,
+ *  the dimension of each instance is N.
+ *
+ *  Note that T*M/N must be an integer.
  */
 
 class SequenceReshapeLayer : public Layer {
@@ -34,12 +37,11 @@ protected:
 public:
   explicit SequenceReshapeLayer(const LayerConfig& config) : Layer(config) {}
 
-  ~SequenceReshapeLayer() {}
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-
-  void forward(PassType passType);
-  void backward(const UpdateCallback& callback = nullptr);
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback = nullptr) override;
 };
 
 REGISTER_LAYER(seqreshape, SequenceReshapeLayer);

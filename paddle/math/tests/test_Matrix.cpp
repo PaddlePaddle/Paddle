@@ -181,28 +181,6 @@ TEST(Matrix, copyByRowIndex) {
   }
 }
 
-void testCosSim(int heightX, int heightY, int width, real scale) {
-  AutoCompare test(heightX, 1);
-  CpuMatrix arg1(heightX, width);
-  CpuMatrix arg2(heightY, width);
-  arg1.randomizeUniform();
-  arg2.randomizeUniform();
-  arg2.add(-0.5);
-  test.cmpWithArg(&Matrix::cosSim, arg1, arg2, scale);
-}
-
-TEST(Matrix, cosSim) {
-  for (auto heightX : {10, 100, 1000}) {
-    for (auto heightY : {1, heightX}) {
-      for (auto width : {10, 100, 1000}) {
-        for (auto scale : {1.0, 2.0}) {
-          testCosSim(heightX, heightY, width, scale);
-        }
-      }
-    }
-  }
-}
-
 void testParamReluForward(int height, int width, int w_height, int w_width) {
   AutoCompare test(height, width);
   CpuMatrix arg1(height, width);

@@ -35,8 +35,16 @@ inline void hl_sequence_softmax_forward(real* A_d,
 inline void hl_matrix_softmax_derivative(
     real* grad_d, real* output_d, real* sftmaxSum_d, int dimM, int dimN) {}
 
-inline void hl_matrix_classification_error(
-    real* A_d, int* B_d, real* C_d, int dimM, int dimN) {}
+inline void hl_matrix_classification_error(real* topVal,
+                                           int ldv,
+                                           int* topIds,
+                                           real* src,
+                                           int lds,
+                                           int dim,
+                                           int topkSize,
+                                           int numSamples,
+                                           int* label,
+                                           real* recResult) {}
 
 inline void hl_matrix_cross_entropy(
     real* A_d, real* C_d, int* label_d, int dimM, int dimN) {}
@@ -74,25 +82,6 @@ inline void hl_param_relu_backward_diff(real* grad_o,
                                         int height,
                                         int partial_sum) {}
 
-inline void hl_cossim(real* output,
-                      real* input1,
-                      real* input2,
-                      int width,
-                      int input1_height,
-                      int input2_height,
-                      real scale) {}
-
-inline void hl_cossim_derivative(real* grad,
-                                 real* output,
-                                 real* prevOutX,
-                                 real* prevOutY,
-                                 real* prevGradX,
-                                 real* prevGradY,
-                                 int width,
-                                 int input1_height,
-                                 int input2_height,
-                                 real scale) {}
-
 inline void hl_matrix_add_shared_bias(real* A_d,
                                       real* B_d,
                                       const int channel,
@@ -106,4 +95,8 @@ inline void hl_matrix_collect_shared_bias(real* B_d,
                                           const int dimM,
                                           const int dimN,
                                           real scale) {}
+
+inline void hl_matrix_rotate(
+    real* mat, real* matRot, int dimM, int dimN, bool clockWise) {}
+
 #endif  // HL_MATRIX_STUB_H_

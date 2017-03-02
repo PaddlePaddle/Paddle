@@ -32,7 +32,7 @@ pooling_layer 的使用示例如下，详细见 :ref:`api_trainer_config_helpers
         
 - `pooling_type` 目前支持两种，分别是：MaxPooling()和AvgPooling()。
 
-- `agg_level=AggregateLevel.TIMESTEP` 时（默认值）：
+- `agg_level=AggregateLevel.EACH_TIMESTEP` 时（默认值）：
 
   - 作用：双层序列经过运算变成一个0层序列，或单层序列经过运算变成一个0层序列
   - 输入：一个双层序列，或一个单层序列
@@ -54,7 +54,7 @@ last_seq 的使用示例如下（ :ref:`api_trainer_config_helpers_layers_first_
         last = last_seq(input=layer,
                         agg_level=AggregateLevel.EACH_SEQUENCE)
         
-- `agg_level=AggregateLevel.TIMESTEP` 时（默认值）：
+- `agg_level=AggregateLevel.EACH_TIMESTEP` 时（默认值）：
 
   - 作用：一个双层序列经过运算变成一个0层序列，或一个单层序列经过运算变成一个0层序列
   - 输入：一个双层序列或一个单层序列

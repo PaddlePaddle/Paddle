@@ -28,52 +28,26 @@ void testMatrixProjectionForward(int context_start,
                std::max(0, (int)(context_start + context_length - 1));
   if (pad == 0) is_padding = false;
 
-  FunctionCompare compare("ContextProjectionForward",
-                          FuncConfig()
-                              .set("context_length", context_length)
-                              .set("context_start", context_start)
-                              .set("begin_pad", std::max(0, -context_start)));
+  FunctionCompare test("ContextProjectionForward",
+                       FuncConfig()
+                           .set("context_length", context_length)
+                           .set("context_start", context_start)
+                           .set("begin_pad", std::max(0, -context_start)));
 
-  CpuMatrix cpu_in(batch_size, input_dim);
-  cpu_in.randomizeUniform();
-  GpuMatrix gpu_in(batch_size, input_dim);
-  gpu_in.copyFrom(cpu_in);
-  auto cpu_weight =
-      is_padding ? std::make_shared<CpuMatrix>(pad, input_dim) : nullptr;
-  auto gpu_weight =
-      is_padding ? std::make_shared<GpuMatrix>(pad, input_dim) : nullptr;
-  if (is_padding) {
-    cpu_weight->randomizeUniform();
-    gpu_weight->copyFrom(*cpu_weight);
+  // prepare input arguments
+  test.addSequence(SequenceIdArg(TensorShape{batch_size}));
+  test.addInputs(
+      SequenceArg(VALUE_TYPE_FLOAT, TensorShape{batch_size, input_dim}));
+  if (is_padding) {  // weight
+    test.addInputs(SequenceArg(VALUE_TYPE_FLOAT, TensorShape{pad, input_dim}));
   }
-  IVectorPtr cpu_seq;
-  generateSequenceStartPositions(batch_size, cpu_seq);
-  IVectorPtr gpu_seq = IVector::create(cpu_seq->getSize(), true);
-  gpu_seq->copyFrom(*cpu_seq);
+  test.addOutputs(
+      SequenceArg(VALUE_TYPE_FLOAT,
+                  TensorShape{batch_size, input_dim * context_length}),
+      ADD_TO);
 
-  CpuMatrix cpu_out(batch_size, input_dim * context_length);
-  GpuMatrix gpu_out(batch_size, input_dim * context_length);
-  cpu_out.randomizeUniform();
-  gpu_out.copyFrom(cpu_out);
-
-  compare.getCpuFunction()->calc(
-      {Tensor(cpu_in.getData(), Dims{batch_size, input_dim}),
-       Tensor(cpu_weight ? cpu_weight->getData() : nullptr,
-              Dims{pad, input_dim}),
-       Tensor(reinterpret_cast<real*>(cpu_seq->getData()),
-              Dims{cpu_seq->getSize()})},
-      {Tensor(cpu_out.getData(), Dims{batch_size, input_dim * context_length})},
-      {});
-  compare.getGpuFunction()->calc(
-      {Tensor(gpu_in.getData(), Dims{batch_size, input_dim}),
-       Tensor(gpu_weight ? gpu_weight->getData() : nullptr,
-              Dims{pad, input_dim}),
-       Tensor(reinterpret_cast<real*>(gpu_seq->getData()),
-              Dims{gpu_seq->getSize()})},
-      {Tensor(gpu_out.getData(), Dims{batch_size, input_dim * context_length})},
-      {});
-
-  autotest::TensorCheckEqual(cpu_out, gpu_out);
+  // run Function
+  test.run();
 }
 
 void testMatrixProjectionBackward(int context_start,
@@ -85,65 +59,31 @@ void testMatrixProjectionBackward(int context_start,
                std::max(0, (int)(context_start + context_length - 1));
   if (pad == 0) is_padding = false;
 
-  FunctionCompare compare("ContextProjectionBackward",
-                          FuncConfig()
-                              .set("context_length", context_length)
-                              .set("context_start", context_start)
-                              .set("begin_pad", std::max(0, -context_start))
-                              .set("is_padding", is_padding)
-                              .set("total_pad", pad));
+  FunctionCompare test("ContextProjectionBackward",
+                       FuncConfig()
+                           .set("context_length", context_length)
+                           .set("context_start", context_start)
+                           .set("begin_pad", std::max(0, -context_start))
+                           .set("is_padding", is_padding)
+                           .set("total_pad", pad));
 
-  CpuMatrix cpu_in_grad(batch_size, input_dim);
-  cpu_in_grad.randomizeUniform();
-  GpuMatrix gpu_in_grad(batch_size, input_dim);
-  gpu_in_grad.copyFrom(cpu_in_grad);
-
-  CpuMatrix cpu_out_grad(batch_size, input_dim * context_length);
-  cpu_out_grad.randomizeUniform();
-  GpuMatrix gpu_out_grad(batch_size, input_dim * context_length);
-  gpu_out_grad.copyFrom(cpu_out_grad);
-
-  IVectorPtr cpu_seq;
-  generateSequenceStartPositions(batch_size, cpu_seq);
-  IVectorPtr gpu_seq = IVector::create(cpu_seq->getSize(), true);
-  gpu_seq->copyFrom(*cpu_seq);
-
-  auto cpu_w_grad =
-      is_padding ? std::make_shared<CpuMatrix>(pad, input_dim) : nullptr;
-  auto gpu_w_grad =
-      is_padding ? std::make_shared<GpuMatrix>(pad, input_dim) : nullptr;
-  if (is_padding) {
-    cpu_w_grad->randomizeUniform();
-    gpu_w_grad->copyFrom(*cpu_w_grad);
+  // prepare input arguments
+  test.addSequence(SequenceIdArg(TensorShape{batch_size}));
+  test.addInputs(SequenceArg(
+      VALUE_TYPE_FLOAT, TensorShape{batch_size, input_dim * context_length}));
+  test.addOutputs(
+      SequenceArg(VALUE_TYPE_FLOAT, TensorShape{batch_size, input_dim}),
+      ADD_TO);
+  if (is_padding) {  // weight
+    test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{pad, input_dim}),
+                    ADD_TO);
   }
 
-  compare.getCpuFunction()->calc(
-      {Tensor(cpu_in_grad.getData(), Dims{batch_size, input_dim}),
-       Tensor(cpu_w_grad ? cpu_w_grad->getData() : nullptr,
-              Dims{pad, input_dim}),
-       Tensor(reinterpret_cast<real*>(cpu_seq->getData()),
-              Dims{cpu_seq->getSize()})},
-      {Tensor(cpu_out_grad.getData(),
-              Dims{batch_size, input_dim * context_length})},
-      {});
-
-  compare.getGpuFunction()->calc(
-      {Tensor(gpu_in_grad.getData(), Dims{batch_size, input_dim}),
-       Tensor(gpu_w_grad ? gpu_w_grad->getData() : nullptr,
-              Dims{pad, input_dim}),
-       Tensor(reinterpret_cast<real*>(gpu_seq->getData()),
-              Dims{gpu_seq->getSize()})},
-      {Tensor(gpu_out_grad.getData(),
-              Dims{batch_size, input_dim * context_length})},
-      {});
-
-  autotest::TensorCheckErr(cpu_in_grad, gpu_in_grad);
-  if (is_padding) {
-    autotest::TensorCheckErr(*cpu_w_grad, *gpu_w_grad);
-  }
+  // run Function
+  test.run();
 }
 
-TEST(ContextProjection, projection) {
+TEST(ContextProjection, Projection) {
   for (auto context_start : {-5, -3, -1, 0, 3}) {
     for (auto context_length : {1, 2, 5, 7}) {
       for (auto trainable_padding : {false, true}) {

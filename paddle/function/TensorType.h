@@ -31,6 +31,10 @@ enum DeviceType {
   DEVICE_TYPE_GPU = 2
 };
 
+enum SparseDataType { T_NO_VALUE = 0, T_FLOAT_VALUE = 1 };
+
+enum SparseDataFormat { T_SPARSE_CSR = 0, T_SPARSE_CSC = 1 };
+
 inline int sizeOfValuType(ValueType valueType) {
   if (valueType == VALUE_TYPE_INT32) {
     return 4;
@@ -88,6 +92,29 @@ struct MatrixT<int, DEVICE_TYPE_GPU> {
 };
 
 template <typename VType, DeviceType Device>
+struct SparseMatrixT;
+
+template <>
+struct SparseMatrixT<real, DEVICE_TYPE_CPU> {
+  using type = CpuSparseMatrix;
+};
+
+template <>
+struct SparseMatrixT<real, DEVICE_TYPE_GPU> {
+  using type = GpuSparseMatrix;
+};
+
+template <>
+struct SparseMatrixT<int, DEVICE_TYPE_CPU> {
+  using type = void;  // Not implemented
+};
+
+template <>
+struct SparseMatrixT<int, DEVICE_TYPE_GPU> {
+  using type = void;  // Not implemented
+};
+
+template <typename VType, DeviceType Device>
 struct VectorT;
 
 template <>
@@ -114,8 +141,9 @@ struct VectorT<int, DEVICE_TYPE_GPU> {
 
 template <typename VType, DeviceType DType>
 struct Tensor {
-  typedef typename detail::MatrixT<VType, DType>::type Matrix;
   typedef typename detail::VectorT<VType, DType>::type Vector;
+  typedef typename detail::MatrixT<VType, DType>::type Matrix;
+  typedef typename detail::SparseMatrixT<VType, DType>::type SparseMatrix;
 };
 
 }  // namespace paddle

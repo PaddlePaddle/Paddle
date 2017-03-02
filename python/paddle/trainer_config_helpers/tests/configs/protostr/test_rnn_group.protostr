@@ -465,11 +465,11 @@ parameters {
   name: "___gru_group_0__@__gru_group_0___recurrent_group.w0"
   size: 30000
   initial_mean: 0.0
-  initial_std: 0.01
+  initial_std: 0.1
   dims: 100
   dims: 300
   initial_strategy: 0
-  initial_smart: false
+  initial_smart: true
 }
 parameters {
   name: "___gru_group_0__@__gru_group_0___recurrent_group.wbias"

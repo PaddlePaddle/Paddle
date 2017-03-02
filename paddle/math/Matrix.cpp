@@ -274,6 +274,18 @@ real GpuMatrix::getSum() {
   return sum;
 }
 
+real GpuMatrix::getMin() {
+  CHECK(isContiguous());
+  auto vec = GpuVector(height_ * width_, data_);
+  return vec.getMin();
+}
+
+real GpuMatrix::getMax() {
+  CHECK(isContiguous());
+  auto vec = GpuVector(height_ * width_, data_);
+  return vec.getMax();
+}
+
 void GpuMatrix::accumulateColSum(Matrix& src) {
   CHECK_EQ(getWidth(), src.getWidth());
   CHECK_EQ(getHeight(), (size_t)1);
@@ -371,11 +383,13 @@ MatrixPtr GpuMatrix::getTranspose() {
   }
 }
 
-void GpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
+void GpuMatrix::transpose(MatrixPtr& matTrans, bool memAlloc) {
   if (memAlloc) {
     matTrans = std::make_shared<GpuMatrix>(width_, height_);
   } else {
     CHECK(matTrans != NULL);
+    CHECK_EQ(matTrans->getHeight(), width_);
+    CHECK_EQ(matTrans->getWidth(), height_);
   }
   real* dataTrans = matTrans->getData();
   real* data = getData();
@@ -385,13 +399,27 @@ void GpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   hl_matrix_transpose(data, dataTrans, height_, width_, lda, ldc);
 }
 
+void GpuMatrix::rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise) {
+  if (memAlloc) {
+    matRot = std::make_shared<GpuMatrix>(width_, height_);
+  } else {
+    CHECK(matRot != NULL);
+    CHECK_EQ(matRot->getHeight(), width_);
+    CHECK_EQ(matRot->getWidth(), height_);
+  }
+
+  real* dataRot = matRot->getData();
+  real* data = getData();
+  hl_matrix_rotate(data, dataRot, height_, width_, clockWise);
+}
+
 MatrixPtr GpuMatrix::getInverse() {
   MatrixPtr matInv;
   inverse(matInv, true);
   return matInv;
 }
 
-void GpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+void GpuMatrix::inverse(MatrixPtr& matInv, bool memAlloc) {
   CHECK_EQ(height_, width_);
 
   if (memAlloc) {
@@ -704,6 +732,7 @@ void GpuMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
   size_t beam = maxVal.getWidth();
   CHECK_EQ(maxIds.getSize(), numSamples * beam);
   CHECK_EQ(maxVal.getHeight(), numSamples);
+  CHECK_EQ(maxVal.getWidth(), beam);
 
   hl_matrix_top_k(maxVal.getData(),
                   maxVal.getStride(),
@@ -764,19 +793,32 @@ void GpuMatrix::maxoutBackward(Matrix& a,
 }
 
 /*calulate the error of classification */
-void GpuMatrix::classificationError(Matrix& output, IVector& label) {
-  auto output_ptr = dynamic_cast<const GpuMatrix*>(&output);
-  auto label_ptr = dynamic_cast<const GpuIVector*>(&label);
-  CHECK(output_ptr && label_ptr) << "Invalid argument pointer";
+void GpuMatrix::classificationError(Matrix& output,
+                                    IVector& label,
+                                    size_t topkSize) {
+  auto gpuOutput = dynamic_cast<GpuMatrix*>(&output);
+  auto gpuLabel = dynamic_cast<GpuIVector*>(&label);
+  size_t numSamples = this->getHeight();
+  GpuMatrixPtr gpuTopVal = std::make_shared<GpuMatrix>(numSamples, topkSize);
+  GpuIVectorPtr gpuTopIds = std::make_shared<GpuIVector>(numSamples * topkSize);
 
-  CHECK(height_ == output_ptr->height_ && width_ == 1)
+  CHECK(gpuOutput && gpuLabel) << "Invalid argument pointer";
+  CHECK(gpuTopVal && gpuTopIds) << "Allocate GPU memory failed";
+  CHECK(gpuLabel->getSize() == numSamples) << "Vector size is not equal";
+  CHECK(numSamples == gpuOutput->getHeight() && this->getWidth() == 1)
       << "Matrix dimensions are not equal";
 
-  hl_matrix_classification_error((real*)output_ptr->data_,
-                                 (int*)label_ptr->getData(),
-                                 data_,
-                                 height_,
-                                 output_ptr->width_);
+  size_t dim = gpuOutput->getWidth();
+  hl_matrix_classification_error(gpuTopVal->getData(),
+                                 gpuTopVal->getStride(),
+                                 gpuTopIds->getData(),
+                                 gpuOutput->getData(),
+                                 gpuOutput->getStride(),
+                                 dim,
+                                 topkSize,
+                                 numSamples,
+                                 gpuLabel->getData(),
+                                 this->getData());
 }
 
 /* copy -log(output[i * width + label]) to this->data[i] */
@@ -912,59 +954,6 @@ void GpuMatrix::softreluDerivative(Matrix& output) {
 
 void GpuMatrix::scaledTanh(Matrix& output, real p1, real p2) {
   BaseMatrix::scaledTanh(output, p1, p2);
-}
-void GpuMatrix::cosSim(Matrix& output1, Matrix& output2, real scale) {
-  CHECK(output1.useGpu_ == true && output2.useGpu_ == true)
-      << "Matrix type are not equal";
-  size_t numSamples = getHeight();
-  size_t dim = output1.getWidth();
-  CHECK_EQ(getWidth(), 1UL);
-  CHECK_EQ(output1.getHeight(), numSamples);
-  CHECK_EQ(output1.getWidth(), output2.getWidth());
-  real* out = getData();
-  real* x = output1.getData();
-  real* y = output2.getData();
-  hl_cossim(out, x, y, dim, output1.getHeight(), output2.getHeight(), scale);
-}
-void GpuMatrix::cosSimDerivative(Matrix& output,
-                                 Matrix& prevOut1,
-                                 Matrix& prevOut2,
-                                 Matrix& prevGrad1,
-                                 Matrix& prevGrad2,
-                                 real scale) {
-  CHECK(output.useGpu_ == true && prevOut1.useGpu_ == true &&
-        prevOut2.useGpu_ == true && prevGrad1.useGpu_ == true &&
-        prevGrad2.useGpu_ == true)
-      << "Matrix type are not equal";
-  CHECK_EQ(getWidth(), 1UL);
-  CHECK_EQ(output.getWidth(), 1UL);
-
-  size_t numSamples = getHeight();
-  CHECK_EQ(output.getHeight(), numSamples);
-  CHECK_EQ(prevOut1.getHeight(), numSamples);
-  CHECK_EQ(prevGrad1.getHeight(), numSamples);
-
-  size_t dim = prevOut1.getWidth();
-  CHECK_EQ(prevOut2.getWidth(), dim);
-  CHECK_EQ(prevGrad1.getWidth(), dim);
-  CHECK_EQ(prevGrad2.getWidth(), dim);
-
-  real* grad = getData();
-  real* out = output.getData();
-  real* prevOutX = prevOut1.getData();
-  real* prevOutY = prevOut2.getData();
-  real* prevGradX = prevGrad1.getData();
-  real* prevGradY = prevGrad2.getData();
-  hl_cossim_derivative(grad,
-                       out,
-                       prevOutX,
-                       prevOutY,
-                       prevGradX,
-                       prevGradY,
-                       dim,
-                       prevOut1.getHeight(),
-                       prevOut2.getHeight(),
-                       scale);
 }
 
 void GpuMatrix::randomizeUniform() {
@@ -1690,11 +1679,13 @@ MatrixPtr CpuMatrix::getTranspose() {
   }
 }
 
-void CpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
+void CpuMatrix::transpose(MatrixPtr& matTrans, bool memAlloc) {
   if (memAlloc) {
     matTrans = std::make_shared<CpuMatrix>(width_, height_);
   } else {
     CHECK(matTrans != NULL);
+    CHECK_EQ(matTrans->getHeight(), width_);
+    CHECK_EQ(matTrans->getWidth(), height_);
   }
   real* dataTrans = matTrans->getData();
   real* data = getData();
@@ -1708,13 +1699,35 @@ void CpuMatrix::transpose(MatrixPtr matTrans, bool memAlloc) {
   }
 }
 
+void CpuMatrix::rotate(MatrixPtr& matRot, bool memAlloc, bool clockWise) {
+  if (memAlloc) {
+    matRot = std::make_shared<CpuMatrix>(width_, height_);
+  } else {
+    CHECK(matRot != NULL);
+    CHECK_EQ(matRot->getHeight(), width_);
+    CHECK_EQ(matRot->getWidth(), height_);
+  }
+  real* dataRot = matRot->getData();
+  real* data = getData();
+
+  for (size_t i = 0; i < height_; i++) {
+    for (size_t j = 0; j < width_; j++) {
+      if (clockWise) {
+        dataRot[j * height_ + i] = data[(height_ - i - 1) * width_ + j];
+      } else {
+        dataRot[j * height_ + i] = data[i * width_ + (width_ - j - 1)];
+      }
+    }
+  }
+}
+
 MatrixPtr CpuMatrix::getInverse() {
   MatrixPtr matInv;
   inverse(matInv, true);
   return matInv;
 }
 
-void CpuMatrix::inverse(MatrixPtr matInv, bool memAlloc) {
+void CpuMatrix::inverse(MatrixPtr& matInv, bool memAlloc) {
   CHECK_EQ(height_, width_);
 
   if (memAlloc) {
@@ -3040,7 +3053,7 @@ void CpuMatrix::rowMax(Matrix& max) {
   max.maxRows(*this);
 }
 
-/* get beam size of max ids and values */
+/* Get the top k elements of each row of this matrix */
 void CpuMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
   CHECK(isContiguous());
   CHECK(!maxIds.useGpu() && !maxVal.useGpu()) << "Matrix type are not equal";
@@ -3048,6 +3061,7 @@ void CpuMatrix::rowMax(IVector& maxIds, Matrix& maxVal) {
   size_t beam = maxVal.getWidth();
   CHECK_EQ(maxIds.getSize(), numSamples * beam);
   CHECK_EQ(maxVal.getHeight(), numSamples);
+  CHECK_EQ(maxVal.getWidth(), beam);
 
   real* a = getData();
   int* s = maxIds.getData();
@@ -3199,32 +3213,39 @@ void CpuMatrix::rowNormalizeL1(Matrix& out) {
 }
 
 /* calulate classification error */
-void CpuMatrix::classificationError(Matrix& output, IVector& label) {
-  CHECK(dynamic_cast<const CpuMatrix*>(&output));
-  CHECK(dynamic_cast<const CpuIVector*>(&label));
+void CpuMatrix::classificationError(Matrix& output,
+                                    IVector& label,
+                                    size_t topkSize) {
+  size_t numSamples = this->getHeight();
+  auto cpuOutput = dynamic_cast<CpuMatrix*>(&output);
+  auto cpuLabel = dynamic_cast<CpuIVector*>(&label);
+  IVectorPtr cpuTopIds = std::make_shared<CpuIVector>(numSamples * topkSize);
+  MatrixPtr cpuTopVal = std::make_shared<CpuMatrix>(numSamples, topkSize);
 
-  CHECK_EQ(getWidth(), (size_t)1);
-  size_t numSamples = getHeight();
-  CHECK_EQ(label.getSize(), numSamples);
-  CHECK_EQ(output.getHeight(), numSamples);
+  CHECK(cpuOutput && cpuLabel) << "Invalid argument pointer";
+  CHECK(cpuTopIds && cpuTopVal) << "Allocate cpu memory failed";
+  CHECK(cpuLabel->getSize() == numSamples) << "Vector size is not equal";
+  CHECK(cpuOutput->getHeight() == numSamples && this->getWidth() == 1)
+      << "Matrix dimensions are not equal";
 
-  size_t dim = output.getWidth();
-  real* out = output.getData();
-  int* lbl = label.getData();
-  real maxData = 0.0;
-  int maxIndex = -1;
+  // top k matrix classification
+  cpuOutput->rowMax(*cpuTopIds, *cpuTopVal);
+
+  size_t dim = cpuOutput->getWidth();
+  real* result = this->getData();
+  int* ids = cpuTopIds->getData();
+  int* lbl = cpuLabel->getData();
   for (size_t i = 0; i < numSamples; ++i) {
     CHECK_GE(lbl[i], 0);
     CHECK_LT((size_t)lbl[i], dim);
-    maxData = out[i * dim];
-    maxIndex = 0;
-    for (size_t j = 0; j < dim; ++j) {
-      if (maxData < out[i * dim + j]) {
-        maxIndex = j;
-        maxData = out[i * dim + j];
+
+    for (size_t j = 0; j < topkSize; ++j) {
+      if (ids[j + i * topkSize] == lbl[i]) {
+        result[i] = 0;
+        break;
       }
+      result[i] = 1.0f;
     }
-    getData()[i] = (maxIndex != lbl[i]);
   }
 }
 
@@ -3414,105 +3435,6 @@ void CpuMatrix::softmaxDerivative(Matrix& output, Matrix& sftmaxSum) {
     real sum = sums[i];
     for (size_t j = 0; j < dim; ++j) {
       grad[j] = out[j] * (grad[j] - sum);
-    }
-  }
-}
-
-void CpuMatrix::cosSim(Matrix& output1, Matrix& output2, real scale) {
-  size_t numSamples = getHeight();
-  size_t dim = output1.getWidth();
-  CHECK_EQ(getWidth(), 1UL);
-  CHECK_EQ(output1.getHeight(), numSamples);
-  CHECK_EQ(output1.getWidth(), output2.getWidth());
-
-  real* out = getData();
-  const real* x = output1.getData();
-  const real* y = output2.getData();
-  size_t yInc = dim;
-  if (output2.getHeight() == 1LU) {
-    yInc = 0;
-  } else {
-    CHECK_EQ(output2.getHeight(), numSamples);
-  }
-  for (size_t i = 0; i < numSamples; ++i, x += dim, y += yInc) {
-    real squareSumX = 0;
-    real squareSumY = 0;
-    real xy = 0;
-    for (size_t j = 0; j < dim; ++j) {
-      squareSumX += _square(x[j]);
-      squareSumY += _square(y[j]);
-      xy += x[j] * y[j];
-    }
-    CHECK(squareSumX > 0 && squareSumY > 0);
-    out[i] = scale * xy / (std::sqrt(squareSumX) * std::sqrt(squareSumY));
-  }
-}
-
-void CpuMatrix::cosSimDerivative(Matrix& output,
-                                 Matrix& prevOut1,
-                                 Matrix& prevOut2,
-                                 Matrix& prevGrad1,
-                                 Matrix& prevGrad2,
-                                 real scale) {
-  CHECK(output.useGpu_ == false) << "Matrix type are not equal";
-
-  CHECK_EQ(getWidth(), 1UL);
-  CHECK_EQ(output.getWidth(), 1UL);
-
-  size_t numSamples = getHeight();
-  CHECK_EQ(output.getHeight(), numSamples);
-  CHECK_EQ(prevOut1.getHeight(), numSamples);
-  CHECK_EQ(prevGrad1.getHeight(), numSamples);
-
-  size_t dim = prevOut1.getWidth();
-  CHECK_EQ(prevOut2.getWidth(), dim);
-  CHECK_EQ(prevGrad1.getWidth(), dim);
-  CHECK_EQ(prevGrad2.getWidth(), dim);
-
-  const real* grad = getData();
-  const real* out = output.getData();
-  const real* prevOutX = prevOut1.getData();
-  const real* prevOutY = prevOut2.getData();
-  real* prevGradX = prevGrad1.getData();
-  real* prevGradY = prevGrad2.getData();
-  size_t yInc = dim;
-  if (prevOut2.getHeight() == 1LU) {
-    yInc = 0;
-    CHECK_EQ(prevGrad2.getHeight(), 1LU);
-  } else {
-    CHECK_EQ(prevOut2.getHeight(), numSamples);
-    CHECK_EQ(prevGrad2.getHeight(), numSamples);
-  }
-  for (size_t i = 0; i < numSamples; ++i,
-              prevOutX += dim,
-              prevOutY += yInc,
-              prevGradX += dim,
-              prevGradY += yInc) {
-    real squareSumX = 0;
-    real squareSumY = 0;
-    real xy = 0;
-    for (size_t j = 0; j < dim; ++j) {
-      squareSumX += _square(prevOutX[j]);
-      squareSumY += _square(prevOutY[j]);
-      xy += prevOutX[j] * prevOutY[j];
-    }
-    CHECK(squareSumX > 0 && squareSumY > 0);
-    if (xy == 0) {
-      real reciprocal = 1.0f / (std::sqrt(squareSumX) * std::sqrt(squareSumY));
-      for (size_t j = 0; j < dim; ++j) {
-        prevGradX[j] += scale * grad[i] * prevOutY[j] * reciprocal;
-        prevGradY[j] += scale * grad[i] * prevOutX[j] * reciprocal;
-      }
-    } else {
-      real reciprocalXY = 1.0f / xy;
-      real reciprocalSquareSumX = 1.0f / squareSumX;
-      real reciprocalSquareSumY = 1.0f / squareSumY;
-      for (size_t j = 0; j < dim; ++j) {
-        prevGradX[j] += out[i] * grad[i] * (prevOutY[j] * reciprocalXY -
-                                            prevOutX[j] * reciprocalSquareSumX);
-        prevGradY[j] += out[i] * grad[i] * (prevOutX[j] * reciprocalXY -
-                                            prevOutY[j] * reciprocalSquareSumY);
-      }
     }
   }
 }
