@@ -12,8 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from layer import __convert_to_v2__
+import paddle.trainer_config_helpers.networks as conf_nw
+import inspect
+from config_base import __convert_to_v2__
 
-simple_gru = __convert_to_v2__('simple_gru', ['input'])
-simple_attention = __convert_to_v2__(
-    'simple_attention', ['encoded_sequence', 'encoded_proj', 'decoder_state'])
+__all__ = []
+
+
+def __initialize__():
+    for each_subnetwork in conf_nw.__all__:
+        if each_subnetwork in ['inputs', 'outputs']:
+            continue
+        func = getattr(conf_nw, each_subnetwork)
+        if hasattr(func, 'argspec'):
+            argspec = func.argspec
+        else:
+            argspec = inspect.getargspec(func)
+        if each_subnetwork == 'simple_attention':
+            parents = ['encoded_sequence', 'encoded_proj', 'decoder_state']
+        else:
+            parents = filter(lambda x: x.startswith('input'), argspec.args)
+        assert len(parents) != 0, each_subnetwork
+        v2_subnet = __convert_to_v2__(
+            each_subnetwork,
+            parent_names=parents,
+            is_default_name='name' in argspec.args)
+        globals()[each_subnetwork] = v2_subnet
+        global __all__
+        __all__.append(each_subnetwork)
+
+
+__initialize__()

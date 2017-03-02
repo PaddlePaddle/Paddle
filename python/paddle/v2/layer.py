@@ -68,6 +68,7 @@ paddle.v2.parameters.create, no longer exposed to users.
 
 import collections
 import inspect
+from config_base import Layer, __convert_to_v2__
 import paddle.trainer_config_helpers as conf_helps
 from paddle.trainer_config_helpers.config_parser_utils import \
     parse_network_config as __parse__
@@ -106,90 +107,6 @@ def parse_network(*outputs):
         conf_helps.outputs(real_output)
 
     return __parse__(__real_func__)
-
-
-class Layer(object):
-    def __init__(self, name=None, size=None, parent_layers=None):
-        assert isinstance(parent_layers, dict)
-        self.name = name
-        self.size = size
-        self.__parent_layers__ = parent_layers
-
-    def to_proto(self, context):
-        """
-        function to set proto attribute
-        """
-        kwargs = dict()
-        for layer_name in self.__parent_layers__:
-            if not isinstance(self.__parent_layers__[layer_name],
-                              collections.Sequence):
-                v1_layer = self.__parent_layers__[layer_name].to_proto(
-                    context=context)
-            else:
-                v1_layer = map(lambda x: x.to_proto(context=context),
-                               self.__parent_layers__[layer_name])
-            kwargs[layer_name] = v1_layer
-
-        if self.context_name() is None:
-            return self.to_proto_impl(**kwargs)
-        elif self.context_name() not in context:
-            context[self.context_name()] = self.to_proto_impl(**kwargs)
-
-        if self.use_context_name():
-            return context[self.context_name()]
-        else:
-            return context[self.name]
-
-    def to_proto_impl(self, **kwargs):
-        raise NotImplementedError()
-
-    def context_name(self):
-        """
-        Context name means the context which stores `to_proto_impl` result.
-        If multiple layer share same context_name, the `to_proto_impl` of them
-        will be invoked only once.
-        """
-        return self.name
-
-    def use_context_name(self):
-        return False
-
-
-def __convert_to_v2__(method_name, parent_names, is_default_name=True):
-    if is_default_name:
-        wrapper = wrap_name_default(name_prefix=method_name)
-    else:
-        wrapper = None
-
-    class V2LayerImpl(Layer):
-        def __init__(self, **kwargs):
-            parent_layers = dict()
-            other_kwargs = dict()
-            for pname in parent_names:
-                if kwargs.has_key(pname):
-                    parent_layers[pname] = kwargs[pname]
-
-            for key in kwargs.keys():
-                if key not in parent_names:
-                    other_kwargs[key] = kwargs[key]
-
-            name = kwargs.get('name', None)
-            size = kwargs.get('size', None)
-            super(V2LayerImpl, self).__init__(name, size, parent_layers)
-            self.__other_kwargs__ = other_kwargs
-
-        if wrapper is not None:
-            __init__ = wrapper(__init__)
-
-        def to_proto_impl(self, **kwargs):
-            args = dict()
-            for each in kwargs:
-                args[each] = kwargs[each]
-            for each in self.__other_kwargs__:
-                args[each] = self.__other_kwargs__[each]
-            return getattr(conf_helps, method_name)(**args)
-
-    return V2LayerImpl
 
 
 """
