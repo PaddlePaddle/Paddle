@@ -139,10 +139,10 @@ class WithExtraParent(Layer):
     def extra_parent(self):
         return self.__extra_parent__
 
-    def __init__(self, name=None, size=None, parent_layers=None):
+    def __init__(self, name=None, parent_layers=None):
         self.__extra_parent__ = []
         super(WithExtraParent, self).__init__(
-            name=name, size=size, parent_layers=parent_layers)
+            name=name, parent_layers=parent_layers)
 
     def append_extra_parent(self, parent):
         self.__extra_parent__.append(parent)
@@ -178,11 +178,9 @@ class WithExtraParent(Layer):
 
 
 class MemoryV2(WithExtraParent):
-    def __init__(self, name, size, **kwargs):
+    def __init__(self, name, **kwargs):
         self.name = name
-        self.size = size
-        super(MemoryV2, self).__init__(
-            name=name, size=size, parent_layers=dict())
+        super(MemoryV2, self).__init__(name=name, parent_layers=dict())
         self.__kwargs__ = kwargs
         self.__boot_layer_name__ = None
         if 'boot_layer' in kwargs:
@@ -221,11 +219,14 @@ class MemoryV2(WithExtraParent):
         if self.__boot_layer_name__ is not None:
             args['boot_layer'] = context[self.__boot_layer_name__]
 
-        if callable(self.size):
-            real_size = self.size()
-        else:
-            real_size = self.size
-        args['size'] = real_size
+        size = args.get('size', None)
+        if size is not None:
+            if callable(size):
+                real_size = size()
+            else:
+                real_size = size
+            print(real_size)
+            args['size'] = real_size
         return conf_helps.memory(name=self.name, **args)
 
     def context_name(self):
@@ -298,7 +299,7 @@ class MixedLayerV2(Layer):
         other_kwargs['bias_attr'] = bias_attr
         other_kwargs['layer_attr'] = layer_attr
         parent_layers = {"input": self.__inputs__}
-        super(MixedLayerV2, self).__init__(name, size, parent_layers)
+        super(MixedLayerV2, self).__init__(name, parent_layers)
         self.__other_kwargs__ = other_kwargs
 
     def __iadd__(self, other):
@@ -322,11 +323,12 @@ class MixedLayerV2(Layer):
         for each in self.__other_kwargs__:
             args[each] = self.__other_kwargs__[each]
         size = args.get('size', None)
-        if callable(size):
-            real_size = size()
-        else:
-            real_size = size
-        args['size'] = real_size
+        if size is not None:
+            if callable(size):
+                real_size = size()
+            else:
+                real_size = size
+            args['size'] = real_size
         return getattr(conf_helps, self.__method_name__)(**args)
 
 
@@ -473,11 +475,11 @@ def recurrent_group(step, input, name=None):
             mem = memory(
                 name=mem_name,
                 is_seq=static_input.is_seq,
-                size=static_input.input.calcalted_size,
+                size=static_input.input.calculate_size,
                 boot_layer=static_input.input)
             with mixed(
                     name=mem_name,
-                    size=static_input.input.calcalted_size,
+                    size=static_input.input.calculate_size,
                     act=activation.Identity()) as mix:
                 mix += identity_projection(input=mem)
             rnn_input.insert(input.index(static_input), mix)

@@ -19,7 +19,7 @@ import paddle.trainer_config_helpers as conf_helps
 
 
 class Layer(object):
-    def __init__(self, name=None, size=None, parent_layers=None):
+    def __init__(self, name=None, parent_layers=None):
         assert isinstance(parent_layers, dict)
         self.name = name
         self.__contex__ = {}
@@ -64,7 +64,12 @@ class Layer(object):
     def use_context_name(self):
         return False
 
-    def calcalted_size(self):
+    def calculate_size(self):
+        """
+        lazy calculate size of the layer, should be called when to_proto_impl of
+        this layer is called.
+        :return:
+        """
         return self.__contex__[self.context_name()].size
 
 
@@ -87,8 +92,7 @@ def __convert_to_v2__(method_name, parent_names, is_default_name=True):
                     other_kwargs[key] = kwargs[key]
 
             name = kwargs.get('name', None)
-            size = kwargs.get('size', None)
-            super(V2LayerImpl, self).__init__(name, size, parent_layers)
+            super(V2LayerImpl, self).__init__(name, parent_layers)
             self.__other_kwargs__ = other_kwargs
 
         if wrapper is not None:
