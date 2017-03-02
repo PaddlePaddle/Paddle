@@ -16,8 +16,8 @@ RUN apt-get update && \
 RUN pip install --upgrade pip && \
     pip install -U "protobuf==3.1.0" && \
     pip install -U wheel pillow BeautifulSoup && \
-    pip install -U docopt PyYAML sphinx && \
-    pip install -U sphinx_rtd_theme recommonmark jupyter
+    pip install -U docopt PyYAML sphinx==1.5.3 && \
+    pip install -U sphinx_rtd_theme==0.1.10b0 recommonmark jupyter
 
 RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
     cd cmake-3.4.1 && ./bootstrap && make -j `nproc` && make install && \
