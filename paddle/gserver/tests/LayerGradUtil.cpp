@@ -24,7 +24,7 @@ real getCostSum(LayerPtr& testLayer, MatrixPtr weights) {
   if (weights) {
     outArgs[0].value->dotMul(*outArgs[0].value, *weights);
   }
-  return Argument::sumCosts(outArgs);
+  return Argument::sum(outArgs);
 }
 
 real getDiffAndPrint(real newCost1,
@@ -241,7 +241,7 @@ void testBatchState(LayerPtr testLayer,
 
     std::vector<Argument> args;
     args.push_back(out);
-    EXPECT_EQ(0, Argument::sumCosts(args)) << "testBatchState failed";
+    EXPECT_EQ(0, Argument::sum(args)) << "testBatchState failed";
     for (size_t seqId = 0; seqId < numSequences; ++seqId) {
       start[seqId] += seqLens[seqId];
     }
@@ -672,7 +672,7 @@ void testLayerGradKernel(TestConfig testConf,
     outArgs[0].value->dotMul(*testLayer->getOutput().value, *weights);
   }
 
-  real cost = Argument::sumCosts(outArgs);
+  real cost = Argument::sum(outArgs);
   LOG(INFO) << " cost " << cost;
   EXPECT_FALSE(std::isnan(cost));
 
