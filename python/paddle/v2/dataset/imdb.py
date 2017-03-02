@@ -118,3 +118,8 @@ def test(word_idx):
     return reader_creator(
         re.compile("aclImdb/test/pos/.*\.txt$"),
         re.compile("aclImdb/test/neg/.*\.txt$"), word_idx, 1000)
+
+
+def word_dict():
+    return build_dict(
+        re.compile("aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), 150)
