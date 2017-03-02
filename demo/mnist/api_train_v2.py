@@ -30,10 +30,11 @@ def main():
                 result = trainer.test(reader=paddle.reader.batched(
                     paddle.dataset.mnist.test(), batch_size=256))
 
-                print "Pass %d, Batch %d, Cost %f, %s, Testing metrics %s" % (
-                    event.pass_id, event.batch_id, event.cost, event.metrics,
-                    result.metrics)
-
+                print "Pass %d, Batch %d, Cost %.2f, %s, " \
+                      "Testing cost %.2f metrics %s" % (
+                          event.pass_id, event.batch_id, event.cost,
+                          event.metrics,
+                          result.cost, result.metrics)
         else:
             pass
 
