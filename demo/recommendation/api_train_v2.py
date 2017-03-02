@@ -1,8 +1,10 @@
 import paddle.v2 as paddle
+import cPickle
+import copy
 
 
 def main():
-    paddle.init(use_gpu=False, trainer_count=3)
+    paddle.init(use_gpu=False)
     movie_title_dict = paddle.dataset.movielens.get_movie_title_dict()
     uid = paddle.layer.data(
         name='user_id',
@@ -86,19 +88,40 @@ def main():
             if event.batch_id % 100 == 0:
                 print "Pass %d Batch %d Cost %.2f" % (
                     event.pass_id, event.batch_id, event.cost)
-        elif isinstance(event, paddle.event.EndPass):
-            result = trainer.test(reader=paddle.reader.batched(
-                paddle.dataset.movielens.test(), batch_size=256))
-            print result.cost
 
     trainer.train(
         reader=paddle.reader.batched(
-            paddle.reader.shuffle(
-                paddle.dataset.movielens.train(), buf_size=8192),
+            paddle.reader.firstn(
+                paddle.reader.shuffle(
+                    paddle.dataset.movielens.train(), buf_size=8192),
+                n=1000),
             batch_size=256),
         event_handler=event_handler,
         reader_dict=reader_dict,
-        num_passes=10)
+        num_passes=1)
+
+    user_id = 234
+    movie_id = 345
+
+    user = paddle.dataset.movielens.user_info()[user_id]
+    movie = paddle.dataset.movielens.movie_info()[movie_id]
+
+    feature = user.value() + movie.value()
+
+    def reader():
+        yield feature
+
+    infer_dict = copy.copy(reader_dict)
+    del infer_dict['score']
+    print infer_dict
+
+    prediction = paddle.infer(
+        output=inference,
+        parameters=parameters,
+        reader=paddle.reader.batched(
+            reader, batch_size=32),
+        reader_dict=infer_dict)
+    print prediction
 
 
 if __name__ == '__main__':

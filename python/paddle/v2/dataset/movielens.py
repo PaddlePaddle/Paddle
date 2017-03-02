@@ -6,7 +6,7 @@ import functools
 
 __all__ = [
     'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',
-    'age_table', 'movie_categories', 'max_job_id'
+    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info'
 ]
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
@@ -24,6 +24,13 @@ class MovieInfo(object):
             [MOVIE_TITLE_DICT[w.lower()] for w in self.title.split()]
         ]
 
+    def __str__(self):
+        return "<MovieInfo id(%d), title(%s), categories(%s)>" % (
+            self.index, self.title, self.categories)
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class UserInfo(object):
     def __init__(self, index, gender, age, job_id):
@@ -34,6 +41,14 @@ class UserInfo(object):
 
     def value(self):
         return [self.index, 0 if self.is_male else 1, self.age, self.job_id]
+
+    def __str__(self):
+        return "<UserInfo id(%d), gender(%s), age(%d), job(%d)>" % (
+            self.index, "M"
+            if self.is_male else "F", age_table[self.age], self.job_id)
+
+    def __repr__(self):
+        return str(self)
 
 
 MOVIE_INFO = None
@@ -150,6 +165,16 @@ def max_job_id():
 def movie_categories():
     __initialize_meta_info__()
     return CATEGORIES_DICT
+
+
+def user_info():
+    __initialize_meta_info__()
+    return USER_INFO
+
+
+def movie_info():
+    __initialize_meta_info__()
+    return MOVIE_INFO
 
 
 def unittest():
