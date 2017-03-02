@@ -4,17 +4,12 @@ import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
 
-UNK_IDX = 0
-
 
 def db_lstm():
     word_dict, verb_dict, label_dict = conll05.get_dict()
     word_dict_len = len(word_dict)
     label_dict_len = len(label_dict)
     pred_len = len(verb_dict)
-    print 'word_dict_len,', word_dict_len
-    print 'label_dict_len,', label_dict_len
-    print 'pred_len,', pred_len
 
     mark_dict_len = 2
     word_dim = 32
