@@ -21,6 +21,28 @@ import layer as v2_layer
 __all__ = ['Topology']
 
 
+def __flatten__(lis):
+    """
+    Given a list, possibly nested to any level, return it flattened.
+    """
+    new_lis = []
+    for item in lis:
+        if isinstance(item, collections.Sequence):
+            new_lis.extend(__flatten__(item))
+        else:
+            new_lis.append(item)
+    return new_lis
+
+
+def __bfs_travel__(callback, *layers):
+    layers = __flatten__(layers)
+    for each_layer in layers:
+        __break__ = callback(each_layer)
+        if __break__:
+            return
+        __bfs_travel__(callback, *each_layer.__parent_layers__.values())
+
+
 class Topology(object):
     """
     Topology is used to store the information about all layers
@@ -46,21 +68,17 @@ class Topology(object):
         :param name:
         :return:
         """
-        result_layer = []
+        result_layer = [None]
 
-        def find_layer_by_name(layer, layer_name):
-            if len(result_layer) == 1:
-                return
-            elif layer.name == layer_name:
-                result_layer.append(layer)
-            else:
-                for parent_layer in layer.__parent_layers__.values():
-                    find_layer_by_name(parent_layer, layer_name)
+        def __impl__(l):
+            if l.name == name:
+                result_layer[0] = l
+                return True  # break
+            return False
 
-        for layer in self.layers:
-            find_layer_by_name(layer, name)
-
-        assert len(result_layer) == 1
+        __bfs_travel__(__impl__, *self.layers)
+        if result_layer[0] is None:
+            raise ValueError("No such layer %s" % name)
         return result_layer[0]
 
     def data_layers(self):
@@ -68,17 +86,13 @@ class Topology(object):
         get all data layer
         :return:
         """
-        data_layers = set()
+        data_layers = dict()
 
-        def find_data_layer(layer):
-            if isinstance(layer, v2_layer.DataLayerV2):
-                data_layers.add(layer)
-            for parent_layer in layer.__parent_layers__.values():
-                find_data_layer(parent_layer)
+        def __impl__(l):
+            if isinstance(l, v2_layer.DataLayerV2):
+                data_layers[l.name] = l
 
-        for layer in self.layers:
-            find_data_layer(layer)
-
+        __bfs_travel__(__impl__, *self.layers)
         return data_layers
 
     def data_type(self):
@@ -86,8 +100,9 @@ class Topology(object):
         get data_type from proto, such as:
         [('image', dense_vector(768)), ('label', integer_value(10))]
         """
-        return [(data_layer.name, data_layer.type)
-                for data_layer in self.data_layers()]
+        data_layers = self.data_layers()
+        return [(nm, data_layers[nm].type)
+                for nm in self.proto().input_layer_names]
 
 
 def __check_layer_type__(layer):

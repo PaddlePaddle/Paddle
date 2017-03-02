@@ -20,26 +20,42 @@ def main():
 
     adam_optimizer = paddle.optimizer.Adam(learning_rate=0.01)
 
+    trainer = paddle.trainer.SGD(cost=cost,
+                                 parameters=parameters,
+                                 update_equation=adam_optimizer)
+
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
-            if event.batch_id % 100 == 0:
-                print "Pass %d, Batch %d, Cost %f, %s" % (
-                    event.pass_id, event.batch_id, event.cost, event.metrics)
+            if event.batch_id % 1000 == 0:
+                result = trainer.test(reader=paddle.reader.batched(
+                    paddle.dataset.mnist.test(), batch_size=256))
+
+                print "Pass %d, Batch %d, Cost %f, %s, Testing metrics %s" % (
+                    event.pass_id, event.batch_id, event.cost, event.metrics,
+                    result.metrics)
+
         else:
             pass
-
-    trainer = paddle.trainer.SGD(update_equation=adam_optimizer)
 
     trainer.train(
         reader=paddle.reader.batched(
             paddle.reader.shuffle(
                 paddle.dataset.mnist.train(), buf_size=8192),
             batch_size=32),
-        cost=cost,
+        event_handler=event_handler)
+
+    # output is a softmax layer. It returns probabilities.
+    # Shape should be (100, 10)
+    probs = paddle.infer(
+        output=inference,
         parameters=parameters,
-        event_handler=event_handler,
-        reader_dict={images.name: 0,
-                     label.name: 1})
+        reader=paddle.reader.batched(
+            paddle.reader.firstn(
+                paddle.reader.map_readers(lambda item: (item[0], ),
+                                          paddle.dataset.mnist.test()),
+                n=100),
+            batch_size=32))
+    print probs.shape
 
 
 if __name__ == '__main__':
