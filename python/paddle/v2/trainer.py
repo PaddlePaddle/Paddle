@@ -153,13 +153,18 @@ class SGD(ITrainer):
         evaluator = self.__gradient_machine__.makeEvaluator()
         out_args = api.Arguments.createArguments(0)
         evaluator.start()
+        total_cost = 0
+        num_samples = 0.0
         for data_batch in reader():
+            num_samples += len(data_batch)
             self.__gradient_machine__.forward(
                 feeder(data_batch), out_args, api.PASS_TEST)
+            total_cost += out_args.sumCosts()
             self.__gradient_machine__.eval(evaluator)
 
         evaluator.finish()
-        return v2_event.TestResult(evaluator=evaluator)
+        return v2_event.TestResult(
+            evaluator=evaluator, cost=total_cost / num_samples)
 
 
 def __check_train_args__(reader, event_handler, **kwargs):
