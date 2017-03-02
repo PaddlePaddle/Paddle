@@ -120,7 +120,8 @@ class SGD(ITrainer):
                     feeder(data_batch), out_args, pass_type)
                 self.__gradient_machine__.eval(pass_evaluator)
                 self.__gradient_machine__.eval(batch_evaluator)
-                for each_param in self.__gradient_machine__.getParameters():
+                for each_param in self.__gradient_machine__.getNonStaticParameters(
+                ):
                     updater.update(each_param)
                 # Get cost. We use numpy to calculate total cost for this batch.
                 cost_vec = out_args.getSlotValue(0)

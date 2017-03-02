@@ -40,8 +40,7 @@ def main():
                 reader_dict={'x': 0,
                              'y': 1})
             if event.pass_id % 10 == 0:
-                print "Test %d, Cost %f, %s" % (event.pass_id, event.cost,
-                                                result.metrics)
+                print "Test %d, %s" % (event.pass_id, result.metrics)
 
     # training
     trainer.train(
