@@ -107,6 +107,8 @@ class SGD(ITrainer):
             event_handler(v2_event.BeginPass(pass_id))
             pass_evaluator.start()
             updater.startPass()
+            total_cost_sum = 0
+            total_batch = 0
             for batch_id, data_batch in enumerate(reader()):
                 pass_type = updater.startBatch(len(data_batch))
                 self.__gradient_machine__.forwardBackward(
@@ -127,6 +129,8 @@ class SGD(ITrainer):
                 cost_vec = out_args.getSlotValue(0)
                 cost_vec = cost_vec.copyToNumpyMat()
                 cost = cost_vec.sum() / len(data_batch)
+                total_cost_sum += cost_vec.sum()
+                total_batch += len(data_batch)
                 updater.finishBatch(cost)
                 batch_evaluator.finish()
                 event_handler(
@@ -138,7 +142,11 @@ class SGD(ITrainer):
 
             updater.finishPass()
             pass_evaluator.finish()
-            event_handler(v2_event.EndPass(pass_id, evaluator=pass_evaluator))
+            event_handler(
+                v2_event.EndPass(
+                    pass_id,
+                    cost=total_cost_sum / total_batch,
+                    evaluator=pass_evaluator))
         self.__gradient_machine__.finish()
 
     def default_reader_dict(self):
