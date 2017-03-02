@@ -65,11 +65,11 @@ def sparse_value_slot(dim, seq_type=SequenceType.NO_SEQUENCE):
     return InputType(dim, seq_type, DataType.SparseValue)
 
 
-def index_slot(ele_range, seq_type=SequenceType.NO_SEQUENCE):
+def index_slot(value_range, seq_type=SequenceType.NO_SEQUENCE):
     """Data type of integer.
-    :param ele_range: range of this integer.
+    :param value_range: range of this integer.
     """
-    return InputType(ele_range, seq_type, DataType.Index)
+    return InputType(value_range, seq_type, DataType.Index)
 
 
 dense_vector = dense_slot
@@ -103,11 +103,11 @@ def sparse_vector_sub_sequence(dim):
     return sparse_vector(dim, seq_type=SequenceType.SUB_SEQUENCE)
 
 
-def integer_value_sequence(ele_range):
+def integer_value_sequence(value_range):
     """Data type of a sequence of integer.
-    :param ele_range: range of each element.
+    :param value_range: range of each element.
     """
-    return integer_value(ele_range, seq_type=SequenceType.SEQUENCE)
+    return integer_value(value_range, seq_type=SequenceType.SEQUENCE)
 
 
 def integer_value_sub_sequence(dim):

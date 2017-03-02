@@ -110,14 +110,14 @@ class DataFeederTest(unittest.TestCase):
             self.assertAlmostEqual(value.all(), w[i].all())
 
     def test_integer(self):
-        ele_range = 100
+        value_range = 100
         batch_size = 32
         index = []
         for i in xrange(batch_size):
             each_sample = []
-            each_sample.append(np.random.randint(ele_range))
+            each_sample.append(np.random.randint(value_range))
             index.append(each_sample)
-        feeder = DataFeeder([('input', data_type.integer_value(ele_range))],
+        feeder = DataFeeder([('input', data_type.integer_value(value_range))],
                             {'input': 0})
         arg = feeder(index)
         output = arg.getSlotIds(0).copyToNumpyArray()
@@ -125,7 +125,7 @@ class DataFeederTest(unittest.TestCase):
         self.assertEqual(output.all(), index.flatten().all())
 
     def test_integer_sequence(self):
-        ele_range = 10000
+        value_range = 10000
         batch_size = 32
         start = [0]
         data = []
@@ -133,11 +133,11 @@ class DataFeederTest(unittest.TestCase):
             each_sample = []
             each_sample.append(
                 self.sparse_binary_reader(
-                    ele_range, 30, non_empty=True))
+                    value_range, 30, non_empty=True))
             data.append(each_sample)
             start.append(len(each_sample[0]) + start[-1])
         feeder = DataFeeder(
-            [('input', data_type.integer_value_sequence(ele_range))],
+            [('input', data_type.integer_value_sequence(value_range))],
             {'input': 0})
         arg = feeder(data)
         output_data = arg.getSlotIds(0).copyToNumpyArray()
