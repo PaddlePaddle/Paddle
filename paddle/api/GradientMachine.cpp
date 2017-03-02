@@ -142,6 +142,20 @@ Parameter* GradientMachine::getParameter(size_t i) throw(RangeError) {
   }
 }
 
+size_t GradientMachine::getNonStaticParameterSize() const {
+  return m->machine->getNonStaticParameters().size();
+}
+
+Parameter* GradientMachine::getNonStaticParameter(size_t i) throw(RangeError) {
+  auto params = m->machine->getNonStaticParameters();
+  if (i < params.size()) {
+    return Parameter::createFromSharedPtr(
+        &m->machine->getNonStaticParameters()[i]);
+  } else {
+    throw RangeError();
+  }
+}
+
 void GradientMachine::randParameters() { m->machine->randParameters(); }
 
 Arguments* GradientMachine::getLayerOutput(const std::string& layerName) const
