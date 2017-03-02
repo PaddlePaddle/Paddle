@@ -82,8 +82,8 @@ As a simple example, consider the following:
     To generate PaddlePaddle's documentation, install dependencies and set `-DWITH_DOC=ON` as follows:
 
     ```bash
-    pip install 'sphinx>=1.4.0'
-    pip install sphinx_rtd_theme recommonmark
+    pip install sphinx==1.5.3
+    pip install sphinx_rtd_theme==0.1.10b0 recommonmark
 
     # install doxygen on Ubuntu
     sudo apt-get install doxygen 

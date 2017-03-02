@@ -41,8 +41,8 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 RUN pip install --upgrade pip && \
     pip install -U 'protobuf==3.1.0' && \
     pip install -U wheel pillow BeautifulSoup && \
-    pip install -U docopt PyYAML sphinx && \
-    pip install -U sphinx_rtd_theme recommonmark && \
+    pip install -U docopt PyYAML sphinx==1.5.3 && \
+    pip install -U sphinx_rtd_theme==0.1.10b0 recommonmark && \
     pip install -U pre-commit 'requests==2.9.2' jupyter
 
 RUN curl -sSL https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz | tar -xz && \
