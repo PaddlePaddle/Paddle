@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.v2.dataset.common
+#import paddle.v2.dataset.common
+import common
 import tarfile
 import gzip
 import itertools
@@ -49,11 +50,9 @@ def load_dict(filename):
 
 def corpus_reader(data_path, words_name, props_name):
     """
-    Read one corpus by corpus name. It returns an iterator. Each element of
+    Read one corpus. It returns an iterator. Each element of
     this iterator is a tuple including sentence and labels. The sentence is
     consist of a list of word IDs. The labels include a list of label IDs.
-    :param name: corpus name.
-    :type name: basestring
     :return: a iterator of data.
     :rtype: iterator
     """
@@ -104,7 +103,8 @@ def corpus_reader(data_path, words_name, props_name):
                                     lbl_seq.append('B-' + cur_tag)
                                     is_in_bracket = True
                                 else:
-                                    print 'error:', l
+                                    raise RuntimeError('Unexpected label: %s' %
+                                                       l)
 
                             yield sentences, verb_list[i], lbl_seq
 
@@ -114,6 +114,10 @@ def corpus_reader(data_path, words_name, props_name):
                 else:
                     sentences.append(word)
                     one_seg.append(label)
+
+        pf.close()
+        wf.close()
+        tf.close()
 
     return reader
 
