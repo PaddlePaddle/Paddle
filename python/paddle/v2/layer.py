@@ -225,7 +225,6 @@ class MemoryV2(WithExtraParent):
                 real_size = size()
             else:
                 real_size = size
-            print(real_size)
             args['size'] = real_size
         return conf_helps.memory(name=self.name, **args)
 
@@ -471,7 +470,6 @@ def recurrent_group(step, input, name=None):
         static_inputs = filter(lambda x: isinstance(x, StaticInputV2), input)
         for static_input in static_inputs:
             mem_name = "__%s_memory__" % static_input.input.name
-            print memory
             mem = memory(
                 name=mem_name,
                 is_seq=static_input.is_seq,
