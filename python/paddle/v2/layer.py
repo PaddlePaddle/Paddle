@@ -109,9 +109,10 @@ def parse_network(*outputs):
 
 
 class Layer(object):
-    def __init__(self, name=None, parent_layers=None):
+    def __init__(self, name=None, size=None, parent_layers=None):
         assert isinstance(parent_layers, dict)
         self.name = name
+        self.size = size
         self.__parent_layers__ = parent_layers
 
     def to_proto(self, context):
@@ -173,7 +174,8 @@ def __convert_to_v2__(method_name, parent_names, is_default_name=True):
                     other_kwargs[key] = kwargs[key]
 
             name = kwargs.get('name', None)
-            super(V2LayerImpl, self).__init__(name, parent_layers)
+            size = kwargs.get('size', None)
+            super(V2LayerImpl, self).__init__(name, size, parent_layers)
             self.__other_kwargs__ = other_kwargs
 
         if wrapper is not None:
@@ -220,9 +222,10 @@ class WithExtraParent(Layer):
     def extra_parent(self):
         return self.__extra_parent__
 
-    def __init__(self, name=None, parent_layers=None):
+    def __init__(self, name=None, size=None, parent_layers=None):
         self.__extra_parent__ = []
-        super(WithExtraParent, self).__init__(name, parent_layers)
+        super(WithExtraParent, self).__init__(
+            name=name, size=size, parent_layers=parent_layers)
 
     def append_extra_parent(self, parent):
         self.__extra_parent__.append(parent)
@@ -261,7 +264,8 @@ class MemoryV2(WithExtraParent):
     def __init__(self, name, size, **kwargs):
         self.name = name
         self.size = size
-        super(MemoryV2, self).__init__(name=name, parent_layers=dict())
+        super(MemoryV2, self).__init__(
+            name=name, size=size, parent_layers=dict())
         self.__kwargs__ = kwargs
         self.__boot_layer_name__ = None
         if 'boot_layer' in kwargs:
@@ -271,7 +275,9 @@ class MemoryV2(WithExtraParent):
             st = inspect.stack()
             for i in xrange(len(st)):
                 locs = inspect.stack()[i][0].f_locals
-                for val in locs.viewvalues():
+                keys = locs.keys()
+                for key in keys:
+                    val = locs[key]
                     if isinstance(val, RecurrentLayerInput):
                         begin_of_current_rnn.append(val)
 
@@ -322,21 +328,15 @@ class LayerOutputV2(Layer):
         return self.layer_output
 
 
-class StaticInputV2(Layer):
-    def __init__(self, input=None, **kwargs):
-        assert input is not None
-        self.__kwargs__ = kwargs
-        super(StaticInputV2, self).__init__(
-            name=input.name, parent_layers={'input': input})
-
-    def context_name(self):
-        return self.name + "#static_input"
-
-    def to_proto_impl(self, **kwargs):
-        args = dict()
-        args.update(kwargs)
-        args.update(self.__kwargs__)
-        return conf_helps.StaticInput(**args)
+class StaticInputV2(object):
+    def __init__(self, input, is_seq=False, size=None):
+        assert isinstance(input, LayerV2)
+        self.name = input.name
+        self.input = input
+        self.is_seq = is_seq
+        self.size = size
+        # TODO(qiaolongfei): add size
+        # assert input.size is not None or size is not None
 
 
 class MixedLayerV2(Layer):
@@ -370,9 +370,8 @@ class MixedLayerV2(Layer):
         other_kwargs['act'] = act
         other_kwargs['bias_attr'] = bias_attr
         other_kwargs['layer_attr'] = layer_attr
-
         parent_layers = {"input": self.__inputs__}
-        super(MixedLayerV2, self).__init__(name, parent_layers)
+        super(MixedLayerV2, self).__init__(name, size, parent_layers)
         self.__other_kwargs__ = other_kwargs
 
     def __iadd__(self, other):
@@ -452,6 +451,12 @@ def recurrent_group(step, input, name=None):
     if not isinstance(input, collections.Sequence):
         input = [input]
 
+    # TODO(qiaolongfei) convert StaticInput to memory according to v2 recurrent_group
+    for i in xrange(len(input)):
+        cur_input = input[i]
+        if isinstance(cur_input, StaticInputV2):
+            input[i] = cur_input.input
+
     actual_input = [
         RecurrentLayerInput(
             recurrent_name=name,
@@ -512,7 +517,7 @@ def __layer_name_mapping_parent_names__(inname):
         lambda x: x in ['input1', 'input2', 'label', 'input', 'a', 'b',
                         'expand_as',
                         'weights', 'vectors', 'weight', 'score', 'left',
-                        'right'],
+                        'right', 'output_mem'],
         all_args)
 
 

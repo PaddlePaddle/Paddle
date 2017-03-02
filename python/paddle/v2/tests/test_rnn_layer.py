@@ -74,21 +74,28 @@ class RNNTest(unittest.TestCase):
         label_dim = 3
 
         def parse_old_rnn():
-            def step(y, wid):
-                z = conf_helps.embedding_layer(input=wid, size=word_dim)
-                mem = conf_helps.memory(name="rnn_state", size=hidden_dim)
-                out = conf_helps.fc_layer(
-                    input=[y, z, mem],
-                    size=hidden_dim,
-                    act=conf_helps.TanhActivation(),
-                    bias_attr=True,
-                    name="rnn_state")
-                return out
-
             def test():
                 data = conf_helps.data_layer(name="word", size=dict_dim)
                 label = conf_helps.data_layer(name="label", size=label_dim)
                 emb = conf_helps.embedding_layer(input=data, size=word_dim)
+                boot_layer = conf_helps.data_layer(name="boot", size=10)
+                boot_layer = conf_helps.fc_layer(
+                    name='boot_fc', input=boot_layer, size=10)
+
+                def step(y, wid):
+                    z = conf_helps.embedding_layer(input=wid, size=word_dim)
+                    mem = conf_helps.memory(
+                        name="rnn_state",
+                        size=hidden_dim,
+                        boot_layer=boot_layer)
+                    out = conf_helps.fc_layer(
+                        input=[y, z, mem],
+                        size=hidden_dim,
+                        act=conf_helps.TanhActivation(),
+                        bias_attr=True,
+                        name="rnn_state")
+                    return out
+
                 out = conf_helps.recurrent_group(
                     name="rnn", step=step, input=[emb, data])
 
@@ -111,11 +118,9 @@ class RNNTest(unittest.TestCase):
             label = layer.data(
                 name="label", type=data_type.dense_vector(label_dim))
             emb = layer.embedding(input=data, size=word_dim)
-
             boot_layer = layer.data(
                 name="boot", type=data_type.dense_vector(10))
-
-            boot_layer = layer.fc(name='wtf', input=boot_layer, size=10)
+            boot_layer = layer.fc(name='boot_fc', input=boot_layer, size=10)
 
             def step(y, wid):
                 z = layer.embedding(input=wid, size=word_dim)
@@ -141,11 +146,9 @@ class RNNTest(unittest.TestCase):
 
             return str(layer.parse_network(cost))
 
-        with open("/Users/baidu/old.out", 'w') as f:
-            print >> f, parse_old_rnn()
-        with open("/Users/baidu/new.out", "w") as f:
-            print >> f, parse_new_rnn()
-        # print ''.join(diff)
+        diff = difflib.unified_diff(parse_old_rnn().splitlines(1),
+                                    parse_new_rnn().splitlines(1))
+        print ''.join(diff)
 
 
 if __name__ == '__main__':
