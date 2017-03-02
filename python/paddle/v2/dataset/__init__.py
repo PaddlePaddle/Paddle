@@ -14,4 +14,4 @@
 
 import mnist
 
-__all__ = ['mnist']
+__all__ = ['mnist', 'cifar', 'imdb', 'conll05', 'imikolov', 'movielens']

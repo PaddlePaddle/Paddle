@@ -160,7 +160,6 @@ def reader_creator(corpus_reader,
                 ctx_p2 = 'eos'
 
             word_idx = [word_dict.get(w, UNK_IDX) for w in sentence]
-            pred_idx = [predicate_dict.get(predicate)] * sen_len
 
             ctx_n2_idx = [word_dict.get(ctx_n2, UNK_IDX)] * sen_len
             ctx_n1_idx = [word_dict.get(ctx_n1, UNK_IDX)] * sen_len
@@ -168,10 +167,11 @@ def reader_creator(corpus_reader,
             ctx_p1_idx = [word_dict.get(ctx_p1, UNK_IDX)] * sen_len
             ctx_p2_idx = [word_dict.get(ctx_p2, UNK_IDX)] * sen_len
 
+            pred_idx = [predicate_dict.get(predicate)] * sen_len
             label_idx = [label_dict.get(w) for w in labels]
 
-            yield word_idx, pred_idx, ctx_n2_idx, ctx_n1_idx, \
-              ctx_0_idx, ctx_p1_idx, ctx_p2_idx, mark, label_idx
+            yield word_idx, ctx_n2_idx, ctx_n1_idx, \
+              ctx_0_idx, ctx_p1_idx, ctx_p2_idx, pred_idx, mark, label_idx
 
     return reader()
 
