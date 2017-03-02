@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from api_v2_vgg import resnet_cifar10
-from api_v2_resnet import vgg_bn_drop
+from api_v2_vgg import vgg_bn_drop
+from api_v2_resnet import resnet_cifar10
 import paddle.v2 as paddle
 
 

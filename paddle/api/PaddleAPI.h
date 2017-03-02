@@ -768,6 +768,9 @@ public:
   size_t getParameterSize() const;
   Parameter* getParameter(size_t i) throw(RangeError);
 
+  size_t getNonStaticParameterSize() const;
+  Parameter* getNonStaticParameter(size_t i) throw(RangeError);
+
   void randParameters();
 
   Arguments* getLayerOutput(const std::string& layerName) const
