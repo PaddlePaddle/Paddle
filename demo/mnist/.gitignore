@@ -5,3 +5,4 @@ plot.png
 train.log
 *pyc
 .ipynb_checkpoints
+params.pkl
