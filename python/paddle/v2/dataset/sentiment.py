@@ -102,7 +102,7 @@ def load_sentiment_data():
 
 def reader_creator(data):
     """
-    Reader creator, it format data set to numpy
+    Reader creator, generate an iterator for data set
     :param data:
         train data set or test data set
     """
