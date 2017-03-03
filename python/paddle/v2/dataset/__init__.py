@@ -17,5 +17,6 @@ import imikolov
 import imdb
 import cifar
 import movielens
+import conll05
 
-__all__ = ['mnist', 'imikolov', 'imdb', 'cifar', 'movielens']
+__all__ = ['mnist', 'imikolov', 'imdb', 'cifar', 'movielens', 'conll05']
