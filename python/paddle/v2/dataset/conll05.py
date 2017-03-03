@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.v2.dataset.common
 import tarfile
 import gzip
 import itertools
+from common import download
 
 __all__ = ['test, get_dict', 'get_embedding']
 """
@@ -160,7 +160,6 @@ def reader_creator(corpus_reader,
                 ctx_p2 = 'eos'
 
             word_idx = [word_dict.get(w, UNK_IDX) for w in sentence]
-            pred_idx = [predicate_dict.get(predicate)] * sen_len
 
             ctx_n2_idx = [word_dict.get(ctx_n2, UNK_IDX)] * sen_len
             ctx_n1_idx = [word_dict.get(ctx_n1, UNK_IDX)] * sen_len
@@ -168,38 +167,30 @@ def reader_creator(corpus_reader,
             ctx_p1_idx = [word_dict.get(ctx_p1, UNK_IDX)] * sen_len
             ctx_p2_idx = [word_dict.get(ctx_p2, UNK_IDX)] * sen_len
 
+            pred_idx = [predicate_dict.get(predicate)] * sen_len
             label_idx = [label_dict.get(w) for w in labels]
 
-            yield word_idx, pred_idx, ctx_n2_idx, ctx_n1_idx, \
-              ctx_0_idx, ctx_p1_idx, ctx_p2_idx, mark, label_idx
+            yield word_idx, ctx_n2_idx, ctx_n1_idx, \
+              ctx_0_idx, ctx_p1_idx, ctx_p2_idx, pred_idx, mark, label_idx
 
-    return reader()
+    return reader
 
 
 def get_dict():
-    word_dict = load_dict(
-        common.download(WORDDICT_URL, 'conll05st', WORDDICT_MD5))
-    verb_dict = load_dict(
-        common.download(VERBDICT_URL, 'conll05st', VERBDICT_MD5))
-    label_dict = load_dict(
-        common.download(TRGDICT_URL, 'conll05st', TRGDICT_MD5))
+    word_dict = load_dict(download(WORDDICT_URL, 'conll05st', WORDDICT_MD5))
+    verb_dict = load_dict(download(VERBDICT_URL, 'conll05st', VERBDICT_MD5))
+    label_dict = load_dict(download(TRGDICT_URL, 'conll05st', TRGDICT_MD5))
     return word_dict, verb_dict, label_dict
 
 
 def get_embedding():
-    return common.download(EMB_URL, 'conll05st', EMB_MD5)
+    return download(EMB_URL, 'conll05st', EMB_MD5)
 
 
 def test():
     word_dict, verb_dict, label_dict = get_dict()
     reader = corpus_reader(
-        common.download(DATA_URL, 'conll05st', DATA_MD5),
+        download(DATA_URL, 'conll05st', DATA_MD5),
         words_name='conll05st-release/test.wsj/words/test.wsj.words.gz',
         props_name='conll05st-release/test.wsj/props/test.wsj.props.gz')
     return reader_creator(reader, word_dict, verb_dict, label_dict)
-
-
-if __name__ == '__main__':
-    print get_embedding()
-    for f in test():
-        print f
