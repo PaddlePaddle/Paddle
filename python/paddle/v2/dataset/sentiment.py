@@ -20,7 +20,7 @@ The script fetch and preprocess movie_reviews data set
 that provided by NLTK
 """
 
-import paddle.v2.dataset.common as common
+import common
 import collections
 import nltk
 import numpy as np
