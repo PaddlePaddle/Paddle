@@ -45,7 +45,7 @@ docker push  [YOUR_REPO]/paddle:mypaddle
 
 ### 准备训练数据
 
-这里我们通过在Kubernetes集群上启动一个Job来下载并切割数据，也可以通过修改[k8s_train](./k8s_train)的内容来定制image.
+这里我们通过在Kubernetes集群上启动一个Job来下载并切割数据，也可以通过修改[k8s_train](./src/k8s_train)的内容来定制image.
 
 在启动Job之前，需要根据不同的分布式存储来绑定一个[persistentVolumeClaim](https://kubernetes.io/docs/user-guide/persistent-volumes/),生成的数据将会存储在这个volume下.
 
