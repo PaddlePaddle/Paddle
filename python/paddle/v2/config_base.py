@@ -93,6 +93,8 @@ def __convert_to_v2__(method_name, parent_names, is_default_name=True):
 
             name = kwargs.get('name', None)
             super(V2LayerImpl, self).__init__(name, parent_layers)
+            if kwargs.has_key('size'):
+                self.size = kwargs['size']
             self.__other_kwargs__ = other_kwargs
 
         if wrapper is not None:
