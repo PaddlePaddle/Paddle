@@ -17,7 +17,7 @@ imikolov's simple dataset: http://www.fit.vutbr.cz/~imikolov/rnnlm/
 import paddle.v2.dataset.common
 import tarfile
 
-__all__ = ['train', 'test']
+__all__ = ['train', 'test', 'build_dict']
 
 URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
@@ -37,7 +37,9 @@ def word_count(f, word_freq=None):
     return word_freq
 
 
-def build_dict(train_filename, test_filename):
+def build_dict():
+    train_filename = './simple-examples/data/ptb.train.txt'
+    test_filename = './simple-examples/data/ptb.valid.txt'
     with tarfile.open(
             paddle.v2.dataset.common.download(
                 paddle.v2.dataset.imikolov.URL, 'imikolov',
@@ -45,27 +47,22 @@ def build_dict(train_filename, test_filename):
         trainf = tf.extractfile(train_filename)
         testf = tf.extractfile(test_filename)
         word_freq = word_count(testf, word_count(trainf))
+        if '<unk>' in word_freq:
+            # remove <unk> for now, since we will set it as last index
+            del word_freq['<unk>']
 
         TYPO_FREQ = 50
         word_freq = filter(lambda x: x[1] > TYPO_FREQ, word_freq.items())
 
-        dictionary = sorted(word_freq, key=lambda x: (-x[1], x[0]))
-        words, _ = list(zip(*dictionary))
+        word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
+        words, _ = list(zip(*word_freq_sorted))
         word_idx = dict(zip(words, xrange(len(words))))
         word_idx['<unk>'] = len(words)
 
     return word_idx
 
 
-word_idx = {}
-
-
-def reader_creator(filename, n):
-    global word_idx
-    if len(word_idx) == 0:
-        word_idx = build_dict('./simple-examples/data/ptb.train.txt',
-                              './simple-examples/data/ptb.valid.txt')
-
+def reader_creator(filename, word_idx, n):
     def reader():
         with tarfile.open(
                 paddle.v2.dataset.common.download(
@@ -84,9 +81,9 @@ def reader_creator(filename, n):
     return reader
 
 
-def train(n):
-    return reader_creator('./simple-examples/data/ptb.train.txt', n)
+def train(word_idx, n):
+    return reader_creator('./simple-examples/data/ptb.train.txt', word_idx, n)
 
 
-def test(n):
-    return reader_creator('./simple-examples/data/ptb.valid.txt', n)
+def test(word_idx, n):
+    return reader_creator('./simple-examples/data/ptb.valid.txt', word_idx, n)
