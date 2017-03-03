@@ -14,7 +14,7 @@ def seqToseq_net_v2(source_dict_dim, target_dict_dim):
     #### Encoder
     src_word_id = layer.data(
         name='source_language_word',
-        type=data_type.dense_vector(source_dict_dim))
+        type=data_type.integer_value_sequence(source_dict_dim))
     src_embedding = layer.embedding(
         input=src_word_id,
         size=word_vector_dim,
@@ -67,7 +67,7 @@ def seqToseq_net_v2(source_dict_dim, target_dict_dim):
     trg_embedding = layer.embedding(
         input=layer.data(
             name='target_language_word',
-            type=data_type.dense_vector(target_dict_dim)),
+            type=data_type.integer_value_sequence(target_dict_dim)),
         size=word_vector_dim,
         param_attr=attr.ParamAttr(name='_target_language_embedding'))
     group_inputs.append(trg_embedding)
@@ -84,7 +84,7 @@ def seqToseq_net_v2(source_dict_dim, target_dict_dim):
 
     lbl = layer.data(
         name='target_language_next_word',
-        type=data_type.dense_vector(target_dict_dim))
+        type=data_type.integer_value_sequence(target_dict_dim))
     cost = layer.classification_cost(input=decoder, label=lbl)
 
     return cost
