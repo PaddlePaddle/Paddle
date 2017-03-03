@@ -7,6 +7,7 @@ from topology import Topology
 from . import event as v2_event
 from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
+from . import common
 
 __all__ = ['ITrainer', 'SGD']
 
@@ -30,7 +31,6 @@ class ITrainer(object):
     def train(self, reader, topology, parameters, event_handler=None):
         """
         train method.
-
         :param reader:
         :param topology:
         :param parameters:
@@ -70,7 +70,12 @@ class SGD(ITrainer):
         self.__gradient_machine__ = gm
         self.__gradient_machine__.randParameters()
 
-    def train(self, reader, num_passes=1, event_handler=None, reader_dict=None):
+    def train(self,
+              reader,
+              batch_size,
+              num_passes=1,
+              event_handler=None,
+              reader_dict=None):
         """
         Training method. Will train num_passes of input data.
 
@@ -91,6 +96,7 @@ class SGD(ITrainer):
 
         __check_train_args__(**locals())
 
+        reader = common.make_batch(reader, batch_size)
         updater = self.__optimizer__.create_local_updater()
         updater.init(self.__gradient_machine__)
 
@@ -142,10 +148,11 @@ class SGD(ITrainer):
             reader_dict[tp[0]] = i
         return reader_dict
 
-    def test(self, reader, reader_dict=None):
+    def test(self, reader, batch_size, reader_dict=None):
         if reader_dict is None:
             reader_dict = self.default_reader_dict()
 
+        reader = common.make_batch(reader, batch_size)
         feeder = DataFeeder(self.__data_types__, reader_dict)
         evaluator = self.__gradient_machine__.makeEvaluator()
         out_args = api.Arguments.createArguments(0)
