@@ -117,8 +117,6 @@ message("===============================")
 # (The directories the .gcda files and .o files are found in)
 # and run gcov on those.
 foreach(GCDA ${GCDA_FILES})
-	# message("Process: ${GCDA}")
-	# message("------------------------------------------------------------------------------")
 	get_filename_component(GCDA_DIR ${GCDA} PATH)
 
 	#
@@ -384,7 +382,6 @@ foreach(NOT_COVERED_SRC ${COVERAGE_SRCS_REMAINING})
 	set(GCOV_FILE_COVERAGE "${GCOV_FILE_COVERAGE}]")
 
 	# Generate the final JSON for this file.
-	# message("Generate JSON for non-gcov file: ${NOT_COVERED_SRC}...")
 	string(CONFIGURE ${SRC_FILE_TEMPLATE} FILE_JSON)
 	set(JSON_GCOV_FILES "${JSON_GCOV_FILES}${FILE_JSON}, ")
 endforeach()
