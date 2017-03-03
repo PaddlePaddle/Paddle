@@ -93,12 +93,12 @@ def main():
     trn_reader = paddle.reader.batched(
         paddle.reader.shuffle(
             train_reader("data/pre-wmt14/train/train"), buf_size=8192),
-        batch_size=10000)
+        batch_size=5)
 
     trainer.train(
         reader=trn_reader,
         event_handler=event_handler,
-        num_passes=10,
+        num_passes=10000,
         reader_dict=reader_dict)
 
 
