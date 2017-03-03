@@ -262,7 +262,7 @@ class StaticInputV2(object):
         self.input = input
         self.is_seq = is_seq
         self.size = size
-        # TODO(qiaolongfei): add size
+        # TODO(add size check)
         # assert input.size is not None or size is not None
 
 
