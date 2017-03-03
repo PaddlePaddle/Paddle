@@ -36,13 +36,13 @@ def md5file(fname):
 
 
 def download(url, module_name, md5sum):
-    print "downloading %s" % url
     dirname = os.path.join(DATA_HOME, module_name)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
     filename = os.path.join(dirname, url.split('/')[-1])
     if not (os.path.exists(filename) and md5file(filename) == md5sum):
+        print "Cache file %s not found, downloading %s" % (filename, url)
         r = requests.get(url, stream=True)
         total_length = r.headers.get('content-length')
 
