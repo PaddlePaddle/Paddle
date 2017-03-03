@@ -53,9 +53,8 @@ class EndPass(WithMetric):
     Event On One Pass Training Complete.
     """
 
-    def __init__(self, pass_id, cost, evaluator):
+    def __init__(self, pass_id, evaluator):
         self.pass_id = pass_id
-        self.cost = cost
         WithMetric.__init__(self, evaluator)
 
 
