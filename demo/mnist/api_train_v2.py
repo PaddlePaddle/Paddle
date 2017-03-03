@@ -55,7 +55,7 @@ def convolutional_neural_network(img):
 
 
 def main():
-    paddle.init(use_gpu=True, trainer_count=1)
+    paddle.init(use_gpu=False, trainer_count=1)
 
     # define network topology
     images = paddle.layer.data(
@@ -82,7 +82,7 @@ def main():
                                  parameters=parameters,
                                  update_equation=optimizer)
 
-    list = []
+    lists = []
 
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
@@ -93,9 +93,9 @@ def main():
             result = trainer.test(reader=paddle.reader.batched(
                 paddle.dataset.mnist.test(), batch_size=128))
             print "Test with Pass %d, Cost %f, %s\n" % (
-                event.pass_id, event.cost, result.metrics)
-            list.append((event.pass_id, event.cost,
-                         result.metrics['classification_error_evaluator']))
+                event.pass_id, result.cost, result.metrics)
+            lists.append((event.pass_id, result.cost,
+                          result.metrics['classification_error_evaluator']))
 
     trainer.train(
         reader=paddle.reader.batched(
@@ -106,7 +106,7 @@ def main():
         num_passes=100)
 
     # find the best pass
-    best = sorted(list, key=lambda list: float(list[1]))[0]
+    best = sorted(lists, key=lambda list: float(list[1]))[0]
     print 'Best pass is %s, testing Avgcost is %s' % (best[0], best[1])
     print 'The classification accuracy is %.2f%%' % (100 - float(best[2]) * 100)
 
