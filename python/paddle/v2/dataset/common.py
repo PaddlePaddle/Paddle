@@ -16,6 +16,7 @@ import requests
 import hashlib
 import os
 import shutil
+import sys
 
 __all__ = ['DATA_HOME', 'download', 'md5file']
 
@@ -35,6 +36,7 @@ def md5file(fname):
 
 
 def download(url, module_name, md5sum):
+    print "downloading %s" % url
     dirname = os.path.join(DATA_HOME, module_name)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
@@ -42,8 +44,22 @@ def download(url, module_name, md5sum):
     filename = os.path.join(dirname, url.split('/')[-1])
     if not (os.path.exists(filename) and md5file(filename) == md5sum):
         r = requests.get(url, stream=True)
-        with open(filename, 'w') as f:
-            shutil.copyfileobj(r.raw, f)
+        total_length = r.headers.get('content-length')
+
+        if total_length is None:
+            with open(filename, 'w') as f:
+                shutil.copyfileobj(r.raw, f)
+        else:
+            with open(filename, 'w') as f:
+                dl = 0
+                total_length = int(total_length)
+                for data in r.iter_content(chunk_size=4096):
+                    dl += len(data)
+                    f.write(data)
+                    done = int(50 * dl / total_length)
+                    sys.stdout.write("\r[%s%s]" % ('=' * done,
+                                                   ' ' * (50 - done)))
+                    sys.stdout.flush()
 
     return filename
 
