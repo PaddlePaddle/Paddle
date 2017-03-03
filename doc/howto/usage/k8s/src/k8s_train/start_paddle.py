@@ -132,7 +132,8 @@ def startPaddle(idMap={}, train_args_dict=None):
     logDir = JOB_PATH_OUTPUT + "/node_" + str(trainerId)
     if not os.path.exists(JOB_PATH_OUTPUT):
         os.makedirs(JOB_PATH_OUTPUT)
-    os.mkdir(logDir)
+    if not os.path.exists(logDir):
+        os.mkdir(logDir)
     copyCommand = 'cp -rf ' + JOB_PATH + \
         "/" + str(trainerId) + "/data/*" + " ./data/"
     os.system(copyCommand)
