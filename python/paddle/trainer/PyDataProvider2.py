@@ -65,14 +65,18 @@ def sparse_value_slot(dim, seq_type=SequenceType.NO_SEQUENCE):
     return InputType(dim, seq_type, DataType.SparseValue)
 
 
-def index_slot(dim, seq_type=SequenceType.NO_SEQUENCE):
-    return InputType(dim, seq_type, DataType.Index)
+def index_slot(value_range, seq_type=SequenceType.NO_SEQUENCE):
+    """Data type of integer.
+    :param value_range: range of this integer.
+    """
+    return InputType(value_range, seq_type, DataType.Index)
 
 
 dense_vector = dense_slot
 sparse_binary_vector = sparse_non_value_slot
 sparse_vector = sparse_value_slot
 integer_value = index_slot
+integer_value.__doc__ = index_slot.__doc__
 
 
 def dense_vector_sequence(dim):
@@ -99,8 +103,11 @@ def sparse_vector_sub_sequence(dim):
     return sparse_vector(dim, seq_type=SequenceType.SUB_SEQUENCE)
 
 
-def integer_value_sequence(dim):
-    return integer_value(dim, seq_type=SequenceType.SEQUENCE)
+def integer_value_sequence(value_range):
+    """Data type of a sequence of integer.
+    :param value_range: range of each element.
+    """
+    return integer_value(value_range, seq_type=SequenceType.SEQUENCE)
 
 
 def integer_value_sub_sequence(dim):
@@ -108,6 +115,7 @@ def integer_value_sub_sequence(dim):
 
 
 integer_sequence = integer_value_sequence
+integer_sequence.__doc__ = integer_value_sequence.__doc__
 
 
 class SingleSlotWrapper(object):

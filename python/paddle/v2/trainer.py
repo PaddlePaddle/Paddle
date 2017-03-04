@@ -8,7 +8,7 @@ from . import event as v2_event
 from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
 
-__all__ = ['ITrainer', 'SGD']
+__all__ = ['SGD']
 
 
 def default_event_handler(event):
@@ -22,26 +22,7 @@ def default_event_handler(event):
     pass
 
 
-class ITrainer(object):
-    """
-    The interface of Trainer. The only exposed method is `train`.
-    """
-
-    def train(self, reader, topology, parameters, event_handler=None):
-        """
-        train method.
-
-        :param reader:
-        :param topology:
-        :param parameters:
-        :param event_handler:
-        :return:
-        """
-
-        raise NotImplementedError()
-
-
-class SGD(ITrainer):
+class SGD():
     def __init__(self, cost, parameters, update_equation):
         """
         Simple SGD Trainer.
@@ -108,9 +89,6 @@ class SGD(ITrainer):
             pass_evaluator.start()
             updater.startPass()
             for batch_id, data_batch in enumerate(reader()):
-                pass_type = updater.startBatch(len(data_batch))
-                self.__gradient_machine__.forwardBackward(
-                    feeder(data_batch), out_args, pass_type)
                 batch_evaluator.start()
                 event_handler(
                     v2_event.BeginIteration(
@@ -120,12 +98,11 @@ class SGD(ITrainer):
                     feeder(data_batch), out_args, pass_type)
                 self.__gradient_machine__.eval(pass_evaluator)
                 self.__gradient_machine__.eval(batch_evaluator)
-                for each_param in self.__gradient_machine__.getParameters():
+                for each_param in self.__gradient_machine__.getNonStaticParameters(
+                ):
                     updater.update(each_param)
-                # Get cost. We use numpy to calculate total cost for this batch.
-                cost_vec = out_args.getSlotValue(0)
-                cost_vec = cost_vec.copyToNumpyMat()
-                cost = cost_vec.sum() / len(data_batch)
+                cost_sum = out_args.sumCosts()
+                cost = cost_sum / len(data_batch)
                 updater.finishBatch(cost)
                 batch_evaluator.finish()
                 event_handler(
@@ -154,13 +131,18 @@ class SGD(ITrainer):
         evaluator = self.__gradient_machine__.makeEvaluator()
         out_args = api.Arguments.createArguments(0)
         evaluator.start()
+        total_cost = 0
+        num_samples = 0.0
         for data_batch in reader():
+            num_samples += len(data_batch)
             self.__gradient_machine__.forward(
                 feeder(data_batch), out_args, api.PASS_TEST)
+            total_cost += out_args.sumCosts()
             self.__gradient_machine__.eval(evaluator)
 
         evaluator.finish()
-        return v2_event.TestResult(evaluator=evaluator)
+        return v2_event.TestResult(
+            evaluator=evaluator, cost=total_cost / num_samples)
 
 
 def __check_train_args__(reader, event_handler, **kwargs):
