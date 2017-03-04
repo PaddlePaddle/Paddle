@@ -1,5 +1,5 @@
 import paddle.v2 as paddle
-import cPickle
+import gzip
 
 
 def softmax_regression(img):
@@ -73,8 +73,8 @@ def main():
     cost = paddle.layer.classification_cost(input=predict, label=label)
 
     try:
-        with open('params.pkl', 'r') as f:
-            parameters = cPickle.load(f)
+        with gzip.open('params.tar.gz', 'r') as f:
+            parameters = paddle.parameters.Parameters.from_tar(f)
     except IOError:
         parameters = paddle.parameters.create(cost)
 
@@ -99,12 +99,8 @@ def main():
                     event.pass_id, event.batch_id, event.cost, event.metrics,
                     result.metrics)
 
-                with open('params.pkl', 'w') as f:
-                    cPickle.dump(
-                        parameters, f, protocol=cPickle.HIGHEST_PROTOCOL)
-
-                with open('params.tar', 'w') as f:
-                    parameters.serialize_to_tar(f)
+                with gzip.open('params.tar.gz', 'w') as f:
+                    parameters.to_tar(f)
 
         elif isinstance(event, paddle.event.EndPass):
             result = trainer.test(reader=paddle.reader.batched(
