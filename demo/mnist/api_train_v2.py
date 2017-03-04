@@ -103,6 +103,9 @@ def main():
                     cPickle.dump(
                         parameters, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
+                with open('params.tar', 'w') as f:
+                    parameters.serialize_to_tar(f)
+
         elif isinstance(event, paddle.event.EndPass):
             result = trainer.test(reader=paddle.reader.batched(
                 paddle.dataset.mnist.test(), batch_size=128))
