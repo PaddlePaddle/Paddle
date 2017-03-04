@@ -12,17 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mnist
-import imikolov
-import imdb
-import cifar
-import movielens
-import conll05
-import uci_housing
-import sentiment
-import wmt14
 
-__all__ = [
-    'mnist', 'imikolov', 'imdb', 'cifar', 'movielens', 'conll05', 'sentiment'
-    'uci_housing', 'wmt14'
-]
+def batch(reader, batch_size):
+    """
+    Create a batch reader.
+    :param reader: the data reader to read from.
+    :param batch_size: batch_size
+    :return: the batch reader.
+    """
+
+    def batch_reader():
+        r = reader()
+        batch = []
+        for instance in r:
+            batch.append(instance)
+            if len(batch) == batch_size:
+                yield batch
+                batch = []
+        if batch:
+            yield batch
+
+    return batch_reader

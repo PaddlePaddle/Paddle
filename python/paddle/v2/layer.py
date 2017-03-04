@@ -12,58 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Before this new package paddle.v2.layer, users would need to use functions
-in paddle.trainer_config_helpers.layers to configure networks.
+`paddle.v2.layer` is a part of model config packages in paddle.v2. In API v2,
+we want to make Paddle a plain Python package. The model config package defined
+the way how to configure a neural network topology in Paddle Python code.
 
-The Old Way:
-=========
-This old way requires that the creation of a network be defined in a Python
-function, say network_config, and that this Python function being passed to
-paddle.trainer_config_helpers.parse_network_config for the creation of
-protobuf message description of this network.
+The primary usage shows below.
 
-```python
-def network_config():
-  img = paddle.trainer_config_helpers.data_layer(name="pixel", size=784)
-  inference = paddle.trainer_config_helpers.fc_layer(
-    input=img,
-    size=10,
-    act=paddle.trainer_config_helpers.SoftmaxActivation())
-  cost = paddle.trainer_config_helpers.classification_cost(
-    input=inference,
-    label=paddle.trainer_config_helpers.data_layer(name="label", size=10))
+..  code-block:: python
 
-proto_desc = parse_network_config(network_config)
-```
+    import paddle.v2 as paddle
 
-When parse_network_config executes network_config, those layer definition
-functions like data_layer and fc_layer would change some Python global variables,
-so that after the execution, parse_network_config could collect information from
-these global variables and generates the protobuf message.
+    img = paddle.layer.data(name='img', type=paddle.data_type.dense_vector(784))
+    hidden = paddle.layer.fc(input=img, size=200)
+    prediction = paddle.layer.fc(input=hidden, size=10,
+                                 act=paddle.activation.Softmax())
 
-
-
-The New Way:
-=========
-In this PR, we define a function in paddle.v2.layer which creates a Python
-class for each layer creation function in paddle.trainer_config_helpers.layers.
-Users can use create a network as follows:
-
-```python
-img = paddle.v2.layer.data(name="pixel", size=784)
-inference = paddle.v2.layer.fc(input=img, size=10, act=paddle.v2.layer.Softmax())
-cost = paddle.v2.layer.classification(
-  input=inference,
-  label=paddle.v2.layer.data(name="label", size=10))
-
-parameters = paddle.v2.parameters.create(cost)
-```
-
-This new way doesn't require those invocations to layer definition functions
-to be in a Python function but could be anywhere.
-
-Also, the creation of a protobuf message is hidden in the invocation of
-paddle.v2.parameters.create, no longer exposed to users.
+    # use prediction instance where needed.
+    parameters = paddle.v2.parameters.create(cost)
 """
 
 import collections
