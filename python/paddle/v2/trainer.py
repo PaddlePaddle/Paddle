@@ -101,7 +101,7 @@ class SGD():
                 for each_param in self.__gradient_machine__.getNonStaticParameters(
                 ):
                     updater.update(each_param)
-                cost_sum = out_args.sumCosts()
+                cost_sum = out_args.sum()
                 cost = cost_sum / len(data_batch)
                 updater.finishBatch(cost)
                 batch_evaluator.finish()
@@ -137,7 +137,7 @@ class SGD():
             num_samples += len(data_batch)
             self.__gradient_machine__.forward(
                 feeder(data_batch), out_args, api.PASS_TEST)
-            total_cost += out_args.sumCosts()
+            total_cost += out_args.sum()
             self.__gradient_machine__.eval(evaluator)
 
         evaluator.finish()
