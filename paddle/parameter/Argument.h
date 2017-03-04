@@ -163,7 +163,7 @@ struct Argument {
                        : sequenceStartPositions->getData(false);
   }
 
-  static inline real sumCosts(const std::vector<Argument>& arguments) {
+  static inline real sum(const std::vector<Argument>& arguments) {
     real cost = 0;
     for (auto& arg : arguments) {
       if (arg.value) {

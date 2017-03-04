@@ -167,8 +167,23 @@ def main():
         paddle.reader.shuffle(
             conll05.test(), buf_size=8192), batch_size=10)
 
+    reader_dict = {
+        'word_data': 0,
+        'ctx_n2_data': 1,
+        'ctx_n1_data': 2,
+        'ctx_0_data': 3,
+        'ctx_p1_data': 4,
+        'ctx_p2_data': 5,
+        'verb_data': 6,
+        'mark_data': 7,
+        'target': 8
+    }
+
     trainer.train(
-        reader=trn_reader, event_handler=event_handler, num_passes=10000)
+        reader=trn_reader,
+        event_handler=event_handler,
+        num_passes=10000,
+        reader_dict=reader_dict)
 
 
 if __name__ == '__main__':
