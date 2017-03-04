@@ -20,8 +20,9 @@ import movielens
 import conll05
 import uci_housing
 import sentiment
+import wmt14
 
 __all__ = [
     'mnist', 'imikolov', 'imdb', 'cifar', 'movielens', 'conll05', 'sentiment'
-    'uci_housing'
+    'uci_housing', 'wmt14'
 ]
