@@ -453,7 +453,7 @@ public:
                                         IVector* vec) throw(RangeError);
   void setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError);
 
-  float sumCosts() const;
+  float sum() const;
 
 private:
   static Arguments* createByPaddleArgumentVector(void* ptr);
