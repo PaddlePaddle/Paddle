@@ -44,5 +44,5 @@ def init(**kwargs):
 
     api.initPaddle(*args)
 
-infer = inferencer.infer
+infer = inference.infer
 batch = minibatch.batch
