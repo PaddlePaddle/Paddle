@@ -47,26 +47,32 @@ from paddle.trainer.config_parser import \
     RecurrentLayerGroupEnd, model_type
 
 import activation
+import re
 import data_type
 
 __all__ = ['parse_network', 'data']
 
-__projection_names__ = filter(lambda x: x.endswith('_projection'),
-                              dir(conf_helps))
-__all__ += __projection_names__
-
-__operator_names__ = filter(lambda x: x.endswith('_operator'), dir(conf_helps))
-__all__ += __operator_names__
-
 
 def parse_network(*outputs):
     """
-    parse all output layers and then generate a model config proto.
-    :param outputs:
-    :return:
+    Parse all output layers and then generate a ModelConfig object.
+
+    ..  note::
+
+        This function is used internally in paddle.v2 module. User should never
+        invoke this method.
+
+    :param outputs: Output layers.
+    :type outputs: Layer
+    :return: A ModelConfig object instance.
+    :rtype: ModelConfig
     """
 
     def __real_func__():
+        """
+        __real_func__ is the function that config_parser.parse invoked. It is
+        the plain old paddle configuration function.
+        """
         context = dict()
         real_output = [each.to_proto(context=context) for each in outputs]
         conf_helps.outputs(real_output)
@@ -81,6 +87,8 @@ So we also need to implement some special LayerV2.
 
 
 class DataLayerV2(Layer):
+    METHOD_NAME = 'data_layer'
+
     def __init__(self, name, type, **kwargs):
         assert isinstance(type, data_type.InputType)
 
@@ -98,6 +106,17 @@ class DataLayerV2(Layer):
         for each in self.__kwargs__:
             args[each] = self.__kwargs__[each]
         return getattr(conf_helps, self.__method_name__)(name=self.name, **args)
+
+    def __map_docstr__(doc):
+        doc = re.sub(r'(data = [^\)]+)\).*',
+                     "data = paddle.layer.data(name=\"input\", "
+                     "type=paddle.data_type.dense_vector(1000))", doc)
+
+        doc = re.sub(r':param size:.*',
+                     ':param type: Data type of this data layer', doc)
+        doc = re.sub(r':type size:.*',
+                     ":type size: paddle.v2.data_type.InputType", doc)
+        return doc
 
 
 class WithExtraParent(Layer):
@@ -347,6 +366,7 @@ class RecurrentLayerOutput(Layer):
 
 LayerV2 = Layer
 data = DataLayerV2
+data.__name__ = 'data'
 AggregateLevel = conf_helps.layers.AggregateLevel
 ExpandLevel = conf_helps.layers.ExpandLevel
 memory = MemoryV2
@@ -386,6 +406,7 @@ def __convert_layer__(_new_name_, _old_name_, _parent_names_):
     global __all__
     __all__.append(_new_name_)
     globals()[new_name] = __convert_to_v2__(_old_name_, _parent_names_)
+    globals()[new_name].__name__ = new_name
 
 
 for each_layer_name in dir(conf_helps):
@@ -398,21 +419,6 @@ for each_layer_name in dir(conf_helps):
 del parent_names
 del new_name
 del each_layer_name
-
-# convert projection
-for prj in __projection_names__:
-    globals()[prj] = __convert_to_v2__(
-        prj, parent_names=['input'], is_default_name=False)
-
-# convert operator
-operator_list = [
-    # [V1_method_name, parent_names],
-    ['dotmul_operator', ['a', 'b']],
-    ['conv_operator', ['img', 'filter']]
-]
-for op in operator_list:
-    globals()[op[0]] = __convert_to_v2__(
-        op[0], parent_names=op[1], is_default_name=False)
 
 
 @wrap_name_default()
@@ -464,3 +470,29 @@ def recurrent_group(step, input, name=None):
         return retv[0]
     else:
         return retv
+
+
+__projection_names__ = filter(lambda x: x.endswith('_projection'),
+                              dir(conf_helps))
+
+__all__ += __projection_names__
+
+__operator_names__ = filter(lambda x: x.endswith('_operator'), dir(conf_helps))
+__all__ += __operator_names__
+
+# convert projection
+for prj in __projection_names__:
+    globals()[prj] = __convert_to_v2__(
+        prj, parent_names=['input'], is_default_name=False)
+    globals()[prj].__name__ = prj
+
+# convert operator
+operator_list = [
+    # [V1_method_name, parent_names],
+    ['dotmul_operator', ['a', 'b']],
+    ['conv_operator', ['img', 'filter']]
+]
+for op in operator_list:
+    globals()[op[0]] = __convert_to_v2__(
+        op[0], parent_names=op[1], is_default_name=False)
+    globals()[op[0]].__name__ = op[0]
