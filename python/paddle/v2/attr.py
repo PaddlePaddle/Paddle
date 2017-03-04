@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.trainer_config_helpers.attrs import *
+import paddle.trainer_config_helpers.attrs
 
 __all__ = [
     "Param",
     "Extra",
 ]
 
-Param = ParameterAttribute
-Extra = ExtraLayerAttribute
+Param = paddle.trainer_config_helpers.attrs.ParameterAttribute
+Extra = paddle.trainer_config_helpers.attrs.ExtraLayerAttribute
+
+for each in paddle.trainer_config_helpers.attrs.__all__:
+    globals()[each] = getattr(paddle.trainer_config_helpers.attrs, each)
+    __all__.append(each)

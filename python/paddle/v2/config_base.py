@@ -42,6 +42,12 @@ class LayerType(type):
         # replace LayerOutput to paddle.v2.config_base.Layer
         doc = doc.replace("LayerOutput", "paddle.v2.config_base.Layer")
 
+        doc = doc.replace('ParameterAttribute',
+                          'paddle.v2.attr.ParameterAttribute')
+
+        doc = re.sub(r'ExtraLayerAttribute[^\s]?',
+                     'paddle.v2.attr.ExtraAttribute', doc)
+
         # xxx_layer to xxx
         doc = re.sub(r"(?P<name>[a-z]+)_layer", r"\g<name>", doc)
 
