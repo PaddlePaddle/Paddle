@@ -69,7 +69,7 @@ spec:
           name: nfs
         env:
         - name: OUT_DIR
-          value: /mnt/paddle-cluster-job
+          value: /home/work/mfs/paddle-cluster-job
         - name: SPLIT_COUNT
           value: "3"
       volumes:
@@ -313,7 +313,3 @@ def getIdMap(podlist):
     args += " " + args_ext + " --trainer_id=" + \
         str(trainerId) + " --save_dir=" + JOB_PATH_OUTPUT
 ```
-
-### 使用EFK查询训练日志
-首先需要在集群中[部署EFK(Elasticsearch+Fluentd+Kibana)](https://github.com/k8sp/efk)套件,在Kibana中根据POD或者Container名字来搜索相应日志
-![EFK下的Paddle训练日志](./src/efk-paddle-logs.png)
