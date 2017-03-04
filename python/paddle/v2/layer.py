@@ -28,7 +28,7 @@ The primary usage shows below.
                                  act=paddle.activation.Softmax())
 
     # use prediction instance where needed.
-    parameters = paddle.v2.parameters.create(cost)
+    parameters = paddle.parameters.create(cost)
 """
 
 import collections
