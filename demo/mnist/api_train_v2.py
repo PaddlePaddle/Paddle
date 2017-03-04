@@ -98,7 +98,7 @@ def main():
                           result.metrics['classification_error_evaluator']))
 
     trainer.train(
-        reader=paddle.reader.batched(
+        reader=paddle.batch(
             paddle.reader.shuffle(
                 paddle.dataset.mnist.train(), buf_size=8192),
             batch_size=128),
@@ -115,7 +115,7 @@ def main():
     probs = paddle.infer(
         output=predict,
         parameters=parameters,
-        reader=paddle.reader.batched(
+        reader=paddle.batch(
             paddle.reader.firstn(
                 paddle.reader.map_readers(lambda item: (item[0], ),
                                           paddle.dataset.mnist.test()),
