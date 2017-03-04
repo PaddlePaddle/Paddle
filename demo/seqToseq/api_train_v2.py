@@ -72,6 +72,7 @@ def main():
     # define network topology
     cost = seqToseq_net_v2(source_dict_dim, target_dict_dim)
     parameters = paddle.parameters.create(cost)
+
     optimizer = paddle.optimizer.Adam(learning_rate=1e-4)
 
     def event_handler(event):
