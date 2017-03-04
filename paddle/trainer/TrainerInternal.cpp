@@ -134,7 +134,7 @@ void TrainerInternal::trainOneBatch(int64_t batchId,
   real cost = 0;
   {
     REGISTER_TIMER("sumCost");
-    cost = Argument::sumCosts(*outArgs);
+    cost = Argument::sum(*outArgs);
   }
 
   if (batchId % intconfig_->log_period == 0) {
