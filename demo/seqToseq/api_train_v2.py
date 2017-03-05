@@ -115,7 +115,7 @@ def main():
         'target_language_word': 1,
         'target_language_next_word': 2
     }
-    wmt14_reader = paddle.reader.batched(
+    wmt14_reader = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size=dict_size), buf_size=8192),
         batch_size=5)
