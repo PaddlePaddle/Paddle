@@ -394,8 +394,7 @@ reasons.</p>
 <code class="descclassname">paddle.trainer_config_helpers.layers.</code><code class="descname">data_layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span></dt>
 <dd><p>Define DataLayer For NeuralNetwork.</p>
 <p>The example usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;input&quot;</span><span class="p">,</span>
-                  <span class="n">size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">data_layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -404,9 +403,9 @@ reasons.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Name of this data layer.</li>
-<li><strong>size</strong> (<em>int|None</em>) &#8211; Size of this data layer.</li>
-<li><strong>height</strong> &#8211; Height of this data layer, used for image</li>
-<li><strong>width</strong> &#8211; Width of this data layer, used for image</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; Size of this data layer.</li>
+<li><strong>height</strong> (<em>int|None</em>) &#8211; Height of this data layer, used for image</li>
+<li><strong>width</strong> (<em>int|None</em>) &#8211; Width of this data layer, used for image</li>
 <li><strong>layer_attr</strong> (<em>ExtraLayerAttribute.</em>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
@@ -651,7 +650,7 @@ the right size (which is the end of array) to the left.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
 <li><strong>a</strong> (<em>LayerOutput</em>) &#8211; Input layer a.</li>
 <li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input layer b.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; layer&#8217;s extra attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; layer&#8217;s extra attribute.</li>
 </ul>
 </td>
 </tr>
@@ -724,7 +723,7 @@ False means no bias.</li>
 automatically from previous output.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Convolution param attribute. None means default attribute</li>
 <li><strong>shared_biases</strong> (<em>bool</em>) &#8211; Is biases will be shared between filters or not.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Layer Extra Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Layer Extra Attribute.</li>
 <li><strong>trans</strong> (<em>bool</em>) &#8211; true if it is a convTransLayer, false if it is a convLayer</li>
 <li><strong>layer_type</strong> (<em>String</em>) &#8211; specify the layer_type, default is None. If trans=True,
 layer_type has to be &#8220;exconvt&#8221;, otherwise layer_type
@@ -833,7 +832,7 @@ h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride
 MaxPooling.</li>
 <li><strong>stride</strong> (<em>int</em>) &#8211; stride width of pooling.</li>
 <li><strong>stride_y</strong> (<em>int|None</em>) &#8211; stride height of pooling. It is equal to stride by default.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
 <li><strong>ceil_mode</strong> (<em>bool</em>) &#8211; Wether to use ceil mode to calculate output height and with.
 Defalut is True. If set false, Otherwise use floor.</li>
 </ul>
@@ -875,7 +874,7 @@ The details please refer to
 <li><strong>num_channels</strong> (<em>int</em>) &#8211; number of input channel.</li>
 <li><strong>pool_type</strong> &#8211; Pooling type. MaxPooling or AveragePooling. Default is MaxPooling.</li>
 <li><strong>pyramid_height</strong> (<em>int</em>) &#8211; pyramid height.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -929,7 +928,7 @@ to devided by groups.</p>
 automatically from previous output.</li>
 <li><strong>groups</strong> (<em>int</em>) &#8211; The group number of input layer.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layer, which can not specify.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
 </ul>
 </td>
 </tr>
@@ -971,7 +970,7 @@ The details please refer to
 <li><strong>power</strong> (<em>float</em>) &#8211; The hyper-parameter.</li>
 <li><strong>num_channels</strong> &#8211; input layer&#8217;s filers number or channels. If
 num_channels is None, it will be set automatically.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -1033,7 +1032,7 @@ input.</li>
 initial_std=0, initial_mean=1 is best practice.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; <span class="math">\(\gamma\)</span>, better be one when initialize. So the
 initial_std=0, initial_mean=1 is best practice.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 <li><strong>use_global_stats</strong> (<em>bool|None.</em>) &#8211; whether use moving mean/variance statistics
 during testing peroid. If None or True,
 it will use moving mean/variance statistics during
@@ -1123,7 +1122,7 @@ out_{i} = act(in_{i} + out_{i+1} * W) \ \ \text{for} \ start &lt;= i &lt; end\en
 <li><strong>bias_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; bias attribute.</li>
 <li><strong>param_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; parameter attribute.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; name of the layer</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -1415,7 +1414,7 @@ be sigmoid only.</li>
 <li><strong>state_act</strong> (<em>BaseActivation</em>) &#8211; State Activation Type. Default is sigmoid, and should
 be sigmoid only.</li>
 <li><strong>bias_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a>) &#8211; Bias Attribute.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; layer&#8217;s extra attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; layer&#8217;s extra attribute.</li>
 </ul>
 </td>
 </tr>
@@ -1611,7 +1610,7 @@ then this function will just return layer&#8217;s name.</li>
 <li><strong>bias_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a><em> or </em><em>None</em><em> or </em><em>bool</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of ParameterAttribute. None will get a
 default Bias.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; The extra layer config. Default is None.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; The extra layer config. Default is None.</li>
 </ul>
 </td>
 </tr>
@@ -2071,7 +2070,7 @@ Inputs can be list of LayerOutput or list of projection.</p>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; Layer name.</li>
 <li><strong>input</strong> (<em>list|tuple|collections.Sequence</em>) &#8211; input layers or projections</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2115,7 +2114,7 @@ Inputs can be list of LayerOutput or list of projection.</p>
 <li><strong>a</strong> (<em>LayerOutput</em>) &#8211; input sequence layer</li>
 <li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input sequence layer</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation type.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 <li><strong>bias_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute" title="paddle.trainer_config_helpers.attrs.ParameterAttribute"><em>ParameterAttribute</em></a><em> or </em><em>None</em><em> or </em><em>bool</em>) &#8211; The Bias Attribute. If no bias, then pass False or
 something not type of ParameterAttribute. None will get a
 default Bias.</li>
@@ -2388,7 +2387,7 @@ LayerOutput.</li>
 <li><strong>act</strong> (<em>BaseActivation</em>) &#8211; Activation Type, default is tanh.</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|bool</em>) &#8211; Bias attribute. If False, means no bias. None is default
 bias.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2525,7 +2524,7 @@ which is used in NEURAL TURING MACHINE.</p>
 <li><strong>out_size_x</strong> (<em>int|None</em>) &#8211; bilinear interpolation output width.</li>
 <li><strong>out_size_y</strong> (<em>int|None</em>) &#8211; bilinear interpolation output height.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The layer&#8217;s name, which cna not be specified.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2735,7 +2734,7 @@ processed in one batch.</p>
 <li><strong>b</strong> (<em>LayerOutput</em>) &#8211; input layer b</li>
 <li><strong>scale</strong> (<em>float</em>) &#8211; scale for cosine value. default is 5.</li>
 <li><strong>size</strong> (<em>int</em>) &#8211; layer size. NOTE size_a * size should equal size_b.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2907,7 +2906,7 @@ in width dimension.</p>
 <li><strong>pad_c</strong> (<em>list|None</em>) &#8211; padding size in channel dimension.</li>
 <li><strong>pad_h</strong> (<em>list|None</em>) &#8211; padding size in height dimension.</li>
 <li><strong>pad_w</strong> (<em>list|None</em>) &#8211; padding size in width dimension.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name.</li>
 </ul>
 </td>
@@ -2945,7 +2944,7 @@ in width dimension.</p>
 <li><strong>label</strong> &#8211; The input label.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -2981,7 +2980,7 @@ Input should be a vector of positive numbers, without normalization.</p>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
 <li><strong>softmax_selfnorm_alpha</strong> (<em>float.</em>) &#8211; The scale factor affects the cost.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -3016,7 +3015,7 @@ Input should be a vector of positive numbers, without normalization.</p>
 <li><strong>type</strong> (<em>basestring</em>) &#8211; The type of cost.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -3050,7 +3049,7 @@ Input should be a vector of positive numbers, without normalization.</p>
 <li><strong>label</strong> &#8211; The input label.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float.</em>) &#8211; The coefficient affects the gradient in the backward.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -3096,7 +3095,7 @@ equal to NDCG_num. And if max_sort_size is greater
 than the size of a list, the algorithm will sort the
 entire list of get gradient.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -3151,7 +3150,7 @@ Their dimension is one.</li>
 It is an optional argument.</li>
 <li><strong>name</strong> (<em>None|basestring</em>) &#8211; The name of this layers. It is not necessary.</li>
 <li><strong>coeff</strong> (<em>float</em>) &#8211; The coefficient affects the gradient in the backward.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -3385,7 +3384,7 @@ A fast and simple algorithm for training neural probabilistic language models.</
 A uniform distribution will be used if not provided.
 If not None, its length must be equal to num_classes.</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|None|False</em>) &#8211; Bias parameter attribute. True if no bias.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -3427,7 +3426,7 @@ LayerOutput.</li>
 <li><strong>name</strong> (<em>basestring</em>) &#8211; layer name</li>
 <li><strong>bias_attr</strong> (<em>ParameterAttribute|False</em>) &#8211; Bias attribute. None means default bias.
 False means no bias.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>
@@ -3458,7 +3457,7 @@ False means no bias.</li>
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first simple">
 <li><strong>input</strong> (<em>LayerOutput.</em>) &#8211; The first input layer.</li>
 <li><strong>name</strong> (<em>None|basestring.</em>) &#8211; The name of this layers. It is not necessary.</li>
-<li><strong>layer_attr</strong> (<a class="reference internal" href="attrs.html#paddle.trainer_config_helpers.attrs.ExtraLayerAttribute" title="paddle.trainer_config_helpers.attrs.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
+<li><strong>layer_attr</strong> (<a class="reference internal" href="../../v2/model_configs.html#paddle.v2.attr.ExtraLayerAttribute" title="paddle.v2.attr.ExtraLayerAttribute"><em>ExtraLayerAttribute</em></a>) &#8211; Extra Layer Attribute.</li>
 </ul>
 </td>
 </tr>

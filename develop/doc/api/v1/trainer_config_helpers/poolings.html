@@ -153,6 +153,10 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../index_en.html">API</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../v2/model_configs.html">Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/model_configs.html#module-paddle.v2.attr">Attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/model_configs.html#module-paddle.v2.activation">Activations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/model_configs.html#module-paddle.v2.pooling">Poolings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../v2/model_configs.html#module-paddle.v2.networks">Networks</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../about/index_en.html">ABOUT</a></li>
@@ -201,77 +205,46 @@
 <h1>Poolings<a class="headerlink" href="#poolings" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="basepoolingtype">
 <h2>BasePoolingType<a class="headerlink" href="#basepoolingtype" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
+<dl class="attribute">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">BasePoolingType</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span></dt>
-<dd><p>Base Pooling Type.
-Note these pooling types are used for sequence input, not for images.
-Each PoolingType contains one parameter:</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>basestring</em>) &#8211; pooling layer type name used by paddle.</td>
-</tr>
-</tbody>
-</table>
+<code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">BasePoolingType</code></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">BasePool</span></code></p>
 </dd></dl>
 
 </div>
 <div class="section" id="avgpooling">
 <h2>AvgPooling<a class="headerlink" href="#avgpooling" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
+<dl class="attribute">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">AvgPooling</code><span class="sig-paren">(</span><em>strategy='average'</em><span class="sig-paren">)</span></dt>
-<dd><p>Average pooling.</p>
-<p>Return the average values for each dimension in sequence or time steps.</p>
-<div class="math">
-\[sum(samples\_of\_a\_sequence)/sample\_num\]</div>
+<code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">AvgPooling</code></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">Avg</span></code></p>
 </dd></dl>
 
 </div>
 <div class="section" id="maxpooling">
 <h2>MaxPooling<a class="headerlink" href="#maxpooling" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
+<dl class="attribute">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">MaxPooling</code><span class="sig-paren">(</span><em>output_max_index=None</em><span class="sig-paren">)</span></dt>
-<dd><p>Max pooling.</p>
-<p>Return the very large values for each dimension in sequence or time steps.</p>
-<div class="math">
-\[max(samples\_of\_a\_sequence)\]</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>output_max_index</strong> (<em>bool|None</em>) &#8211; True if output sequence max index instead of max
-value. None means use default value in proto.</td>
-</tr>
-</tbody>
-</table>
+<code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">MaxPooling</code></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">Max</span></code></p>
 </dd></dl>
 
 </div>
 <div class="section" id="sumpooling">
 <h2>SumPooling<a class="headerlink" href="#sumpooling" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
+<dl class="attribute">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SumPooling</code></dt>
-<dd><p>Sum pooling.</p>
-<p>Return the sum values of each dimension in sequence or time steps.</p>
-<div class="math">
-\[sum(samples\_of\_a\_sequence)\]</div>
+<code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SumPooling</code></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">Sum</span></code></p>
 </dd></dl>
 
 </div>
 <div class="section" id="squarerootnpooling">
 <h2>SquareRootNPooling<a class="headerlink" href="#squarerootnpooling" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
+<dl class="attribute">
 <dt>
-<em class="property">class </em><code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SquareRootNPooling</code></dt>
-<dd><p>Square Root Pooling.</p>
-<p>Return the square root values of each dimension in sequence or time steps.</p>
-<div class="math">
-\[sum(samples\_of\_a\_sequence)/sqrt(sample\_num)\]</div>
+<code class="descclassname">paddle.trainer_config_helpers.poolings.</code><code class="descname">SquareRootNPooling</code></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">SquareRootN</span></code></p>
 </dd></dl>
 
 </div>
