@@ -33,3 +33,10 @@ Networks
 
 ..	automodule:: paddle.v2.networks
 	:members:
+
+==========
+Optimizers
+==========
+
+..	automodule:: paddle.v2.optimizers
+	:members:

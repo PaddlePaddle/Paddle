@@ -9,6 +9,10 @@ from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
 
 __all__ = ['SGD']
+"""
+Trainer package
+TODO(yuyang18): Complete comments.
+"""
 
 
 def default_event_handler(event):
@@ -22,14 +26,20 @@ def default_event_handler(event):
     pass
 
 
-class SGD():
-    def __init__(self, cost, parameters, update_equation):
-        """
-        Simple SGD Trainer.
+class SGD(object):
+    """
+    Simple SGD Trainer.
+    TODO(yuyang18): Complete comments
 
-        :param update_equation: The optimizer object.
-        :type update_equation: v2_optimizer.Optimizer
-        """
+    :param update_equation: The optimizer object.
+    :type update_equation: paddle.v2.optimizer.Optimizer
+    :param cost: Target cost that neural network should be optimized.
+    :type cost: paddle.v2.config_base.Layer
+    :param parameters: The parameters dictionary.
+    :type parameters: paddle.v2.parameters.Parameters
+    """
+
+    def __init__(self, cost, parameters, update_equation):
 
         if not isinstance(parameters, v2_parameters.Parameters):
             raise TypeError('parameters should be parameters')
@@ -56,8 +66,6 @@ class SGD():
         Training method. Will train num_passes of input data.
 
         :param reader:
-        :param topology: Network Topology, use one or more Layers to represent it.
-        :param parameters: The parameter pools.
         :param num_passes: The total train passes.
         :param event_handler: Event handler. A method will be invoked when event
                               occurred.
