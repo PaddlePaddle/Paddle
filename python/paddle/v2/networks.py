@@ -38,6 +38,7 @@ def __initialize__():
             parent_names=parents,
             is_default_name='name' in argspec.args)
         globals()[each_subnetwork] = v2_subnet
+        globals()[each_subnetwork].__name__ = each_subnetwork
         global __all__
         __all__.append(each_subnetwork)
 

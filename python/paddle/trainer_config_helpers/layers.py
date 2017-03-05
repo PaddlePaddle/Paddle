@@ -795,17 +795,16 @@ def data_layer(name, size, height=None, width=None, layer_attr=None):
 
     ..  code-block:: python
 
-        data = data_layer(name="input",
-                          size=1000)
+        data = data_layer(name="input", size=1000)
 
     :param name: Name of this data layer.
     :type name: basestring
     :param size: Size of this data layer.
     :type size: int
     :param height: Height of this data layer, used for image
-    :type size: int|None
+    :type height: int|None
     :param width: Width of this data layer, used for image
-    :type size: int|None
+    :type width: int|None
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.

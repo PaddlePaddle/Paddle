@@ -13,12 +13,55 @@
 # limitations under the License.
 
 import collections
-
+import re
 from paddle.trainer_config_helpers.default_decorators import wrap_name_default
 import paddle.trainer_config_helpers as conf_helps
 
 
+class LayerType(type):
+    def __new__(cls, name, bases, attrs):
+        method_name = attrs.get('METHOD_NAME', None)
+        if method_name is not None:
+            method = getattr(conf_helps, method_name)
+            if method.__doc__ is not None:
+                mapper = attrs.get("__map_docstr__", None)
+                if mapper is not None:
+                    attrs['__doc__'] = LayerType.__map_docstr__(
+                        mapper(method.__doc__),
+                        method_name=method_name,
+                        name=name)
+                else:
+                    attrs['__doc__'] = LayerType.__map_docstr__(
+                        method.__doc__, method_name=method_name, name=name)
+        return super(LayerType, cls).__new__(cls, name, bases, attrs)
+
+    @staticmethod
+    def __map_docstr__(doc, name, method_name):
+        assert isinstance(doc, basestring)
+
+        # replace LayerOutput to paddle.v2.config_base.Layer
+        doc = doc.replace("LayerOutput", "paddle.v2.config_base.Layer")
+
+        doc = doc.replace('ParameterAttribute',
+                          'paddle.v2.attr.ParameterAttribute')
+
+        doc = re.sub(r'ExtraLayerAttribute[^\s]?',
+                     'paddle.v2.attr.ExtraAttribute', doc)
+
+        # xxx_layer to xxx
+        doc = re.sub(r"(?P<name>[a-z]+)_layer", r"\g<name>", doc)
+
+        # XxxxActivation to paddle.v2.Activation.Xxxx
+        doc = re.sub(r"(?P<name>[A-Z][a-zA-Z]+)Activation",
+                     r"paddle.v2.Activation.\g<name>", doc)
+
+        # TODO(yuyang18): Add more rules if needed.
+        return doc
+
+
 class Layer(object):
+    __metaclass__ = LayerType
+
     def __init__(self, name=None, parent_layers=None):
         assert isinstance(parent_layers, dict)
         self.name = name
@@ -80,6 +123,8 @@ def __convert_to_v2__(method_name, parent_names, is_default_name=True):
         wrapper = None
 
     class V2LayerImpl(Layer):
+        METHOD_NAME = method_name
+
         def __init__(self, **kwargs):
             parent_layers = dict()
             other_kwargs = dict()
