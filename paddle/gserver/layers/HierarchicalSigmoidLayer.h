@@ -61,9 +61,10 @@ class HierarchicalSigmoidLayer : public Layer {
 public:
   explicit HierarchicalSigmoidLayer(const LayerConfig& config)
       : Layer(config) {}
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
-  virtual void forward(PassType passType);
-  virtual void backward(const UpdateCallback& callback);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
+  void forward(PassType passType) override;
+  void backward(const UpdateCallback& callback) override;
 
 protected:
   /**

@@ -647,7 +647,7 @@ public:
       DataBatch& gpuBatch = *batch;
       std::vector<Argument>& gpuArguments = gpuBatch.getStreams();
       gpuArguments.resize(cpuArguments.size());
-      gpuBatch.setSize(size);
+      gpuBatch.setSize(bsize);
       for (size_t i = 0; i < headers_.size(); ++i) {
         gpuArguments[i].resizeAndCopyFrom(
             cpuArguments[i], useGpu_, HPPL_STREAM_1);

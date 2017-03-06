@@ -45,17 +45,18 @@ class RecurrentLayer : public Layer {
 public:
   explicit RecurrentLayer(const LayerConfig& config) : Layer(config) {}
 
-  bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType);
+  void forward(PassType passType) override;
 
-  void backward(const UpdateCallback& callback);
+  void backward(const UpdateCallback& callback) override;
 
-  void resetState();
+  void resetState() override;
 
-  void setState(LayerStatePtr state);
+  void setState(LayerStatePtr state) override;
 
-  LayerStatePtr getState();
+  LayerStatePtr getState() override;
 
 protected:
   /**
@@ -217,21 +218,22 @@ void RecurrentLayer::forwardOneSequence(int start, int length) {
     if (prevOutput_) {
       frameOutput_[start].value->mul(*prevOutput_, *weight_->getW(), 1, 1);
     }
-    activation_->forward(frameOutput_[start]);
+    activation_->forward(frameOutput_[start]).check();
+
     for (int i = 1; i < length; ++i) {
       frameOutput_[start + i].value->mul(
           *frameOutput_[start + i - 1].value, *weight_->getW(), 1, 1);
-      activation_->forward(frameOutput_[start + i]);
+      activation_->forward(frameOutput_[start + i]).check();
     }
     if (prevOutput_) {
       prevOutput_->assign(*frameOutput_[start + length - 1].value);
     }
   } else {
-    activation_->forward(frameOutput_[start + length - 1]);
+    activation_->forward(frameOutput_[start + length - 1]).check();
     for (int i = length - 2; i >= 0; --i) {
       frameOutput_[start + i].value->mul(
           *frameOutput_[start + i + 1].value, *weight_->getW(), 1, 1);
-      activation_->forward(frameOutput_[start + i]);
+      activation_->forward(frameOutput_[start + i]).check();
     }
   }
 }
@@ -280,11 +282,11 @@ void RecurrentLayer::backwardOneSequence(int start, int length) {
   MatrixPtr weightT = weight_->getW()->getTranspose();
   if (!reversed_) {
     for (int i = length - 1; i > 0; --i) {
-      activation_->backward(frameOutput_[start + i]);
+      activation_->backward(frameOutput_[start + i]).check();
       frameOutput_[start + i - 1].grad->mul(
           *frameOutput_[start + i].grad, *weightT, 1, 1);
     }
-    activation_->backward(frameOutput_[start]);
+    activation_->backward(frameOutput_[start]).check();
     if (weight_->getWGrad()) {
       weight_->getWGrad()->mul(
           *output_.value->subMatrix(start, length - 1)->getTranspose(),
@@ -294,11 +296,11 @@ void RecurrentLayer::backwardOneSequence(int start, int length) {
     }
   } else {
     for (int i = 0; i < length - 1; ++i) {
-      activation_->backward(frameOutput_[start + i]);
+      activation_->backward(frameOutput_[start + i]).check();
       frameOutput_[start + i + 1].grad->mul(
           *frameOutput_[start + i].grad, *weightT, 1, 1);
     }
-    activation_->backward(frameOutput_[start + length - 1]);
+    activation_->backward(frameOutput_[start + length - 1]).check();
     if (weight_->getWGrad()) {
       weight_->getWGrad()->mul(
           *output_.value->subMatrix(start + 1, length - 1)->getTranspose(),
@@ -333,7 +335,7 @@ void RecurrentLayer::forwardBatch(int batchSize,
       }
       Argument arg;
       arg.value = batch2;
-      activation_->forward(arg);
+      activation_->forward(arg).check();
     }
   }
   batchValue_->copyBackSeq(*output_.value);
@@ -363,7 +365,7 @@ void RecurrentLayer::backwardBatch(int batchSize,
       Argument arg;
       arg.value = batch1;
       arg.grad = batch2;
-      activation_->backward(arg);
+      activation_->backward(arg).check();
 
       if (n != 0) {
         batch1 = batchGrad_->getBatchValue(n - 1, batch2->getHeight());

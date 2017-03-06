@@ -1,11 +1,3 @@
-################# test_Prediction ######################
-add_unittest_without_exec(test_Prediction
-    test_Prediction.cpp)
-add_test(NAME test_Prediction
-  COMMAND ${PROJ_ROOT}/paddle/.set_python_path.sh -d ${PROJ_ROOT}/python
-        ${CMAKE_CURRENT_BINARY_DIR}/test_Prediction --merger=${CMAKE_CURRENT_BINARY_DIR}/../paddle_merge_model
-    WORKING_DIRECTORY ${PROJ_ROOT}/paddle/)
-
 ################# test_Compare ############################
 add_unittest_without_exec(test_Compare
     test_Compare.cpp)

@@ -139,22 +139,10 @@ lstmemory
     :members: lstmemory
     :noindex:
 
-lstm_step_layer
----------------
-..  automodule:: paddle.trainer_config_helpers.layers
-    :members: lstm_step_layer
-    :noindex:
-
 grumemory
 ---------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: grumemory
-    :noindex:
-
-gru_step_layer
----------------
-..  automodule:: paddle.trainer_config_helpers.layers
-    :members: gru_step_layer
     :noindex:
 
 Recurrent Layer Group
@@ -172,6 +160,18 @@ recurrent_group
     :members: recurrent_group
     :noindex:
     
+lstm_step_layer
+---------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: lstm_step_layer
+    :noindex:
+
+gru_step_layer
+---------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: gru_step_layer
+    :noindex:
+
 beam_search
 ------------
 ..  automodule:: paddle.trainer_config_helpers.layers
@@ -279,6 +279,12 @@ concat_layer
     :members: concat_layer
     :noindex:
 
+seq_concat_layer
+----------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: seq_concat_layer
+    :noindex:
+
 Reshaping Layers
 ================
 
@@ -300,6 +306,18 @@ repeat_layer
 ------------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: repeat_layer
+    :noindex:
+
+rotate_layer
+------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: rotate_layer
+    :noindex:
+
+seq_reshape_layer
+-----------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: seq_reshape_layer
     :noindex:
 
 Math Layers
@@ -382,6 +400,15 @@ sampling_id_layer
     :members: sampling_id_layer
     :noindex:
 
+Slicing and Joining Layers
+==========================
+
+pad_layer
+-----------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: pad_layer
+    :noindex:
+
 ..  _api_trainer_config_helpers_layers_cost_layers:
 
 Cost Layers
@@ -439,6 +466,12 @@ ctc_layer
 -----------
 ..  automodule:: paddle.trainer_config_helpers.layers
     :members: ctc_layer
+    :noindex:
+
+warp_ctc_layer
+--------------
+..  automodule:: paddle.trainer_config_helpers.layers
+    :members: warp_ctc_layer
     :noindex:
 
 nce_layer

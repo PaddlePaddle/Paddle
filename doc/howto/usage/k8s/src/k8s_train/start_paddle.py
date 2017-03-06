@@ -23,7 +23,6 @@ import argparse
 API = "/api/v1/namespaces/"
 JOBSELECTOR = "labelSelector=job-name="
 JOB_PATH = os.getenv("JOB_PATH") + "/" + os.getenv("JOB_NAME")
-JOB_PATH_DATA = JOB_PATH + "/data"
 JOB_PATH_OUTPUT = JOB_PATH + "/output"
 JOBNAME = os.getenv("JOB_NAME")
 NAMESPACE = os.getenv("JOB_NAMESPACE")
@@ -32,6 +31,8 @@ PADDLE_PORT = os.getenv("CONF_PADDLE_PORT")
 PADDLE_PORTS_NUM = os.getenv("CONF_PADDLE_PORTS_NUM")
 PADDLE_PORTS_NUM_SPARSE = os.getenv("CONF_PADDLE_PORTS_NUM_SPARSE")
 PADDLE_SERVER_NUM = os.getenv("CONF_PADDLE_GRADIENT_NUM")
+
+tokenpath = '/var/run/secrets/kubernetes.io/serviceaccount/token'
 
 
 def refine_unknown_args(cmd_args):
@@ -64,6 +65,7 @@ def isPodAllRunning(podlist):
     for pod in podlist["items"]:
         if pod["status"]["phase"] == "Running":
             running += 1
+    print "waiting for pods running, require:", require, "running:", running
     if require == running:
         return True
     return False
@@ -79,8 +81,17 @@ def getPodList():
 
     pod = API + NAMESPACE + "/pods?"
     job = JOBNAME
-    return requests.get(apiserver + pod + JOBSELECTOR + job,
-                        verify=False).json()
+    if os.path.isfile(tokenpath):
+        tokenfile = open(tokenpath, mode='r')
+        token = tokenfile.read()
+        Bearer = "Bearer " + token
+        headers = {"Authorization": Bearer}
+        return requests.get(apiserver + pod + JOBSELECTOR + job,
+                            headers=headers,
+                            verify=False).json()
+    else:
+        return requests.get(apiserver + pod + JOBSELECTOR + job,
+                            verify=False).json()
 
 
 def getIdMap(podlist):
@@ -121,9 +132,10 @@ def startPaddle(idMap={}, train_args_dict=None):
     logDir = JOB_PATH_OUTPUT + "/node_" + str(trainerId)
     if not os.path.exists(JOB_PATH_OUTPUT):
         os.makedirs(JOB_PATH_OUTPUT)
-    os.mkdir(logDir)
-    copyCommand = 'cp -rf ' + JOB_PATH_DATA + \
-        "/" + str(trainerId) + " ./data"
+    if not os.path.exists(logDir):
+        os.mkdir(logDir)
+    copyCommand = 'cp -rf ' + JOB_PATH + \
+        "/" + str(trainerId) + "/data/*" + " ./data/"
     os.system(copyCommand)
     startPserver = 'nohup paddle pserver' + \
         " --port=" + str(PADDLE_PORT) + \
@@ -136,9 +148,9 @@ def startPaddle(idMap={}, train_args_dict=None):
     print startPserver
     os.system(startPserver)
     # wait until pservers completely start
-    time.sleep(10)
-    startTrainer = program + args + " > " + \
-        logDir + "/train.log 2>&1 < /dev/null"
+    time.sleep(20)
+    startTrainer = program + args + " 2>&1 | tee " + \
+        logDir + "/train.log"
     print startTrainer
     os.system(startTrainer)
 
@@ -152,7 +164,7 @@ if __name__ == '__main__':
     podlist = getPodList()
     # need to wait until all pods are running
     while not isPodAllRunning(podlist):
-        time.sleep(10)
+        time.sleep(20)
         podlist = getPodList()
     idMap = getIdMap(podlist)
     startPaddle(idMap, train_args_dict)

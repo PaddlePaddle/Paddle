@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Detects the OS and sets appropriate variables.
+# CMAKE_SYSTEM_NAME only give us a coarse-grained name,
+# but the name like centos is necessary in some scenes
+# to distinguish system for customization.
+#
+# for instance, protobuf libs path is <install_dir>/lib64
+# on CentOS, but <install_dir>/lib on other systems.
+
 IF(WIN32)
     SET(HOST_SYSTEM "win32")
 ELSE(WIN32)
@@ -30,6 +38,10 @@ ELSE(WIN32)
                 SET(HOST_SYSTEM "debian")
             ELSEIF(LINUX_ISSUE MATCHES "Ubuntu")
                 SET(HOST_SYSTEM "ubuntu")
+            ELSEIF(LINUX_ISSUE MATCHES "Red Hat")
+                SET(HOST_SYSTEM "redhat")
+            ELSEIF(LINUX_ISSUE MATCHES "Fedora")
+                SET(HOST_SYSTEM "fedora")
             ENDIF()
         ENDIF(EXISTS "/etc/issue")
 
@@ -39,6 +51,10 @@ ELSE(WIN32)
                 SET(HOST_SYSTEM "centos")
             ENDIF()
         ENDIF(EXISTS "/etc/redhat-release")
+
+        IF(NOT HOST_SYSTEM)
+            SET(HOST_SYSTEM ${CMAKE_SYSTEM_NAME})
+        ENDIF()
 
     ENDIF(APPLE)
 ENDIF(WIN32)

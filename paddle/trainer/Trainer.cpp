@@ -90,16 +90,6 @@ DEFINE_string(model_list, "", "File that saves the model list when evaluation");
 
 namespace paddle {
 
-void Trainer::init(int argc, char** argv) {
-  initMain(argc, argv);
-  initPython(argc, argv);
-
-  auto config = TrainerConfigHelper::createFromFlagConfig();
-  feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW);
-
-  init(config);
-}
-
 void Trainer::init(const std::shared_ptr<TrainerConfigHelper>& config,
                    bool testing,
                    const std::shared_ptr<GradientMachine>& gradientMachine,
@@ -320,7 +310,7 @@ real Trainer::checkGradient() {
   std::vector<Argument> outArgs;
 
   trainerInternal_.getGradientMachine()->forward(inArgs, &outArgs, PASS_GC);
-  real cost = Argument::sumCosts(outArgs);
+  real cost = Argument::sum(outArgs);
   LOG(INFO) << "original cost=" << cost;
   trainerInternal_.getGradientMachine()->backward();
 
@@ -350,7 +340,7 @@ real Trainer::checkGradient() {
     parameter->getBuf(PARAMETER_VALUE)->copyFrom(newPara);
     parameter->setValueUpdated();
     trainerInternal_.getGradientMachine()->forward(inArgs, &outArgs, PASS_GC);
-    real newCost1 = Argument::sumCosts(outArgs);
+    real newCost1 = Argument::sum(outArgs);
 
     for (size_t i = 0; i < dim; ++i) {
       newp[i] = oldp[i] - step * d[i];
@@ -359,7 +349,7 @@ real Trainer::checkGradient() {
     parameter->getBuf(PARAMETER_VALUE)->copyFrom(newPara);
     parameter->setValueUpdated();
     trainerInternal_.getGradientMachine()->forward(inArgs, &outArgs, PASS_GC);
-    real newCost2 = Argument::sumCosts(outArgs);
+    real newCost2 = Argument::sum(outArgs);
 
     real trueDelta = 0.5 * (newCost1 - newCost2);
     real diff = (1e-20 + trueDelta) / (1e-20 + delta) - 1;
@@ -585,7 +575,7 @@ real Trainer::calcGradient(const DataBatch& dataBatch,
 
   trainerInternal_.getGradientMachine()->forwardBackward(
       inArgs, &outArgs, PASS_TRAIN);
-  real cost = Argument::sumCosts(outArgs);
+  real cost = Argument::sum(outArgs);
 
   offset = 0;
   for (auto& para : parameters) {
