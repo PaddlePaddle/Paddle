@@ -5,7 +5,7 @@ from data_feeder import DataFeeder
 import itertools
 import numpy
 
-__all__ = ['Inference', 'infer']
+__all__ = ['infer']
 
 
 class Inference(object):

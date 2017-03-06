@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Creator package contains some simple reader creator, which could be used in user
+program.
+"""
 
 __all__ = ['np_array', 'text_file']
 
@@ -38,7 +42,7 @@ def np_array(x):
 def text_file(path):
     """
     Creates a data reader that outputs text line by line from given text file.
-    Trailing new line ('\n') of each line will be removed.
+    Trailing new line ('\\\\n') of each line will be removed.
 
     :path: path of the text file.
     :returns: data reader of text file

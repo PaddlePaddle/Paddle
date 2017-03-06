@@ -8,7 +8,11 @@ from . import event as v2_event
 from . import optimizer as v2_optimizer
 from . import parameters as v2_parameters
 
-__all__ = ['ITrainer', 'SGD']
+__all__ = ['SGD']
+"""
+Trainer package
+TODO(yuyang18): Complete comments.
+"""
 
 
 def default_event_handler(event):
@@ -22,33 +26,20 @@ def default_event_handler(event):
     pass
 
 
-class ITrainer(object):
+class SGD(object):
     """
-    The interface of Trainer. The only exposed method is `train`.
+    Simple SGD Trainer.
+    TODO(yuyang18): Complete comments
+
+    :param update_equation: The optimizer object.
+    :type update_equation: paddle.v2.optimizer.Optimizer
+    :param cost: Target cost that neural network should be optimized.
+    :type cost: paddle.v2.config_base.Layer
+    :param parameters: The parameters dictionary.
+    :type parameters: paddle.v2.parameters.Parameters
     """
 
-    def train(self, reader, topology, parameters, event_handler=None):
-        """
-        train method.
-
-        :param reader:
-        :param topology:
-        :param parameters:
-        :param event_handler:
-        :return:
-        """
-
-        raise NotImplementedError()
-
-
-class SGD(ITrainer):
     def __init__(self, cost, parameters, update_equation):
-        """
-        Simple SGD Trainer.
-
-        :param update_equation: The optimizer object.
-        :type update_equation: v2_optimizer.Optimizer
-        """
 
         if not isinstance(parameters, v2_parameters.Parameters):
             raise TypeError('parameters should be parameters')
@@ -75,8 +66,6 @@ class SGD(ITrainer):
         Training method. Will train num_passes of input data.
 
         :param reader:
-        :param topology: Network Topology, use one or more Layers to represent it.
-        :param parameters: The parameter pools.
         :param num_passes: The total train passes.
         :param event_handler: Event handler. A method will be invoked when event
                               occurred.
@@ -117,10 +106,10 @@ class SGD(ITrainer):
                     feeder(data_batch), out_args, pass_type)
                 self.__gradient_machine__.eval(pass_evaluator)
                 self.__gradient_machine__.eval(batch_evaluator)
-                for each_param in self.__gradient_machine__.getParameters():
+                for each_param in self.__gradient_machine__.getNonStaticParameters(
+                ):
                     updater.update(each_param)
-                # Get cost. We use numpy to calculate total cost for this batch.
-                cost_sum = out_args.sumCosts()
+                cost_sum = out_args.sum()
                 cost = cost_sum / len(data_batch)
                 updater.finishBatch(cost)
                 batch_evaluator.finish()
@@ -156,7 +145,7 @@ class SGD(ITrainer):
             num_samples += len(data_batch)
             self.__gradient_machine__.forward(
                 feeder(data_batch), out_args, api.PASS_TEST)
-            total_cost += out_args.sumCosts()
+            total_cost += out_args.sum()
             self.__gradient_machine__.eval(evaluator)
 
         evaluator.finish()
