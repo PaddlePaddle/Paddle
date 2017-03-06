@@ -57,9 +57,9 @@ class SGD(object):
             self.__topology_in_proto__, api.CREATE_MODE_NORMAL,
             self.__optimizer__.enable_types())
         assert isinstance(gm, api.GradientMachine)
-        parameters.append_gradient_machine(gm)
         self.__gradient_machine__ = gm
         self.__gradient_machine__.randParameters()
+        parameters.append_gradient_machine(gm)
 
     def train(self, reader, num_passes=1, event_handler=None, reader_dict=None):
         """
