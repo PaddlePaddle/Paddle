@@ -80,13 +80,13 @@ def main():
                                  update_equation=optimizer)
 
     # define data reader
-    reader_dict = {
+    feeding = {
         'source_language_word': 0,
         'target_language_word': 1,
         'target_language_next_word': 2
     }
 
-    wmt14_reader = paddle.reader.batched(
+    wmt14_reader = paddle.batch(
         paddle.reader.shuffle(
             train_reader("data/pre-wmt14/train/train"), buf_size=8192),
         batch_size=5)
@@ -103,7 +103,7 @@ def main():
         reader=wmt14_reader,
         event_handler=event_handler,
         num_passes=10000,
-        reader_dict=reader_dict)
+        feeding=feeding)
 
 
 if __name__ == '__main__':

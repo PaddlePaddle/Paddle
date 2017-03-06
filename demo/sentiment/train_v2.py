@@ -18,11 +18,7 @@ from paddle.trainer_config_helpers.poolings import MaxPooling
 import paddle.v2 as paddle
 
 
-def convolution_net(input_dim,
-                    class_dim=2,
-                    emb_dim=128,
-                    hid_dim=128,
-                    is_predict=False):
+def convolution_net(input_dim, class_dim=2, emb_dim=128, hid_dim=128):
     data = paddle.layer.data("word",
                              paddle.data_type.integer_value_sequence(input_dim))
     emb = paddle.layer.embedding(input=data, size=emb_dim)
@@ -42,8 +38,7 @@ def stacked_lstm_net(input_dim,
                      class_dim=2,
                      emb_dim=128,
                      hid_dim=512,
-                     stacked_num=3,
-                     is_predict=False):
+                     stacked_num=3):
     """
     A Wrapper for sentiment classification task.
     This network uses bi-directional recurrent network,
@@ -110,7 +105,7 @@ def stacked_lstm_net(input_dim,
 
 if __name__ == '__main__':
     # init
-    paddle.init(use_gpu=True, trainer_count=4)
+    paddle.init(use_gpu=False, trainer_count=4)
 
     # network config
     print 'load dictionary...'
@@ -143,11 +138,11 @@ if __name__ == '__main__':
                 sys.stdout.flush()
         if isinstance(event, paddle.event.EndPass):
             result = trainer.test(
-                reader=paddle.reader.batched(
+                reader=paddle.batch(
                     lambda: paddle.dataset.imdb.test(word_dict),
                     batch_size=128),
-                reader_dict={'word': 0,
-                             'label': 1})
+                feeding={'word': 0,
+                         'label': 1})
             print "\nTest with Pass %d, %s" % (event.pass_id, result.metrics)
 
     # create trainer
@@ -156,11 +151,11 @@ if __name__ == '__main__':
                                  update_equation=adam_optimizer)
 
     trainer.train(
-        reader=paddle.reader.batched(
+        reader=paddle.batch(
             paddle.reader.shuffle(
                 lambda: paddle.dataset.imdb.train(word_dict), buf_size=1000),
             batch_size=100),
         event_handler=event_handler,
-        reader_dict={'word': 0,
-                     'label': 1},
+        feeding={'word': 0,
+                 'label': 1},
         num_passes=10)
