@@ -23,19 +23,19 @@ An example implementation for single item data reader creator:
 
 ```python
 def reader_creator_random_image(width, height):
-	def reader():
-		while True:
-			yield numpy.random.uniform(-1, 1, size=width*height)
-	return reader
+    def reader():
+        while True:
+            yield numpy.random.uniform(-1, 1, size=width*height)
+    return reader
 ```
 
 An example implementation for multiple item data reader creator:
 ```python
-def reader_creator_random_imageand_label(widht, height, label):
-	def reader():
-		while True:
-			yield numpy.random.uniform(-1, 1, size=width*height), label
-	return reader
+def reader_creator_random_image_and_label(width, height, label):
+    def reader():
+        while True:
+            yield numpy.random.uniform(-1, 1, size=width*height), label
+    return reader
 ```
 
 ## Batch Reader Interface
@@ -74,11 +74,11 @@ mnist_train_batch_reader = paddle.batch(mnist_train, 128)
 Also easy to create custom batch reader:
 ```python
 def custom_batch_reader():
-	while True:
-		batch = []
-		for i in xrange(128):
-			batch.append((numpy.random.uniform(-1, 1, 28*28),)) # note that it's a tuple being appended.
-		yield batch
+    while True:
+        batch = []
+        for i in xrange(128):
+            batch.append((numpy.random.uniform(-1, 1, 28*28),)) # note that it's a tuple being appended.
+        yield batch
 
 mnist_random_image_batch_reader = custom_batch_reader
 ```
@@ -123,16 +123,16 @@ We can do:
 
 ```python
 def reader_creator_random_image(width, height):
-	def reader():
-		while True:
-			yield numpy.random.uniform(-1, 1, size=width*height)
-	return reader
+    def reader():
+        while True:
+            yield numpy.random.uniform(-1, 1, size=width*height)
+    return reader
 
 def reader_creator_bool(t):
-	def reader:
-		while True:
-			yield t
-	return reader
+    def reader:
+        while True:
+            yield t
+    return reader
 
 true_reader = reader_creator_bool(True)
 false_reader = reader_creator_bool(False)
@@ -172,18 +172,18 @@ We decided to use dictionary (`{"image":0, "label":1}`) instead of list (`["imag
 
 ```python
 def image_reader_creator(image_path, label_path, n):
-	def reader():
-		f = open(image_path)
-		l = open(label_path)
-		images = numpy.fromfile(
-			f, 'ubyte', count=n * 28 * 28).reshape((n, 28 * 28)).astype('float32')
-		images = images / 255.0 * 2.0 - 1.0
-		labels = numpy.fromfile(l, 'ubyte', count=n).astype("int")
-		for i in xrange(n):
-			yield images[i, :], labels[i] # a single entry of data is created each time
-		f.close()
-		l.close()
-	return reader
+    def reader():
+        f = open(image_path)
+        l = open(label_path)
+        images = numpy.fromfile(
+            f, 'ubyte', count=n * 28 * 28).reshape((n, 28 * 28)).astype('float32')
+        images = images / 255.0 * 2.0 - 1.0
+        labels = numpy.fromfile(l, 'ubyte', count=n).astype("int")
+        for i in xrange(n):
+            yield images[i, :], labels[i] # a single entry of data is created each time
+        f.close()
+        l.close()
+    return reader
 
 # images_reader_creator creates a reader
 reader = image_reader_creator("/path/to/image_file", "/path/to/label_file", 1024)
@@ -196,7 +196,7 @@ An example implementation of paddle.train could be:
 
 ```python
 def train(batch_reader, mapping, batch_size, total_pass):
-	for pass_idx in range(total_pass):
-		for mini_batch in batch_reader(): # this loop will never end in online learning.
-			do_forward_backward(mini_batch, mapping)
+    for pass_idx in range(total_pass):
+        for mini_batch in batch_reader(): # this loop will never end in online learning.
+            do_forward_backward(mini_batch, mapping)
 ```

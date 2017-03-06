@@ -159,7 +159,12 @@
 <li class="toctree-l2"><a class="reference internal" href="howto/optimization/gpu_profiling_cn.html">GPU性能分析与调优</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="api/index_cn.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/index_cn.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/v2/model_configs.html">Configuration Related API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/v2/data.html">Data Related API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/v2/run_logic.html">Trainer API</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="faq/index_cn.html">FAQ</a></li>
 </ul>
 
@@ -203,6 +208,7 @@
  | <a href="#G"><strong>G</strong></a>
  | <a href="#H"><strong>H</strong></a>
  | <a href="#I"><strong>I</strong></a>
+ | <a href="#K"><strong>K</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#N"><strong>N</strong></a>
@@ -220,9 +226,11 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/v2/model_configs.html#paddle.v2.activation.Abs">Abs (paddle.v2.activation 中的类)</a>
 </li>
+      <li><a href="api/v2/model_configs.html#paddle.v2.layer.addto">addto (paddle.v2.layer 中的类)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/v2/model_configs.html#paddle.v2.layer.addto">addto (paddle.v2.layer 中的类)</a>
+      <li><a href="api/v2/run_logic.html#paddle.v2.parameters.Parameters.append_gradient_machine">append_gradient_machine() (paddle.v2.parameters.Parameters 方法)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.pooling.Avg">Avg (paddle.v2.pooling 中的类)</a>
 </li>
@@ -236,12 +244,18 @@
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.pooling.BasePool">BasePool (paddle.v2.pooling 中的类)</a>
 </li>
+      <li><a href="api/v2/data.html#paddle.v2.minibatch.batch">batch() (在 paddle.v2.minibatch 模块中)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.batch_norm">batch_norm (paddle.v2.layer 中的类)</a>
 </li>
-      <li><a href="api/v2/model_configs.html#paddle.v2.networks.bidirectional_gru">bidirectional_gru (paddle.v2.networks 中的类)</a>
+      <li><a href="api/v2/run_logic.html#paddle.v2.event.BeginIteration">BeginIteration (paddle.v2.event 中的类)</a>
+</li>
+      <li><a href="api/v2/run_logic.html#paddle.v2.event.BeginPass">BeginPass (paddle.v2.event 中的类)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/model_configs.html#paddle.v2.networks.bidirectional_gru">bidirectional_gru (paddle.v2.networks 中的类)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.networks.bidirectional_lstm">bidirectional_lstm (paddle.v2.networks 中的类)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.bilinear_interp">bilinear_interp (paddle.v2.layer 中的类)</a>
@@ -250,13 +264,19 @@
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.activation.BRelu">BRelu (paddle.v2.activation 中的类)</a>
 </li>
+      <li><a href="api/v2/data.html#paddle.v2.reader.buffered">buffered() (在 paddle.v2.reader 模块中)</a>
+</li>
   </ul></td>
 </tr></table>
 
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/data.html#paddle.v2.reader.chain">chain() (在 paddle.v2.reader 模块中)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.classification_cost">classification_cost (paddle.v2.layer 中的类)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.reader.compose">compose() (在 paddle.v2.reader 模块中)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.concat">concat (paddle.v2.layer 中的类)</a>
 </li>
@@ -268,11 +288,15 @@
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.conv_shift">conv_shift (paddle.v2.layer 中的类)</a>
 </li>
-      <li><a href="api/v2/model_configs.html#paddle.v2.layer.convex_comb">convex_comb (paddle.v2.layer 中的类)</a>
+      <li><a href="api/v2/data.html#paddle.v2.data_feeder.DataFeeder.convert">convert() (paddle.v2.data_feeder.DataFeeder 方法)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/model_configs.html#paddle.v2.layer.convex_comb">convex_comb (paddle.v2.layer 中的类)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.cos_sim">cos_sim (paddle.v2.layer 中的类)</a>
+</li>
+      <li><a href="api/v2/run_logic.html#paddle.v2.parameters.create">create() (在 paddle.v2.parameters 模块中)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.crf">crf (paddle.v2.layer 中的类)</a>
 </li>
@@ -296,12 +320,18 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.data">data (paddle.v2.layer 中的类)</a>
 </li>
+      <li><a href="api/v2/data.html#paddle.v2.data_feeder.DataFeeder">DataFeeder (paddle.v2.data_feeder 中的类)</a>
+</li>
       <li><a href="api/v1/trainer_config_helpers/data_sources.html#paddle.trainer_config_helpers.data_sources.define_py_data_sources2">define_py_data_sources2() (在 paddle.trainer_config_helpers.data_sources 模块中)</a>
 </li>
-      <li><a href="api/v2/model_configs.html#paddle.v2.layer.dotmul_operator">dotmul_operator (paddle.v2.layer 中的类)</a>
+      <li><a href="api/v2/data.html#paddle.v2.data_type.dense_vector">dense_vector() (在 paddle.v2.data_type 模块中)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/data.html#paddle.v2.data_type.dense_vector_sequence">dense_vector_sequence() (在 paddle.v2.data_type 模块中)</a>
+</li>
+      <li><a href="api/v2/model_configs.html#paddle.v2.layer.dotmul_operator">dotmul_operator (paddle.v2.layer 中的类)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.dotmul_projection">dotmul_projection (paddle.v2.layer 中的类)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.dropout">dropout (paddle.v2.layer 中的类)</a>
@@ -316,14 +346,18 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.embedding">embedding (paddle.v2.layer 中的类)</a>
 </li>
+      <li><a href="api/v2/run_logic.html#paddle.v2.event.EndIteration">EndIteration (paddle.v2.event 中的类)</a>
+</li>
+      <li><a href="api/v2/run_logic.html#paddle.v2.event.EndPass">EndPass (paddle.v2.event 中的类)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.eos">eos (paddle.v2.layer 中的类)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.activation.Exp">Exp (paddle.v2.activation 中的类)</a>
 </li>
-      <li><a href="api/v2/model_configs.html#paddle.v2.layer.expand">expand (paddle.v2.layer 中的类)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/model_configs.html#paddle.v2.layer.expand">expand (paddle.v2.layer 中的类)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.attr.Extra">Extra() (在 paddle.v2.attr 模块中)</a>
 </li>
       <li><a href="api/v1/trainer_config_helpers/attrs.html#paddle.trainer_config_helpers.attrs.ExtraAttr">ExtraAttr() (在 paddle.trainer_config_helpers.attrs 模块中)</a>
@@ -346,9 +380,11 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.fc">fc (paddle.v2.layer 中的类)</a>
 </li>
+      <li><a href="api/v2/model_configs.html#paddle.v2.layer.first_seq">first_seq (paddle.v2.layer 中的类)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/v2/model_configs.html#paddle.v2.layer.first_seq">first_seq (paddle.v2.layer 中的类)</a>
+      <li><a href="api/v2/data.html#paddle.v2.reader.firstn">firstn() (在 paddle.v2.reader 模块中)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.full_matrix_projection">full_matrix_projection (paddle.v2.layer 中的类)</a>
 </li>
@@ -358,12 +394,18 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/run_logic.html#paddle.v2.parameters.Parameters.get">get() (paddle.v2.parameters.Parameters 方法)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.get_output">get_output (paddle.v2.layer 中的类)</a>
 </li>
-      <li><a href="api/v2/model_configs.html#paddle.v2.networks.gru_group">gru_group (paddle.v2.networks 中的类)</a>
+      <li><a href="api/v2/run_logic.html#paddle.v2.parameters.Parameters.get_shape">get_shape() (paddle.v2.parameters.Parameters 方法)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.dataset.sentiment.get_word_dict">get_word_dict() (在 paddle.v2.dataset.sentiment 模块中)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/model_configs.html#paddle.v2.networks.gru_group">gru_group (paddle.v2.networks 中的类)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.gru_step">gru_step (paddle.v2.layer 中的类)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.networks.gru_unit">gru_unit (paddle.v2.networks 中的类)</a>
@@ -376,10 +418,12 @@
 <h2 id="H">H</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/v2/model_configs.html#paddle.v2.layer.hsigmoid">hsigmoid (paddle.v2.layer 中的类)</a>
+      <li><a href="api/v2/run_logic.html#paddle.v2.parameters.Parameters.has_key">has_key() (paddle.v2.parameters.Parameters 方法)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/model_configs.html#paddle.v2.layer.hsigmoid">hsigmoid (paddle.v2.layer 中的类)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.huber_cost">huber_cost (paddle.v2.layer 中的类)</a>
 </li>
   </ul></td>
@@ -396,15 +440,29 @@
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.img_conv">img_conv (paddle.v2.layer 中的类)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/v2/model_configs.html#paddle.v2.networks.img_conv_bn_pool">img_conv_bn_pool (paddle.v2.networks 中的类)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/v2/model_configs.html#paddle.v2.networks.img_conv_group">img_conv_group (paddle.v2.networks 中的类)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.img_pool">img_pool (paddle.v2.layer 中的类)</a>
 </li>
+      <li><a href="api/v2/data.html#paddle.v2.data_type.InputType">InputType (paddle.v2.data_type 中的类)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.data_type.integer_value">integer_value() (在 paddle.v2.data_type 模块中)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.data_type.integer_value_sequence">integer_value_sequence() (在 paddle.v2.data_type 模块中)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.interpolation">interpolation (paddle.v2.layer 中的类)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="K">K</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/run_logic.html#paddle.v2.parameters.Parameters.keys">keys() (paddle.v2.parameters.Parameters 方法)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -438,12 +496,14 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/v2/model_configs.html#paddle.v2.pooling.Max">Max (paddle.v2.pooling 中的类)</a>
+      <li><a href="api/v2/data.html#paddle.v2.reader.map_readers">map_readers() (在 paddle.v2.reader 模块中)</a>
 </li>
-      <li><a href="api/v2/model_configs.html#paddle.v2.layer.max_id">max_id (paddle.v2.layer 中的类)</a>
+      <li><a href="api/v2/model_configs.html#paddle.v2.pooling.Max">Max (paddle.v2.pooling 中的类)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/model_configs.html#paddle.v2.layer.max_id">max_id (paddle.v2.layer 中的类)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.maxout">maxout (paddle.v2.layer 中的类)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.multi_binary_label_cross_entropy_cost">multi_binary_label_cross_entropy_cost (paddle.v2.layer 中的类)</a>
@@ -454,7 +514,13 @@
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/run_logic.html#paddle.v2.parameters.Parameters.names">names() (paddle.v2.parameters.Parameters 方法)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.nce">nce (paddle.v2.layer 中的类)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.reader.creator.np_array">np_array() (在 paddle.v2.reader.creator 模块中)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -480,16 +546,52 @@
 </li>
       <li><a href="api/v2/model_configs.html#module-paddle.v2.attr">paddle.v2.attr (模块)</a>
 </li>
+      <li><a href="api/v2/data.html#module-paddle.v2.data_feeder">paddle.v2.data_feeder (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.data_type">paddle.v2.data_type (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.dataset">paddle.v2.dataset (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.dataset.cifar">paddle.v2.dataset.cifar (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.dataset.conll05">paddle.v2.dataset.conll05 (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.dataset.imdb">paddle.v2.dataset.imdb (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.dataset.imikolov">paddle.v2.dataset.imikolov (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.dataset.mnist">paddle.v2.dataset.mnist (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.dataset.movielens">paddle.v2.dataset.movielens (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.dataset.sentiment">paddle.v2.dataset.sentiment (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.dataset.uci_housing">paddle.v2.dataset.uci_housing (模块)</a>
+</li>
+      <li><a href="api/v2/run_logic.html#module-paddle.v2.event">paddle.v2.event (模块)</a>
+</li>
       <li><a href="api/v2/model_configs.html#module-paddle.v2.layer">paddle.v2.layer (模块)</a>
-</li>
-      <li><a href="api/v2/model_configs.html#module-paddle.v2.networks">paddle.v2.networks (模块)</a>
-</li>
-      <li><a href="api/v2/model_configs.html#module-paddle.v2.pooling">paddle.v2.pooling (模块)</a>
-</li>
-      <li><a href="api/v2/model_configs.html#paddle.v2.attr.Param">Param() (在 paddle.v2.attr 模块中)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/v2/data.html#module-paddle.v2.minibatch">paddle.v2.minibatch (模块)</a>
+</li>
+      <li><a href="api/v2/model_configs.html#module-paddle.v2.networks">paddle.v2.networks (模块)</a>
+</li>
+      <li><a href="api/v2/model_configs.html#module-paddle.v2.optimizer">paddle.v2.optimizer (模块)</a>
+</li>
+      <li><a href="api/v2/run_logic.html#module-paddle.v2.parameters">paddle.v2.parameters (模块)</a>
+</li>
+      <li><a href="api/v2/model_configs.html#module-paddle.v2.pooling">paddle.v2.pooling (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.reader">paddle.v2.reader (模块)</a>
+</li>
+      <li><a href="api/v2/data.html#module-paddle.v2.reader.creator">paddle.v2.reader.creator (模块)</a>
+</li>
+      <li><a href="api/v2/run_logic.html#module-paddle.v2.trainer">paddle.v2.trainer (模块)</a>
+</li>
+      <li><a href="api/v2/model_configs.html#paddle.v2.attr.Param">Param() (在 paddle.v2.attr 模块中)</a>
+</li>
       <li><a href="api/v1/trainer_config_helpers/attrs.html#paddle.trainer_config_helpers.attrs.ParamAttr">ParamAttr() (在 paddle.trainer_config_helpers.attrs 模块中)</a>
 
       <ul>
@@ -502,6 +604,8 @@
         <li><a href="api/v2/model_configs.html#paddle.v2.attr.ParameterAttribute">(paddle.v2.attr 中的类)</a>
 </li>
       </ul></li>
+      <li><a href="api/v2/run_logic.html#paddle.v2.parameters.Parameters">Parameters (paddle.v2.parameters 中的类)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.parse_network">parse_network() (在 paddle.v2.layer 模块中)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.pooling">pooling (paddle.v2.layer 中的类)</a>
@@ -554,22 +658,28 @@
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.activation.SequenceSoftmax">SequenceSoftmax (paddle.v2.activation 中的类)</a>
 </li>
+      <li><a href="api/v2/run_logic.html#paddle.v2.parameters.Parameters.set">set() (paddle.v2.parameters.Parameters 方法)</a>
+</li>
       <li><a href="api/v1/trainer_config_helpers/attrs.html#paddle.trainer_config_helpers.attrs.ParameterAttribute.set_default_parameter_name">set_default_parameter_name() (paddle.trainer_config_helpers.attrs.ParameterAttribute 方法)</a>
 
       <ul>
         <li><a href="api/v2/model_configs.html#paddle.v2.attr.ParameterAttribute.set_default_parameter_name">(paddle.v2.attr.ParameterAttribute 方法)</a>
 </li>
       </ul></li>
+      <li><a href="api/v2/run_logic.html#paddle.v2.trainer.SGD">SGD (paddle.v2.trainer 中的类)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.reader.shuffle">shuffle() (在 paddle.v2.reader 模块中)</a>
+</li>
       <li><a href="api/v2/model_configs.html#paddle.v2.activation.Sigmoid">Sigmoid (paddle.v2.activation 中的类)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.networks.simple_attention">simple_attention (paddle.v2.networks 中的类)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.networks.simple_gru">simple_gru (paddle.v2.networks 中的类)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/v2/model_configs.html#paddle.v2.networks.simple_gru2">simple_gru2 (paddle.v2.networks 中的类)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/v2/model_configs.html#paddle.v2.networks.simple_img_conv_pool">simple_img_conv_pool (paddle.v2.networks 中的类)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.networks.simple_lstm">simple_lstm (paddle.v2.networks 中的类)</a>
@@ -579,6 +689,18 @@
       <li><a href="api/v2/model_configs.html#paddle.v2.activation.Softmax">Softmax (paddle.v2.activation 中的类)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.activation.SoftRelu">SoftRelu (paddle.v2.activation 中的类)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.data_type.sparse_binary_vector">sparse_binary_vector() (在 paddle.v2.data_type 模块中)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.data_type.sparse_binary_vector_sequence">sparse_binary_vector_sequence() (在 paddle.v2.data_type 模块中)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.data_type.sparse_non_value_slot">sparse_non_value_slot() (在 paddle.v2.data_type 模块中)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.data_type.sparse_value_slot">sparse_value_slot() (在 paddle.v2.data_type 模块中)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.data_type.sparse_vector">sparse_vector() (在 paddle.v2.data_type 模块中)</a>
+</li>
+      <li><a href="api/v2/data.html#paddle.v2.data_type.sparse_vector_sequence">sparse_vector_sequence() (在 paddle.v2.data_type 模块中)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.spp">spp (paddle.v2.layer 中的类)</a>
 </li>
@@ -606,10 +728,28 @@
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.tensor">tensor (paddle.v2.layer 中的类)</a>
 </li>
+      <li><a href="api/v2/data.html#paddle.v2.dataset.mnist.test">test() (在 paddle.v2.dataset.mnist 模块中)</a>
+
+      <ul>
+        <li><a href="api/v2/data.html#paddle.v2.dataset.sentiment.test">(在 paddle.v2.dataset.sentiment 模块中)</a>
+</li>
+      </ul></li>
+      <li><a href="api/v2/run_logic.html#paddle.v2.event.TestResult">TestResult (paddle.v2.event 中的类)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/v2/model_configs.html#paddle.v2.networks.text_conv_pool">text_conv_pool (paddle.v2.networks 中的类)</a>
 </li>
+      <li><a href="api/v2/data.html#paddle.v2.reader.creator.text_file">text_file() (在 paddle.v2.reader.creator 模块中)</a>
+</li>
+      <li><a href="api/v2/run_logic.html#paddle.v2.trainer.SGD.train">train() (paddle.v2.trainer.SGD 方法)</a>
+
+      <ul>
+        <li><a href="api/v2/data.html#paddle.v2.dataset.mnist.train">(在 paddle.v2.dataset.mnist 模块中)</a>
+</li>
+        <li><a href="api/v2/data.html#paddle.v2.dataset.sentiment.train">(在 paddle.v2.dataset.sentiment 模块中)</a>
+</li>
+      </ul></li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.trans">trans (paddle.v2.layer 中的类)</a>
 </li>
       <li><a href="api/v2/model_configs.html#paddle.v2.layer.trans_full_matrix_projection">trans_full_matrix_projection (paddle.v2.layer 中的类)</a>

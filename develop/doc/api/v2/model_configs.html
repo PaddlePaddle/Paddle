@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Layers &mdash; PaddlePaddle  documentation</title>
+  <title>Configuration Related API &mdash; PaddlePaddle  documentation</title>
   
 
   
@@ -34,7 +34,7 @@
         <link rel="search" title="Search" href="../../search.html"/>
     <link rel="top" title="PaddlePaddle  documentation" href="../../index.html"/>
         <link rel="up" title="API" href="../index_en.html"/>
-        <link rel="next" title="ABOUT" href="../../about/index_en.html"/>
+        <link rel="next" title="Data Related API" href="data.html"/>
         <link rel="prev" title="API" href="../index_en.html"/> 
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" type="text/css" />
@@ -155,11 +155,9 @@
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="../index_en.html">API</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Layers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-paddle.v2.attr">Attributes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-paddle.v2.activation">Activations</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-paddle.v2.pooling">Poolings</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-paddle.v2.networks">Networks</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Configuration Related API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data.html">Data Related API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_logic.html">Trainer API</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
@@ -169,11 +167,15 @@
     </nav>
     
     <nav class="local-toc"><ul>
-<li><a class="reference internal" href="#">Layers</a></li>
+<li><a class="reference internal" href="#">Configuration Related API</a><ul>
+<li><a class="reference internal" href="#module-paddle.v2.layer">Layers</a></li>
 <li><a class="reference internal" href="#module-paddle.v2.attr">Attributes</a></li>
 <li><a class="reference internal" href="#module-paddle.v2.activation">Activations</a></li>
 <li><a class="reference internal" href="#module-paddle.v2.pooling">Poolings</a></li>
 <li><a class="reference internal" href="#module-paddle.v2.networks">Networks</a></li>
+<li><a class="reference internal" href="#module-paddle.v2.optimizer">Optimizers</a></li>
+</ul>
+</li>
 </ul>
 </nav>
     
@@ -194,7 +196,7 @@
       
         <li><a href="../index_en.html">API</a> > </li>
       
-    <li>Layers</li>
+    <li>Configuration Related API</li>
   </ul>
 </div>
       
@@ -203,8 +205,10 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="module-paddle.v2.layer">
-<span id="layers"></span><h1>Layers<a class="headerlink" href="#module-paddle.v2.layer" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="configuration-related-api">
+<h1>Configuration Related API<a class="headerlink" href="#configuration-related-api" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-paddle.v2.layer">
+<span id="layers"></span><h2>Layers<a class="headerlink" href="#module-paddle.v2.layer" title="Permalink to this headline">¶</a></h2>
 <p><cite>paddle.v2.layer</cite> is a part of model config packages in paddle.v2. In API v2,
 we want to make Paddle a plain Python package. The model config package defined
 the way how to configure a neural network topology in Paddle Python code.</p>
@@ -3104,7 +3108,7 @@ scale is a config scalar, its default value is one.</p>
 
 </div>
 <div class="section" id="module-paddle.v2.attr">
-<span id="attributes"></span><h1>Attributes<a class="headerlink" href="#module-paddle.v2.attr" title="Permalink to this headline">¶</a></h1>
+<span id="attributes"></span><h2>Attributes<a class="headerlink" href="#module-paddle.v2.attr" title="Permalink to this headline">¶</a></h2>
 <dl class="attribute">
 <dt id="paddle.v2.attr.Param">
 <code class="descclassname">paddle.v2.attr.</code><code class="descname">Param</code><a class="headerlink" href="#paddle.v2.attr.Param" title="Permalink to this definition">¶</a></dt>
@@ -3209,7 +3213,7 @@ The details allocation in parallel_nn please refer to <a class="reference extern
 
 </div>
 <div class="section" id="module-paddle.v2.activation">
-<span id="activations"></span><h1>Activations<a class="headerlink" href="#module-paddle.v2.activation" title="Permalink to this headline">¶</a></h1>
+<span id="activations"></span><h2>Activations<a class="headerlink" href="#module-paddle.v2.activation" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="paddle.v2.activation.Tanh">
 <em class="property">class </em><code class="descclassname">paddle.v2.activation.</code><code class="descname">Tanh</code><a class="headerlink" href="#paddle.v2.activation.Tanh" title="Permalink to this definition">¶</a></dt>
@@ -3354,7 +3358,7 @@ supported by hppl.</li>
 
 </div>
 <div class="section" id="module-paddle.v2.pooling">
-<span id="poolings"></span><h1>Poolings<a class="headerlink" href="#module-paddle.v2.pooling" title="Permalink to this headline">¶</a></h1>
+<span id="poolings"></span><h2>Poolings<a class="headerlink" href="#module-paddle.v2.pooling" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="paddle.v2.pooling.BasePool">
 <em class="property">class </em><code class="descclassname">paddle.v2.pooling.</code><code class="descname">BasePool</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.pooling.BasePool" title="Permalink to this definition">¶</a></dt>
@@ -3432,7 +3436,7 @@ pooling window.</p>
 
 </div>
 <div class="section" id="module-paddle.v2.networks">
-<span id="networks"></span><h1>Networks<a class="headerlink" href="#module-paddle.v2.networks" title="Permalink to this headline">¶</a></h1>
+<span id="networks"></span><h2>Networks<a class="headerlink" href="#module-paddle.v2.networks" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="paddle.v2.networks.sequence_conv_pool">
 <em class="property">class </em><code class="descclassname">paddle.v2.networks.</code><code class="descname">sequence_conv_pool</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.networks.sequence_conv_pool" title="Permalink to this definition">¶</a></dt>
@@ -4135,6 +4139,10 @@ concatenated and returned.</li>
 </dd></dl>
 
 </div>
+<div class="section" id="module-paddle.v2.optimizer">
+<span id="optimizers"></span><h2>Optimizers<a class="headerlink" href="#module-paddle.v2.optimizer" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
 
 
            </div>
@@ -4143,7 +4151,7 @@ concatenated and returned.</li>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="../../about/index_en.html" class="btn btn-neutral float-right" title="ABOUT" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="data.html" class="btn btn-neutral float-right" title="Data Related API" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="../index_en.html" class="btn btn-neutral" title="API" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>

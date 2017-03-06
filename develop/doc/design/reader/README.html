@@ -152,11 +152,9 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index_en.html">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Layers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html#module-paddle.v2.attr">Attributes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html#module-paddle.v2.activation">Activations</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html#module-paddle.v2.pooling">Poolings</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html#module-paddle.v2.networks">Networks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/model_configs.html">Configuration Related API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/data.html">Data Related API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/v2/run_logic.html">Trainer API</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../about/index_en.html">ABOUT</a></li>
@@ -239,7 +237,7 @@
 </pre></div>
 </div>
 <p>An example implementation for multiple item data reader creator:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">reader_creator_random_imageand_label</span><span class="p">(</span><span class="n">widht</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">reader_creator_random_image_and_label</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">reader</span><span class="p">():</span>
         <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
             <span class="k">yield</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">width</span><span class="o">*</span><span class="n">height</span><span class="p">),</span> <span class="n">label</span>
