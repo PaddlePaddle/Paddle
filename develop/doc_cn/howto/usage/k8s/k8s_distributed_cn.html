@@ -172,7 +172,7 @@
 <li><a class="reference internal" href="#">Kubernetes分布式训练</a><ul>
 <li><a class="reference internal" href="#">整体方案</a><ul>
 <li><a class="reference internal" href="#">制作镜像</a></li>
-<li><a class="reference internal" href="#">上传训练文件</a></li>
+<li><a class="reference internal" href="#">准备训练数据</a></li>
 <li><a class="reference internal" href="#job">创建Job</a></li>
 <li><a class="reference internal" href="#">查看输出</a></li>
 </ul>
@@ -250,19 +250,50 @@ $ docker build -t <span class="o">[</span>YOUR_REPO<span class="o">]</span>/padd
 <p>注意上述命令中<code class="docutils literal"><span class="pre">[YOUR_REPO]</span></code>表示读者所使用的Docker镜像仓库地址，读者需要替换成自己使用的仓库地址。下文使用<code class="docutils literal"><span class="pre">[YOUR_REPO]/paddle:mypaddle</span></code>这个地址来表示此步骤所构建出的镜像。</p>
 </div>
 <div class="section" id="">
-<span id="id3"></span><h3>上传训练文件<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
-<p>本文使用PaddlePaddle官方的<a class="reference external" href="http://www.paddlepaddle.org/doc/demo/index.html#recommendation">recommendation demo</a>作为这次训练的内容，我们将训练文件与数据放在一个job name命名的目录中，上传到volume所在的共享存储（使用不同分布式存储会有不同的挂载方式，需要要先挂载这个目录，然后拷贝数据）。完成后volume中的文件内容大致如下：</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="o">[</span>root@paddle-kubernetes-node0 mfs<span class="o">]</span><span class="c1"># tree -d</span>
+<span id="id3"></span><h3>准备训练数据<a class="headerlink" href="#" title="永久链接至标题">¶</a></h3>
+<p>这里我们通过在Kubernetes集群上启动一个Job来下载并切割数据，也可以通过修改<a class="reference internal" href="src/k8s_train/README.html"><span class="doc">k8s</span></a>的内容来定制image.</p>
+<p>在启动Job之前，需要根据不同的分布式存储来绑定一个<a class="reference external" href="https://kubernetes.io/docs/user-guide/persistent-volumes/">persistentVolumeClaim</a>,生成的数据将会存储在这个volume下.</p>
+<div class="highlight-yaml"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">apiVersion</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">batch/v1</span>
+<span class="l l-Scalar l-Scalar-Plain">kind</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Job</span>
+<span class="l l-Scalar l-Scalar-Plain">metadata</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">paddle-data</span>
+<span class="l l-Scalar l-Scalar-Plain">spec</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">template</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">metadata</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">pi</span>
+    <span class="l l-Scalar l-Scalar-Plain">spec</span><span class="p p-Indicator">:</span>
+      <span class="l l-Scalar l-Scalar-Plain">hostNetwork</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
+      <span class="l l-Scalar l-Scalar-Plain">containers</span><span class="p p-Indicator">:</span>
+      <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">paddle-data</span>
+        <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">paddledev/paddle-tutorial:k8s_data</span>
+        <span class="l l-Scalar l-Scalar-Plain">imagePullPolicy</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Always</span>
+        <span class="l l-Scalar l-Scalar-Plain">volumeMounts</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">mountPath</span><span class="p p-Indicator">:</span> <span class="s">&quot;/mnt&quot;</span>
+          <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">nfs</span>
+        <span class="l l-Scalar l-Scalar-Plain">env</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">OUT_DIR</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">/home/work/mfs/paddle-cluster-job</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">SPLIT_COUNT</span>
+          <span class="l l-Scalar l-Scalar-Plain">value</span><span class="p p-Indicator">:</span> <span class="s">&quot;3&quot;</span>
+      <span class="l l-Scalar l-Scalar-Plain">volumes</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">nfs</span>
+          <span class="l l-Scalar l-Scalar-Plain">persistentVolumeClaim</span><span class="p p-Indicator">:</span>
+            <span class="l l-Scalar l-Scalar-Plain">claimName</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">mfs</span>
+      <span class="l l-Scalar l-Scalar-Plain">restartPolicy</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">Never</span>
+</pre></div>
+</div>
+<p>完成后volume中的文件内容大致如下：</p>
+<div class="highlight-base"><div class="highlight"><pre><span></span>[root@paddle-kubernetes-node0 nfsdir]$ tree -d
 .
-└── paddle-cluster-job
-    ├── data
-    │   ├── <span class="m">0</span>
-    │   │
-    │   ├── <span class="m">1</span>
-    │   │
-    │   └── <span class="m">2</span>
-    ├── output
-    └── recommendation
+`-- paddle-cluster-job
+    |-- 0
+    |   `-- data
+    |-- 1
+    |   `-- data
+    |-- 2
+    |   `-- data
+    |-- output
+    |-- quick_start
 </pre></div>
 </div>
 <p>目录中paddle-cluster-job是本次训练对应的job name，本次训练要求有3个PaddlePaddle节点，在paddle-cluster-job/data目录中存放切分好的数据，文件夹0，1，2分别代表3个节点的trainer_id。recommendation文件夹内存放训练文件，output文件夹存放训练结果与日志。</p>
@@ -317,11 +348,16 @@ $ docker build -t <span class="o">[</span>YOUR_REPO<span class="o">]</span>/padd
 </div>
 <p>文件中，<code class="docutils literal"><span class="pre">metadata</span></code>下的<code class="docutils literal"><span class="pre">name</span></code>表示这个job的名字。<code class="docutils literal"><span class="pre">parallelism，completions</span></code>字段表示这个job会同时开启3个PaddlePaddle节点，成功训练且退出的pod数目为3时，这个job才算成功结束。然后申明一个存储卷<code class="docutils literal"><span class="pre">jobpath</span></code>，代表宿主机目录<code class="docutils literal"><span class="pre">/home/work/mfs</span></code>，在对容器的描述<code class="docutils literal"><span class="pre">containers</span></code>字段中，将此目录挂载为容器的<code class="docutils literal"><span class="pre">/home/jobpath</span></code>目录，这样容器的<code class="docutils literal"><span class="pre">/home/jobpath</span></code>目录就成为了共享存储，放在这个目录里的文件其实是保存到了MFS上。</p>
 <p><code class="docutils literal"><span class="pre">env</span></code>字段表示容器的环境变量，我们将<code class="docutils literal"><span class="pre">paddle</span></code>运行的一些参数通过这种方式传递到容器内。</p>
-<p><code class="docutils literal"><span class="pre">JOB_PATH</span></code>表示共享存储挂载的路径，<code class="docutils literal"><span class="pre">JOB_NAME</span></code>表示job名字，<code class="docutils literal"><span class="pre">TRAIN_CONFIG_DIR</span></code>表示本次训练文件所在目录，这三个变量组合就可以找到本次训练需要的文件路径。</p>
-<p><code class="docutils literal"><span class="pre">CONF_PADDLE_NIC</span></code>表示<code class="docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code>进程需要的<code class="docutils literal"><span class="pre">--nics</span></code>参数，即网卡名</p>
-<p><code class="docutils literal"><span class="pre">CONF_PADDLE_PORT</span></code>表示<code class="docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code>的<code class="docutils literal"><span class="pre">--port</span></code>参数，<code class="docutils literal"><span class="pre">CONF_PADDLE_PORTS_NUM</span></code>则表示稠密更新的端口数量，也就是<code class="docutils literal"><span class="pre">--ports_num</span></code>参数。</p>
-<p><code class="docutils literal"><span class="pre">CONF_PADDLE_PORTS_NUM_SPARSE</span></code>表示稀疏更新的端口数量，也就是<code class="docutils literal"><span class="pre">--ports_num_for_sparse</span></code>参数。</p>
-<p><code class="docutils literal"><span class="pre">CONF_PADDLE_GRADIENT_NUM</span></code>表示训练节点数量，即<code class="docutils literal"><span class="pre">--num_gradient_servers</span></code>参数</p>
+<p>环境变量 | 说明
+&#8212; | &#8212;
+JOB_PATH | 共享存储挂在的路径
+JOB_NAME | Job的名字
+TRAIN_CONFIG_DIR | 本次训练文件所在目录，与JOB_PATH,JOB_NAME组合可以找到本次训练需要的文件路径
+CONF_PADDLE_NIC | <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">pserver</span></code>进程需要的<code class="docutils literal"><span class="pre">--nics</span></code>参数，即网卡名
+CONF_PADDLE_PORT | <code class="docutils literal"><span class="pre">paddle</span> <span class="pre">paserver</span></code>的<code class="docutils literal"><span class="pre">--port</span></code>参数
+CONF_PADDLE_PORTS_NUM | 稠密更新的端口数量，即<code class="docutils literal"><span class="pre">--ports_num</span></code>参数
+CONF_PADDLE_PORTS_NUM_SPARSE | 稀疏更新的端口数量，即<code class="docutils literal"><span class="pre">--ports_num_for_sparse</span></code>参数
+CONF_PADDLE_GRADIENT_NUM | 训练节点数量，即<code class="docutils literal"><span class="pre">--num_gradient_servers参数</span></code></p>
 <p>这些参数的具体描述，读者可以查看<a class="reference external" href="http://www.paddlepaddle.org/doc/ui/cmd_argument/detail_introduction.html#parameter-server-and-distributed-communication">这里</a>。</p>
 <p>编写完YAML文件后，可以使用Kubernetes的命令行工具创建job。</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>kubectl create -f job.yaml
