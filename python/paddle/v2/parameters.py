@@ -1,7 +1,9 @@
 import numpy as np
 import py_paddle.swig_paddle as api
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
-
+import struct
+import tarfile
+import cStringIO
 from topology import Topology
 
 __all__ = ['Parameters', 'create']
@@ -122,6 +124,12 @@ class Parameters(object):
 
         if len(self.__gradient_machines__) == 0:
             # create new parameter in python numpy.
+            if len(self.__tmp_params__) != 0:
+                ret_list = [
+                    mat for name, mat in self.__tmp_params__ if name == key
+                ]
+                if len(ret_list) == 1:
+                    return ret_list[0]
             return np.ndarray(shape=shape, dtype=np.float32)
         else:
             for each_gradient_machine in self.__gradient_machines__:
@@ -228,32 +236,66 @@ class Parameters(object):
 
         self.__gradient_machines__.append(gradient_machine)
 
-    def __getstate__(self):
-        params = {}
-        for name in self.names():
-            params[name] = self.get(name)
+    def serialize(self, name, f):
+        """
 
-        param_conf = {}
-        for name in self.__param_conf__:
-            conf = self.__param_conf__[name]
-            assert isinstance(conf, ParameterConfig)
-            param_conf[name] = conf.SerializeToString()
+        :param name:
+        :param f:
+        :type f: file
+        :return:
+        """
+        param = self.get(name)
+        size = reduce(lambda a, b: a * b, param.shape)
+        f.write(struct.pack("IIQ", 0, 4, size))
+        param = param.astype(np.float32)
+        f.write(param.tobytes())
 
-        return {'conf': param_conf, 'params': params}
+    def deserialize(self, name, f):
+        """
 
-    def __setstate__(self, obj):
-        Parameters.__init__(self)
+        :param name:
+        :param f:
+        :type f: file
+        :return:
+        """
+        f.read(16)  # header
+        arr = np.frombuffer(f.read(), dtype=np.float32)
+        self.set(name, arr.reshape(self.get_shape(name)))
 
-        def __impl__(conf, params):
-            for name in conf:
-                p = ParameterConfig()
-                p.ParseFromString(conf[name])
-                self.__append_config__(p)
-            for name in params:
-                shape = self.get_shape(name)
-                self.set(name, params[name].reshape(shape))
+    def to_tar(self, f):
+        tar = tarfile.TarFile(fileobj=f, mode='w')
+        for nm in self.names():
+            buf = cStringIO.StringIO()
+            self.serialize(nm, buf)
+            tarinfo = tarfile.TarInfo(name=nm)
+            buf.seek(0)
+            tarinfo.size = len(buf.getvalue())
+            tar.addfile(tarinfo, buf)
 
-        __impl__(**obj)
+            conf = self.__param_conf__[nm]
+            confStr = conf.SerializeToString()
+            tarinfo = tarfile.TarInfo(name="%s.protobuf" % nm)
+            tarinfo.size = len(confStr)
+            buf = cStringIO.StringIO(confStr)
+            buf.seek(0)
+            tar.addfile(tarinfo, fileobj=buf)
+
+    @staticmethod
+    def from_tar(f):
+        params = Parameters()
+        tar = tarfile.TarFile(fileobj=f, mode='r')
+        for finfo in tar:
+            assert isinstance(finfo, tarfile.TarInfo)
+            if finfo.name.endswith('.protobuf'):
+                f = tar.extractfile(finfo)
+                conf = ParameterConfig()
+                conf.ParseFromString(f.read())
+                params.__append_config__(conf)
+
+        for param_name in params.names():
+            f = tar.extractfile(param_name)
+            params.deserialize(param_name, f)
+        return params
 
 
 def __get_parameter_in_gradient_machine__(gradient_machine, name):
