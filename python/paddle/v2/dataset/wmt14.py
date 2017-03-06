@@ -25,7 +25,8 @@ __all__ = ['train', 'test', 'build_dict']
 
 URL_DEV_TEST = 'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz'
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
-URL_TRAIN = 'http://localhost:8989/wmt14.tgz'
+# this is a small set of data for test. The original data is too large and will be add later.
+URL_TRAIN = 'http://paddlepaddle.bj.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz'
 MD5_TRAIN = '7373473f86016f1f48037c9c340a2d5b'
 
 START = "<s>"
