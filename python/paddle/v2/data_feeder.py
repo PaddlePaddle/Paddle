@@ -85,6 +85,9 @@ class DataFeeder(DataProviderConverter):
             input_types.append(each[1])
         DataProviderConverter.__init__(self, input_types)
 
+    def __len__(self):
+        return len(self.input_names)
+
     def convert(self, dat, argument=None):
         """
         :param dat: A list of mini-batch data. Each sample is a list or tuple

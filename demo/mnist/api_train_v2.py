@@ -92,12 +92,8 @@ def main():
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
             if event.batch_id % 1000 == 0:
-                result = trainer.test(reader=paddle.batch(
-                    paddle.dataset.mnist.test(), batch_size=256))
-
-                print "Pass %d, Batch %d, Cost %f, %s, Testing metrics %s" % (
-                    event.pass_id, event.batch_id, event.cost, event.metrics,
-                    result.metrics)
+                print "Pass %d, Batch %d, Cost %f, %s" % (
+                    event.pass_id, event.batch_id, event.cost, event.metrics)
 
                 with gzip.open('params.tar.gz', 'w') as f:
                     parameters.to_tar(f)
@@ -123,17 +119,16 @@ def main():
     print 'Best pass is %s, testing Avgcost is %s' % (best[0], best[1])
     print 'The classification accuracy is %.2f%%' % (100 - float(best[2]) * 100)
 
+    test_creator = paddle.dataset.mnist.test()
+    test_data = []
+    for item in test_creator():
+        test_data.append(item[0])
+        if len(test_data) == 100:
+            break
+
     # output is a softmax layer. It returns probabilities.
     # Shape should be (100, 10)
-    probs = paddle.infer(
-        output=predict,
-        parameters=parameters,
-        reader=paddle.batch(
-            paddle.reader.firstn(
-                paddle.reader.map_readers(lambda item: (item[0], ),
-                                          paddle.dataset.mnist.test()),
-                n=100),
-            batch_size=32))
+    probs = paddle.infer(output=predict, parameters=parameters, input=test_data)
     print probs.shape
 
 
