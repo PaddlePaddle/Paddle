@@ -124,6 +124,12 @@ class Parameters(object):
 
         if len(self.__gradient_machines__) == 0:
             # create new parameter in python numpy.
+            if len(self.__tmp_params__) != 0:
+                ret_list = [
+                    mat for name, mat in self.__tmp_params__ if name == key
+                ]
+                if len(ret_list) == 1:
+                    return ret_list[0]
             return np.ndarray(shape=shape, dtype=np.float32)
         else:
             for each_gradient_machine in self.__gradient_machines__:
