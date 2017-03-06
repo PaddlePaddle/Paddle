@@ -30,26 +30,26 @@ def main():
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
             if event.batch_id % 100 == 0:
-                print "Pass %d, Batch %d, Cost %f, %s" % (
-                    event.pass_id, event.batch_id, event.cost, event.metrics)
+                print "Pass %d, Batch %d, Cost %f" % (
+                    event.pass_id, event.batch_id, event.cost)
 
         if isinstance(event, paddle.event.EndPass):
-            result = trainer.test(
-                reader=paddle.reader.batched(
-                    uci_housing.test(), batch_size=2),
-                reader_dict={'x': 0,
+            if (event.pass_id + 1) % 10 == 0:
+                result = trainer.test(
+                    reader=paddle.batch(
+                        uci_housing.test(), batch_size=2),
+                    feeding={'x': 0,
                              'y': 1})
-            if event.pass_id % 10 == 0:
-                print "Test %d, %s" % (event.pass_id, result.metrics)
+                print "Test %d, %.2f" % (event.pass_id, result.cost)
 
     # training
     trainer.train(
-        reader=paddle.reader.batched(
+        reader=paddle.batch(
             paddle.reader.shuffle(
                 uci_housing.train(), buf_size=500),
             batch_size=2),
-        reader_dict={'x': 0,
-                     'y': 1},
+        feeding={'x': 0,
+                 'y': 1},
         event_handler=event_handler,
         num_passes=30)
 

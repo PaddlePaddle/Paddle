@@ -16,14 +16,16 @@ import tarfile
 import gzip
 import itertools
 from common import download
-
-__all__ = ['test, get_dict', 'get_embedding']
 """
 Conll 2005 dataset.  Paddle semantic role labeling Book and demo use this
 dataset as an example. Because Conll 2005 is not free in public, the default
 downloaded URL is test set of Conll 2005 (which is public). Users can change
 URL and MD5 to their Conll dataset.
+
+TODO(yuyang18): Complete comments.
 """
+
+__all__ = ['test, get_dict', 'get_embedding']
 
 DATA_URL = 'http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz'
 DATA_MD5 = '387719152ae52d60422c016e92a742fc'

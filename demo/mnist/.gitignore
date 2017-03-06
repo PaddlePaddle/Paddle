@@ -5,3 +5,6 @@ plot.png
 train.log
 *pyc
 .ipynb_checkpoints
+params.pkl
+params.tar
+params.tar.gz

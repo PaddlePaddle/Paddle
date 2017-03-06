@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from py_paddle import swig_paddle
 from py_paddle import DataProviderConverter
-import data_type
+
+import paddle.trainer.PyDataProvider2 as pydp2
 
 __all__ = ['DataFeeder']
+
+
+def default_feeding_map(data_types):
+    reader_dict = dict()
+    for i, tp in enumerate(data_types):
+        reader_dict[tp[0]] = i
+    return reader_dict
 
 
 class DataFeeder(DataProviderConverter):
@@ -29,7 +36,10 @@ class DataFeeder(DataProviderConverter):
     to feed it to C++ interface.
     
     The example usage:
-    
+
+
+    ..  code-block:: python
+
         data_types = [('image', paddle.data_type.dense_vector(784)),
                       ('label', paddle.data_type.integer_value(10))]
         reader_dict = {'image':0, 'label':1}
@@ -43,26 +53,35 @@ class DataFeeder(DataProviderConverter):
         #                       [ [1.0,2.0,3.0,4.0], 5, [6,7,8] ]   # second sample
         #                     ]
         arg = feeder(minibatch_data)
+
+    ..  note::
+
+        This module is for internal use only. Users should use the `reader`
+        interface.
+
+
+
+    :param data_types: A list to specify data name and type. Each item is
+                       a tuple of (data_name, data_type).
+
+    :type data_types: list
+    :param reader_dict: A dictionary to specify the position of each data
+                        in the input data.
+    :type feeding: dict
     """
 
-    def __init__(self, data_types, reader_dict):
-        """
-        :param data_types: A list to specify data name and type. Each item is
-                           a tuple of (data_name, data_type). For example:
-                           [('image', paddle.data_type.dense_vector(784)),
-                            ('label', paddle.data_type.integer_value(10))]
-
-        :type data_types: A list of tuple
-        :param reader_dict: A dictionary to specify the position of each data
-                            in the input data.
-        :type reader_dict: dict()
-        """
+    def __init__(self, data_types, feeding=None):
         self.input_names = []
         input_types = []
-        self.reader_dict = reader_dict
+        if feeding is None:
+            feeding = default_feeding_map(data_types)
+
+        self.feeding = feeding
         for each in data_types:
             self.input_names.append(each[0])
-            assert isinstance(each[1], data_type.InputType)
+            if not isinstance(each[1], pydp2.InputType):
+                raise TypeError("second item in each data_type should be an "
+                                "InputType")
             input_types.append(each[1])
         DataProviderConverter.__init__(self, input_types)
 
@@ -70,22 +89,12 @@ class DataFeeder(DataProviderConverter):
         """
         :param dat: A list of mini-batch data. Each sample is a list or tuple
                     one feature or multiple features.
-                    for example:
-                    [ 
-                      ([0.2, 0.2], ), # first sample
-                      ([0.8, 0.3], ), # second sample
-                    ]
-                    or,
-                    [ 
-                      [[0.2, 0.2], ], # first sample
-                      [[0.8, 0.3], ], # second sample
-                    ]
 
-        :type dat: List
+        :type dat: list
         :param argument: An Arguments object contains this mini-batch data with
                          one or multiple features. The Arguments definition is
                          in the API.
-        :type argument: swig_paddle.Arguments
+        :type argument: py_paddle.swig_paddle.Arguments
         """
 
         def reorder_data(data):
@@ -93,7 +102,7 @@ class DataFeeder(DataProviderConverter):
             for each in data:
                 reorder = []
                 for name in self.input_names:
-                    reorder.append(each[self.reader_dict[name]])
+                    reorder.append(each[self.feeding[name]])
                 retv.append(reorder)
             return retv
 
