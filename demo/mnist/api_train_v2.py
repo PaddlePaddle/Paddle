@@ -92,7 +92,7 @@ def main():
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
             if event.batch_id % 1000 == 0:
-                result = trainer.test(reader=paddle.reader.batched(
+                result = trainer.test(reader=paddle.batch(
                     paddle.dataset.mnist.test(), batch_size=256))
 
                 print "Pass %d, Batch %d, Cost %f, %s, Testing metrics %s" % (
@@ -103,7 +103,7 @@ def main():
                     parameters.to_tar(f)
 
         elif isinstance(event, paddle.event.EndPass):
-            result = trainer.test(reader=paddle.reader.batched(
+            result = trainer.test(reader=paddle.batch(
                 paddle.dataset.mnist.test(), batch_size=128))
             print "Test with Pass %d, Cost %f, %s\n" % (
                 event.pass_id, result.cost, result.metrics)
