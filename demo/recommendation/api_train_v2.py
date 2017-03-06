@@ -72,7 +72,7 @@ def main():
                                  parameters=parameters,
                                  update_equation=paddle.optimizer.Adam(
                                      learning_rate=1e-4))
-    reader_dict = {
+    feeding = {
         'user_id': 0,
         'gender_id': 1,
         'age_id': 2,
@@ -90,14 +90,12 @@ def main():
                     event.pass_id, event.batch_id, event.cost)
 
     trainer.train(
-        reader=paddle.reader.batched(
-            paddle.reader.firstn(
-                paddle.reader.shuffle(
-                    paddle.dataset.movielens.train(), buf_size=8192),
-                n=1000),
+        reader=paddle.batch(
+            paddle.reader.shuffle(
+                paddle.dataset.movielens.train(), buf_size=8192),
             batch_size=256),
         event_handler=event_handler,
-        reader_dict=reader_dict,
+        feeding=feeding,
         num_passes=1)
 
     user_id = 234
@@ -111,17 +109,16 @@ def main():
     def reader():
         yield feature
 
-    infer_dict = copy.copy(reader_dict)
+    infer_dict = copy.copy(feeding)
     del infer_dict['score']
-    print infer_dict
 
     prediction = paddle.infer(
         output=inference,
         parameters=parameters,
-        reader=paddle.reader.batched(
+        reader=paddle.batch(
             reader, batch_size=32),
-        reader_dict=infer_dict)
-    print prediction
+        feeding=infer_dict)
+    print(prediction + 5) / 2
 
 
 if __name__ == '__main__':
