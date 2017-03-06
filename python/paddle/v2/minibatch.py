@@ -12,15 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.trainer_config_helpers.activations
-import copy
+__all__ = ['batch']
 
-__all__ = []
 
-suffix = 'Activation'
-for act in paddle.trainer_config_helpers.activations.__all__:
-    new_name = act[:-len(suffix)]
-    globals()[new_name] = copy.copy(
-        getattr(paddle.trainer_config_helpers.activations, act))
-    globals()[new_name].__name__ = new_name
-    __all__.append(new_name)
+def batch(reader, batch_size):
+    """
+    Create a batched reader.
+
+    :param reader: the data reader to read from.
+    :type reader: callable
+    :param batch_size: size of each mini-batch
+    :type batch_size: int
+    :return: the batched reader.
+    :rtype: callable
+    """
+
+    def batch_reader():
+        r = reader()
+        b = []
+        for instance in r:
+            b.append(instance)
+            if len(b) == batch_size:
+                yield b
+                b = []
+        if b:
+            yield b
+
+    return batch_reader

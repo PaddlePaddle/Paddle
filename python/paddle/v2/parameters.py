@@ -12,6 +12,7 @@ __all__ = ['Parameters', 'create']
 def create(layers):
     """
     Create parameter pool by topology.
+
     :param layers:
     :return:
     """
@@ -69,6 +70,7 @@ class Parameters(object):
     def keys(self):
         """
         keys are the names of each parameter.
+
         :return: list of parameter name
         :rtype: list
         """
@@ -77,6 +79,7 @@ class Parameters(object):
     def names(self):
         """
         names of each parameter.
+
         :return: list of parameter name
         :rtype: list
         """
@@ -85,6 +88,7 @@ class Parameters(object):
     def has_key(self, key):
         """
         has_key return true if there are such parameter name == key
+
         :param key: Parameter name
         :type key: basestring
         :return: True if contains such key
@@ -138,6 +142,7 @@ class Parameters(object):
     def get_shape(self, key):
         """
         get shape of the parameter.
+
         :param key: parameter name
         :type key: basestring
         :return: parameter's shape
@@ -192,6 +197,7 @@ class Parameters(object):
     def set(self, parameter_name, value):
         """
         Set parameter by parameter name & matrix.
+
         :param parameter_name: parameter name
         :type parameter_name: basestring
         :param value: parameter matrix

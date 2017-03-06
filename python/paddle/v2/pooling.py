@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.trainer_config_helpers.poolings import *
+import paddle.trainer_config_helpers.poolings
+import copy
 
-__all__ = ["Max", "CudnnMax", "Avg", "CudnnAvg", "Sum", "SquareRootN"]
+__all__ = []
+suffix = 'Pooling'
 
-Max = MaxPooling
-CudnnMax = CudnnMaxPooling
-Avg = AvgPooling
-CudnnAvg = CudnnAvgPooling
-Sum = SumPooling
-SquareRootN = SquareRootNPooling
+for name in paddle.trainer_config_helpers.poolings.__all__:
+    new_name = name[:-len(suffix)]
+    globals()[new_name] = copy.copy(
+        getattr(paddle.trainer_config_helpers.poolings, name))
+    globals()[new_name].__name__ = new_name
+    __all__.append(new_name)

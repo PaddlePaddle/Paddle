@@ -13,6 +13,8 @@
 # limitations under the License.
 """
 CIFAR dataset: https://www.cs.toronto.edu/~kriz/cifar.html
+
+TODO(yuyang18): Complete the comments.
 """
 
 import cPickle

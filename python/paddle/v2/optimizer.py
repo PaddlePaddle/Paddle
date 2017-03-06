@@ -1,7 +1,12 @@
 import py_paddle.swig_paddle as swig_api
-import paddle.trainer_config_helpers.optimizers as v1_optimizers
+
 import paddle.trainer_config_helpers.config_parser_utils as config_parser_utils
-import paddle.v2
+import paddle.trainer_config_helpers.optimizers as v1_optimizers
+"""
+Optimizers(update equation) for SGD method.
+
+TODO(yuyang18): Complete comments.
+"""
 
 __all__ = [
     'Momentum', 'Adam', 'Adamax', 'AdaGrad', 'DecayedAdaGrad', 'AdaDelta',
@@ -44,7 +49,7 @@ class Optimizer(object):
 class Momentum(Optimizer):
     def __init__(self, momentum=None, sparse=False, **kwargs):
         learning_method = v1_optimizers.MomentumOptimizer(
-            momentum=None, sparse=False)
+            momentum=momentum, sparse=sparse)
         super(Momentum, self).__init__(
             learning_method=learning_method, **kwargs)
 

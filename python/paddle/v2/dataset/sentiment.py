@@ -15,17 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The script fetch and preprocess movie_reviews data set
+The script fetch and preprocess movie_reviews data set that provided by NLTK
 
-that provided by NLTK
+TODO(yuyang18): Complete dataset.
 """
 
-import common
 import collections
-import nltk
-import numpy as np
 from itertools import chain
+
+import nltk
 from nltk.corpus import movie_reviews
+
+import common
 
 __all__ = ['train', 'test', 'get_word_dict']
 NUM_TRAINING_INSTANCES = 1600

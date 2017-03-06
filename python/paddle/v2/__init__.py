@@ -28,6 +28,7 @@ import pooling
 import inference
 import networks
 import py_paddle.swig_paddle as api
+import minibatch
 
 __all__ = [
     'optimizer', 'layer', 'activation', 'parameters', 'init', 'trainer',
@@ -45,3 +46,4 @@ def init(**kwargs):
 
 
 infer = inference.infer
+batch = minibatch.batch

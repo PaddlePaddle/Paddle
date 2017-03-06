@@ -66,7 +66,7 @@ def main():
                 sys.stdout.flush()
         if isinstance(event, paddle.event.EndPass):
             result = trainer.test(
-                reader=paddle.reader.batched(
+                reader=paddle.batch(
                     paddle.dataset.cifar.test10(), batch_size=128),
                 reader_dict={'image': 0,
                              'label': 1})
@@ -77,7 +77,7 @@ def main():
                                  parameters=parameters,
                                  update_equation=momentum_optimizer)
     trainer.train(
-        reader=paddle.reader.batched(
+        reader=paddle.batch(
             paddle.reader.shuffle(
                 paddle.dataset.cifar.train10(), buf_size=50000),
             batch_size=128),
