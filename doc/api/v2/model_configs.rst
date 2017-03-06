@@ -1,3 +1,7 @@
+#########################
+Configuration Related API
+#########################
+
 ======
 Layers
 ======
@@ -38,5 +42,5 @@ Networks
 Optimizers
 ==========
 
-..	automodule:: paddle.v2.optimizers
+..	automodule:: paddle.v2.optimizer
 	:members:
