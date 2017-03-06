@@ -21,10 +21,8 @@ class Inference(object):
         self.__gradient_machine__ = gm
         self.__data_types__ = topo.data_type()
 
-    def iter_infer(self, reader, reader_dict=None):
-        if reader_dict is None:
-            reader_dict = self.default_reader_dict()
-        feeder = DataFeeder(self.__data_types__, reader_dict)
+    def iter_infer(self, reader, feeding=None):
+        feeder = DataFeeder(self.__data_types__, feeding)
         self.__gradient_machine__.start()
         for data_batch in reader():
             yield self.__gradient_machine__.forwardTest(feeder(data_batch))
@@ -47,13 +45,7 @@ class Inference(object):
         else:
             return retv
 
-    def default_reader_dict(self):
-        reader_dict = dict()
-        for i, tp in enumerate(self.__data_types__):
-            reader_dict[tp[0]] = i
-        return reader_dict
 
-
-def infer(output, parameters, reader, reader_dict=None, field='value'):
+def infer(output, parameters, reader, feeding=None, field='value'):
     inferer = Inference(output=output, parameters=parameters)
-    return inferer.infer(field=field, reader=reader, reader_dict=reader_dict)
+    return inferer.infer(field=field, reader=reader, feeding=feeding)
