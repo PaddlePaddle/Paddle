@@ -12,12 +12,35 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "CudnnConvLayer.h"
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/Stat.h"
+#include "CudnnConvBaseLayer.h"
 
 namespace paddle {
+/**
+ * @brief A 2-dimension conv layer implemented by cuDNN. It only
+ *        supports GPU mode. We automatic select CudnnConvLayer for GPU
+ *        mode and ExpandConvLayer for CPU mode if you set type of "conv".
+ *        User also can specfiy type of "exconv" or "cudnn_conv" for
+ *        particular type.
+ *
+ * The config file api is img_conv_layer.
+ */
+class CudnnConvLayer : public CudnnConvBaseLayer {
+public:
+  explicit CudnnConvLayer(const LayerConfig& config)
+      : CudnnConvBaseLayer(config) {}
+
+  ~CudnnConvLayer() {}
+};
 
 REGISTER_LAYER(cudnn_conv, CudnnConvLayer);
 
+class CudnnConvTransLayer : public CudnnConvBaseLayer {
+public:
+  explicit CudnnConvTransLayer(const LayerConfig& config)
+      : CudnnConvBaseLayer(config) {}
+
+  ~CudnnConvTransLayer() {}
+};
+
+REGISTER_LAYER(cudnn_convt, CudnnConvTransLayer);
 }  // namespace paddle
