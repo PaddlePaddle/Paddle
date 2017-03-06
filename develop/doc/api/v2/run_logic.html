@@ -429,7 +429,7 @@ TODO(yuyang18): Complete comments</p>
 </table>
 <dl class="method">
 <dt id="paddle.v2.trainer.SGD.train">
-<code class="descname">train</code><span class="sig-paren">(</span><em>reader</em>, <em>num_passes=1</em>, <em>event_handler=None</em>, <em>reader_dict=None</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.trainer.SGD.train" title="Permalink to this definition">¶</a></dt>
+<code class="descname">train</code><span class="sig-paren">(</span><em>reader</em>, <em>num_passes=1</em>, <em>event_handler=None</em>, <em>feeding=None</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.trainer.SGD.train" title="Permalink to this definition">¶</a></dt>
 <dd><p>Training method. Will train num_passes of input data.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -440,6 +440,8 @@ TODO(yuyang18): Complete comments</p>
 <li><strong>num_passes</strong> &#8211; The total train passes.</li>
 <li><strong>event_handler</strong> (<em></em><em>(</em><em>BaseEvent</em><em>) </em><em>=&gt; None</em>) &#8211; Event handler. A method will be invoked when event
 occurred.</li>
+<li><strong>feeding</strong> (<em>dict</em>) &#8211; Feeding is a map of neural network input name and array
+index that reader returns.</li>
 </ul>
 </td>
 </tr>

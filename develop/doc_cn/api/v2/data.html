@@ -481,7 +481,7 @@ nested sequence.</li>
 <span id="datafeeder"></span><h2>DataFeeder<a class="headerlink" href="#module-paddle.v2.data_feeder" title="永久链接至标题">¶</a></h2>
 <dl class="class">
 <dt id="paddle.v2.data_feeder.DataFeeder">
-<em class="property">class </em><code class="descclassname">paddle.v2.data_feeder.</code><code class="descname">DataFeeder</code><span class="sig-paren">(</span><em>data_types</em>, <em>reader_dict</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_feeder.DataFeeder" title="永久链接至目标">¶</a></dt>
+<em class="property">class </em><code class="descclassname">paddle.v2.data_feeder.</code><code class="descname">DataFeeder</code><span class="sig-paren">(</span><em>data_types</em>, <em>feeding=None</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.data_feeder.DataFeeder" title="永久链接至目标">¶</a></dt>
 <dd><p>DataFeeder converts the data returned by paddle.reader into a data structure
 of Arguments which is defined in the API. The paddle.reader usually returns
 a list of mini-batch data entries. Each data entry in the list is one sample.
@@ -516,7 +516,7 @@ interface.</p>
 <tr class="field-odd field"><th class="field-name">参数:</th><td class="field-body"><ul class="first last simple">
 <li><strong>data_types</strong> (<em>list</em>) &#8211; A list to specify data name and type. Each item is
 a tuple of (data_name, data_type).</li>
-<li><strong>reader_dict</strong> (<em>dict</em>) &#8211; A dictionary to specify the position of each data
+<li><strong>reader_dict</strong> &#8211; A dictionary to specify the position of each data
 in the input data.</li>
 </ul>
 </td>
