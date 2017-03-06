@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+__all__ = [
+    'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
+    'ComposeNotAligned', 'firstn'
+]
+
 import itertools
 import random
 from Queue import Queue
 from threading import Thread
-
-__all__ = [
-    'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'batched', 'firstn'
-]
 
 
 def map_readers(func, *readers):
@@ -200,32 +200,6 @@ def buffered(reader, size):
             e = q.get()
 
     return data_reader
-
-
-def batched(reader, batch_size):
-    """
-    Create a batched reader.
-
-    :param reader: the data reader to read from.
-    :type reader: callable
-    :param batch_size: size of each mini-batch
-    :type batch_size: int
-    :return: the batched reader.
-    :rtype: callable
-    """
-
-    def batched_reader():
-        r = reader()
-        batch = []
-        for instance in r:
-            batch.append(instance)
-            if len(batch) == batch_size:
-                yield batch
-                batch = []
-        if batch:
-            yield batch
-
-    return batched_reader
 
 
 def firstn(reader, n):

@@ -11,21 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Dataset package.
-"""
 
-import mnist
-import imikolov
-import imdb
-import cifar
-import movielens
-import conll05
-import uci_housing
-import sentiment
-import wmt14
+__all__ = ['batch']
 
-__all__ = [
-    'mnist', 'imikolov', 'imdb', 'cifar', 'movielens', 'conll05', 'sentiment'
-    'uci_housing', 'wmt14'
-]
+
+def batch(reader, batch_size):
+    """
+    Create a batched reader.
+
+    :param reader: the data reader to read from.
+    :type reader: callable
+    :param batch_size: size of each mini-batch
+    :type batch_size: int
+    :return: the batched reader.
+    :rtype: callable
+    """
+
+    def batch_reader():
+        r = reader()
+        b = []
+        for instance in r:
+            b.append(instance)
+            if len(b) == batch_size:
+                yield b
+                b = []
+        if b:
+            yield b
+
+    return batch_reader

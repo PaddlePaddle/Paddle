@@ -22,6 +22,13 @@ Reader
 ..  automodule:: paddle.v2.reader.creator
     :members:
 
+#########
+minibatch
+#########
+
+..  automodule:: paddle.v2.minibatch
+    :members:
+
 #######
 Dataset
 #######
