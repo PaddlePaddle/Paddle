@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Movielens 1-M dataset.
+
+TODO(yuyang18): Complete comments.
+"""
 
 import zipfile
 from common import download
