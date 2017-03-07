@@ -72,4 +72,37 @@ int PDArgsGetIds(PD_Arguments args, uint64_t ID, PD_IVector ids) {
   iv->vec = a->args[ID].ids;
   return kPD_NO_ERROR;
 }
+
+int PDArgsSetIds(PD_Arguments args, uint64_t ID, PD_IVector ids) {
+  //! TODO(lizhao): Complete this method.
+  return kPD_UNDEFINED_ERROR;
+}
+
+int PDArgsSetSequenceStartPos(PD_Arguments args,
+                              uint64_t ID,
+                              PD_IVector seqPos) {
+  //! TODO(lizhao): Complete this method.
+  return kPD_UNDEFINED_ERROR;
+}
+
+int PDArgsSetSubSequenceStartPos(PD_Arguments args,
+                                 uint64_t ID,
+                                 PD_IVector subSeqPos) {
+  //! TODO(lizhao): Complete this method.
+  return kPD_UNDEFINED_ERROR;
+}
+
+int PDArgsGetSequenceStartPos(PD_Arguments args,
+                              uint64_t ID,
+                              PD_IVector seqPos) {
+  //! TODO(lizhao): Complete this method.
+  return kPD_UNDEFINED_ERROR;
+}
+
+int PDArgsGetSubSequenceStartPos(PD_Arguments args,
+                                 uint64_t ID,
+                                 PD_IVector subSeqPos) {
+  //! TODO(lizhao): Complete this method.
+  return kPD_UNDEFINED_ERROR;
+}
 }

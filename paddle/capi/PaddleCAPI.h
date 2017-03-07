@@ -51,6 +51,19 @@ typedef void* PD_IVector;
 
 PD_API int PDIVecCreateNone(PD_IVector* ivec);
 
+/**
+ * @brief PDIVectorCreate create a paddle int vector
+ * @param [out] ivec: output int vector.
+ * @param [in] array: input array.
+ * @param [in] size: input array size.
+ * @param [in] copy: memory copy or just use same memory. True if copy.
+ * @return PD_Error
+ */
+PD_API int PDIVectorCreate(PD_IVector* ivec,
+                           int* array,
+                           uint64_t size,
+                           bool copy);
+
 PD_API int PDIVecDestroy(PD_IVector ivec);
 
 PD_API int PDIVectorGet(PD_IVector ivec, int** buffer);
@@ -99,6 +112,23 @@ PD_API int PDArgsGetValue(PD_Arguments args, uint64_t ID, PD_Matrix mat);
 
 PD_API int PDArgsGetIds(PD_Arguments args, uint64_t ID, PD_IVector ids);
 
+PD_API int PDArgsSetIds(PD_Arguments args, uint64_t ID, PD_IVector ids);
+
+PD_API int PDArgsSetSequenceStartPos(PD_Arguments args,
+                                     uint64_t ID,
+                                     PD_IVector seqPos);
+
+PD_API int PDArgsGetSequenceStartPos(PD_Arguments args,
+                                     uint64_t ID,
+                                     PD_IVector seqPos);
+
+PD_API int PDArgsSetSubSequenceStartPos(PD_Arguments args,
+                                        uint64_t ID,
+                                        PD_IVector subSeqPos);
+
+PD_API int PDArgsGetSubSequenceStartPos(PD_Arguments args,
+                                        uint64_t ID,
+                                        PD_IVector subSeqPos);
 /**
  * @brief GradientMachine means a neural network.
  */
