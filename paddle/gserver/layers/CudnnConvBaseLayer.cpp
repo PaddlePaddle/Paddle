@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
+REGISTER_LAYER(cudnn_conv, CudnnConvBaseLayer);
+REGISTER_LAYER(cudnn_convt, CudnnConvBaseLayer);
 
 bool CudnnConvBaseLayer::init(const LayerMap &layerMap,
                               const ParameterMap &parameterMap) {
