@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "PyDataProvider.h"
-#include <fenv.h>
-#include "paddle/utils/Excepts.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Util.h"
 

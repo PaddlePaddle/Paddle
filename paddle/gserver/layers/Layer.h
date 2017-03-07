@@ -311,6 +311,7 @@ public:
         return *output->second;
       } else {
         LOG(FATAL) << "No specific output " << str;
+        return *((Argument*)nullptr);
       }
     }
   }

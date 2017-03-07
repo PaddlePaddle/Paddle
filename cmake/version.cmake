@@ -21,4 +21,5 @@ while ("${PADDLE_VERSION}" STREQUAL "")
   endif()
 endwhile()
 
+add_definitions(-DPADDLE_VERSION=${PADDLE_VERSION})
 message(STATUS "Paddle version is ${PADDLE_VERSION}")

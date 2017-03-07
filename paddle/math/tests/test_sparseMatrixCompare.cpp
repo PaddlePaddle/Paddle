@@ -171,11 +171,4 @@ TEST(SMatrix, sMatrixCollectBias) {
   }
 }
 
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  initMain(argc, argv);
-  int ret = RUN_ALL_TESTS();
-  return ret;
-}
-
 #endif

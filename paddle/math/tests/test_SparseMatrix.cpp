@@ -248,11 +248,13 @@ TEST(Matrix, SparseMatrixTranspose) {
             /*dense matrix transpose*/
             CpuMatrixPtr matC(new CpuMatrix(height, width));
             matC->copyFrom(*matA);
-            CpuMatrixPtr matD(new CpuMatrix(width, height));
+            MatrixPtr matD(new CpuMatrix(width, height));
             matC->transpose(matD, false);
+
             /*check result*/
             checkSMatrixEqual2Dense(
-                std::dynamic_pointer_cast<CpuSparseMatrix>(matB), matD);
+                std::dynamic_pointer_cast<CpuSparseMatrix>(matB),
+                std::dynamic_pointer_cast<CpuMatrix>(matD));
           }
         }
       }
@@ -560,10 +562,4 @@ TEST(Matrix, SparseMatrixCSCFormatTrimFrom) {
   hl_stream_synchronize(HPPL_STREAM_DEFAULT);
   checkSMatrixEqual2(matA, matD);
 #endif
-}
-
-int main(int argc, char** argv) {
-  paddle::initMain(argc, argv);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

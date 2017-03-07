@@ -20,11 +20,7 @@ popd > /dev/null
 
 cd $SCRIPTPATH
 
-rm -rf .test_env
-virtualenv .test_env
-source .test_env/bin/activate
-
-pip --timeout 600  install ../../dist/*.whl
+$1 -m pip install ../../dist/*.whl
 
 test_list="testArguments.py testGradientMachine.py testMatrix.py  testVector.py testTrain.py testTrainer.py"
 
@@ -33,7 +29,7 @@ export PYTHONPATH=$PWD/../../../python/
 for fn in $test_list
 do
   echo "test $fn"
-  python $fn
+  $1 $fn
   if [ $? -ne 0 ]; then
     exit 1
   fi

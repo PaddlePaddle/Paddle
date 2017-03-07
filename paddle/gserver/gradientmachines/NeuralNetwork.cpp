@@ -293,11 +293,10 @@ void NeuralNetwork::backward(const UpdateCallback& callback) {
   }
 }
 
-MatrixPtr NeuralNetwork::getLayerOutput(const std::string& layerName) {
-  auto it = layerMap_.find(layerName);
-  CHECK(it != layerMap_.end()) << "Cannot find layer: " << layerName;
-  return it->second->getOutputValue();
+Argument NeuralNetwork::getLayerOutput(const std::string& layerName) {
+  return getLayer(layerName)->getOutput();
 }
+
 void NeuralNetwork::onPassEnd() {
   for (auto& layer : layers_) {
     layer->onPassEnd();
@@ -306,7 +305,6 @@ void NeuralNetwork::onPassEnd() {
 
 class CombinedEvaluator : public Evaluator {
 public:
-  CombinedEvaluator() {}
   void addEvaluator(std::unique_ptr<Evaluator>&& evaluator) {
     evaluators_.emplace_back(std::move(evaluator));
   }
@@ -346,6 +344,55 @@ public:
 
 protected:
   std::vector<std::unique_ptr<Evaluator>> evaluators_;
+
+  // Evaluator interface
+public:
+  /**
+   * @brief getNames will return all inside evaluators' names.
+   * @param names [out]: return names.
+   */
+  void getNames(std::vector<std::string>* names) {
+    for (auto& eval : evaluators_) {
+      eval->getNames(names);
+    }
+  }
+
+  /**
+   * @brief getValue could get all inside evaluators' value.
+   */
+  real getValue(const std::string& name, Error* err) const {
+    return this->getMethodHelper<real>(
+        name, err, [&name, err](const std::unique_ptr<Evaluator>& eval) {
+          return eval->getValue(name, err);
+        });
+  }
+
+  /**
+   * @brief getType could get all inside evaluators' type.
+   */
+  std::string getType(const std::string& name, Error* err) const {
+    return this->getMethodHelper<std::string>(
+        name, err, [&name, err](const std::unique_ptr<Evaluator>& eval) {
+          return eval->getType(name, err);
+        });
+  }
+
+private:
+  template <typename T>
+  T getMethodHelper(const std::string& name,
+                    Error* err,
+                    const std::function<T(const std::unique_ptr<Evaluator>&)>&
+                        callback) const {
+    for (auto& eval : evaluators_) {
+      std::vector<std::string> names;
+      eval->getNames(&names);
+      if (std::find(names.begin(), names.end(), name) != names.end()) {
+        return callback(eval);
+      }
+    }
+    *err = Error("No such key %s", name.c_str());
+    return T();
+  }
 };
 
 Evaluator* NeuralNetwork::makeEvaluator() const {

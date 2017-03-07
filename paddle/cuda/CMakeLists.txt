@@ -15,7 +15,6 @@ else()
 endif()
 
 set(CUDA_CXX_WITH_GPU_SOURCES
-    src/hl_cudart_wrap.cc
     src/hl_cuda_cublas.cc
     src/hl_cuda_cudnn.cc
     src/hl_cuda_device.cc)
@@ -87,6 +86,8 @@ else()
                 ${CUDA_SOURCES}
                 ${CUDA_CXX_SOURCES})
 endif()
+
+add_dependencies(paddle_cuda ${external_project_dependencies})
 
 add_style_check_target(paddle_cuda
                        ${CUDA_SOURCES}

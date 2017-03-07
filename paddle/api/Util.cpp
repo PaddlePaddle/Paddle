@@ -15,12 +15,11 @@ limitations under the License. */
 #include "PaddleAPI.h"
 
 #include "paddle/parameter/Parameter.h"
-#include "paddle/utils/Excepts.h"
+#include "paddle/utils/Common.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/PythonUtil.h"
 #include "paddle/utils/Util.h"
 
-#include <fenv.h>
 #include <algorithm>
 #include <iostream>
 #include <iterator>
@@ -54,6 +53,8 @@ bool isGpuVersion() {
   return true;
 #endif
 }
+
+int getTrainerCount() { return FLAGS_trainer_count; }
 
 static_assert(NUM_PARAMETER_TYPES == paddle::NUM_PARAMETER_TYPES,
               "The Parameter Type should be same in core/api and core/common");

@@ -24,3 +24,4 @@ paddle train \
     --test_pass=12 \
     --trainer_count=1 \
     2>&1 | tee 'translation/gen.log'
+paddle usage -l 'translation/gen.log' -e $? -n "seqToseq_translation_gen" >/dev/null 2>&1

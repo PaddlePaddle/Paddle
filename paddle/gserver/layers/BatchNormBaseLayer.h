@@ -52,7 +52,8 @@ public:
    */
   static Layer* create(const LayerConfig& config);
 
-  virtual bool init(const LayerMap& layerMap, const ParameterMap& parameterMap);
+  bool init(const LayerMap& layerMap,
+            const ParameterMap& parameterMap) override;
 
   /**
    * @brief Calculate feature map size. Some input uses frameHeight and
