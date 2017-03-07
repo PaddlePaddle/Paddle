@@ -39,4 +39,14 @@ int PDIVectorGet(PD_IVector ivec, int** buffer) {
   *buffer = v->vec->getData();
   return kPD_NO_ERROR;
 }
+
+int PDIVectorResize(PD_IVector ivec, uint64_t size) {
+  // TODO(lizhao): Complete this method.
+  return 0;
+}
+
+int PDIVectorGetSize(PD_IVector ivec, uint64_t* size) {
+  // TODO(lizhao): Complete this method.
+  return 0;
+}
 }

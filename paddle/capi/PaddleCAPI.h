@@ -55,6 +55,10 @@ PD_API int PDIVecDestroy(PD_IVector ivec);
 
 PD_API int PDIVectorGet(PD_IVector ivec, int** buffer);
 
+PD_API int PDIVectorResize(PD_IVector ivec, uint64_t size);
+
+PD_API int PDIVectorGetSize(PD_IVector ivec, uint64_t* size);
+
 /**
  * Matrix functions. Return will be a PD_Error type.
  */
