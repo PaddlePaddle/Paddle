@@ -113,7 +113,7 @@ def main():
     test_creator = paddle.dataset.mnist.test()
     test_data = []
     for item in test_creator():
-        test_data.append(item[0])
+        test_data.append((item[0], ))
         if len(test_data) == 100:
             break
 

@@ -43,10 +43,7 @@ class Inference(object):
 
             def __reader_impl__():
                 for each_sample in input:
-                    if len(reader_dict) == 1:
-                        yield [each_sample]
-                    else:
-                        yield each_sample
+                    yield each_sample
 
             reader = minibatch.batch(__reader_impl__, batch_size=batch_size)
         else:
