@@ -470,7 +470,6 @@ protected:
 
   /// indicate whether inArgs is copied before forward()
   bool inArgsCopied_;
-
   int batchSize_;
 };
 
