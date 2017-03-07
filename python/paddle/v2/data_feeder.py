@@ -14,9 +14,16 @@
 
 from py_paddle import DataProviderConverter
 
-import data_type
+import paddle.trainer.PyDataProvider2 as pydp2
 
 __all__ = ['DataFeeder']
+
+
+def default_feeding_map(data_types):
+    reader_dict = dict()
+    for i, tp in enumerate(data_types):
+        reader_dict[tp[0]] = i
+    return reader_dict
 
 
 class DataFeeder(DataProviderConverter):
@@ -60,16 +67,21 @@ class DataFeeder(DataProviderConverter):
     :type data_types: list
     :param reader_dict: A dictionary to specify the position of each data
                         in the input data.
-    :type reader_dict: dict
+    :type feeding: dict
     """
 
-    def __init__(self, data_types, reader_dict):
+    def __init__(self, data_types, feeding=None):
         self.input_names = []
         input_types = []
-        self.reader_dict = reader_dict
+        if feeding is None:
+            feeding = default_feeding_map(data_types)
+
+        self.feeding = feeding
         for each in data_types:
             self.input_names.append(each[0])
-            assert isinstance(each[1], data_type.InputType)
+            if not isinstance(each[1], pydp2.InputType):
+                raise TypeError("second item in each data_type should be an "
+                                "InputType")
             input_types.append(each[1])
         DataProviderConverter.__init__(self, input_types)
 
@@ -90,7 +102,7 @@ class DataFeeder(DataProviderConverter):
             for each in data:
                 reorder = []
                 for name in self.input_names:
-                    reorder.append(each[self.reader_dict[name]])
+                    reorder.append(each[self.feeding[name]])
                 retv.append(reorder)
             return retv
 

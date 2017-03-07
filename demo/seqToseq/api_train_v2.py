@@ -1,76 +1,106 @@
-import os
-
 import paddle.v2 as paddle
 
-from seqToseq_net_v2 import seqToseq_net_v2
 
-# Data Definiation.
-# TODO:This code should be merged to dataset package.
-data_dir = "./data/pre-wmt14"
-src_lang_dict = os.path.join(data_dir, 'src.dict')
-trg_lang_dict = os.path.join(data_dir, 'trg.dict')
+def seqToseq_net(source_dict_dim, target_dict_dim):
+    ### Network Architecture
+    word_vector_dim = 512  # dimension of word vector
+    decoder_size = 512  # dimension of hidden unit in GRU Decoder network
+    encoder_size = 512  # dimension of hidden unit in GRU Encoder network
 
-source_dict_dim = len(open(src_lang_dict, "r").readlines())
-target_dict_dim = len(open(trg_lang_dict, "r").readlines())
+    #### Encoder
+    src_word_id = paddle.layer.data(
+        name='source_language_word',
+        type=paddle.data_type.integer_value_sequence(source_dict_dim))
+    src_embedding = paddle.layer.embedding(
+        input=src_word_id,
+        size=word_vector_dim,
+        param_attr=paddle.attr.ParamAttr(name='_source_language_embedding'))
+    src_forward = paddle.networks.simple_gru(
+        input=src_embedding, size=encoder_size)
+    src_backward = paddle.networks.simple_gru(
+        input=src_embedding, size=encoder_size, reverse=True)
+    encoded_vector = paddle.layer.concat(input=[src_forward, src_backward])
 
+    #### Decoder
+    with paddle.layer.mixed(size=decoder_size) as encoded_proj:
+        encoded_proj += paddle.layer.full_matrix_projection(
+            input=encoded_vector)
 
-def read_to_dict(dict_path):
-    with open(dict_path, "r") as fin:
-        out_dict = {
-            line.strip(): line_count
-            for line_count, line in enumerate(fin)
-        }
-    return out_dict
+    backward_first = paddle.layer.first_seq(input=src_backward)
 
+    with paddle.layer.mixed(
+            size=decoder_size, act=paddle.activation.Tanh()) as decoder_boot:
+        decoder_boot += paddle.layer.full_matrix_projection(
+            input=backward_first)
 
-src_dict = read_to_dict(src_lang_dict)
-trg_dict = read_to_dict(trg_lang_dict)
+    def gru_decoder_with_attention(enc_vec, enc_proj, current_word):
 
-train_list = os.path.join(data_dir, 'train.list')
-test_list = os.path.join(data_dir, 'test.list')
+        decoder_mem = paddle.layer.memory(
+            name='gru_decoder', size=decoder_size, boot_layer=decoder_boot)
 
-UNK_IDX = 2
-START = "<s>"
-END = "<e>"
+        context = paddle.networks.simple_attention(
+            encoded_sequence=enc_vec,
+            encoded_proj=enc_proj,
+            decoder_state=decoder_mem)
 
+        with paddle.layer.mixed(size=decoder_size * 3) as decoder_inputs:
+            decoder_inputs += paddle.layer.full_matrix_projection(input=context)
+            decoder_inputs += paddle.layer.full_matrix_projection(
+                input=current_word)
 
-def _get_ids(s, dictionary):
-    words = s.strip().split()
-    return [dictionary[START]] + \
-           [dictionary.get(w, UNK_IDX) for w in words] + \
-           [dictionary[END]]
+        gru_step = paddle.layer.gru_step(
+            name='gru_decoder',
+            input=decoder_inputs,
+            output_mem=decoder_mem,
+            size=decoder_size)
 
+        with paddle.layer.mixed(
+                size=target_dict_dim,
+                bias_attr=True,
+                act=paddle.activation.Softmax()) as out:
+            out += paddle.layer.full_matrix_projection(input=gru_step)
+        return out
 
-def train_reader(file_name):
-    def reader():
-        with open(file_name, 'r') as f:
-            for line_count, line in enumerate(f):
-                line_split = line.strip().split('\t')
-                if len(line_split) != 2:
-                    continue
-                src_seq = line_split[0]  # one source sequence
-                src_ids = _get_ids(src_seq, src_dict)
+    decoder_group_name = "decoder_group"
+    group_input1 = paddle.layer.StaticInputV2(input=encoded_vector, is_seq=True)
+    group_input2 = paddle.layer.StaticInputV2(input=encoded_proj, is_seq=True)
+    group_inputs = [group_input1, group_input2]
 
-                trg_seq = line_split[1]  # one target sequence
-                trg_words = trg_seq.split()
-                trg_ids = [trg_dict.get(w, UNK_IDX) for w in trg_words]
+    trg_embedding = paddle.layer.embedding(
+        input=paddle.layer.data(
+            name='target_language_word',
+            type=paddle.data_type.integer_value_sequence(target_dict_dim)),
+        size=word_vector_dim,
+        param_attr=paddle.attr.ParamAttr(name='_target_language_embedding'))
+    group_inputs.append(trg_embedding)
 
-                # remove sequence whose length > 80 in training mode
-                if len(src_ids) > 80 or len(trg_ids) > 80:
-                    continue
-                trg_ids_next = trg_ids + [trg_dict[END]]
-                trg_ids = [trg_dict[START]] + trg_ids
+    # For decoder equipped with attention mechanism, in training,
+    # target embeding (the groudtruth) is the data input,
+    # while encoded source sequence is accessed to as an unbounded memory.
+    # Here, the StaticInput defines a read-only memory
+    # for the recurrent_group.
+    decoder = paddle.layer.recurrent_group(
+        name=decoder_group_name,
+        step=gru_decoder_with_attention,
+        input=group_inputs)
 
-                yield src_ids, trg_ids, trg_ids_next
+    lbl = paddle.layer.data(
+        name='target_language_next_word',
+        type=paddle.data_type.integer_value_sequence(target_dict_dim))
+    cost = paddle.layer.classification_cost(input=decoder, label=lbl)
 
-    return reader
+    return cost
 
 
 def main():
     paddle.init(use_gpu=False, trainer_count=1)
 
+    # source and target dict dim.
+    dict_size = 30000
+    source_dict_dim = target_dict_dim = dict_size
+
     # define network topology
-    cost = seqToseq_net_v2(source_dict_dim, target_dict_dim)
+    cost = seqToseq_net(source_dict_dim, target_dict_dim)
     parameters = paddle.parameters.create(cost)
 
     # define optimize method and trainer
@@ -80,15 +110,15 @@ def main():
                                  update_equation=optimizer)
 
     # define data reader
-    reader_dict = {
+    feeding = {
         'source_language_word': 0,
         'target_language_word': 1,
         'target_language_next_word': 2
     }
 
-    wmt14_reader = paddle.reader.batched(
+    wmt14_reader = paddle.batch(
         paddle.reader.shuffle(
-            train_reader("data/pre-wmt14/train/train"), buf_size=8192),
+            paddle.dataset.wmt14.train(dict_size=dict_size), buf_size=8192),
         batch_size=5)
 
     # define event_handler callback
@@ -103,7 +133,7 @@ def main():
         reader=wmt14_reader,
         event_handler=event_handler,
         num_passes=10000,
-        reader_dict=reader_dict)
+        feeding=feeding)
 
 
 if __name__ == '__main__':

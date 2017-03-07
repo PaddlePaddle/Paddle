@@ -21,13 +21,8 @@ class Inference(object):
         self.__gradient_machine__ = gm
         self.__data_types__ = topo.data_type()
 
-    def iter_infer(self,
-                   input=None,
-                   batch_size=None,
-                   reader=None,
-                   reader_dict=None):
-        if reader_dict is None:
-            reader_dict = self.default_reader_dict()
+    def iter_infer(self, input=None, batch_size=None, reader=None,
+                   feeding=None):
 
         if reader is None:
             assert input is not None and isinstance(input, collections.Iterable)
@@ -51,7 +46,7 @@ class Inference(object):
                 raise ValueError("User should set either input or reader, "
                                  "should not set them both.")
 
-        feeder = DataFeeder(self.__data_types__, reader_dict)
+        feeder = DataFeeder(self.__data_types__, feeding)
         self.__gradient_machine__.start()
         for data_batch in reader():
             yield self.__gradient_machine__.forwardTest(feeder(data_batch))
@@ -74,19 +69,13 @@ class Inference(object):
         else:
             return retv
 
-    def default_reader_dict(self):
-        reader_dict = dict()
-        for i, tp in enumerate(self.__data_types__):
-            reader_dict[tp[0]] = i
-        return reader_dict
-
 
 def infer(output,
           parameters,
           input=None,
           batch_size=None,
           reader=None,
-          reader_dict=None,
+          feeding=None,
           field='value'):
     """
     Infer a neural network by given neural network output and parameters.  The
@@ -113,7 +102,7 @@ def infer(output,
     :param reader: input data reader creator in batch. If this field is set, the
                    `input` and `batch_size` will be ignored.
     :type reader: callable
-    :param reader_dict: Reader dictionary. Default could generate from input
+    :param feeding: Reader dictionary. Default could generate from input
                         value.
     :param field: The prediction field. It should in [`value`, `ids`]. `value`
                   means return the prediction probabilities, `ids` means return
@@ -129,4 +118,4 @@ def infer(output,
         input=input,
         batch_size=batch_size,
         reader=reader,
-        reader_dict=reader_dict)
+        feeding=feeding)

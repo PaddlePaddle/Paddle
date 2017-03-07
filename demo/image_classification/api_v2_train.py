@@ -13,9 +13,10 @@
 # limitations under the License
 
 import sys
+
 import paddle.v2 as paddle
+
 from api_v2_vgg import vgg_bn_drop
-from api_v2_resnet import resnet_cifar10
 
 
 def main():
@@ -23,16 +24,16 @@ def main():
     classdim = 10
 
     # PaddlePaddle init
-    paddle.init(use_gpu=True, trainer_count=1)
+    paddle.init(use_gpu=False, trainer_count=1)
 
     image = paddle.layer.data(
         name="image", type=paddle.data_type.dense_vector(datadim))
 
     # Add neural network config
     # option 1. resnet
-    net = resnet_cifar10(image, depth=32)
+    # net = resnet_cifar10(image, depth=32)
     # option 2. vgg
-    # net = vgg_bn_drop(image)
+    net = vgg_bn_drop(image)
 
     out = paddle.layer.fc(input=net,
                           size=classdim,
@@ -68,8 +69,8 @@ def main():
             result = trainer.test(
                 reader=paddle.batch(
                     paddle.dataset.cifar.test10(), batch_size=128),
-                reader_dict={'image': 0,
-                             'label': 1})
+                feeding={'image': 0,
+                         'label': 1})
             print "\nTest with Pass %d, %s" % (event.pass_id, result.metrics)
 
     # Create trainer
@@ -83,8 +84,8 @@ def main():
             batch_size=128),
         num_passes=5,
         event_handler=event_handler,
-        reader_dict={'image': 0,
-                     'label': 1})
+        feeding={'image': 0,
+                 'label': 1})
 
 
 if __name__ == '__main__':
