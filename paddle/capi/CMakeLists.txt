@@ -41,10 +41,8 @@ add_custom_target(paddle_capi_whole ALL
         COMMAND mkdir -p o_files/function && cd o_files/function/ && ar -x $<TARGET_FILE:paddle_function>
         COMMAND mkdir -p o_files/gserver && cd o_files/gserver/ && ar -x $<TARGET_FILE:paddle_gserver>
         COMMAND mkdir -p o_files/proto && cd o_files/proto/ && ar -x $<TARGET_FILE:paddle_proto>
-        COMMAND mkdir -p o_files/network && cd o_files/network/ && ar -x
-        +$<TARGET_FILE:paddle_network>
-        +       COMMAND mkdir -p o_files/pserver && cd o_files/pserver/ && ar -x
-        +$<TARGET_FILE:paddle_pserver
+        COMMAND mkdir -p o_files/network && cd o_files/network/ && ar -x $<TARGET_FILE:paddle_network>
+        COMMAND mkdir -p o_files/pserver && cd o_files/pserver/ && ar -x $<TARGET_FILE:paddle_pserver>
         COMMAND ar crs ${capi_whole_library} `find ./o_files -name '*.o'`
         COMMAND rm -rf o_files
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
