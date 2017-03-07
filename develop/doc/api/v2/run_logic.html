@@ -171,6 +171,7 @@
 <li><a class="reference internal" href="#module-paddle.v2.parameters">Parameters</a></li>
 <li><a class="reference internal" href="#module-paddle.v2.trainer">Trainer</a></li>
 <li><a class="reference internal" href="#module-paddle.v2.event">Event</a></li>
+<li><a class="reference internal" href="#inference">Inference</a></li>
 </ul>
 </li>
 </ul>
@@ -494,6 +495,51 @@ index that reader returns.</li>
 <dt id="paddle.v2.event.EndIteration">
 <em class="property">class </em><code class="descclassname">paddle.v2.event.</code><code class="descname">EndIteration</code><span class="sig-paren">(</span><em>pass_id</em>, <em>batch_id</em>, <em>cost</em>, <em>evaluator</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.event.EndIteration" title="Permalink to this definition">¶</a></dt>
 <dd><p>Event On One Batch Training Complete.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="inference">
+<h2>Inference<a class="headerlink" href="#inference" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="paddle.v2.infer">
+<code class="descclassname">paddle.v2.</code><code class="descname">infer</code><span class="sig-paren">(</span><em>output</em>, <em>parameters</em>, <em>input=None</em>, <em>batch_size=None</em>, <em>reader=None</em>, <em>feeding=None</em>, <em>field='value'</em><span class="sig-paren">)</span><a class="headerlink" href="#paddle.v2.infer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Infer a neural network by given neural network output and parameters.  The
+user should pass either a batch of input data or reader method.</p>
+<p>Example usages:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">prediction</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="n">SomeData</span><span class="p">,</span>
+                      <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">result</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>output</strong> (<em>paddle.v2.config_base.Layer</em>) &#8211; output of the neural network that would be inferred</li>
+<li><strong>parameters</strong> (<a class="reference internal" href="#paddle.v2.parameters.Parameters" title="paddle.v2.parameters.Parameters"><em>paddle.v2.parameters.Parameters</em></a>) &#8211; parameters of the neural network.</li>
+<li><strong>input</strong> (<em>collections.Iterable</em>) &#8211; input data batch. Should be a python iterable object, and each
+element is the data batch.</li>
+<li><strong>batch_size</strong> (<em>int</em>) &#8211; the batch size when perform inference. Default is the
+length of input.</li>
+<li><strong>reader</strong> (<em>callable</em>) &#8211; input data reader creator in batch. If this field is set, the
+<cite>input</cite> and <cite>batch_size</cite> will be ignored.</li>
+<li><strong>feeding</strong> &#8211; Reader dictionary. Default could generate from input
+value.</li>
+<li><strong>field</strong> (<em>str</em>) &#8211; The prediction field. It should in [<cite>value</cite>, <cite>ids</cite>]. <cite>value</cite>
+means return the prediction probabilities, <cite>ids</cite> means return
+the prediction labels. Default is <cite>value</cite></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a numpy array</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">numpy.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </div>
