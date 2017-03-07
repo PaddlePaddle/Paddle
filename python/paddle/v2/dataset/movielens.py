@@ -23,7 +23,12 @@ import re
 import random
 import functools
 
-__all__ = ['train_creator', 'test_creator']
+__all__ = [
+    'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',
+    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info'
+]
+
+age_table = [1, 18, 25, 35, 45, 50, 56]
 
 
 class MovieInfo(object):
@@ -38,16 +43,31 @@ class MovieInfo(object):
             [MOVIE_TITLE_DICT[w.lower()] for w in self.title.split()]
         ]
 
+    def __str__(self):
+        return "<MovieInfo id(%d), title(%s), categories(%s)>" % (
+            self.index, self.title, self.categories)
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class UserInfo(object):
     def __init__(self, index, gender, age, job_id):
         self.index = int(index)
         self.is_male = gender == 'M'
-        self.age = [1, 18, 25, 35, 45, 50, 56].index(int(age))
+        self.age = age_table.index(int(age))
         self.job_id = int(job_id)
 
     def value(self):
         return [self.index, 0 if self.is_male else 1, self.age, self.job_id]
+
+    def __str__(self):
+        return "<UserInfo id(%d), gender(%s), age(%d), job(%d)>" % (
+            self.index, "M"
+            if self.is_male else "F", age_table[self.age], self.job_id)
+
+    def __repr__(self):
+        return str(self)
 
 
 MOVIE_INFO = None
@@ -59,7 +79,8 @@ USER_INFO = None
 def __initialize_meta_info__():
     fn = download(
         url='http://files.grouplens.org/datasets/movielens/ml-1m.zip',
-        md5='c4d9eecfca2ab87c1945afe126590906')
+        module_name='movielens',
+        md5sum='c4d9eecfca2ab87c1945afe126590906')
     global MOVIE_INFO
     if MOVIE_INFO is None:
         pattern = re.compile(r'^(.*)\((\d+)\)$')
@@ -122,14 +143,63 @@ def __reader_creator__(**kwargs):
     return lambda: __reader__(**kwargs)
 
 
-train_creator = functools.partial(__reader_creator__, is_test=False)
-test_creator = functools.partial(__reader_creator__, is_test=True)
+train = functools.partial(__reader_creator__, is_test=False)
+test = functools.partial(__reader_creator__, is_test=True)
+
+
+def get_movie_title_dict():
+    __initialize_meta_info__()
+    return MOVIE_TITLE_DICT
+
+
+def __max_index_info__(a, b):
+    if a.index > b.index:
+        return a
+    else:
+        return b
+
+
+def max_movie_id():
+    __initialize_meta_info__()
+    return reduce(__max_index_info__, MOVIE_INFO.viewvalues()).index
+
+
+def max_user_id():
+    __initialize_meta_info__()
+    return reduce(__max_index_info__, USER_INFO.viewvalues()).index
+
+
+def __max_job_id_impl__(a, b):
+    if a.job_id > b.job_id:
+        return a
+    else:
+        return b
+
+
+def max_job_id():
+    __initialize_meta_info__()
+    return reduce(__max_job_id_impl__, USER_INFO.viewvalues()).job_id
+
+
+def movie_categories():
+    __initialize_meta_info__()
+    return CATEGORIES_DICT
+
+
+def user_info():
+    __initialize_meta_info__()
+    return USER_INFO
+
+
+def movie_info():
+    __initialize_meta_info__()
+    return MOVIE_INFO
 
 
 def unittest():
-    for train_count, _ in enumerate(train_creator()()):
+    for train_count, _ in enumerate(train()()):
         pass
-    for test_count, _ in enumerate(test_creator()()):
+    for test_count, _ in enumerate(test()()):
         pass
 
     print train_count, test_count
