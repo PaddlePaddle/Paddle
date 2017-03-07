@@ -359,9 +359,7 @@ void MultiGradientMachine::getOutArgs(std::vector<Argument>* outArgs,
     thread->waitOutArgsReady();
   }
 
-  // outArgs_.size() only need to be calculated once.
-  static int size = threads_[threads_.size() - 1]->getOutArgs().size();
-  outArgs_.resize(size);
+  outArgs_.resize(threads_[threads_.size() - 1]->getOutArgs().size());
 
   REGISTER_TIMER("copyOutArgs");
   for (size_t i = 0; i < outArgs_.size(); ++i) {
