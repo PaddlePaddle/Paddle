@@ -23,7 +23,7 @@ class Inference(object):
 
     def iter_infer(self, input=None, batch_size=None, reader=None,
                    feeding=None):
-
+        feeder = DataFeeder(self.__data_types__, feeding)
         if reader is None:
             assert input is not None and isinstance(input, collections.Iterable)
             if not isinstance(input, collections.Iterable):
@@ -45,8 +45,6 @@ class Inference(object):
             if input is not None:
                 raise ValueError("User should set either input or reader, "
                                  "should not set them both.")
-
-        feeder = DataFeeder(self.__data_types__, feeding)
         self.__gradient_machine__.start()
         for data_batch in reader():
             yield self.__gradient_machine__.forwardTest(feeder(data_batch))
@@ -70,7 +68,7 @@ class Inference(object):
             return retv
 
 
-def infer(output_layer, parameters, input=None, feeding=None, field='value'):
+def infer(output_layer, parameters, input, feeding=None, field='value'):
     """
     Infer a neural network by given neural network output and parameters.  The
     user should pass either a batch of input data or reader method.

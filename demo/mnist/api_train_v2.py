@@ -92,12 +92,8 @@ def main():
     def event_handler(event):
         if isinstance(event, paddle.event.EndIteration):
             if event.batch_id % 1000 == 0:
-                result = trainer.test(reader=paddle.batch(
-                    paddle.dataset.mnist.test(), batch_size=256))
-
-                print "Pass %d, Batch %d, Cost %f, %s, Testing metrics %s" % (
-                    event.pass_id, event.batch_id, event.cost, event.metrics,
-                    result.metrics)
+                print "Pass %d, Batch %d, Cost %f, %s" % (
+                    event.pass_id, event.batch_id, event.cost, event.metrics)
 
                 with gzip.open('params.tar.gz', 'w') as f:
                     parameters.to_tar(f)
