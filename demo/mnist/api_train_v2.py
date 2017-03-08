@@ -132,7 +132,8 @@ def main():
 
     # output is a softmax layer. It returns probabilities.
     # Shape should be (100, 10)
-    probs = paddle.infer(output=predict, parameters=parameters, input=test_data)
+    probs = paddle.infer(
+        output_layer=predict, parameters=parameters, input=test_data)
     print probs.shape
 
 
